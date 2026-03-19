@@ -388,4 +388,29 @@ export const handlers = new Map<string, HandlerFn>([
     ['getCommonFollows', async (params) => getCommonFollows(params.pubkey as string)],
 
     ['getPath', async (params) => getPathTo(params.target as string)],
+
+    ['getRelayList', async (params) => storage.getRelayList(params.pubkey as string)],
+
+    ['getRelayPool', async () => {
+        if (!config.myPubkey) throw new Error('My pubkey not configured');
+
+        // Compute endorsement counts from stored relay lists of user's follows
+        const follows = await storage.getFollows(config.myPubkey);
+        const endorsements = new Map<string, number>();
+
+        for (const followPk of follows) {
+            const relayList = storage.getRelayList(followPk);
+            if (!relayList) continue;
+            for (const entry of relayList) {
+                if (!entry.write) continue;
+                const count = endorsements.get(entry.url) || 0;
+                endorsements.set(entry.url, count + 1);
+            }
+        }
+
+        return Array.from(endorsements.entries())
+            .map(([url, count]) => ({ url, endorsements: count }))
+            .sort((a, b) => b.endorsements - a.endorsements)
+            .slice(0, 50);
+    }],
 ]);

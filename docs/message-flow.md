@@ -88,7 +88,7 @@ This ensures the message comes from an extension page (popup, onboarding, prompt
 ## 6. Channel Isolation
 
 The four message channels are strictly separated:
-- **WoT channel** (`WOT_REQUEST`/`WOT_RESPONSE`) -- can only access `WOT_ALLOWED_METHODS`
+- **WoT channel** (`WOT_REQUEST`/`WOT_RESPONSE`) -- can only access `WOT_ALLOWED_METHODS` (includes `getRelayList`, `getRelayPool`)
 - **NIP-07 channel** (`NIP07_REQUEST`/`NIP07_RESPONSE`) -- can only access `NIP07_ALLOWED_METHODS`
 - **WebLN channel** (`WEBLN_REQUEST`/`WEBLN_RESPONSE`) -- can only access `WEBLN_ALLOWED_METHODS`
 - **Internal channel** (direct `browser.runtime.sendMessage`) -- can access privileged methods

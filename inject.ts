@@ -47,6 +47,17 @@ interface WotStatus {
     hasLocalGraph: boolean;
 }
 
+interface RelayListEntry {
+    url: string;
+    read: boolean;
+    write: boolean;
+}
+
+interface RelayPoolEntry {
+    url: string;
+    endorsements: number;
+}
+
 interface WotApi {
     getDistance: (target: string) => Promise<number | null>;
     isInMyWoT: (target: string, maxHops?: number) => Promise<boolean>;
@@ -61,6 +72,8 @@ interface WotApi {
     getCommonFollows: (pubkey: string) => Promise<string[]>;
     getStats: () => Promise<Record<string, unknown>>;
     getPath: (target: string) => Promise<string[] | null>;
+    getRelayList: (pubkey: string) => Promise<RelayListEntry[] | null>;
+    getRelayPool: () => Promise<RelayPoolEntry[]>;
 }
 
 interface SignedEvent {
@@ -206,6 +219,8 @@ declare global {
         getCommonFollows: (pubkey) => wot.call('getCommonFollows', { pubkey }) as Promise<string[]>,
         getStats: () => wot.call('getStats', {}) as Promise<Record<string, unknown>>,
         getPath: (target) => wot.call('getPath', { target }) as Promise<string[] | null>,
+        getRelayList: (pubkey) => wot.call('getRelayList', { pubkey }) as Promise<RelayListEntry[] | null>,
+        getRelayPool: () => wot.call('getRelayPool', {}) as Promise<RelayPoolEntry[]>,
     };
 
     // NIP-07 signer methods

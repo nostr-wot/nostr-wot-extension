@@ -1,5 +1,6 @@
 import * as storage from './storage.ts';
-import type { SyncResult, SyncProgress } from './types.ts';
+import type { SyncResult, SyncProgress, RelayListEntry } from './types.ts';
+import { RELAY_POOL_MAX_SIZE, RELAY_POOL_MIN_ENDORSEMENTS, MAX_RELAYS_PER_EVENT } from './constants.ts';
 
 const BATCH_SIZE = 50; // Pubkeys per batch
 const PROGRESS_INTERVAL = 200; // Min ms between progress updates
@@ -8,6 +9,78 @@ const REQUEST_TIMEOUT = 10000; // Time to wait for response
 const BASE_DELAY = 50; // Base delay between requests per relay (ms)
 const MAX_DELAY = 2000; // Max delay when throttled
 const CONCURRENT_PER_RELAY = 5; // Max concurrent requests per relay
+
+// ── Relay URL normalization ──
+
+/** Normalize relay URL: strip trailing slash, lowercase */
+export function normalizeRelayUrl(url: string): string {
+    // Lowercase the scheme + host (path is case-sensitive per spec, but
+    // relay URLs are almost always just scheme+host with no meaningful path)
+    let normalized = url.toLowerCase();
+    // Strip trailing slash(es) — wss://relay.damus.io/ → wss://relay.damus.io
+    while (normalized.length > 6 && normalized.endsWith('/')) {
+        normalized = normalized.slice(0, -1);
+    }
+    return normalized;
+}
+
+// ── Relay list parsing ──
+
+/** Parse kind:10002 relay list tags into RelayListEntry array */
+export function parseRelayListTags(tags: string[][]): RelayListEntry[] {
+    const results: RelayListEntry[] = [];
+    const seen = new Set<string>();
+
+    for (const tag of tags) {
+        if (results.length >= MAX_RELAYS_PER_EVENT) break;
+        if (tag[0] !== 'r' || !tag[1]) continue;
+
+        const raw = tag[1];
+        // Only accept wss:// URLs (case-insensitive check)
+        if (!raw.toLowerCase().startsWith('wss://')) continue;
+
+        const url = normalizeRelayUrl(raw);
+
+        // Deduplicate after normalization
+        if (seen.has(url)) continue;
+        seen.add(url);
+
+        const marker = tag[2];
+        if (marker === 'read') {
+            results.push({ url, read: true, write: false });
+        } else if (marker === 'write') {
+            results.push({ url, read: false, write: true });
+        } else {
+            // No marker = both read and write
+            results.push({ url, read: true, write: true });
+        }
+    }
+
+    return results;
+}
+
+// ── Relay Pool ──
+
+export class RelayPool {
+    endorsements: Map<string, number> = new Map();
+
+    ingest(relayList: RelayListEntry[]): void {
+        for (const entry of relayList) {
+            if (!entry.write) continue; // Only count write-relays as endorsements
+            const count = this.endorsements.get(entry.url) || 0;
+            this.endorsements.set(entry.url, count + 1);
+        }
+    }
+
+    getTopRelays(n: number): Array<{ url: string; endorsements: number }> {
+        const entries = Array.from(this.endorsements.entries())
+            .filter(([, count]) => count >= RELAY_POOL_MIN_ENDORSEMENTS)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, Math.min(n, RELAY_POOL_MAX_SIZE));
+
+        return entries.map(([url, endorsements]) => ({ url, endorsements }));
+    }
+}
 
 let syncInProgress: boolean = false;
 let syncAborted: boolean = false;
@@ -26,10 +99,17 @@ export function stopSync(): Promise<void> {
     return new Promise(resolve => syncDoneResolvers.push(resolve));
 }
 
-interface PendingRequest {
-    resolve: (follows: string[] | null) => void;
+interface FetchResult {
     follows: string[] | null;
-    createdAt: number;
+    relayList: RelayListEntry[] | null;
+}
+
+interface PendingRequest {
+    resolve: (result: FetchResult) => void;
+    follows: string[] | null;
+    followsCreatedAt: number;
+    relayList: RelayListEntry[] | null;
+    relayListCreatedAt: number;
     done: boolean;
 }
 
@@ -86,7 +166,7 @@ class RelayConnection {
                     for (const req of this.pending.values()) {
                         if (!req.done) {
                             req.done = true;
-                            req.resolve(null);
+                            req.resolve({ follows: null, relayList: null });
                         }
                     }
                     this.pending.clear();
@@ -107,12 +187,20 @@ class RelayConnection {
                 const nostrEvent = rest[0];
                 const req = this.pending.get(subId);
                 if (req && !req.done) {
-                    // Keep newest event
-                    if (!req.createdAt || nostrEvent.created_at > req.createdAt) {
-                        req.createdAt = nostrEvent.created_at;
-                        req.follows = (nostrEvent.tags || [])
-                            .filter((tag: string[]) => tag[0] === 'p' && tag[1])
-                            .map((tag: string[]) => tag[1]);
+                    if (nostrEvent.kind === 3) {
+                        // Kind 3: contact list — keep newest
+                        if (nostrEvent.created_at > req.followsCreatedAt) {
+                            req.followsCreatedAt = nostrEvent.created_at;
+                            req.follows = (nostrEvent.tags || [])
+                                .filter((tag: string[]) => tag[0] === 'p' && tag[1])
+                                .map((tag: string[]) => tag[1]);
+                        }
+                    } else if (nostrEvent.kind === 10002) {
+                        // Kind 10002: relay list — keep newest
+                        if (nostrEvent.created_at > req.relayListCreatedAt) {
+                            req.relayListCreatedAt = nostrEvent.created_at;
+                            req.relayList = parseRelayListTags(nostrEvent.tags || []);
+                        }
                     }
                 }
             } else if (type === 'EOSE') {
@@ -122,7 +210,7 @@ class RelayConnection {
                     this.inFlight--;
                     this.recordSuccess();
                     try { this.ws!.send(JSON.stringify(['CLOSE', subId])); } catch (e) {}
-                    req.resolve(req.follows || []);
+                    req.resolve({ follows: req.follows || [], relayList: req.relayList });
                     this.pending.delete(subId);
                 }
             } else if (type === 'CLOSED' || type === 'NOTICE') {
@@ -130,11 +218,10 @@ class RelayConnection {
                 if (req && !req.done) {
                     req.done = true;
                     this.inFlight--;
-                    // CLOSED/NOTICE might indicate throttling
                     if (type === 'NOTICE') {
                         this.recordError();
                     }
-                    req.resolve(req.follows || []);
+                    req.resolve({ follows: req.follows || [], relayList: req.relayList });
                     this.pending.delete(subId);
                 }
             }
@@ -157,7 +244,7 @@ class RelayConnection {
         this.delay = Math.min(MAX_DELAY, this.delay * 1.5);
     }
 
-    async fetch(pubkey: string): Promise<string[] | null> {
+    async fetch(pubkey: string): Promise<FetchResult | null> {
         if (!this.ready || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
             return null;
         }
@@ -192,11 +279,13 @@ class RelayConnection {
 
             const req: PendingRequest = {
                 follows: null,
-                createdAt: 0,
+                followsCreatedAt: 0,
+                relayList: null,
+                relayListCreatedAt: 0,
                 done: false,
-                resolve: (follows: string[] | null) => {
+                resolve: (result: FetchResult) => {
                     clearTimeout(timeout);
-                    resolve(follows);
+                    resolve(result);
                 }
             };
 
@@ -205,9 +294,9 @@ class RelayConnection {
 
             try {
                 this.ws!.send(JSON.stringify(['REQ', subId, {
-                    kinds: [3],
+                    kinds: [3, 10002],
                     authors: [pubkey],
-                    limit: 1
+                    limit: 2
                 }]));
             } catch (e) {
                 clearTimeout(timeout);
@@ -227,7 +316,7 @@ class RelayConnection {
         for (const req of this.pending.values()) {
             if (!req.done) {
                 req.done = true;
-                req.resolve(null);
+                req.resolve({ follows: null, relayList: null });
             }
         }
         this.pending.clear();
@@ -241,13 +330,15 @@ export class GraphSync {
     onProgress: ((progress: SyncProgress) => void) | null;
     lastProgressTime: number;
     aborted: boolean;
+    relayPool: RelayPool;
 
     constructor(relays: string[]) {
         this.relayUrls = relays;
-        this.connections = []; // Array of RelayConnection
+        this.connections = [];
         this.onProgress = null;
         this.lastProgressTime = 0;
         this.aborted = false;
+        this.relayPool = new RelayPool();
     }
 
     abort(): void {
@@ -335,24 +426,34 @@ export class GraphSync {
         return ready[0];
     }
 
-    // Fetch a pubkey's follows from ALL relays and pick the newest event.
-    // Used for the root pubkey to ensure we get the most up-to-date contact list.
-    async fetchNewestFromAllRelays(pubkey: string): Promise<string[] | null> {
+    // Fetch a pubkey's follows + relay list from ALL relays and pick the newest events.
+    // Used for the root pubkey to ensure we get the most up-to-date data.
+    async fetchNewestFromAllRelays(pubkey: string): Promise<FetchResult> {
         let bestFollows: string[] | null = null;
-        let bestCreatedAt = 0;
+        let bestFollowsCreatedAt = 0;
+        let bestRelayList: RelayListEntry[] | null = null;
+        let bestRelayListCreatedAt = 0;
 
         const fetchPromises = this.connections.map(async (relay) => {
             if (!relay.ready || !relay.ws || relay.ws.readyState !== WebSocket.OPEN) return;
 
             try {
-                const result = await new Promise<{ follows: string[] | null; createdAt: number }>((resolve) => {
+                const result = await new Promise<{
+                    follows: string[] | null; followsCreatedAt: number;
+                    relayList: RelayListEntry[] | null; relayListCreatedAt: number;
+                }>((resolve) => {
                     const subId = `r${Math.random().toString(36).slice(2, 10)}`;
                     let eventFollows: string[] | null = null;
-                    let eventCreatedAt = 0;
+                    let eventFollowsCreatedAt = 0;
+                    let eventRelayList: RelayListEntry[] | null = null;
+                    let eventRelayListCreatedAt = 0;
 
                     const timeout = setTimeout(() => {
                         try { relay.ws!.send(JSON.stringify(['CLOSE', subId])); } catch {}
-                        resolve({ follows: eventFollows, createdAt: eventCreatedAt });
+                        resolve({
+                            follows: eventFollows, followsCreatedAt: eventFollowsCreatedAt,
+                            relayList: eventRelayList, relayListCreatedAt: eventRelayListCreatedAt
+                        });
                     }, REQUEST_TIMEOUT);
 
                     const handler = (event: MessageEvent) => {
@@ -361,63 +462,79 @@ export class GraphSync {
                             if (msg[1] !== subId) return;
                             if (msg[0] === 'EVENT') {
                                 const ev = msg[2];
-                                if (ev.created_at > eventCreatedAt) {
-                                    eventCreatedAt = ev.created_at;
+                                if (ev.kind === 3 && ev.created_at > eventFollowsCreatedAt) {
+                                    eventFollowsCreatedAt = ev.created_at;
                                     eventFollows = (ev.tags || [])
                                         .filter((t: string[]) => t[0] === 'p' && t[1])
                                         .map((t: string[]) => t[1]);
+                                } else if (ev.kind === 10002 && ev.created_at > eventRelayListCreatedAt) {
+                                    eventRelayListCreatedAt = ev.created_at;
+                                    eventRelayList = parseRelayListTags(ev.tags || []);
                                 }
                             } else if (msg[0] === 'EOSE' || msg[0] === 'CLOSED') {
                                 clearTimeout(timeout);
                                 relay.ws!.removeEventListener('message', handler);
                                 try { relay.ws!.send(JSON.stringify(['CLOSE', subId])); } catch {}
-                                resolve({ follows: eventFollows, createdAt: eventCreatedAt });
+                                resolve({
+                                    follows: eventFollows, followsCreatedAt: eventFollowsCreatedAt,
+                                    relayList: eventRelayList, relayListCreatedAt: eventRelayListCreatedAt
+                                });
                             }
                         } catch {}
                     };
 
                     relay.ws!.addEventListener('message', handler);
                     relay.ws!.send(JSON.stringify(['REQ', subId, {
-                        kinds: [3],
+                        kinds: [3, 10002],
                         authors: [pubkey],
-                        limit: 1
+                        limit: 2
                     }]));
                 });
 
                 return result;
             } catch {
-                return { follows: null, createdAt: 0 };
+                return { follows: null, followsCreatedAt: 0, relayList: null, relayListCreatedAt: 0 };
             }
         });
 
         const results = await Promise.all(fetchPromises);
         for (const r of results) {
-            if (r && r.follows && r.createdAt > bestCreatedAt) {
-                bestCreatedAt = r.createdAt;
-                bestFollows = r.follows;
+            if (r) {
+                if (r.follows && r.followsCreatedAt > bestFollowsCreatedAt) {
+                    bestFollowsCreatedAt = r.followsCreatedAt;
+                    bestFollows = r.follows;
+                }
+                if (r.relayList && r.relayListCreatedAt > bestRelayListCreatedAt) {
+                    bestRelayListCreatedAt = r.relayListCreatedAt;
+                    bestRelayList = r.relayList;
+                }
             }
         }
 
-        return bestFollows;
+        return { follows: bestFollows, relayList: bestRelayList };
     }
 
     async _doSync(rootPubkey: string, maxDepth: number): Promise<SyncResult> {
-        // Fetch root from ALL relays, pick newest kind:3 event
-        const rootFollows = await this.fetchNewestFromAllRelays(rootPubkey);
+        // Fetch root from ALL relays, pick newest kind:3 + kind:10002 events
+        const rootResult = await this.fetchNewestFromAllRelays(rootPubkey);
         const fetched = new Set<string>();
         const failed = new Set<string>();
         const queued = new Set<string>([rootPubkey]);
         const nodesPerDepth: Record<number, number> = {};
 
-        if (rootFollows === null) {
+        if (rootResult.follows === null) {
             failed.add(rootPubkey);
         } else {
             fetched.add(rootPubkey);
-            storage.saveFollows(rootPubkey, rootFollows);
+            storage.saveFollows(rootPubkey, rootResult.follows);
+            if (rootResult.relayList) {
+                storage.saveRelayList(rootPubkey, rootResult.relayList);
+                this.relayPool.ingest(rootResult.relayList);
+            }
             nodesPerDepth[0] = 1;
 
             if (maxDepth > 0) {
-                for (const f of rootFollows) {
+                for (const f of rootResult.follows) {
                     if (!queued.has(f)) {
                         queued.add(f);
                     }
@@ -427,15 +544,16 @@ export class GraphSync {
 
         // Build remaining fetch queue from root's follows
         const toFetch: Array<{ pubkey: string; depth: number }> = [];
-        if (rootFollows && maxDepth > 0) {
-            for (const f of rootFollows) {
+        if (rootResult.follows && maxDepth > 0) {
+            for (const f of rootResult.follows) {
                 toFetch.push({ pubkey: f, depth: 1 });
             }
         }
 
+        let expandedConnections = false;
+
         while (toFetch.length > 0) {
             if (this.aborted) {
-                // Flush any buffered writes before returning
                 await storage.flushWriteBuffer();
                 return {
                     nodes: fetched.size,
@@ -464,21 +582,25 @@ export class GraphSync {
             const results = await this.fetchBatch(batch);
 
             for (const pubkey of batch) {
-                const follows = results.get(pubkey) ?? null;
+                const result = results.get(pubkey) ?? null;
                 const depth = batchDepths.get(pubkey)!;
 
-                if (follows === null) {
+                if (result === null || result.follows === null) {
                     failed.add(pubkey);
                     if (depth === maxDepth) {
                         nodesPerDepth[depth] = (nodesPerDepth[depth] || 0) + 1;
                     }
                 } else {
                     fetched.add(pubkey);
-                    storage.saveFollows(pubkey, follows);
+                    storage.saveFollows(pubkey, result.follows);
+                    if (result.relayList) {
+                        storage.saveRelayList(pubkey, result.relayList);
+                        this.relayPool.ingest(result.relayList);
+                    }
                     nodesPerDepth[depth] = (nodesPerDepth[depth] || 0) + 1;
 
                     if (depth < maxDepth) {
-                        for (const f of follows) {
+                        for (const f of result.follows) {
                             if (!fetched.has(f) && !failed.has(f) && !queued.has(f)) {
                                 queued.add(f);
                                 toFetch.push({ pubkey: f, depth: depth + 1 });
@@ -486,6 +608,12 @@ export class GraphSync {
                         }
                     }
                 }
+            }
+
+            // After depth 0 batch completes, expand connections with discovered relays
+            if (!expandedConnections && nodesPerDepth[1] !== undefined) {
+                expandedConnections = true;
+                await this.expandConnections();
             }
 
             // Progress update
@@ -529,9 +657,39 @@ export class GraphSync {
         };
     }
 
+    // Expand connections with discovered relays from the relay pool
+    async expandConnections(): Promise<void> {
+        const MAX_TOTAL_CONNECTIONS = 10;
+        const currentCount = this.connections.filter(c => c.ready).length;
+        const slotsAvailable = MAX_TOTAL_CONNECTIONS - currentCount;
+        if (slotsAvailable <= 0) return;
+
+        const existingUrls = new Set(this.connections.map(c => normalizeRelayUrl(c.url)));
+        const topRelays = this.relayPool.getTopRelays(slotsAvailable);
+        const newUrls = topRelays
+            .map(r => r.url)
+            .filter(url => !existingUrls.has(url))
+            .slice(0, slotsAvailable);
+
+        if (newUrls.length === 0) return;
+
+        const connectPromises = newUrls.map(async (url) => {
+            const conn = new RelayConnection(url);
+            const success = await conn.connect();
+            return { conn, success };
+        });
+
+        const results = await Promise.all(connectPromises);
+        for (const { conn, success } of results) {
+            if (success) {
+                this.connections.push(conn);
+            }
+        }
+    }
+
     // Fetch batch of pubkeys, distributing across relays
-    async fetchBatch(pubkeys: string[]): Promise<Map<string, string[] | null>> {
-        const results = new Map<string, string[] | null>();
+    async fetchBatch(pubkeys: string[]): Promise<Map<string, FetchResult | null>> {
+        const results = new Map<string, FetchResult | null>();
         for (const pk of pubkeys) {
             results.set(pk, null);
         }
@@ -546,14 +704,13 @@ export class GraphSync {
 
                 const relay = this.getBestRelay();
                 if (!relay || tried.has(relay)) {
-                    // All relays tried or no relay available
                     break;
                 }
                 tried.add(relay);
 
-                const follows = await relay.fetch(pubkey);
-                if (follows !== null) {
-                    results.set(pubkey, follows);
+                const result = await relay.fetch(pubkey);
+                if (result !== null) {
+                    results.set(pubkey, result);
                     return;
                 }
             }

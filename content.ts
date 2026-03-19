@@ -35,7 +35,8 @@ if (window.__nostrWotContentInjected) {
     const WOT_ALLOWED_METHODS = [
         'getDistance', 'isInMyWoT', 'getTrustScore', 'getDetails', 'getConfig',
         'getStatus', 'getDistanceBatch', 'getTrustScoreBatch', 'filterByWoT',
-        'getFollows', 'getCommonFollows', 'getPath', 'getStats'
+        'getFollows', 'getCommonFollows', 'getPath', 'getStats',
+        'getRelayList', 'getRelayPool'
     ] as const;
 
     // ── NIP-07 methods ──

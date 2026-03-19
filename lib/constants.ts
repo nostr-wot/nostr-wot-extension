@@ -58,6 +58,17 @@ export const DEFAULT_AUTO_LOCK_MS = 900_000;
 /** Vault unlock polling interval */
 export const VAULT_POLL_INTERVAL_MS = 500;
 
+// ── Relay Discovery ──
+
+/** Maximum number of relays in the discovered pool */
+export const RELAY_POOL_MAX_SIZE = 50;
+
+/** Minimum follows that must declare a relay before it's added to the pool */
+export const RELAY_POOL_MIN_ENDORSEMENTS = 2;
+
+/** Maximum relay entries to parse from a single kind:10002 event */
+export const MAX_RELAYS_PER_EVENT = 20;
+
 // ── Onboarding ──
 
 /** Pending onboarding account TTL (5 minutes) */

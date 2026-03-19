@@ -1,7 +1,7 @@
-import type { StorageStats } from './types.ts';
+import type { StorageStats, RelayListEntry } from './types.ts';
 
 const DB_PREFIX = 'nostr-wot';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let db: IDBDatabase | null = null;
 let currentAccountId: string | null = null;
@@ -26,6 +26,13 @@ const PUBKEY_BUFFER_SIZE = 500;
 let pubkeyFlushTimer: ReturnType<typeof setTimeout> | null = null;
 let pubkeyFlushInProgress: boolean = false;
 
+// Relay list cache + write buffer
+let relayListCache: Map<number, RelayListEntry[]> = new Map();
+const relayListWriteBuffer: Array<{ id: number; relays: RelayListEntry[] }> = [];
+const RELAY_LIST_BUFFER_SIZE = 100;
+let relayListFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let relayListFlushInProgress: boolean = false;
+
 function getDbName(accountId: string): string {
     if (!accountId) throw new Error('getDbName requires a non-null accountId');
     return `${DB_PREFIX}-${accountId}`;
@@ -49,6 +56,11 @@ function upgradeDatabase(database: IDBDatabase, oldVersion: number): void {
         }
         if (database.objectStoreNames.contains('follows')) {
             database.deleteObjectStore('follows');
+        }
+    }
+    if (oldVersion < 3) {
+        if (!database.objectStoreNames.contains('relay_lists')) {
+            database.createObjectStore('relay_lists', { keyPath: 'id' });
         }
     }
 }
@@ -78,6 +90,7 @@ export async function initDB(accountId?: string): Promise<IDBDatabase> {
             db = request.result;
             await loadPubkeyCache();
             await loadGraphCache();
+            await loadRelayListCache();
             resolve(db!);
         };
 
@@ -97,14 +110,21 @@ function resetCaches(): void {
         clearTimeout(pubkeyFlushTimer);
         pubkeyFlushTimer = null;
     }
+    if (relayListFlushTimer) {
+        clearTimeout(relayListFlushTimer);
+        relayListFlushTimer = null;
+    }
     writeFlushInProgress = false;
     pubkeyFlushInProgress = false;
+    relayListFlushInProgress = false;
 
     pubkeyToId.clear();
     idToPubkey.clear();
     graphCache.clear();
+    relayListCache.clear();
     writeBuffer.length = 0;
     pubkeyWriteBuffer.length = 0;
+    relayListWriteBuffer.length = 0;
 
     nextId = 1;
 }
@@ -339,6 +359,9 @@ export async function flushWriteBuffer(): Promise<void> {
     // Flush pubkey mappings first
     await flushPubkeyBuffer();
 
+    // Flush relay lists
+    await flushRelayListBuffer();
+
     // Then flush follows
     if (writeBuffer.length === 0 || writeFlushInProgress) return;
 
@@ -384,10 +407,105 @@ export function getFollowIdsSync(id: number): Uint32Array {
     return graphCache.get(id) || new Uint32Array(0);
 }
 
+// ============ Relay Lists ============
+
+// Load relay list cache from DB
+async function loadRelayListCache(): Promise<void> {
+    if (!db || !db.objectStoreNames.contains('relay_lists')) return;
+
+    return new Promise((resolve, reject) => {
+        const tx = db!.transaction('relay_lists', 'readonly');
+        const store = tx.objectStore('relay_lists');
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            relayListCache.clear();
+            for (const record of request.result) {
+                try {
+                    const relays: RelayListEntry[] = JSON.parse(record.relays);
+                    relayListCache.set(record.id, relays);
+                } catch {
+                    // Skip corrupt entries
+                }
+            }
+            resolve();
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Save relay list - non-blocking, batched
+export function saveRelayList(pubkey: string, relays: RelayListEntry[]): void {
+    const id = getOrCreateId(pubkey);
+
+    // Update in-memory cache immediately
+    relayListCache.set(id, relays);
+
+    // Add to write buffer
+    relayListWriteBuffer.push({ id, relays });
+
+    if (relayListWriteBuffer.length >= RELAY_LIST_BUFFER_SIZE) {
+        flushRelayListBuffer();
+    } else {
+        scheduleRelayListFlush();
+    }
+}
+
+function scheduleRelayListFlush(): void {
+    if (relayListFlushTimer || relayListFlushInProgress) return;
+    relayListFlushTimer = setTimeout(() => {
+        relayListFlushTimer = null;
+        flushRelayListBuffer();
+    }, 100);
+}
+
+async function flushRelayListBuffer(): Promise<void> {
+    if (relayListWriteBuffer.length === 0 || relayListFlushInProgress) return;
+    if (!db || !db.objectStoreNames.contains('relay_lists')) return;
+
+    relayListFlushInProgress = true;
+    const toWrite = relayListWriteBuffer.splice(0, relayListWriteBuffer.length);
+
+    try {
+        await new Promise<void>((resolve, reject) => {
+            const tx = db!.transaction('relay_lists', 'readwrite');
+            const store = tx.objectStore('relay_lists');
+
+            for (const { id, relays } of toWrite) {
+                store.put({
+                    id,
+                    relays: JSON.stringify(relays),
+                    updated_at: Date.now()
+                });
+            }
+
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } finally {
+        relayListFlushInProgress = false;
+        if (relayListWriteBuffer.length > 0) {
+            scheduleRelayListFlush();
+        }
+    }
+}
+
+// Get relay list for a pubkey (sync from memory)
+export function getRelayList(pubkey: string): RelayListEntry[] | null {
+    const id = getId(pubkey);
+    if (id === null) return null;
+    return relayListCache.get(id) ?? null;
+}
+
+// Get count of stored relay lists
+export function getRelayListCount(): number {
+    return relayListCache.size;
+}
+
 // ============ Stats ============
 
 export async function getStats(): Promise<StorageStats> {
-    if (!db) return { nodes: 0, edges: 0, uniquePubkeys: 0, lastSync: null, nodesPerDepth: null, syncDepth: null, dbSizeBytes: 0 };
+    if (!db) return { nodes: 0, edges: 0, uniquePubkeys: 0, lastSync: null, nodesPerDepth: null, syncDepth: null, dbSizeBytes: 0, relayListCount: 0 };
 
     // Most stats from memory
     const nodes = graphCache.size;
@@ -410,7 +528,8 @@ export async function getStats(): Promise<StorageStats> {
         lastSync: (meta.lastSync as number) || null,
         nodesPerDepth: (meta.nodesPerDepth as Record<number, number>) || null,
         syncDepth: (meta.syncDepth as number) || null,
-        dbSizeBytes: dbSize
+        dbSizeBytes: dbSize,
+        relayListCount: relayListCache.size
     };
 }
 
@@ -526,23 +645,38 @@ export async function clearAll(): Promise<void> {
         clearTimeout(pubkeyFlushTimer);
         pubkeyFlushTimer = null;
     }
+    if (relayListFlushTimer) {
+        clearTimeout(relayListFlushTimer);
+        relayListFlushTimer = null;
+    }
     writeFlushInProgress = false;
     pubkeyFlushInProgress = false;
+    relayListFlushInProgress = false;
 
     // Clear in-memory caches and buffers
     pubkeyToId.clear();
     idToPubkey.clear();
     graphCache.clear();
+    relayListCache.clear();
     nextId = 1;
     writeBuffer.length = 0;
     pubkeyWriteBuffer.length = 0;
+    relayListWriteBuffer.length = 0;
+
+    const storeNames = ['follows_v2', 'pubkeys', 'meta'];
+    if (database.objectStoreNames.contains('relay_lists')) {
+        storeNames.push('relay_lists');
+    }
 
     return new Promise((resolve, reject) => {
-        const tx = database.transaction(['follows_v2', 'pubkeys', 'meta'], 'readwrite');
+        const tx = database.transaction(storeNames, 'readwrite');
 
         tx.objectStore('follows_v2').clear();
         tx.objectStore('pubkeys').clear();
         tx.objectStore('meta').clear();
+        if (database.objectStoreNames.contains('relay_lists')) {
+            tx.objectStore('relay_lists').clear();
+        }
 
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);

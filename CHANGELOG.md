@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **NIP-65 relay discovery (outbox model)** — sync engine now fetches kind:10002 relay list events alongside kind:3 contact lists, storing per-pubkey read/write relay preferences in a new `relay_lists` IndexedDB store (DB v3) with in-memory cache and batched writes
+- **Relay pool with dynamic connection expansion** — tracks which relays are endorsed by follows' write-relay declarations; after depth-0 sync completes, top-endorsed relays are connected automatically (up to 10 total connections)
+- **Outbox-aware profile fetching** — `fetchProfileMetadata` and `fetchMuteList` now prepend the target pubkey's declared write-relays before falling back to configured relays
+- **WoT API: `getRelayList(pubkey)`** — returns a pubkey's stored NIP-65 relay list (read/write preferences) via `window.nostr.wot`
+- **WoT API: `getRelayPool()`** — returns the top 50 relays ranked by follow endorsement count via `window.nostr.wot`
+- **Relay URL normalization** — `normalizeRelayUrl()` lowercases and strips trailing slashes for consistent deduplication
+- **Relay list parsing** — `parseRelayListTags()` extracts read/write relay entries from kind:10002 event tags with deduplication, wss-only filtering, and a 20-entry cap
+- **Relay discovery constants** — `RELAY_POOL_MAX_SIZE`, `RELAY_POOL_MIN_ENDORSEMENTS`, `MAX_RELAYS_PER_EVENT` in `lib/constants.ts`
+- **Storage stats** — `relayListCount` added to `StorageStats` type and `getStats()` output
+- **Tests** — `sync-relay-discovery.test.ts` (pure function tests for parsing, normalization, relay pool), `storage-relay-lists.test.ts` (IndexedDB relay list storage with fake-indexeddb)
+- **Dev dependencies** — `fake-indexeddb`, `ws`, `@types/ws` for relay discovery testing
+
 ## [0.3.4] - 2026-03-14
 
 ### Fixed
