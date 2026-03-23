@@ -11,9 +11,11 @@ import { isRestrictedUrl, sanitizeCSS, type HandlerFn, type LocalAccountEntry } 
 // ── Domain permission functions (with in-memory cache) ──
 
 let _cachedDomains: string[] | null = null;
+let _cachedDismissedDomains: string[] | null = null;
 let _cachedAccountReadOnly: { accountId: string | undefined; readOnly: boolean } | null = null;
 
 function invalidateDomainCache(): void { _cachedDomains = null; }
+function invalidateDismissedCache(): void { _cachedDismissedDomains = null; }
 function invalidateAccountCache(): void { _cachedAccountReadOnly = null; }
 
 // Invalidate caches on external storage changes
@@ -21,6 +23,7 @@ try {
     browser.storage.onChanged.addListener((changes: Record<string, unknown>, area: string) => {
         if (area === 'local') {
             if ((changes as Record<string, unknown>).allowedDomains) invalidateDomainCache();
+            if ((changes as Record<string, unknown>).dismissedDomains) invalidateDismissedCache();
             if ((changes as Record<string, unknown>).accounts || (changes as Record<string, unknown>).activeAccountId) invalidateAccountCache();
         }
     });
@@ -45,6 +48,8 @@ export async function addAllowedDomain(domain: string): Promise<boolean> {
         await browser.storage.local.set({ allowedDomains: domains });
         invalidateDomainCache();
     }
+    // Clear dismissal so manual adds via GlobeButton reset the state
+    await removeDismissedDomain(domain);
     return true;
 }
 
@@ -54,6 +59,72 @@ export async function removeAllowedDomain(domain: string): Promise<boolean> {
     await browser.storage.local.set({ allowedDomains: filtered });
     invalidateDomainCache();
     return true;
+}
+
+// ── Dismissed domains (denied connect prompts) ──
+
+export async function getDismissedDomains(): Promise<string[]> {
+    if (_cachedDismissedDomains !== null) return _cachedDismissedDomains;
+    const data = await browser.storage.local.get('dismissedDomains');
+    _cachedDismissedDomains = (data as Record<string, string[]>).dismissedDomains || [];
+    return _cachedDismissedDomains;
+}
+
+export async function isDomainDismissed(domain: string): Promise<boolean> {
+    const domains = await getDismissedDomains();
+    return domains.includes(domain);
+}
+
+export async function addDismissedDomain(domain: string): Promise<boolean> {
+    const domains = await getDismissedDomains();
+    if (!domains.includes(domain)) {
+        domains.push(domain);
+        await browser.storage.local.set({ dismissedDomains: domains });
+        invalidateDismissedCache();
+    }
+    return true;
+}
+
+async function removeDismissedDomain(domain: string): Promise<void> {
+    const domains = await getDismissedDomains();
+    if (domains.includes(domain)) {
+        const filtered = domains.filter(d => d !== domain);
+        await browser.storage.local.set({ dismissedDomains: filtered });
+        invalidateDismissedCache();
+    }
+}
+
+// ── Wait for domain to be connected ──
+
+const CONNECT_WAIT_TIMEOUT_MS = 120_000; // 2 minutes
+
+/**
+ * Wait for a domain to appear in allowedDomains.
+ * Resolves true when the domain is added, false on timeout.
+ * Used after opening the popup so the user can click the Connect button.
+ */
+export function waitForDomainAllowed(domain: string): Promise<boolean> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+            browser.storage.onChanged.removeListener(listener);
+            resolve(false);
+        }, CONNECT_WAIT_TIMEOUT_MS);
+
+        function listener(changes: Record<string, unknown>, area: string) {
+            if (area === 'local' && (changes as Record<string, unknown>).allowedDomains) {
+                // Check if the domain is now allowed
+                isDomainAllowed(domain).then((allowed) => {
+                    if (allowed) {
+                        clearTimeout(timer);
+                        browser.storage.onChanged.removeListener(listener);
+                        resolve(true);
+                    }
+                });
+            }
+        }
+
+        browser.storage.onChanged.addListener(listener);
+    });
 }
 
 // ── Host permissions ──
@@ -417,6 +488,7 @@ export function setupTabListeners(): void {
 export const handlers = new Map<string, HandlerFn>([
     ['getAllowedDomains', async () => getAllowedDomains()],
     ['isDomainAllowed', async (params) => isDomainAllowed(params.domain as string)],
+    ['isDomainDismissed', async (params) => isDomainDismissed(params.domain as string)],
     ['addAllowedDomain', async (params) => addAllowedDomain(params.domain as string)],
     ['removeAllowedDomain', async (params) => removeAllowedDomain(params.domain as string)],
     ['hasHostPermission', async () => hasHostPermission()],

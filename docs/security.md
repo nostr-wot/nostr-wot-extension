@@ -102,7 +102,7 @@ The `PRIVILEGED_METHODS` set in `background.ts` contains all sensitive operation
 - **Account switching**: `switchAccount`
 - **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
 - **Graph & sync**: `configUpdated`, `syncGraph`, `stopSync`, `clearGraph`, `getSyncState`
-- **Domain management**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `hasHostPermission`
+- **Domain management**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`
 - **Badge injection**: `setBadgeDisabled`, `removeBadgesFromTab`, `getCustomAdapters`, `saveCustomAdapter`, `deleteCustomAdapter`, `previewBadgeConfig`, `setIdentityDisabled`, `getIdentityDisabledSites`, `injectWotApi`, `getNostrPubkey`
 - **Database management**: `listDatabases`, `getDatabaseStats`, `deleteAccountDatabase`, `deleteAllDatabases`
 - **Activity log**: `getActivityLog`, `clearActivityLog`

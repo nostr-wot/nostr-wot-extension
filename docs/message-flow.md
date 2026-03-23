@@ -16,7 +16,8 @@ content.ts (ISOLATED world)
 background.ts (service worker)
   |  1. Privilege gate (block privileged methods from content scripts)
   |  2. validateNip07Params (event shape, pubkey format)
-  |  3. handleRequest() -> switch on method -> return result
+  |  3. Domain gate: if not allowed & not dismissed → open popup, wait for connect
+  |  4. handleRequest() -> switch on method -> return result
   v
 content.ts
   |  window.postMessage({ type: 'WOT_RESPONSE' | 'NIP07_RESPONSE' | 'WEBLN_RESPONSE', id, result, error })
@@ -66,7 +67,21 @@ NIP-07 and WebLN methods are blocked on `http:` origins, preventing key material
 
 ---
 
-## 4b. WebLN Domain Gating
+## 4b. NIP-07 Domain Connect Prompt
+
+On the first NIP-07 request from an unknown domain, instead of silently rejecting, the background script opens the extension popup. The popup's home screen already shows a "Connect this site" card for unconnected domains. The NIP-07 request blocks until the user clicks Connect or a 2-minute timeout elapses.
+
+| Domain state | Behavior |
+|-------------|----------|
+| Allowed | Request proceeds normally |
+| Dismissed (previously denied) | Silent rejection ("Site not connected") |
+| Unknown (first visit) | Popup opens showing "Connect this site" card, request waits |
+
+If the user clicks Connect, the domain is added to `allowedDomains` and the blocked request proceeds. If the popup is closed or the timeout elapses, the request fails. Users can always manually connect dismissed domains later via the GlobeButton, which clears the dismissal.
+
+---
+
+## 4c. WebLN Domain Gating
 
 All WebLN methods except `webln_enable` are gated behind the same domain allowlist used for NIP-07. A site must be connected (approved by the user) before it can call `getInfo`, `getBalance`, `sendPayment`, or `makeInvoice`. The `webln_enable` method is exempt from the domain check because it is the method that *adds* the requesting domain to the allowlist — matching the standard WebLN convention where `enable()` is the connection handshake. Individual methods still enforce their own permission prompts (e.g., `sendPayment` prompts the user before paying).
 

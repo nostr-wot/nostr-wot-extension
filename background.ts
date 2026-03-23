@@ -23,7 +23,9 @@ import { handlers as wotHandlers } from './lib/bg/wot-handlers.ts';
 import { handlers as miscHandlers, logActivity } from './lib/bg/misc-handlers.ts';
 import {
     handlers as domainHandlers,
-    setupTabListeners, isDomainAllowed, isActiveAccountReadOnly,
+    setupTabListeners, isDomainAllowed, isDomainDismissed,
+    waitForDomainAllowed,
+    isActiveAccountReadOnly,
     refreshBadgesOnAllTabs,
 } from './lib/bg/domain-handlers.ts';
 import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
@@ -184,9 +186,24 @@ async function handleRequest({ method, params }: { method: string; params: Recor
     if (method.startsWith('nip07_')) {
         validateNip07Params(method, params);
         const origin = params?.origin as string;
-        if (!origin || !(await isDomainAllowed(origin))) {
-            logActivity({ domain: origin || 'unknown', method: method.replace('nip07_', ''), decision: 'blocked' });
+        if (!origin) {
+            logActivity({ domain: 'unknown', method: method.replace('nip07_', ''), decision: 'blocked' });
             throw new Error('Site not connected');
+        }
+        if (!(await isDomainAllowed(origin))) {
+            // Dismissed domains are silently rejected (user previously denied)
+            if (await isDomainDismissed(origin)) {
+                logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
+                throw new Error('Site not connected');
+            }
+            // First visit: open popup so user sees the "Connect this site" card
+            try { await browser.action.openPopup(); } catch {}
+            // Wait for the user to click Connect (domain added to allowedDomains)
+            const connected = await waitForDomainAllowed(origin);
+            if (!connected) {
+                logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
+                throw new Error('Site not connected');
+            }
         }
     }
 

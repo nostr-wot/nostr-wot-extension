@@ -39,7 +39,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 |--------|---------------|
 | `state.ts` | Shared mutable state (`config`, `oracle`, `localGraph`), constants, rate limiting, method sets, utility functions |
 | `wot-handlers.ts` | WoT graph queries: distance, trust score, batch operations, sync, follows, paths, relay discovery |
-| `domain-handlers.ts` | Domain allowlist, badge injection, tab listeners, host permissions, identity disable |
+| `domain-handlers.ts` | Domain allowlist, dismissed domains, first-visit connect prompt, badge injection, tab listeners, host permissions, identity disable |
 | `vault-handlers.ts` | Vault lifecycle (unlock/lock/create), account switching, database management |
 | `nip07-handlers.ts` | NIP-07 signer methods (sign, encrypt/decrypt), permission management |
 | `wallet-handlers.ts` | WebLN page methods + privileged wallet management (connect, provision, Lightning Address) |

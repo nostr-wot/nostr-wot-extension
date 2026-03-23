@@ -4,7 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-03-23
+
 ### Added
+- **First-visit domain connect prompt** — when an unknown site makes a NIP-07 request, the extension popup opens automatically showing the existing "Connect this site" card; the request waits up to 2 minutes for the user to click Connect, replacing the previous silent rejection
+- **Dismissed domains** — domains the user has previously declined are silently rejected on subsequent NIP-07 requests; manually connecting a dismissed domain via the GlobeButton clears the dismissal
+- **`waitForDomainAllowed()`** — background utility that listens for `storage.onChanged` to detect when a domain is added to the allowlist
+- **Tests** — `domain-handlers.test.ts` with 10 tests covering dismissed domain CRUD and interaction with allowed domains
+
+### Changed
+- **NIP-07 domain gate** — unknown domains now trigger the popup instead of silent rejection; dismissed domains are still silently blocked
 - **NIP-65 relay discovery (outbox model)** — sync engine now fetches kind:10002 relay list events alongside kind:3 contact lists, storing per-pubkey read/write relay preferences in a new `relay_lists` IndexedDB store (DB v3) with in-memory cache and batched writes
 - **Relay pool with dynamic connection expansion** — tracks which relays are endorsed by follows' write-relay declarations; after depth-0 sync completes, top-endorsed relays are connected automatically (up to 10 total connections)
 - **Outbox-aware profile fetching** — `fetchProfileMetadata` and `fetchMuteList` now prepend the target pubkey's declared write-relays before falling back to configured relays
