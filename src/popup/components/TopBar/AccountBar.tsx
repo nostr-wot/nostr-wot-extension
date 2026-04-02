@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { t } from '@lib/i18n.js';
-import { IconChevronDown, IconLock, IconLockOpen } from '@assets';
+import { IconChevronDown, IconLockOpen } from '@assets';
 import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
 import styles from './TopBar.module.css';
@@ -8,10 +8,9 @@ import styles from './TopBar.module.css';
 interface AccountBarProps {
   dropdownOpen: boolean;
   onToggleDropdown: () => void;
-  onRequestUnlock?: () => void;
 }
 
-export default function AccountBar({ dropdownOpen, onToggleDropdown, onRequestUnlock }: AccountBarProps) {
+export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBarProps) {
   const { displayName, displaySub, avatarUrl, initial, isReadOnly, active } = useAccount();
   const vault = useVault();
   const [imgError, setImgError] = useState<boolean>(false);
@@ -44,20 +43,16 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown, onRequestUn
         <IconChevronDown className={`${styles.chevron} ${dropdownOpen ? styles.chevronOpen : ''}`} />
       </button>
 
-      {vault.exists && !isReadOnly && vault.autoLockEnabled && (
+      {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (
         <button
-          className={`${styles.lockBtn} ${vault.locked ? styles.lockLocked : styles.lockUnlocked}`}
-          title={vault.locked ? t('topbar.vaultLocked') : t('topbar.vaultUnlocked')}
+          className={`${styles.lockBtn} ${styles.lockUnlocked}`}
+          title={t('topbar.vaultUnlocked')}
           onClick={(e) => {
             e.stopPropagation();
-            vault.locked ? onRequestUnlock?.() : vault.lock();
+            vault.lock();
           }}
         >
-          {vault.locked ? (
-            <IconLock size={14} />
-          ) : (
-            <IconLockOpen />
-          )}
+          <IconLockOpen />
         </button>
       )}
     </div>

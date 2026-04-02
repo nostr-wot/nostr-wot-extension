@@ -17,6 +17,7 @@ interface WaiterInfo {
 
 interface UnlockModalProps {
   visible: boolean;
+  fullScreen?: boolean;
   message?: string;
   unlockWaiters?: WaiterInfo[];
   onUnlocked?: () => void;
@@ -35,7 +36,7 @@ function getEventLabel(type: string): string {
   return labels[type] || type;
 }
 
-export default function UnlockModal({ visible, message, unlockWaiters, onUnlocked, onCancel }: UnlockModalProps) {
+export default function UnlockModal({ visible, fullScreen, message, unlockWaiters, onUnlocked, onCancel }: UnlockModalProps) {
   const { displayName, avatarUrl, initial } = useAccount();
   const vault = useVault();
 
@@ -84,8 +85,8 @@ export default function UnlockModal({ visible, message, unlockWaiters, onUnlocke
   if (!shouldRender) return null;
 
   return (
-    <div className={`${styles.overlay} ${animating ? styles.exiting : ''}`}>
-      <div className={`${styles.card} ${animating ? styles.cardExiting : ''}`}>
+    <div className={`${styles.overlay} ${fullScreen ? styles.fullScreen : ''} ${animating ? styles.exiting : ''}`}>
+      <div className={`${styles.card} ${fullScreen ? styles.cardFullScreen : ''} ${animating ? styles.cardExiting : ''}`}>
         <div className={styles.account}>
           {avatarUrl ? (
             <img className={styles.avatar} src={avatarUrl} alt="" />
@@ -123,13 +124,15 @@ export default function UnlockModal({ visible, message, unlockWaiters, onUnlocke
           </div>
         )}
         <div className={styles.actions}>
-          <Button
-            variant="secondary"
-            small
-            onClick={handleCancelAll}
-          >
-            {t('common.cancel')}
-          </Button>
+          {onCancel && (
+            <Button
+              variant="secondary"
+              small
+              onClick={handleCancelAll}
+            >
+              {t('common.cancel')}
+            </Button>
+          )}
           <Button small onClick={unlock}>{t('common.unlock')}</Button>
         </div>
       </div>

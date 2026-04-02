@@ -11,6 +11,12 @@
   animation: backdropIn 0.2s ease-out;
 }
 
+.fullScreen {
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+}
+
 .exiting {
   animation: backdropOut 0.2s ease-in forwards;
 }
@@ -23,6 +29,11 @@
   width: 100%;
   max-width: 320px;
   animation: modalFadeIn 0.2s ease-out;
+}
+
+.cardFullScreen {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
 .cardExiting {

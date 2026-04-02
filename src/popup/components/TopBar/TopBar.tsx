@@ -10,10 +10,9 @@ interface TopBarProps {
   onMenuOpen: () => void;
   onAddAccount: () => void;
   onEditProfile: () => void;
-  onRequestUnlock?: () => void;
 }
 
-export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile, onRequestUnlock }: TopBarProps) {
+export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile }: TopBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
 
   return (
@@ -22,7 +21,6 @@ export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile, onRequ
         <AccountBar
           dropdownOpen={dropdownOpen}
           onToggleDropdown={() => setDropdownOpen((v) => !v)}
-          onRequestUnlock={onRequestUnlock}
         />
         {dropdownOpen && (
           <AccountDropdown onClose={() => setDropdownOpen(false)} onAddAccount={() => { setDropdownOpen(false); onAddAccount?.(); }} onEditProfile={() => { setDropdownOpen(false); onEditProfile(); }} />
