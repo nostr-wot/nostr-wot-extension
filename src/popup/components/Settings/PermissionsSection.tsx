@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
-import { IconSearch, IconShield, IconChevronRight, IconUsers } from '@assets';
+import { IconSearch, IconShield, IconChevronRight, IconUsers, IconPlus } from '@assets';
 import { useAccount } from '../../context/AccountContext';
 import { usePermissions } from '../../context/PermissionsContext';
 import Card from '@components/Card/Card';
@@ -13,6 +14,23 @@ import styles from './Settings.module.css';
 
 const DECISIONS = ['allow', 'deny', 'ask'] as const;
 const READ_ONLY_KEYS = ['getPublicKey'];
+
+const COMMON_PERM_KEYS = [
+  'getPublicKey',
+  'signEvent:0',
+  'signEvent:1',
+  'signEvent:3',
+  'signEvent:5',
+  'signEvent:6',
+  'signEvent:7',
+  'signEvent:1111',
+  'signEvent:9734',
+  'signEvent:24242',
+  'signEvent:27235',
+  'signEvent:30023',
+  'readMessages',
+  'sendMessages',
+];
 
 export interface PermissionsSectionHandle {
   goBack: () => boolean;
@@ -165,6 +183,51 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     </div>
   );
 
+  // ── Add Rule modal state ──
+  const [addRuleOpen, setAddRuleOpen] = useState<boolean>(false);
+  const [addRuleKey, setAddRuleKey] = useState<string>('signEvent:1');
+  const [addRuleCustomKind, setAddRuleCustomKind] = useState<string>('');
+  const [addRuleDecision, setAddRuleDecision] = useState<string>('allow');
+  const [addRuleUseCustom, setAddRuleUseCustom] = useState<boolean>(false);
+
+  // ── Inline decision dropdown state ──
+  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openDropdownKey) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdownKey(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [openDropdownKey]);
+
+  const openAddRule = () => {
+    setAddRuleKey('signEvent:1');
+    setAddRuleCustomKind('');
+    setAddRuleDecision('allow');
+    setAddRuleUseCustom(false);
+    setAddRuleOpen(true);
+  };
+
+  const handleAddRule = async () => {
+    const key = addRuleUseCustom && addRuleCustomKind.trim()
+      ? `signEvent:${addRuleCustomKind.trim()}`
+      : addRuleKey;
+    await permissions.savePermission(detailDomain!, key, addRuleDecision, effectiveAccountId);
+    setAddRuleOpen(false);
+  };
+
+  const chipClass = (d: string) =>
+    styles[`chip${d.charAt(0).toUpperCase() + d.slice(1)}`] || '';
+
+  // Available keys for add-rule dropdown (exclude already-set ones)
+  const existingKeys = new Set(Object.keys(domainPerms));
+  const availableKeys = COMMON_PERM_KEYS.filter(k => !existingKeys.has(k));
+
   // Detail view
   if (detailDomain) {
     const allKeys = filterKeysForAccount(Object.keys(domainPerms));
@@ -185,16 +248,27 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                   <span className={styles.permMethodName}>
                     {formatLabel(key)}
                   </span>
-                  <div className={styles.chipGroup}>
-                    {DECISIONS.map((d) => (
-                      <button
-                        key={d}
-                        className={`${styles.chip} ${current === d ? styles[`chip${d.charAt(0).toUpperCase() + d.slice(1)}`] : ''}`}
-                        onClick={() => handleChip(key, d)}
-                      >
-                        {t(`perms.${d}`)}
-                      </button>
-                    ))}
+                  <div className={styles.permDecisionWrap} ref={openDropdownKey === key ? dropdownRef : undefined}>
+                    <button
+                      className={`${styles.chip} ${chipClass(current)}`}
+                      onClick={() => setOpenDropdownKey(openDropdownKey === key ? null : key)}
+                    >
+                      {t(`perms.${current}`)}
+                    </button>
+                    {openDropdownKey === key && (
+                      <div className={styles.permDecisionDropdown}>
+                        {DECISIONS.map((d) => (
+                          <button
+                            key={d}
+                            className={`${styles.permDecisionOption} ${d === current ? styles.permDecisionActive : ''}`}
+                            onClick={() => { handleChip(key, d); setOpenDropdownKey(null); }}
+                          >
+                            <span className={`${styles.permDecisionDot} ${styles[`permDot${d.charAt(0).toUpperCase() + d.slice(1)}`]}`} />
+                            {t(`perms.${d}`)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -202,9 +276,78 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           </Card>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+        <div className={styles.permDetailActions}>
+          <Button small onClick={openAddRule}>
+            <IconPlus size={12} /> {t('perms.addRule')}
+          </Button>
           <Button variant="danger" small onClick={handleRevoke}>{t('perms.revokeAll')}</Button>
         </div>
+
+        {/* Add Rule modal */}
+        {addRuleOpen && createPortal(
+          <div className={styles.permModalOverlay} onClick={() => setAddRuleOpen(false)}>
+            <div className={styles.permModal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.permModalHeader}>
+                <span className={styles.permModalTitle}>{t('perms.addRule')}</span>
+                <button className={styles.permModalClose} onClick={() => setAddRuleOpen(false)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className={styles.permModalSection}>
+                <span className={styles.permModalLabel}>{t('perms.permission')}</span>
+                {!addRuleUseCustom ? (
+                  <Dropdown
+                    options={availableKeys.map(k => ({ value: k, label: formatLabel(k) }))}
+                    value={addRuleKey}
+                    onChange={setAddRuleKey}
+                    small
+                  />
+                ) : (
+                  <div className={styles.permCustomKindRow}>
+                    <span className={styles.permCustomKindPrefix}>signEvent:</span>
+                    <input
+                      type="number"
+                      className={styles.permCustomKindInput}
+                      placeholder="e.g. 30023"
+                      value={addRuleCustomKind}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setAddRuleCustomKind(e.target.value)}
+                    />
+                  </div>
+                )}
+                <button
+                  className={styles.permToggleCustom}
+                  onClick={() => setAddRuleUseCustom(!addRuleUseCustom)}
+                >
+                  {addRuleUseCustom ? t('perms.usePreset') : t('perms.customKind')}
+                </button>
+              </div>
+
+              <div className={styles.permModalSection}>
+                <span className={styles.permModalLabel}>{t('perms.decision')}</span>
+                <div className={styles.chipGroup}>
+                  {DECISIONS.map((d) => (
+                    <button
+                      key={d}
+                      className={`${styles.chip} ${addRuleDecision === d ? chipClass(d) : ''}`}
+                      onClick={() => setAddRuleDecision(d)}
+                    >
+                      {t(`perms.${d}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.permModalActions}>
+                <Button small variant="secondary" onClick={() => setAddRuleOpen(false)}>{t('common.cancel')}</Button>
+                <Button small onClick={handleAddRule}>{t('perms.addRule')}</Button>
+              </div>
+            </div>
+          </div>,
+          document.getElementById('root') || document.body,
+        )}
       </div>
     );
   }

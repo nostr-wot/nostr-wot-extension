@@ -7,7 +7,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import QrCode from '@components/QrCode/QrCode';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
-import { IconSettings } from '@assets/index';
+import { IconSettings, IconTuner } from '@assets/index';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 
@@ -24,16 +24,25 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 function formatTxDate(ts: number): string {
+  if (!ts || ts <= 0) return '—';
   const d = new Date(ts * 1000);
+  if (isNaN(d.getTime())) return '—';
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
+  if (diffMs < 0) return d.toLocaleDateString();
   const diffMin = Math.floor(diffMs / 60000);
   if (diffMin < 1) return t('time.justNow');
   if (diffMin < 60) return t('time.minutesAgo', { n: diffMin });
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return t('time.hoursAgo', { n: diffHr });
   const diffDay = Math.floor(diffHr / 24);
-  return t('time.daysAgo', { n: diffDay });
+  if (diffDay <= 7) return t('time.daysAgo', { n: diffDay });
+  // Older than a week: show short date
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return d.toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
 }
 
 export default function Wallet({ providerType, onDisconnected }: WalletProps) {
@@ -79,6 +88,13 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [txSearch, setTxSearch] = useState<string>('');
   const [txOffset, setTxOffset] = useState<number>(0);
   const [txHasMore, setTxHasMore] = useState<boolean>(true);
+  const [txDirection, setTxDirection] = useState<'all' | 'in' | 'out'>('all');
+  const [txDateFrom, setTxDateFrom] = useState<string>('');
+  const [txDateTo, setTxDateTo] = useState<string>('');
+  const [txFilterOpen, setTxFilterOpen] = useState<boolean>(false);
+  const [draftDirection, setDraftDirection] = useState<'all' | 'in' | 'out'>('all');
+  const [draftDateFrom, setDraftDateFrom] = useState<string>('');
+  const [draftDateTo, setDraftDateTo] = useState<string>('');
 
   const fetchBalance = useCallback(async () => {
     setBalanceLoading(true);
@@ -121,20 +137,52 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     }
   }, []);
 
-  const fetchTransactions = useCallback(async (offset = 0, append = false) => {
+  // Fetches raw pages from the API, accumulating until we have at least
+  // `target` results that pass the given filters, or we exhaust the data.
+  // For date-from filters, stops early once transactions are older than the boundary.
+  const fetchFiltered = useCallback(async (
+    startOffset: number,
+    existing: Transaction[],
+    filters: { direction: 'all' | 'in' | 'out'; dateFrom: string; dateTo: string },
+    target = 10,
+  ) => {
     setTxLoading(true);
+    const BATCH = 50;
+    const MAX_FETCHED = 500;
+    const accumulated = [...existing];
+    let offset = startOffset;
+    let hasMore = true;
+    const fromTs = filters.dateFrom ? new Date(filters.dateFrom).getTime() / 1000 : 0;
+    const toTs = filters.dateTo ? new Date(filters.dateTo + 'T23:59:59').getTime() / 1000 : Infinity;
+
     try {
-      const result = await rpc<Transaction[]>('wallet_getTransactions', { limit: 10, offset });
-      if (append) {
-        setTransactions(prev => [...prev, ...result]);
-      } else {
-        setTransactions(result);
+      while (hasMore && offset - startOffset < MAX_FETCHED) {
+        const page = await rpc<Transaction[]>('wallet_getTransactions', { limit: BATCH, offset });
+        if (page.length < BATCH) hasMore = false;
+        offset += page.length;
+
+        for (const tx of page) {
+          // API returns newest-first; if we've passed the from-date, no more matches possible
+          if (fromTs && tx.createdAt < fromTs) { hasMore = false; break; }
+          accumulated.push(tx);
+        }
+
+        // Count how many match all filters so far
+        const matchCount = accumulated.filter(tx => {
+          if (filters.direction === 'in' && tx.amount < 0) return false;
+          if (filters.direction === 'out' && tx.amount >= 0) return false;
+          if (fromTs && tx.createdAt < fromTs) return false;
+          if (toTs !== Infinity && tx.createdAt > toTs) return false;
+          return true;
+        }).length;
+
+        if (matchCount >= target) break;
       }
-      setTxHasMore(result.length >= 10);
-      setTxOffset(offset + result.length);
-    } catch {
-      // ignore — transactions are non-critical
-    }
+    } catch { /* non-critical */ }
+
+    setTransactions(accumulated);
+    setTxOffset(offset);
+    setTxHasMore(hasMore);
     setTxLoading(false);
   }, []);
 
@@ -143,8 +191,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     fetchThreshold();
     fetchNwcUri();
     fetchLnAddress();
-    fetchTransactions(0);
-  }, [fetchBalance, fetchThreshold, fetchNwcUri, fetchLnAddress, fetchTransactions]);
+    fetchFiltered(0, [], { direction: 'all', dateFrom: '', dateTo: '' });
+  }, [fetchBalance, fetchThreshold, fetchNwcUri, fetchLnAddress, fetchFiltered]);
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
@@ -192,7 +240,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       await rpc<{ preimage: string }>('wallet_payInvoice', { bolt11: sendBolt11.trim() });
       setSendSuccess(t('wallet.paymentSent'));
       fetchBalance();
-      fetchTransactions(0);
+      fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
     } catch (e: unknown) {
       setSendError((e as Error).message);
     }
@@ -226,7 +274,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setDepositAmount('');
     setDepositError('');
     fetchBalance();
-    fetchTransactions(0);
+    fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
   };
 
   const closeSend = () => {
@@ -303,16 +351,54 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   }, [sendBolt11]);
 
   const handleShowMore = () => {
-    fetchTransactions(txOffset, true);
+    fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
   };
 
-  const filteredTx = txSearch.trim()
-    ? transactions.filter(tx => {
-        const q = txSearch.toLowerCase();
-        return (tx.memo?.toLowerCase().includes(q)) ||
-          String(Math.abs(tx.amount)).includes(q);
-      })
-    : transactions;
+  const txFilterCount = (txDirection !== 'all' ? 1 : 0) + (txDateFrom ? 1 : 0) + (txDateTo ? 1 : 0);
+
+  const openFilterPopover = () => {
+    setDraftDirection(txDirection);
+    setDraftDateFrom(txDateFrom);
+    setDraftDateTo(txDateTo);
+    setTxFilterOpen(true);
+  };
+
+  const applyFilters = () => {
+    setTxDirection(draftDirection);
+    setTxDateFrom(draftDateFrom);
+    setTxDateTo(draftDateTo);
+    setTxFilterOpen(false);
+    // Re-fetch: start from scratch with new filters
+    fetchFiltered(0, [], { direction: draftDirection, dateFrom: draftDateFrom, dateTo: draftDateTo });
+  };
+
+  const clearFilters = () => {
+    setDraftDirection('all');
+    setDraftDateFrom('');
+    setDraftDateTo('');
+  };
+
+  const filteredTx = useMemo(() => {
+    let list = transactions;
+    // All filtering is client-side on accumulated data
+    if (txDirection === 'in') list = list.filter(tx => tx.amount >= 0);
+    else if (txDirection === 'out') list = list.filter(tx => tx.amount < 0);
+    if (txDateFrom) {
+      const from = new Date(txDateFrom).getTime() / 1000;
+      list = list.filter(tx => tx.createdAt >= from);
+    }
+    if (txDateTo) {
+      const to = new Date(txDateTo + 'T23:59:59').getTime() / 1000;
+      list = list.filter(tx => tx.createdAt <= to);
+    }
+    if (txSearch.trim()) {
+      const q = txSearch.toLowerCase();
+      list = list.filter(tx =>
+        (tx.memo?.toLowerCase().includes(q)) ||
+        String(Math.abs(tx.amount)).includes(q));
+    }
+    return list;
+  }, [transactions, txDirection, txDateFrom, txDateTo, txSearch]);
 
   const providerLabel = PROVIDER_LABELS[providerType] ?? providerType;
 
@@ -475,23 +561,85 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         document.getElementById('root') || document.body,
       )}
 
+      {/* Filter modal */}
+      {txFilterOpen && createPortal(
+        <div className={styles.txFilterOverlay} onClick={() => setTxFilterOpen(false)}>
+          <div className={styles.txFilterModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.txFilterHeader}>
+              <span className={styles.txFilterTitle}>{t('wallet.filtersTitle')}</span>
+              <button className={styles.txFilterClose} onClick={() => setTxFilterOpen(false)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className={styles.txFilterSection}>
+              <span className={styles.txFilterLabel}>{t('wallet.filterDirection')}</span>
+              <div className={styles.txChips}>
+                {(['all', 'in', 'out'] as const).map(dir => (
+                  <button
+                    key={dir}
+                    className={`${styles.txChip} ${draftDirection === dir ? styles.txChipActive : ''}`}
+                    onClick={() => setDraftDirection(dir)}
+                  >
+                    {dir === 'all' ? t('wallet.filterAll') : dir === 'in' ? t('wallet.txReceived') : t('wallet.txSent')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className={styles.txFilterSection}>
+              <span className={styles.txFilterLabel}>{t('wallet.filterDateRange')}</span>
+              <div className={styles.txDateRow}>
+                <input
+                  type="date"
+                  className={styles.txDateInput}
+                  value={draftDateFrom}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setDraftDateFrom(e.target.value)}
+                />
+                <span className={styles.txDateSep}>—</span>
+                <input
+                  type="date"
+                  className={styles.txDateInput}
+                  value={draftDateTo}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setDraftDateTo(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className={styles.txFilterActions}>
+              <Button small variant="secondary" onClick={clearFilters}>{t('wallet.filterClear')}</Button>
+              <Button small onClick={applyFilters}>{t('wallet.filterApply')}</Button>
+            </div>
+          </div>
+        </div>,
+        document.getElementById('root') || document.body,
+      )}
+
       {/* Transactions */}
       <Card>
-        <SectionLabel>{t('wallet.transactions')}</SectionLabel>
-        <div className={styles.txSearch}>
-          <Input
-            type="text"
-            placeholder={t('wallet.searchTransactions')}
-            value={txSearch}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setTxSearch(e.target.value)}
-            small
-          />
+        <div className={styles.txToolbar}>
+          <div className={styles.txSearchWrap}>
+            <Input
+              type="text"
+              placeholder={t('wallet.searchTransactions')}
+              value={txSearch}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTxSearch(e.target.value)}
+              small
+            />
+          </div>
+          <button
+            className={`${styles.txFilterBtn} ${txFilterCount > 0 ? styles.txFilterBtnActive : ''}`}
+            onClick={openFilterPopover}
+            title={t('wallet.filtersTitle')}
+          >
+            <IconTuner size={15} />
+            {txFilterCount > 0 && <span className={styles.txFilterBadge}>{txFilterCount}</span>}
+          </button>
         </div>
-        {txLoading && transactions.length === 0 ? (
+        {txLoading && filteredTx.length === 0 ? (
           <div className={styles.loading}>
             <div className={styles.spinner} />
           </div>
-        ) : filteredTx.length === 0 ? (
+        ) : !txLoading && filteredTx.length === 0 ? (
           <div className={styles.txDate} style={{ textAlign: 'center', padding: '12px 0' }}>
             {t('wallet.noTransactions')}
           </div>
@@ -504,9 +652,11 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
                 </span>
                 <div className={styles.txDetails}>
                   <div className={styles.txMemo}>
-                    {tx.memo || tx.paymentHash.slice(0, 16) + '...'}
+                    {(!tx.memo || /^lightning\s*(address|wallet)$/i.test(tx.memo))
+                      ? (tx.amount >= 0 ? t('wallet.txReceived') : t('wallet.txSent'))
+                      : tx.memo}
                   </div>
-                  <div className={styles.txDate}>{formatTxDate(tx.createdAt)}</div>
+                  <button className={styles.txDateBtn} onClick={openFilterPopover}>{formatTxDate(tx.createdAt)}</button>
                 </div>
                 <span className={`${styles.txAmount} ${tx.amount >= 0 ? styles.txIncoming : styles.txOutgoing}`}>
                   {tx.amount >= 0 ? '+' : ''}{Math.round(tx.amount).toLocaleString()}
@@ -515,7 +665,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
             ))}
           </div>
         )}
-        {txHasMore && !txSearch.trim() && transactions.length > 0 && (
+        {txHasMore && !txLoading && !txSearch.trim() && filteredTx.length > 0 && (
           <div className={styles.showMore}>
             <Button small variant="secondary" onClick={handleShowMore} disabled={txLoading}>
               {txLoading ? t('common.loading') : t('wallet.showMore')}

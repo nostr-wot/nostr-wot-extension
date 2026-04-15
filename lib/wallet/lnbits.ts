@@ -87,7 +87,7 @@ export class LnbitsProvider implements WalletProvider {
       fee: number;          // msats
       memo: string;
       status: string;
-      time: number;
+      time: string | number; // ISO 8601 string or unix timestamp
       preimage: string;
     }>>('GET', `/api/v1/payments?limit=${limit}&offset=${offset}`);
 
@@ -98,7 +98,9 @@ export class LnbitsProvider implements WalletProvider {
       fee: Math.round((p.fee || 0) / 1000),
       memo: p.memo || undefined,
       status: p.status === 'success' ? 'settled' as const : p.status === 'pending' ? 'pending' as const : 'failed' as const,
-      createdAt: p.time,
+      createdAt: typeof p.time === 'string'
+        ? Math.floor(new Date(p.time).getTime() / 1000)
+        : p.time,
       preimage: p.preimage || undefined,
     }));
   }

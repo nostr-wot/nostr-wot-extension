@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-04-15
+
+### Fixed
+- **Wallet transaction dates broken** — LNbits API returns `time` as an ISO 8601 string, not a Unix timestamp; `listTransactions` now parses both formats correctly
+- **Transaction dates invisible** — bumped date text from 10px/35% opacity to 11px/50% opacity
+- **Wallet section not scrollable** — transactions overflowed the popup with no way to scroll; wallet section now scrolls independently without breaking menu hover effects
+- **Generic memo on received payments** — transactions with LNbits default memo ("Lightning Address" / "Lightning wallet") now show "Received" or "Sent" instead
+
+### Added
+- **Transaction filter popover** — filter icon next to the search input opens a popover with direction chips (All / Received / Sent) and a date range picker with Apply/Clear actions
+- **Improved date formatting** — transactions older than 7 days show locale-aware short dates (e.g. "Apr 10") instead of "30d ago"; different-year transactions include the year
+
+### Changed
+- **Transaction date display** — recent transactions use relative time (just now, 5m ago, 3h ago, 2d ago); older transactions use short date format
+
 ## [0.3.5] - 2026-03-23
 
 ### Added

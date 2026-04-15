@@ -182,6 +182,192 @@
   border-color: rgba(217, 119, 6, 0.2);
 }
 
+/* ── Permission detail actions ── */
+
+.permDetailActions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+/* ── Inline decision dropdown ── */
+
+.permDecisionWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.permDecisionDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 10;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 100px;
+  overflow: hidden;
+}
+
+.permDecisionOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 12px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-body);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.permDecisionOption:hover {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.permDecisionActive {
+  font-weight: 700;
+}
+
+.permDecisionDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.permDotAllow { background: var(--success); }
+.permDotDeny { background: var(--error); }
+.permDotAsk { background: var(--warning); }
+
+/* ── Add Rule modal ── */
+
+.permModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.permModal {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 280px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.permModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.permModalTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.permModalClose {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+
+.permModalClose:hover {
+  color: var(--text-body);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.permModalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.permModalLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.permModalActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  padding-top: 6px;
+  border-top: 1px solid var(--card-border);
+}
+
+.permToggleCustom {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--brand);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.permToggleCustom:hover {
+  color: var(--brand-hover);
+}
+
+.permCustomKindRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.permCustomKindPrefix {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.permCustomKindInput {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-body);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.permCustomKindInput:focus {
+  border-color: var(--brand);
+}
+
 /* Account scope block (toggle + dropdown) */
 .accountScope {
   display: flex;
