@@ -170,7 +170,7 @@ Firefox-specific settings:
 {
     "gecko": {
         "id": "nostr-wot@dandelionlabs.io",
-        "strict_min_version": "128.0"
+        "strict_min_version": "140.0"
     }
 }
 ```
