@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-04-15
+
+### Added
+- **Full-screen lock screen** -- when the vault auto-locks, a full-screen overlay with heavy blur and no cancel button forces password entry to continue; the padlock button is now lock-only (visible only when unlocked)
+- **Forgot password / reset vault** -- "Forgot password?" link on the full-screen lock screen with confirmation step; destroys the vault, wipes all accounts, keys, and databases so the user can start fresh
+- **Brute-force rate limiting** -- escalating lockout after failed unlock attempts: 5 failures = 1 min lockout, 10 = 5 min, 15 = 15 min, 20+ = 30 min; countdown displayed in real-time; applies to both popup and signing prompt unlock flows
+
+### Changed
+- **Lock button removed when locked** -- the padlock icon in the account bar is hidden when the vault is locked (the full-screen overlay handles unlock instead)
+- **`onRequestUnlock` prop removed** -- simplified TopBar/AccountBar prop chain; unlock is now driven by vault state, not manual callbacks
+
 ## [0.3.6] - 2026-04-15
 
 ### Fixed

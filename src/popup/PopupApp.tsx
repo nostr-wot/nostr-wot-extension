@@ -76,9 +76,8 @@ function PopupInner() {
       .catch(() => {});
   }, []);
 
-  // Unlock modal is shown only when:
-  // 1. There are pending signer requests waiting for unlock (ApprovalOverlay)
-  // 2. The user clicks the lock icon in TopBar
+  // Auto-show unlock screen when vault is locked
+  const vaultLockScreen = vault.exists && vault.locked && vault.autoLockEnabled;
 
   const handleWizardComplete = () => {
     setActiveOverlay(null);
@@ -100,7 +99,6 @@ function PopupInner() {
           onMenuOpen={() => setActiveOverlay('menu')}
           onAddAccount={() => setActiveOverlay('wizard')}
           onEditProfile={() => setActiveOverlay('editProfile')}
-          onRequestUnlock={() => setUnlockVisible(true)}
         />
 
         <div className={styles.scrollArea}>
@@ -167,10 +165,11 @@ function PopupInner() {
         )}
 
         <UnlockModal
-          visible={unlockVisible}
+          visible={vaultLockScreen || unlockVisible}
+          fullScreen={vaultLockScreen}
           unlockWaiters={unlockWaiters}
           onUnlocked={() => setUnlockVisible(false)}
-          onCancel={() => setUnlockVisible(false)}
+          onCancel={vaultLockScreen ? undefined : () => setUnlockVisible(false)}
         />
       </TopoBg>
     </>

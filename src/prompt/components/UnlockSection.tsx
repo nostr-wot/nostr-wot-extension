@@ -9,8 +9,10 @@ interface UnlockSectionProps {
 }
 
 export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
-  const { password, setPassword, error, setError, loading, inputRef, unlock } =
-    useVaultUnlock({ onSuccess: onUnlocked });
+  const { password, setPassword, error, setError, loading, lockedUntil, inputRef, unlock } =
+    useVaultUnlock({ onSuccess: onUnlocked, messages: { lockedOut: t('unlock.lockedOut') } });
+
+  const isLockedOut = lockedUntil > Date.now();
 
   // Auto-unlock for "Never" mode vaults (encrypted with empty password)
   useEffect(() => {
@@ -38,8 +40,8 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
         autoComplete="off"
         value={password}
         onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
-        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlock()}
-        disabled={loading}
+        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !isLockedOut && unlock()}
+        disabled={loading || isLockedOut}
       />
       {error && <span className={styles.unlockError}>{error}</span>}
     </div>

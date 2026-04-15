@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
+import React, { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@shared/rpc.js';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '../../context/AccountContext';
@@ -17,6 +17,7 @@ interface WaiterInfo {
 
 interface UnlockModalProps {
   visible: boolean;
+  fullScreen?: boolean;
   message?: string;
   unlockWaiters?: WaiterInfo[];
   onUnlocked?: () => void;
@@ -35,23 +36,27 @@ function getEventLabel(type: string): string {
   return labels[type] || type;
 }
 
-export default function UnlockModal({ visible, message, unlockWaiters, onUnlocked, onCancel }: UnlockModalProps) {
+export default function UnlockModal({ visible, fullScreen, message, unlockWaiters, onUnlocked, onCancel }: UnlockModalProps) {
   const { displayName, avatarUrl, initial } = useAccount();
   const vault = useVault();
+  const [confirmReset, setConfirmReset] = useState<boolean>(false);
 
   const handleSuccess = useCallback(() => {
     vault.checkState();
     onUnlocked?.();
   }, [vault, onUnlocked]);
 
-  const { password, setPassword, error, inputRef, unlock, reset, focus } =
+  const { password, setPassword, error, lockedUntil, inputRef, unlock, reset, focus } =
     useVaultUnlock({
       onSuccess: handleSuccess,
       messages: {
         wrongPassword: t('key.wrongPassword'),
         unlockFailed: t('key.failedUnlock'),
+        lockedOut: t('unlock.lockedOut'),
       },
     });
+
+  const isLockedOut = lockedUntil > Date.now();
 
   // Auto-unlock for "Never" mode vaults (encrypted with empty password)
   useEffect(() => {
@@ -68,6 +73,7 @@ export default function UnlockModal({ visible, message, unlockWaiters, onUnlocke
     if (visible) {
       reset();
       focus();
+      setConfirmReset(false);
     }
   }, [visible, reset, focus]);
 
@@ -81,11 +87,17 @@ export default function UnlockModal({ visible, message, unlockWaiters, onUnlocke
     await rpc('signer_cancelUnlockWaiter', { id });
   };
 
+  const handleDestroyVault = async () => {
+    await rpc('vault_destroy');
+    vault.checkState();
+    window.location.reload();
+  };
+
   if (!shouldRender) return null;
 
   return (
-    <div className={`${styles.overlay} ${animating ? styles.exiting : ''}`}>
-      <div className={`${styles.card} ${animating ? styles.cardExiting : ''}`}>
+    <div className={`${styles.overlay} ${fullScreen ? styles.fullScreen : ''} ${animating ? styles.exiting : ''}`}>
+      <div className={`${styles.card} ${fullScreen ? styles.cardFullScreen : ''} ${animating ? styles.cardExiting : ''}`}>
         <div className={styles.account}>
           {avatarUrl ? (
             <img className={styles.avatar} src={avatarUrl} alt="" />
@@ -102,8 +114,9 @@ export default function UnlockModal({ visible, message, unlockWaiters, onUnlocke
           placeholder={t('unlock.enterPassword')}
           value={password}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlock()}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !isLockedOut && unlock()}
           autoComplete="off"
+          disabled={isLockedOut}
         />
         {error && <div className={styles.error}>{error}</div>}
         {unlockWaiters && unlockWaiters.length > 0 && (
@@ -123,15 +136,35 @@ export default function UnlockModal({ visible, message, unlockWaiters, onUnlocke
           </div>
         )}
         <div className={styles.actions}>
-          <Button
-            variant="secondary"
-            small
-            onClick={handleCancelAll}
-          >
-            {t('common.cancel')}
-          </Button>
-          <Button small onClick={unlock}>{t('common.unlock')}</Button>
+          {onCancel && (
+            <Button
+              variant="secondary"
+              small
+              onClick={handleCancelAll}
+            >
+              {t('common.cancel')}
+            </Button>
+          )}
+          <Button small onClick={unlock} disabled={isLockedOut}>{t('common.unlock')}</Button>
         </div>
+        {fullScreen && !confirmReset && (
+          <button className={styles.resetLink} onClick={() => setConfirmReset(true)}>
+            {t('unlock.forgotPassword')}
+          </button>
+        )}
+        {fullScreen && confirmReset && (
+          <div className={styles.resetConfirm}>
+            <p className={styles.resetWarning}>{t('unlock.resetWarning')}</p>
+            <div className={styles.resetActions}>
+              <Button variant="secondary" small onClick={() => setConfirmReset(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button variant="danger" small onClick={handleDestroyVault}>
+                {t('unlock.resetVault')}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

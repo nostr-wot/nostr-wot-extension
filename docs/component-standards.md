@@ -72,7 +72,7 @@ All shared hooks live in `src/shared/hooks/`, one hook per file.
 |------|---------|
 | `useBrowserStorage(key, default, area)` | Read/write `browser.storage` with live change listener |
 | `useRpc<T>(method, params, opts)` | Call background RPC on mount, with reload/loading/error (generic) |
-| `useVaultUnlock({ onSuccess })` | Password state, unlock RPC, error handling, input ref |
+| `useVaultUnlock({ onSuccess })` | Password state, unlock RPC, error handling, input ref, brute-force lockout (escalating: 1/5/15/30 min after every 5 failures) |
 | `useAnimatedVisible(visible)` | Manages mount/unmount transitions for overlays |
 | `useWizardFlow()` | State machine hook for onboarding wizard |
 
