@@ -13,11 +13,17 @@ All notable changes to this project will be documented in this file.
 - **Generic memo on received payments** — transactions with LNbits default memo ("Lightning Address" / "Lightning wallet") now show "Received" or "Sent" instead
 
 ### Added
-- **Transaction filter popover** — filter icon next to the search input opens a popover with direction chips (All / Received / Sent) and a date range picker with Apply/Clear actions
+- **Safari support** — Xcode project generated via `safari-web-extension-converter`, with `storage.session` polyfill (falls back to `storage.local` with prefix), Safari-compatible manifest (`scripts` instead of `service_worker`, `host_permissions` instead of `optional_host_permissions`), and encryption compliance flag
+- **Transaction filter modal** — filter icon next to the search input opens a centered modal with direction chips (All / Received / Sent) and a date range picker; smart batched fetching accumulates pages until enough filtered results are found
+- **Permissions: add rule** — modal to manually add permission rules with preset or custom event kind selector
+- **Permissions: compact detail view** — single colored chip per rule with inline dropdown to change decision
+- **Continue button on language screen** — first-run wizard no longer requires opening the language picker to proceed
 - **Improved date formatting** — transactions older than 7 days show locale-aware short dates (e.g. "Apr 10") instead of "30d ago"; different-year transactions include the year
+- **Complete translations** — added 92 missing keys to es, pt, de, fr, it (wallet, permissions, seed export, filters)
 
 ### Changed
 - **Transaction date display** — recent transactions use relative time (just now, 5m ago, 3h ago, 2d ago); older transactions use short date format
+- **Transaction filtering** — direction and date filters now fetch pages from the API in batches of 50, filtering client-side, stopping early when past the date boundary (LNbits API only supports limit/offset)
 
 ## [0.3.5] - 2026-03-23
 

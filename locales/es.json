@@ -34,19 +34,16 @@
   "common.unlock": "Desbloquear",
   "common.on": "Sí",
   "common.off": "No",
-
   "topbar.noAccounts": "Sin cuentas",
   "topbar.addToStart": "Agrega una para comenzar",
   "topbar.addAccount": "+ Agregar cuenta",
   "topbar.lockVault": "Bloquear bóveda",
   "topbar.siteConnection": "Conexión del sitio",
   "topbar.settings": "Configuración",
-
   "globe.noSite": "Sin sitio",
   "globe.notConnectable": "No es una página conectable",
   "globe.connected": "Conectado",
   "globe.notConnected": "No conectado",
-
   "home.navigateToConnect": "Navega a un sitio web para conectar",
   "home.siteControlsHint": "Los controles del sitio y la actividad aparecerán aquí cuando estés navegando.",
   "home.siteNotConnected": "Este sitio no está conectado. Habilita la extensión para usar funciones de identidad y confianza.",
@@ -65,12 +62,10 @@
   "home.connectedTo": "Conectado a {domain}",
   "home.permissionDenied": "Permiso denegado",
   "home.disconnectedFrom": "Desconectado de {domain}",
-
   "home.setupProfile": "Configura tu perfil",
   "home.setupProfileHint": "Publica tu nombre, foto y biografía para que otros te encuentren en Nostr.",
   "home.setupProfileButton": "Configurar",
   "home.skip": "Omitir",
-
   "scoring.trustSensitivity": "Sensibilidad de confianza",
   "scoring.strict": "Estricto",
   "scoring.conservative": "Conservador",
@@ -98,7 +93,6 @@
   "scoring.resetMsg": "Puntuación restablecida a valores predeterminados (guarda para aplicar)",
   "scoring.updated": "Puntuación actualizada: {preset}",
   "scoring.strategyUpdated": "Estrategia: {preset}",
-
   "filters.title": "Filtros",
   "filters.strategies": "Estrategias",
   "filters.muteLists": "Listas de silencio",
@@ -115,7 +109,6 @@
   "filters.npubOrHexBlock": "npub o hex de clave pública",
   "filters.noteToSelf": "Nota personal (opcional)",
   "filters.npubOrHexMute": "npub o hex del dueño de la lista",
-
   "settings.title": "Configuración",
   "settings.editProfile": "Editar perfil",
   "settings.editProfileDesc": "Nombre, foto y biografía (kind 0)",
@@ -130,7 +123,6 @@
   "settings.bunkerSession": "Sesión Bunker",
   "settings.network": "Red",
   "settings.language": "Idioma",
-
   "security.keyBackup": "Claves y respaldo",
   "security.keyBackupDesc": "Exportar o respaldar tus claves privadas",
   "security.permissions": "Permisos",
@@ -148,14 +140,12 @@
   "security.enterCurrentPassword": "Por favor ingresa tu contraseña actual",
   "security.currentPassword": "Contraseña actual",
   "security.neverLockWarning": "Desactivar el bloqueo automático significa que tus claves permanecen descifradas en memoria. Cualquiera con acceso a tu navegador puede usarlas.",
-
   "account.readOnly": "Solo lectura",
   "account.remove": "Eliminar cuenta",
   "account.addAccount": "Agregar Cuenta",
   "account.removeTitle": "¿Eliminar {name}?",
   "account.removeWarning": "Esta cuenta y sus datos serán eliminados permanentemente de esta extensión.",
   "account.removeKeyWarning": "Asegúrate de tener una copia de tu clave privada antes de eliminar. Perderás acceso a esta identidad si no tienes una copia.",
-
   "key.exportNsec": "Exportar clave privada (nsec)",
   "key.exportNsecDesc": "Revelar tu clave privada para usar en otro cliente",
   "key.exportNcryptsec": "Exportar respaldo cifrado (ncryptsec)",
@@ -184,7 +174,6 @@
   "key.failedChangePassword": "Error al cambiar la contraseña",
   "key.notAvailableReadOnly": "No disponible para cuentas de solo lectura",
   "key.failedExport": "Error al exportar clave",
-
   "wot.mode": "Modo",
   "wot.remote": "Remoto",
   "wot.local": "Local",
@@ -196,7 +185,6 @@
   "wot.syncDesc": "Descargar y gestionar tu grafo de confianza",
   "wot.badges": "Insignias",
   "wot.badgesDesc": "Insignias de puntuación de confianza en sitios Nostr",
-
   "sync.localGraph": "Grafo local",
   "sync.status": "Estado",
   "sync.notSynced": "No sincronizado",
@@ -238,7 +226,6 @@
   "sync.noAccounts": "No se encontraron cuentas.",
   "sync.accountRemoved": "(cuenta eliminada)",
   "sync.completedNodes": "Completado — {count} nodos sincronizados",
-
   "badges.showTrustBadges": "Mostrar insignias de confianza en sitios Nostr",
   "badges.badgesHint": "Cuando está activado, las insignias de puntuación de confianza aparecen junto a los nombres de usuario en clientes web de Nostr.",
   "badges.whatYouSee": "Lo que verás:",
@@ -265,7 +252,6 @@
   "badges.verified": "Verificado",
   "badges.unverified": "No verificado",
   "badges.savedConfig": "Configuración guardada para {domain}",
-
   "network.identityRelays": "Relays de identidad",
   "network.publishList": "Publicar lista",
   "network.wotOracles": "Oráculos WoT",
@@ -280,7 +266,6 @@
   "network.lastPublished": "Última publicación: {time}",
   "network.read": "Lectura",
   "network.write": "Escritura",
-
   "nip46.status": "Estado",
   "nip46.relay": "Relay",
   "nip46.autoResume": "Auto-reconexión",
@@ -289,7 +274,6 @@
   "nip46.revokeSession": "Revocar sesión",
   "nip46.noSession": "Sin sesión bunker activa.",
   "nip46.revoked": "Sesión bunker revocada",
-
   "perms.permissionRequired": "Permiso requerido",
   "perms.enableHint": "Habilita la extensión para este sitio",
   "perms.enableDomain": "Habilitar para este dominio",
@@ -303,7 +287,6 @@
   "perms.clearedAll": "Todos los permisos eliminados",
   "perms.clearConfirm": "¿Eliminar todos los permisos del firmante?",
   "perms.revokedFor": "Permisos revocados para {domain}",
-
   "activity.title": "Actividad",
   "activity.clear": "Borrar",
   "activity.allSites": "Todos los sitios",
@@ -313,7 +296,6 @@
   "activity.blocked": "Bloqueado",
   "activity.pending": "Pendiente",
   "activity.requests": "{count} solicitudes",
-
   "activity.getPublicKey": "leer clave pública",
   "activity.signEvent": "firmar eventos",
   "activity.signEvent1": "firmar notas de texto",
@@ -325,7 +307,6 @@
   "activity.nip44Encrypt": "cifrar mensajes (NIP-44)",
   "activity.nip44Decrypt": "descifrar mensajes (NIP-44)",
   "activity.allOps": "todas las operaciones",
-
   "profileEdit.title": "Editar perfil",
   "profileEdit.displayName": "Nombre para mostrar",
   "profileEdit.pictureUrl": "URL de imagen",
@@ -353,7 +334,6 @@
   "profileEdit.published": "¡Perfil publicado!",
   "profileEdit.publishFailed": "Error al publicar",
   "profileEdit.publish": "Publicar",
-
   "approval.pendingRequests": "Solicitudes pendientes",
   "approval.noPending": "Sin solicitudes pendientes",
   "approval.deny": "Denegar",
@@ -366,7 +346,6 @@
   "approval.alwaysAllow": "Permitir siempre {method} de {origin}",
   "approval.unlockToApprove": "Desbloquea la bóveda para aprobar solicitudes",
   "approval.requests": "{count} solicitudes",
-
   "approval.detail.title": "Detalles de la solicitud",
   "approval.detail.signDesc": "{origin} quiere {label}",
   "approval.detail.encryptDesc": "{origin} quiere cifrar un mensaje ({protocol})",
@@ -385,14 +364,11 @@
   "approval.rejectAll": "Rechazar todo",
   "approval.grouped": "Agrupar",
   "approval.expanded": "Expandir",
-
   "unlock.enterPassword": "Ingresa la contraseña",
   "unlock.vaultLocked": "Tu bóveda está bloqueada. Ingresa tu contraseña para continuar.",
-
   "wizard.connectIdentity": "Conecta tu identidad",
   "wizard.addAccount": "Agregar cuenta",
   "wizard.chooseSetup": "Elige cómo configurar tu identidad Nostr.",
-
   "wizard.createNew": "Crear nueva",
   "wizard.createNewDesc": "Generar un nuevo par de claves con frase de recuperación",
   "wizard.createSubAccount": "Derivar subcuenta",
@@ -408,7 +384,6 @@
   "wizard.watchOnlyDesc": "Importar una clave pública (solo lectura, sin firma)",
   "wizard.nostrConnect": "Nostr Connect",
   "wizard.nostrConnectDesc": "Conectar a un firmador remoto (NIP-46)",
-
   "wizard.importTitle": "Importar tu clave",
   "wizard.importDesc": "Pega tu clave privada o respaldo cifrado abajo. Detectaremos el formato automáticamente.",
   "wizard.importLabel": "Clave privada o respaldo",
@@ -424,17 +399,14 @@
   "wizard.decryptContinue": "Descifrar y continuar",
   "wizard.decrypting": "Descifrando...",
   "wizard.enterDecryptPassword": "Ingresa la contraseña de descifrado",
-
   "wizard.npubTitle": "Cuenta de solo lectura",
   "wizard.npubDesc": "Puedes ver distancias WoT pero no podrás firmar eventos.",
   "wizard.npubLabel": "Clave pública",
   "wizard.npubPlaceholder": "npub1... o hex de 64 caracteres",
-
   "wizard.nip46Title": "Nostr Connect (NIP-46)",
   "wizard.nip46Desc": "Pega una URL de bunker para conectar a un firmador remoto.",
   "wizard.bunkerLabel": "URL de Bunker",
   "wizard.bunkerPlaceholder": "bunker://pubkey?relay=wss://...&secret=...",
-
   "wizard.recoveryTitle": "Tu frase de recuperación",
   "wizard.recoveryDesc": "Escribe estas 12 palabras en orden. Esta es la única forma de recuperar tu cuenta.",
   "wizard.recoveryWarning": "Nunca compartas tu frase de recuperación. Cualquiera con estas palabras puede acceder a tu cuenta.",
@@ -446,19 +418,16 @@
   "wizard.downloadEncryptedDesc": "Archivo ncryptsec protegido con contraseña",
   "wizard.backupHint": "Guarda tu semilla usando cualquier opción de arriba para continuar",
   "wizard.iveSavedIt": "Ya la guardé",
-
   "wizard.encPasswordTitle": "Contraseña de cifrado",
   "wizard.encPasswordDesc": "Esta contraseña protege tu archivo de respaldo. La necesitarás para restaurar.",
   "wizard.encPasswordLabel": "Contraseña",
   "wizard.encPasswordPlaceholder": "Mín. 8 caracteres",
   "wizard.encConfirmPlaceholder": "Confirmar contraseña",
-
   "wizard.verifyTitle": "Verificar frase de recuperación",
   "wizard.verifyDesc": "Ingresa las palabras solicitadas para confirmar que guardaste tu frase.",
   "wizard.wordN": "Palabra #{n}",
   "wizard.enterWordN": "Ingresa la palabra #{n}",
   "wizard.wordsNoMatch": "Las palabras no coinciden. Revisa e inténtalo de nuevo.",
-
   "wizard.passwordTitle": "Bloqueo automático de cuenta",
   "wizard.passwordDesc": "Establece una contraseña para proteger tu cuenta. Se requerirá para desbloquear la extensión después de un período de inactividad.",
   "wizard.passwordLabel": "Contraseña",
@@ -470,7 +439,6 @@
   "wizard.passwordMin8": "La contraseña debe tener al menos 8 caracteres.",
   "wizard.passwordsNoMatch": "Las contraseñas no coinciden.",
   "wizard.noAccountData": "Sin datos de cuenta. Regresa e inténtalo de nuevo.",
-
   "wizard.wotTitle": "¿Construir tu grafo de confianza?",
   "wizard.wotDesc": "Tu grafo WoT permite a la extensión filtrar spam y mostrar puntuaciones de confianza en sitios Nostr.",
   "wizard.wotStat1": "2 saltos = ~5,000 nodos (~13 MB)",
@@ -482,35 +450,28 @@
   "wizard.wotStat2": "Se sincroniza en segundo plano — puedes cerrar esto.",
   "wizard.skipForNow": "Omitir por ahora",
   "wizard.syncNow": "Sincronizar ahora",
-
   "wizard.doneTitle": "¡Todo listo!",
   "wizard.doneDesc": "Tu identidad Nostr está lista.",
   "wizard.account": "Cuenta",
   "wizard.type": "Tipo",
   "wizard.done": "Listo",
-
   "lang.title": "Idioma",
   "lang.selectLanguage": "Seleccionar idioma",
   "lang.wizardTitle": "Elige tu idioma",
-
   "time.justNow": "ahora",
   "time.minutesAgo": "hace {n}m",
   "time.hoursAgo": "hace {n}h",
   "time.daysAgo": "hace {n}d",
-
   "status.removeConfirm": "¿Eliminar {name}?",
   "status.detectedPubkey": "Clave pública detectada de extensión Nostr",
   "status.addSyncTitle": "Agrega una cuenta para sincronizar",
   "status.failedStopSync": "Error al detener sincronización",
   "status.syncFailed": "Sincronización fallida",
-
   "about.name": "Nostr WoT Extension",
-
   "onboarding.title": "Nostr WoT Extension",
   "onboarding.subtitle": "Identidad y red de confianza",
   "onboarding.connectIdentity": "Conecta tu identidad",
   "onboarding.chooseSetup": "Elige cómo configurar tu identidad Nostr.",
-
   "onboarding.createNew": "Crear nueva",
   "onboarding.createNewDesc": "Generar un nuevo par de claves con frase de recuperación",
   "onboarding.importPrivateKey": "Importar clave privada",
@@ -519,31 +480,25 @@
   "onboarding.watchOnlyDesc": "Importar una clave pública (solo lectura, sin firma)",
   "onboarding.nostrConnect": "Nostr Connect",
   "onboarding.nostrConnectDesc": "Conectar a un firmador remoto (NIP-46)",
-
   "onboarding.importNsecTitle": "Importar clave privada",
   "onboarding.importNsecDesc": "Pega tu nsec o clave privada hex abajo.",
   "onboarding.privateKeyLabel": "Clave privada",
   "onboarding.nsecPlaceholder": "nsec1... o hex de 64 caracteres",
-
   "onboarding.npubTitle": "Cuenta de solo lectura",
   "onboarding.npubDesc": "Puedes ver distancias WoT pero no podrás firmar eventos.",
   "onboarding.publicKeyLabel": "Clave pública",
   "onboarding.npubPlaceholder": "npub1... o hex de 64 caracteres",
-
   "onboarding.nip46Title": "Nostr Connect (NIP-46)",
   "onboarding.nip46Desc": "Pega una URL de bunker para conectar a un firmador remoto.",
   "onboarding.bunkerLabel": "URL de Bunker",
   "onboarding.bunkerPlaceholder": "bunker://pubkey?relay=wss://...&secret=...",
-
   "onboarding.recoveryTitle": "Tu frase de recuperación",
   "onboarding.recoveryDesc": "Escribe estas 12 palabras en orden. Esta es la única forma de recuperar tu cuenta.",
   "onboarding.recoveryWarning": "Nunca compartas tu frase de recuperación. Cualquiera con estas palabras puede acceder a tu cuenta.",
   "onboarding.iveSavedIt": "Ya la guardé",
-
   "onboarding.verifyTitle": "Verificar frase de recuperación",
   "onboarding.verifyDesc": "Ingresa las palabras solicitadas para confirmar que guardaste tu frase.",
   "onboarding.wordsNoMatch": "Las palabras no coinciden. Revisa e inténtalo de nuevo.",
-
   "onboarding.passwordTitle": "Establecer contraseña de cifrado",
   "onboarding.passwordDesc": "Esta contraseña cifra tus claves en reposo. La necesitarás para desbloquear la extensión.",
   "onboarding.passwordLabel": "Contraseña",
@@ -561,9 +516,7 @@
   "onboarding.passwordMin8": "La contraseña debe tener al menos 8 caracteres.",
   "onboarding.passwordsNoMatch": "Las contraseñas no coinciden.",
   "onboarding.noAccountData": "Sin datos de cuenta. Regresa e inténtalo de nuevo.",
-
   "onboarding.upgradeNotice": "Esta clave coincide con una cuenta de solo lectura existente. Importar la actualizará a acceso completo de firma.",
-
   "onboarding.wotTitle": "¿Construir tu grafo de confianza?",
   "onboarding.wotDesc": "Tu grafo WoT permite a la extensión filtrar spam y mostrar puntuaciones de confianza en sitios Nostr.",
   "onboarding.wotStat1": "2 saltos = ~5,000 nodos (~13 MB)",
@@ -573,12 +526,10 @@
   "onboarding.syncingNodes": "Sincronizando... {count} nodos",
   "onboarding.syncedNodes": "{count} nodos sincronizados",
   "onboarding.syncFailed": "Sincronización fallida. ¿Intentar de nuevo?",
-
   "onboarding.doneTitle": "¡Todo listo!",
   "onboarding.doneDesc": "Tu identidad Nostr está lista.",
   "onboarding.doneHint": "Haz clic en el ícono de la extensión para gestionar tu cuenta y configuración WoT.",
   "onboarding.closeBtn": "Cerrar",
-
   "prompt.signEvent": "Firmar evento",
   "prompt.encryptNip04": "Cifrar (NIP-04)",
   "prompt.decryptNip04": "Descifrar (NIP-04)",
@@ -600,7 +551,6 @@
   "prompt.enterVaultPassword": "Ingresa la contraseña de la bóveda",
   "prompt.enterPassword": "Ingresa tu contraseña",
   "prompt.unlockFailed": "Error al desbloquear",
-
   "event.profileUpdate": "Actualización de perfil",
   "event.name": "Nombre",
   "event.about": "Acerca de",
@@ -633,7 +583,6 @@
   "event.dislike": "No me gusta",
   "event.reactingToNote": "Reaccionando a una nota",
   "event.repostingNote": "Compartiendo una nota",
-
   "key.exportTitle": "Exportar clave privada",
   "key.exportEncTitle": "Exportar respaldo cifrado",
   "key.changePasswordTitle": "Cambiar contraseña",
@@ -650,7 +599,6 @@
   "key.currentPw": "Contraseña actual",
   "key.newPwMinChars": "Nueva contraseña (mín. 8 caracteres)",
   "key.generate": "Generar",
-
   "wizard.generatingIdentity": "Generando tu identidad...",
   "wizard.creatingKeypair": "Creando un nuevo par de claves Nostr",
   "wizard.pubkey": "Clave pública",
@@ -716,7 +664,6 @@
   "wizard.nameLabel": "Nombre",
   "wizard.typeLabel": "Tipo",
   "wizard.publicKeyLabel": "Clave pública",
-
   "filters.enterPublicKey": "Ingresa una clave pública",
   "filters.invalidPublicKey": "Clave pública inválida",
   "filters.pubkeyLabel": "Clave pública (npub o hex)",
@@ -729,14 +676,12 @@
   "filters.noMuteListFound": "No se encontró lista de silencio para esta clave",
   "filters.failedFetchMute": "Error al obtener lista de silencio",
   "filters.enable": "Activar",
-
   "network.relayPlaceholder": "wss://relay.example.com",
   "network.oraclePlaceholder": "https://oracle.example.com",
   "network.relayListChanged": "Lista de relays modificada (sin publicar)",
   "network.relayListPublished": "¡Lista de relays publicada!",
   "network.relayListFailed": "Error al publicar la lista de relays",
   "network.notPublishedYet": "Aún no publicada",
-
   "perms.noPermsYet": "Sin permisos aún",
   "perms.permsHint": "Cuando los sitios soliciten acceso de firma, sus permisos aparecerán aquí.",
   "perms.revokeAll": "Revocar todo",
@@ -746,31 +691,25 @@
   "perms.allowed": "{count} permitidos",
   "perms.denied": "{count} denegados",
   "perms.noRules": "Sin reglas",
-
   "activity.today": "Hoy",
   "activity.yesterday": "Ayer",
   "activity.noActivity": "Sin actividad registrada",
   "activity.clearAll": "Borrar todo",
-
   "badges.enableGlobally": "Activar insignias WoT globalmente",
   "badges.perSiteOverrides": "Configuración por sitio",
   "badges.disablePerSite": "Desactivar insignias en sitios específicos",
   "badges.noSitesWithAccess": "Sin sitios con acceso a insignias",
   "badges.sitesWillAppear": "Los sitios aparecerán aquí una vez que les otorgues permisos de host.",
-
   "wot.modeLabel": "Modo WoT",
   "wot.modeHint": "Elige cómo se calculan las puntuaciones de confianza",
   "wot.syncDatabases": "Sincronización y bases de datos",
   "wot.syncDatabasesDesc": "Gestionar datos del grafo local",
   "wot.badgeInjection": "Inyección de insignias",
   "wot.badgeInjectionDesc": "Insignias WoT en sitios Nostr",
-
   "home.syncOutdated": "Grafo de confianza desactualizado",
   "home.lastSynced": "Última sincronización {time}",
   "home.neverSynced": "Nunca sincronizado",
-
   "home.noActivityShort": "Sin actividad",
-
   "sync.active": "Activo",
   "sync.inactiveDataNotice": "Esta cuenta no está activa. Los datos pueden estar desactualizados.",
   "sync.nodes": "Nodos",
@@ -779,7 +718,6 @@
   "sync.wotDatabases": "Bases de datos WoT",
   "sync.noDatabases": "Sin bases de datos",
   "sync.noDatabasesHint": "La sincronización creará una base de datos de grafo local para tu cuenta.",
-
   "wizard.importKey": "Importar clave",
   "wizard.createIdentity": "Crear identidad",
   "wizard.verifyBackup": "Verificar respaldo",
@@ -791,10 +729,8 @@
   "wizard.followPublishing": "Publicando...",
   "wizard.followSuggestions": "Seguir seleccionados",
   "wizard.allSet": "Todo listo",
-
   "topbar.vaultLocked": "Bóveda bloqueada",
   "topbar.vaultUnlocked": "Bóveda desbloqueada",
-
   "perm.editProfile": "Editar perfil",
   "perm.post": "Publicar",
   "perm.updateContacts": "Actualizar contactos",
@@ -816,7 +752,6 @@
   "approval.detail.sendDesc": "{origin} quiere enviar un mensaje privado",
   "perm.readProfile": "Leer información del perfil",
   "approval.detail.readProfileDesc": "{origin} quiere leer tu información de perfil",
-
   "activity.detail.readKeyDesc": "El sitio leyó tu clave pública",
   "activity.filters": "Filtros",
   "activity.filterByType": "Tipo",
@@ -831,16 +766,13 @@
   "activity.readNip44": "Leer (NIP-44)",
   "activity.showProtocols": "Mostrar detalles NIP",
   "activity.hideProtocols": "Ocultar detalles NIP",
-
   "platform.membershipStatus": "Estado de membresía",
   "platform.primalSettings": "Configuración de Primal",
-
   "sync.autoSyncFollows": "Sync automático tras actualizar contactos",
   "sync.autoSyncFollowsHint": "Re-sincronizar el grafo de confianza cuando cambie tu lista de contactos",
   "event.followsAdded": "añadidos",
   "event.followsRemoved": "eliminados",
   "event.followsUnchanged": "sin cambios",
-
   "badges.strategy": "Estrategia",
   "badges.addStrategy": "Agregar estrategia",
   "badges.strategyLabel": "Etiqueta (opcional)",
@@ -854,7 +786,6 @@
   "badges.removeStrategy": "Eliminar estrategia",
   "badges.preview": "Vista previa",
   "badges.previewing": "Previsualizando...",
-
   "wizard.copyPermissions": "Configurar permisos",
   "wizard.copyPermissionsDesc": "Puedes copiar reglas de permisos de una cuenta existente o empezar de cero.",
   "wizard.copyFrom": "Copiar permisos",
@@ -862,7 +793,7 @@
   "perms.allAccounts": "Todas las cuentas",
   "perms.allAccountsOnHint": "Las reglas globales se aplican como predeterminadas para todas las cuentas",
   "perms.allAccountsOffHint": "Cada cuenta gestiona sus propios permisos de forma independiente",
-"perms.accountLabel": "Cuenta",
+  "perms.accountLabel": "Cuenta",
   "perms.managedBySigner": "Gestionado por tu app de firma",
   "perms.managedBySignerHint": "La aprobación la maneja tu firmante remoto. Solo puedes bloquear sitios aquí.",
   "perms.overrideIndicator": "Difiere del predeterminado",
@@ -871,5 +802,97 @@
   "approval.appliesToAllAccounts": "El permiso se aplica a todas las cuentas",
   "approval.awaitingSigner": "Esperando firmante remoto...",
   "approval.pendingSignature": "Firma pendiente",
-  "approval.cancelNip46": "Cancelar"
+  "approval.cancelNip46": "Cancelar",
+  "key.exportSeed": "Exportar semilla",
+  "key.exportSeedDesc": "Guarda una copia de tu frase semilla",
+  "key.exportSeedTitle": "Exportar frase semilla",
+  "key.seedWarning": "Nunca compartas tu frase semilla con nadie. Cualquiera que la tenga puede acceder a tu cuenta.",
+  "unlock.pendingEvents": "Eventos pendientes",
+  "unlock.pendingCount": "{count} solicitudes pendientes",
+  "wizard.seedDetected": "Semilla existente detectada",
+  "wizard.seedMainLegend": "Cuenta principal",
+  "wizard.seedDerivedLegend": "Cuenta derivada",
+  "key.seedAutoHideHint": "La semilla se ocultará automáticamente",
+  "key.downloadPlain": "Descargar texto plano",
+  "key.downloadEncrypted": "Descargar cifrado",
+  "key.seedDownloadPassword": "Contraseña para cifrar",
+  "key.seedDownloadConfirm": "Confirmar contraseña",
+  "key.seedEncrypting": "Cifrando...",
+  "badges.conflictWarning": "Otra extensión ya está usando insignias WoT en este sitio.",
+  "perms.addRule": "Añadir regla",
+  "perms.permission": "Permiso",
+  "perms.decision": "Decisión",
+  "perms.customKind": "Tipo de evento personalizado",
+  "perms.usePreset": "Usar predefinido",
+  "wallet.title": "Billetera",
+  "wallet.connectWallet": "Conectar billetera",
+  "wallet.connectHint": "Conecta una billetera Lightning para enviar y recibir zaps",
+  "wallet.invalidNwc": "URI NWC inválida",
+  "wallet.fillAllFields": "Completa todos los campos",
+  "wallet.instanceUrl": "URL de instancia",
+  "wallet.adminKey": "Clave de administrador",
+  "wallet.balance": "Saldo",
+  "wallet.connected": "Conectado",
+  "wallet.deposit": "Depositar",
+  "wallet.amountSats": "Cantidad (sats)",
+  "wallet.createInvoice": "Crear factura",
+  "wallet.payInvoice": "Pagar factura",
+  "wallet.autoApprove": "Aprobación automática",
+  "wallet.autoApproveHint": "Aprobar pagos automáticamente por debajo de este monto",
+  "wallet.maxSats": "Máx. sats",
+  "wallet.noWallet": "Sin billetera",
+  "wallet.noWalletHint": "Conecta una billetera para enviar y recibir pagos Lightning",
+  "wallet.setupWallet": "Configurar billetera",
+  "wallet.quickSetup": "Configuración rápida",
+  "wallet.quickSetupHint": "Crea una billetera Lightning en un clic",
+  "wallet.createWallet": "Crear billetera",
+  "wallet.advancedSettings": "Configuración avanzada",
+  "wallet.lnbitsUrl": "URL de LNbits",
+  "wallet.nwcUri": "URI NWC",
+  "wallet.copyNwc": "Copiar NWC",
+  "wallet.nwcCopied": "URI NWC copiada",
+  "wallet.send": "Enviar",
+  "wallet.sendPayment": "Enviar pago",
+  "wallet.pasteInvoice": "Pegar factura Lightning",
+  "wallet.pay": "Pagar",
+  "wallet.paymentSent": "Pago enviado",
+  "wallet.transactions": "Transacciones",
+  "wallet.searchTransactions": "Buscar transacciones...",
+  "wallet.showMore": "Mostrar más",
+  "wallet.noTransactions": "Sin transacciones aún",
+  "wallet.txReceived": "Recibido",
+  "wallet.txSent": "Enviado",
+  "wallet.filtersTitle": "Filtros",
+  "wallet.filterAll": "Todos",
+  "wallet.filterDirection": "Dirección",
+  "wallet.filterDateRange": "Rango de fechas",
+  "wallet.filterClear": "Limpiar",
+  "wallet.filterApply": "Aplicar",
+  "wallet.settings": "Configuración",
+  "wallet.depositDesc": "Genera una factura Lightning para recibir sats en tu billetera.",
+  "wallet.sendDesc": "Pega una factura Lightning para enviar un pago.",
+  "wallet.invoiceAmount": "Monto",
+  "wallet.invoiceDescription": "Descripción",
+  "wallet.invoiceExpiry": "Expira en",
+  "wallet.invoiceExpired": "Expirada",
+  "wallet.invoiceMinutes": "{n} minutos",
+  "wallet.invoiceHours": "{n} horas",
+  "wallet.invoiceNone": "Sin expiración",
+  "wallet.confirmPay": "Confirmar pago",
+  "wallet.decodeFailed": "No se pudo decodificar la factura",
+  "wallet.setupBanner": "Configura tu billetera Lightning",
+  "wallet.setupBannerHint": "Envía y recibe zaps directamente desde clientes Nostr",
+  "wallet.homeSats": "sats",
+  "wallet.lightningAddress": "Dirección Lightning",
+  "wallet.lightningAddressHint": "Reclama un nombre de usuario para recibir pagos",
+  "wallet.usernamePlaceholder": "nombre de usuario",
+  "wallet.claimUsername": "Reclamar",
+  "wallet.addToProfile": "Añadir al perfil",
+  "wallet.updateProfileTitle": "Actualizar perfil",
+  "wallet.updateProfileDesc": "Añadir tu dirección Lightning a tu perfil Nostr",
+  "wallet.updateProfile": "Actualizar perfil",
+  "wallet.usernameInvalid": "Nombre de usuario inválido",
+  "wallet.usernameTaken": "Nombre de usuario ya ocupado",
+  "wallet.releaseAddress": "Liberar dirección",
+  "common.later": "Más tarde"
 }
