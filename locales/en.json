@@ -394,6 +394,10 @@
   "unlock.vaultLocked": "Your vault is locked. Enter your password to continue.",
   "unlock.pendingEvents": "Waiting for unlock",
   "unlock.pendingCount": "{count} pending request(s)",
+  "unlock.forgotPassword": "Forgot password?",
+  "unlock.resetWarning": "This will permanently delete all accounts and keys from this extension. This cannot be undone.",
+  "unlock.resetVault": "Reset Vault",
+  "unlock.lockedOut": "Too many attempts. Try again in {seconds}s",
 
   "wizard.connectIdentity": "Connect Your Identity",
   "wizard.addAccount": "Add Account",

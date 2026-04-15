@@ -19,7 +19,11 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
 }
 ```
 
-**Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory.
+**Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
+
+**Brute-force protection**: The `useVaultUnlock` hook enforces escalating lockout after failed password attempts. Every 5 consecutive failures trigger a lockout: 1 min, 5 min, 15 min, 30 min (cap). The countdown is displayed in the UI and the input is disabled during lockout. A successful unlock resets the counter. The counter is shared across hook instances (module-level state) so remounting components does not reset it; however, it resets on full page reload (extension restart).
+
+**Vault destroy** (`vault.destroy()`): Irreversibly wipes the encrypted vault from `browser.storage.local` and clears all in-memory state. The `vault_destroy` RPC handler also stops sync, clears wallet providers, cancels pending signer requests, deletes all per-account IndexedDB databases, and removes account metadata from storage. Exposed via "Forgot password?" on the full-screen lock overlay with a confirmation step.
 
 ---
 

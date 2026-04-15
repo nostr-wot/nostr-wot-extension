@@ -255,4 +255,23 @@ export const handlers = new Map<string, HandlerFn>([
         resetLocalGraph();
         return { ok: true };
     }],
+
+    ['vault_destroy', async () => {
+        if (isSyncInProgress()) {
+            await stopSync();
+        }
+        clearWalletProviders();
+        await signer.cancelAllUnlockWaiters();
+        await vault.destroy();
+        // Clear all account data from storage
+        const dbs = await storage.listAllDatabases();
+        for (const d of dbs) {
+            await storage.deleteDatabase((d as Record<string, string>).accountId);
+        }
+        await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs']);
+        await browser.storage.sync.remove('myPubkey');
+        config.myPubkey = '';
+        resetLocalGraph();
+        return { ok: true };
+    }],
 ]);

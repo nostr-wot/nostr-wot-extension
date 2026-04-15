@@ -325,3 +325,31 @@ describe('vault -- encryption integrity', () => {
     assert.ok(typeof v.ciphertext === 'string' && v.ciphertext.length > 0);
   });
 });
+
+describe('vault -- destroy', () => {
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  it('destroy removes vault from storage', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    assert.strictEqual(await vault.exists(), true);
+    await vault.destroy();
+    assert.strictEqual(await vault.exists(), false);
+  });
+
+  it('destroy locks the vault', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    assert.strictEqual(vault.isLocked(), false);
+    await vault.destroy();
+    assert.strictEqual(vault.isLocked(), true);
+  });
+
+  it('destroy clears in-memory data', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    assert.ok(vault.getActivePubkey());
+    await vault.destroy();
+    assert.strictEqual(vault.getActivePubkey(), null);
+  });
+});

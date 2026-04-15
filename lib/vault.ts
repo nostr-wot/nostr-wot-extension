@@ -218,6 +218,15 @@ export function isLocked(): boolean {
 }
 
 /**
+ * Destroy the vault -- wipe encrypted data from storage and clear memory.
+ * This is irreversible: all accounts and keys are permanently lost.
+ */
+export async function destroy(): Promise<void> {
+  lock();
+  await browser.storage.local.remove(STORAGE_KEY);
+}
+
+/**
  * Check if a vault exists in storage
  */
 export async function exists(): Promise<boolean> {
