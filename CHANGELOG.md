@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.81] - 2026-04-21
+
+Hotfix on top of 0.3.8.
+
+### Fixed
+- **`package:firefox` left `dist/` in a Chrome-incompatible state** — the script mutated `dist/manifest.json` to Firefox's `background.scripts` format and never restored it. Loading the extension unpacked from `dist/` into Chrome MV3 after running `package:firefox` silently registered no service worker (Chrome needs `background.service_worker`), and every RPC failed with "Could not establish connection. Receiving end does not exist." `package:firefox` now re-runs `vite build` after zipping so `dist/` always ends Chrome-compatible.
+
+### Changed
+- **Removed diagnostic console logs** — temporary `[BG] Service worker started` and `[HomeTab] RPC failed` logs used during debugging were removed from background.ts and HomeTab.tsx.
+
 ## [0.3.8] - 2026-04-20
 
 ### Fixed
