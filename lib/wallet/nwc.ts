@@ -151,6 +151,22 @@ export class NwcProvider implements WalletProvider {
     return { bolt11: result.invoice, paymentHash: result.payment_hash };
   }
 
+  async lookupInvoice(paymentHash: string): Promise<{ paid: boolean; amountPaid?: number }> {
+    try {
+      const result = (await this.sendRequest('lookup_invoice', {
+        payment_hash: paymentHash,
+      })) as { settled_at?: number; amount?: number };
+      const settledAt = result.settled_at ?? 0;
+      const amountMsats = result.amount ?? 0;
+      return {
+        paid: settledAt > 0,
+        amountPaid: Math.round(amountMsats / 1000),
+      };
+    } catch {
+      return { paid: false };
+    }
+  }
+
   async listTransactions(limit = 20, offset = 0): Promise<Transaction[]> {
     const result = await this.sendRequest('list_transactions', {
       limit,

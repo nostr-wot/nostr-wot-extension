@@ -184,6 +184,12 @@ export const handlers = new Map<string, HandlerFn>([
         return await provider.makeInvoice(amount, memo);
     }],
 
+    ['wallet_checkInvoice', async (params) => {
+        const { paymentHash } = params as { paymentHash: string };
+        const { provider } = await getConnectedProvider();
+        return await provider.lookupInvoice(paymentHash);
+    }],
+
     ['wallet_getTransactions', async (params) => {
         const { limit, offset } = params as { limit?: number; offset?: number };
         const { provider } = await getConnectedProvider();

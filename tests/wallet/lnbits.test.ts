@@ -199,4 +199,58 @@ describe('LnbitsProvider', () => {
       assert.equal(provider.type, 'lnbits');
     });
   });
+
+  describe('listTransactions', () => {
+    it('filters out pending entries (unpaid invoices)', async () => {
+      const rows = [
+        { checking_id: 'a', payment_hash: 'a', bolt11: '', amount: 1000, fee: 0, memo: '', status: 'success', time: 1700000000, preimage: 'pa' },
+        { checking_id: 'b', payment_hash: 'b', bolt11: '', amount: 2000, fee: 0, memo: '', status: 'pending', time: 1700000001, preimage: '' },
+        { checking_id: 'c', payment_hash: 'c', bolt11: '', amount: 3000, fee: 0, memo: '', status: 'failed', time: 1700000002, preimage: '' },
+      ];
+      const provider = new LnbitsProvider(config, mockFetch(rows));
+      const txs = await provider.listTransactions();
+      assert.equal(txs.length, 2);
+      assert.equal(txs[0].paymentHash, 'a');
+      assert.equal(txs[0].status, 'settled');
+      assert.equal(txs[1].paymentHash, 'c');
+      assert.equal(txs[1].status, 'failed');
+    });
+  });
+
+  describe('lookupInvoice', () => {
+    it('returns paid:true with amount in sats when settled', async () => {
+      const provider = new LnbitsProvider(
+        config,
+        mockFetch({ paid: true, preimage: 'xx', details: { amount: 50_000 } }),
+      );
+      const res = await provider.lookupInvoice('hash123');
+      assert.equal(res.paid, true);
+      assert.equal(res.amountPaid, 50);
+    });
+
+    it('returns paid:false when invoice is not yet paid', async () => {
+      const provider = new LnbitsProvider(
+        config,
+        mockFetch({ paid: false, details: { amount: 10_000 } }),
+      );
+      const res = await provider.lookupInvoice('hash123');
+      assert.equal(res.paid, false);
+    });
+
+    it('returns paid:false on 404 instead of throwing', async () => {
+      const provider = new LnbitsProvider(config, mockFetch({ detail: 'not found' }, 404));
+      const res = await provider.lookupInvoice('missinghash');
+      assert.deepEqual(res, { paid: false });
+    });
+
+    it('handles negative (outgoing) amounts', async () => {
+      const provider = new LnbitsProvider(
+        config,
+        mockFetch({ paid: true, details: { amount: -25_000 } }),
+      );
+      const res = await provider.lookupInvoice('hash');
+      assert.equal(res.paid, true);
+      assert.equal(res.amountPaid, 25);
+    });
+  });
 });

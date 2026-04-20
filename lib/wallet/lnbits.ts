@@ -91,18 +91,37 @@ export class LnbitsProvider implements WalletProvider {
       preimage: string;
     }>>('GET', `/api/v1/payments?limit=${limit}&offset=${offset}`);
 
-    return data.map(p => ({
-      paymentHash: p.payment_hash,
-      bolt11: p.bolt11,
-      amount: Math.round(p.amount / 1000),   // msats → sats
-      fee: Math.round((p.fee || 0) / 1000),
-      memo: p.memo || undefined,
-      status: p.status === 'success' ? 'settled' as const : p.status === 'pending' ? 'pending' as const : 'failed' as const,
-      createdAt: typeof p.time === 'string'
-        ? Math.floor(new Date(p.time).getTime() / 1000)
-        : p.time,
-      preimage: p.preimage || undefined,
-    }));
+    return data
+      .filter(p => p.status !== 'pending')
+      .map(p => ({
+        paymentHash: p.payment_hash,
+        bolt11: p.bolt11,
+        amount: Math.round(p.amount / 1000),   // msats → sats
+        fee: Math.round((p.fee || 0) / 1000),
+        memo: p.memo || undefined,
+        status: p.status === 'success' ? 'settled' as const : 'failed' as const,
+        createdAt: typeof p.time === 'string'
+          ? Math.floor(new Date(p.time).getTime() / 1000)
+          : p.time,
+        preimage: p.preimage || undefined,
+      }));
+  }
+
+  async lookupInvoice(paymentHash: string): Promise<{ paid: boolean; amountPaid?: number }> {
+    try {
+      const data = await this.request<{
+        paid: boolean;
+        preimage?: string;
+        details?: { amount?: number };
+      }>('GET', `/api/v1/payments/${paymentHash}`);
+      const msats = data.details?.amount ?? 0;
+      return {
+        paid: !!data.paid,
+        amountPaid: Math.round(Math.abs(msats) / 1000),
+      };
+    } catch {
+      return { paid: false };
+    }
   }
 
   async connect(): Promise<void> {

@@ -54,6 +54,9 @@ function createMockProvider(overrides?: Partial<WalletProvider>): WalletProvider
     async makeInvoice(_amount: number, _memo?: string) {
       return { bolt11: 'lnbc1...', paymentHash: 'hash123' };
     },
+    async lookupInvoice(_paymentHash: string) {
+      return { paid: false };
+    },
     async listTransactions(_limit?: number, _offset?: number) {
       return [
         { paymentHash: 'hash1', amount: 1000, status: 'settled' as const, createdAt: 1700000000, memo: 'Test deposit' },

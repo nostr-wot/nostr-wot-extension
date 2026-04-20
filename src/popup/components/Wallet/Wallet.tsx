@@ -63,6 +63,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [depositAmount, setDepositAmount] = useState<string>('');
   const [depositLoading, setDepositLoading] = useState<boolean>(false);
   const [depositBolt11, setDepositBolt11] = useState<string>('');
+  const [depositPaymentHash, setDepositPaymentHash] = useState<string>('');
+  const [depositPaid, setDepositPaid] = useState<{ amount: number } | null>(null);
   const [depositError, setDepositError] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -194,6 +196,48 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     fetchFiltered(0, [], { direction: 'all', dateFrom: '', dateTo: '' });
   }, [fetchBalance, fetchThreshold, fetchNwcUri, fetchLnAddress, fetchFiltered]);
 
+  // Poll for invoice payment while the deposit modal is showing a bolt11.
+  // Deps are intentionally minimal: we do not include depositPaid (setting it
+  // would retrigger the effect and the cleanup would cancel our auto-close).
+  useEffect(() => {
+    if (!depositPaymentHash || !showDeposit) return;
+
+    let cancelled = false;
+    let detected = false;
+    let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const interval = setInterval(async () => {
+      if (detected) return;
+      try {
+        const res = await rpc<{ paid: boolean; amountPaid?: number }>(
+          'wallet_checkInvoice',
+          { paymentHash: depositPaymentHash },
+        );
+        if (cancelled || detected) return;
+        if (res?.paid) {
+          detected = true;
+          clearInterval(interval);
+          const fallback = parseInt(depositAmount, 10) || 0;
+          setDepositPaid({ amount: res.amountPaid ?? fallback });
+          fetchBalance();
+          fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
+          autoCloseTimer = setTimeout(() => {
+            if (!cancelled) closeDeposit();
+          }, 2500);
+        }
+      } catch {
+        // transient errors are ignored; polling continues
+      }
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      if (autoCloseTimer) clearTimeout(autoCloseTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [depositPaymentHash, showDeposit]);
+
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
@@ -219,12 +263,15 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setDepositLoading(true);
     setDepositError('');
     setDepositBolt11('');
+    setDepositPaymentHash('');
+    setDepositPaid(null);
     try {
       const result = await rpc<{ bolt11: string; paymentHash: string }>(
         'wallet_makeInvoice',
         { amount, memo: 'Deposit' },
       );
       setDepositBolt11(result.bolt11);
+      setDepositPaymentHash(result.paymentHash);
     } catch (e: unknown) {
       setDepositError((e as Error).message);
     }
@@ -273,6 +320,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setDepositBolt11('');
     setDepositAmount('');
     setDepositError('');
+    setDepositPaymentHash('');
+    setDepositPaid(null);
     fetchBalance();
     fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
   };
@@ -443,7 +492,19 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
           <div className={styles.qrModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.qrTitle}>{t('wallet.deposit')}</div>
             <div className={styles.overlayDesc}>{t('wallet.depositDesc')}</div>
-            {!depositBolt11 ? (
+            {depositPaid ? (
+              <div className={styles.form} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '48px', color: 'var(--success)', lineHeight: 1 }}>
+                  {'\u2713'}
+                </div>
+                <div className={styles.success} style={{ fontSize: '14px', fontWeight: 600 }}>
+                  {t('wallet.paymentReceived')}
+                </div>
+                <div className={styles.success} style={{ fontSize: '16px' }}>
+                  {`+${Math.round(depositPaid.amount).toLocaleString()} sats`}
+                </div>
+              </div>
+            ) : !depositBolt11 ? (
               <div className={styles.form}>
                 <Input
                   type="number"

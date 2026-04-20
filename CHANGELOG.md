@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-04-20
+
+### Fixed
+- **Chrome unpacked-load was broken after `package:firefox`** — `package:firefox` mutated `dist/manifest.json` to Firefox's `background.scripts` format but never restored it afterwards. If you ran `package:firefox` last and then loaded the extension unpacked from `dist/` into Chrome, Chrome MV3 didn't recognise the manifest (needs `background.service_worker`), silently registered no service worker, and every RPC rejected with "Could not establish connection. Receiving end does not exist." `package:firefox` now re-runs `vite build` after zipping so `dist/` is always left in a Chrome-compatible state. This was the actual root cause of the popup error card that replaced "Navigate to a website" on accepted sites.
+- **Service worker wake-up hardening** — defense-in-depth around the above: (1) new post-build vite plugin `bundleServiceWorker` esbuild-bundles the SW into a single self-contained IIFE with zero runtime imports, so chunk imports can't race against `onMessage` registration on MV3 wake-up; (2) `runtime.onMessage` and `runtime.onConnect` listeners moved to the top of `background.ts`, before `loadConfig`, migrations, auto-unlock, and `setupTabListeners`, so they attach on the first synchronous tick even if any startup code is slow or throws.
+- **RPC retry on transient transport errors** — `src/shared/rpc.ts` retries up to 3 times (100ms / 200ms backoff) on `Could not establish connection`, `Receiving end does not exist`, `The message port closed before a response was received`, and `Extension context invalidated`. Application-level errors returned as `{ error }` are never retried.
+- **Popup misrepresented state on accepted sites** — `useSiteState` now uses `Promise.allSettled` and degrades each source to a safe default. The error card only shows when BOTH connection-determining calls (`getAllowedDomains` and `signer_getPermissionsForDomain`) fail. Accepted domains render the normal SiteControls even if supplemental state can't be loaded. Website signing via `window.nostr` was never affected by this bug — the popup misrepresented state but the content-script → background → signer path is independent.
+- **Inline retry on error state** — the error card has a Retry button that re-runs the load.
+- **Unpaid invoices no longer appear in transaction history** — the LNbits provider filters `pending` entries out of `listTransactions`; only settled and failed payments show up. NWC was unaffected (already passed `unpaid: false`).
+- **Deposit modal auto-closes on payment** — creating an invoice now polls the provider every 2s (new `lookupInvoice` provider method + `wallet_checkInvoice` RPC); when the payment is detected the modal shows a "Payment received!" confirmation, refreshes balance/history, then auto-closes.
+
+### Added
+- **`home.siteInfoError` and `home.retry` locale keys** — en, es, pt, it, fr, de.
+- **`wallet.paymentReceived` locale key** — en, es, pt, it, fr, de.
+
+### Changed
+- **Removed diagnostic console logs** — the temporary `[BG] Service worker started` and `[HomeTab] RPC failed` logs used to diagnose the wake-up / manifest issues were removed now that the root causes are fixed.
+
 ## [0.3.7] - 2026-04-15
 
 ### Added

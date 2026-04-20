@@ -128,52 +128,6 @@ async function loadConfig(): Promise<void> {
     } catch { /* ignored */ }
 }
 
-// ── Startup ──
-
-loadConfig();
-
-signer.cleanupStale();
-
-// Permission migrations
-(async () => {
-    try {
-        const data = await browser.storage.local.get('_permMigrationVersion');
-        if ((data as Record<string, unknown>)._permMigrationVersion !== 3) {
-            await signerPermissions.migrateToPerKind();
-            await signerPermissions.migrateToPerAccount();
-            await signerPermissions.migrateForwardToAsk();
-            await browser.storage.local.set({ _permMigrationVersion: 3 });
-        }
-    } catch (e: unknown) {
-        console.warn('[PERMISSIONS] Migration failed:', (e as Error).message);
-    }
-})();
-
-// Auto-unlock vault when auto-lock is "Never"
-(async () => {
-    try {
-        const data = await browser.storage.local.get(['autoLockMs', 'activeAccountId']);
-        if (((data as Record<string, unknown>).autoLockMs ?? 900000) === 0 && await vault.exists()) {
-            const ok = await vault.unlock('');
-            if (ok) {
-                if ((data as Record<string, unknown>).activeAccountId) {
-                    try {
-                        await vault.setActiveAccount((data as Record<string, unknown>).activeAccountId as string);
-                    } catch {
-                        vault.clearActiveAccount();
-                    }
-                }
-                await signer.onVaultUnlocked();
-            }
-        }
-    } catch (e: unknown) {
-        console.warn('[VAULT] Auto-unlock failed:', (e as Error).message);
-    }
-})();
-
-// Tab listeners for auto-injection
-setupTabListeners();
-
 // ── Request dispatch ──
 
 async function handleRequest({ method, params }: { method: string; params: Record<string, unknown> }): Promise<unknown> {
@@ -333,3 +287,50 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
         }
     });
 });
+
+// ── Startup (runs AFTER listeners are registered, so messages during async
+// init don't race against listener registration) ──
+
+loadConfig();
+
+signer.cleanupStale();
+
+// Permission migrations
+(async () => {
+    try {
+        const data = await browser.storage.local.get('_permMigrationVersion');
+        if ((data as Record<string, unknown>)._permMigrationVersion !== 3) {
+            await signerPermissions.migrateToPerKind();
+            await signerPermissions.migrateToPerAccount();
+            await signerPermissions.migrateForwardToAsk();
+            await browser.storage.local.set({ _permMigrationVersion: 3 });
+        }
+    } catch (e: unknown) {
+        console.warn('[PERMISSIONS] Migration failed:', (e as Error).message);
+    }
+})();
+
+// Auto-unlock vault when auto-lock is "Never"
+(async () => {
+    try {
+        const data = await browser.storage.local.get(['autoLockMs', 'activeAccountId']);
+        if (((data as Record<string, unknown>).autoLockMs ?? 900000) === 0 && await vault.exists()) {
+            const ok = await vault.unlock('');
+            if (ok) {
+                if ((data as Record<string, unknown>).activeAccountId) {
+                    try {
+                        await vault.setActiveAccount((data as Record<string, unknown>).activeAccountId as string);
+                    } catch {
+                        vault.clearActiveAccount();
+                    }
+                }
+                await signer.onVaultUnlocked();
+            }
+        }
+    } catch (e: unknown) {
+        console.warn('[VAULT] Auto-unlock failed:', (e as Error).message);
+    }
+})();
+
+// Tab listeners for auto-injection
+setupTabListeners();

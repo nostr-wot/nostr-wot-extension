@@ -22,6 +22,7 @@ export interface WalletProvider {
   getBalance(): Promise<{ balance: number }>;
   payInvoice(bolt11: string): Promise<{ preimage: string }>;
   makeInvoice(amount: number, memo?: string): Promise<{ bolt11: string; paymentHash: string }>;
+  lookupInvoice(paymentHash: string): Promise<{ paid: boolean; amountPaid?: number }>;
   listTransactions(limit?: number, offset?: number): Promise<Transaction[]>;
   connect(): Promise<void>;
   disconnect(): void;

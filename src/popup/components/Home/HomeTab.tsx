@@ -44,12 +44,13 @@ interface Account {
 
 function useSiteState(active: Account | null) {
   const [domain, setDomain] = useState<string | null>(null);
-  const [siteState, setSiteState] = useState<string | null>(null); // null = loading, 'empty' | 'notConnected' | 'connected'
+  const [siteState, setSiteState] = useState<string | null>(null); // null = loading, 'empty' | 'notConnected' | 'connected' | 'error'
   const [identityEnabled, setIdentityEnabled] = useState<boolean>(true);
   const [wotEnabled, setWotEnabled] = useState<boolean>(true);
   const [canInject, setCanInject] = useState<boolean>(false);
 
   const loadHomeState = useCallback(async () => {
+    let resolvedDomain: string | null = null;
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
       const tab = tabs[0];
@@ -65,14 +66,25 @@ function useSiteState(active: Account | null) {
         setSiteState('empty');
         return;
       }
+      resolvedDomain = d;
       setDomain(d);
 
-      const [allowedDomains, badgeDisabledData, identityDisabled, perms] = await Promise.all([
+      const [allowedR, badgeR, identityR, permsR] = await Promise.allSettled([
         rpc<string[]>('getAllowedDomains'),
         browser.storage.local.get('badgeDisabledSites') as Promise<Record<string, unknown>>,
         rpc<string[]>('getIdentityDisabledSites'),
         rpc<Record<string, string>>('signer_getPermissionsForDomain', { domain: d }),
       ]);
+
+      const allowedDomains = allowedR.status === 'fulfilled' ? (allowedR.value || []) : null;
+      const badgeDisabledData = badgeR.status === 'fulfilled' ? (badgeR.value as Record<string, unknown>) : {};
+      const identityDisabled = identityR.status === 'fulfilled' ? (identityR.value || []) : [];
+      const perms = permsR.status === 'fulfilled' ? (permsR.value || {}) : null;
+
+      if (allowedDomains === null && perms === null) {
+        setSiteState('error');
+        return;
+      }
 
       const badgeDisabled = new Set<string>((badgeDisabledData.badgeDisabledSites as string[] | undefined) || []);
       const identityDisabledSet = new Set<string>(identityDisabled || []);
@@ -91,7 +103,7 @@ function useSiteState(active: Account | null) {
 
       setSiteState(inject || hp ? 'connected' : 'notConnected');
     } catch {
-      setSiteState('empty');
+      setSiteState(resolvedDomain ? 'error' : 'empty');
     }
   }, []);
 
@@ -422,20 +434,32 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
         </Card>
       )}
 
-      <SiteControls
-        identityEnabled={identityEnabled}
-        wotEnabled={wotEnabled}
-        canInject={canInject}
-        isNip46={isNip46}
-        onIdentityToggle={handleIdentityToggle}
-        onWotToggle={handleWotToggle}
-        onManagePermissions={() => onManagePermissions(domain!)}
-        onManageFilters={onManageFilters}
-        onManageBadges={onManageBadges}
-        onRecentActivity={() => onViewAllActivity(domain)}
-      >
-        <ScoringCard onOpen={onManageScoring} />
-      </SiteControls>
+      {siteState === 'error' ? (
+        <Card className={styles.emptyState}>
+          <EmptyState
+            icon={<IconGlobe size={32} strokeWidth="1.5" />}
+            text={domain ?? ''}
+            hint={t('home.siteInfoError')}
+          >
+            <Button small onClick={loadHomeState}>{t('home.retry')}</Button>
+          </EmptyState>
+        </Card>
+      ) : (
+        <SiteControls
+          identityEnabled={identityEnabled}
+          wotEnabled={wotEnabled}
+          canInject={canInject}
+          isNip46={isNip46}
+          onIdentityToggle={handleIdentityToggle}
+          onWotToggle={handleWotToggle}
+          onManagePermissions={() => onManagePermissions(domain!)}
+          onManageFilters={onManageFilters}
+          onManageBadges={onManageBadges}
+          onRecentActivity={() => onViewAllActivity(domain)}
+        >
+          <ScoringCard onOpen={onManageScoring} />
+        </SiteControls>
+      )}
     </>
   );
 }
