@@ -134,12 +134,10 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   const handleAlwaysAllow = async (group: ApprovalGroup) => {
     const accountId = group.requests[0]?.accountId || active?.id || null;
     await permissions.savePermission(group.origin, group.permKey, 'allow', accountId);
-    const eventKind = group.requests[0]?.eventKind as number | undefined;
     await rpc('signer_resolveBatch', {
       origin: group.origin,
-      method: group.method,
+      permKey: group.permKey,
       decision: { allow: true, remember: false },
-      eventKind,
     });
     closeAndRefresh();
   };
@@ -154,12 +152,10 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   const handleAlwaysDeny = async (group: ApprovalGroup) => {
     const accountId = group.requests[0]?.accountId || active?.id || null;
     await permissions.savePermission(group.origin, group.permKey, 'deny', accountId);
-    const eventKind = group.requests[0]?.eventKind as number | undefined;
     await rpc('signer_resolveBatch', {
       origin: group.origin,
-      method: group.method,
+      permKey: group.permKey,
       decision: { allow: false, remember: false },
-      eventKind,
     });
     closeAndRefresh();
   };
@@ -180,12 +176,10 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     const accountId = req.accountId || active?.id || null;
     const permKey = req.permKey || req.type;
     await permissions.savePermission(req.origin, permKey, 'allow', accountId);
-    const eventKind = req.eventKind as number | undefined;
     await rpc('signer_resolveBatch', {
       origin: req.origin,
-      method: req.type,
+      permKey,
       decision: { allow: true, remember: false },
-      eventKind,
     });
     closeAndRefresh();
   };
@@ -194,12 +188,10 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     const accountId = req.accountId || active?.id || null;
     const permKey = req.permKey || req.type;
     await permissions.savePermission(req.origin, permKey, 'deny', accountId);
-    const eventKind = req.eventKind as number | undefined;
     await rpc('signer_resolveBatch', {
       origin: req.origin,
-      method: req.type,
+      permKey,
       decision: { allow: false, remember: false },
-      eventKind,
     });
     closeAndRefresh();
   };

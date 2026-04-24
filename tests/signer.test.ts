@@ -144,8 +144,8 @@ describe('signer -- pending request queue', () => {
     const pending: any[] = await signer.getPending();
     assert.strictEqual(pending.length, N);
 
-    // Batch deny all nip44Decrypt from coracle.social
-    await signer.resolveBatch('coracle.social', 'nip44Decrypt', { allow: false, remember: false });
+    // Batch deny all readMessages from coracle.social (covers nip04+nip44 decrypt)
+    await signer.resolveBatch('coracle.social', 'readMessages', { allow: false, remember: false });
 
     for (const p of promises) {
       await assert.rejects(p, /User denied/);
@@ -154,6 +154,32 @@ describe('signer -- pending request queue', () => {
     await new Promise<void>(r => setTimeout(r, 50));
     const afterBatch: any[] = await signer.getPending();
     assert.strictEqual(afterBatch.length, 0, 'Batch resolve should clear all matching');
+  });
+
+  it('resolveBatch clears requests across wire methods sharing a permKey (nip04+nip44)', async () => {
+    // Regression: "Always allow" for DMs left the nip44 variant orphaned in pending
+    // because resolveBatch filtered by wire method (nip04Encrypt) instead of permKey.
+    await setupVault();
+
+    const p1: Promise<any> = signer.handleNip04Encrypt(THEIR_PUBKEY_HEX, 'hi via nip04', 'chat.com');
+    const p2: Promise<any> = signer.handleNip44Encrypt(THEIR_PUBKEY_HEX, 'hi via nip44', 'chat.com');
+
+    await new Promise<void>(r => setTimeout(r, 200));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 2, 'Both encrypt variants should be queued');
+    const permKeys = new Set(pending.map((r: any) => r.permKey));
+    assert.deepStrictEqual([...permKeys], ['sendMessages'], 'Both should share the sendMessages permKey');
+
+    // Deny by permKey -- must clear both wire methods
+    await signer.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
+
+    await assert.rejects(p1, /User denied/);
+    await assert.rejects(p2, /User denied/);
+
+    await new Promise<void>(r => setTimeout(r, 50));
+    const after: any[] = await signer.getPending();
+    assert.strictEqual(after.length, 0, 'No orphaned nip44 request should remain');
   });
 
   it('cleanupStale clears all pending requests', async () => {
@@ -390,7 +416,7 @@ describe('signer -- nip44Decrypt approval flow', () => {
     assert.strictEqual(pending.length, 5, `Expected 5 pending, got ${pending.length}`);
 
     // Batch approve all
-    await signer.resolveBatch('chat.com', 'nip44Decrypt', { allow: true, remember: false });
+    await signer.resolveBatch('chat.com', 'readMessages', { allow: true, remember: false });
 
     // All should decrypt successfully
     const results: any[] = await Promise.all(promises);
@@ -430,7 +456,7 @@ describe('signer -- nip44Decrypt approval flow', () => {
     await permissions.save('chat.com', 'nip44Decrypt', null, 'allow');
 
     // Batch resolve with remember=true
-    await signer.resolveBatch('chat.com', 'nip44Decrypt', { allow: true, remember: true });
+    await signer.resolveBatch('chat.com', 'readMessages', { allow: true, remember: true });
 
     const results: any[] = await Promise.all(promises);
     for (let i = 0; i < messages.length; i++) {
@@ -670,7 +696,7 @@ describe('signer -- edge cases', () => {
     assert.strictEqual(pending.length, 2);
 
     // Batch resolve only site-a.com
-    await signer.resolveBatch('site-a.com', 'signEvent', { allow: true, remember: false });
+    await signer.resolveBatch('site-a.com', 'signEvent:1', { allow: true, remember: false });
 
     // site-a should resolve
     const signedA: any = await p1;

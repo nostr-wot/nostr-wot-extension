@@ -272,17 +272,20 @@ export function resolveRequest(id: string, decision: RequestDecision): void {
 }
 
 /**
- * Resolve all pending requests matching origin + method
+ * Resolve all pending requests matching origin + permKey.
+ * Matches by the logical permission key (e.g. "sendMessages", "signEvent:1"),
+ * so requests with different wire methods that share a permKey (nip04Encrypt
+ * and nip44Encrypt both map to "sendMessages") are resolved together.
  * @param origin - requesting domain
- * @param method - request type (e.g. 'nip44Decrypt')
+ * @param permKey - logical permission key (e.g. "sendMessages", "signEvent:1")
  * @param decision - { allow: boolean, remember: boolean }
  */
-export async function resolveBatch(origin: string, method: string, decision: RequestDecision, eventKind?: number): Promise<void> {
+export async function resolveBatch(origin: string, permKey: string, decision: RequestDecision): Promise<void> {
+  const match = (r: PendingRequest) => r.origin === origin && r.permKey === permKey;
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
-    const kindMatch = (r: PendingRequest) => eventKind === undefined || r.eventKind === eventKind;
-    const matching = pending.filter(r => r.origin === origin && r.type === method && kindMatch(r));
+    const matching = pending.filter(match);
     for (const req of matching) {
       const resolver = _pendingResolvers.get(req.id);
       if (resolver) {
@@ -292,8 +295,7 @@ export async function resolveBatch(origin: string, method: string, decision: Req
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }
     }
-    // Remove all matching from storage at once
-    const remaining = pending.filter(r => !(r.origin === origin && r.type === method && kindMatch(r)));
+    const remaining = pending.filter(r => !match(r));
     await browser.storage.session.set({ signerPending: remaining });
     await updateBadge(remaining.filter(r => !r.nip46InFlight).length);
   });
@@ -531,8 +533,9 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       if (approved.remember) {
         const kind = approved.rememberKind !== false ? event.kind : null;
         await permissions.save(origin, 'signEvent', kind ?? null, 'allow', accountId ?? undefined);
-        // Only batch-resolve requests with the same event kind
-        await resolveBatch(origin, 'signEvent', { allow: true, remember: false }, event.kind);
+        // Batch-resolve remaining requests with the same permKey as the one just approved
+        const batchPermKey = permissions.permissionKey('signEvent', event.kind);
+        await resolveBatch(origin, batchPermKey, { allow: true, remember: false });
       }
     }
   }

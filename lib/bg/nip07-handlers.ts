@@ -175,7 +175,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['signer_resolveBatch', async (params) => {
-        await signer.resolveBatch(params.origin as string, params.method as string, params.decision as unknown as RequestDecision, params.eventKind as number | undefined);
+        await signer.resolveBatch(params.origin as string, params.permKey as string, params.decision as unknown as RequestDecision);
         return { ok: true };
     }],
 
