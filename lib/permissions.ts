@@ -60,6 +60,15 @@ try {
 
 // Decisions: "allow" | "deny" | "ask"
 
+// Event kinds that are part of the "send a DM" flow. signEvent for any of
+// these collapses into the sendMessages permission so a single approval
+// covers both the encrypt step and the matching signEvent.
+//   4    NIP-04 legacy DM
+//   13   NIP-59 seal (wraps an encrypted DM)
+//   14   NIP-17 chat rumor
+//   1059 NIP-59 gift wrap
+const DM_SIGN_KINDS = new Set<number>([4, 13, 14, 1059]);
+
 /**
  * Map NIP-07 wire methods to logical permission keys.
  * signEvent is per-kind, encrypt/decrypt are combined groups.
@@ -72,6 +81,7 @@ export function permissionKey(method: string, kind?: number | null): string {
   if (method.startsWith('webln_')) return method;
 
   if (method === 'signEvent' && kind !== undefined && kind !== null) {
+    if (DM_SIGN_KINDS.has(kind)) return 'sendMessages';
     return `signEvent:${kind}`;
   }
   // Map encrypt/decrypt wire methods to logical permission groups.
@@ -268,6 +278,50 @@ export async function migrateForwardToAsk(): Promise<void> {
     }
     if (changed) {
       await browser.storage.local.set({ [STORAGE_KEY]: perms });
+    }
+  });
+}
+
+/**
+ * Migrate any stored signEvent:4/:13/:14/:1059 entries into "sendMessages".
+ * These DM-related kinds now share the same logical permission as the
+ * matching encrypt step, so a single approval covers the full DM flow.
+ *
+ * Merge rule: when both a DM-kind entry and "sendMessages" are present, the
+ * most restrictive value wins (deny > ask > allow). Conservative: a user who
+ * had previously denied any DM-related signEvent stays denied.
+ */
+export async function migrateDmKindsToSendMessages(): Promise<void> {
+  const DM_KEYS = ['signEvent:4', 'signEvent:13', 'signEvent:14', 'signEvent:1059'];
+  const RANK: Record<string, number> = { allow: 1, ask: 2, deny: 3 };
+  await _lock.run(async () => {
+    const perms = await load();
+    let changed = false;
+    for (const domain of Object.keys(perms)) {
+      const target = perms[domain];
+      for (const bucket of Object.keys(target)) {
+        const data = target[bucket] as PermissionBucket;
+        if (typeof data !== 'object') continue;
+        let chosen: PermissionDecision | undefined = data['sendMessages'];
+        for (const k of DM_KEYS) {
+          const incoming = data[k];
+          if (incoming) {
+            if (!chosen || (RANK[incoming] || 0) > (RANK[chosen] || 0)) {
+              chosen = incoming;
+            }
+            delete data[k];
+            changed = true;
+          }
+        }
+        if (chosen && data['sendMessages'] !== chosen) {
+          data['sendMessages'] = chosen;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      await browser.storage.local.set({ [STORAGE_KEY]: perms });
+      invalidateCache();
     }
   });
 }

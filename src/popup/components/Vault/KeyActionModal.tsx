@@ -5,6 +5,7 @@ import { IconClose, IconWarning } from '@assets';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.js';
+import { downloadFile } from '@shared/downloadFile.js';
 import { useVault } from '../../context/VaultContext';
 import styles from './KeyActionModal.module.css';
 
@@ -156,16 +157,6 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
 
   const copySeed = () => {
     navigator.clipboard.writeText(seedWords.join(' '));
-  };
-
-  const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const downloadSeedPlain = () => {

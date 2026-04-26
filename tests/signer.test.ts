@@ -156,6 +156,54 @@ describe('signer -- pending request queue', () => {
     assert.strictEqual(afterBatch.length, 0, 'Batch resolve should clear all matching');
   });
 
+  it('sending a NIP-04 DM produces a single sendMessages permKey for encrypt + signEvent kind 4', async () => {
+    // Regression: previously `signEvent:4` and `sendMessages` were distinct permKeys,
+    // so a single DM yielded two approval prompts. The DM-kind collapse should bring
+    // both wire calls under one approval card.
+    await setupVault();
+
+    const p1: Promise<any> = signer.handleNip04Encrypt(THEIR_PUBKEY_HEX, 'hello DM', 'chat.com');
+    const p2: Promise<any> = signer.handleSignEvent(
+      { kind: 4, content: 'ciphertext', tags: [['p', THEIR_PUBKEY_HEX]], created_at: Math.floor(Date.now() / 1000) },
+      'chat.com'
+    );
+
+    await new Promise<void>(r => setTimeout(r, 200));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 2, 'Both calls should be queued');
+    const permKeys = new Set(pending.map((r: any) => r.permKey));
+    assert.deepStrictEqual([...permKeys], ['sendMessages'], 'Encrypt and signEvent:4 should share sendMessages');
+
+    // A single batch resolve must clear both
+    await signer.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
+
+    await assert.rejects(p1, /User denied/);
+    await assert.rejects(p2, /User denied/);
+
+    await new Promise<void>(r => setTimeout(r, 50));
+    const after: any[] = await signer.getPending();
+    assert.strictEqual(after.length, 0, 'Single approval should clear the entire DM flow');
+  });
+
+  it('NIP-17 seal (signEvent kind 13) shares the sendMessages permKey', async () => {
+    await setupVault();
+
+    const p: Promise<any> = signer.handleSignEvent(
+      { kind: 13, content: 'sealed', tags: [['p', THEIR_PUBKEY_HEX]], created_at: Math.floor(Date.now() / 1000) },
+      'chat.com'
+    );
+
+    await new Promise<void>(r => setTimeout(r, 100));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1);
+    assert.strictEqual(pending[0].permKey, 'sendMessages', 'kind 13 should land under sendMessages');
+
+    await signer.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
+    await assert.rejects(p, /User denied/);
+  });
+
   it('resolveBatch clears requests across wire methods sharing a permKey (nip04+nip44)', async () => {
     // Regression: "Always allow" for DMs left the nip44 variant orphaned in pending
     // because resolveBatch filtered by wire method (nip04Encrypt) instead of permKey.
@@ -710,5 +758,147 @@ describe('signer -- edge cases', () => {
     // Clean up
     signer.resolveRequest(remaining[0].id, { allow: false, remember: false });
     await assert.rejects(p2, /User denied/);
+  });
+});
+
+// -- getPublicKey per-origin auto-approve cooldown --
+
+describe('signer -- getPublicKey cooldown', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+  });
+
+  it('approving getPublicKey auto-allows the next call from the same origin', async () => {
+    await setupVault();
+
+    // First call queues for approval
+    const first: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1, 'First call must prompt');
+    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+
+    const pubkey1: any = await first;
+    assert.strictEqual(pubkey1, TEST_PUBKEY_HEX);
+
+    // Second call within the cooldown window: no prompt, returns immediately
+    const pubkey2: any = await signer.handleGetPublicKey('chat.com');
+    assert.strictEqual(pubkey2, TEST_PUBKEY_HEX);
+
+    await new Promise<void>(r => setTimeout(r, 50));
+    const after: any[] = await signer.getPending();
+    assert.strictEqual(after.length, 0, 'Cooldown call must not enqueue a prompt');
+  });
+
+  it('cooldown does NOT cross origins', async () => {
+    await setupVault();
+
+    const first: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p1: any[] = await signer.getPending();
+    signer.resolveRequest(p1[0].id, { allow: true, remember: false });
+    await first;
+
+    // Different origin must still prompt
+    const second: Promise<any> = signer.handleGetPublicKey('other.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p2: any[] = await signer.getPending();
+    assert.strictEqual(p2.length, 1, 'Different origin must produce its own prompt');
+    assert.strictEqual(p2[0].origin, 'other.com');
+
+    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+    await assert.rejects(second, /User denied/);
+  });
+
+  it('denying getPublicKey does NOT create a cooldown', async () => {
+    await setupVault();
+
+    const first: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p1: any[] = await signer.getPending();
+    signer.resolveRequest(p1[0].id, { allow: false, remember: false });
+    await assert.rejects(first, /User denied/);
+
+    // Next call must still prompt — deny does not silently auto-allow
+    signer.handleGetPublicKey('chat.com').catch(() => {});
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p2: any[] = await signer.getPending();
+    assert.strictEqual(p2.length, 1, 'Deny must not seed a cooldown');
+
+    // Clean up
+    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+  });
+
+  it('account switch (rejectPendingForAccount) clears the cooldown', async () => {
+    await setupVault();
+
+    const first: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p1: any[] = await signer.getPending();
+    signer.resolveRequest(p1[0].id, { allow: true, remember: false });
+    await first;
+
+    // Simulate account switch — must invalidate the cooldown
+    await signer.rejectPendingForAccount('acct1');
+
+    signer.handleGetPublicKey('chat.com').catch(() => {});
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p2: any[] = await signer.getPending();
+    assert.strictEqual(p2.length, 1, 'Cooldown must not survive an account switch');
+
+    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+  });
+
+  it('cleanupStale clears the cooldown', async () => {
+    await setupVault();
+
+    const first: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p1: any[] = await signer.getPending();
+    signer.resolveRequest(p1[0].id, { allow: true, remember: false });
+    await first;
+
+    await signer.cleanupStale();
+
+    signer.handleGetPublicKey('chat.com').catch(() => {});
+    await new Promise<void>(r => setTimeout(r, 50));
+    const p2: any[] = await signer.getPending();
+    assert.strictEqual(p2.length, 1, 'cleanupStale must drop the cooldown');
+
+    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+  });
+
+  it('clearGetPubkeyCooldown(origin) invalidates only that origin', async () => {
+    await setupVault();
+
+    // Seed cooldown on two origins
+    for (const origin of ['chat.com', 'other.com']) {
+      const p: Promise<any> = signer.handleGetPublicKey(origin);
+      await new Promise<void>(r => setTimeout(r, 50));
+      const pending: any[] = await signer.getPending();
+      signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+      await p;
+    }
+
+    // Clear only chat.com
+    signer.clearGetPubkeyCooldown('chat.com');
+
+    // chat.com must re-prompt
+    signer.handleGetPublicKey('chat.com').catch(() => {});
+    await new Promise<void>(r => setTimeout(r, 50));
+    let pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1);
+    assert.strictEqual(pending[0].origin, 'chat.com');
+    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+
+    // other.com must still auto-allow
+    const otherPubkey: any = await signer.handleGetPublicKey('other.com');
+    assert.strictEqual(otherPubkey, TEST_PUBKEY_HEX);
+    await new Promise<void>(r => setTimeout(r, 50));
+    pending = await signer.getPending();
+    assert.strictEqual(pending.length, 0);
   });
 });

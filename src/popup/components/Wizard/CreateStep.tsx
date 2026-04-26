@@ -1,6 +1,7 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
+import { downloadFile } from '@shared/downloadFile.js';
 import { t } from '@lib/i18n.js';
 import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets';
 import Button from '@components/Button/Button';
@@ -92,13 +93,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   };
 
   const handleDownloadPlain = () => {
-    const blob = new Blob([mnemonic!], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nostr-seed-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(mnemonic!, `nostr-seed-${Date.now()}.txt`);
     setBackedUp(true);
   };
 
@@ -109,13 +104,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     try {
       const ncryptsec = await rpc<string>('onboarding_exportNcryptsec', { password: encPw });
       if (ncryptsec) {
-        const blob = new Blob([ncryptsec], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nostr-backup-${Date.now()}.ncryptsec`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadFile(ncryptsec, `nostr-backup-${Date.now()}.ncryptsec`);
         setEncModalOpen(false);
         setBackedUp(true);
       }

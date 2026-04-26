@@ -1,5 +1,6 @@
 import { useState, ChangeEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
+import { downloadFile } from '@shared/downloadFile.js';
 import { t } from '@lib/i18n.js';
 import { IconCopy, IconDownload, IconLock, IconWarning } from '@assets';
 import Button from '@components/Button/Button';
@@ -27,13 +28,7 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
   };
 
   const handleDownloadPlain = () => {
-    const blob = new Blob([mnemonic!], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nostr-seed-${Date.now()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadFile(mnemonic!, `nostr-seed-${Date.now()}.txt`);
     setSafetyShown(true);
   };
 
@@ -44,13 +39,7 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
     try {
       const ncryptsec = await rpc<string>('vault_exportNcryptsec', { password: encPw });
       if (ncryptsec) {
-        const blob = new Blob([ncryptsec], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `nostr-backup-${Date.now()}.ncryptsec`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadFile(ncryptsec, `nostr-backup-${Date.now()}.ncryptsec`);
         setEncModalOpen(false);
         setSafetyShown(true);
       }

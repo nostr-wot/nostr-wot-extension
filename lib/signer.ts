@@ -29,7 +29,7 @@ import browser from './browser.ts';
 import * as vault from './vault.ts';
 import * as permissions from './permissions.ts';
 import { AsyncLock } from './utils/async-lock.ts';
-import { SIGNER_REQUEST_TIMEOUT_MS, VAULT_POLL_INTERVAL_MS } from './constants.ts';
+import { SIGNER_REQUEST_TIMEOUT_MS, VAULT_POLL_INTERVAL_MS, GET_PUBLIC_KEY_COOLDOWN_MS } from './constants.ts';
 import { signEvent as cryptoSignEvent } from './crypto/nip01.ts';
 import { bytesToHex, hexToBytes, randomBytes } from './crypto/utils.ts';
 import { getPublicKey } from './crypto/secp256k1.ts';
@@ -52,6 +52,31 @@ const _lock = new AsyncLock();
 
 // NIP-46 client instances (keyed by account ID)
 const _nip46Clients: Map<string, BunkerSigner> = new Map();
+
+// Per-origin getPublicKey cooldown (origin → expiresAt epoch ms).
+// After the user approves a getPublicKey request, additional getPublicKey calls
+// from the same origin auto-approve until expiresAt. Cleared on account switch
+// and on cleanupStale.
+const _getPubkeyCooldown: Map<string, number> = new Map();
+
+function isGetPubkeyCooldownActive(origin: string): boolean {
+  const expires = _getPubkeyCooldown.get(origin);
+  if (!expires) return false;
+  if (Date.now() < expires) return true;
+  _getPubkeyCooldown.delete(origin);
+  return false;
+}
+
+/**
+ * Invalidate the getPublicKey auto-approve cooldown.
+ * Call when permissions for the origin are explicitly changed by the user
+ * so the cooldown cannot outlive a revoke.
+ * @param origin - origin to clear; if omitted, clears all origins.
+ */
+export function clearGetPubkeyCooldown(origin?: string): void {
+  if (origin) _getPubkeyCooldown.delete(origin);
+  else _getPubkeyCooldown.clear();
+}
 
 // NIP-46 abort controllers (keyed by nip46 request ID)
 const _nip46Aborts: Map<string, AbortController> = new Map();
@@ -111,6 +136,9 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
   if (decision === 'deny') throw new Error('Permission denied');
 
   if (decision === 'ask') {
+    if (isGetPubkeyCooldownActive(origin)) {
+      return getActivePublicKey();
+    }
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'getPublicKey',
@@ -121,6 +149,7 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
       accountId,
     });
     if (!approved.allow) throw new Error('User denied access');
+    _getPubkeyCooldown.set(origin, Date.now() + GET_PUBLIC_KEY_COOLDOWN_MS);
   }
 
   // getPublicKey is always local (we know the pubkey for all account types)
@@ -357,6 +386,7 @@ export async function cleanupStale(): Promise<void> {
   _timeoutTimers.clear();
   _pendingResolvers.clear();
   _unlockWaiters.clear();
+  _getPubkeyCooldown.clear();
   await _lock.run(async () => {
     await browser.storage.session.set({ signerPending: [] });
     await updateBadge(0);
@@ -370,6 +400,9 @@ export async function cleanupStale(): Promise<void> {
  */
 export async function rejectPendingForAccount(accountId: string): Promise<void> {
   if (!accountId) return;
+  // Account-switch invalidates any cooldown — never silently return the previous
+  // account's pubkey to a site after the user switched accounts.
+  _getPubkeyCooldown.clear();
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];

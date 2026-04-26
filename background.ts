@@ -299,11 +299,12 @@ signer.cleanupStale();
 (async () => {
     try {
         const data = await browser.storage.local.get('_permMigrationVersion');
-        if ((data as Record<string, unknown>)._permMigrationVersion !== 3) {
+        if ((data as Record<string, unknown>)._permMigrationVersion !== 4) {
             await signerPermissions.migrateToPerKind();
             await signerPermissions.migrateToPerAccount();
             await signerPermissions.migrateForwardToAsk();
-            await browser.storage.local.set({ _permMigrationVersion: 3 });
+            await signerPermissions.migrateDmKindsToSendMessages();
+            await browser.storage.local.set({ _permMigrationVersion: 4 });
         }
     } catch (e: unknown) {
         console.warn('[PERMISSIONS] Migration failed:', (e as Error).message);

@@ -142,11 +142,15 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['signer_clearPermissions', async (params) => {
         await signerPermissions.clear(params.domain as string, params.accountId as string);
+        signer.clearGetPubkeyCooldown(params.domain as string | undefined);
         return { ok: true };
     }],
 
     ['signer_savePermission', async (params) => {
         await signerPermissions.saveDirect(params.domain as string, params.methodName as string, params.decision as 'allow' | 'deny' | 'ask', params.accountId as string);
+        if (params.methodName === 'getPublicKey') {
+            signer.clearGetPubkeyCooldown(params.domain as string);
+        }
         return { ok: true };
     }],
 

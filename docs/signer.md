@@ -97,9 +97,11 @@ Permissions are stored in `browser.storage.local` under key `signerPermissions` 
 3. `*` -- domain wildcard
 4. Default: `"ask"`
 
+**DM kinds collapse into `sendMessages`**: `signEvent` for kinds `4` (NIP-04 DM), `13` (NIP-59 seal), `14` (NIP-17 chat rumor), and `1059` (NIP-59 gift wrap) resolves to the logical key `sendMessages`, which is also the key used by `nip04Encrypt` / `nip44Encrypt`. This means a single approval covers the entire send-DM flow (encrypt + sign), and a single Always-Allow does not produce a follow-up prompt for the matching `signEvent`. To deny only sign-of-DM-kind without affecting encrypt is no longer possible — it is one decision.
+
 **Key properties**:
 - Per-domain isolation: permissions for `allowed.com` do not affect `other.com`
-- Per-kind isolation: `signEvent:1` (notes) can be allowed while `signEvent:4` (DMs) is denied
+- Per-kind isolation: `signEvent:1` (notes) can be allowed independently of other kinds; DM-related kinds are intentionally grouped under `sendMessages`
 - Lock-independent: locking the vault does not change permission decisions
 
 ---

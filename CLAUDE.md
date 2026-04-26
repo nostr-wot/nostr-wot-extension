@@ -2,6 +2,53 @@
 
 **NEVER use git worktrees.** Always work directly on the main repo. The extension is loaded from the main repo's `dist/` — worktree builds go to a different directory and changes are invisible.
 
+# Safari Build & Install
+
+The Safari wrapper project already exists in `safari-xcode/`. Do NOT regenerate it with `safari-web-extension-converter` — that would wipe Xcode customizations. Instead, refresh the embedded Resources from `dist/`, bump the project version, and rebuild.
+
+**Existing config (do not ask the user — read here):**
+- Xcode project: `safari-xcode/Nostr WoT/Nostr WoT.xcodeproj`
+- Embedded resources: `safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/` (copy of `dist/`)
+- App bundle ID: `com.nostr-wot.extension`
+- Extension bundle ID: `com.nostr-wot.extension.Extension`
+- Apple team: `R3M572YZ8S` (DANDELION LABS JOINT STOCK COMPANY) — certs already on this machine
+- Archive output: `safari-build/NostrWoT.xcarchive`
+- App-Store export config: `safari-build/ExportOptions.plist` (App Store Connect upload)
+
+**Local install (dev / user testing) — what to run:**
+```bash
+# 1. Build the web extension
+npm run build
+
+# 2. Sync dist/ into the Xcode project's Resources/ (delete-mode rsync to drop removed files)
+rsync -a --delete dist/ "safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/"
+
+# 3. Bump MARKETING_VERSION in the pbxproj to match package.json
+NEW_VERSION=$(node -p "require('./package.json').version")
+sed -i '' "s/MARKETING_VERSION = [0-9.]*/MARKETING_VERSION = ${NEW_VERSION}/g" "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj/project.pbxproj"
+
+# 4. Build the .app — pass DEVELOPMENT_TEAM so signing uses the keychain's
+#    Apple Development cert instead of falling back to ad-hoc. With ad-hoc
+#    signing, Safari requires "Allow unsigned extensions" each session.
+xcodebuild -project "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj" \
+  -scheme "Nostr WoT" \
+  -configuration Debug \
+  -derivedDataPath safari-build/DerivedData \
+  DEVELOPMENT_TEAM=R3M572YZ8S \
+  CODE_SIGN_STYLE=Automatic \
+  build
+
+# 5. Open the built .app once to register the extension with Safari
+open "safari-build/DerivedData/Build/Products/Debug/Nostr WoT.app"
+```
+
+**User-side steps after `open` (cannot be automated):**
+1. Safari → Settings → Extensions → enable Nostr WoT.
+
+(Step 1 is the only one needed when the build is signed with `DEVELOPMENT_TEAM=R3M572YZ8S`. The "Allow unsigned extensions" Develop-menu toggle is only needed if you fell back to ad-hoc signing.)
+
+**App Store upload (release flow, separate from local install):** archive with `xcodebuild archive`, then `xcodebuild -exportArchive -exportOptionsPlist safari-build/ExportOptions.plist`. Don't do this without explicit user instruction.
+
 # Self-Review Checklist
 
 Every code change must pass through these gates. No exceptions, no shortcuts.

@@ -241,3 +241,92 @@ describe('permissions -- encrypt/decrypt key mapping', () => {
     assert.strictEqual(await permissions.check('test.com', 'nip44Encrypt'), 'deny');
   });
 });
+
+describe('permissions -- DM signEvent kinds collapse to sendMessages', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('signEvent kinds 4, 13, 14, 1059 map to sendMessages', () => {
+    assert.strictEqual(permissions.permissionKey('signEvent', 4), 'sendMessages');
+    assert.strictEqual(permissions.permissionKey('signEvent', 13), 'sendMessages');
+    assert.strictEqual(permissions.permissionKey('signEvent', 14), 'sendMessages');
+    assert.strictEqual(permissions.permissionKey('signEvent', 1059), 'sendMessages');
+  });
+
+  it('signEvent kinds outside the DM set keep per-kind permKey', () => {
+    assert.strictEqual(permissions.permissionKey('signEvent', 1), 'signEvent:1');
+    assert.strictEqual(permissions.permissionKey('signEvent', 0), 'signEvent:0');
+    assert.strictEqual(permissions.permissionKey('signEvent', 7), 'signEvent:7');
+    assert.strictEqual(permissions.permissionKey('signEvent', 1984), 'signEvent:1984');
+  });
+
+  it('save signEvent kind 4 lands in the sendMessages bucket and grants encrypt', async () => {
+    await permissions.save('test.com', 'signEvent', 4, 'allow');
+    assert.strictEqual(await permissions.check('test.com', 'signEvent', 4), 'allow');
+    // The shared key should also auto-grant encrypt + nip44 sign-of-DM
+    assert.strictEqual(await permissions.check('test.com', 'nip04Encrypt'), 'allow');
+    assert.strictEqual(await permissions.check('test.com', 'nip44Encrypt'), 'allow');
+    assert.strictEqual(await permissions.check('test.com', 'signEvent', 1059), 'allow');
+    // But should NOT leak into unrelated kinds
+    assert.strictEqual(await permissions.check('test.com', 'signEvent', 1), 'ask');
+  });
+});
+
+describe('permissions -- migrateDmKindsToSendMessages', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('moves a stored signEvent:4 entry into sendMessages', async () => {
+    // Seed raw storage with a pre-migration entry (using saveDirect to bypass mapping)
+    await permissions.saveDirect('chat.com', 'signEvent:4', 'allow');
+    await permissions.migrateDmKindsToSendMessages();
+    const bucket = await permissions.getForDomain('chat.com');
+    assert.strictEqual(bucket['signEvent:4'], undefined, 'old key should be removed');
+    assert.strictEqual(bucket['sendMessages'], 'allow', 'value should land under sendMessages');
+  });
+
+  it('merges multiple DM kinds with deny-wins semantics', async () => {
+    await permissions.saveDirect('chat.com', 'signEvent:4', 'allow');
+    await permissions.saveDirect('chat.com', 'signEvent:13', 'deny');
+    await permissions.saveDirect('chat.com', 'signEvent:1059', 'allow');
+    await permissions.migrateDmKindsToSendMessages();
+    const bucket = await permissions.getForDomain('chat.com');
+    assert.strictEqual(bucket['signEvent:4'], undefined);
+    assert.strictEqual(bucket['signEvent:13'], undefined);
+    assert.strictEqual(bucket['signEvent:1059'], undefined);
+    assert.strictEqual(bucket['sendMessages'], 'deny', 'deny wins over allow');
+  });
+
+  it('preserves a pre-existing sendMessages value when DM kinds are less restrictive', async () => {
+    await permissions.saveDirect('chat.com', 'sendMessages', 'deny');
+    await permissions.saveDirect('chat.com', 'signEvent:4', 'allow');
+    await permissions.migrateDmKindsToSendMessages();
+    const bucket = await permissions.getForDomain('chat.com');
+    assert.strictEqual(bucket['signEvent:4'], undefined);
+    assert.strictEqual(bucket['sendMessages'], 'deny', 'existing deny is preserved');
+  });
+
+  it('escalates a pre-existing sendMessages value when a DM kind is more restrictive', async () => {
+    await permissions.saveDirect('chat.com', 'sendMessages', 'allow');
+    await permissions.saveDirect('chat.com', 'signEvent:13', 'deny');
+    await permissions.migrateDmKindsToSendMessages();
+    const bucket = await permissions.getForDomain('chat.com');
+    assert.strictEqual(bucket['signEvent:13'], undefined);
+    assert.strictEqual(bucket['sendMessages'], 'deny', 'deny from migrating kind escalates');
+  });
+
+  it('leaves non-DM signEvent kinds untouched', async () => {
+    await permissions.saveDirect('chat.com', 'signEvent:1', 'allow');
+    await permissions.saveDirect('chat.com', 'signEvent:4', 'allow');
+    await permissions.migrateDmKindsToSendMessages();
+    const bucket = await permissions.getForDomain('chat.com');
+    assert.strictEqual(bucket['signEvent:1'], 'allow', 'non-DM kind survives');
+    assert.strictEqual(bucket['sendMessages'], 'allow');
+  });
+
+  it('is a no-op when there are no DM signEvent entries', async () => {
+    await permissions.saveDirect('chat.com', 'signEvent:1', 'allow');
+    await permissions.migrateDmKindsToSendMessages();
+    const bucket = await permissions.getForDomain('chat.com');
+    assert.strictEqual(bucket['signEvent:1'], 'allow');
+    assert.strictEqual(bucket['sendMessages'], undefined);
+  });
+});
