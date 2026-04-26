@@ -47,7 +47,40 @@ open "safari-build/DerivedData/Build/Products/Debug/Nostr WoT.app"
 
 (Step 1 is the only one needed when the build is signed with `DEVELOPMENT_TEAM=R3M572YZ8S`. The "Allow unsigned extensions" Develop-menu toggle is only needed if you fell back to ad-hoc signing.)
 
-**App Store upload (release flow, separate from local install):** archive with `xcodebuild archive`, then `xcodebuild -exportArchive -exportOptionsPlist safari-build/ExportOptions.plist`. Don't do this without explicit user instruction.
+**App Store upload (release flow, separate from local install):**
+
+Do not waste time looking for App Store Connect API keys, Issuer IDs, or app-specific passwords. They are NOT needed. Xcode's `IDEDistribution.framework` reads cached Apple ID credentials from a system keychain item that `security find-generic-password` cannot see — but `xcodebuild -exportArchive` with `destination=upload` can. Just run the upload; if there is no cached credential the command will print an obvious auth error and only then escalate.
+
+```bash
+# 1. Bump versions
+sed -i '' 's/"version": "OLD"/"version": "NEW"/' package.json manifest.json
+sed -i '' 's/MARKETING_VERSION = OLD/MARKETING_VERSION = NEW/g' \
+  "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj/project.pbxproj"
+
+# 2. Build & sync
+npm run build
+rsync -a --delete dist/ "safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/"
+
+# 3. Archive (Release config, automatic signing with the Dandelion team)
+rm -rf safari-build/NostrWoT.xcarchive
+xcodebuild archive \
+  -project "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj" \
+  -scheme "Nostr WoT" \
+  -configuration Release \
+  -archivePath safari-build/NostrWoT.xcarchive \
+  DEVELOPMENT_TEAM=R3M572YZ8S \
+  CODE_SIGN_STYLE=Automatic
+
+# 4. Re-sign for distribution AND upload to App Store Connect.
+#    The existing safari-build/ExportOptions.plist already has
+#    method=app-store-connect + destination=upload + teamID=R3M572YZ8S.
+xcodebuild -exportArchive \
+  -archivePath safari-build/NostrWoT.xcarchive \
+  -exportOptionsPlist safari-build/ExportOptions.plist \
+  -exportPath safari-build/Upload
+```
+
+The build then has to be selected in App Store Connect (Apps → Nostr WoT → TestFlight or App Store distribution) — that part is web-UI only.
 
 # Self-Review Checklist
 
