@@ -116,6 +116,30 @@ For accounts of type `nip46`, signing requests are routed to a `Nip46Client` ins
 - NIP-46 in-flight requests are tracked in `signerPending` but do NOT show badges (no user action needed).
 - `nostrconnect://` flow validates a shared secret before accepting the remote signer (see [Security](security.md#7-nip-46-connect-secret)).
 
+### 6.1 `nostrconnect://` QR onboarding — persisted, resumable sessions
+
+The QR onboarding flow (`lib/bg/onboarding-handlers.ts`) lets the user scan a `nostrconnect://` URI with their wallet app. The live `BunkerSigner` (with its relay subscription + `AbortController` + ephemeral secret) lives in the in-memory `_nostrConnectSessions` Map. In MV3 that Map is lost whenever the service worker suspends — which happens routinely while the user switches to their wallet to scan. To survive suspension, a **serializable mirror** of every session is persisted to `browser.storage.session`:
+
+```
+PersistedNcSession {
+  sessionId, secretKeyHex, localPubkey, relays,
+  nostrconnectUri, status: 'waiting' | 'connected' | 'error',
+  errorMessage?, signerPubkey?, createdAt
+}
+```
+
+- Mirrors are stored under `_ncSessions` (status fields) plus `_ncSessionSecrets` (the ephemeral secret). Per security policy **S-6**, the secret is never written in plaintext: it is XOR-split into a random `pad` and a `masked` half (the same scheme `setPendingOnboardingAccount` uses for privkeys), so neither half alone reveals it. `loadNcSession` reconstructs it via `xorBytes(pad, masked)` and zeroes the intermediates.
+- `ensureLiveSession(persisted)` returns the in-memory session if present, otherwise rebuilds it — reconstructing the secret key, creating a fresh `AbortController`, and calling `BunkerSigner.fromURI(...)` again. Its `.then`/`.catch` write `status: 'connected' + signerPubkey` / `status: 'error' + errorMessage` back to the mirror.
+- **Resume on re-init**: `onboarding_initNostrConnect` first looks for a non-expired `'waiting'` mirror; if found it rebuilds the live signer and returns the **same** `{ nostrconnectUri, sessionId }` rather than minting a second session (the QR the user is mid-scan stays valid). Only when no resumable session exists are old sessions torn down and a fresh one created.
+- **Poll** (`onboarding_pollNostrConnect`) loads the mirror and:
+  - missing → `{ expired: true }`
+  - older than `NC_TTL_MS` (5 min) → delete + `{ expired: true }`
+  - `status === 'error'` → delete + `{ error: errorMessage }` (a real failure is surfaced, **not** silently reported as expired)
+  - otherwise `ensureLiveSession`, and if the signer is ready, create the account, delete both the Map entry and the mirror, stash it as the pending onboarding account, and return `{ connected: true, account }` (with `privkey`/`nip46Config`/`mnemonic` stripped).
+- **Cancel** (`onboarding_cancelNostrConnect`) aborts the live signer (if any) and deletes the mirror. The popup only cancels on an explicit user action (Retry) — **not** on unmount/blur — so switching to the wallet app does not destroy the session.
+
+There is no client-side 120s timeout: `BunkerSigner.fromURI` receives only the abort signal, so it waits until the user connects, the abort fires, or the `NC_TTL_MS` mirror TTL lapses.
+
 ---
 
 ## 7. Activity Logging

@@ -5,6 +5,7 @@ import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../lib/vault.ts';
 import * as permissions from '../lib/permissions.ts';
 import * as signer from '../lib/signer.ts';
+import * as onboarding from '../lib/bg/onboarding-handlers.ts';
 import type { VaultPayload } from '../lib/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
@@ -900,5 +901,169 @@ describe('signer -- getPublicKey cooldown', () => {
     await new Promise<void>(r => setTimeout(r, 50));
     pending = await signer.getPending();
     assert.strictEqual(pending.length, 0);
+  });
+});
+
+// -- NostrConnect (nostrconnect:// QR) persisted/resumable session --
+
+describe('onboarding -- nostrconnect persisted session', () => {
+  const SIGNER_PUBKEY = '1111111111111111111111111111111111111111111111111111111111111111';
+  const FAKE_URI = 'nostrconnect://abc?relay=wss://relay.test&secret=deadbeef';
+
+  // Controls how the next BunkerSigner.fromURI() resolves.
+  let nextBehavior: 'pending' | 'resolve' | 'reject';
+  let rejectMessage: string;
+  let fromUriCalls: number;
+
+  const initHandler = onboarding.handlers.get('onboarding_initNostrConnect')!;
+  const pollHandler = onboarding.handlers.get('onboarding_pollNostrConnect')!;
+  const cancelHandler = onboarding.handlers.get('onboarding_cancelNostrConnect')!;
+
+  // Minimal fake BunkerSigner with a static fromURI matching nostr-tools shape.
+  const FakeBunkerSigner = {
+    fromURI(_sk: Uint8Array, _uri: string, _opts: unknown, signal?: AbortSignal): Promise<any> {
+      fromUriCalls++;
+      if (nextBehavior === 'resolve') {
+        return Promise.resolve({ bp: { pubkey: SIGNER_PUBKEY }, close: () => Promise.resolve() });
+      }
+      if (nextBehavior === 'reject') {
+        return Promise.reject(new Error(rejectMessage));
+      }
+      // 'pending': never settles on its own (mirrors waiting-for-scan).
+      return new Promise(() => { void signal; });
+    },
+  };
+
+  const fakeCreateUri = (_opts: unknown): string => FAKE_URI;
+
+  beforeEach(() => {
+    resetMockStorage();
+    nextBehavior = 'pending';
+    rejectMessage = 'relay refused';
+    fromUriCalls = 0;
+    onboarding.__simulateServiceWorkerRestart();
+    onboarding.__setNip46Deps({
+      BunkerSigner: FakeBunkerSigner as any,
+      createNostrConnectURI: fakeCreateUri as any,
+    });
+  });
+
+  async function readMirror(sessionId: string): Promise<any | undefined> {
+    const data = await browserMock.storage.session.get(['_ncSessions']) as Record<string, any>;
+    return (data._ncSessions || {})[sessionId];
+  }
+
+  it('init persists a waiting mirror and returns uri + sessionId', async () => {
+    const res: any = await initHandler({});
+    assert.strictEqual(res.nostrconnectUri, FAKE_URI);
+    assert.ok(res.sessionId, 'should return a sessionId');
+
+    const mirror = await readMirror(res.sessionId);
+    assert.ok(mirror, 'persisted mirror should exist');
+    assert.strictEqual(mirror.status, 'waiting');
+    assert.strictEqual(mirror.nostrconnectUri, FAKE_URI);
+    assert.strictEqual(mirror.localPubkey?.length, 64, 'localPubkey should be 32-byte hex');
+
+    // S-6: the secret must NOT be stored in plaintext on the mirror.
+    assert.strictEqual(mirror.secretKeyHex, undefined, 'mirror must not carry plaintext secret');
+    const secrets = (await browserMock.storage.session.get(['_ncSessionSecrets']) as any)._ncSessionSecrets;
+    assert.ok(secrets[res.sessionId].pad && secrets[res.sessionId].masked, 'secret stored XOR-split');
+  });
+
+  it('poll on an unknown sessionId returns expired', async () => {
+    const res: any = await pollHandler({ sessionId: 'does-not-exist' });
+    assert.deepStrictEqual(res, { expired: true });
+  });
+
+  it('SW restart: poll rebuilds via ensureLiveSession and does NOT return expired', async () => {
+    const init: any = await initHandler({});
+
+    // Drop the in-memory Map but keep storage.session (SW suspension).
+    onboarding.__simulateServiceWorkerRestart();
+    const callsBefore = fromUriCalls;
+
+    const res: any = await pollHandler({ sessionId: init.sessionId });
+    assert.strictEqual(res.expired, undefined, 'must not be expired after restart');
+    assert.strictEqual(res.connected, false, 'signer still waiting -> not connected');
+    assert.strictEqual(fromUriCalls, callsBefore + 1, 'ensureLiveSession should rebuild the signer');
+  });
+
+  it('signer resolves: poll returns connected + account without leaking secrets, mirror deleted', async () => {
+    nextBehavior = 'resolve';
+    const init: any = await initHandler({});
+
+    // Let the resolved signerPromise .then run.
+    await new Promise<void>(r => setTimeout(r, 20));
+
+    const res: any = await pollHandler({ sessionId: init.sessionId });
+    assert.strictEqual(res.connected, true);
+    assert.ok(res.account, 'account should be returned');
+    assert.strictEqual(res.account.type, 'nip46');
+    assert.strictEqual(res.account.pubkey, SIGNER_PUBKEY);
+    assert.strictEqual(res.account.privkey, undefined, 'privkey must not leak');
+    assert.strictEqual(res.account.nip46Config, undefined, 'nip46Config must not leak');
+    assert.strictEqual(res.account.mnemonic, undefined, 'mnemonic must not leak');
+
+    // Mirror must be gone after a successful connect.
+    assert.strictEqual(await readMirror(init.sessionId), undefined, 'mirror deleted on connect');
+  });
+
+  it('signer rejects: poll returns { error } and deletes the mirror', async () => {
+    nextBehavior = 'reject';
+    rejectMessage = 'relay handshake failed';
+    const init: any = await initHandler({});
+
+    // Let the rejected signerPromise .catch persist the error status.
+    await new Promise<void>(r => setTimeout(r, 20));
+
+    const res: any = await pollHandler({ sessionId: init.sessionId });
+    assert.strictEqual(res.error, 'relay handshake failed');
+    assert.strictEqual(res.expired, undefined, 'a real error must not masquerade as expired');
+    assert.strictEqual(await readMirror(init.sessionId), undefined, 'mirror deleted on error');
+  });
+
+  it('TTL expiry: poll returns expired and deletes the mirror', async () => {
+    const init: any = await initHandler({});
+
+    // Backdate createdAt beyond the 5-min TTL.
+    const data = await browserMock.storage.session.get(['_ncSessions']) as Record<string, any>;
+    data._ncSessions[init.sessionId].createdAt = Date.now() - (6 * 60 * 1000);
+    await browserMock.storage.session.set({ _ncSessions: data._ncSessions });
+
+    const res: any = await pollHandler({ sessionId: init.sessionId });
+    assert.deepStrictEqual(res, { expired: true });
+    assert.strictEqual(await readMirror(init.sessionId), undefined, 'expired mirror deleted');
+  });
+
+  it('cancel removes both the in-memory session and the persisted mirror', async () => {
+    const init: any = await initHandler({});
+    assert.ok(await readMirror(init.sessionId), 'mirror exists before cancel');
+
+    const res: any = await cancelHandler({ sessionId: init.sessionId });
+    assert.deepStrictEqual(res, { ok: true });
+    assert.strictEqual(await readMirror(init.sessionId), undefined, 'mirror deleted on cancel');
+
+    // A subsequent poll should now report expired (nothing to resume).
+    const poll: any = await pollHandler({ sessionId: init.sessionId });
+    assert.deepStrictEqual(poll, { expired: true });
+  });
+
+  it('init resumes an existing waiting session instead of creating a second', async () => {
+    const first: any = await initHandler({});
+    const callsAfterFirst = fromUriCalls;
+
+    // Simulate the popup remounting (e.g. after blur) and re-initing.
+    onboarding.__simulateServiceWorkerRestart();
+    const second: any = await initHandler({});
+
+    assert.strictEqual(second.sessionId, first.sessionId, 'must resume the same sessionId');
+    assert.strictEqual(second.nostrconnectUri, first.nostrconnectUri, 'must hand back the same URI');
+
+    // Only one persisted mirror should exist.
+    const sessions = (await browserMock.storage.session.get(['_ncSessions']) as any)._ncSessions;
+    assert.strictEqual(Object.keys(sessions).length, 1, 'no duplicate session created');
+
+    // The resume must rebuild (one extra fromURI) rather than mint fresh keys.
+    assert.strictEqual(fromUriCalls, callsAfterFirst + 1, 'resume rebuilds the live signer');
   });
 });

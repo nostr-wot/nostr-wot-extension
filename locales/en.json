@@ -720,6 +720,7 @@
   "wizard.nip46Waiting": "Waiting for connection...",
   "wizard.nip46Connected": "Connected!",
   "wizard.nip46Expired": "Connection timed out",
+  "wizard.nip46Error": "Connection failed",
   "wizard.nip46Retry": "Try again",
   "wizard.nip46CopyUri": "Copy URI",
   "wizard.nip46UriCopied": "Copied!",

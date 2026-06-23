@@ -19,7 +19,7 @@ function isValidBunkerUrl(url: string): boolean {
 
 const POLL_INTERVAL = 2500;
 
-type QrState = 'idle' | 'generating' | 'waiting' | 'connected' | 'expired';
+type QrState = 'idle' | 'generating' | 'waiting' | 'connected' | 'expired' | 'error';
 
 interface Nip46StepProps {
   onNext: (account: any) => void;
@@ -33,6 +33,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
   const [nostrconnectUri, setNostrconnectUri] = useState<string>('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionRef = useRef<string | null>(null);
 
@@ -46,6 +47,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
     setQrState('generating');
     setNostrconnectUri('');
     setSessionId(null);
+    setErrorMsg('');
     try {
       const result = await rpc<{ nostrconnectUri: string; sessionId: string }>('onboarding_initNostrConnect', {});
       setNostrconnectUri(result.nostrconnectUri);
@@ -69,11 +71,15 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
 
     pollRef.current = setInterval(async () => {
       try {
-        const result = await rpc<{ connected?: boolean; expired?: boolean; account?: any }>('onboarding_pollNostrConnect', { sessionId });
+        const result = await rpc<{ connected?: boolean; expired?: boolean; error?: string; account?: any }>('onboarding_pollNostrConnect', { sessionId });
         if (result.connected) {
           clearInterval(pollRef.current!);
           setQrState('connected');
           onNext(result.account);
+        } else if (result.error) {
+          clearInterval(pollRef.current!);
+          setErrorMsg(result.error);
+          setQrState('error');
         } else if (result.expired) {
           clearInterval(pollRef.current!);
           setQrState('expired');
@@ -87,12 +93,15 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [qrState, sessionId, onNext]);
 
-  // Cleanup session on unmount
+  // Cleanup on unmount: ONLY stop polling. Do NOT cancel the NostrConnect
+  // session here — the popup unmounts/blurs when the user switches to their
+  // wallet app to scan the QR, and cancelling would tear down the live signer
+  // mid-scan. The session is persisted (storage.session) and resumed by
+  // onboarding_initNostrConnect on the next mount. Cancellation is only an
+  // explicit user action (Retry).
   useEffect(() => {
     return () => {
-      if (sessionRef.current) {
-        rpc('onboarding_cancelNostrConnect', { sessionId: sessionRef.current }).catch(() => {});
-      }
+      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
@@ -105,6 +114,12 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
   };
 
   const handleRetry = () => {
+    // Explicitly tear down the failed/expired session before starting fresh.
+    if (sessionRef.current) {
+      rpc('onboarding_cancelNostrConnect', { sessionId: sessionRef.current }).catch(() => {});
+      sessionRef.current = null;
+    }
+    setErrorMsg('');
     setQrState('idle');
   };
 
@@ -187,6 +202,13 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
           {qrState === 'expired' && (
             <div className={nip46Styles.expiredState}>
               <p className={nip46Styles.expiredText}>{t('wizard.nip46Expired')}</p>
+              <Button onClick={handleRetry}>{t('wizard.nip46Retry')}</Button>
+            </div>
+          )}
+
+          {qrState === 'error' && (
+            <div className={nip46Styles.errorState}>
+              <p className={nip46Styles.errorText}>{errorMsg || t('wizard.nip46Error')}</p>
               <Button onClick={handleRetry}>{t('wizard.nip46Retry')}</Button>
             </div>
           )}

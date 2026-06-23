@@ -653,6 +653,7 @@
   "wizard.nip46Waiting": "Esperando conexión...",
   "wizard.nip46Connected": "¡Conectado!",
   "wizard.nip46Expired": "Conexión expirada",
+  "wizard.nip46Error": "Error de conexión",
   "wizard.nip46Retry": "Intentar de nuevo",
   "wizard.nip46CopyUri": "Copiar URI",
   "wizard.nip46UriCopied": "¡Copiado!",

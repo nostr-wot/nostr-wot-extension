@@ -31,6 +31,189 @@ interface NostrConnectSession {
 }
 const _nostrConnectSessions = new Map<string, NostrConnectSession>();
 
+// ── NIP-46 nip46 dependency injection (for tests) ──
+//
+// BunkerSigner.fromURI opens real relay connections, so tests override these.
+// Production code uses the real nostr-tools/nip46 implementations.
+interface Nip46Deps {
+    BunkerSigner: typeof BunkerSigner;
+    createNostrConnectURI: typeof createNostrConnectURI;
+}
+let _nip46Deps: Nip46Deps = { BunkerSigner, createNostrConnectURI };
+/** Test seam: override the nip46 implementations. Pass no args to reset. */
+export function __setNip46Deps(deps?: Partial<Nip46Deps>): void {
+    _nip46Deps = {
+        BunkerSigner: deps?.BunkerSigner ?? BunkerSigner,
+        createNostrConnectURI: deps?.createNostrConnectURI ?? createNostrConnectURI,
+    };
+}
+
+/**
+ * Test seam: drop the in-memory live-session Map WITHOUT aborting/closing the
+ * signers, simulating an MV3 service-worker suspension that loses RAM but keeps
+ * browser.storage.session. After this, `ensureLiveSession` must rebuild.
+ */
+export function __simulateServiceWorkerRestart(): void {
+    _nostrConnectSessions.clear();
+}
+
+// ── Persisted (serializable) NostrConnect session mirror ──
+//
+// The live BunkerSigner + relay subscription + AbortController held in
+// `_nostrConnectSessions` are lost when the MV3 service worker suspends while
+// the user is scanning the QR with their wallet app. To survive suspension we
+// persist the RECONSTRUCTABLE inputs to browser.storage.session and rebuild the
+// live signer on demand via `ensureLiveSession()`.
+//
+// S-6: `secretKeyHex` is never stored as plaintext. It is XOR-split across two
+// session-storage halves (pad + masked) exactly like setPendingOnboardingAccount
+// does for privkeys, so neither half alone reveals the ephemeral secret.
+
+interface PersistedNcSession {
+    sessionId: string;
+    secretKeyHex: string;
+    localPubkey: string;
+    relays: string[];
+    nostrconnectUri: string;
+    status: 'waiting' | 'connected' | 'error';
+    errorMessage?: string;
+    signerPubkey?: string;
+    createdAt: number;
+}
+
+const NC_TTL_MS = 5 * 60 * 1000;
+const NC_SESSIONS_KEY = '_ncSessions';
+const NC_SECRETS_KEY = '_ncSessionSecrets';
+
+/** On-disk shape: persisted mirrors keyed by sessionId, with secretKeyHex redacted. */
+type StoredNcSession = Omit<PersistedNcSession, 'secretKeyHex'>;
+/** S-6 split halves keyed by sessionId. */
+interface NcSecretSplit { pad: string; masked: string; }
+
+async function loadNcSession(sessionId: string): Promise<PersistedNcSession | null> {
+    const data = await browser.storage.session.get([NC_SESSIONS_KEY, NC_SECRETS_KEY]) as Record<string, unknown>;
+    const sessions = (data[NC_SESSIONS_KEY] as Record<string, StoredNcSession>) || {};
+    const stored = sessions[sessionId];
+    if (!stored) return null;
+    const secrets = (data[NC_SECRETS_KEY] as Record<string, NcSecretSplit>) || {};
+    const split = secrets[sessionId];
+    let secretKeyHex = '';
+    if (split) {
+        // S-6: reconstruct the ephemeral secret from the XOR-split halves
+        const pad = hexToBytes(split.pad);
+        const masked = hexToBytes(split.masked);
+        const secretBytes = xorBytes(pad, masked);
+        secretKeyHex = bytesToHex(secretBytes);
+        secretBytes.fill(0);
+        pad.fill(0);
+        masked.fill(0);
+    }
+    return { ...stored, secretKeyHex };
+}
+
+async function saveNcSession(session: PersistedNcSession): Promise<void> {
+    const data = await browser.storage.session.get([NC_SESSIONS_KEY, NC_SECRETS_KEY]) as Record<string, unknown>;
+    const sessions = (data[NC_SESSIONS_KEY] as Record<string, StoredNcSession>) || {};
+    const secrets = (data[NC_SECRETS_KEY] as Record<string, NcSecretSplit>) || {};
+
+    const { secretKeyHex, ...redacted } = session;
+    sessions[session.sessionId] = redacted;
+
+    // S-6: split the ephemeral secret across two halves via XOR
+    const secretBytes = hexToBytes(secretKeyHex);
+    const pad = crypto.getRandomValues(new Uint8Array(secretBytes.length));
+    const masked = xorBytes(secretBytes, pad);
+    secretBytes.fill(0);
+    secrets[session.sessionId] = { pad: bytesToHex(pad), masked: bytesToHex(masked) };
+    pad.fill(0);
+    masked.fill(0);
+
+    await browser.storage.session.set({ [NC_SESSIONS_KEY]: sessions, [NC_SECRETS_KEY]: secrets });
+}
+
+async function deleteNcSession(sessionId: string): Promise<void> {
+    const data = await browser.storage.session.get([NC_SESSIONS_KEY, NC_SECRETS_KEY]) as Record<string, unknown>;
+    const sessions = (data[NC_SESSIONS_KEY] as Record<string, StoredNcSession>) || {};
+    const secrets = (data[NC_SECRETS_KEY] as Record<string, NcSecretSplit>) || {};
+    delete sessions[sessionId];
+    delete secrets[sessionId];
+    await browser.storage.session.set({ [NC_SESSIONS_KEY]: sessions, [NC_SECRETS_KEY]: secrets });
+}
+
+async function loadAllNcSessions(): Promise<StoredNcSession[]> {
+    const data = await browser.storage.session.get([NC_SESSIONS_KEY]) as Record<string, unknown>;
+    const sessions = (data[NC_SESSIONS_KEY] as Record<string, StoredNcSession>) || {};
+    return Object.values(sessions);
+}
+
+/**
+ * Update only the status fields of a persisted mirror (leaves the secret split
+ * untouched). No-op if the mirror is gone (e.g. cancelled).
+ */
+async function updateNcSessionStatus(
+    sessionId: string,
+    patch: Partial<Pick<PersistedNcSession, 'status' | 'errorMessage' | 'signerPubkey'>>
+): Promise<void> {
+    const data = await browser.storage.session.get([NC_SESSIONS_KEY]) as Record<string, unknown>;
+    const sessions = (data[NC_SESSIONS_KEY] as Record<string, StoredNcSession>) || {};
+    const stored = sessions[sessionId];
+    if (!stored) return;
+    sessions[sessionId] = { ...stored, ...patch };
+    await browser.storage.session.set({ [NC_SESSIONS_KEY]: sessions });
+}
+
+/**
+ * Return the in-memory live session for a persisted mirror, rebuilding it (and
+ * the live BunkerSigner) if the service worker was suspended and the Map was lost.
+ */
+function ensureLiveSession(persisted: PersistedNcSession): NostrConnectSession {
+    const existing = _nostrConnectSessions.get(persisted.sessionId);
+    if (existing) return existing;
+
+    const secretKey = hexToBytes(persisted.secretKeyHex);
+    const abortController = new AbortController();
+    const session: NostrConnectSession = {
+        signerPromise: null!,
+        signer: null,
+        secretKey,
+        localPubkey: persisted.localPubkey,
+        relays: persisted.relays,
+        error: null,
+        abortController,
+    };
+
+    session.signerPromise = _nip46Deps.BunkerSigner.fromURI(
+        secretKey,
+        persisted.nostrconnectUri,
+        { onauth(url: string) {
+            if (!url.startsWith('https://')) {
+                console.warn('[NIP-46] rejected non-HTTPS auth_url:', url);
+                return;
+            }
+            browser.tabs.create({ url });
+        } },
+        abortController.signal
+    );
+    session.signerPromise
+        .then(signer => {
+            session.signer = signer;
+            updateNcSessionStatus(persisted.sessionId, {
+                status: 'connected',
+                signerPubkey: signer.bp.pubkey,
+            }).catch(() => {});
+        })
+        .catch(err => {
+            session.error = err;
+            updateNcSessionStatus(persisted.sessionId, {
+                status: 'error',
+                errorMessage: err?.message || String(err),
+            }).catch(() => {});
+        });
+
+    _nostrConnectSessions.set(persisted.sessionId, session);
+    return session;
+}
+
 // ── Pending onboarding account ──
 
 let _pendingOnboardingAccount: Account | null = null;
@@ -186,12 +369,30 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['onboarding_initNostrConnect', async () => {
-        // Clean up existing sessions
+        // Resume a still-valid waiting session instead of orphaning it. The popup
+        // re-inits on mount (e.g. after the SW suspended during a QR scan); if a
+        // 'waiting' mirror is still alive, rebuild its live signer and hand back
+        // the SAME uri/sessionId so the QR the user is scanning stays valid.
+        const stored = await loadAllNcSessions();
+        const now = Date.now();
+        const resumable = stored.find(s => s.status === 'waiting' && (now - s.createdAt) < NC_TTL_MS);
+        if (resumable) {
+            const persisted = await loadNcSession(resumable.sessionId);
+            if (persisted) {
+                ensureLiveSession(persisted);
+                return { nostrconnectUri: persisted.nostrconnectUri, sessionId: persisted.sessionId };
+            }
+        }
+
+        // Clean up existing sessions (live + persisted mirrors)
         for (const [oldId, oldSession] of _nostrConnectSessions) {
             oldSession.abortController.abort();
             if (oldSession.signer) oldSession.signer.close().catch(() => {});
             oldSession.secretKey.fill(0);
             _nostrConnectSessions.delete(oldId);
+        }
+        for (const s of stored) {
+            await deleteNcSession(s.sessionId);
         }
 
         const NIP46_RELAYS = ['wss://relay.nsec.app', ...DEFAULT_RELAYS];
@@ -199,7 +400,7 @@ export const handlers = new Map<string, HandlerFn>([
         const ncSecretKey = randomBytes(32);
         const ncLocalPubkey = bytesToHex(getPublicKey(ncSecretKey));
 
-        const nostrconnectUri = createNostrConnectURI({
+        const nostrconnectUri = _nip46Deps.createNostrConnectURI({
             clientPubkey: ncLocalPubkey,
             relays: NIP46_RELAYS,
             secret: connectSecret,
@@ -208,8 +409,21 @@ export const handlers = new Map<string, HandlerFn>([
             image: 'https://nostr-wot.com/icon-512.png'
         });
 
-        const abortController = new AbortController();
         const sessionId = randomHex(8);
+
+        // Persist the reconstructable inputs BEFORE building the live signer so
+        // a suspension mid-build can still be resumed.
+        await saveNcSession({
+            sessionId,
+            secretKeyHex: bytesToHex(ncSecretKey),
+            localPubkey: ncLocalPubkey,
+            relays: NIP46_RELAYS,
+            nostrconnectUri,
+            status: 'waiting',
+            createdAt: Date.now(),
+        });
+
+        const abortController = new AbortController();
         const session: NostrConnectSession = {
             signerPromise: null!,
             signer: null,
@@ -220,7 +434,7 @@ export const handlers = new Map<string, HandlerFn>([
             abortController,
         };
 
-        session.signerPromise = BunkerSigner.fromURI(
+        session.signerPromise = _nip46Deps.BunkerSigner.fromURI(
             ncSecretKey,
             nostrconnectUri,
             { onauth(url: string) {
@@ -233,16 +447,43 @@ export const handlers = new Map<string, HandlerFn>([
             abortController.signal
         );
         session.signerPromise
-            .then(signer => { session.signer = signer; })
-            .catch(err => { session.error = err; });
+            .then(signer => {
+                session.signer = signer;
+                updateNcSessionStatus(sessionId, {
+                    status: 'connected',
+                    signerPubkey: signer.bp.pubkey,
+                }).catch(() => {});
+            })
+            .catch(err => {
+                session.error = err;
+                updateNcSessionStatus(sessionId, {
+                    status: 'error',
+                    errorMessage: err?.message || String(err),
+                }).catch(() => {});
+            });
 
         _nostrConnectSessions.set(sessionId, session);
         return { nostrconnectUri, sessionId };
     }],
 
     ['onboarding_pollNostrConnect', async (params) => {
-        const session = _nostrConnectSessions.get(params.sessionId as string);
-        if (!session) return { expired: true };
+        const sessionId = params.sessionId as string;
+        const persisted = await loadNcSession(sessionId);
+        if (!persisted) return { expired: true };
+
+        if (Date.now() - persisted.createdAt >= NC_TTL_MS) {
+            await deleteNcSession(sessionId);
+            return { expired: true };
+        }
+
+        // A previous poll (or the .catch wiring) already recorded a fatal error.
+        if (persisted.status === 'error') {
+            await deleteNcSession(sessionId);
+            return { error: persisted.errorMessage || 'Connection failed' };
+        }
+
+        // Rebuild the live signer if the SW suspended and dropped the Map.
+        const session = ensureLiveSession(persisted);
 
         if (session.signer) {
             const signerPk = session.signer.bp.pubkey;
@@ -252,26 +493,30 @@ export const handlers = new Map<string, HandlerFn>([
                 signerPk, primaryRelay,
                 localPrivkeyHex, session.localPubkey
             );
-            _nostrConnectSessions.delete(params.sessionId as string);
+            _nostrConnectSessions.delete(sessionId);
+            await deleteNcSession(sessionId);
             await setPendingOnboardingAccount(acct);
             const { nip46Config: _n46, privkey: _pk, mnemonic: _mn, ...safeNc } = acct;
             return { connected: true, account: safeNc };
         }
         if (session.error) {
-            _nostrConnectSessions.delete(params.sessionId as string);
-            return { expired: true };
+            _nostrConnectSessions.delete(sessionId);
+            await deleteNcSession(sessionId);
+            return { error: session.error.message || 'Connection failed' };
         }
         return { connected: false };
     }],
 
     ['onboarding_cancelNostrConnect', async (params) => {
-        const session2 = _nostrConnectSessions.get(params.sessionId as string);
+        const sessionId = params.sessionId as string;
+        const session2 = _nostrConnectSessions.get(sessionId);
         if (session2) {
             session2.abortController.abort();
             if (session2.signer) session2.signer.close().catch(() => {});
             session2.secretKey.fill(0);
-            _nostrConnectSessions.delete(params.sessionId as string);
+            _nostrConnectSessions.delete(sessionId);
         }
+        await deleteNcSession(sessionId);
         return { ok: true };
     }],
 
