@@ -29,6 +29,10 @@ const STORAGE_KEY = 'keyVault';
 const VAULT_VERSION = 1;
 const PBKDF2_ITERATIONS = 210000;
 const AUTO_LOCK_DEFAULT_MS = 15 * 60 * 1000; // 15 minutes
+const KEEPALIVE_ALARM = 'vault-keepalive';
+// Chrome clamps alarm periods to a 30s (0.5 min) minimum; we just need any
+// periodic wake to reset the service-worker idle timer while unlocked.
+const KEEPALIVE_PERIOD_MIN = 0.5;
 
 let _cryptoKey: CryptoKey | null = null;
 let _decrypted: MemoryVaultPayload | null = null;
@@ -117,6 +121,33 @@ function resetAutoLock(): void {
   }
 }
 
+/**
+ * Arm a periodic alarm that keeps the Chrome MV3 service worker alive while the
+ * vault is unlocked in timed-lock mode. Without this the SW can be torn down
+ * (e.g. on page refresh) long before the auto-lock interval, wiping the
+ * in-memory key and making the vault appear locked prematurely (bug #10).
+ *
+ * We do NOT persist the decrypted key — only hold the SW open. No-op where
+ * browser.alarms is unavailable (Safari persistent background page, tests).
+ */
+function armKeepAlive(): void {
+  if (_autoLockMs <= 0) return; // "Never lock" mode auto-unlocks on restart anyway
+  const alarms = (browser as typeof chrome).alarms;
+  if (!alarms?.create) return;
+  try {
+    alarms.create(KEEPALIVE_ALARM, { periodInMinutes: KEEPALIVE_PERIOD_MIN });
+  } catch { /* no-op where alarms are unavailable */ }
+}
+
+/** Clear the keep-alive alarm. No-op where browser.alarms is unavailable. */
+function clearKeepAlive(): void {
+  const alarms = (browser as typeof chrome).alarms;
+  if (!alarms?.clear) return;
+  try {
+    alarms.clear(KEEPALIVE_ALARM);
+  } catch { /* no-op where alarms are unavailable */ }
+}
+
 // -- Public API --
 
 /**
@@ -159,6 +190,7 @@ export async function create(password: string, payload: VaultPayload): Promise<v
     activeAccountId: payload.activeAccountId,
   };
   resetAutoLock();
+  armKeepAlive();
 }
 
 /**
@@ -186,9 +218,32 @@ export async function unlock(password: string): Promise<boolean> {
     };
     _cryptoKey = key;
     resetAutoLock();
+    armKeepAlive();
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Restore the configured auto-lock interval from storage and (re)arm the timer.
+ *
+ * `_autoLockMs` is module-level in-memory state that resets to
+ * AUTO_LOCK_DEFAULT_MS (15 min) on every service-worker cold start. Without
+ * re-reading the persisted `autoLockMs`, a configured interval silently reverts
+ * to 15 minutes after the SW restarts (bug #10). Call this after a successful
+ * unlock and on background startup so the user's chosen interval — not the
+ * default — governs locking.
+ */
+export async function restoreAutoLockSetting(): Promise<void> {
+  const data = await browser.storage.local.get(['autoLockMs']) as Record<string, number>;
+  _autoLockMs = data.autoLockMs ?? AUTO_LOCK_DEFAULT_MS;
+  resetAutoLock();
+  // Re-sync keep-alive to the restored mode (only relevant when already unlocked).
+  if (_cryptoKey && _autoLockMs > 0) {
+    armKeepAlive();
+  } else {
+    clearKeepAlive();
   }
 }
 
@@ -208,6 +263,7 @@ export function lock(): void {
     clearTimeout(_autoLockTimer);
     _autoLockTimer = null;
   }
+  clearKeepAlive();
 }
 
 /**
@@ -421,6 +477,12 @@ export function setAutoLockTimeout(ms: number): void {
     console.warn('[Vault] Auto-lock disabled. Vault encrypted with empty password — reduced security.');
   }
   resetAutoLock();
+  // Keep-alive only runs in timed mode while unlocked; re-sync it to the new mode.
+  if (_cryptoKey && ms > 0) {
+    armKeepAlive();
+  } else {
+    clearKeepAlive();
+  }
 }
 
 /**

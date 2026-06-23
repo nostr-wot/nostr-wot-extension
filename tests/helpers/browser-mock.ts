@@ -50,6 +50,31 @@ const local = createStorageArea();
 const sync = createStorageArea();
 const session = createStorageArea();
 
+// Minimal chrome.alarms stub for keep-alive tests.
+const _alarms = new Map<string, { periodInMinutes?: number }>();
+type AlarmListener = (alarm: { name: string }) => void;
+const _alarmListeners: AlarmListener[] = [];
+const alarms = {
+  create: (name: string, info?: { periodInMinutes?: number }) => { _alarms.set(name, info || {}); },
+  clear: (name: string) => Promise.resolve(_alarms.delete(name)),
+  get: (name: string) => Promise.resolve(_alarms.get(name)),
+  onAlarm: {
+    addListener: (fn: AlarmListener) => { _alarmListeners.push(fn); },
+    removeListener: (fn: AlarmListener) => {
+      const i = _alarmListeners.indexOf(fn);
+      if (i >= 0) _alarmListeners.splice(i, 1);
+    },
+  },
+  /** Test helper: true if an alarm with this name is currently armed. */
+  _has: (name: string) => _alarms.has(name),
+  _reset: () => { _alarms.clear(); _alarmListeners.length = 0; },
+};
+
+/** Test helper: whether a named alarm is currently armed (e.g. 'vault-keepalive'). */
+export function hasAlarm(name: string): boolean {
+  return _alarms.has(name);
+}
+
 // storage.onChanged listener support
 type ChangeListener = (changes: Record<string, { newValue?: unknown }>, area: string) => void;
 const changeListeners: ChangeListener[] = [];
@@ -90,6 +115,7 @@ wrapWithOnChanged(sync, 'sync');
 wrapWithOnChanged(session, 'session');
 
 const mock = {
+  alarms,
   storage: {
     local,
     sync,
@@ -131,6 +157,7 @@ export function resetMockStorage(): void {
   local._reset();
   sync._reset();
   session._reset();
+  alarms._reset();
   // Fire onChanged with a wildcard marker so all in-memory caches are invalidated
   fireOnChanged({ signerPermissions: {}, signerUseGlobalDefaults: {}, allowedDomains: {}, dismissedDomains: {} }, 'local');
 }

@@ -1,6 +1,7 @@
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach, mock as nodeMock } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { resetMockStorage } from './helpers/browser-mock.ts';
+import { resetMockStorage, hasAlarm } from './helpers/browser-mock.ts';
+import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../lib/vault.ts';
 import type { VaultPayload } from '../lib/types.ts';
 
@@ -351,5 +352,111 @@ describe('vault -- destroy', () => {
     assert.ok(vault.getActivePubkey());
     await vault.destroy();
     assert.strictEqual(vault.getActivePubkey(), null);
+  });
+});
+
+describe('vault -- restoreAutoLockSetting (bug #10: interval reverts to 15min on SW restart)', () => {
+  const DEFAULT_MS = 15 * 60 * 1000;
+
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+    nodeMock.timers.enable({ apis: ['setTimeout'] });
+  });
+
+  afterEach(() => {
+    vault.lock();
+    nodeMock.timers.reset();
+  });
+
+  it('loads the persisted autoLockMs and arms that interval', async () => {
+    const persistedMs = 60 * 1000; // 1 minute (not the 15-min default)
+    await browserMock.storage.local.set({ autoLockMs: persistedMs });
+    await vault.create(TEST_PASSWORD, makePayload());
+
+    // Simulate SW cold start: in-memory _autoLockMs reverts to default; restore it.
+    await vault.restoreAutoLockSetting();
+    assert.strictEqual(vault.isLocked(), false);
+
+    // Advancing just short of the persisted interval must NOT lock.
+    nodeMock.timers.tick(persistedMs - 1);
+    assert.strictEqual(vault.isLocked(), false);
+
+    // Crossing the persisted interval locks.
+    nodeMock.timers.tick(2);
+    assert.strictEqual(vault.isLocked(), true);
+  });
+
+  it('defaults to AUTO_LOCK_DEFAULT_MS when storage is empty', async () => {
+    // No autoLockMs persisted.
+    await vault.create(TEST_PASSWORD, makePayload());
+    await vault.restoreAutoLockSetting();
+
+    // Just before the 15-min default: still unlocked.
+    nodeMock.timers.tick(DEFAULT_MS - 1);
+    assert.strictEqual(vault.isLocked(), false);
+
+    // At the default: locks.
+    nodeMock.timers.tick(2);
+    assert.strictEqual(vault.isLocked(), true);
+  });
+
+  it('autoLockMs === 0 (never lock) disables the timer', async () => {
+    await browserMock.storage.local.set({ autoLockMs: 0 });
+    await vault.create('', makePayload());
+    await vault.restoreAutoLockSetting();
+
+    // Advance well past the default; vault must stay unlocked.
+    nodeMock.timers.tick(DEFAULT_MS * 2);
+    assert.strictEqual(vault.isLocked(), false);
+  });
+
+  it('regression: a persisted non-default interval governs locking after restore', async () => {
+    const persistedMs = 5 * 60 * 1000; // 5 minutes
+    await browserMock.storage.local.set({ autoLockMs: persistedMs });
+    await vault.create(TEST_PASSWORD, makePayload());
+    await vault.restoreAutoLockSetting();
+
+    // At the 15-min default the vault would have locked — assert it has NOT,
+    // proving the persisted 5-min interval (already elapsed) is what governs.
+    nodeMock.timers.tick(persistedMs + 1);
+    assert.strictEqual(vault.isLocked(), true);
+  });
+});
+
+describe('vault -- service-worker keep-alive alarm', () => {
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  afterEach(() => {
+    vault.lock();
+  });
+
+  it('arms the keep-alive alarm on unlock in timed mode', async () => {
+    await browserMock.storage.local.set({ autoLockMs: 60 * 1000 });
+    await vault.create(TEST_PASSWORD, makePayload());
+    vault.lock();
+    assert.strictEqual(hasAlarm('vault-keepalive'), false);
+
+    await vault.unlock(TEST_PASSWORD);
+    assert.strictEqual(hasAlarm('vault-keepalive'), true);
+  });
+
+  it('clears the keep-alive alarm on lock', async () => {
+    await browserMock.storage.local.set({ autoLockMs: 60 * 1000 });
+    await vault.create(TEST_PASSWORD, makePayload());
+    assert.strictEqual(hasAlarm('vault-keepalive'), true);
+
+    vault.lock();
+    assert.strictEqual(hasAlarm('vault-keepalive'), false);
+  });
+
+  it('does not arm the keep-alive alarm in never-lock mode', async () => {
+    await browserMock.storage.local.set({ autoLockMs: 0 });
+    await vault.create('', makePayload());
+    vault.setAutoLockTimeout(0);
+    assert.strictEqual(hasAlarm('vault-keepalive'), false);
   });
 });

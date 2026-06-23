@@ -288,6 +288,22 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
     });
 });
 
+// Keep-alive alarm: while the vault is unlocked in timed-lock mode, lib/vault.ts
+// arms a periodic 'vault-keepalive' alarm. Each tick does a trivial async
+// storage read, which resets the Chrome MV3 service-worker idle timer and keeps
+// the in-memory decrypted key alive until the configured auto-lock fires —
+// instead of the SW being torn down early (e.g. on page refresh, bug #10).
+// Guarded for environments without browser.alarms (Safari persistent background
+// page, tests).
+if (browser.alarms?.onAlarm) {
+    browser.alarms.onAlarm.addListener((alarm: chrome.alarms.Alarm) => {
+        if (alarm.name === 'vault-keepalive') {
+            // Trivial read just to reset the SW idle timer; result is unused.
+            browser.storage.local.get('autoLockMs').catch(() => {});
+        }
+    });
+}
+
 // ── Startup (runs AFTER listeners are registered, so messages during async
 // init don't race against listener registration) ──
 
@@ -314,6 +330,10 @@ signer.cleanupStale();
 // Auto-unlock vault when auto-lock is "Never"
 (async () => {
     try {
+        // Restore the configured auto-lock interval on cold start. _autoLockMs is
+        // module-level in-memory state that otherwise reverts to the 15-min default
+        // every time the service worker restarts (bug #10).
+        await vault.restoreAutoLockSetting();
         const data = await browser.storage.local.get(['autoLockMs', 'activeAccountId']);
         if (((data as Record<string, unknown>).autoLockMs ?? 900000) === 0 && await vault.exists()) {
             const ok = await vault.unlock('');

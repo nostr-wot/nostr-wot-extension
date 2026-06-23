@@ -37,6 +37,9 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_unlock', async (params) => {
         const unlockResult = await vault.unlock(params.password as string);
         if (unlockResult) {
+            // Re-arm the persisted auto-lock interval (not the 15-min default that
+            // _autoLockMs resets to on every service-worker cold start). See bug #10.
+            await vault.restoreAutoLockSetting();
             const unlockData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
             if (unlockData.activeAccountId) {
                 try {
