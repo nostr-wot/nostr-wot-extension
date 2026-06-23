@@ -9,7 +9,7 @@ import styles from './TopBar.module.css';
 
 export default function GlobeButton() {
   const [domain, setDomain] = useState<string | null>(null);
-  const [connected, setConnected] = useState<boolean>(false);
+  const [connected, setConnected] = useState<boolean | null>(null); // null = loading
   const [open, setOpen] = useState<boolean>(false);
   const [disconnecting, setDisconnecting] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -22,10 +22,11 @@ export default function GlobeButton() {
           const url = new URL(tab.url);
           if (url.protocol === 'http:' || url.protocol === 'https:') {
             setDomain(url.hostname);
-            const hasPermission = await browser.permissions.contains({
-              origins: [`*://${url.hostname}/*`],
-            });
-            setConnected(hasPermission);
+            // Derive connection from the allowlist (single source of truth),
+            // not browser.permissions.contains() — granting <all_urls> would
+            // make that read "connected" on every site.
+            const allowed = await rpc<string[]>('getAllowedDomains').catch(() => null);
+            setConnected(allowed ? allowed.includes(url.hostname) : false);
           }
         }
       } catch {
@@ -86,7 +87,11 @@ export default function GlobeButton() {
         onClick={() => setOpen((v) => !v)}
       >
         <IconGlobe size={16} />
-        <span className={`${styles.globeDot} ${connected ? styles.globeConnected : styles.globeDisconnected}`} />
+        {/* Neutral/blank dot while loading (connected === null) so we never
+            flash a misleading "connected" or "not connected" state. */}
+        {connected !== null && (
+          <span className={`${styles.globeDot} ${connected ? styles.globeConnected : styles.globeDisconnected}`} />
+        )}
       </button>
 
       {open && (
@@ -96,7 +101,11 @@ export default function GlobeButton() {
           )}
           <div className={styles.globeDomain}>{domain || '—'}</div>
           <div className={styles.globeStatus}>
-            {connected ? t('globe.connected') : t('globe.notConnected')}
+            {connected === null
+              ? t('common.loading')
+              : connected
+                ? t('globe.connected')
+                : t('globe.notConnected')}
           </div>
           {connected && domain && (
             <Button
@@ -109,7 +118,7 @@ export default function GlobeButton() {
               {disconnecting ? t('common.loading') : t('common.disconnect')}
             </Button>
           )}
-          {!connected && domain && (
+          {connected === false && domain && (
             <Button small onClick={handleConnect} style={{ width: '100%' }}>
               {t('common.connect')}
             </Button>

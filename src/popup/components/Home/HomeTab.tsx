@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc, rpcNotify } from '@shared/rpc.ts';
 import { getDomainFromUrl } from '@shared/url.ts';
+import { resolveSiteState, shouldAutoAddDomain } from '@shared/siteState.ts';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
@@ -50,6 +51,9 @@ function useSiteState(active: Account | null) {
   const [canInject, setCanInject] = useState<boolean>(false);
 
   const loadHomeState = useCallback(async () => {
+    // Re-enter the loading state so re-runs (e.g. when `active` resolves) don't
+    // linger on a stale connected view while async detection is in flight.
+    setSiteState(null);
     let resolvedDomain: string | null = null;
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
@@ -81,27 +85,25 @@ function useSiteState(active: Account | null) {
       const identityDisabled = identityR.status === 'fulfilled' ? (identityR.value || []) : [];
       const perms = permsR.status === 'fulfilled' ? (permsR.value || {}) : null;
 
-      if (allowedDomains === null && perms === null) {
+      const state = resolveSiteState(allowedDomains, perms, d);
+      if (state === 'error') {
         setSiteState('error');
         return;
       }
 
       const badgeDisabled = new Set<string>((badgeDisabledData.badgeDisabledSites as string[] | undefined) || []);
       const identityDisabledSet = new Set<string>(identityDisabled || []);
-      const inject = (allowedDomains || []).includes(d);
-      const permObj = perms || {};
-      const hp = Object.keys(permObj).length > 0;
 
       // If site has signer permissions but isn't in allowedDomains yet, add it
-      if (hp && !inject) {
+      if (shouldAutoAddDomain(allowedDomains, perms, d)) {
         rpc('addAllowedDomain', { domain: d }).catch(() => {});
       }
 
-      setCanInject(inject || hp);
+      setCanInject(state === 'connected');
       setIdentityEnabled(!identityDisabledSet.has(d));
       setWotEnabled(!badgeDisabled.has(d));
 
-      setSiteState(inject || hp ? 'connected' : 'notConnected');
+      setSiteState(state);
     } catch {
       setSiteState(resolvedDomain ? 'error' : 'empty');
     }
@@ -351,6 +353,21 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
             }
             text={t('home.navigateToConnect')}
             hint={t('home.siteControlsHint')}
+          />
+        </Card>
+      </div>
+    );
+  }
+
+  if (siteState === null) {
+    return (
+      <div className={styles.centerWrap}>
+        <Card className={styles.emptyState}>
+          <EmptyState
+            icon={
+              <IconGlobe size={32} strokeWidth="1.5" />
+            }
+            text={t('common.loading')}
           />
         </Card>
       </div>
