@@ -1,11 +1,15 @@
 /* Popup-specific body sizing (width/min-height in index.html for immediate apply) */
+/* Opaque root background. A transparent root under the blurred/scaled .backdrop
+   layer triggers a Chrome compositing bug where the popup's first frame isn't
+   painted until a forced repaint (switching tabs), so the popup opens blank.
+   The .backdrop screenshot still overlays this, so the visual is unchanged. */
 :global(html) {
-  background: transparent;
+  background: #f8f8fc;
 }
 
 :global(body) {
   padding: 8px;
-  background: transparent;
+  background: #f8f8fc;
   position: relative;
 }
 

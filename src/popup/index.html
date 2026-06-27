@@ -10,20 +10,32 @@
     module) hasn't applied yet, the first open is mis-sized and only
     re-opens after CSS is cached look correct. Declaring fixed html/body
     dimensions and the root flex layout here removes that race.
+
+    Use FIXED PIXEL dimensions only — no `max-width/max-height: 100%`.
+    A Chrome action popup can render in "auto-size" mode where the content
+    determines the window size; percentage constraints then resolve against
+    that collapsed/content-driven viewport and shrink the popup, which only
+    snaps to full size after a reflow (e.g. switching tabs). min-* locks the
+    intended size in auto-size mode. (See w3c/webextensions#692.)
   -->
   <style>
     html, body {
       width: 380px;
       height: 600px;
-      max-width: 100%;
-      max-height: 100%;
+      min-width: 380px;
+      min-height: 600px;
       margin: 0;
       overflow: hidden;
     }
     body {
       padding: 8px;
       box-sizing: border-box;
-      background: transparent;
+      /* Opaque (not transparent): a Chrome popup with a transparent root under a
+         blurred/scaled backdrop layer can skip compositing the first frame until
+         a forced repaint (e.g. switching tabs), leaving the popup blank on open.
+         An opaque base guarantees a painted frame. The screenshot backdrop still
+         overlays this. #f8f8fc == theme --bg-html. */
+      background: #f8f8fc;
     }
     #root {
       width: 100%;
