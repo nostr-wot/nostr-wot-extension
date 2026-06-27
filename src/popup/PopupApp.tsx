@@ -106,7 +106,6 @@ function PopupInner() {
             onViewAllActivity={(d: string | null) => { setActivityDomain(d || null); setActiveOverlay('activity'); }}
             onManagePermissions={(domain: string) => { setPermsDomain(domain); setActiveOverlay('permissions'); }}
             onManageFilters={() => setActiveOverlay('filters')}
-            onManageBadges={() => { setMenuSection('wot-injection'); setActiveOverlay('menu'); }}
             onEditProfile={() => setActiveOverlay('editProfile')}
             onManageScoring={() => setActiveOverlay('scoring')}
             onOpenWallet={() => { setMenuSection('wallet'); setActiveOverlay('menu'); }}

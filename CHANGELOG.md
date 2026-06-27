@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.84] - 2026-06-27
+
+### Fixed
+- **Vault locked early, seemingly on every refresh (#10)** — the auto-lock interval (`_autoLockMs`) lived only in service-worker memory and reset to the 15-minute default on every MV3 service-worker cold start; the unlocked key was also lost on SW teardown, which happens around page refreshes, so timed-mode vaults appeared to lock well before their timer elapsed. `vault.restoreAutoLockSetting()` now rehydrates the configured interval from `storage.local` on unlock and on startup, and a `browser.alarms` keep-alive holds the service worker alive while the vault is unlocked (the decrypted key is never persisted) so the configured timer actually governs locking.
+- **Popup slow/unreliable to detect "not connected" sites (#9)** — `HomeTab` had no loading guard and rendered the connected view while detection was still in flight, only flipping to "not connected" once the async check resolved; and the top-bar connection dot read `permissions.contains()` instead of the `allowedDomains` allowlist the rest of the app uses (a prior `<all_urls>` grant made it show connected on every site). Added an explicit loading state and switched the dot to `getAllowedDomains`.
+- **`nostrconnect://` remote-signer QR failed silently (#2)** — the connect session (live `BunkerSigner`, relay subscription, ephemeral key) was kept only in an in-memory Map that MV3 discards when the service worker suspends while waiting for the QR to be scanned; the poll loop reported real errors as "expired"; and the popup cancelled the session whenever it lost focus (e.g. switching to a wallet app to scan). The session is now persisted to `storage.session` (the ephemeral secret is XOR-split per the S-6 key policy) and the signer is rebuilt after a service-worker restart; reopening the popup resumes the pending session instead of minting a new QR; real errors are surfaced distinctly from timeouts with a Retry button; and the session is no longer torn down on blur. (The issue's "120s timeout" theory was a red herring — `fromURI` was passed the abort signal where it expects a number, so there was no timeout at all.)
+- **Popup collapsed small in newer Chrome** — the popup root declared `width/height` *and* `max-width/max-height: 100%`. A Chrome action popup can render in "auto-size" mode where content drives the window size, and the percentage constraints then resolve against that collapsed viewport, shrinking the popup until a reflow (e.g. switching tabs) snapped it back. Switched to fixed-pixel dimensions with `min-width`/`min-height` and an opaque root background.
+
+### Added
+- **`alarms` permission** — required by the vault keep-alive.
+- **`wizard.nip46Error` locale key** — en, es, pt, it, fr, de.
+
+### Changed
+- **`GlobeButton` connection source** — derives connection from the `allowedDomains` allowlist (same source as the rest of the app) instead of host permissions.
+- **Web of Trust sync + badges are now menu-only** — removed the WoT "download/sync" step from onboarding (the wizard no longer triggers a graph sync; the three flow entry points route straight to `done`/`permCopy`) and removed the sync-reminder banner, the per-site "Show trust scores" toggle, and the "Badges" shortcut from the home page. All of it remains available under Settings → Web of Trust (manual sync + badge settings). Deleted the now-unused `WotSyncStep` and `SyncReminder` components; added `tests/wizardMachine.test.ts` for the new onboarding transitions.
+
+> Server-side companion fix (not part of the extension build): the `zaps.nostr-wot.com` LNURL proxy now normalizes double-URL-encoded `nostr=` zap requests so LNbits can publish NIP-57 kind:9735 zap receipts again (issue #8). No extension change was required.
+
+## [0.3.83] - 2026-04-26
+
+### Fixed
+- **Double DM approval prompts** — `signEvent` kinds 4/13/14/1059 (NIP-04 DM, NIP-17 chat, seal, gift wrap) now resolve to the `sendMessages` permKey so the encrypt step and the matching `signEvent` share a single approval card. A migration moves any stored `signEvent:4/:13/:14/:1059` entries into `sendMessages` with deny-wins merge semantics (`_permMigrationVersion` → 4).
+- **`getPublicKey` double-prompting** — `getPublicKey` approvals seed an in-memory 60-second per-origin auto-approve cooldown, so the common "site calls `getPublicKey` twice on init" pattern stops double-prompting. Cleared on `cleanupStale`, account switch, and any explicit permission write for the origin.
+- **Safari downloads** — new shared `downloadFile()` helper handles Safari's quirks: keep the anchor in the DOM until after the click, defer URL revoke, `application/octet-stream` MIME so Safari doesn't render the file inline, and a base64 `data:` URI so the `download` filename is honored.
+- **Safari "open popup twice to see correct layout"** — popup `index.html` declares fixed `html`/`body`/`#root` dimensions inline so Safari's first-open measurement reads the final layout instead of the pre-CSS-module shell.
+
+### Changed
+- **Docs** — CLAUDE.md documents the existing `safari-xcode/` wrapper, the local install recipe, and the `DEVELOPMENT_TEAM=R3M572YZ8S` signing flag needed to avoid ad-hoc fallback.
+
+## [0.3.82] - 2026-04-24
+
+### Fixed
+- **"Always allow" left a second DM prompt** — accepting "Always allow" for DM permissions (`sendMessages`/`readMessages`) previously cleared only one wire method from the pending queue, leaving the other variant (e.g. `nip44Encrypt` when `nip04Encrypt` was first) orphaned as a second approval prompt. `resolveBatch` now filters by the logical permKey stored on every `PendingRequest`, so a single Always-allow clears every request that shares that permission key — regardless of NIP-04 vs NIP-44.
+
 ## [0.3.81] - 2026-04-21
 
 Hotfix on top of 0.3.8.

@@ -2,33 +2,25 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';
-import { IconUser, IconEye, IconChevronRight } from '@assets';
+import { IconUser, IconChevronRight } from '@assets';
 import styles from './HomeTab.module.css';
 
 interface SiteControlsProps {
   identityEnabled: boolean;
-  wotEnabled: boolean;
-  canInject: boolean;
   isNip46?: boolean;
   onIdentityToggle: (checked: boolean) => void;
-  onWotToggle: (checked: boolean) => void;
   onManagePermissions: () => void;
   onManageFilters: () => void;
-  onManageBadges: () => void;
   onRecentActivity: () => void;
   children?: React.ReactNode;
 }
 
 export default function SiteControls({
   identityEnabled,
-  wotEnabled,
-  canInject,
   isNip46,
   onIdentityToggle,
-  onWotToggle,
   onManagePermissions,
   onManageFilters,
-  onManageBadges,
   onRecentActivity,
   children,
 }: SiteControlsProps) {
@@ -61,23 +53,8 @@ export default function SiteControls({
       </Card>
 
       <Card className={styles.siteControls}>
-        {canInject && (
-          <div className={styles.controlRow}>
-            <div className={styles.controlInfo}>
-              <IconEye size={15} className={styles.controlIcon} />
-              <span className={styles.controlLabel}>{t('home.showTrustScores')}</span>
-            </div>
-            <Toggle checked={wotEnabled} onChange={onWotToggle} />
-          </div>
-        )}
-
         <button className={styles.controlLink} onClick={onManageFilters}>
           <span>{t('home.manageFilters')}</span>
-          <IconChevronRight size={14} />
-        </button>
-
-        <button className={styles.controlLink} onClick={onManageBadges}>
-          <span>{t('wot.badges')}</span>
           <IconChevronRight size={14} />
         </button>
 

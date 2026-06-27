@@ -11,7 +11,6 @@ import SubAccountStep from './SubAccountStep';
 import VerifyStep from './VerifyStep';
 import PasswordStep from './PasswordStep';
 import BackupStep from './BackupStep';
-import WotSyncStep from './WotSyncStep';
 import FollowSuggestionsStep from './FollowSuggestionsStep';
 import PermissionCopyStep from './PermissionCopyStep';
 import DoneStep from './DoneStep';
@@ -90,10 +89,6 @@ function buildSteps(
           onNext={(upgraded: boolean) => flow.send('SET', { upgraded })}
         />
       ),
-    },
-    wotSync: {
-      title: t('wizard.wotSync'),
-      content: <WotSyncStep onNext={() => flow.send('DONE')} />,
     },
     followSuggestions: {
       title: t('wizard.followSuggestions'),

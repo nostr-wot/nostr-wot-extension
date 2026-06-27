@@ -13,6 +13,9 @@ node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts 
 # Relay discovery tests (pure functions, no browser mock needed)
 node --import tsx --test tests/sync-relay-discovery.test.ts
 
+# Wizard state machine tests (pure reducer, no browser mock needed)
+node --import tsx --test tests/wizardMachine.test.ts
+
 # Storage relay list tests (uses fake-indexeddb, no browser mock needed)
 node --import tsx --test tests/storage-relay-lists.test.ts
 

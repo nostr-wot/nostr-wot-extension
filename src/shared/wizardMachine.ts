@@ -85,7 +85,10 @@ const TRANSITIONS: Record<string, Record<string, TransitionHandler>> = {
   },
 
   npub: {
-    DONE: (_ctx, { account }) => ({ step: 'wotSync', ctx: { account: account as unknown } }),
+    DONE: (_ctx, { account }, { hasAccounts }) => ({
+      step: hasAccounts ? 'permCopy' : 'done',
+      ctx: { account: account as unknown },
+    }),
     BACK: () => ({ step: 'method' }),
   },
 
@@ -105,11 +108,11 @@ const TRANSITIONS: Record<string, Record<string, TransitionHandler>> = {
   },
 
   password: {
-    SET: (ctx, { upgraded }) => {
+    SET: (ctx, { upgraded }, { hasAccounts }) => {
       if (upgraded) return { step: 'done' };
       // Only show follow suggestions for new identity creation
       if (ctx.method === 'create') return { step: 'followSuggestions' };
-      return { step: 'wotSync' };
+      return { step: hasAccounts ? 'permCopy' : 'done' };
     },
     BACK: (ctx) => {
       if (ctx.method === 'create') return { step: 'verify' };
@@ -120,7 +123,7 @@ const TRANSITIONS: Record<string, Record<string, TransitionHandler>> = {
   },
 
   followSuggestions: {
-    DONE: () => ({ step: 'wotSync' }),
+    DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? 'permCopy' : 'done' }),
     BACK: (ctx, _payload, { hasGeneratedAccount }) => {
       // Subaccounts skip password, go back to subaccount step
       if (ctx.method === 'create' && hasGeneratedAccount) return { step: 'subaccount' };
@@ -128,19 +131,12 @@ const TRANSITIONS: Record<string, Record<string, TransitionHandler>> = {
     },
   },
 
-  wotSync: {
-    DONE: (_ctx, _payload, { hasAccounts }) => ({
-      step: hasAccounts ? 'permCopy' : 'done',
-    }),
+  permCopy: {
+    DONE: () => ({ step: 'done' }),
     BACK: (ctx) => {
       if (ctx.method === 'create') return { step: 'followSuggestions' };
       return { step: 'password' };
     },
-  },
-
-  permCopy: {
-    DONE: () => ({ step: 'done' }),
-    BACK: () => ({ step: 'wotSync' }),
   },
 
   done: {
