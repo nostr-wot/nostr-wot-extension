@@ -5,6 +5,7 @@ import * as storage from './lib/storage.ts';
 import * as vault from './lib/vault.ts';
 import * as signer from './lib/signer.ts';
 import * as signerPermissions from './lib/permissions.ts';
+import { openPopupForActiveTab } from './lib/openPopupForActiveTab.ts';
 import { randomHex } from './lib/crypto/utils.ts';
 import { DEFAULT_SCORING } from './lib/scoring.ts';
 import type { ScoringConfig } from './lib/types.ts';
@@ -150,8 +151,11 @@ async function handleRequest({ method, params }: { method: string; params: Recor
                 logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
                 throw new Error('Site not connected');
             }
-            // First visit: open popup so user sees the "Connect this site" card
-            try { await browser.action.openPopup(); } catch {}
+            // First visit: open the popup so the user sees the "Connect this site"
+            // card — but only when the request comes from the tab they're actually
+            // looking at. A background/inactive tab making nostr requests (or one
+            // polling) must not pop the popup open.
+            await openPopupForActiveTab(origin);
             // Wait for the user to click Connect (domain added to allowedDomains)
             const connected = await waitForDomainAllowed(origin);
             if (!connected) {

@@ -26,6 +26,7 @@
 
 import type { RequestDecision, PendingRequest, UnsignedEvent, SignedEvent, SafeAccount, AccountType } from './types.ts';
 import browser from './browser.ts';
+import { openPopupForActiveTab } from './openPopupForActiveTab.ts';
 import * as vault from './vault.ts';
 import * as permissions from './permissions.ts';
 import { AsyncLock } from './utils/async-lock.ts';
@@ -194,17 +195,7 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
 
   // Auto-open the popup only if the request needs user action and is from the active tab
   if (!request.nip46InFlight) {
-    try {
-      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
-      if (activeTab?.url) {
-        const activeDomain = new URL(activeTab.url).hostname;
-        if (request.origin === activeDomain) {
-          await browser.action.openPopup();
-        }
-      }
-    } catch (e) {
-      console.warn('[SIGNER] openPopup failed:', (e as Error).message);
-    }
+    await openPopupForActiveTab(request.origin);
   }
 
   // Return promise that resolves when popup decides (not used for nip46InFlight)
@@ -484,8 +475,10 @@ async function waitForVaultUnlock(origin: string, type: string, accountId: strin
   });
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 
-  // Try to open/focus the popup so the user sees the unlock modal
-  try { await browser.action.openPopup(); } catch {}
+  // Open the popup so the user sees the unlock modal — but only when the request
+  // is from the tab they're looking at, so a background/inactive tab signing
+  // request doesn't pop the popup open.
+  await openPopupForActiveTab(origin);
 
   try {
     // Wait for unlock via direct callback OR polling fallback
