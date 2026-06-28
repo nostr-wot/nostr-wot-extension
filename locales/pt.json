@@ -236,6 +236,8 @@
   "badges.lowTrust": "Baixa confiança",
   "badges.notInGraph": "Não está no seu grafo",
   "badges.hoverHint": "Passe o mouse sobre um emblema para ver a pontuação de confiança e seguidores mútuos.",
+  "badges.experimental": "Experimental",
+  "badges.experimentalHint": "Desativado por padrão. As insígnias de confiança em sites Nostr são um recurso experimental — ative-as para experimentar.",
   "badges.siteConfigurations": "Configurações por site",
   "badges.addSite": "+ Adicionar site",
   "badges.siteHint": "Toque em um site para editar seus seletores de emblemas, extração e CSS personalizado.",

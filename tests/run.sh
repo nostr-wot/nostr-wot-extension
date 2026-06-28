@@ -13,8 +13,8 @@ node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts 
 # Relay discovery tests (pure functions, no browser mock needed)
 node --import tsx --test tests/sync-relay-discovery.test.ts
 
-# Wizard state machine + popup-gating tests (pure functions, no browser mock needed)
-node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts
+# Wizard state machine + popup-gating + badge-injection tests (pure functions, no browser mock needed)
+node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts tests/badgeInjection.test.ts
 
 # Storage relay list tests (uses fake-indexeddb, no browser mock needed)
 node --import tsx --test tests/storage-relay-lists.test.ts

@@ -253,6 +253,8 @@
   "badges.lowTrust": "Low trust",
   "badges.notInGraph": "Not in your graph",
   "badges.hoverHint": "Hover a badge to see trust score and mutual follows.",
+  "badges.experimental": "Experimental",
+  "badges.experimentalHint": "Off by default. Trust badges on Nostr websites are an experimental feature — turn them on to try them.",
   "badges.siteConfigurations": "Site configurations",
   "badges.addSite": "+ Add site",
   "badges.siteHint": "Tap a site to edit its badge selectors, extraction, and custom CSS.",

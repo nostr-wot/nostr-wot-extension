@@ -5,6 +5,7 @@
 
 import browser from '../browser.ts';
 import { getDomainFromUrl } from '@shared/url.ts';
+import { shouldInjectBadges } from '../badgeInjection.ts';
 import { getDefaultsForDomain } from '@shared/adapterDefaults.ts';
 import { isRestrictedUrl, sanitizeCSS, type HandlerFn, type LocalAccountEntry } from './state.ts';
 
@@ -313,7 +314,7 @@ export async function injectIntoTab(tabId: number, url: string): Promise<boolean
         const domain = url ? getDomainFromUrl(url) : null;
         const badgeDisabledData = await browser.storage.local.get(['badgeDisabledSites']) as Record<string, string[]>;
         const badgeDisabledSites = new Set(badgeDisabledData.badgeDisabledSites || []);
-        if (wotSettings.wotInjectionEnabled !== false && (!domain || !badgeDisabledSites.has(domain))) {
+        if (shouldInjectBadges(wotSettings.wotInjectionEnabled, badgeDisabledSites, domain)) {
             try {
                 await browser.scripting.insertCSS({
                     target: { tabId },

@@ -236,6 +236,8 @@
   "badges.lowTrust": "Bassa fiducia",
   "badges.notInGraph": "Non nel tuo grafo",
   "badges.hoverHint": "Passa il mouse su un badge per vedere il punteggio di fiducia e i contatti in comune.",
+  "badges.experimental": "Sperimentale",
+  "badges.experimentalHint": "Disattivato per impostazione predefinita. I badge di fiducia sui siti Nostr sono una funzione sperimentale: attivali per provarli.",
   "badges.siteConfigurations": "Configurazioni dei siti",
   "badges.addSite": "+ Aggiungi sito",
   "badges.siteHint": "Tocca un sito per modificare i selettori dei badge, l'estrazione e il CSS personalizzato.",

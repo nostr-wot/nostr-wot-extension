@@ -582,6 +582,61 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--text-heading);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* "Experimental" tag next to the badges toggle */
+.experimentalTag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  padding: 1px 6px;
+  line-height: 1.6;
+}
+
+/* Trust-badge legend shown under the experimental toggle */
+.badgeLegend {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: 12px;
+}
+
+.badgeLegendTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin-bottom: 8px;
+}
+
+.badgeLegendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-body);
+  padding: 2px 0;
+}
+
+.badgeLegendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badgeLegendHint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* Site override row */

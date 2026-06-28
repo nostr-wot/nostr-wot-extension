@@ -282,6 +282,8 @@
   "badges.lowTrust": "Geringes Vertrauen",
   "badges.notInGraph": "Nicht in deinem Graphen",
   "badges.hoverHint": "Fahre mit der Maus über ein Badge, um den Vertrauenswert und gemeinsame Follows zu sehen.",
+  "badges.experimental": "Experimentell",
+  "badges.experimentalHint": "Standardmäßig deaktiviert. Vertrauens-Badges auf Nostr-Websites sind eine experimentelle Funktion — aktiviere sie zum Ausprobieren.",
   "badges.siteConfigurations": "Seitenkonfigurationen",
   "badges.addSite": "+ Seite hinzufügen",
   "badges.siteHint": "Tippe auf eine Seite, um ihre Badge-Selektoren, Extraktion und benutzerdefiniertes CSS zu bearbeiten.",

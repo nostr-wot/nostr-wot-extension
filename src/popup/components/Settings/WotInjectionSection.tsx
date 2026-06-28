@@ -475,7 +475,7 @@ interface WotInjectionSectionProps {
 }
 
 export default function WotInjectionSection({ onOpenDetail }: WotInjectionSectionProps) {
-  const [enabled, setEnabled] = useState<boolean>(true);
+  const [enabled, setEnabled] = useState<boolean>(false); // experimental: off by default
   const [disabledSites, setDisabledSites] = useState<string[]>([]);
   const [allSites, setAllSites] = useState<string[]>([]);
   const [customAdapters, setCustomAdapters] = useState<Record<string, any>>({});
@@ -485,7 +485,7 @@ export default function WotInjectionSection({ onOpenDetail }: WotInjectionSectio
       const syncData: any = await browser.storage.sync.get(['wotInjectionEnabled']);
       const localData: any = await browser.storage.local.get(['badgeDisabledSites']);
 
-      setEnabled(syncData.wotInjectionEnabled !== false);
+      setEnabled(syncData.wotInjectionEnabled === true); // experimental: opt-in only
       setDisabledSites(localData.badgeDisabledSites || []);
 
       try {
@@ -518,8 +518,29 @@ export default function WotInjectionSection({ onOpenDetail }: WotInjectionSectio
   return (
     <div className={styles.section}>
       <div className={styles.toggleRow}>
-        <span className={styles.toggleLabel}>{t('badges.enableGlobally')}</span>
+        <span className={styles.toggleLabel}>
+          {t('badges.enableGlobally')}
+          <span className={styles.experimentalTag}>{t('badges.experimental')}</span>
+        </span>
         <Toggle checked={enabled} onChange={handleGlobalToggle} />
+      </div>
+      <SectionHint>{t('badges.experimentalHint')}</SectionHint>
+
+      <div className={styles.badgeLegend}>
+        <div className={styles.badgeLegendTitle}>{t('badges.whatYouSee')}</div>
+        <div className={styles.badgeLegendRow}>
+          <span className={styles.badgeLegendDot} style={{ background: '#22c55e' }} />{t('badges.highTrust')}
+        </div>
+        <div className={styles.badgeLegendRow}>
+          <span className={styles.badgeLegendDot} style={{ background: '#eab308' }} />{t('badges.moderateTrust')}
+        </div>
+        <div className={styles.badgeLegendRow}>
+          <span className={styles.badgeLegendDot} style={{ background: '#f59e0b' }} />{t('badges.lowTrust')}
+        </div>
+        <div className={styles.badgeLegendRow}>
+          <span className={styles.badgeLegendDot} style={{ background: '#6b7280' }} />{t('badges.notInGraph')}
+        </div>
+        <div className={styles.badgeLegendHint}>{t('badges.hoverHint')}</div>
       </div>
 
       {enabled && allSites.length > 0 && (

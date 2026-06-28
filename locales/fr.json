@@ -236,6 +236,8 @@
   "badges.lowTrust": "Confiance faible",
   "badges.notInGraph": "Pas dans votre graphe",
   "badges.hoverHint": "Survolez un badge pour voir le score de confiance et les abonnements mutuels.",
+  "badges.experimental": "Expérimental",
+  "badges.experimentalHint": "Désactivé par défaut. Les badges de confiance sur les sites Nostr sont une fonctionnalité expérimentale — activez-les pour les essayer.",
   "badges.siteConfigurations": "Configurations des sites",
   "badges.addSite": "+ Ajouter un site",
   "badges.siteHint": "Appuyez sur un site pour modifier ses sélecteurs de badge, l'extraction et le CSS personnalisé.",
