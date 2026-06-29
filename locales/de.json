@@ -73,6 +73,7 @@
   "home.neverSynced": "Noch nie synchronisiert",
   "home.noActivityShort": "Keine Aktivität",
   "scoring.trustSensitivity": "Vertrauensempfindlichkeit",
+  "scoring.trustSensitivityDesc": "Lege fest, wie streng die Vertrauenswerte sind",
   "scoring.strict": "Streng",
   "scoring.conservative": "Konservativ",
   "scoring.balanced": "Ausgewogen",

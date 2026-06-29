@@ -1,10 +1,8 @@
 import React, { useState, useCallback, ChangeEvent } from 'react';
-import { createPortal } from 'react-dom';
 import { t } from '@lib/i18n.js';
 import { DEFAULT_SCORING } from '@lib/scoring.js';
 import { SENSITIVITY_PRESETS } from '@shared/constants.ts';
 import { toPercent, toFraction } from '@shared/format/number.js';
-import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
@@ -12,10 +10,6 @@ import { IconInfo } from '@assets';
 import { useScoring } from '../../context/ScoringContext';
 import homeStyles from './HomeTab.module.css';
 import styles from './ScoringModal.module.css';
-
-interface ScoringModalProps {
-  onClose: () => void;
-}
 
 interface Weights {
   w2: number | string;
@@ -38,7 +32,12 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-export default function ScoringModal({ onClose }: ScoringModalProps) {
+/**
+ * Trust-sensitivity scoring controls. Rendered as a sub-section of the
+ * experimental Badges page (Settings → Web of Trust → Badges → Trust sensitivity)
+ * since trust scoring only matters when badges are enabled.
+ */
+export default function ScoringSettings() {
   const { scoring, presetIndex, presetDesc, setPreset, saveCustom, reset } = useScoring();
 
   const [weights, setWeights] = useState<Weights>(() => {
@@ -117,8 +116,8 @@ export default function ScoringModal({ onClose }: ScoringModalProps) {
     reset();
   };
 
-  const panel = (
-    <OverlayPanel title={t('scoring.trustSensitivity')} onClose={onClose} onBack={null}>
+  return (
+    <>
       <div className={homeStyles.sensitivitySlider}>
         <input type="range" min="0" max="4" step="1" value={isCustom ? presetIndex : currentMatch} onChange={handleSliderChange} />
         <div className={homeStyles.sensitivityLabels}>
@@ -164,8 +163,6 @@ export default function ScoringModal({ onClose }: ScoringModalProps) {
         <Button variant="secondary" small onClick={handleReset}>{t('scoring.resetDefaults')}</Button>
         <Button small onClick={handleSave}>{t('common.save')}</Button>
       </div>
-    </OverlayPanel>
+    </>
   );
-
-  return createPortal(panel, document.getElementById('root') || document.body);
 }

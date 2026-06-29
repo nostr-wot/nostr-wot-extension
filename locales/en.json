@@ -74,6 +74,7 @@
   "home.skip": "Skip",
 
   "scoring.trustSensitivity": "Trust sensitivity",
+  "scoring.trustSensitivityDesc": "Tune how strict trust scores are",
   "scoring.strict": "Strict",
   "scoring.conservative": "Conservative",
   "scoring.balanced": "Balanced",

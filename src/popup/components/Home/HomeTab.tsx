@@ -8,7 +8,6 @@ import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
 import SiteControls from './SiteControls';
 import ProfileSuggestion from './ProfileSuggestion';
-import ScoringCard from './ScoringCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
@@ -21,7 +20,6 @@ interface HomeTabProps {
   onManagePermissions: (domain: string) => void;
   onManageFilters: () => void;
   onEditProfile: () => void;
-  onManageScoring: () => void;
   onOpenWallet: () => void;
   menuOpen?: boolean;
 }
@@ -139,7 +137,7 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
 
 // ── HomeTab component ──
 
-export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onManageScoring, onOpenWallet, menuOpen }: HomeTabProps) {
+export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenWallet, menuOpen }: HomeTabProps) {
   const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
   const [profileDismissed, setProfileDismissed] = useState<boolean>(false);
@@ -338,9 +336,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           onManagePermissions={() => onManagePermissions(domain!)}
           onManageFilters={onManageFilters}
           onRecentActivity={() => onViewAllActivity(domain)}
-        >
-          <ScoringCard onOpen={onManageScoring} />
-        </SiteControls>
+        />
       )}
     </>
   );

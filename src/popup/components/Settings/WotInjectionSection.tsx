@@ -11,6 +11,7 @@ import Dropdown from '@components/Dropdown/Dropdown';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
+import NavItem from '@components/NavItem/NavItem';
 import { IconChevronRight } from '@assets';
 import styles from './Settings.module.css';
 
@@ -472,9 +473,10 @@ export function WotInjectionDetail({ domain, onBack }: WotInjectionDetailProps) 
 /* -- List view -- */
 interface WotInjectionSectionProps {
   onOpenDetail: (domain: string) => void;
+  onOpenScoring?: () => void;
 }
 
-export default function WotInjectionSection({ onOpenDetail }: WotInjectionSectionProps) {
+export default function WotInjectionSection({ onOpenDetail, onOpenScoring }: WotInjectionSectionProps) {
   const [enabled, setEnabled] = useState<boolean>(false); // experimental: off by default
   const [disabledSites, setDisabledSites] = useState<string[]>([]);
   const [allSites, setAllSites] = useState<string[]>([]);
@@ -542,6 +544,16 @@ export default function WotInjectionSection({ onOpenDetail }: WotInjectionSectio
         </div>
         <div className={styles.badgeLegendHint}>{t('badges.hoverHint')}</div>
       </div>
+
+      {onOpenScoring && (
+        <div style={{ marginTop: 10 }}>
+          <NavItem
+            label={t('scoring.trustSensitivity')}
+            desc={t('scoring.trustSensitivityDesc')}
+            onClick={onOpenScoring}
+          />
+        </div>
+      )}
 
       {enabled && allSites.length > 0 && (
         <>

@@ -12,6 +12,7 @@ import NetworkSection from '../Settings/NetworkSection';
 import WotModeSection from '../Settings/WotModeSection';
 import WotInjectionSection, { WotInjectionDetail } from '../Settings/WotInjectionSection';
 import WotSyncSection, { WotSyncDetail } from '../Settings/WotSyncSection';
+import ScoringSettings from '../Home/ScoringSettings';
 import WalletSection from '../Wallet/WalletSection';
 import KeyActionModal from '../Vault/KeyActionModal';
 import NavItem from '@components/NavItem/NavItem';
@@ -110,6 +111,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     wallet: t('wallet.title'),
     'site-permissions': permDetailDomain || t('security.permissions'),
     'wot-injection': t('wot.badges'),
+    scoring: t('scoring.trustSensitivity'),
     'badge-detail': badgeDetailDomain || t('wot.badges'),
     databases: t('wot.sync'),
     'db-detail': syncDetailItem
@@ -205,7 +207,9 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       case 'db-detail':
         return syncDetailItem ? <WotSyncDetail item={syncDetailItem} onBack={popSection} /> : null;
       case 'wot-injection':
-        return <WotInjectionSection onOpenDetail={(domain: string) => { setBadgeDetailDomain(domain); pushSection('badge-detail'); }} />;
+        return <WotInjectionSection onOpenDetail={(domain: string) => { setBadgeDetailDomain(domain); pushSection('badge-detail'); }} onOpenScoring={() => pushSection('scoring')} />;
+      case 'scoring':
+        return <MenuSection><ScoringSettings /></MenuSection>;
       case 'badge-detail':
         return badgeDetailDomain ? <WotInjectionDetail domain={badgeDetailDomain} onBack={popSection} /> : null;
       case 'network':

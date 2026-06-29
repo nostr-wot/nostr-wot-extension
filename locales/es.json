@@ -69,6 +69,7 @@
   "home.setupProfileButton": "Configurar",
   "home.skip": "Omitir",
   "scoring.trustSensitivity": "Sensibilidad de confianza",
+  "scoring.trustSensitivityDesc": "Ajusta qué tan estrictas son las puntuaciones de confianza",
   "scoring.strict": "Estricto",
   "scoring.conservative": "Conservador",
   "scoring.balanced": "Equilibrado",

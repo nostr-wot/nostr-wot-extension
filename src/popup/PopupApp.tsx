@@ -17,7 +17,6 @@ import ActivityModal from './components/Activity/ActivityModal';
 import ApprovalOverlay from './components/Approval/ApprovalOverlay';
 import WizardOverlay from './components/Wizard/WizardOverlay';
 import EditProfileOverlay from './components/EditProfile/EditProfileOverlay';
-import ScoringModal from './components/Home/ScoringModal';
 import PermissionsSection from './components/Settings/PermissionsSection';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import UnlockModal from './components/Vault/UnlockModal';
@@ -30,7 +29,7 @@ interface WaiterInfo {
   [key: string]: unknown;
 }
 
-type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'scoring' | 'permissions' | null;
+type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'permissions' | null;
 
 function PopupInner() {
   const [splashVisible, setSplashVisible] = useState<boolean>(true);
@@ -107,7 +106,6 @@ function PopupInner() {
             onManagePermissions={(domain: string) => { setPermsDomain(domain); setActiveOverlay('permissions'); }}
             onManageFilters={() => setActiveOverlay('filters')}
             onEditProfile={() => setActiveOverlay('editProfile')}
-            onManageScoring={() => setActiveOverlay('scoring')}
             onOpenWallet={() => { setMenuSection('wallet'); setActiveOverlay('menu'); }}
             menuOpen={activeOverlay === 'menu'}
           />
@@ -147,10 +145,6 @@ function PopupInner() {
           visible={activeOverlay === 'editProfile'}
           onClose={() => setActiveOverlay(null)}
         />
-
-        {activeOverlay === 'scoring' && (
-          <ScoringModal onClose={() => setActiveOverlay(null)} />
-        )}
 
         {activeOverlay === 'permissions' && permsDomain && (
           <OverlayPanel

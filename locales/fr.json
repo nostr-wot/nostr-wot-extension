@@ -69,6 +69,7 @@
   "home.setupProfileButton": "Configurer",
   "home.skip": "Passer",
   "scoring.trustSensitivity": "Sensibilité de la confiance",
+  "scoring.trustSensitivityDesc": "Réglez la rigueur des scores de confiance",
   "scoring.strict": "Strict",
   "scoring.conservative": "Prudent",
   "scoring.balanced": "Équilibré",
