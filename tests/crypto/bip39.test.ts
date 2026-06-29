@@ -39,11 +39,11 @@ describe('validateMnemonic', () => {
   });
 
   it('rejects invalid checksum', async () => {
-    // Take a valid mnemonic and swap the last word
-    const mnemonic: string = await generateMnemonic();
-    const words: string[] = mnemonic.split(' ');
-    words[words.length - 1] = words[words.length - 1] === 'abandon' ? 'zoo' : 'abandon';
-    const invalid: string = words.join(' ');
+    // The valid all-zero-entropy mnemonic is 11x "abandon" + "about"; replacing
+    // the final word with "abandon" breaks the checksum deterministically.
+    // (Previously this generated a random mnemonic and swapped the last word,
+    // which flaked ~1/256 when the swap happened to keep a valid checksum.)
+    const invalid: string = `${'abandon '.repeat(11)}abandon`;
     const valid: boolean = await validateMnemonic(invalid);
     assert.strictEqual(valid, false);
   });
