@@ -103,6 +103,9 @@
   "scoring.strategyUpdated": "Strategy: {preset}",
 
   "filters.title": "Filters",
+  "filters.blocksMutes": "Blocks & Mutes",
+  "filters.blocksMutesInfo": "Local blocks are private to this browser and never published. Mute lists follow NIP-51 — you import lists other users have published to hide the accounts they mute.",
+  "filters.blocksMutesSummary": "{blocks} blocked · {mutes} mute lists",
   "filters.strategies": "Strategies",
   "filters.muteLists": "Mute Lists",
   "filters.import": "+ Import",

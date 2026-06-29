@@ -8,6 +8,7 @@ import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
 import SiteControls from './SiteControls';
 import ProfileCard from './ProfileCard';
+import BlocksMutesCard from './BlocksMutesCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
@@ -266,6 +267,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
         </Card>
       )}
       {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
+      {active && <BlocksMutesCard onOpen={onManageFilters} />}
       {/* Wallet balance card (when wallet exists) */}
       {walletState && typeof walletState === 'object' && (
         <Card className={styles.walletCard} onClick={onOpenWallet}>
@@ -313,7 +315,6 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           isNip46={isNip46}
           onIdentityToggle={handleIdentityToggle}
           onManagePermissions={() => onManagePermissions(domain!)}
-          onManageFilters={onManageFilters}
           onRecentActivity={() => onViewAllActivity(domain)}
         />
       )}

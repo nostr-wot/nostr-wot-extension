@@ -480,6 +480,46 @@
   text-overflow: ellipsis;
 }
 
+/* Blocks & Mutes card (home screen, opens Filters manager) */
+.blocksCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.blocksCard:hover {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.blocksIcon {
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.blocksText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.blocksText strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-heading);
+  display: inline-flex;
+  align-items: center;
+}
+
+.blocksText span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .walletCard:hover {
   background: rgba(99, 102, 241, 0.04);
 }
