@@ -7,7 +7,7 @@ import { t } from '@lib/i18n.js';
 import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
 import SiteControls from './SiteControls';
-import ProfileSuggestion from './ProfileSuggestion';
+import ProfileCard from './ProfileCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
@@ -140,7 +140,6 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
 export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenWallet, menuOpen }: HomeTabProps) {
   const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
-  const [profileDismissed, setProfileDismissed] = useState<boolean>(false);
 
   // Pending requests count
   const [pendingCount, setPendingCount] = useState(0);
@@ -151,15 +150,6 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   // Wallet is only available for unlocked signing accounts (generated/nsec)
   const canUseWallet = active && !isReadOnly && !isNip46 && !locked;
   const { walletState, walletDismissed, setWalletDismissed } = useWalletBanner(active, canUseWallet, menuOpen);
-
-  useEffect(() => {
-    if (!active?.id) return;
-    browser.storage.local.get('profileSuggestionDismissed').then((data) => {
-      const dismissed = (data as Record<string, unknown>).profileSuggestionDismissed;
-      const list: string[] = Array.isArray(dismissed) ? dismissed : [];
-      setProfileDismissed(list.includes(active.id));
-    });
-  }, [active?.id]);
 
   useEffect(() => {
     async function checkPending() {
@@ -200,18 +190,8 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
     loadHomeState();
   };
 
-  // Show profile suggestion if user has signing account but no kind 0
-  const showProfileSuggestion = active && !isReadOnly && !cachedProfile?.name && !profileDismissed;
-
-  const handleDismissProfile = async () => {
-    if (!active?.id) return;
-    setProfileDismissed(true);
-    const data = await browser.storage.local.get('profileSuggestionDismissed');
-    const dismissed = (data as Record<string, unknown>).profileSuggestionDismissed;
-    const list: string[] = Array.isArray(dismissed) ? dismissed : [];
-    if (!list.includes(active.id)) list.push(active.id);
-    await browser.storage.local.set({ profileSuggestionDismissed: list });
-  };
+  // Profile card shows for signing accounts (can edit kind:0)
+  const canEditProfile = !!active && !isReadOnly;
 
   const handleDismissWallet = async () => {
     if (!active?.id) return;
@@ -224,8 +204,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   };
 
   // Show wallet setup banner only after the profile banner is gone, and only for signing accounts
-  const showWalletBanner = canUseWallet && walletState === false && !walletDismissed
-    && !showProfileSuggestion;
+  const showWalletBanner = canUseWallet && walletState === false && !walletDismissed;
 
   if (siteState === 'empty') {
     return (
@@ -286,7 +265,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           </div>
         </Card>
       )}
-      {showProfileSuggestion && <ProfileSuggestion onEdit={onEditProfile} onDismiss={handleDismissProfile} />}
+      {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
       {/* Wallet balance card (when wallet exists) */}
       {walletState && typeof walletState === 'object' && (
         <Card className={styles.walletCard} onClick={onOpenWallet}>
