@@ -9,6 +9,7 @@ import { useVault } from '../../context/VaultContext';
 import SiteControls from './SiteControls';
 import ProfileCard from './ProfileCard';
 import BlocksMutesCard from './BlocksMutesCard';
+import RelaysCard from './RelaysCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
@@ -21,6 +22,7 @@ interface HomeTabProps {
   onManagePermissions: (domain: string) => void;
   onManageFilters: () => void;
   onEditProfile: () => void;
+  onOpenRelays: () => void;
   onOpenWallet: () => void;
   menuOpen?: boolean;
 }
@@ -138,7 +140,7 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
 
 // ── HomeTab component ──
 
-export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenWallet, menuOpen }: HomeTabProps) {
+export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenRelays, onOpenWallet, menuOpen }: HomeTabProps) {
   const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
 
@@ -268,6 +270,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
       )}
       {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
       {active && <BlocksMutesCard onOpen={onManageFilters} />}
+      {active && <RelaysCard onOpen={onOpenRelays} />}
       {/* Wallet balance card (when wallet exists) */}
       {walletState && typeof walletState === 'object' && (
         <Card className={styles.walletCard} onClick={onOpenWallet}>

@@ -106,6 +106,7 @@ function PopupInner() {
             onManagePermissions={(domain: string) => { setPermsDomain(domain); setActiveOverlay('permissions'); }}
             onManageFilters={() => setActiveOverlay('filters')}
             onEditProfile={() => setActiveOverlay('editProfile')}
+            onOpenRelays={() => { setMenuSection('network'); setActiveOverlay('menu'); }}
             onOpenWallet={() => { setMenuSection('wallet'); setActiveOverlay('menu'); }}
             menuOpen={activeOverlay === 'menu'}
           />

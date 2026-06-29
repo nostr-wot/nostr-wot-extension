@@ -135,6 +135,9 @@
   "settings.webOfTrustDesc": "Mode, sync, and badge settings",
   "settings.bunkerSession": "Bunker Session",
   "settings.network": "Network",
+  "network.relays": "Relays",
+  "network.relaysInfo": "Your NIP-51/NIP-65 relay list — the relays your notes are published to and read from.",
+  "network.relaysSummary": "{count} relays",
   "settings.language": "Language",
 
   "security.keyBackup": "Keys & Backup",
