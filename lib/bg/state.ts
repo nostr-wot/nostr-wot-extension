@@ -4,41 +4,23 @@
  * @module lib/bg/state
  */
 
-import { RemoteOracle } from '../api.ts';
-import { LocalGraph } from '../graph.ts';
 import { npubDecode } from '../crypto/bech32.ts';
-import { DEFAULT_SCORING } from '../scoring.ts';
-import type { ScoringConfig } from '../types.ts';
-import { BG_RATE_LIMIT_PER_SECOND, PROFILE_CACHE_TTL_MS } from '../constants.ts';
+import { PROFILE_CACHE_TTL_MS } from '../constants.ts';
 
 // ── Constants ──
 
-export const DEFAULT_ORACLE_URL = 'https://wot-oracle.mappingbitcoin.com';
 export const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://nostr-01.yakihonne.com'];
 
 // ── Config ──
 
-export type WotMode = 'local' | 'remote' | 'hybrid';
-
 export interface ExtConfig {
-    mode: WotMode;
-    oracleUrl: string;
-    oracleUrls?: string[];
     myPubkey: string | null;
     relays: string[];
-    maxHops: number;
-    timeout: number;
-    scoring: ScoringConfig;
 }
 
 export const config: ExtConfig = {
-    mode: 'hybrid',
-    oracleUrl: DEFAULT_ORACLE_URL,
     myPubkey: null,
     relays: DEFAULT_RELAYS,
-    maxHops: 3,
-    timeout: 5000,
-    scoring: DEFAULT_SCORING,
 };
 
 // ── Shared types ──
@@ -52,14 +34,12 @@ export interface LocalAccountEntry {
     readOnly: boolean;
 }
 
-// ── Oracle & Graph ──
-
-export let oracle: RemoteOracle | null = null;
-export let localGraph: LocalGraph | null = null;
-
-export function setOracle(o: RemoteOracle | null): void { oracle = o; }
-/** Reset local graph to a fresh instance (used after account/DB changes). */
-export function resetLocalGraph(): void { localGraph = new LocalGraph(); }
+// ── Graph (deprecated) ──
+//
+// The trust-graph subsystem was removed. `resetLocalGraph` is retained as a
+// no-op so the many account-switching handlers that called it after a DB
+// change need not be edited; it has no remaining effect.
+export function resetLocalGraph(): void { /* trust-graph removed — no-op */ }
 
 // ── Profile Cache ──
 
@@ -69,36 +49,12 @@ export const profileCache = new Map<string, ProfileCacheEntry>();
 
 // ── Rate Limiting ──
 
-const RATE_LIMIT_PER_SECOND = BG_RATE_LIMIT_PER_SECOND;
-const RATE_LIMIT_WINDOW_MS = 1000;
-interface RateLimitState { count: number; windowStart: number; }
-const rateLimitState = new Map<string, RateLimitState>();
+// The only rate-limited methods were trust-graph queries, which have been
+// removed. The set is now empty; checkRateLimit always allows. Kept as a stub
+// so background.ts's dispatch loop need not change.
+export const RATE_LIMITED_METHODS = new Set<string>();
 
-export const RATE_LIMITED_METHODS = new Set([
-    'getDistance', 'isInMyWoT', 'getTrustScore',
-    'getDetails', 'getDistanceBatch', 'getTrustScoreBatch', 'filterByWoT',
-    'getFollows', 'getCommonFollows', 'getPath', 'getStats',
-]);
-
-export function checkRateLimit(method: string): boolean {
-    if (!RATE_LIMITED_METHODS.has(method)) {
-        return true;
-    }
-
-    const now = Date.now();
-    let state = rateLimitState.get(method);
-
-    if (!state || now - state.windowStart >= RATE_LIMIT_WINDOW_MS) {
-        state = { count: 1, windowStart: now };
-        rateLimitState.set(method, state);
-        return true;
-    }
-
-    if (state.count >= RATE_LIMIT_PER_SECOND) {
-        return false;
-    }
-
-    state.count++;
+export function checkRateLimit(_method: string): boolean {
     return true;
 }
 

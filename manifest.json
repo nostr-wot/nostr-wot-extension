@@ -56,8 +56,6 @@
       "locales/de.json",
       "locales/fr.json",
       "locales/it.json",
-      "badges/engine.ts",
-      "badges/badges.css",
       "icons/clients/primal.svg",
       "icons/clients/coracle.svg"
     ],

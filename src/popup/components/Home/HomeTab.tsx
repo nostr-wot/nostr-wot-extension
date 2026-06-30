@@ -188,7 +188,6 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
     await Promise.all([
       rpc('addAllowedDomain', { domain }),
       rpc('setIdentityDisabled', { domain, disabled: false }),
-      rpc('setBadgeDisabled', { domain, disabled: false }),
     ]);
     loadHomeState();
   };

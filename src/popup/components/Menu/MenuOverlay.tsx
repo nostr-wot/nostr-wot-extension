@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js';
-import { IconLock, IconShield, IconUsers, IconGlobe, IconKey, IconDownload, IconZap } from '@assets';
+import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap } from '@assets';
 import { version as appVersion } from '../../../../package.json';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
@@ -9,10 +9,6 @@ import MenuSection from './MenuSection';
 import PermissionsSection from '../Settings/PermissionsSection';
 import SecuritySection from '../Settings/SecuritySection';
 import NetworkSection from '../Settings/NetworkSection';
-import WotModeSection from '../Settings/WotModeSection';
-import WotInjectionSection, { WotInjectionDetail } from '../Settings/WotInjectionSection';
-import WotSyncSection, { WotSyncDetail } from '../Settings/WotSyncSection';
-import ScoringSettings from '../Home/ScoringSettings';
 import WalletSection from '../Wallet/WalletSection';
 import KeyActionModal from '../Vault/KeyActionModal';
 import NavItem from '@components/NavItem/NavItem';
@@ -34,14 +30,6 @@ interface MenuItem {
   icon: ReactNode;
 }
 
-interface SyncDetailItem {
-  displayName: string;
-  isActive: boolean;
-  accountId: string;
-  stats: any | null;
-  pubkey?: string;
-}
-
 interface Language {
   code: string;
   flag: string;
@@ -54,8 +42,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   const [keyAction, setKeyAction] = useState<string | null>(null); // 'nsec' | 'ncryptsec' | 'changePassword'
   const [langModalOpen, setLangModalOpen] = useState<boolean>(false);
   const [langSelected, setLangSelected] = useState<Language | null>(null);
-  const [syncDetailItem, setSyncDetailItem] = useState<SyncDetailItem | null>(null);
-  const [badgeDetailDomain, setBadgeDetailDomain] = useState<string | null>(null);
   const [permDetailDomain, setPermDetailDomain] = useState<string | null>(null);
   const permsSectionRef = useRef<any>(null);
   const vault = useVault();
@@ -91,12 +77,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       icon: <IconZap />,
     },
     {
-      id: 'wot',
-      label: t('settings.webOfTrust'),
-      desc: t('settings.webOfTrustDesc'),
-      icon: <IconUsers />,
-    },
-    {
       id: 'network',
       label: t('settings.network'),
       desc: undefined,
@@ -106,17 +86,9 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
 
   const sectionTitles: Record<string, string> = {
     security: t('settings.security'),
-    wot: t('settings.webOfTrust'),
     network: t('settings.network'),
     wallet: t('wallet.title'),
     'site-permissions': permDetailDomain || t('security.permissions'),
-    'wot-injection': t('wot.badges'),
-    scoring: t('scoring.trustSensitivity'),
-    'badge-detail': badgeDetailDomain || t('wot.badges'),
-    databases: t('wot.sync'),
-    'db-detail': syncDetailItem
-      ? (syncDetailItem.displayName + (syncDetailItem.isActive ? ` \u00b7 ${t('sync.active')}` : ''))
-      : t('wot.sync'),
   };
 
   if (!shouldRender) return null;
@@ -195,23 +167,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         return <PermissionsSection ref={permsSectionRef} onDetailChange={setPermDetailDomain} />;
       case 'wallet':
         return <WalletSection />;
-      case 'wot':
-        return (
-          <WotModeSection
-            onSync={() => pushSection('databases')}
-            onBadges={() => pushSection('wot-injection')}
-          />
-        );
-      case 'databases':
-        return <WotSyncSection onOpenDetail={(item: SyncDetailItem) => { setSyncDetailItem(item); pushSection('db-detail'); }} />;
-      case 'db-detail':
-        return syncDetailItem ? <WotSyncDetail item={syncDetailItem} onBack={popSection} /> : null;
-      case 'wot-injection':
-        return <WotInjectionSection onOpenDetail={(domain: string) => { setBadgeDetailDomain(domain); pushSection('badge-detail'); }} onOpenScoring={() => pushSection('scoring')} />;
-      case 'scoring':
-        return <MenuSection><ScoringSettings /></MenuSection>;
-      case 'badge-detail':
-        return badgeDetailDomain ? <WotInjectionDetail domain={badgeDetailDomain} onBack={popSection} /> : null;
       case 'network':
         return <NetworkSection />;
       default:

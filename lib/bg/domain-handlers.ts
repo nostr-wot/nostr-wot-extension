@@ -5,9 +5,7 @@
 
 import browser from '../browser.ts';
 import { getDomainFromUrl } from '@shared/url.ts';
-import { shouldInjectBadges } from '../badgeInjection.ts';
-import { getDefaultsForDomain } from '@shared/adapterDefaults.ts';
-import { isRestrictedUrl, sanitizeCSS, type HandlerFn, type LocalAccountEntry } from './state.ts';
+import { isRestrictedUrl, type HandlerFn, type LocalAccountEntry } from './state.ts';
 
 // ── Domain permission functions (with in-memory cache) ──
 
@@ -138,47 +136,6 @@ export async function requestHostPermission(): Promise<boolean> {
     return browser.permissions.request({ origins: ['<all_urls>'] });
 }
 
-// ── Badge disable ──
-
-export async function setBadgeDisabled(domain: string, disabled: boolean): Promise<boolean> {
-    const data = await browser.storage.local.get('badgeDisabledSites');
-    const sites = new Set((data as Record<string, string[]>).badgeDisabledSites || []);
-    if (disabled) sites.add(domain);
-    else sites.delete(domain);
-    await browser.storage.local.set({ badgeDisabledSites: [...sites] });
-    return true;
-}
-
-export async function removeBadgesFromTab(tabId: number): Promise<boolean> {
-    const cleanupFunc = () => {
-        (window as unknown as Record<string, unknown>).__wotBadgeEngineRunning = false;
-        if ((window as unknown as Record<string, unknown>).__wotBadgeObserver) {
-            ((window as unknown as Record<string, unknown>).__wotBadgeObserver as MutationObserver).disconnect();
-            (window as unknown as Record<string, unknown>).__wotBadgeObserver = null;
-        }
-        document.querySelectorAll('.wot-badge').forEach(el => el.remove());
-        document.querySelectorAll('.wot-tooltip').forEach(el => el.remove());
-        document.querySelectorAll('[data-wot-badge]').forEach(el => el.removeAttribute('data-wot-badge'));
-    };
-    try {
-        await browser.scripting.executeScript({
-            target: { tabId },
-            world: 'MAIN',
-            func: cleanupFunc
-        });
-        setTimeout(async () => {
-            try {
-                await browser.scripting.executeScript({
-                    target: { tabId },
-                    world: 'MAIN',
-                    func: cleanupFunc
-                });
-            } catch { /* ignored */ }
-        }, 600);
-    } catch { /* ignored */ }
-    return true;
-}
-
 // ── Tab broadcast / refresh ──
 
 export async function broadcastAccountChanged(pubkey: string): Promise<void> {
@@ -193,36 +150,13 @@ export async function broadcastAccountChanged(pubkey: string): Promise<void> {
     }
 }
 
+/**
+ * Formerly re-injected/refreshed trust badges across open tabs. The badge
+ * subsystem has been removed, so this is now a no-op. It is retained because
+ * several account-switching / config-update handlers still call it.
+ */
 export async function refreshBadgesOnAllTabs(): Promise<void> {
-    try {
-        const customData = await browser.storage.local.get(['customAdapters']);
-        const customAdapters = (customData as Record<string, Record<string, unknown>>).customAdapters || {};
-        const tabs = await browser.tabs.query({});
-        for (const tab of tabs) {
-            if (isRestrictedUrl(tab.url)) continue;
-            const domain = getDomainFromUrl(tab.url);
-            if (!domain || !(await isDomainAllowed(domain))) continue;
-            try {
-                const effectiveConfig: Record<string, unknown> = {};
-                if (customAdapters[domain]) {
-                    effectiveConfig[domain] = customAdapters[domain];
-                } else {
-                    const defaults = getDefaultsForDomain(domain);
-                    effectiveConfig[domain] = { version: 2, strategies: defaults };
-                }
-                await browser.scripting.executeScript({
-                    target: { tabId: tab.id! },
-                    world: 'MAIN',
-                    func: (cfg: Record<string, unknown>) => {
-                        (window as unknown as Record<string, unknown>).__wotCustomAdapters = cfg;
-                        if (typeof (window as unknown as Record<string, unknown>).__wotReinitBadges === 'function') ((window as unknown as Record<string, unknown>).__wotReinitBadges as () => void)();
-                        else if (typeof (window as unknown as Record<string, unknown>).__wotRefreshBadges === 'function') ((window as unknown as Record<string, unknown>).__wotRefreshBadges as () => void)();
-                    },
-                    args: [effectiveConfig]
-                });
-            } catch { /* ignored */ }
-        }
-    } catch { /* ignored */ }
+    /* badge subsystem removed — no-op */
 }
 
 // ── Read-only guard ──
@@ -255,26 +189,6 @@ async function setIdentityDisabled(domain: string, disabled: boolean): Promise<b
     return true;
 }
 
-// ── CSS strategy helpers ──
-
-/** Build per-strategy custom CSS from an adapter config. */
-function buildStrategyCSS(cfg: Record<string, unknown>): string[] {
-    const parts: string[] = [];
-    if (cfg.customCSS) parts.push(sanitizeCSS(cfg.customCSS as string));
-    if (Array.isArray(cfg.strategies)) {
-        for (let i = 0; i < cfg.strategies.length; i++) {
-            const s = cfg.strategies[i] as Record<string, unknown>;
-            if (s.customCSS && s.enabled !== false) {
-                parts.push(sanitizeCSS(s.customCSS as string).replace(
-                    /\.wot-badge(?![-\w])/g,
-                    `.wot-badge[data-wot-strategy="${i}"]`
-                ));
-            }
-        }
-    }
-    return parts;
-}
-
 // ── Enable for current domain ──
 
 async function enableForCurrentDomain(): Promise<{ ok: boolean; domain?: string; error: string | null }> {
@@ -304,62 +218,18 @@ async function enableForCurrentDomain(): Promise<{ ok: boolean; domain?: string;
 
 // ── Tab injection ──
 
-export async function injectIntoTab(tabId: number, url: string): Promise<boolean> {
+/**
+ * Formerly injected the trust-badge CSS + engine into an allowed tab. The badge
+ * subsystem has been removed, so injection is a no-op. The function is kept (and
+ * still returns a success boolean) because tab listeners and
+ * `enableForCurrentDomain` call it; the page's own content scripts (NIP-07
+ * provider, etc.) are still injected via the manifest content_scripts.
+ */
+export async function injectIntoTab(_tabId: number, url: string): Promise<boolean> {
     if (isRestrictedUrl(url)) {
         return false;
     }
-
-    try {
-        const wotSettings = await browser.storage.sync.get(['wotInjectionEnabled']) as Record<string, unknown>;
-        const domain = url ? getDomainFromUrl(url) : null;
-        const badgeDisabledData = await browser.storage.local.get(['badgeDisabledSites']) as Record<string, string[]>;
-        const badgeDisabledSites = new Set(badgeDisabledData.badgeDisabledSites || []);
-        if (shouldInjectBadges(wotSettings.wotInjectionEnabled, badgeDisabledSites, domain)) {
-            try {
-                await browser.scripting.insertCSS({
-                    target: { tabId },
-                    files: ['badges/badges.css']
-                });
-                const customData = await browser.storage.local.get(['customAdapters']) as Record<string, Record<string, unknown>>;
-                const customAdapters = customData.customAdapters || {};
-                const effectiveConfig: Record<string, unknown> = {};
-                if (domain) {
-                    if (customAdapters[domain]) {
-                        effectiveConfig[domain] = customAdapters[domain];
-                    } else {
-                        const defaults = getDefaultsForDomain(domain);
-                        effectiveConfig[domain] = { version: 2, strategies: defaults };
-                    }
-                }
-                if (Object.keys(effectiveConfig).length > 0) {
-                    await browser.scripting.executeScript({
-                        target: { tabId },
-                        world: 'MAIN',
-                        func: (cfg: Record<string, unknown>) => { (window as unknown as Record<string, unknown>).__wotCustomAdapters = cfg; },
-                        args: [effectiveConfig]
-                    });
-                }
-                if (domain && effectiveConfig[domain]) {
-                    const parts = buildStrategyCSS(effectiveConfig[domain] as Record<string, unknown>);
-                    if (parts.length > 0) {
-                        await browser.scripting.insertCSS({
-                            target: { tabId },
-                            css: parts.join('\n')
-                        });
-                    }
-                }
-                await browser.scripting.executeScript({
-                    target: { tabId },
-                    world: 'MAIN',
-                    files: ['badges/engine.js']
-                });
-            } catch { /* ignored */ }
-        }
-
-        return true;
-    } catch {
-        return false;
-    }
+    return true;
 }
 
 // ── Host access request (Chrome 133+) ──
@@ -494,62 +364,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['removeAllowedDomain', async (params) => removeAllowedDomain(params.domain as string)],
     ['hasHostPermission', async () => hasHostPermission()],
     ['requestHostPermission', async () => requestHostPermission()],
-    ['setBadgeDisabled', async (params) => setBadgeDisabled(params.domain as string, params.disabled as boolean)],
-    ['removeBadgesFromTab', async (params) => removeBadgesFromTab(params.tabId as number)],
     ['enableForCurrentDomain', async () => enableForCurrentDomain()],
-
-    ['getCustomAdapters', async () => {
-        const cData = await browser.storage.local.get('customAdapters') as Record<string, Record<string, unknown>>;
-        return cData.customAdapters || {};
-    }],
-
-    ['saveCustomAdapter', async (params) => {
-        const caData = await browser.storage.local.get('customAdapters') as Record<string, Record<string, unknown>>;
-        const cas = caData.customAdapters || {};
-        cas[params.domain as string] = params.config as Record<string, unknown>;
-        await browser.storage.local.set({ customAdapters: cas });
-        return true;
-    }],
-
-    ['deleteCustomAdapter', async (params) => {
-        const daData = await browser.storage.local.get('customAdapters') as Record<string, Record<string, unknown>>;
-        const das = daData.customAdapters || {};
-        delete das[params.domain as string];
-        await browser.storage.local.set({ customAdapters: das });
-        return true;
-    }],
-
-    ['previewBadgeConfig', async (params) => {
-        const previewDomain = params.domain as string;
-        const previewConfig = params.config as Record<string, unknown>;
-        const previewTabs = await browser.tabs.query({});
-        for (const tab of previewTabs) {
-            if (!tab.url) continue;
-            const td = getDomainFromUrl(tab.url);
-            if (!td || !td.includes(previewDomain)) continue;
-            try {
-                const effectiveCfg: Record<string, unknown> = {};
-                effectiveCfg[td] = previewConfig;
-                const parts = buildStrategyCSS(previewConfig);
-                if (parts.length > 0) {
-                    await browser.scripting.insertCSS({
-                        target: { tabId: tab.id! },
-                        css: parts.join('\n')
-                    });
-                }
-                await browser.scripting.executeScript({
-                    target: { tabId: tab.id! },
-                    world: 'MAIN',
-                    func: (cfg: Record<string, unknown>) => {
-                        (window as unknown as Record<string, unknown>).__wotCustomAdapters = cfg;
-                        if (typeof (window as unknown as Record<string, unknown>).__wotReinitBadges === 'function') ((window as unknown as Record<string, unknown>).__wotReinitBadges as () => void)();
-                    },
-                    args: [effectiveCfg]
-                });
-            } catch { /* ignored */ }
-        }
-        return true;
-    }],
 
     ['setIdentityDisabled', async (params) => setIdentityDisabled(params.domain as string, params.disabled as boolean)],
 

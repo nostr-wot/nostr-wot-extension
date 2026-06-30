@@ -30,12 +30,11 @@ if (window.__nostrWotContentInjected) {
 
     const LOCALHOST_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
-    // ── WoT methods ──
+    // ── Relay-list (NIP-65) methods ──
+    // The trust-graph WoT query methods were removed when the WoT subsystem was
+    // sunset; only the relay-list helpers remain page-accessible.
 
     const WOT_ALLOWED_METHODS = [
-        'getDistance', 'isInMyWoT', 'getTrustScore', 'getDetails', 'getConfig',
-        'getStatus', 'getDistanceBatch', 'getTrustScoreBatch', 'filterByWoT',
-        'getFollows', 'getCommonFollows', 'getPath', 'getStats',
         'getRelayList', 'getRelayPool'
     ] as const;
 

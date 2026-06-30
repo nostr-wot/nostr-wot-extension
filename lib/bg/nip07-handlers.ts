@@ -10,7 +10,6 @@ import type { UnsignedEvent, RequestDecision } from '../types.ts';
 import type { HandlerFn } from './state.ts';
 import { isIdentityDisabled, addAllowedDomain } from './domain-handlers.ts';
 import { logActivity } from './misc-handlers.ts';
-import { triggerAutoSyncIfEnabled } from './wot-handlers.ts';
 
 // ── Validation ──
 
@@ -104,9 +103,6 @@ export const handlers = new Map<string, HandlerFn>([
         try {
             const result = await signer.handleSignEvent(params.event as UnsignedEvent, params.origin as string);
             logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'approved', event: params.event as Record<string, unknown> });
-            if ((params.event as Record<string, unknown>)?.kind === 3) {
-                triggerAutoSyncIfEnabled();
-            }
             return result;
         } catch (e) {
             console.error('[nip07] signEvent FAILED, kind:', (params.event as Record<string, unknown>)?.kind, 'error:', (e as Error).message);

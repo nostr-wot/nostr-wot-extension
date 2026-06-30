@@ -5,7 +5,6 @@ import '@shared/theme.css';
 import styles from './PopupApp.module.css';
 import { AccountProvider, useAccount } from './context/AccountContext';
 import { VaultProvider, useVault } from './context/VaultContext';
-import { ScoringProvider } from './context/ScoringContext';
 import { PermissionsProvider } from './context/PermissionsContext';
 import TopoBg from '@components/TopoBg/TopoBg';
 import Splash from '@components/Splash/Splash';
@@ -175,9 +174,7 @@ export default function PopupApp() {
     <AccountProvider>
       <VaultProvider>
         <PermissionsProvider>
-          <ScoringProvider>
-            <PopupInner />
-          </ScoringProvider>
+          <PopupInner />
         </PermissionsProvider>
       </VaultProvider>
     </AccountProvider>

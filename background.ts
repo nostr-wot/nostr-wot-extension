@@ -1,26 +1,23 @@
 
 import browser from './lib/browser.ts';
-import { RemoteOracle } from './lib/api.ts';
 import * as storage from './lib/storage.ts';
 import * as vault from './lib/vault.ts';
 import * as signer from './lib/signer.ts';
 import * as signerPermissions from './lib/permissions.ts';
 import { openPopupForActiveTab } from './lib/openPopupForActiveTab.ts';
 import { randomHex } from './lib/crypto/utils.ts';
-import { DEFAULT_SCORING } from './lib/scoring.ts';
-import type { ScoringConfig } from './lib/types.ts';
 
 // ── State & handler modules ──
 
 import {
-    config, setOracle, resetLocalGraph,
+    config,
     NIP07_SIGNING_METHODS,
     checkRateLimit, npubToHex,
     buildPrivilegedMethods, setPrivilegedMethods,
     PRIVILEGED_METHODS,
     type HandlerFn,
 } from './lib/bg/state.ts';
-import { handlers as wotHandlers } from './lib/bg/wot-handlers.ts';
+import { handlers as relayHandlers } from './lib/bg/relay-handlers.ts';
 import { handlers as miscHandlers, logActivity } from './lib/bg/misc-handlers.ts';
 import {
     handlers as domainHandlers,
@@ -37,7 +34,7 @@ import { handlers as onboardingHandlers } from './lib/bg/onboarding-handlers.ts'
 // ── Assemble handler map ──
 
 const allHandlers = new Map<string, HandlerFn>();
-const handlerGroups = [wotHandlers, miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers];
+const handlerGroups = [relayHandlers, miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers];
 for (const group of handlerGroups) {
     for (const [method, fn] of group) {
         if (allHandlers.has(method)) {
@@ -62,27 +59,15 @@ const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, wa
 setPrivilegedMethods(buildPrivilegedMethods(...privilegedHandlerGroups));
 // Also add configUpdated and other locally-defined handlers
 PRIVILEGED_METHODS.add('configUpdated');
-PRIVILEGED_METHODS.add('syncGraph');
-PRIVILEGED_METHODS.add('stopSync');
-PRIVILEGED_METHODS.add('clearGraph');
 
 // ── Config loading ──
 
 async function loadConfig(): Promise<void> {
     const data = await browser.storage.sync.get([
-        'mode', 'oracleUrl', 'myPubkey', 'relays', 'scoring'
+        'myPubkey', 'relays'
     ]) as Record<string, unknown>;
 
-    config.mode = (data.mode as 'local' | 'remote' | 'hybrid') || 'hybrid';
     config.myPubkey = (data.myPubkey as string) || null;
-    config.maxHops = 3;
-    config.timeout = 5000;
-    config.scoring = (data.scoring as ScoringConfig) || DEFAULT_SCORING;
-
-    // Parse oracle URLs (comma-separated), use first for primary oracle
-    const oracleCsv = (data.oracleUrl as string) || 'https://wot-oracle.mappingbitcoin.com';
-    config.oracleUrls = oracleCsv.split(',').map(u => u.trim()).filter(Boolean);
-    config.oracleUrl = config.oracleUrls[0] || 'https://wot-oracle.mappingbitcoin.com';
 
     // Parse relays from comma-separated string
     if (data.relays) {
@@ -113,20 +98,11 @@ async function loadConfig(): Promise<void> {
     }
 
     if (activeAccountId) {
-        await storage.migrateGlobalDatabase(activeAccountId);
+        // initDB recreates a fresh (empty) per-account DB; its relay_lists store
+        // backs the relay (NIP-65) feature. The deprecated trust-graph stores it
+        // also creates are left unused.
         await storage.initDB(activeAccountId);
     }
-
-    setOracle(new RemoteOracle(config.oracleUrl));
-    resetLocalGraph();
-
-    // Clean up stale sync state from interrupted syncs
-    try {
-        const syncState = await storage.getMeta('syncState') as Record<string, unknown> | null;
-        if (syncState?.inProgress) {
-            await storage.setMeta('syncState', { inProgress: false });
-        }
-    } catch { /* ignored */ }
 }
 
 // ── Request dispatch ──
@@ -180,29 +156,10 @@ async function handleRequest({ method, params }: { method: string; params: Recor
         throw new Error('Signing not available for read-only accounts');
     }
 
-    // Normalize pubkey targets from npub to hex
-    if (params?.target) params.target = npubToHex(params.target as string) || params.target;
-    if (params?.from) params.from = npubToHex(params.from as string) || params.from;
-    if (params?.to) params.to = npubToHex(params.to as string) || params.to;
+    // Normalize pubkey params from npub to hex (used by relay-list and profile handlers)
     if (params?.pubkey) params.pubkey = npubToHex(params.pubkey as string) || params.pubkey;
-
-    // For batch operations, keep a mapping from normalized→original for response keys
-    let _batchKeyMap: Map<string, string> | null = null;
-    if (Array.isArray(params?.targets)) {
-        _batchKeyMap = new Map();
-        params.targets = (params.targets as string[]).map(t => {
-            const hex = npubToHex(t) || t;
-            if (hex !== t) _batchKeyMap!.set(hex, t);
-            return hex;
-        });
-    }
     if (Array.isArray(params?.pubkeys)) {
-        if (!_batchKeyMap) _batchKeyMap = new Map();
-        params.pubkeys = (params.pubkeys as string[]).map(t => {
-            const hex = npubToHex(t) || t;
-            if (hex !== t) _batchKeyMap!.set(hex, t);
-            return hex;
-        });
+        params.pubkeys = (params.pubkeys as string[]).map(t => npubToHex(t) || t);
     }
 
     const handler = allHandlers.get(method);
@@ -210,19 +167,7 @@ async function handleRequest({ method, params }: { method: string; params: Recor
         throw new Error(`Unknown method: ${method}`);
     }
 
-    const result = await handler(params);
-
-    // Remap batch result keys from hex back to original npub keys
-    if (_batchKeyMap?.size && result && typeof result === 'object' && !Array.isArray(result) &&
-        (method === 'getDistanceBatch' || method === 'getTrustScoreBatch')) {
-        const remapped: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(result as Record<string, unknown>)) {
-            remapped[_batchKeyMap!.get(key) || key] = val;
-        }
-        return remapped;
-    }
-
-    return result;
+    return await handler(params);
 }
 
 // ── Message listeners ──
@@ -311,7 +256,24 @@ if (browser.alarms?.onAlarm) {
 // ── Startup (runs AFTER listeners are registered, so messages during async
 // init don't race against listener registration) ──
 
-loadConfig();
+// Silently delete the deprecated trust-graph databases on startup. The WoT
+// subsystem (graph/sync/oracles/scoring/badges) has been removed; its
+// per-account `nostr-wot-{accountId}` IndexedDB stores are dead data. Deleting
+// them BEFORE loadConfig() lets initDB recreate a fresh empty DB for the active
+// account (whose relay_lists store still backs the relay feature). Guarded so a
+// cleanup failure never blocks startup.
+(async () => {
+    try {
+        const dbs = await storage.listAllDatabases();
+        for (const d of dbs) {
+            try {
+                await storage.deleteDatabase(d.accountId);
+            } catch { /* ignore individual delete failures */ }
+        }
+    } catch { /* ignore — listAllDatabases unsupported or failed */ }
+    // Recreate the active account's empty DB after the wipe.
+    loadConfig();
+})();
 
 signer.cleanupStale();
 

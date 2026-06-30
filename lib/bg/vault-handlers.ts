@@ -9,7 +9,6 @@ import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
 import * as storage from '../storage.ts';
 import * as accounts from '../accounts.ts';
-import { isSyncInProgress, stopSync } from '../sync.ts';
 import { nsecEncode } from '../crypto/bech32.ts';
 import { bytesToHex } from '../crypto/utils.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../crypto/nip49.ts';
@@ -141,9 +140,6 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['switchAccount', async (params) => {
-        if (isSyncInProgress()) {
-            await stopSync();
-        }
         const switchId = params.accountId as string;
         const oldData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
         const oldAccountId = oldData.activeAccountId;
@@ -173,9 +169,6 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['vault_setActiveAccount', async (params) => {
-        if (isSyncInProgress()) {
-            await stopSync();
-        }
         await vault.setActiveAccount(params.accountId as string);
         await syncActivePubkey();
         await storage.switchDatabase(params.accountId as string);
@@ -260,9 +253,6 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['vault_destroy', async () => {
-        if (isSyncInProgress()) {
-            await stopSync();
-        }
         clearWalletProviders();
         await signer.cancelAllUnlockWaiters();
         await vault.destroy();

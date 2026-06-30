@@ -5,12 +5,10 @@
  */
 
 import browser from '../browser.ts';
-import { RemoteOracle } from '../api.ts';
 import { signEvent } from '../crypto/nip01.ts';
 import * as vault from '../vault.ts';
 import * as signer from '../signer.ts';
 import { config, type HandlerFn } from './state.ts';
-import { triggerAutoSyncIfEnabled } from './wot-handlers.ts';
 import type { UnsignedEvent, SignedEvent } from '../types.ts';
 
 // ── Event Broadcasting ──
@@ -132,9 +130,6 @@ export const handlers = new Map<string, HandlerFn>([
         try {
             const signed = await signEvent(params.event as UnsignedEvent, privkeyBytes);
             const result = await broadcastEvent(signed, config.relays);
-            if ((params.event as UnsignedEvent).kind === 3) {
-                triggerAutoSyncIfEnabled();
-            }
             return { ok: true, sent: result.sent, failed: result.failed };
         } finally {
             privkeyBytes.fill(0);
@@ -176,17 +171,6 @@ export const handlers = new Map<string, HandlerFn>([
                 signal: AbortSignal.timeout(5000)
             });
             return { reachable: res.ok };
-        } catch {
-            return { reachable: false };
-        }
-    }],
-
-    ['checkOracleHealth', async (params) => {
-        const { url } = params as { url: string };
-        try {
-            const o = new RemoteOracle(url);
-            const healthy = await o.isHealthy();
-            return { reachable: healthy };
         } catch {
             return { reachable: false };
         }

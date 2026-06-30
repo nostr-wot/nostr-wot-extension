@@ -6,7 +6,7 @@
 import browser from '../browser.ts';
 import { randomHex } from '../crypto/utils.ts';
 import * as storage from '../storage.ts';
-import { normalizeRelayUrl } from '../sync.ts';
+import { normalizeRelayUrl } from '../relayUtils.ts';
 import { config, DEFAULT_RELAYS, profileCache, PROFILE_CACHE_TTL, type HandlerFn, type ProfileCacheEntry } from './state.ts';
 
 // Prepend target's write-relays from stored relay list (outbox model)

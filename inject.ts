@@ -25,28 +25,6 @@ interface NostrNip44 {
     decrypt: (pubkey: string, ciphertext: string) => Promise<string>;
 }
 
-interface WotDetails {
-    hops: number;
-    paths: number | null;
-    score: number;
-}
-
-interface WotConfig {
-    maxHops: number;
-    timeout: number;
-    scoring: {
-        distanceWeights: Record<number, number>;
-        pathBonus: Record<number, number>;
-        maxPathBonus: number;
-    };
-}
-
-interface WotStatus {
-    configured: boolean;
-    mode: string;
-    hasLocalGraph: boolean;
-}
-
 interface RelayListEntry {
     url: string;
     read: boolean;
@@ -59,19 +37,6 @@ interface RelayPoolEntry {
 }
 
 interface WotApi {
-    getDistance: (target: string) => Promise<number | null>;
-    isInMyWoT: (target: string, maxHops?: number) => Promise<boolean>;
-    getTrustScore: (target: string) => Promise<number | null>;
-    getDetails: (target: string) => Promise<WotDetails | null>;
-    getConfig: () => Promise<WotConfig>;
-    getDistanceBatch: (targets: string[], options?: boolean | Record<string, unknown>) => Promise<Record<string, number | null>>;
-    getTrustScoreBatch: (targets: string[]) => Promise<Record<string, number | null>>;
-    filterByWoT: (pubkeys: string[], maxHops?: number) => Promise<string[]>;
-    getStatus: () => Promise<WotStatus>;
-    getFollows: (pubkey?: string) => Promise<string[]>;
-    getCommonFollows: (pubkey: string) => Promise<string[]>;
-    getStats: () => Promise<Record<string, unknown>>;
-    getPath: (target: string) => Promise<string[] | null>;
     getRelayList: (pubkey: string) => Promise<RelayListEntry[] | null>;
     getRelayPool: () => Promise<RelayPoolEntry[]>;
 }
@@ -201,24 +166,6 @@ declare global {
 
     // WoT API (always set)
     window.nostr.wot = {
-        getDistance: (target) => wot.call('getDistance', { target }) as Promise<number | null>,
-        isInMyWoT: (target, maxHops) => wot.call('isInMyWoT', { target, maxHops }) as Promise<boolean>,
-        getTrustScore: (target) => wot.call('getTrustScore', { target }) as Promise<number | null>,
-        getDetails: (target) => wot.call('getDetails', { target }) as Promise<WotDetails | null>,
-        getConfig: () => wot.call('getConfig', {}) as Promise<WotConfig>,
-        getDistanceBatch: (targets, options) => {
-            const opts = typeof options === 'boolean'
-                ? { includePaths: options }
-                : options || {};
-            return wot.call('getDistanceBatch', { targets, ...opts }) as Promise<Record<string, number | null>>;
-        },
-        getTrustScoreBatch: (targets) => wot.call('getTrustScoreBatch', { targets }) as Promise<Record<string, number | null>>,
-        filterByWoT: (pubkeys, maxHops) => wot.call('filterByWoT', { pubkeys, maxHops }) as Promise<string[]>,
-        getStatus: () => wot.call('getStatus', {}) as Promise<WotStatus>,
-        getFollows: (pubkey) => wot.call('getFollows', { pubkey }) as Promise<string[]>,
-        getCommonFollows: (pubkey) => wot.call('getCommonFollows', { pubkey }) as Promise<string[]>,
-        getStats: () => wot.call('getStats', {}) as Promise<Record<string, unknown>>,
-        getPath: (target) => wot.call('getPath', { target }) as Promise<string[] | null>,
         getRelayList: (pubkey) => wot.call('getRelayList', { pubkey }) as Promise<RelayListEntry[] | null>,
         getRelayPool: () => wot.call('getRelayPool', {}) as Promise<RelayPoolEntry[]>,
     };

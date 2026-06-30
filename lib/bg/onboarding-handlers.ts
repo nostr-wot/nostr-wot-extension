@@ -7,7 +7,6 @@ import browser from '../browser.ts';
 import * as vault from '../vault.ts';
 import * as accounts from '../accounts.ts';
 import * as storage from '../storage.ts';
-import { isSyncInProgress, stopSync } from '../sync.ts';
 import { npubEncode } from '../crypto/bech32.ts';
 import { bytesToHex, hexToBytes, randomBytes, randomHex } from '../crypto/utils.ts';
 import { getPublicKey } from '../crypto/secp256k1.ts';
@@ -668,9 +667,6 @@ export const handlers = new Map<string, HandlerFn>([
             if (idx !== -1) addVaultAccts[idx].readOnly = !fullAccountAdd.privkey && fullAccountAdd.type !== 'nip46';
         }
         await browser.storage.local.set({ accounts: addVaultAccts, activeAccountId: fullAccountAdd.id });
-        if (isSyncInProgress()) {
-            await stopSync();
-        }
         await storage.switchDatabase((params.upgradeFromReadOnly as string) || fullAccountAdd.id);
         resetLocalGraph();
         refreshBadgesOnAllTabs();
