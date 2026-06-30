@@ -267,7 +267,37 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           </div>
         </Card>
       )}
-      {/* Identity access for the current site — on top */}
+      {/* Wallet — on top: balance card when a wallet exists, else the setup prompt */}
+      {walletState && typeof walletState === 'object' && (
+        <Card className={styles.walletCard} onClick={onOpenWallet}>
+          <div className={styles.walletCardInfo}>
+            <IconZap size={14} className={styles.walletCardIcon} />
+            <div className={styles.walletCardText}>
+              <strong>{Math.round(walletState.balance).toLocaleString()} sats</strong>
+              <span>{t('wallet.balance')}</span>
+            </div>
+          </div>
+          <IconChevronRight size={16} />
+        </Card>
+      )}
+
+      {showWalletBanner && (
+        <Card className={styles.profileSuggestion}>
+          <div className={styles.profileSuggestionContent}>
+            <IconZap size={14} className={styles.profileSuggestionIcon} />
+            <div className={styles.profileSuggestionText}>
+              <strong>{t('wallet.setupBanner')}</strong>
+              <span>{t('wallet.setupBannerHint')}</span>
+            </div>
+          </div>
+          <div className={styles.profileSuggestionActions}>
+            <Button small onClick={onOpenWallet}>{t('home.setupProfileButton')}</Button>
+            <button className={styles.profileDismiss} onClick={handleDismissWallet}>{t('home.skip')}</button>
+          </div>
+        </Card>
+      )}
+
+      {/* Identity access for the current site */}
       {siteState === 'error' ? (
         <Card className={styles.emptyState}>
           <EmptyState
@@ -291,37 +321,6 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
       {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
       {active && <MutesCard onOpen={onManageFilters} />}
       {active && <RelaysCard onOpen={onOpenRelays} />}
-
-      {/* Wallet balance card (when wallet exists) */}
-      {walletState && typeof walletState === 'object' && (
-        <Card className={styles.walletCard} onClick={onOpenWallet}>
-          <div className={styles.walletCardInfo}>
-            <IconZap size={14} className={styles.walletCardIcon} />
-            <div className={styles.walletCardText}>
-              <strong>{Math.round(walletState.balance).toLocaleString()} sats</strong>
-              <span>{t('wallet.balance')}</span>
-            </div>
-          </div>
-          <IconChevronRight size={16} />
-        </Card>
-      )}
-
-      {/* Wallet setup banner (when no wallet) */}
-      {showWalletBanner && (
-        <Card className={styles.profileSuggestion}>
-          <div className={styles.profileSuggestionContent}>
-            <IconZap size={14} className={styles.profileSuggestionIcon} />
-            <div className={styles.profileSuggestionText}>
-              <strong>{t('wallet.setupBanner')}</strong>
-              <span>{t('wallet.setupBannerHint')}</span>
-            </div>
-          </div>
-          <div className={styles.profileSuggestionActions}>
-            <Button small onClick={onOpenWallet}>{t('home.setupProfileButton')}</Button>
-            <button className={styles.profileDismiss} onClick={handleDismissWallet}>{t('home.skip')}</button>
-          </div>
-        </Card>
-      )}
     </>
   );
 }
