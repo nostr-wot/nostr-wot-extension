@@ -64,6 +64,7 @@
   "home.connectedTo": "Conectado a {domain}",
   "home.permissionDenied": "Permiso denegado",
   "home.disconnectedFrom": "Desconectado de {domain}",
+  "home.editProfile": "Editar perfil",
   "home.setupProfile": "Configura tu perfil",
   "home.setupProfileHint": "Publica tu nombre, foto y biografía para que otros te encuentren en Nostr.",
   "home.setupProfileButton": "Configurar",

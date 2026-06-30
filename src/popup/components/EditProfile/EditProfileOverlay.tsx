@@ -340,8 +340,12 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   return (
     <OverlayPanel
       title={t('profileEdit.title')}
-      onClose={step === STEPS.PUBLISHING ? undefined : onClose}
-      onBack={step === STEPS.PREVIEW ? () => { setStep(STEPS.FORM); setError(''); } : null}
+      onClose={step === STEPS.PREVIEW ? onClose : undefined}
+      onBack={
+        step === STEPS.PUBLISHING ? null
+          : step === STEPS.PREVIEW ? () => { setStep(STEPS.FORM); setError(''); }
+            : onClose
+      }
       animating={animating}
     >
       {(stepContent[step] || renderForm)()}

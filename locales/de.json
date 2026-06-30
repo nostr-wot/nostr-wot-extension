@@ -64,6 +64,7 @@
   "home.connectedTo": "Verbunden mit {domain}",
   "home.permissionDenied": "Berechtigung verweigert",
   "home.disconnectedFrom": "Getrennt von {domain}",
+  "home.editProfile": "Profil bearbeiten",
   "home.setupProfile": "Profil einrichten",
   "home.setupProfileHint": "Veröffentliche deinen Namen, dein Bild und deine Bio, damit andere dich auf Nostr finden können.",
   "home.setupProfileButton": "Einrichten",

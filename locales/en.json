@@ -68,6 +68,7 @@
   "home.permissionDenied": "Permission denied",
   "home.disconnectedFrom": "Disconnected from {domain}",
 
+  "home.editProfile": "Edit profile",
   "home.setupProfile": "Set up your profile",
   "home.setupProfileHint": "Publish your name, picture, and bio so others can find you on Nostr.",
   "home.setupProfileButton": "Setup",
