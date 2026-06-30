@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc, rpcNotify } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { KNOWN_ORACLES, DEFAULT_RELAYS } from '@shared/constants.ts';
+import { DEFAULT_RELAYS } from '@shared/constants.ts';
 import { formatTimeAgo } from '@shared/format/time.ts';
-import { isValidWssUrl, isValidHttpsUrl } from '@shared/url.ts';
+import { isValidWssUrl } from '@shared/url.ts';
 import Button from '@components/Button/Button';
 import InputRow from '@components/InputRow/InputRow';
 import StatusDot from '@components/StatusDot/StatusDot';
@@ -62,11 +62,6 @@ export default function NetworkSection() {
   const [newRelay, setNewRelay] = useState<string>('');
   const [relayError, setRelayError] = useState<string>('');
 
-  const [oracles, setOracles] = useState<string[]>([]);
-  const [oracleHealth, setOracleHealth] = useState<Record<string, string>>({});
-  const [newOracle, setNewOracle] = useState<string>('');
-  const [oracleError, setOracleError] = useState<string>('');
-
   const [lastPublish, setLastPublish] = useState<number | null>(null);
   const [publishUnsaved, setPublishUnsaved] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
@@ -77,17 +72,13 @@ export default function NetworkSection() {
 
   useEffect(() => {
     (async () => {
-      const syncData: any = await browser.storage.sync.get(['relays', 'oracleUrl']);
+      const syncData: any = await browser.storage.sync.get(['relays']);
       const localData: any = await browser.storage.local.get(['relayFlags', 'lastRelayPublish', 'lastPublishedRelays']);
 
       const relayStr: string = syncData.relays || DEFAULT_RELAYS;
       const relayList = relayStr.split(',').map((s: string) => s.trim()).filter(Boolean);
       setRelays(relayList);
       setRelayFlags(localData.relayFlags || {});
-
-      const oracleStr: string = syncData.oracleUrl || KNOWN_ORACLES[0];
-      const oracleList = oracleStr.split(',').map((s: string) => s.trim()).filter(Boolean);
-      setOracles(oracleList);
 
       if (localData.lastRelayPublish) {
         setLastPublish(localData.lastRelayPublish);
@@ -96,9 +87,7 @@ export default function NetworkSection() {
         setPublishUnsaved(true);
       }
 
-      // Check health
       for (const url of relayList) checkRelay(url);
-      for (const url of oracleList) checkOracle(url);
     })();
   }, []);
 
@@ -112,25 +101,10 @@ export default function NetworkSection() {
     }
   };
 
-  const checkOracle = async (url: string) => {
-    setOracleHealth((h) => ({ ...h, [url]: 'checking' }));
-    try {
-      const result = await rpc<{ reachable?: boolean }>('checkOracleHealth', { url });
-      if (mounted.current) setOracleHealth((h) => ({ ...h, [url]: result?.reachable ? 'reachable' : 'unreachable' }));
-    } catch {
-      if (mounted.current) setOracleHealth((h) => ({ ...h, [url]: 'unreachable' }));
-    }
-  };
-
   const saveRelays = async (list: string[], flags: Record<string, RelayFlags>) => {
     const str = list.join(',');
     await browser.storage.sync.set({ relays: str });
     await browser.storage.local.set({ relayFlags: flags });
-    rpcNotify('configUpdated');
-  };
-
-  const saveOracles = async (list: string[]) => {
-    await browser.storage.sync.set({ oracleUrl: list.join(',') });
     rpcNotify('configUpdated');
   };
 
@@ -161,25 +135,6 @@ export default function NetworkSection() {
     const newFlags = { ...relayFlags, [url]: { ...current, [flag]: !current[flag] } };
     setRelayFlags(newFlags);
     saveRelays(relays, newFlags);
-  };
-
-  const addOracle = () => {
-    const url = newOracle.trim();
-    if (!url) return;
-    if (!isValidHttpsUrl(url)) { setOracleError(t('network.mustBeHttps')); return; }
-    if (oracles.includes(url)) { setOracleError(t('network.oracleAlreadyAdded')); return; }
-    const updated = [...oracles, url];
-    setOracles(updated);
-    setNewOracle('');
-    setOracleError('');
-    saveOracles(updated);
-    checkOracle(url);
-  };
-
-  const removeOracle = (url: string) => {
-    const updated = oracles.filter((o) => o !== url);
-    setOracles(updated);
-    saveOracles(updated);
   };
 
   const publishRelayList = async () => {
@@ -247,23 +202,6 @@ export default function NetworkSection() {
         {publishing && <div className={styles.publishSpinner} />}
         <Button small variant="secondary" onClick={publishRelayList} disabled={publishing}>{t('common.publish')}</Button>
       </div>
-
-      <SectionLabel style={{ marginTop: 12 }}>{t('network.wotOracles')}</SectionLabel>
-      <EndpointList
-        items={oracles}
-        health={oracleHealth}
-        inputValue={newOracle}
-        onInputChange={(e: ChangeEvent<HTMLInputElement>) => { setNewOracle(e.target.value); setOracleError(''); }}
-        placeholder={t('network.oraclePlaceholder')}
-        onAdd={addOracle}
-        onRemove={removeOracle}
-        error={oracleError}
-        renderExtra={(url) => (
-          <span className={KNOWN_ORACLES.includes(url) ? styles.verifiedBadge : styles.unverifiedBadge}>
-            {KNOWN_ORACLES.includes(url) ? t('badges.verified') : t('badges.custom')}
-          </span>
-        )}
-      />
     </div>
   );
 }
