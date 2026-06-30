@@ -44,7 +44,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 | `nip07-handlers.ts` | NIP-07 signer methods (sign, encrypt/decrypt), permission management |
 | `wallet-handlers.ts` | WebLN page methods + privileged wallet management (connect, provision, Lightning Address) |
 | `onboarding-handlers.ts` | Account import/generation, NostrConnect sessions, vault creation during onboarding |
-| `misc-handlers.ts` | Activity log, mute lists, local blocks, profile metadata, relay publishing, health checks |
+| `misc-handlers.ts` | Activity log, NIP-51 mute list (kind:10000), profile metadata, relay/mute-list publishing, health checks |
 
 **Dispatch pattern:** Each handler module exports `handlers: Map<string, HandlerFn>`. `background.ts` merges all maps into a single `allHandlers` map. `handleRequest()` does pre-checks (rate limit, NIP-07 validation, domain gating, npub normalization) then delegates to `allHandlers.get(method)`.
 

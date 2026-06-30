@@ -8,7 +8,7 @@ import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
 import SiteControls from './SiteControls';
 import ProfileCard from './ProfileCard';
-import BlocksMutesCard from './BlocksMutesCard';
+import MutesCard from './MutesCard';
 import RelaysCard from './RelaysCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
@@ -289,7 +289,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
       )}
 
       {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
-      {active && <BlocksMutesCard onOpen={onManageFilters} />}
+      {active && <MutesCard onOpen={onManageFilters} />}
       {active && <RelaysCard onOpen={onOpenRelays} />}
 
       {/* Wallet balance card (when wallet exists) */}

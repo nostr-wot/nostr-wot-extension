@@ -1,11 +1,11 @@
 /**
- * Miscellaneous handlers: activity log, mute lists, local blocks,
+ * Miscellaneous handlers: activity log, NIP-51 mute list,
  * profile metadata, NIP-46 sessions, relay/event publishing, health checks.
  *
  * This module is a re-export façade — all logic has been split into focused modules:
  *   - activity-handlers.ts  — activity log
- *   - profile-handlers.ts   — profile metadata, mute lists, local blocks
- *   - publish-handlers.ts   — broadcasting, signing, NIP-46 sessions, health checks
+ *   - profile-handlers.ts   — profile metadata, NIP-51 mute list (kind:10000)
+ *   - publish-handlers.ts   — broadcasting, signing, mute-list publish, NIP-46 sessions, health checks
  *
  * @module lib/bg/misc-handlers
  */

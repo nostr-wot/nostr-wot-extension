@@ -112,6 +112,51 @@ export const handlers = new Map<string, HandlerFn>([
         }
     }],
 
+    ['publishMuteList', async (params) => {
+        // Build & publish the active account's OWN NIP-51 kind:10000 mute list.
+        // CRITICAL: `.content` is set to the caller-supplied `rawContent` (the
+        // user's existing NIP-44-encrypted PRIVATE entries, fetched verbatim by
+        // getMyMuteList) so publishing public mutes never destroys private ones.
+        const privkeyBytes = vault.getPrivkey();
+        if (!privkeyBytes) throw new Error('Vault is locked or no private key');
+
+        try {
+            const people = Array.isArray(params.people) ? (params.people as string[]) : [];
+            const hashtags = Array.isArray(params.hashtags) ? (params.hashtags as string[]) : [];
+            const words = Array.isArray(params.words) ? (params.words as string[]) : [];
+            const events = Array.isArray(params.events) ? (params.events as string[]) : [];
+            const rawContent = typeof params.rawContent === 'string' ? params.rawContent : '';
+
+            const tags: string[][] = [];
+            for (const p of people) if (p) tags.push(['p', p]);
+            for (const e of events) if (e) tags.push(['e', e]);
+            for (const ht of hashtags) if (ht) tags.push(['t', ht]);
+            for (const w of words) if (w) tags.push(['word', w]);
+
+            const event: UnsignedEvent = {
+                created_at: Math.floor(Date.now() / 1000),
+                kind: 10000,
+                tags,
+                content: rawContent
+            };
+
+            const signed = await signEvent(event, privkeyBytes);
+
+            // Mirror publishRelayList: publish to the user's WRITE relays.
+            const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
+            const flagData = await browser.storage.local.get(['relayFlags']) as Record<string, Record<string, { read: boolean; write: boolean }>>;
+            const relayUrls = (relayData.relays || '').split(',').map(r => r.trim()).filter(Boolean);
+            const flags = flagData.relayFlags || {};
+            const writeRelays = relayUrls.filter(url => (flags[url] || { read: true, write: true }).write);
+            const broadcastUrls = writeRelays.length > 0 ? writeRelays : (relayUrls.length > 0 ? relayUrls : config.relays);
+
+            const result = await broadcastEvent(signed, broadcastUrls);
+            return { ok: true, sent: result.sent > 0, sentCount: result.sent, failed: result.failed };
+        } finally {
+            privkeyBytes.fill(0);
+        }
+    }],
+
     ['signEvent', async (params) => {
         if (!params.event || typeof (params.event as Record<string, unknown>).kind !== 'number') throw new Error('Invalid event');
         const privkeyBytes = vault.getPrivkey();

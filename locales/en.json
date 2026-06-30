@@ -34,19 +34,16 @@
   "common.unlock": "Unlock",
   "common.on": "On",
   "common.off": "Off",
-
   "topbar.noAccounts": "No accounts",
   "topbar.addToStart": "Add one to get started",
   "topbar.addAccount": "+ Add Account",
   "topbar.lockVault": "Lock vault",
   "topbar.siteConnection": "Site connection",
   "topbar.settings": "Settings",
-
   "globe.noSite": "No site",
   "globe.notConnectable": "Not on a connectable page",
   "globe.connected": "Connected",
   "globe.notConnected": "Not connected",
-
   "home.navigateToConnect": "Navigate to a website to connect",
   "home.siteControlsHint": "Site controls and activity will appear here when you're browsing.",
   "home.siteNotConnected": "This site is not connected. Enable the extension to use identity and trust features.",
@@ -67,13 +64,11 @@
   "home.connectedTo": "Connected to {domain}",
   "home.permissionDenied": "Permission denied",
   "home.disconnectedFrom": "Disconnected from {domain}",
-
   "home.editProfile": "Edit profile",
   "home.setupProfile": "Set up your profile",
   "home.setupProfileHint": "Publish your name, picture, and bio so others can find you on Nostr.",
   "home.setupProfileButton": "Setup",
   "home.skip": "Skip",
-
   "scoring.trustSensitivity": "Trust sensitivity",
   "scoring.trustSensitivityDesc": "Tune how strict trust scores are",
   "scoring.strict": "Strict",
@@ -102,27 +97,6 @@
   "scoring.resetMsg": "Scoring reset to defaults (save to apply)",
   "scoring.updated": "Scoring updated: {preset}",
   "scoring.strategyUpdated": "Strategy: {preset}",
-
-  "filters.title": "Filters",
-  "filters.blocksMutes": "Blocks & Mutes",
-  "filters.blocksMutesInfo": "Local blocks are private to this browser and never published. Mute lists follow NIP-51 — you import lists other users have published to hide the accounts they mute.",
-  "filters.blocksMutesSummary": "{blocks} blocked · {mutes} mute lists",
-  "filters.strategies": "Strategies",
-  "filters.muteLists": "Mute Lists",
-  "filters.import": "+ Import",
-  "filters.localBlocks": "Local Blocks",
-  "filters.addBlock": "+ Block",
-  "filters.blocksNote": "Blocks are local only and never published.",
-  "filters.precedenceNote": "Local blocks always override WoT scores and mute lists.",
-  "filters.enterPubkey": "Enter a pubkey",
-  "filters.invalidPubkey": "Invalid pubkey format",
-  "filters.noLocalBlocks": "No local blocks",
-  "filters.noMuteLists": "No mute lists imported",
-  "filters.foundMuted": "Found {count} muted pubkey(s).",
-  "filters.npubOrHexBlock": "npub or hex pubkey",
-  "filters.noteToSelf": "Note to self (optional)",
-  "filters.npubOrHexMute": "npub or hex of list owner",
-
   "settings.title": "Settings",
   "settings.editProfile": "Edit Profile",
   "settings.editProfileDesc": "Name, picture, and bio (kind 0)",
@@ -140,7 +114,6 @@
   "network.relaysInfo": "Your NIP-51/NIP-65 relay list — the relays your notes are published to and read from.",
   "network.relaysSummary": "{count} relays",
   "settings.language": "Language",
-
   "security.keyBackup": "Keys & Backup",
   "security.keyBackupDesc": "Export or back up your private keys",
   "security.permissions": "Permissions",
@@ -158,14 +131,12 @@
   "security.enterCurrentPassword": "Please enter your current password",
   "security.currentPassword": "Current password",
   "security.neverLockWarning": "Disabling auto-lock means your keys stay decrypted in memory. Anyone with access to your browser can use them.",
-
   "account.readOnly": "Read-only",
   "account.remove": "Remove account",
   "account.addAccount": "Add Account",
   "account.removeTitle": "Remove {name}?",
   "account.removeWarning": "This account and its data will be permanently removed from this extension.",
   "account.removeKeyWarning": "Make sure you have a backup of your private key before removing. You will lose access to this identity if you don't have a copy.",
-
   "key.exportNsec": "Export private key (nsec)",
   "key.exportNsecDesc": "Reveal your raw private key for use in another client",
   "key.exportNcryptsec": "Export encrypted backup (ncryptsec)",
@@ -198,7 +169,6 @@
   "key.failedChangePassword": "Failed to change password",
   "key.notAvailableReadOnly": "Not available for read-only accounts",
   "key.failedExport": "Failed to export key",
-
   "wot.mode": "Mode",
   "wot.remote": "Remote",
   "wot.local": "Local",
@@ -210,7 +180,6 @@
   "wot.syncDesc": "Download and manage your trust graph",
   "wot.badges": "Badges",
   "wot.badgesDesc": "Trust score badges on Nostr sites",
-
   "sync.localGraph": "Local Graph",
   "sync.status": "Status",
   "sync.notSynced": "Not synced",
@@ -252,7 +221,6 @@
   "sync.noAccounts": "No accounts found.",
   "sync.accountRemoved": "(account removed)",
   "sync.completedNodes": "Completed — {count} nodes synced",
-
   "badges.showTrustBadges": "Show trust badges on Nostr sites",
   "badges.badgesHint": "When enabled, trust score badges appear next to usernames on Nostr web clients.",
   "badges.whatYouSee": "What you'll see:",
@@ -281,7 +249,6 @@
   "badges.verified": "Verified",
   "badges.unverified": "Unverified",
   "badges.savedConfig": "Saved config for {domain}",
-
   "network.identityRelays": "Identity Relays",
   "network.publishList": "Publish List",
   "network.wotOracles": "WoT Oracles",
@@ -296,7 +263,6 @@
   "network.lastPublished": "Last published: {time}",
   "network.read": "Read",
   "network.write": "Write",
-
   "nip46.status": "Status",
   "nip46.relay": "Relay",
   "nip46.autoResume": "Auto-resume",
@@ -305,7 +271,6 @@
   "nip46.revokeSession": "Revoke session",
   "nip46.noSession": "No bunker session active.",
   "nip46.revoked": "Bunker session revoked",
-
   "perms.permissionRequired": "Permission Required",
   "perms.enableHint": "Enable the extension for this site",
   "perms.enableDomain": "Enable for this domain",
@@ -319,7 +284,6 @@
   "perms.clearedAll": "All permissions cleared",
   "perms.clearConfirm": "Clear all signer permissions?",
   "perms.revokedFor": "Permissions revoked for {domain}",
-
   "activity.title": "Activity",
   "activity.clear": "Clear",
   "activity.allSites": "All sites",
@@ -329,7 +293,6 @@
   "activity.blocked": "Blocked",
   "activity.pending": "Pending",
   "activity.requests": "{count} requests",
-
   "activity.getPublicKey": "read public key",
   "activity.signEvent": "sign events",
   "activity.signEvent1": "sign text notes",
@@ -341,7 +304,6 @@
   "activity.nip44Encrypt": "encrypt messages (NIP-44)",
   "activity.nip44Decrypt": "decrypt messages (NIP-44)",
   "activity.allOps": "all operations",
-
   "profileEdit.title": "Edit Profile",
   "profileEdit.displayName": "Display name",
   "profileEdit.pictureUrl": "Picture URL",
@@ -369,7 +331,6 @@
   "profileEdit.published": "Profile published!",
   "profileEdit.publishFailed": "Publish failed",
   "profileEdit.publish": "Publish",
-
   "approval.pendingRequests": "Pending Requests",
   "approval.noPending": "No pending requests",
   "approval.deny": "Deny",
@@ -382,7 +343,6 @@
   "approval.alwaysAllow": "Always allow {method} from {origin}",
   "approval.unlockToApprove": "Unlock vault to approve requests",
   "approval.requests": "{count} requests",
-
   "approval.detail.title": "Request Details",
   "approval.detail.signDesc": "{origin} wants to {label}",
   "approval.detail.encryptDesc": "{origin} wants to encrypt a message ({protocol})",
@@ -401,7 +361,6 @@
   "approval.rejectAll": "Reject All",
   "approval.grouped": "Group",
   "approval.expanded": "Expand",
-
   "unlock.enterPassword": "Enter password",
   "unlock.vaultLocked": "Your vault is locked. Enter your password to continue.",
   "unlock.pendingEvents": "Waiting for unlock",
@@ -410,11 +369,9 @@
   "unlock.resetWarning": "This will permanently delete all accounts and keys from this extension. This cannot be undone.",
   "unlock.resetVault": "Reset Vault",
   "unlock.lockedOut": "Too many attempts. Try again in {seconds}s",
-
   "wizard.connectIdentity": "Connect Your Identity",
   "wizard.addAccount": "Add Account",
   "wizard.chooseSetup": "Choose how you'd like to set up your Nostr identity.",
-
   "wizard.createNew": "Create New",
   "wizard.createNewDesc": "Generate a new key pair with recovery phrase",
   "wizard.createSubAccount": "Derive Sub-Account",
@@ -430,7 +387,6 @@
   "wizard.watchOnlyDesc": "Import a public key (read-only, no signing)",
   "wizard.nostrConnect": "Nostr Connect",
   "wizard.nostrConnectDesc": "Connect to a remote signer (NIP-46)",
-
   "wizard.importTitle": "Import your key",
   "wizard.importDesc": "Paste your private key, encrypted backup, or seed phrase below. We'll detect the format automatically.",
   "wizard.importLabel": "Private key, backup, or seed phrase",
@@ -449,17 +405,14 @@
   "wizard.decryptContinue": "Decrypt & Continue",
   "wizard.decrypting": "Decrypting...",
   "wizard.enterDecryptPassword": "Enter the decryption password",
-
   "wizard.npubTitle": "Watch-Only Account",
   "wizard.npubDesc": "You can view WoT distances but won't be able to sign events.",
   "wizard.npubLabel": "Public Key",
   "wizard.npubPlaceholder": "npub1... or 64-char hex",
-
   "wizard.nip46Title": "Nostr Connect (NIP-46)",
   "wizard.nip46Desc": "Paste a bunker URL to connect to a remote signer.",
   "wizard.bunkerLabel": "Bunker URL",
   "wizard.bunkerPlaceholder": "bunker://pubkey?relay=wss://...&secret=...",
-
   "wizard.recoveryTitle": "Your Recovery Phrase",
   "wizard.recoveryDesc": "Write down these 12 words in order. This is the only way to recover your account.",
   "wizard.recoveryWarning": "Never share your recovery phrase. Anyone with these words can access your account.",
@@ -471,19 +424,16 @@
   "wizard.downloadEncryptedDesc": "Password-protected ncryptsec file",
   "wizard.backupHint": "Save your seed using any option above to continue",
   "wizard.iveSavedIt": "I've saved it",
-
   "wizard.encPasswordTitle": "Encryption password",
   "wizard.encPasswordDesc": "This password protects your backup file. You'll need it to restore.",
   "wizard.encPasswordLabel": "Password",
   "wizard.encPasswordPlaceholder": "Min 8 characters",
   "wizard.encConfirmPlaceholder": "Confirm password",
-
   "wizard.verifyTitle": "Verify Recovery Phrase",
   "wizard.verifyDesc": "Enter the requested words to confirm you've saved your phrase.",
   "wizard.wordN": "Word #{n}",
   "wizard.enterWordN": "Enter word #{n}",
   "wizard.wordsNoMatch": "Words do not match. Please check and try again.",
-
   "wizard.passwordTitle": "Account Auto-Lock",
   "wizard.passwordDesc": "Set a password to protect your account. It will be required to unlock the extension after a period of inactivity.",
   "wizard.passwordLabel": "Password",
@@ -495,7 +445,6 @@
   "wizard.passwordMin8": "Password must be at least 8 characters.",
   "wizard.passwordsNoMatch": "Passwords do not match.",
   "wizard.noAccountData": "No account data. Please go back and try again.",
-
   "wizard.wotTitle": "Build your trust graph?",
   "wizard.wotDesc": "Your WoT graph lets the extension filter spam and show trust scores on Nostr sites.",
   "wizard.wotStat1": "2 hops = ~5,000 nodes (~13 MB)",
@@ -507,35 +456,28 @@
   "wizard.hopSpamWarning": "4 hops uses significantly more storage and compute. Most content at this depth is spam if you already follow enough people.",
   "wizard.skipForNow": "Skip for now",
   "wizard.syncNow": "Sync Now",
-
   "wizard.doneTitle": "All Set!",
   "wizard.doneDesc": "Your Nostr identity is ready.",
   "wizard.account": "Account",
   "wizard.type": "Type",
   "wizard.done": "Done",
-
   "lang.title": "Language",
   "lang.selectLanguage": "Select Language",
   "lang.wizardTitle": "Choose your language",
-
   "time.justNow": "just now",
   "time.minutesAgo": "{n}m ago",
   "time.hoursAgo": "{n}h ago",
   "time.daysAgo": "{n}d ago",
-
   "status.removeConfirm": "Remove {name}?",
   "status.detectedPubkey": "Detected pubkey from Nostr extension",
   "status.addSyncTitle": "Add an account to sync",
   "status.failedStopSync": "Failed to stop sync",
   "status.syncFailed": "Sync failed",
-
   "about.name": "Nostr WoT Extension",
-
   "onboarding.title": "Nostr WoT Extension",
   "onboarding.subtitle": "Identity & Web of Trust",
   "onboarding.connectIdentity": "Connect Your Identity",
   "onboarding.chooseSetup": "Choose how you'd like to set up your Nostr identity.",
-
   "onboarding.createNew": "Create New",
   "onboarding.createNewDesc": "Generate a new key pair with recovery phrase",
   "onboarding.importPrivateKey": "Import Private Key",
@@ -544,31 +486,25 @@
   "onboarding.watchOnlyDesc": "Import a public key (read-only, no signing)",
   "onboarding.nostrConnect": "Nostr Connect",
   "onboarding.nostrConnectDesc": "Connect to a remote signer (NIP-46)",
-
   "onboarding.importNsecTitle": "Import Private Key",
   "onboarding.importNsecDesc": "Paste your nsec or hex private key below.",
   "onboarding.privateKeyLabel": "Private Key",
   "onboarding.nsecPlaceholder": "nsec1... or 64-char hex",
-
   "onboarding.npubTitle": "Watch-Only Account",
   "onboarding.npubDesc": "You can view WoT distances but won't be able to sign events.",
   "onboarding.publicKeyLabel": "Public Key",
   "onboarding.npubPlaceholder": "npub1... or 64-char hex",
-
   "onboarding.nip46Title": "Nostr Connect (NIP-46)",
   "onboarding.nip46Desc": "Paste a bunker URL to connect to a remote signer.",
   "onboarding.bunkerLabel": "Bunker URL",
   "onboarding.bunkerPlaceholder": "bunker://pubkey?relay=wss://...&secret=...",
-
   "onboarding.recoveryTitle": "Your Recovery Phrase",
   "onboarding.recoveryDesc": "Write down these 12 words in order. This is the only way to recover your account.",
   "onboarding.recoveryWarning": "Never share your recovery phrase. Anyone with these words can access your account.",
   "onboarding.iveSavedIt": "I've saved it",
-
   "onboarding.verifyTitle": "Verify Recovery Phrase",
   "onboarding.verifyDesc": "Enter the requested words to confirm you've saved your phrase.",
   "onboarding.wordsNoMatch": "Words do not match. Please check and try again.",
-
   "onboarding.passwordTitle": "Set Encryption Password",
   "onboarding.passwordDesc": "This password encrypts your keys at rest. You'll need it to unlock the extension.",
   "onboarding.passwordLabel": "Password",
@@ -586,9 +522,7 @@
   "onboarding.passwordMin8": "Password must be at least 8 characters.",
   "onboarding.passwordsNoMatch": "Passwords do not match.",
   "onboarding.noAccountData": "No account data. Please go back and try again.",
-
   "onboarding.upgradeNotice": "This key matches an existing watch-only account. Importing will upgrade it to full signing access.",
-
   "onboarding.wotTitle": "Build your trust graph?",
   "onboarding.wotDesc": "Your WoT graph lets the extension filter spam and show trust scores on Nostr sites.",
   "onboarding.wotStat1": "2 hops = ~5,000 nodes (~13 MB)",
@@ -598,12 +532,10 @@
   "onboarding.syncingNodes": "Syncing... {count} nodes",
   "onboarding.syncedNodes": "Synced {count} nodes",
   "onboarding.syncFailed": "Sync failed. Try again?",
-
   "onboarding.doneTitle": "All Set!",
   "onboarding.doneDesc": "Your Nostr identity is ready.",
   "onboarding.doneHint": "Click the extension icon to manage your account and WoT settings.",
   "onboarding.closeBtn": "Close",
-
   "prompt.signEvent": "Sign Event",
   "prompt.encryptNip04": "Encrypt (NIP-04)",
   "prompt.decryptNip04": "Decrypt (NIP-04)",
@@ -625,7 +557,6 @@
   "prompt.enterVaultPassword": "Enter vault password",
   "prompt.enterPassword": "Enter your password",
   "prompt.unlockFailed": "Unlock failed",
-
   "event.profileUpdate": "Profile Update",
   "event.name": "Name",
   "event.about": "About",
@@ -658,7 +589,6 @@
   "event.dislike": "Dislike",
   "event.reactingToNote": "Reacting to a note",
   "event.repostingNote": "Reposting a note",
-
   "key.exportTitle": "Export Private Key",
   "key.exportEncTitle": "Export Encrypted Backup",
   "key.changePasswordTitle": "Change Password",
@@ -681,7 +611,6 @@
   "key.currentPw": "Current password",
   "key.newPwMinChars": "New password (min 8 chars)",
   "key.generate": "Generate",
-
   "wizard.generatingIdentity": "Generating your identity...",
   "wizard.creatingKeypair": "Creating a new Nostr keypair",
   "wizard.pubkey": "Pubkey",
@@ -748,27 +677,12 @@
   "wizard.nameLabel": "Name",
   "wizard.typeLabel": "Type",
   "wizard.publicKeyLabel": "Public Key",
-
-  "filters.enterPublicKey": "Enter a public key",
-  "filters.invalidPublicKey": "Invalid public key",
-  "filters.pubkeyLabel": "Public key (npub or hex)",
-  "filters.pubkeyPlaceholder": "npub1... or hex",
-  "filters.noteLabel": "Note",
-  "filters.optionalPlaceholder": "Optional",
-  "filters.noLocalBlocksHint": "Add public keys to locally block specific users.",
-  "filters.noMuteListsHint": "Import mute lists from other Nostr users to filter content.",
-  "filters.importMuteListLabel": "Import mute list by public key",
-  "filters.noMuteListFound": "No mute list found for this key",
-  "filters.failedFetchMute": "Failed to fetch mute list",
-  "filters.enable": "Enable",
-
   "network.relayPlaceholder": "wss://relay.example.com",
   "network.oraclePlaceholder": "https://oracle.example.com",
   "network.relayListChanged": "Relay list changed (unpublished)",
   "network.relayListPublished": "Relay list published!",
   "network.relayListFailed": "Failed to publish relay list",
   "network.notPublishedYet": "Not published yet",
-
   "perms.noPermsYet": "No permissions yet",
   "perms.permsHint": "When sites request signing access, their permissions will appear here.",
   "perms.revokeAll": "Revoke All",
@@ -778,31 +692,25 @@
   "perms.allowed": "{count} allowed",
   "perms.denied": "{count} denied",
   "perms.noRules": "No rules",
-
   "activity.today": "Today",
   "activity.yesterday": "Yesterday",
   "activity.noActivity": "No activity recorded",
   "activity.clearAll": "Clear All",
-
   "badges.enableGlobally": "Enable WoT badges globally",
   "badges.perSiteOverrides": "Per-site overrides",
   "badges.disablePerSite": "Disable badges on specific sites",
   "badges.noSitesWithAccess": "No sites with badge access",
   "badges.sitesWillAppear": "Sites will appear here once you grant them host permissions.",
-
   "wot.modeLabel": "WoT Mode",
   "wot.modeHint": "Choose how trust scores are calculated",
   "wot.syncDatabases": "Sync & Databases",
   "wot.syncDatabasesDesc": "Manage local graph data",
   "wot.badgeInjection": "Badge Injection",
   "wot.badgeInjectionDesc": "WoT badges on Nostr sites",
-
   "home.syncOutdated": "Trust graph out of date",
   "home.lastSynced": "Last synced {time}",
   "home.neverSynced": "Never synced",
-
   "home.noActivityShort": "No activity",
-
   "sync.active": "Active",
   "sync.inactiveDataNotice": "This account is not active. Data may be outdated.",
   "sync.nodes": "Nodes",
@@ -811,7 +719,6 @@
   "sync.wotDatabases": "WoT Databases",
   "sync.noDatabases": "No databases",
   "sync.noDatabasesHint": "Sync will create a local graph database for your account.",
-
   "wizard.importKey": "Import Key",
   "wizard.createIdentity": "Create Identity",
   "wizard.verifyBackup": "Verify Backup",
@@ -823,10 +730,8 @@
   "wizard.followPublishing": "Publishing...",
   "wizard.followSuggestions": "Follow Selected",
   "wizard.allSet": "All Set",
-
   "topbar.vaultLocked": "Vault locked",
   "topbar.vaultUnlocked": "Vault unlocked",
-
   "perm.editProfile": "Edit Profile",
   "perm.post": "Post",
   "perm.updateContacts": "Update Contacts",
@@ -848,7 +753,6 @@
   "approval.detail.sendDesc": "{origin} wants to send a private message",
   "perm.readProfile": "Read Profile Information",
   "approval.detail.readProfileDesc": "{origin} wants to read your profile information",
-
   "activity.detail.readKeyDesc": "Site read your public key",
   "activity.filters": "Filters",
   "activity.filterByType": "Type",
@@ -863,16 +767,13 @@
   "activity.readNip44": "Read (NIP-44)",
   "activity.showProtocols": "Show NIP details",
   "activity.hideProtocols": "Hide NIP details",
-
   "platform.membershipStatus": "Get Membership Status",
   "platform.primalSettings": "Primal App Settings",
-
   "sync.autoSyncFollows": "Auto-sync after follow update",
   "sync.autoSyncFollowsHint": "Re-sync your trust graph when your contact list changes",
   "event.followsAdded": "added",
   "event.followsRemoved": "removed",
   "event.followsUnchanged": "unchanged",
-
   "badges.strategy": "Strategy",
   "badges.addStrategy": "Add strategy",
   "badges.strategyLabel": "Label (optional)",
@@ -887,7 +788,6 @@
   "badges.preview": "Preview",
   "badges.previewing": "Previewing...",
   "badges.conflictWarning": "Only one should be active: {strategies}",
-
   "wizard.copyPermissions": "Set up permissions",
   "wizard.copyPermissionsDesc": "You can copy permission rules from an existing account or start with a clean slate.",
   "wizard.copyFrom": "Copy permissions",
@@ -895,7 +795,7 @@
   "perms.allAccounts": "All accounts",
   "perms.allAccountsOnHint": "Global rules apply as defaults for all accounts",
   "perms.allAccountsOffHint": "Each account manages its own permissions independently",
-"perms.accountLabel": "Account",
+  "perms.accountLabel": "Account",
   "perms.managedBySigner": "Managed by your signer app",
   "perms.managedBySignerHint": "Approval is handled by your remote signer. You can only block sites here.",
   "perms.overrideIndicator": "Differs from default",
@@ -910,7 +810,6 @@
   "approval.awaitingSigner": "Awaiting remote signer...",
   "approval.pendingSignature": "Pending signature",
   "approval.cancelNip46": "Cancel",
-
   "wallet.title": "Wallet",
   "wallet.connectWallet": "Connect wallet",
   "wallet.connectHint": "Connect a Lightning wallet to send and receive zaps.",
@@ -971,7 +870,6 @@
   "wallet.setupBanner": "Set up a wallet",
   "wallet.setupBannerHint": "Connect a Lightning wallet to send and receive zaps.",
   "wallet.homeSats": "{n} sats",
-
   "wallet.lightningAddress": "Lightning Address",
   "wallet.lightningAddressHint": "Claim a username to receive payments at username@zaps.nostr-wot.com",
   "wallet.usernamePlaceholder": "username",
@@ -983,5 +881,31 @@
   "wallet.usernameInvalid": "3-30 characters, lowercase letters, numbers, dots, hyphens",
   "wallet.usernameTaken": "This username is already taken",
   "wallet.releaseAddress": "Unlink",
-  "common.later": "Later"
+  "common.later": "Later",
+  "mutes.title": "Mutes",
+  "mutes.cardTitle": "Mutes",
+  "mutes.cardInfo": "Your NIP-51 mute list (kind:10000). Muted people, words and hashtags are published to your relays so every Nostr client you use hides them. Existing private mutes are preserved.",
+  "mutes.cardSummary": "{count} muted",
+  "mutes.people": "Muted people",
+  "mutes.peopleHint": "Add npub or hex public keys to mute. They will be hidden across Nostr clients that read your mute list.",
+  "mutes.peoplePlaceholder": "npub1... or hex",
+  "mutes.words": "Muted words",
+  "mutes.wordsHint": "Notes containing these words are hidden.",
+  "mutes.wordsPlaceholder": "word or phrase",
+  "mutes.hashtags": "Muted hashtags",
+  "mutes.hashtagsHint": "Notes with these hashtags are hidden.",
+  "mutes.hashtagsPlaceholder": "hashtag (no #)",
+  "mutes.importTitle": "Import public list",
+  "mutes.importPlaceholder": "npub or hex of list owner",
+  "mutes.importButton": "Import",
+  "mutes.importHint": "Paste the public key of someone whose public mute list you trust. Their muted people are merged into yours, ready to publish.",
+  "mutes.invalidPubkey": "Invalid public key",
+  "mutes.invalidEntry": "Invalid entry",
+  "mutes.noMuteListFound": "No mute list found for this key",
+  "mutes.nothingNew": "Nothing new to add",
+  "mutes.failedFetch": "Failed to fetch mute list",
+  "mutes.published": "Published",
+  "mutes.publishFailed": "Publish failed",
+  "mutes.unsaved": "Unsaved changes",
+  "mutes.notPublished": "Not published yet"
 }

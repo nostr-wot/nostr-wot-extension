@@ -1,13 +1,34 @@
 /**
- * Profile metadata, mute list, and local block handlers.
+ * Profile metadata and NIP-51 mute list (kind:10000) handlers.
  * @module lib/bg/profile-handlers
  */
 
 import browser from '../browser.ts';
+import * as vault from '../vault.ts';
 import { randomHex } from '../crypto/utils.ts';
 import * as storage from '../storage.ts';
 import { normalizeRelayUrl } from '../relayUtils.ts';
 import { config, DEFAULT_RELAYS, profileCache, PROFILE_CACHE_TTL, type HandlerFn, type ProfileCacheEntry } from './state.ts';
+
+/** Public entries of a NIP-51 mute list, grouped by tag type, plus the raw
+ *  (still-encrypted) private `.content` so callers can round-trip it verbatim. */
+export interface GroupedMuteList {
+    people: string[];   // 'p' tags  — muted pubkeys (hex)
+    hashtags: string[]; // 't' tags  — muted hashtags
+    words: string[];    // 'word' tags — muted words
+    events: string[];   // 'e' tags  — muted threads/events
+    rawContent: string; // encrypted private entries, preserved verbatim ('' if none)
+    createdAt: number;  // created_at of the newest event seen (0 if none)
+}
+
+/** Read the active user's configured relays (sync.relays CSV), falling back to config/defaults. */
+async function getUserRelays(): Promise<string[]> {
+    const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
+    const csv = relayData.relays || '';
+    const urls = csv.split(',').map(r => r.trim()).filter(Boolean);
+    if (urls.length > 0) return urls;
+    return config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
+}
 
 // Prepend target's write-relays from stored relay list (outbox model)
 function prependWriteRelays(pubkey: string, baseRelays: string[]): string[] {
@@ -117,15 +138,21 @@ export function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<
     });
 }
 
-export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<string[] | null> {
+/**
+ * Fetch a pubkey's newest kind:10000 mute list and return its PUBLIC entries
+ * grouped by tag type. The private entries (NIP-44 encrypted in `.content`) are
+ * NOT decrypted here — the raw string is returned verbatim as `rawContent` so a
+ * later publish can round-trip them without destroying the user's private mutes.
+ * Returns a zeroed GroupedMuteList (createdAt 0) if no list is found.
+ */
+export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<GroupedMuteList> {
     return new Promise((resolve) => {
-        let bestTags: string[] | null = null;
-        let bestCreatedAt = 0;
+        const best: GroupedMuteList = { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
         let remaining = relayUrls.length;
         let resolved = false;
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve(bestTags); }
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve(best); }
         };
         const timer = setTimeout(done, 8000);
         const checkRemaining = () => { if (--remaining <= 0) done(); };
@@ -148,9 +175,20 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<stri
                         const msg = JSON.parse(e.data);
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
                             const event = msg[2];
-                            if (event.pubkey === pubkey && event.kind === 10000 && event.created_at > bestCreatedAt) {
-                                bestCreatedAt = event.created_at;
-                                bestTags = (event.tags || []).filter((t: string[]) => t[0] === 'p' && t[1]).map((t: string[]) => t[1]);
+                            if (event.pubkey === pubkey && event.kind === 10000 && event.created_at > best.createdAt) {
+                                best.createdAt = event.created_at;
+                                best.rawContent = typeof event.content === 'string' ? event.content : '';
+                                best.people = [];
+                                best.hashtags = [];
+                                best.words = [];
+                                best.events = [];
+                                for (const tag of (event.tags || [])) {
+                                    if (!Array.isArray(tag) || !tag[1]) continue;
+                                    if (tag[0] === 'p') best.people.push(tag[1]);
+                                    else if (tag[0] === 't') best.hashtags.push(tag[1]);
+                                    else if (tag[0] === 'word') best.words.push(tag[1]);
+                                    else if (tag[0] === 'e') best.events.push(tag[1]);
+                                }
                             }
                         } else if (msg[0] === 'EOSE') {
                             closeWs();
@@ -191,70 +229,23 @@ export const handlers = new Map<string, HandlerFn>([
         return { ok: true };
     }],
 
+    // Fetch ANOTHER pubkey's public mute list (for "import public list" feature).
+    // `params.pubkey` is normalized npub→hex by background.ts before dispatch.
     ['fetchMuteList', async (params) => {
-        const relays = prependWriteRelays(params.pubkey as string, config.relays);
-        const pubkeys = await fetchMuteList(params.pubkey as string, relays);
-        if (pubkeys === null) return { ok: false, error: 'Could not fetch mute list' };
-        return { ok: true, count: pubkeys.length, pubkeys };
-    }],
-
-    ['getMuteLists', async () => {
-        const data = await browser.storage.local.get(['muteLists']) as Record<string, unknown[]>;
-        return data.muteLists || [];
-    }],
-
-    ['removeMuteList', async (params) => {
-        const data = await browser.storage.local.get(['muteLists']) as Record<string, Array<{ pubkey: string }>>;
-        const lists = (data.muteLists || []).filter(l => l.pubkey !== params.pubkey);
-        await browser.storage.local.set({ muteLists: lists });
-        return { ok: true };
-    }],
-
-    ['toggleMuteList', async (params) => {
-        const data = await browser.storage.local.get(['muteLists']) as Record<string, Array<{ pubkey: string; enabled: boolean }>>;
-        const lists = data.muteLists || [];
-        const list = lists.find(l => l.pubkey === params.pubkey);
-        if (list) {
-            list.enabled = !list.enabled;
-            await browser.storage.local.set({ muteLists: lists });
-        }
-        return { ok: true };
-    }],
-
-    ['saveMuteList', async (params) => {
-        const data = await browser.storage.local.get(['muteLists']) as Record<string, Array<{ pubkey: string; name: string; entries: unknown; enabled: boolean; syncedAt: number }>>;
-        const lists = data.muteLists || [];
-        if (lists.some(l => l.pubkey === params.pubkey)) return { ok: false, error: 'Already imported' };
-        lists.push({
-            pubkey: params.pubkey as string,
-            name: (params.name as string) || (params.pubkey as string).slice(0, 8) + '...',
-            entries: params.entries,
-            enabled: true,
-            syncedAt: Date.now()
-        });
-        await browser.storage.local.set({ muteLists: lists });
-        return { ok: true };
-    }],
-
-    ['getLocalBlocks', async () => {
-        const blockData = await browser.storage.local.get(['localBlocks']) as Record<string, Array<{ pubkey: string }>>;
-        return blockData.localBlocks || [];
-    }],
-
-    ['addLocalBlock', async (params) => {
-        const blockData = await browser.storage.local.get(['localBlocks']) as Record<string, Array<{ pubkey: string; note: string; addedAt: number }>>;
-        const blocks = blockData.localBlocks || [];
         const pubkey = params.pubkey as string;
-        if (!pubkey || blocks.some(b => b.pubkey === pubkey)) return { ok: false, error: 'Already blocked or invalid' };
-        blocks.push({ pubkey, note: (params.note as string) || '', addedAt: Date.now() });
-        await browser.storage.local.set({ localBlocks: blocks });
-        return { ok: true };
+        if (!pubkey) return { ok: false, error: 'Missing pubkey' };
+        const relays = prependWriteRelays(pubkey, await getUserRelays());
+        const list = await fetchMuteList(pubkey, relays);
+        return { ok: true, ...list };
     }],
 
-    ['removeLocalBlock', async (params) => {
-        const blockData = await browser.storage.local.get(['localBlocks']) as Record<string, Array<{ pubkey: string }>>;
-        const blocks = (blockData.localBlocks || []).filter(b => b.pubkey !== params.pubkey);
-        await browser.storage.local.set({ localBlocks: blocks });
-        return { ok: true };
+    // Fetch the ACTIVE account's OWN kind:10000 mute list, grouped by type.
+    ['getMyMuteList', async () => {
+        const myPubkey = vault.getActivePubkey();
+        if (!myPubkey) {
+            return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
+        }
+        const relays = prependWriteRelays(myPubkey, await getUserRelays());
+        return await fetchMuteList(myPubkey, relays);
     }],
 ]);
