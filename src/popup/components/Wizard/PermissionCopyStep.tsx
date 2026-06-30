@@ -60,11 +60,24 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
     })();
   }, [account?.id, onNext]);
 
+  // Start fresh: isolate the new account's permissions (switches to per-account
+  // mode if the app was in shared "all accounts" mode, preserving existing
+  // accounts' perms) and leave the new account empty.
+  const handleFresh = async () => {
+    if (!account?.id) { onNext(); return; }
+    setCopying(true);
+    try {
+      await rpc('signer_setupNewAccountPermissions', { newAccountId: account.id, copyFromAccountId: null });
+    } catch {}
+    setCopying(false);
+    onNext();
+  };
+
   const handleCopy = async () => {
     if (!selectedId || !account?.id) return;
     setCopying(true);
     try {
-      await rpc('signer_copyPermissions', { fromAccountId: selectedId, toAccountId: account.id });
+      await rpc('signer_setupNewAccountPermissions', { newAccountId: account.id, copyFromAccountId: selectedId });
     } catch {}
     setCopying(false);
     onNext();
@@ -88,7 +101,7 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
       )}
 
       <div className={styles.stepActions}>
-        <Button variant="secondary" onClick={onNext}>
+        <Button variant="secondary" onClick={handleFresh} disabled={copying}>
           {t('wizard.startFresh')}
         </Button>
         {accounts.length > 0 && (

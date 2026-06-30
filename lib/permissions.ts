@@ -405,6 +405,45 @@ export async function copyPermissions(fromAccountId: string | null, toAccountId:
 }
 
 /**
+ * Set up permissions for a freshly created account so the wizard's
+ * "Start fresh" / "Copy from" choice is actually honored.
+ *
+ * In global ("all accounts") mode every account shares the `_default` bucket,
+ * so a new account would otherwise inherit the existing accounts' permissions.
+ * When in that mode we switch to per-account mode, first migrating each existing
+ * account's effective (global) permissions into its OWN bucket so they keep them,
+ * which leaves the new account isolated. Then we either copy a chosen source
+ * account's permissions into the new account, or leave it empty (fresh).
+ *
+ * @param newAccountId        the just-created account
+ * @param existingAccountIds  every OTHER account id (to preserve on mode switch)
+ * @param copyFromAccountId   source to copy into the new account, or null for fresh
+ */
+export async function setupNewAccountPermissions(
+  newAccountId: string,
+  existingAccountIds: string[],
+  copyFromAccountId: string | null,
+): Promise<void> {
+  if (!newAccountId) return;
+
+  if (await getUseGlobalDefaults()) {
+    // Preserve each existing account's currently-shared perms in its own bucket
+    // BEFORE switching modes, so they don't start re-asking after the switch.
+    for (const id of existingAccountIds) {
+      if (id && id !== newAccountId) await copyPermissions(DEFAULT_BUCKET, id);
+    }
+    await setUseGlobalDefaults(false);
+  }
+
+  if (copyFromAccountId) {
+    await copyPermissions(copyFromAccountId, newAccountId);
+  } else {
+    // Fresh: ensure the new account's per-account bucket is empty.
+    await clearForAccount(newAccountId);
+  }
+}
+
+/**
  * Get all permissions for the active mode's bucket.
  * Returns { domain: { permKey: decision } }.
  * @param accountId - account ID (used only in per-account mode)

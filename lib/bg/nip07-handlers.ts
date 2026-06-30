@@ -158,6 +158,15 @@ export const handlers = new Map<string, HandlerFn>([
         return { ok: true };
     }],
 
+    ['signer_setupNewAccountPermissions', async (params) => {
+        const newId = params.newAccountId as string;
+        const copyFrom = (params.copyFromAccountId as string) || null;
+        const data = await browser.storage.local.get(['accounts']) as Record<string, Array<{ id: string }>>;
+        const existing = (data.accounts || []).map(a => a.id).filter(id => id && id !== newId);
+        await signerPermissions.setupNewAccountPermissions(newId, existing, copyFrom);
+        return { ok: true };
+    }],
+
     ['signer_getUseGlobalDefaults', async () => signerPermissions.getUseGlobalDefaults()],
 
     ['signer_setUseGlobalDefaults', async (params) => {

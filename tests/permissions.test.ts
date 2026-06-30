@@ -330,3 +330,40 @@ describe('permissions -- migrateDmKindsToSendMessages', () => {
     assert.strictEqual(bucket['sendMessages'], undefined);
   });
 });
+
+describe('permissions -- setupNewAccountPermissions (wizard fresh vs copy)', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('fresh: isolates the new account; existing account keeps perms; switches to per-account', async () => {
+    // Default "all accounts" (global) mode: this perm lives in the shared _default bucket.
+    await permissions.save('example.com', 'signEvent', 1, 'allow');
+    assert.strictEqual(await permissions.getUseGlobalDefaults(), true);
+
+    await permissions.setupNewAccountPermissions('B', ['A'], null);
+
+    assert.strictEqual(await permissions.getUseGlobalDefaults(), false); // switched to per-account
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'A'), 'allow'); // existing preserved
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'B'), 'ask');   // new is fresh
+  });
+
+  it('copy: the new account inherits the chosen source account perms', async () => {
+    await permissions.save('example.com', 'signEvent', 1, 'allow');
+
+    await permissions.setupNewAccountPermissions('B', ['A'], 'A');
+
+    assert.strictEqual(await permissions.getUseGlobalDefaults(), false);
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'A'), 'allow');
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'B'), 'allow'); // copied
+  });
+
+  it('already per-account: fresh leaves new account empty, existing untouched', async () => {
+    await permissions.setUseGlobalDefaults(false);
+    await permissions.save('example.com', 'signEvent', 1, 'allow', 'A');
+
+    await permissions.setupNewAccountPermissions('B', ['A'], null);
+
+    assert.strictEqual(await permissions.getUseGlobalDefaults(), false);
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'A'), 'allow');
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'B'), 'ask');
+  });
+});

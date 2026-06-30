@@ -17,6 +17,9 @@ All notable changes to this project will be documented in this file.
 - **`alarms` permission** — required by the vault keep-alive.
 - **`wizard.nip46Error` locale key** — en, es, pt, it, fr, de.
 
+### Fixed
+- **New-account "Start fresh" permissions actually isolate now** — the extension defaults to "all accounts" permission mode, where every account shares one `_default` bucket. In that mode the onboarding "Start fresh / Copy from" step did nothing (the new account still read the shared permissions, so it looked like they were copied). Choosing "Start fresh" (or "Copy") now switches to per-account permissions — migrating existing accounts' current permissions into their own buckets first so they're unaffected — and leaves the new account empty (fresh) or with the copied set. Added `permissions.setupNewAccountPermissions()` + tests.
+
 ### Changed
 - **Home screen reorganized into account-level modules** — with the WoT controls gone, the home screen now surfaces the things you manage about yourself: a **Profile** card (avatar + name, opens the editor), a **Blocks & Mutes** module (local block + NIP‑51 mute‑list counts, with an info tooltip explaining the difference) replacing the buried "Manage blocks & mutes" link, and a **Relays** card (NIP‑65 relay count, opens the relay editor). Trust sensitivity moved off the home screen into the experimental Badges page (Settings → Web of Trust → Badges → Trust sensitivity). Added a reusable `InfoTooltip` component (hover/focus) used by the new modules.
 - **`GlobeButton` connection source** — derives connection from the `allowedDomains` allowlist (same source as the rest of the app) instead of host permissions.
