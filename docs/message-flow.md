@@ -50,14 +50,15 @@ This allows `background.ts` to distinguish page-origin WebLN calls from internal
 
 ## 3. Rate Limiting
 
-Two layers:
-
 | Layer | Location | Limit |
 |-------|----------|-------|
-| Content script | `content.ts` | 100 WoT req/sec (sliding window) |
-| Background | `background.ts` | 50 req/sec per method (sliding window) |
+| Content script | `content.ts` | 100 relay-query (WOT channel) req/sec (sliding window) |
 
-The background rate limiter covers WoT computation methods only (`getDistance`, `getTrustScore`, `getDistanceBatch`, etc.). NIP-07 methods are not rate-limited at this layer -- they are gated by the user-facing permission system instead.
+The content script rate-limits the relay-query (WOT) channel. The background no
+longer rate-limits any method: `RATE_LIMITED_METHODS` is empty and
+`checkRateLimit()` always allows (the only methods it ever throttled were the
+removed trust-graph computations). NIP-07 methods are gated by the user-facing
+permission system instead.
 
 ---
 
@@ -96,14 +97,14 @@ const isInternal = sender.id === browser.runtime.id &&
   (!sender.url || sender.url.startsWith(extensionBaseUrl));
 ```
 
-This ensures the message comes from an extension page (popup, onboarding, prompt) and not from a content script running in a web page tab. This protects all vault, permission, database management, sync, and configuration methods.
+This ensures the message comes from an extension page (popup, onboarding, prompt) and not from a content script running in a web page tab. This protects all vault, permission, database management, and configuration methods.
 
 ---
 
 ## 6. Channel Isolation
 
 The four message channels are strictly separated:
-- **WoT channel** (`WOT_REQUEST`/`WOT_RESPONSE`) -- can only access `WOT_ALLOWED_METHODS` (includes `getRelayList`, `getRelayPool`)
+- **Relay-query channel** (`WOT_REQUEST`/`WOT_RESPONSE`) -- can only access `WOT_ALLOWED_METHODS`, which now contains only `getRelayList` and `getRelayPool`
 - **NIP-07 channel** (`NIP07_REQUEST`/`NIP07_RESPONSE`) -- can only access `NIP07_ALLOWED_METHODS`
 - **WebLN channel** (`WEBLN_REQUEST`/`WEBLN_RESPONSE`) -- can only access `WEBLN_ALLOWED_METHODS`
 - **Internal channel** (direct `browser.runtime.sendMessage`) -- can access privileged methods

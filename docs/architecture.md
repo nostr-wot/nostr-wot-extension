@@ -2,11 +2,15 @@
 
 ## 1. Overview
 
-The Nostr WoT Extension is a Manifest V3 browser extension that combines two capabilities:
+The Nostr WoT Extension is a Manifest V3 browser extension that provides:
 
 1. **NIP-07 Identity Provider (Signer)** -- Exposes `window.nostr` for web applications to request public keys, event signing, and NIP-04/NIP-44 encryption/decryption.
-2. **Web of Trust Distance Checker** -- Maintains a local social graph from Nostr kind:3 (contact list) events and kind:10002 (NIP-65 relay list) events, provides hop-distance and trust-score queries via `window.nostr.wot`, and uses discovered relay preferences to query the right relays for each pubkey (outbox model).
-3. **WebLN Lightning Wallet** -- Exposes `window.webln` for web applications to send/receive Lightning payments via connected wallets.
+2. **WebLN Lightning Wallet** -- Exposes `window.webln` for web applications to send/receive Lightning payments via connected wallets.
+3. **Relay-list helpers** -- `window.nostr.wot.getRelayList` / `getRelayPool` expose stored NIP-65 relay-list data (outbox model) to relay-aware clients. (The legacy trust-graph distance/score API has been removed.)
+
+The popup also lets the user edit their kind:0 profile, manage their own NIP-51 `kind:10000` mute list, and edit their NIP-65 read/write relay list.
+
+> **Removed:** the Web-of-Trust trust-graph subsystem -- remote oracles, follow-graph sync, trust scoring, and page-injected trust badges -- no longer exists. Some no-op shims (`resetLocalGraph`, `refreshBadgesOnAllTabs`, `injectIntoTab`) remain in the code so the many call sites that referenced them need not change.
 
 The extension targets Chrome and Firefox, using a service worker on Chrome and a background script on Firefox (declared side by side in `manifest.json`).
 
@@ -37,27 +41,31 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 
 | Module | Responsibility |
 |--------|---------------|
-| `state.ts` | Shared mutable state (`config`, `oracle`, `localGraph`), constants, rate limiting, method sets, utility functions |
-| `wot-handlers.ts` | WoT graph queries: distance, trust score, batch operations, sync, follows, paths, relay discovery |
-| `domain-handlers.ts` | Domain allowlist, dismissed domains, first-visit connect prompt, badge injection, tab listeners, host permissions, identity disable |
+| `state.ts` | Shared mutable state (`config`), constants, method sets, utility functions. `RATE_LIMITED_METHODS` is now empty (`checkRateLimit` always allows); `resetLocalGraph()` is a retained no-op |
+| `domain-handlers.ts` | Domain allowlist, dismissed domains, first-visit connect prompt, tab listeners, host permissions, identity disable. Badge injection has been removed; `injectIntoTab`/`refreshBadgesOnAllTabs` are retained no-ops |
+| `relay-handlers.ts` | Page-facing relay-list queries: `getRelayList`, `getRelayPool` (NIP-65 / outbox) |
 | `vault-handlers.ts` | Vault lifecycle (unlock/lock/create), account switching, database management |
 | `nip07-handlers.ts` | NIP-07 signer methods (sign, encrypt/decrypt), permission management |
 | `wallet-handlers.ts` | WebLN page methods + privileged wallet management (connect, provision, Lightning Address) |
 | `onboarding-handlers.ts` | Account import/generation, NostrConnect sessions, vault creation during onboarding |
-| `misc-handlers.ts` | Activity log, NIP-51 mute list (kind:10000), profile metadata, relay/mute-list publishing, health checks |
+| `profile-handlers.ts` | Profile metadata (kind:0) fetch/cache, NIP-51 mute-list (kind:10000) fetch (`getMyMuteList` / `fetchMuteList`) |
+| `publish-handlers.ts` | Event signing/broadcasting, relay-list (kind:10002) and mute-list (kind:10000) publishing, NIP-46 session info, relay health checks |
+| `activity-handlers.ts` | Activity log read/clear with in-memory write buffering |
+| `misc-handlers.ts` | Re-export facade aggregating the handler maps above |
 
-**Dispatch pattern:** Each handler module exports `handlers: Map<string, HandlerFn>`. `background.ts` merges all maps into a single `allHandlers` map. `handleRequest()` does pre-checks (rate limit, NIP-07 validation, domain gating, npub normalization) then delegates to `allHandlers.get(method)`.
+**Dispatch pattern:** Each handler module exports `handlers: Map<string, HandlerFn>`. `background.ts` merges all maps into a single `allHandlers` map. `handleRequest()` does pre-checks (NIP-07 validation, domain gating, read-only guard, npub normalization) then delegates to `allHandlers.get(method)`.
 
-**Dependency rules:** Handler modules import from `state.ts` and `lib/*`, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `misc-handlers`). No circular dependency chains exist.
+**Dependency rules:** Handler modules import from `state.ts` and `lib/*`, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `activity-handlers`). No circular dependency chains exist.
 
 Responsibilities of `background.ts`:
 - Handler map assembly from all `lib/bg/*-handlers.ts` modules
-- `loadConfig()` -- initializes `state.config`, oracle, localGraph, runs migrations
-- Startup IIFEs: permission migration, vault auto-unlock, `signer.cleanupStale()`
+- `loadConfig()` -- initializes `state.config` (myPubkey, relays) and opens the active account's IndexedDB
+- Startup IIFEs: deprecated trust-graph database cleanup (silently deletes the per-account `nostr-wot-{accountId}` databases left over from the removed WoT subsystem), permission migration, vault auto-unlock, `signer.cleanupStale()`
 - `browser.runtime.onMessage` listener (privilege gate, origin derivation, dispatch to `handleRequest()`)
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
+- `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))
 - Calls `setupTabListeners()` from `domain-handlers.ts`
-- Auto-injection: `content.ts` and `inject.ts` are declared as `content_scripts` in `manifest.json` (matching `<all_urls>`), so the browser handles injection automatically. The background additionally uses `browser.scripting.executeScript` to inject the badge engine and CSS into tabs that have WoT badges enabled.
+- Auto-injection: `content.ts` and `inject.ts` are declared as `content_scripts` in `manifest.json` (matching `<all_urls>`), so the browser handles injection automatically.
 - On `runtime.onInstalled` (reason `install`), opens the onboarding wizard if no vault exists.
 
 ### 2.2 Content Script -- `content.ts`
@@ -65,10 +73,10 @@ Responsibilities of `background.ts`:
 Runs in the **ISOLATED** world. Acts as a bidirectional message bridge between the page context (`inject.ts`) and the background script.
 
 - Listens for `window.postMessage` events with `type: 'WOT_REQUEST'`, `type: 'NIP07_REQUEST'`, or `type: 'WEBLN_REQUEST'`.
-- Validates the method name against hardcoded allowlists (`WOT_ALLOWED_METHODS`, `NIP07_ALLOWED_METHODS`, `WEBLN_ALLOWED_METHODS`).
+- Validates the method name against hardcoded allowlists: `WOT_ALLOWED_METHODS` (only `getRelayList`, `getRelayPool`), `NIP07_ALLOWED_METHODS`, `WEBLN_ALLOWED_METHODS`.
 - Forwards valid requests to the background via `browser.runtime.sendMessage`.
 - Posts responses back to the page as `WOT_RESPONSE`, `NIP07_RESPONSE`, or `WEBLN_RESPONSE`.
-- **Rate limiter**: 100 WoT requests per second (sliding window, separate from the background rate limiter).
+- **Rate limiter**: 100 relay-query (WOT channel) requests per second (sliding window). The background no longer rate-limits these methods.
 - **HTTPS enforcement**: NIP-07 and WebLN methods are blocked on `http:` origins except `localhost`, `127.0.0.1`, and `[::1]`.
 - **NIP-07 prefixing**: Adds `nip07_` prefix and `origin` (hostname) to all NIP-07 requests before forwarding.
 - **WebLN prefixing**: Adds `webln_` prefix and `origin` (hostname) to all WebLN requests before forwarding.
@@ -81,10 +89,10 @@ Runs in the **MAIN** world (page context). Written as an IIFE with `export {}` f
 Exposes three API surfaces on the page:
 
 - `window.nostr.getPublicKey()`, `window.nostr.signEvent(event)`, `window.nostr.getRelays()`, `window.nostr.nip04.{encrypt,decrypt}`, `window.nostr.nip44.{encrypt,decrypt}` -- NIP-07 signer.
-- `window.nostr.wot.{getDistance, isInMyWoT, getTrustScore, getDetails, getConfig, getDistanceBatch, getTrustScoreBatch, filterByWoT, getStatus, getFollows, getCommonFollows, getStats, getPath, getRelayList, getRelayPool}` -- Web of Trust API.
+- `window.nostr.wot.{getRelayList, getRelayPool}` -- relay-list (NIP-65 / outbox) helpers. (The trust-graph distance/score/follow methods have been removed.)
 - `window.webln.{enable, getInfo, sendPayment, makeInvoice, getBalance}` -- WebLN Lightning wallet API.
 
-Each method posts a typed message to `window.postMessage` and returns a Promise that resolves when the matching response arrives. Timeouts: 30 seconds for WoT calls, 120 seconds for NIP-07 and WebLN calls (users may need time to respond to prompts).
+Each method posts a typed message to `window.postMessage` and returns a Promise that resolves when the matching response arrives. Timeouts: 30 seconds for WOT-channel (relay-list) calls, 120 seconds for NIP-07 and WebLN calls (users may need time to respond to prompts).
 
 Fires `CustomEvent('webln-ready')` and `CustomEvent('nostr-wot-ready')` on `window` when injection completes so pages can detect API availability.
 
@@ -99,7 +107,7 @@ Extension popup UI opened when clicking the toolbar icon. React-based with CSS m
 | `src/popup/PopupApp.tsx` | Root component with tab navigation, overlays, context providers |
 | `src/popup/components/` | Feature components: Home, Settings, Approval, Vault, Wizard, Wallet, etc. |
 | `src/popup/components/Wallet/` | Wallet management UI: setup (NWC/LNbits), status, balance, auto-approve threshold |
-| `src/popup/context/` | React contexts: AccountContext, VaultContext, PermissionsContext, ScoringContext |
+| `src/popup/context/` | React contexts: AccountContext, VaultContext, PermissionsContext |
 
 ### 2.5 Onboarding -- `src/onboarding/`
 
@@ -159,7 +167,7 @@ From `manifest.json` (MV3):
         { "matches": ["<all_urls>"], "js": ["inject.ts"], "run_at": "document_start", "world": "MAIN" }
     ],
     "web_accessible_resources": [{
-        "resources": ["icons/icon-base.svg", "locales/*.json", "badges/engine.ts", "badges/badges.css"],
+        "resources": ["icons/icon-base.svg", "locales/*.json", "icons/clients/*.svg"],
         "matches": ["<all_urls>"]
     }]
 }

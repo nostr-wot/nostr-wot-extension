@@ -1,38 +1,47 @@
 # Configuration
 
-## 1. Mode System
+## 1. Runtime Config
 
-The extension supports three operational modes for graph queries, stored in `browser.storage.sync.mode`:
+The background keeps a small mutable config object (`config` in `lib/bg/state.ts`):
 
-| Mode | Behavior |
-|------|----------|
-| `hybrid` (default) | Local graph consulted first; falls back to the remote oracle API for pubkeys beyond sync depth |
-| `local` | Only local graph, no network queries. Returns `null` for unknown pubkeys. |
-| `remote` | Only oracle API. Legacy mode, not recommended when local data exists. |
+```ts
+export interface ExtConfig {
+    myPubkey: string | null;   // active account's pubkey
+    relays: string[];          // relays used for fetching/publishing
+}
 
-The remote oracle is at `https://wot-oracle.mappingbitcoin.com` by default (`lib/api.ts`). It exposes REST endpoints for `/distance`, `/distance/batch`, `/follows`, `/common-follows`, `/path`, `/stats`, and `/health`.
+export const config: ExtConfig = {
+    myPubkey: null,
+    relays: DEFAULT_RELAYS,
+};
+```
+
+`DEFAULT_RELAYS` (in `lib/bg/state.ts`):
+
+```js
+['wss://relay.damus.io', 'wss://nos.lol', 'wss://nostr-01.yakihonne.com']
+```
+
+`myPubkey` is initialized from the active account when the vault is loaded. The
+user's own read/write relays (NIP-65) take precedence over these defaults when
+publishing; the defaults are a fallback for accounts that have not configured a
+relay list yet.
+
+> The earlier Mode system (`local` / `remote` / `hybrid`), the remote oracle URL,
+> `maxHops`, `timeout`, and the trust `scoring` config have all been removed
+> along with the trust-graph subsystem. There is no `browser.storage.sync.mode`
+> anymore.
 
 ---
 
-## 2. Default Configuration
+## 2. Relay List (NIP-65)
 
-```js
-{
-    mode: 'hybrid',
-    oracleUrl: 'https://wot-oracle.mappingbitcoin.com',
-    myPubkey: null,
-    relays: [
-        'wss://relay.damus.io',
-        'wss://nos.lol',
-        'wss://nostr-01.yakihonne.com'
-    ],
-    maxHops: 3,
-    timeout: 5000,
-    scoring: DEFAULT_SCORING
-}
-```
-
-Configuration is loaded from `browser.storage.sync` on startup and whenever `configUpdated` is called. Relays are stored as a comma-separated string in sync storage and parsed on load.
+The user's read/write relay list is edited in the popup (Relays card) and
+published as a replaceable `kind:10002` event via `publishRelayList`
+(`lib/bg/publish-handlers.ts`). Relay URLs are normalized with
+`normalizeRelayUrl` (`lib/relayUtils.ts`) before use. Relay-list queries for
+arbitrary pubkeys are served by `getRelayList` / `getRelayPool`
+(`lib/bg/relay-handlers.ts`), which back the `window.nostr.wot` page API.
 
 ---
 

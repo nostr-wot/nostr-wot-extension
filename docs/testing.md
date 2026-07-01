@@ -11,16 +11,26 @@ Tests use **Node.js built-in test runner** (`node:test`, Node 20+) with the `tsx
 # Crypto tests only (no browser mock needed)
 node --import tsx --test tests/crypto/*.test.ts
 
+# Wizard state machine + popup-gating tests (pure functions, no browser mock needed)
+node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts
+
+# Storage relay-list tests (uses fake-indexeddb, no browser mock needed)
+node --import tsx --test tests/storage-relay-lists.test.ts
+
 # Module tests (need browser mock)
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts
 
-# Badge engine tests (pure functions, no browser mock needed)
-node --import tsx --test tests/badges/engine.test.ts
-
 # Wallet tests (mix of pure functions and browser-mocked tests)
-node --import tsx --test tests/wallet/bolt11.test.ts
+node --import tsx --test tests/wallet/bolt11.test.ts tests/inject-webln.test.ts
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet/nwc.test.ts tests/wallet/lnbits.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/background-handlers.test.ts tests/wallet/permissions.test.ts tests/wallet/approval.test.ts tests/wallet/types.test.ts tests/wallet/index.test.ts
 ```
+
+`tests/run.sh` runs these groups in sequence: crypto, wallet (no-mock),
+wizardMachine + openPopupForActiveTab, storage-relay-lists, then the
+browser-mocked module + wallet group (vault, permissions, accounts, signer,
+security-hardening, communication, wallet permissions/background-handlers,
+vault-wallet). Some additional test files exist in the tree (`domain-handlers`,
+`relay`, `site-state`) that are not part of the default `run.sh` sequence.
 
 ---
 
@@ -44,7 +54,13 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet
 | `tests/signer.test.ts` | NIP-07 signing flow, permission checks, pending request lifecycle |
 | `tests/security-hardening.test.ts` | NIP-49 zeroing, NIP-04 error normalization, vault reEncrypt, lock zeroing, batch 1-2 regression |
 | `tests/communication.test.ts` | Full communication test suite (see below) |
-| `tests/badges/engine.test.ts` | Badge engine pure functions: bech32 validation, hexToNpub, normalizePubkey, normalizeConfig, scoreToColor, buildCustomAdapters, build output validation |
+| `tests/wizardMachine.test.ts` | Onboarding wizard state machine transitions |
+| `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
+| `tests/storage-relay-lists.test.ts` | IndexedDB relay-list store: cache load, read/write, buffering (uses fake-indexeddb) |
+| `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
+| `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers (not in default `run.sh`) |
+| `tests/relay.test.ts` | Relay utilities (not in default `run.sh`) |
+| `tests/site-state.test.ts` | Per-site state helpers (not in default `run.sh`) |
 | `tests/wallet/nwc.test.ts` | NWC provider: connection, balance, pay, make invoice |
 | `tests/wallet/lnbits.test.ts` | LNbits provider: REST API calls, error handling |
 | `tests/wallet/lnbits-provision.test.ts` | Auto-provisioning: challenge-response flow |

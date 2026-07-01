@@ -102,22 +102,23 @@ The `nostrconnect://` QR code flow includes a `connectSecret` parameter:
 
 ## 8. Privileged Method Gating
 
-The `PRIVILEGED_METHODS` set in `background.ts` contains all sensitive operations:
+The `PRIVILEGED_METHODS` set is auto-derived in `background.ts` from every handler
+map that is not a page-facing NIP-07/WebLN/relay-query method, plus `configUpdated`.
+It contains all sensitive operations (representative list):
 
 - **Vault lifecycle**: `vault_unlock`, `vault_lock`, `vault_create`, `vault_isLocked`, `vault_exists`, `vault_listAccounts`, `vault_addAccount`, `vault_removeAccount`, `vault_setActiveAccount`, `vault_getActivePubkey`, `vault_setAutoLock`, `vault_getAutoLock`, `vault_exportNsec`, `vault_exportNcryptsec`, `vault_importNcryptsec`, `vault_changePassword`, `vault_getActiveAccountType`
-- **Signer permissions**: `signer_getPermissions`, `signer_getPermissionsForDomain`, `signer_clearPermissions`, `signer_savePermission`, `signer_getPermissionsRaw`, `signer_getPermissionsForDomainRaw`, `signer_copyPermissions`, `signer_getUseGlobalDefaults`, `signer_setUseGlobalDefaults`
+- **Signer permissions**: `signer_getPermissions`, `signer_getPermissionsForDomain`, `signer_clearPermissions`, `signer_savePermission`, `signer_getPermissionsRaw`, `signer_getPermissionsForDomainRaw`, `signer_copyPermissions`, `signer_getUseGlobalDefaults`, `signer_setUseGlobalDefaults`, `signer_setupNewAccountPermissions`
 - **Pending requests**: `signer_getPending`, `signer_resolve`, `signer_resolveBatch`
 - **Account switching**: `switchAccount`
 - **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
-- **Graph & sync**: `configUpdated`, `syncGraph`, `stopSync`, `clearGraph`, `getSyncState`
-- **Domain management**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`
-- **Badge injection**: `setBadgeDisabled`, `removeBadgesFromTab`, `getCustomAdapters`, `saveCustomAdapter`, `deleteCustomAdapter`, `previewBadgeConfig`, `setIdentityDisabled`, `getIdentityDisabledSites`, `injectWotApi`, `getNostrPubkey`
+- **Config**: `configUpdated`
+- **Domain management & identity injection**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`, `setIdentityDisabled`, `getIdentityDisabledSites`, `injectWotApi`, `getNostrPubkey`
 - **Database management**: `listDatabases`, `getDatabaseStats`, `deleteAccountDatabase`, `deleteAllDatabases`
 - **Activity log**: `getActivityLog`, `clearActivityLog`
-- **Filters**: `getLocalBlocks`, `addLocalBlock`, `removeLocalBlock`, `fetchMuteList`, `getMuteLists`, `removeMuteList`, `toggleMuteList`, `saveMuteList`
-- **Publishing**: `publishRelayList`, `signAndPublishEvent`, `signEvent`, `updateProfileCache`, `getProfileMetadata`
+- **Profile & mute list**: `getProfileMetadata`, `getProfileMetadataBatch`, `updateProfileCache`, `getMyMuteList`, `fetchMuteList`
+- **Publishing**: `publishRelayList`, `publishMuteList`, `signAndPublishEvent`, `signEvent`
 - **NIP-46 sessions**: `nip46_getSessionInfo`, `nip46_revokeSession`
-- **Health checks**: `checkRelayHealth`, `checkOracleHealth`
+- **Health checks**: `checkRelayHealth`
 
 All gated by: `sender.id === browser.runtime.id && sender.url.startsWith(extensionBaseUrl)`.
 
@@ -157,7 +158,7 @@ The auto-approve threshold (`walletThreshold_{accountId}`) is stored in `browser
 
 ## 9. Rate Limiting
 
-`RATE_LIMITED_METHODS` covers WoT computation methods only (50 req/sec per method). `vault_unlock` is protected by the privilege gate (only callable from extension pages) and PBKDF2's 210,000 iterations which make brute-force impractical (~200ms per attempt).
+`RATE_LIMITED_METHODS` is now empty — the background no longer rate-limits any method (it previously covered the removed Web-of-Trust computation methods). The content script still rate-limits its relay-query channel (100 req/sec, sliding window). `vault_unlock` is protected by the privilege gate (only callable from extension pages) and PBKDF2's 210,000 iterations which make brute-force impractical (~200ms per attempt).
 
 ---
 

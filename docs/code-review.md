@@ -1,5 +1,15 @@
 # Code Review -- March 2026
 
+> **Historical note (kept as a point-in-time snapshot).** This review was written
+> while the extension still had the Web-of-Trust trust-graph subsystem. That
+> subsystem has since been **removed**: `lib/graph.ts`, `lib/sync.ts`,
+> `lib/scoring.ts`, `lib/api.ts`, the `badges/` engine, the WoT popup sections
+> (`WotInjectionSection`, `WotSyncSection`), oracle health checks, and the
+> trust-graph/badge tests no longer exist. Any finding below that references
+> those files, the follow graph, trust scoring, oracles, or trust badges is
+> **obsolete** — it is retained only to preserve the review record, not as a
+> current to-do.
+
 Comprehensive audit of the Nostr WoT extension codebase. Two rounds: Round 1 identified 98 findings (57 fixed, 35 deferred, 6 accepted). Round 2 is a fresh audit of the post-fix codebase by 10 parallel Opus agents covering security, performance, code quality, dead code, documentation, and future enhancements.
 
 ---

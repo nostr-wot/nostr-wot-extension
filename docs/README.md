@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Nostr WoT Extension is a Manifest V3 browser extension that combines an **NIP-07 Identity Provider** (signer) with a **Web of Trust Distance Checker**. It targets Chrome and Firefox, built with Vite + TypeScript + React.
+The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NIP-07 Identity Provider** (signer), an encrypted key vault, profile and NIP-51 mute-list editing, NIP-65 relay-list management, and a built-in **WebLN Lightning wallet**. It targets Chrome and Firefox, built with Vite + TypeScript + React.
+
+> The legacy Web-of-Trust trust-graph subsystem (oracles, follow-graph sync, trust scoring, and page-injected trust badges) has been removed. `window.nostr.wot` now exposes only relay-list helpers (`getRelayList` / `getRelayPool`).
 
 ---
 
@@ -14,7 +16,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that combines an **NI
 |----------|-------------|
 | [Architecture](architecture.md) | Extension structure, entry points, manifest, type system |
 | [Message Flow](message-flow.md) | Page-to-background communication, validation layers, rate limiting |
-| [Storage](storage.md) | IndexedDB schema, pubkey ID mapping, write buffering, graph cache |
+| [Storage](storage.md) | IndexedDB relay-list store, pubkey ID mapping, write buffering, wallet storage |
 
 ### Identity & Security
 
@@ -23,15 +25,6 @@ The Nostr WoT Extension is a Manifest V3 browser extension that combines an **NI
 | [Security](security.md) | Vault encryption, key handling, MemoryVaultPayload, zeroing, error normalization |
 | [Accounts](accounts.md) | Account types, registry, switching, per-account databases |
 | [Signer](signer.md) | NIP-07 signing flow, permission cascade, prompt system, NIP-46 |
-
-### Web of Trust
-
-| Document | Description |
-|----------|-------------|
-| [Syncing](syncing.md) | BFS crawl, relay management, batching, abort, progress |
-| [Graph & Scoring](graph-and-scoring.md) | BFS cache, O(1) lookups, scoring formula, trust levels |
-| [Badges](badges.md) | WoT badge injection, site adapters, rendering pipeline |
-| [Adding Badge Support](add_badge.md) | How to write a site adapter for badge injection |
 
 ### Lightning Wallet
 
@@ -43,7 +36,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that combines an **NI
 
 | Document | Description |
 |----------|-------------|
-| [Configuration](configuration.md) | Mode system, default config, profile metadata caching |
+| [Configuration](configuration.md) | Config storage, default relays, profile metadata caching |
 | [Crypto Library](crypto.md) | Pure JS crypto: secp256k1, Schnorr, NIP-04/44/49, BIP-32/39, bech32 |
 | [Component Standards](component-standards.md) | Shared components, hooks, utilities, CSS patterns, import aliases |
 | [Testing](testing.md) | Test runner, test files, communication test suite, infrastructure |
@@ -64,9 +57,8 @@ The Nostr WoT Extension is a Manifest V3 browser extension that combines an **NI
 - `inject.ts` -- page script (MAIN world, exposes `window.nostr`)
 - `lib/vault.ts` -- encrypted key vault
 - `lib/signer.ts` -- NIP-07 signing coordinator
-- `lib/permissions.ts` -- permission cascade
-- `lib/storage.ts` -- IndexedDB + graph cache
-- `lib/graph.ts` -- BFS distance queries
+- `lib/permissions.ts` -- per-domain/per-account permission cascade
+- `lib/storage.ts` -- IndexedDB relay-list store + caches
 - `lib/wallet/` -- wallet providers (NWC, LNbits), auto-provisioning, BOLT11 decoder
 - `lib/types.ts` -- shared TypeScript interfaces
 
