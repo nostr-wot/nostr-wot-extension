@@ -6,11 +6,10 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides:
 
 1. **NIP-07 Identity Provider (Signer)** -- Exposes `window.nostr` for web applications to request public keys, event signing, and NIP-04/NIP-44 encryption/decryption.
 2. **WebLN Lightning Wallet** -- Exposes `window.webln` for web applications to send/receive Lightning payments via connected wallets.
-3. **Relay-list helpers** -- `window.nostr.wot.getRelayList` / `getRelayPool` expose stored NIP-65 relay-list data (outbox model) to relay-aware clients. (The legacy trust-graph distance/score API has been removed.)
 
 The popup also lets the user edit their kind:0 profile, manage their own NIP-51 `kind:10000` mute list, and edit their NIP-65 read/write relay list.
 
-> **Removed:** the Web-of-Trust trust-graph subsystem -- remote oracles, follow-graph sync, trust scoring, and page-injected trust badges -- no longer exists. Some no-op shims (`resetLocalGraph`, `refreshBadgesOnAllTabs`, `injectIntoTab`) remain in the code so the many call sites that referenced them need not change.
+> **Removed:** the Web-of-Trust trust-graph subsystem -- remote oracles, follow-graph sync, trust scoring, page-injected trust badges, the `window.nostr.wot` page API, and the IndexedDB storage engine (`lib/storage.ts`) that backed them -- no longer exists.
 
 The extension targets Chrome and Firefox, using a service worker on Chrome and a background script on Firefox (declared side by side in `manifest.json`).
 
@@ -41,10 +40,9 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 
 | Module | Responsibility |
 |--------|---------------|
-| `state.ts` | Shared mutable state (`config`), constants, method sets, utility functions. `RATE_LIMITED_METHODS` is now empty (`checkRateLimit` always allows); `resetLocalGraph()` is a retained no-op |
-| `domain-handlers.ts` | Domain allowlist, dismissed domains, first-visit connect prompt, tab listeners, host permissions, identity disable. Badge injection has been removed; `injectIntoTab`/`refreshBadgesOnAllTabs` are retained no-ops |
-| `relay-handlers.ts` | Page-facing relay-list queries: `getRelayList`, `getRelayPool` (NIP-65 / outbox) |
-| `vault-handlers.ts` | Vault lifecycle (unlock/lock/create), account switching, database management |
+| `state.ts` | Shared mutable state (`config`), constants, method sets, utility functions |
+| `domain-handlers.ts` | Domain allowlist, dismissed domains, first-visit connect prompt, host permissions, identity disable |
+| `vault-handlers.ts` | Vault lifecycle (unlock/lock/create), account switching |
 | `nip07-handlers.ts` | NIP-07 signer methods (sign, encrypt/decrypt), permission management |
 | `wallet-handlers.ts` | WebLN page methods + privileged wallet management (connect, provision, Lightning Address) |
 | `onboarding-handlers.ts` | Account import/generation, NostrConnect sessions, vault creation during onboarding |
@@ -59,12 +57,11 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 
 Responsibilities of `background.ts`:
 - Handler map assembly from all `lib/bg/*-handlers.ts` modules
-- `loadConfig()` -- initializes `state.config` (myPubkey, relays) and opens the active account's IndexedDB
-- Startup IIFEs: deprecated trust-graph database cleanup (silently deletes the per-account `nostr-wot-{accountId}` databases left over from the removed WoT subsystem), permission migration, vault auto-unlock, `signer.cleanupStale()`
+- `loadConfig()` -- initializes `state.config` (myPubkey, relays) and ensures an active account exists in `browser.storage.local`
+- Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `signer.cleanupStale()`
 - `browser.runtime.onMessage` listener (privilege gate, origin derivation, dispatch to `handleRequest()`)
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
 - `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))
-- Calls `setupTabListeners()` from `domain-handlers.ts`
 - Auto-injection: `content.ts` and `inject.ts` are declared as `content_scripts` in `manifest.json` (matching `<all_urls>`), so the browser handles injection automatically.
 - On `runtime.onInstalled` (reason `install`), opens the onboarding wizard if no vault exists.
 
@@ -72,11 +69,10 @@ Responsibilities of `background.ts`:
 
 Runs in the **ISOLATED** world. Acts as a bidirectional message bridge between the page context (`inject.ts`) and the background script.
 
-- Listens for `window.postMessage` events with `type: 'WOT_REQUEST'`, `type: 'NIP07_REQUEST'`, or `type: 'WEBLN_REQUEST'`.
-- Validates the method name against hardcoded allowlists: `WOT_ALLOWED_METHODS` (only `getRelayList`, `getRelayPool`), `NIP07_ALLOWED_METHODS`, `WEBLN_ALLOWED_METHODS`.
-- Forwards valid requests to the background via `browser.runtime.sendMessage`.
-- Posts responses back to the page as `WOT_RESPONSE`, `NIP07_RESPONSE`, or `WEBLN_RESPONSE`.
-- **Rate limiter**: 100 relay-query (WOT channel) requests per second (sliding window). The background no longer rate-limits these methods.
+- Listens for `window.postMessage` events with `type: 'NIP07_REQUEST'` or `type: 'WEBLN_REQUEST'`.
+- Validates the method name against hardcoded allowlists: `NIP07_ALLOWED_METHODS`, `WEBLN_ALLOWED_METHODS`.
+- Forwards valid requests to the background over a persistent port (`browser.runtime.connect`).
+- Posts responses back to the page as `NIP07_RESPONSE` or `WEBLN_RESPONSE`.
 - **HTTPS enforcement**: NIP-07 and WebLN methods are blocked on `http:` origins except `localhost`, `127.0.0.1`, and `[::1]`.
 - **NIP-07 prefixing**: Adds `nip07_` prefix and `origin` (hostname) to all NIP-07 requests before forwarding.
 - **WebLN prefixing**: Adds `webln_` prefix and `origin` (hostname) to all WebLN requests before forwarding.
@@ -86,13 +82,12 @@ Runs in the **ISOLATED** world. Acts as a bidirectional message bridge between t
 
 Runs in the **MAIN** world (page context). Written as an IIFE with `export {}` for module context. Bundled by Vite into a single script.
 
-Exposes three API surfaces on the page:
+Exposes two API surfaces on the page:
 
 - `window.nostr.getPublicKey()`, `window.nostr.signEvent(event)`, `window.nostr.getRelays()`, `window.nostr.nip04.{encrypt,decrypt}`, `window.nostr.nip44.{encrypt,decrypt}` -- NIP-07 signer.
-- `window.nostr.wot.{getRelayList, getRelayPool}` -- relay-list (NIP-65 / outbox) helpers. (The trust-graph distance/score/follow methods have been removed.)
 - `window.webln.{enable, getInfo, sendPayment, makeInvoice, getBalance}` -- WebLN Lightning wallet API.
 
-Each method posts a typed message to `window.postMessage` and returns a Promise that resolves when the matching response arrives. Timeouts: 30 seconds for WOT-channel (relay-list) calls, 120 seconds for NIP-07 and WebLN calls (users may need time to respond to prompts).
+Each method posts a typed message to `window.postMessage` and returns a Promise that resolves when the matching response arrives. Timeout: 120 seconds for NIP-07 and WebLN calls (users may need time to respond to prompts).
 
 Fires `CustomEvent('webln-ready')` and `CustomEvent('nostr-wot-ready')` on `window` when injection completes so pages can detect API availability.
 
@@ -185,9 +180,9 @@ Firefox-specific settings:
 
 ### Permission Model
 
-- **Required**: `storage` (IndexedDB, browser.storage), `scripting` (inject content/page scripts), `activeTab` (current tab access).
+- **Required**: `storage` (browser.storage), `scripting` (inject content/page scripts), `activeTab` (current tab access).
 - **Optional**: `notifications` (not currently used), `<all_urls>` (auto-injection on all sites).
-- **Per-domain**: Users can grant injection permission for specific domains via `enableForCurrentDomain()`, which requests `*://{domain}/*` host permission and adds the domain to an `allowedDomains` list in `browser.storage.local`.
+- **Per-domain**: Users can allow a specific domain via `enableForCurrentDomain()`, which adds the domain to an `allowedDomains` list in `browser.storage.local`.
 
 ---
 

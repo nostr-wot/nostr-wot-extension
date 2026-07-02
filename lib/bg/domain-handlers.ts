@@ -150,15 +150,6 @@ export async function broadcastAccountChanged(pubkey: string): Promise<void> {
     }
 }
 
-/**
- * Formerly re-injected/refreshed trust badges across open tabs. The badge
- * subsystem has been removed, so this is now a no-op. It is retained because
- * several account-switching / config-update handlers still call it.
- */
-export async function refreshBadgesOnAllTabs(): Promise<void> {
-    /* badge subsystem removed — no-op */
-}
-
 // ── Read-only guard ──
 
 export async function isActiveAccountReadOnly(): Promise<boolean> {
@@ -208,28 +199,10 @@ async function enableForCurrentDomain(): Promise<{ ok: boolean; domain?: string;
         }
 
         await addAllowedDomain(domain);
-        const injected = await injectIntoTab(tab.id!, tab.url);
-
-        return { ok: injected, domain, error: injected ? null : 'Injection failed' };
+        return { ok: true, domain, error: null };
     } catch (e: unknown) {
         return { ok: false, error: (e as Error).message };
     }
-}
-
-// ── Tab injection ──
-
-/**
- * Formerly injected the trust-badge CSS + engine into an allowed tab. The badge
- * subsystem has been removed, so injection is a no-op. The function is kept (and
- * still returns a success boolean) because tab listeners and
- * `enableForCurrentDomain` call it; the page's own content scripts (NIP-07
- * provider, etc.) are still injected via the manifest content_scripts.
- */
-export async function injectIntoTab(_tabId: number, url: string): Promise<boolean> {
-    if (isRestrictedUrl(url)) {
-        return false;
-    }
-    return true;
 }
 
 // ── Host access request (Chrome 133+) ──
@@ -247,110 +220,6 @@ export async function requestHostAccessIfNeeded(tabId: number, url: string): Pro
         } catch {
             // Not supported or tab closed — ignore
         }
-    }
-}
-
-// ── Nostr pubkey from active tab ──
-
-async function getNostrPubkeyFromActiveTab(): Promise<string | null> {
-    try {
-        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.id) return null;
-
-        const results = await browser.scripting.executeScript({
-            target: { tabId: tab.id },
-            world: 'MAIN',
-            func: async () => {
-                try {
-                    if ((window as unknown as Record<string, unknown>).nostr && typeof ((window as unknown as Record<string, unknown>).nostr as Record<string, unknown>).getPublicKey === 'function') {
-                        return await (((window as unknown as Record<string, unknown>).nostr as Record<string, unknown>).getPublicKey as () => Promise<string>)();
-                    }
-                } catch {
-                    return null;
-                }
-                return null;
-            }
-        });
-
-        return results?.[0]?.result || null;
-    } catch {
-        return null;
-    }
-}
-
-async function injectWotApi(): Promise<{ ok: boolean; url?: string; error?: string }> {
-    try {
-        const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        if (!tab?.id) return { ok: false, error: 'No active tab' };
-
-        if (isRestrictedUrl(tab.url)) {
-            return { ok: false, error: 'Cannot inject on this page' };
-        }
-
-        return { ok: true, url: tab.url };
-    } catch (e: unknown) {
-        return { ok: false, error: (e as Error).message };
-    }
-}
-
-// ── Tab listeners setup (called from background.ts) ──
-
-export function setupTabListeners(): void {
-    browser.tabs.onUpdated.addListener(async (tabId: number, changeInfo: chrome.tabs.OnUpdatedInfo, tab: chrome.tabs.Tab) => {
-        if (changeInfo.status !== 'complete') return;
-        if (!tab.url) return;
-
-        const domain = getDomainFromUrl(tab.url);
-        if (domain && await isDomainAllowed(domain)) {
-            await injectIntoTab(tabId, tab.url);
-        }
-    });
-
-    browser.tabs.onCreated.addListener(async (tab: chrome.tabs.Tab) => {
-        if (!tab.url || tab.status !== 'complete') return;
-
-        const domain = getDomainFromUrl(tab.url);
-        if (domain && await isDomainAllowed(domain)) {
-            await injectIntoTab(tab.id!, tab.url);
-        }
-    });
-
-    browser.tabs.onActivated.addListener(async ({ tabId }: chrome.tabs.OnActivatedInfo) => {
-        try {
-            const tab = await browser.tabs.get(tabId);
-            if (tab.url) {
-                const domain = getDomainFromUrl(tab.url);
-                if (domain && await isDomainAllowed(domain)) {
-                    await injectIntoTab(tabId, tab.url);
-                }
-            }
-        } catch {
-            // Tab may have been closed
-        }
-    });
-
-    if (browser.permissions?.onAdded) {
-        browser.permissions.onAdded.addListener(async (permissions: chrome.permissions.Permissions) => {
-            if (permissions.origins?.length) {
-                try {
-                    for (const origin of permissions.origins) {
-                        const match = origin.match(/^\*:\/\/(?:\*\.)?([^/]+)\/\*$/);
-                        if (match?.[1]) {
-                            await addAllowedDomain(match[1]);
-                        }
-                    }
-                    const tabs = await browser.tabs.query({ status: 'complete' });
-                    for (const tab of tabs) {
-                        if (tab.url && tab.id) {
-                            const d = getDomainFromUrl(tab.url);
-                            if (d && await isDomainAllowed(d)) {
-                                await injectIntoTab(tab.id, tab.url);
-                            }
-                        }
-                    }
-                } catch { /* ignored */ }
-            }
-        });
     }
 }
 
@@ -372,7 +241,4 @@ export const handlers = new Map<string, HandlerFn>([
         const data = await browser.storage.local.get('identityDisabledSites') as Record<string, string[]>;
         return data.identityDisabledSites || [];
     }],
-
-    ['getNostrPubkey', async () => getNostrPubkeyFromActiveTab()],
-    ['injectWotApi', async () => injectWotApi()],
 ]);

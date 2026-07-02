@@ -1,8 +1,7 @@
 /**
  * content.ts — Message bridge between page context (inject.ts) and background.ts
  *
- * Runs in ISOLATED world. Bridges three message channels:
- *   - WOT_REQUEST/WOT_RESPONSE: Web of Trust API queries
+ * Runs in ISOLATED world. Bridges two message channels:
  *   - NIP07_REQUEST/NIP07_RESPONSE: NIP-07 signer requests (prefixed with nip07_ to background)
  *   - WEBLN_REQUEST/WEBLN_RESPONSE: WebLN provider requests (prefixed with webln_ to background)
  *
@@ -30,14 +29,6 @@ if (window.__nostrWotContentInjected) {
 
     const LOCALHOST_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
-    // ── Relay-list (NIP-65) methods ──
-    // The trust-graph WoT query methods were removed when the WoT subsystem was
-    // sunset; only the relay-list helpers remain page-accessible.
-
-    const WOT_ALLOWED_METHODS = [
-        'getRelayList', 'getRelayPool'
-    ] as const;
-
     // ── NIP-07 methods ──
 
     const NIP07_ALLOWED_METHODS = [
@@ -51,20 +42,6 @@ if (window.__nostrWotContentInjected) {
     const WEBLN_ALLOWED_METHODS = [
         'enable', 'getInfo', 'sendPayment', 'makeInvoice', 'getBalance'
     ] as const;
-
-    // Rate limiting for WoT API calls only (NIP-07 is gated by permissions, not rate limits)
-    const WOT_RATE_LIMIT = 100;
-    let wotRequestCount = 0;
-    let wotRateLimitReset = Date.now();
-
-    function checkWotRateLimit(): boolean {
-        const now = Date.now();
-        if (now - wotRateLimitReset >= 1000) {
-            wotRequestCount = 0;
-            wotRateLimitReset = now;
-        }
-        return ++wotRequestCount <= WOT_RATE_LIMIT;
-    }
 
     // ── Persistent port management ──
     // One port per channel (nip07, webln). Requests are serialized per port because
@@ -163,43 +140,6 @@ if (window.__nostrWotContentInjected) {
     window.addEventListener('message', async (event: MessageEvent) => {
         if (event.source !== window) return;
 
-        // ── WoT requests ──
-        if (event.data?.type === 'WOT_REQUEST') {
-            const { id, method, params } = event.data;
-
-            if (!checkWotRateLimit()) {
-                window.postMessage({
-                    type: 'WOT_RESPONSE', id, result: null,
-                    error: 'Rate limit exceeded'
-                }, window.location.origin);
-                return;
-            }
-
-            if (!(WOT_ALLOWED_METHODS as readonly string[]).includes(method)) {
-                window.postMessage({
-                    type: 'WOT_RESPONSE', id, result: null,
-                    error: 'Method not allowed'
-                }, window.location.origin);
-                return;
-            }
-
-            try {
-                const response = await browser.runtime.sendMessage({ method, params });
-                window.postMessage({
-                    type: 'WOT_RESPONSE', id,
-                    result: response.result,
-                    error: response.error
-                }, window.location.origin);
-            } catch (err) {
-                console.debug('[nostr-wot] WoT request failed:', method, err);
-                window.postMessage({
-                    type: 'WOT_RESPONSE', id, result: null,
-                    error: 'Extension context invalidated — reload the page'
-                }, window.location.origin);
-            }
-            return;
-        }
-
         // ── NIP-07 requests ──
         if (event.data?.type === 'NIP07_REQUEST') {
             const { id, method, params } = event.data;
@@ -254,36 +194,11 @@ if (window.__nostrWotContentInjected) {
     });
 
     // Listen for messages from extension (popup/background)
-    browser.runtime.onMessage.addListener((request: Record<string, unknown>, _sender: unknown, sendResponse: (response: unknown) => void) => {
+    browser.runtime.onMessage.addListener((request: Record<string, unknown>) => {
         // Forward account change events to page
         if (request.type === 'NOSTR_ACCOUNT_CHANGED') {
             window.postMessage({ type: 'NOSTR_ACCOUNT_CHANGED', pubkey: request.pubkey }, window.location.origin);
             return;
-        }
-
-        if (request.method === 'getNostrPubkey') {
-            let responded = false;
-            const handler = (event: MessageEvent) => {
-                if (event.data?.type === 'WOT_NOSTR_PUBKEY_RESULT') {
-                    window.removeEventListener('message', handler);
-                    if (!responded) {
-                        responded = true;
-                        sendResponse({ pubkey: event.data.pubkey, error: event.data.error });
-                    }
-                }
-            };
-            window.addEventListener('message', handler);
-            window.postMessage({ type: 'WOT_GET_NOSTR_PUBKEY' }, window.location.origin);
-
-            setTimeout(() => {
-                window.removeEventListener('message', handler);
-                if (!responded) {
-                    responded = true;
-                    sendResponse({ pubkey: null, error: 'timeout' });
-                }
-            }, 3000);
-
-            return true; // Async response
         }
     });
 }

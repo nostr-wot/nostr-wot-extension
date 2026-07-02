@@ -63,22 +63,3 @@ export function groupActivityEntries(
   }
   return [...groups.values()].sort((a, b) => b.timestamp - a.timestamp);
 }
-
-/**
- * Compares current follow list with new tags array.
- * @param currentFollows - Array of pubkey strings
- * @param tags - NIP-01 tags array (e.g. [['p', pubkey], ...])
- * @returns { added, removed, unchangedCount }
- */
-export function computeFollowDiff(
-  currentFollows: string[],
-  tags: string[][]
-): { added: string[]; removed: string[]; unchangedCount: number } {
-  const newSet = new Set((tags || []).filter(t => t[0] === 'p').map(t => t[1]));
-  const curSet = new Set(currentFollows || []);
-  return {
-    added: [...newSet].filter(pk => !curSet.has(pk)),
-    removed: [...curSet].filter(pk => !newSet.has(pk)),
-    unchangedCount: [...newSet].filter(pk => curSet.has(pk)).length,
-  };
-}

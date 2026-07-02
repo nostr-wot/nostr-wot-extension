@@ -27,7 +27,7 @@ The configured interval is stored as `autoLockMs` in `browser.storage.local`, bu
 
 **Brute-force protection**: The `useVaultUnlock` hook enforces escalating lockout after failed password attempts. Every 5 consecutive failures trigger a lockout: 1 min, 5 min, 15 min, 30 min (cap). The countdown is displayed in the UI and the input is disabled during lockout. A successful unlock resets the counter. The counter is shared across hook instances (module-level state) so remounting components does not reset it; however, it resets on full page reload (extension restart).
 
-**Vault destroy** (`vault.destroy()`): Irreversibly wipes the encrypted vault from `browser.storage.local` and clears all in-memory state. The `vault_destroy` RPC handler also stops sync, clears wallet providers, cancels pending signer requests, deletes all per-account IndexedDB databases, and removes account metadata from storage. Exposed via "Forgot password?" on the full-screen lock overlay with a confirmation step.
+**Vault destroy** (`vault.destroy()`): Irreversibly wipes the encrypted vault from `browser.storage.local` and clears all in-memory state. The `vault_destroy` RPC handler also clears wallet providers, cancels pending signer requests, and removes account metadata from storage. Exposed via "Forgot password?" on the full-screen lock overlay with a confirmation step.
 
 ---
 
@@ -112,8 +112,7 @@ It contains all sensitive operations (representative list):
 - **Account switching**: `switchAccount`
 - **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
 - **Config**: `configUpdated`
-- **Domain management & identity injection**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`, `setIdentityDisabled`, `getIdentityDisabledSites`, `injectWotApi`, `getNostrPubkey`
-- **Database management**: `listDatabases`, `getDatabaseStats`, `deleteAccountDatabase`, `deleteAllDatabases`
+- **Domain management & identity injection**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`, `setIdentityDisabled`, `getIdentityDisabledSites`
 - **Activity log**: `getActivityLog`, `clearActivityLog`
 - **Profile & mute list**: `getProfileMetadata`, `getProfileMetadataBatch`, `updateProfileCache`, `getMyMuteList`, `fetchMuteList`
 - **Publishing**: `publishRelayList`, `publishMuteList`, `signAndPublishEvent`, `signEvent`
@@ -158,7 +157,7 @@ The auto-approve threshold (`walletThreshold_{accountId}`) is stored in `browser
 
 ## 9. Rate Limiting
 
-`RATE_LIMITED_METHODS` is now empty — the background no longer rate-limits any method (it previously covered the removed Web-of-Trust computation methods). The content script still rate-limits its relay-query channel (100 req/sec, sliding window). `vault_unlock` is protected by the privilege gate (only callable from extension pages) and PBKDF2's 210,000 iterations which make brute-force impractical (~200ms per attempt).
+There is no request rate limiting — the only throttled methods were the removed Web-of-Trust computation methods and the page-facing relay-query channel, all of which have been deleted. `vault_unlock` is protected by the privilege gate (only callable from extension pages) and PBKDF2's 210,000 iterations which make brute-force impractical (~200ms per attempt).
 
 ---
 

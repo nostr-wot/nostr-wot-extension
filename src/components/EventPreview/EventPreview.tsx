@@ -22,14 +22,8 @@ interface NostrEvent {
   [key: string]: unknown;
 }
 
-interface FollowDiff {
-  added: string[];
-  removed: string[];
-  unchangedCount: number;
-}
-
 /** Maps event kind to component. Entries here skip the generic fallback. */
-const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEvent; followDiff?: FollowDiff | null }>> = {
+const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEvent }>> = {
   0: ProfilePreview,
   1: NotePreview,
   3: ContactListPreview,
@@ -47,7 +41,6 @@ interface EventPreviewProps {
   type: string | null;
   event: NostrEvent | null;
   theirPubkey?: string | null;
-  followDiff?: FollowDiff | null;
   className?: string;
 }
 
@@ -56,7 +49,7 @@ interface EventPreviewProps {
  * Dispatches to kind-specific components for signEvent, handles
  * encrypt/decrypt and getPublicKey inline.
  */
-export default function EventPreview({ type, event, theirPubkey, followDiff, className = '' }: EventPreviewProps) {
+export default function EventPreview({ type, event, theirPubkey, className = '' }: EventPreviewProps) {
   const [showRaw, setShowRaw] = useState<boolean>(false);
   const rootCls = [styles.eventPreview, className].filter(Boolean).join(' ');
 
@@ -100,7 +93,7 @@ export default function EventPreview({ type, event, theirPubkey, followDiff, cla
       <FieldDisplay label={t('event.kind')} value={`${kind} — ${kindLabel}`} />
 
       {KindComponent ? (
-        <KindComponent event={event} followDiff={followDiff} />
+        <KindComponent event={event} />
       ) : KIND_LABELS[kind] ? (
         <GenericPreview event={event} />
       ) : (

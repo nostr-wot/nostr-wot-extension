@@ -4,14 +4,13 @@
 
 ```
 inject.ts (MAIN world)
-  |  window.postMessage({ type: 'WOT_REQUEST' | 'NIP07_REQUEST' | 'WEBLN_REQUEST', id, method, params })
+  |  window.postMessage({ type: 'NIP07_REQUEST' | 'WEBLN_REQUEST', id, method, params })
   v
 content.ts (ISOLATED world)
-  |  1. Rate-limit check (100 WoT req/sec)
-  |  2. Validate method against allowlist
-  |  3. For NIP-07: enforce HTTPS, prefix method with 'nip07_', append origin
-  |  3b. For WebLN: enforce HTTPS, prefix method with 'webln_', append origin
-  |  4. browser.runtime.sendMessage({ method, params })
+  |  1. Validate method against allowlist
+  |  2. For NIP-07: enforce HTTPS, prefix method with 'nip07_', append origin
+  |  2b. For WebLN: enforce HTTPS, prefix method with 'webln_', append origin
+  |  3. Forward over a persistent port (browser.runtime.connect)
   v
 background.ts (service worker)
   |  1. Privilege gate (block privileged methods from content scripts)
@@ -20,7 +19,7 @@ background.ts (service worker)
   |  4. handleRequest() -> switch on method -> return result
   v
 content.ts
-  |  window.postMessage({ type: 'WOT_RESPONSE' | 'NIP07_RESPONSE' | 'WEBLN_RESPONSE', id, result, error })
+  |  window.postMessage({ type: 'NIP07_RESPONSE' | 'WEBLN_RESPONSE', id, result, error })
   v
 inject.ts
      Promise resolves with result
@@ -50,15 +49,11 @@ This allows `background.ts` to distinguish page-origin WebLN calls from internal
 
 ## 3. Rate Limiting
 
-| Layer | Location | Limit |
-|-------|----------|-------|
-| Content script | `content.ts` | 100 relay-query (WOT channel) req/sec (sliding window) |
-
-The content script rate-limits the relay-query (WOT) channel. The background no
-longer rate-limits any method: `RATE_LIMITED_METHODS` is empty and
-`checkRateLimit()` always allows (the only methods it ever throttled were the
-removed trust-graph computations). NIP-07 methods are gated by the user-facing
-permission system instead.
+There is no request rate limiting. The only rate-limited methods were the
+removed trust-graph computations (page-facing relay-query channel + background
+`checkRateLimit`), all of which have been deleted. NIP-07 and WebLN methods are
+gated by the user-facing permission system (per-domain connect + per-method
+approval prompts) instead.
 
 ---
 
@@ -97,16 +92,15 @@ const isInternal = sender.id === browser.runtime.id &&
   (!sender.url || sender.url.startsWith(extensionBaseUrl));
 ```
 
-This ensures the message comes from an extension page (popup, onboarding, prompt) and not from a content script running in a web page tab. This protects all vault, permission, database management, and configuration methods.
+This ensures the message comes from an extension page (popup, onboarding, prompt) and not from a content script running in a web page tab. This protects all vault, permission, and configuration methods.
 
 ---
 
 ## 6. Channel Isolation
 
-The four message channels are strictly separated:
-- **Relay-query channel** (`WOT_REQUEST`/`WOT_RESPONSE`) -- can only access `WOT_ALLOWED_METHODS`, which now contains only `getRelayList` and `getRelayPool`
+The three message channels are strictly separated:
 - **NIP-07 channel** (`NIP07_REQUEST`/`NIP07_RESPONSE`) -- can only access `NIP07_ALLOWED_METHODS`
 - **WebLN channel** (`WEBLN_REQUEST`/`WEBLN_RESPONSE`) -- can only access `WEBLN_ALLOWED_METHODS`
 - **Internal channel** (direct `browser.runtime.sendMessage`) -- can access privileged methods
 
-A WoT request cannot invoke NIP-07 or WebLN methods and vice versa. None can invoke privileged methods.
+A NIP-07 request cannot invoke WebLN methods and vice versa. Neither can invoke privileged methods.

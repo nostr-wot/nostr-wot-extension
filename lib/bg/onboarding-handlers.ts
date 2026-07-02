@@ -6,15 +6,14 @@
 import browser from '../browser.ts';
 import * as vault from '../vault.ts';
 import * as accounts from '../accounts.ts';
-import * as storage from '../storage.ts';
 import { npubEncode } from '../crypto/bech32.ts';
 import { bytesToHex, hexToBytes, randomBytes, randomHex } from '../crypto/utils.ts';
 import { getPublicKey } from '../crypto/secp256k1.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../crypto/nip49.ts';
 import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
-import { config, DEFAULT_RELAYS, resetLocalGraph, type HandlerFn, type LocalAccountEntry } from './state.ts';
+import { config, DEFAULT_RELAYS, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { syncActivePubkey } from './vault-handlers.ts';
-import { broadcastAccountChanged, refreshBadgesOnAllTabs } from './domain-handlers.ts';
+import { broadcastAccountChanged } from './domain-handlers.ts';
 import type { Account } from '../types.ts';
 
 // ── NostrConnect sessions ──
@@ -584,8 +583,6 @@ export const handlers = new Map<string, HandlerFn>([
             });
         }
         await browser.storage.local.set({ accounts: accts, activeAccountId: acctId });
-        await storage.switchDatabase(acctId);
-        resetLocalGraph();
         return { ok: true };
     }],
 
@@ -628,8 +625,6 @@ export const handlers = new Map<string, HandlerFn>([
             if (idx !== -1) accts[idx].readOnly = !fullAccount.privkey && fullAccount.type !== 'nip46';
         }
         await browser.storage.local.set({ accounts: accts, activeAccountId: vaultAcctId });
-        await storage.switchDatabase((params.upgradeFromReadOnly as string) || vaultAcctId);
-        resetLocalGraph();
         return { ok: true };
     }],
 
@@ -667,9 +662,6 @@ export const handlers = new Map<string, HandlerFn>([
             if (idx !== -1) addVaultAccts[idx].readOnly = !fullAccountAdd.privkey && fullAccountAdd.type !== 'nip46';
         }
         await browser.storage.local.set({ accounts: addVaultAccts, activeAccountId: fullAccountAdd.id });
-        await storage.switchDatabase((params.upgradeFromReadOnly as string) || fullAccountAdd.id);
-        resetLocalGraph();
-        refreshBadgesOnAllTabs();
         if (fullAccountAdd.pubkey) {
             broadcastAccountChanged(fullAccountAdd.pubkey);
         }

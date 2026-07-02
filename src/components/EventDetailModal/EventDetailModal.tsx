@@ -1,8 +1,6 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { t } from '@lib/i18n.js';
-import { rpc } from '@shared/rpc.ts';
 import { formatLabel } from '@shared/permissions.ts';
-import { computeFollowDiff } from '@shared/activity.ts';
 import { formatTime } from '@shared/format/time.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
@@ -38,12 +36,6 @@ interface ApprovalRequest {
   origin?: string;
   theirPubkey?: string | null;
   pubkey?: string;
-}
-
-interface FollowDiff {
-  added: string[];
-  removed: string[];
-  unchangedCount: number;
 }
 
 function entryType(entry: ActivityEntry): string {
@@ -125,15 +117,6 @@ export default function EventDetailModal({
 
   const allIdentical = uniqueEntries.length <= 1;
 
-  // Compute follow diff for kind 3 approval
-  const [followDiff, setFollowDiff] = useState<FollowDiff | null>(null);
-  useEffect(() => {
-    if (!isApproval || event?.kind !== 3 || !event?.tags) return;
-    rpc<string[]>('getFollows', { pubkey: request!.pubkey }).then((follows) => {
-      setFollowDiff(computeFollowDiff(follows, event.tags!));
-    }).catch(() => {});
-  }, [isApproval, event?.kind, request?.pubkey]);
-
   // Approval description
   const description = isApproval ? describeRequest(request!, title) : null;
 
@@ -164,7 +147,6 @@ export default function EventDetailModal({
             type={type}
             event={event || null}
             theirPubkey={theirPubkey}
-            followDiff={followDiff}
           />
         ) : allIdentical ? (
           <>

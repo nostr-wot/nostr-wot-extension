@@ -1,6 +1,5 @@
 
 import browser from './lib/browser.ts';
-import * as storage from './lib/storage.ts';
 import * as vault from './lib/vault.ts';
 import * as signer from './lib/signer.ts';
 import * as signerPermissions from './lib/permissions.ts';
@@ -12,19 +11,17 @@ import { randomHex } from './lib/crypto/utils.ts';
 import {
     config,
     NIP07_SIGNING_METHODS,
-    checkRateLimit, npubToHex,
+    npubToHex,
     buildPrivilegedMethods, setPrivilegedMethods,
     PRIVILEGED_METHODS,
     type HandlerFn,
 } from './lib/bg/state.ts';
-import { handlers as relayHandlers } from './lib/bg/relay-handlers.ts';
 import { handlers as miscHandlers, logActivity } from './lib/bg/misc-handlers.ts';
 import {
     handlers as domainHandlers,
-    setupTabListeners, isDomainAllowed, isDomainDismissed,
+    isDomainAllowed, isDomainDismissed,
     waitForDomainAllowed,
     isActiveAccountReadOnly,
-    refreshBadgesOnAllTabs,
 } from './lib/bg/domain-handlers.ts';
 import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
 import { handlers as walletHandlers } from './lib/bg/wallet-handlers.ts';
@@ -34,7 +31,7 @@ import { handlers as onboardingHandlers } from './lib/bg/onboarding-handlers.ts'
 // ── Assemble handler map ──
 
 const allHandlers = new Map<string, HandlerFn>();
-const handlerGroups = [relayHandlers, miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers];
+const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers];
 for (const group of handlerGroups) {
     for (const [method, fn] of group) {
         if (allHandlers.has(method)) {
@@ -45,12 +42,8 @@ for (const group of handlerGroups) {
 }
 
 // configUpdated stays here because it calls loadConfig which is local
-let _refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 allHandlers.set('configUpdated', async () => {
     await loadConfig();
-    // Debounce badge refresh — multiple rapid config updates only trigger one refresh
-    if (_refreshDebounceTimer) clearTimeout(_refreshDebounceTimer);
-    _refreshDebounceTimer = setTimeout(() => { refreshBadgesOnAllTabs(); _refreshDebounceTimer = null; }, 500);
     return { ok: true };
 });
 
@@ -74,7 +67,7 @@ async function loadConfig(): Promise<void> {
         config.relays = (data.relays as string).split(',').map(r => r.trim()).filter(Boolean);
     }
 
-    // Initialize storage with active account's database
+    // Ensure an active account exists in local storage.
     const localData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
     let activeAccountId = localData.activeAccountId as string | undefined;
 
@@ -91,28 +84,11 @@ async function loadConfig(): Promise<void> {
             await browser.storage.local.set({ activeAccountId });
         }
     }
-
-    // Fall back to vault account if still no ID
-    if (!activeAccountId) {
-        activeAccountId = vault.getActiveAccountId() ?? undefined;
-    }
-
-    if (activeAccountId) {
-        // initDB recreates a fresh (empty) per-account DB; its relay_lists store
-        // backs the relay (NIP-65) feature. The deprecated trust-graph stores it
-        // also creates are left unused.
-        await storage.initDB(activeAccountId);
-    }
 }
 
 // ── Request dispatch ──
 
 async function handleRequest({ method, params }: { method: string; params: Record<string, unknown> }): Promise<unknown> {
-    // Check rate limit for external API methods
-    if (!checkRateLimit(method)) {
-        throw new Error(`Rate limit exceeded for ${method}. Max 50 requests per second.`);
-    }
-
     // NIP-07: validate params and gate behind domain allowlist
     if (method.startsWith('nip07_')) {
         validateNip07Params(method, params);
@@ -256,24 +232,7 @@ if (browser.alarms?.onAlarm) {
 // ── Startup (runs AFTER listeners are registered, so messages during async
 // init don't race against listener registration) ──
 
-// Silently delete the deprecated trust-graph databases on startup. The WoT
-// subsystem (graph/sync/oracles/scoring/badges) has been removed; its
-// per-account `nostr-wot-{accountId}` IndexedDB stores are dead data. Deleting
-// them BEFORE loadConfig() lets initDB recreate a fresh empty DB for the active
-// account (whose relay_lists store still backs the relay feature). Guarded so a
-// cleanup failure never blocks startup.
-(async () => {
-    try {
-        const dbs = await storage.listAllDatabases();
-        for (const d of dbs) {
-            try {
-                await storage.deleteDatabase(d.accountId);
-            } catch { /* ignore individual delete failures */ }
-        }
-    } catch { /* ignore — listAllDatabases unsupported or failed */ }
-    // Recreate the active account's empty DB after the wipe.
-    loadConfig();
-})();
+loadConfig();
 
 signer.cleanupStale();
 
@@ -318,6 +277,3 @@ signer.cleanupStale();
         console.warn('[VAULT] Auto-unlock failed:', (e as Error).message);
     }
 })();
-
-// Tab listeners for auto-injection
-setupTabListeners();

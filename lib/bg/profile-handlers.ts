@@ -6,8 +6,6 @@
 import browser from '../browser.ts';
 import * as vault from '../vault.ts';
 import { randomHex } from '../crypto/utils.ts';
-import * as storage from '../storage.ts';
-import { normalizeRelayUrl } from '../relayUtils.ts';
 import { config, DEFAULT_RELAYS, profileCache, PROFILE_CACHE_TTL, type HandlerFn, type ProfileCacheEntry } from './state.ts';
 
 /** Public entries of a NIP-51 mute list, grouped by tag type, plus the raw
@@ -30,30 +28,6 @@ async function getUserRelays(): Promise<string[]> {
     return config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
 }
 
-// Prepend target's write-relays from stored relay list (outbox model)
-function prependWriteRelays(pubkey: string, baseRelays: string[]): string[] {
-    const relayList = storage.getRelayList(pubkey);
-    if (!relayList) return baseRelays;
-
-    const writeRelays = relayList
-        .filter(r => r.write)
-        .map(r => r.url);
-
-    if (writeRelays.length === 0) return baseRelays;
-
-    // Dedupe using normalized URLs, but keep original URLs for connections
-    const seen = new Set(writeRelays.map(normalizeRelayUrl));
-    const combined = [...writeRelays];
-    for (const url of baseRelays) {
-        const norm = normalizeRelayUrl(url);
-        if (!seen.has(norm)) {
-            seen.add(norm);
-            combined.push(url);
-        }
-    }
-    return combined;
-}
-
 // ── Profile Metadata ──
 
 export async function fetchProfileMetadata(pubkey: string): Promise<Record<string, unknown> | null> {
@@ -71,8 +45,7 @@ export async function fetchProfileMetadata(pubkey: string): Promise<Record<strin
         return stored[storageKey].metadata;
     }
 
-    const baseRelays = config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
-    const relays = prependWriteRelays(pubkey, baseRelays);
+    const relays = config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
     const metadata = await fetchKind0(pubkey, relays);
 
     if (metadata) {
@@ -234,7 +207,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['fetchMuteList', async (params) => {
         const pubkey = params.pubkey as string;
         if (!pubkey) return { ok: false, error: 'Missing pubkey' };
-        const relays = prependWriteRelays(pubkey, await getUserRelays());
+        const relays = await getUserRelays();
         const list = await fetchMuteList(pubkey, relays);
         return { ok: true, ...list };
     }],
@@ -245,7 +218,7 @@ export const handlers = new Map<string, HandlerFn>([
         if (!myPubkey) {
             return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
         }
-        const relays = prependWriteRelays(myPubkey, await getUserRelays());
+        const relays = await getUserRelays();
         return await fetchMuteList(myPubkey, relays);
     }],
 ]);

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { computeFollowDiff } from '@shared/activity.ts';
 import { formatLabel } from '@shared/permissions.ts';
 import '@shared/theme.css';
 import EventPreview from './components/EventPreview';
@@ -27,32 +26,18 @@ interface PendingPrompt {
   walletAmount?: number;
 }
 
-interface FollowDiff {
-  added: string[];
-  removed: string[];
-  unchangedCount: number;
-}
-
 export default function PromptApp() {
   const [prompt, setPrompt] = useState<PendingPrompt | null>(null);
   const [vaultLocked, setVaultLocked] = useState<boolean>(false);
   const [buttonsDisabled, setButtonsDisabled] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [followDiff, setFollowDiff] = useState<FollowDiff | null>(null);
 
   useEffect(() => {
     browser.storage.session.get(['pendingPrompt']).then((data: any) => {
       if (data.pendingPrompt) {
         setPrompt(data.pendingPrompt);
         setVaultLocked(data.pendingPrompt.vaultLocked || false);
-        // Compute follow diff for kind 3
-        const p = data.pendingPrompt;
-        if (p.event?.kind === 3 && p.event?.tags && p.pubkey) {
-          rpc<string[]>('getFollows', { pubkey: p.pubkey }).then((follows) => {
-            setFollowDiff(computeFollowDiff(follows, p.event.tags));
-          }).catch(() => {});
-        }
       } else {
         setError(t('prompt.noPendingRequest'));
       }
@@ -126,7 +111,6 @@ export default function PromptApp() {
             type={prompt.type || null}
             event={prompt.event}
             theirPubkey={prompt.theirPubkey}
-            followDiff={followDiff}
             className={styles.eventPreview}
           />
         </>

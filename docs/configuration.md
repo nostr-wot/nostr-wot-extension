@@ -39,9 +39,7 @@ relay list yet.
 The user's read/write relay list is edited in the popup (Relays card) and
 published as a replaceable `kind:10002` event via `publishRelayList`
 (`lib/bg/publish-handlers.ts`). Relay URLs are normalized with
-`normalizeRelayUrl` (`lib/relayUtils.ts`) before use. Relay-list queries for
-arbitrary pubkeys are served by `getRelayList` / `getRelayPool`
-(`lib/bg/relay-handlers.ts`), which back the `window.nostr.wot` page API.
+`normalizeRelayUrl` (`lib/relayUtils.ts`) before use.
 
 ---
 

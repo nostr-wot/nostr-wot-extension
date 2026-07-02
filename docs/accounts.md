@@ -37,23 +37,17 @@ return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
 
 ---
 
-## 4. Per-Account Database
-
-Each account gets its own IndexedDB instance named `nostr-wot-{accountId}`, which isolates that identity's cached relay-list data. See [Storage](storage.md) for full schema details. (The stale per-account trust-graph databases left over from the removed WoT feature are silently deleted on startup.)
-
----
-
-## 5. Account Switching
+## 4. Account Switching
 
 When the active account changes (`switchAccount` handler in `lib/bg/vault-handlers.ts`):
 
 1. `vault.setActiveAccount(accountId)` -- update vault's active account pointer (or `clearActiveAccount()` for read-only accounts not in vault)
 2. Update `config.myPubkey` and `browser.storage.sync.myPubkey` -- canonical pubkey source for signer
 3. Update `browser.storage.local.activeAccountId`
-4. `storage.switchDatabase(accountId)` -- flush, close, open new DB, reload caches
-5. `resetLocalGraph()` -- retained no-op (the trust-graph cache it once cleared no longer exists)
-6. **`signer.rejectPendingForAccount(oldAccountId)`** -- reject all pending signing requests for the old account to prevent signing with the wrong key
-7. `broadcastAccountChanged(pubkey)` -- notify all tabs about the change
+4. **`signer.rejectPendingForAccount(oldAccountId)`** -- reject all pending signing requests for the old account to prevent signing with the wrong key
+5. `broadcastAccountChanged(pubkey)` -- notify all tabs about the change
+
+Accounts no longer carry a per-account database; identity state lives entirely in the vault and `browser.storage`.
 
 ---
 

@@ -14,9 +14,6 @@ node --import tsx --test tests/crypto/*.test.ts
 # Wizard state machine + popup-gating tests (pure functions, no browser mock needed)
 node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts
 
-# Storage relay-list tests (uses fake-indexeddb, no browser mock needed)
-node --import tsx --test tests/storage-relay-lists.test.ts
-
 # Module tests (need browser mock)
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts
 
@@ -26,11 +23,11 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet
 ```
 
 `tests/run.sh` runs these groups in sequence: crypto, wallet (no-mock),
-wizardMachine + openPopupForActiveTab, storage-relay-lists, then the
-browser-mocked module + wallet group (vault, permissions, accounts, signer,
-security-hardening, communication, wallet permissions/background-handlers,
-vault-wallet). Some additional test files exist in the tree (`domain-handlers`,
-`relay`, `site-state`) that are not part of the default `run.sh` sequence.
+wizardMachine + openPopupForActiveTab, then the browser-mocked module + wallet
+group (vault, permissions, accounts, signer, security-hardening, communication,
+wallet permissions/background-handlers, vault-wallet). Some additional test files
+exist in the tree (`domain-handlers`, `relay`, `site-state`) that are not part of
+the default `run.sh` sequence.
 
 ---
 
@@ -56,7 +53,6 @@ vault-wallet). Some additional test files exist in the tree (`domain-handlers`,
 | `tests/communication.test.ts` | Full communication test suite (see below) |
 | `tests/wizardMachine.test.ts` | Onboarding wizard state machine transitions |
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
-| `tests/storage-relay-lists.test.ts` | IndexedDB relay-list store: cache load, read/write, buffering (uses fake-indexeddb) |
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
 | `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers (not in default `run.sh`) |
 | `tests/relay.test.ts` | Relay utilities (not in default `run.sh`) |
@@ -79,7 +75,7 @@ The most comprehensive test file, with 117 tests across 22 suites covering 6 lay
 
 | Layer | Suites | Tests | What it covers |
 |-------|--------|-------|----------------|
-| 1. Content Script Validation | 5 | 21 | WoT/NIP-07 allowlists, rate limiting, HTTPS enforcement, method prefixing |
+| 1. Content Script Validation | 3 | 13 | NIP-07/WebLN allowlists, HTTPS enforcement, method prefixing, channel isolation |
 | 2. Background Handler | 2 | 23 | Privilege gate, `validateNip07Params` (event shape, pubkey format) |
 | 3. End-to-End Flow | 4 | 10 | getPublicKey + signEvent round-trips, error propagation, message shapes |
 | 4. Account Switching | 3 | 13 | Vault state transitions, pending rejection, pubkey/key after switch |

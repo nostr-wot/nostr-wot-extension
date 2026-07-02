@@ -7,14 +7,13 @@ import browser from '../browser.ts';
 import * as vault from '../vault.ts';
 import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
-import * as storage from '../storage.ts';
 import * as accounts from '../accounts.ts';
 import { nsecEncode } from '../crypto/bech32.ts';
 import { bytesToHex } from '../crypto/utils.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../crypto/nip49.ts';
 import { clearWalletProviders } from '../wallet/';
-import { config, resetLocalGraph, type HandlerFn, type LocalAccountEntry } from './state.ts';
-import { broadcastAccountChanged, refreshBadgesOnAllTabs } from './domain-handlers.ts';
+import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
+import { broadcastAccountChanged } from './domain-handlers.ts';
 import type { Account, VaultPayload } from '../types.ts';
 
 // ── Sync active pubkey to WoT config ──
@@ -131,11 +130,6 @@ export const handlers = new Map<string, HandlerFn>([
             updates.activeAccountId = vault.getActiveAccountId() || (rmAccts[0] as { id: string })?.id || null;
         }
         await browser.storage.local.set(updates);
-        const newActiveId = (updates.activeAccountId ?? rmLocalData.activeAccountId) as string;
-        if (newActiveId) {
-            await storage.switchDatabase(newActiveId);
-        }
-        resetLocalGraph();
         return { ok: true };
     }],
 
@@ -156,9 +150,6 @@ export const handlers = new Map<string, HandlerFn>([
             await browser.storage.sync.set({ myPubkey: switchPubkey });
         }
         await browser.storage.local.set({ activeAccountId: switchId });
-        await storage.switchDatabase(switchId);
-        resetLocalGraph();
-        refreshBadgesOnAllTabs();
         if (oldAccountId && oldAccountId !== switchId) {
             await signer.rejectPendingForAccount(oldAccountId);
         }
@@ -171,8 +162,6 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_setActiveAccount', async (params) => {
         await vault.setActiveAccount(params.accountId as string);
         await syncActivePubkey();
-        await storage.switchDatabase(params.accountId as string);
-        resetLocalGraph();
         return { ok: true };
     }],
 
@@ -233,38 +222,13 @@ export const handlers = new Map<string, HandlerFn>([
         return null;
     }],
 
-    ['listDatabases', async () => storage.listAllDatabases()],
-
-    ['getDatabaseStats', async (params) => storage.getDatabaseStats(params.accountId as string)],
-
-    ['deleteAccountDatabase', async (params) => {
-        await storage.deleteDatabase(params.accountId as string);
-        resetLocalGraph();
-        return { ok: true };
-    }],
-
-    ['deleteAllDatabases', async () => {
-        const dbs = await storage.listAllDatabases();
-        for (const d of dbs) {
-            await storage.deleteDatabase((d as Record<string, string>).accountId);
-        }
-        resetLocalGraph();
-        return { ok: true };
-    }],
-
     ['vault_destroy', async () => {
         clearWalletProviders();
         await signer.cancelAllUnlockWaiters();
         await vault.destroy();
-        // Clear all account data from storage
-        const dbs = await storage.listAllDatabases();
-        for (const d of dbs) {
-            await storage.deleteDatabase((d as Record<string, string>).accountId);
-        }
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs']);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';
-        resetLocalGraph();
         return { ok: true };
     }],
 ]);

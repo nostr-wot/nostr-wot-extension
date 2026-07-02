@@ -13,8 +13,5 @@ node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts 
 # Wizard state machine + popup-gating tests (pure functions, no browser mock needed)
 node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts
 
-# Storage relay list tests (uses fake-indexeddb, no browser mock needed)
-node --import tsx --test tests/storage-relay-lists.test.ts
-
 # Module + wallet tests (need browser mock for vault/permissions/accounts)
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/vault-wallet.test.ts

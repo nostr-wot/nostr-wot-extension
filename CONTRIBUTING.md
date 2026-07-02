@@ -1,6 +1,6 @@
 # Contributing to Nostr WoT Extension
 
-Thank you for your interest in contributing! This extension provides NIP-07 signing, Web of Trust distance checking, and trust score badge injection for Nostr web clients.
+Thank you for your interest in contributing! This extension is a NIP-07 signer, encrypted key vault, Lightning/WebLN wallet, and profile/mute/relay manager for Nostr web clients.
 
 ## Getting Started
 
@@ -42,51 +42,28 @@ Tests use Node.js native `node:test` module with browser API mocks in `tests/hel
 ## Project Structure
 
 ```
-├── background.js          # Service worker — all business logic
-├── content.js             # Content script (ISOLATED world) — message bridge
-├── inject.js              # Page script (MAIN world) — window.nostr API
-├── badges/
-│   ├── engine.js          # Badge injection engine (MAIN world)
-│   ├── badges.css         # Badge visual styles
-│   └── adapters/          # Per-site badge adapters
-│       ├── primal.js
-│       ├── snort.js
-│       ├── nostrudel.js
-│       ├── coracle.js
-│       ├── iris.js
-│       └── generic.js     # Fallback for any site with npub links
+├── background.ts          # Service worker — thin dispatcher over lib/bg/
+├── content.ts             # Content script (ISOLATED world) — message bridge
+├── inject.ts              # Page script (MAIN world) — window.nostr + window.webln
 ├── lib/
-│   ├── crypto/            # Pure JS crypto (secp256k1, schnorr, NIPs)
-│   ├── storage.js         # IndexedDB per-account graph storage
-│   ├── sync.js            # BFS graph sync from relays
-│   ├── graph.js           # Precomputed BFS with typed array cache
-│   ├── scoring.js         # Trust score calculation
-│   ├── vault.js           # AES-256-GCM encrypted key vault
-│   ├── signer.js          # NIP-07 signing coordinator
-│   ├── permissions.js     # Per-site permission storage
-│   ├── accounts.js        # Account creation/import
-│   ├── nip46.js           # NIP-46 Nostr Connect client
-│   └── browser.js         # Cross-browser compatibility shim
-├── popup/                 # Extension popup (tab-based UI)
-├── onboarding/            # First-run setup wizard
-├── prompt/                # Signing request approval popup
-├── docs/
-│   ├── architecture.md    # Technical architecture reference
-│   └── add_badge.md       # Guide for adding badge support
+│   ├── bg/                # Background handler modules (nip07, vault, wallet, relay, profile, publish, …)
+│   ├── crypto/            # Pure TS crypto (secp256k1, schnorr, NIPs, bip32/39)
+│   ├── wallet/            # Lightning wallet providers (NWC, LNbits, provisioning)
+│   ├── storage.ts         # IndexedDB relay-list cache + pubkey ID mapping
+│   ├── vault.ts           # AES-256-GCM encrypted key vault
+│   ├── signer.ts          # NIP-07 signing coordinator
+│   ├── permissions.ts     # Per-domain / per-account permission storage
+│   ├── accounts.ts        # Account creation/import
+│   ├── relayUtils.ts      # Relay URL normalization
+│   └── browser.ts         # Cross-browser compatibility shim
+├── src/popup/             # Extension popup (tab-based UI)
+├── src/onboarding/        # First-run setup wizard
+├── src/prompt/            # Signing request approval popup
+├── docs/                  # Technical documentation (see docs/README.md)
 └── tests/                 # Node.js test suite
 ```
 
 ## Types of Contributions
-
-### Adding Badge Support for a New Nostr Client
-
-This is the easiest way to contribute. See [docs/add_badge.md](docs/add_badge.md) for the full guide.
-
-**Quick version:**
-1. Inspect the target site's DOM structure
-2. Add a site adapter to `wot-badges.js`
-3. Test on the actual site
-4. Submit a PR with screenshots
 
 ### Bug Fixes
 
@@ -113,7 +90,6 @@ git checkout -b feature/my-change
 Use these branch name prefixes:
 - `feature/` — new functionality
 - `fix/` — bug fixes
-- `badge/` — new site badge support
 - `docs/` — documentation
 
 ### 2. Make Changes
@@ -139,7 +115,7 @@ For UI changes, manually test in Chrome and Firefox:
 
 ### 4. Submit
 
-- Write a clear PR title (e.g., "badge: add support for habla.news")
+- Write a clear PR title (e.g., "wallet: fix LNbits balance parsing")
 - Describe what changed and why
 - Include screenshots for UI changes
 - Reference any related issues

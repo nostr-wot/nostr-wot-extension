@@ -12,8 +12,8 @@
  * The extension uses a three-layer message-passing architecture, each
  * running in a different browser execution context:
  *
- *   inject.ts  (MAIN world)   — exposes `window.nostr` and `window.nostr.wot`
- *        ↓  window.postMessage({ type: 'WOT_REQUEST' | 'NIP07_REQUEST' })
+ *   inject.ts  (MAIN world)   — exposes `window.nostr` (NIP-07) and `window.webln`
+ *        ↓  window.postMessage({ type: 'NIP07_REQUEST' | 'WEBLN_REQUEST' })
  *   content.ts (ISOLATED world) — validates, prefixes, rate-limits, forwards
  *        ↓  browser.runtime.sendMessage({ method, params })
  *   background.ts (service worker) — privilege gate, param validation, routing
@@ -104,15 +104,8 @@ import type { VaultPayload, UnsignedEvent } from '../lib/types.ts';
 //
 // These allowlists are duplicated from content.ts so tests break if
 // the production allowlist diverges from what we test against.
-// WOT_ALLOWED_METHODS: read-only graph queries, no key material involved.
 // NIP07_ALLOWED_METHODS: NIP-07 signing methods exposed via window.nostr.
 // PRIVILEGED_METHODS: vault/signer admin operations, internal-only.
-
-const WOT_ALLOWED_METHODS = [
-  'getDistance', 'isInMyWoT', 'getTrustScore', 'getDetails', 'getConfig',
-  'getStatus', 'getDistanceBatch', 'getTrustScoreBatch', 'filterByWoT',
-  'getFollows', 'getCommonFollows', 'getPath', 'getStats'
-] as const;
 
 const NIP07_ALLOWED_METHODS = [
   'getPublicKey', 'signEvent', 'getRelays',
@@ -144,39 +137,6 @@ const PRIVILEGED_METHODS = new Set([
 // These functions mirror the exact validation logic in content.ts.
 // By extracting them as pure functions, we can test content script
 // behavior without needing chrome.runtime, window.postMessage, etc.
-
-const WOT_RATE_LIMIT = 100;
-let wotRequestCount = 0;
-let wotRateLimitReset = Date.now();
-
-function checkWotRateLimit(): boolean {
-  const now = Date.now();
-  if (now - wotRateLimitReset >= 1000) {
-    wotRequestCount = 0;
-    wotRateLimitReset = now;
-  }
-  return ++wotRequestCount <= WOT_RATE_LIMIT;
-}
-
-function resetRateLimit(): void {
-  wotRequestCount = 0;
-  wotRateLimitReset = Date.now();
-}
-
-/** Simulates content script WOT_REQUEST handling */
-function simulateContentWotRequest(
-  method: string,
-  _params: Record<string, unknown>
-): { error?: string; forwarded?: { method: string; params: unknown } } {
-  if (!checkWotRateLimit()) {
-    return { error: 'Rate limit exceeded' };
-  }
-  if (!(WOT_ALLOWED_METHODS as readonly string[]).includes(method)) {
-    return { error: 'Method not allowed' };
-  }
-  // In real code, this would call browser.runtime.sendMessage
-  return { forwarded: { method, params: _params } };
-}
 
 /** Simulates content script NIP07_REQUEST handling */
 function simulateContentNip07Request(
@@ -296,61 +256,6 @@ function makePayload(): VaultPayload {
 //   4. Method prefixing — adds nip07_ prefix so background can distinguish
 //   5. Origin injection — appends hostname for permission lookups
 
-describe('communication: content script — WoT allowlist', () => {
-  beforeEach(() => resetRateLimit());
-
-  it('allows all valid WoT methods', () => {
-    for (const method of WOT_ALLOWED_METHODS) {
-      const result = simulateContentWotRequest(method, { target: 'abc' });
-      assert.ok(result.forwarded, `${method} should be allowed`);
-      assert.strictEqual(result.forwarded!.method, method);
-    }
-  });
-
-  it('rejects unknown WoT methods', () => {
-    const result = simulateContentWotRequest('deleteEverything', {});
-    assert.strictEqual(result.error, 'Method not allowed');
-  });
-
-  it('rejects privileged methods via WoT channel', () => {
-    const result = simulateContentWotRequest('vault_unlock', { password: 'test' });
-    assert.strictEqual(result.error, 'Method not allowed');
-  });
-
-  it('rejects NIP-07 methods via WoT channel', () => {
-    const result = simulateContentWotRequest('signEvent', { event: {} });
-    assert.strictEqual(result.error, 'Method not allowed');
-  });
-});
-
-describe('communication: content script — WoT rate limiting', () => {
-  beforeEach(() => resetRateLimit());
-
-  it('allows up to 100 requests per second', () => {
-    for (let i = 0; i < WOT_RATE_LIMIT; i++) {
-      const result = simulateContentWotRequest('getDistance', { target: 'abc' });
-      assert.ok(result.forwarded, `Request ${i + 1} should be allowed`);
-    }
-  });
-
-  it('rejects request 101 in same second window', () => {
-    for (let i = 0; i < WOT_RATE_LIMIT; i++) {
-      simulateContentWotRequest('getDistance', { target: 'abc' });
-    }
-    const result = simulateContentWotRequest('getDistance', { target: 'abc' });
-    assert.strictEqual(result.error, 'Rate limit exceeded');
-  });
-
-  it('resets counter after window rolls over', () => {
-    for (let i = 0; i < WOT_RATE_LIMIT; i++) {
-      simulateContentWotRequest('getDistance', { target: 'abc' });
-    }
-    // Simulate time passing
-    wotRateLimitReset = Date.now() - 1001;
-    const result = simulateContentWotRequest('getDistance', { target: 'abc' });
-    assert.ok(result.forwarded, 'Should be allowed after rate limit reset');
-  });
-});
 
 describe('communication: content script — NIP-07 allowlist', () => {
   it('allows all valid NIP-07 methods', () => {
@@ -853,16 +758,6 @@ describe('communication: end-to-end — error propagation', () => {
 });
 
 describe('communication: message shape integrity', () => {
-  it('WoT request forwards method and params unchanged', () => {
-    resetRateLimit();
-    const params = { target: 'abc123', maxHops: 3 };
-    const result = simulateContentWotRequest('getDistance', params);
-    assert.deepStrictEqual(result.forwarded, {
-      method: 'getDistance',
-      params: { target: 'abc123', maxHops: 3 }
-    });
-  });
-
   it('NIP-07 request adds prefix and origin but preserves params', () => {
     const params = { pubkey: VALID_PUBKEY, plaintext: 'secret' };
     const result = simulateContentNip07Request('nip04Encrypt', params, 'https:', 'nostr.com');
@@ -881,37 +776,19 @@ describe('communication: message shape integrity', () => {
 });
 
 describe('communication: channel isolation', () => {
-  beforeEach(() => resetRateLimit());
-
-  it('WoT channel cannot access NIP-07 methods', () => {
-    const result = simulateContentWotRequest('getPublicKey', {});
-    assert.strictEqual(result.error, 'Method not allowed');
-  });
-
-  it('NIP-07 channel cannot access WoT methods', () => {
+  it('NIP-07 channel cannot access non-NIP-07 methods', () => {
     const result = simulateContentNip07Request('getDistance', { target: 'abc' });
     assert.strictEqual(result.error, 'Method not allowed');
   });
 
-  it('neither channel can access privileged vault methods', () => {
-    const wot = simulateContentWotRequest('vault_unlock', { password: 'test' });
-    assert.strictEqual(wot.error, 'Method not allowed');
-
+  it('NIP-07 channel cannot access privileged vault methods', () => {
     const nip07 = simulateContentNip07Request('vault_unlock', { password: 'test' });
     assert.strictEqual(nip07.error, 'Method not allowed');
   });
 
-  it('neither channel can access privileged signer methods', () => {
-    const wot = simulateContentWotRequest('signer_resolve', { id: 'x' });
-    assert.strictEqual(wot.error, 'Method not allowed');
-
+  it('NIP-07 channel cannot access privileged signer methods', () => {
     const nip07 = simulateContentNip07Request('signer_resolve', { id: 'x' });
     assert.strictEqual(nip07.error, 'Method not allowed');
-  });
-  it('rejects WebLN methods via WoT channel', () => {
-    resetRateLimit();
-    const result = simulateContentWotRequest('sendPayment', { paymentRequest: 'lnbc...' });
-    assert.strictEqual(result.error, 'Method not allowed');
   });
 
   it('rejects WebLN methods via NIP-07 channel', () => {
@@ -949,7 +826,6 @@ describe('communication: channel isolation', () => {
 //   4. signer.rejectPendingForAccount(oldId) — rejects all pending
 //      signing requests for the OLD account (prevents signing with
 //      the wrong key if a request was queued before the switch)
-//   5. storage.switchDatabase(newId) — loads the new account's WoT graph
 //
 // These tests verify:
 //   - Vault state transitions (active account, pubkey, privkey isolation)

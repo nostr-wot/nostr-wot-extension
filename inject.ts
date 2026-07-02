@@ -1,5 +1,5 @@
 /**
- * inject.ts — Page-context script exposing window.nostr (NIP-07), window.nostr.wot, and window.webln
+ * inject.ts — Page-context script exposing window.nostr (NIP-07) and window.webln
  *
  * Runs in MAIN world (page context). Cannot use ES module imports.
  * All NIP-07 and WebLN methods are thin message-passing wrappers — no crypto happens here.
@@ -25,22 +25,6 @@ interface NostrNip44 {
     decrypt: (pubkey: string, ciphertext: string) => Promise<string>;
 }
 
-interface RelayListEntry {
-    url: string;
-    read: boolean;
-    write: boolean;
-}
-
-interface RelayPoolEntry {
-    url: string;
-    endorsements: number;
-}
-
-interface WotApi {
-    getRelayList: (pubkey: string) => Promise<RelayListEntry[] | null>;
-    getRelayPool: () => Promise<RelayPoolEntry[]>;
-}
-
 interface SignedEvent {
     id: string;
     pubkey: string;
@@ -61,7 +45,6 @@ interface WebLNProvider {
 }
 
 interface NostrProvider {
-    wot: WotApi;
     getPublicKey: () => Promise<string>;
     signEvent: (event: Record<string, unknown>) => Promise<SignedEvent>;
     getRelays: () => Promise<Record<string, { read: boolean; write: boolean }>>;
@@ -90,7 +73,7 @@ declare global {
     }
 
     // ── Channel factory ──
-    // Eliminates duplication across WoT, NIP-07, and WebLN pending maps and call functions.
+    // Eliminates duplication across NIP-07 and WebLN pending maps and call functions.
 
     function createChannel(msgType: string, responseType: string, timeoutMs: number) {
         const pending = new Map<string, PendingEntry>();
@@ -120,7 +103,6 @@ declare global {
         return { call, handleResponse };
     }
 
-    const wot = createChannel('WOT_REQUEST', 'WOT_RESPONSE', 30_000);
     const nip07 = createChannel('NIP07_REQUEST', 'NIP07_RESPONSE', 120_000);
     const webln = createChannel('WEBLN_REQUEST', 'WEBLN_RESPONSE', 120_000);
 
@@ -129,7 +111,6 @@ declare global {
         if (event.source !== window) return;
 
         // Route responses to the correct channel
-        wot.handleResponse(event);
         nip07.handleResponse(event);
         webln.handleResponse(event);
 
@@ -140,35 +121,11 @@ declare global {
             }));
             return;
         }
-
-        // Handle requests from content script to get nostr pubkey
-        if (event.data?.type === 'WOT_GET_NOSTR_PUBKEY') {
-            let pubkey: string | null = null;
-            let error: string | null = null;
-            try {
-                if (window.nostr && typeof window.nostr.getPublicKey === 'function') {
-                    pubkey = await window.nostr.getPublicKey();
-                }
-            } catch (e: unknown) {
-                error = (e as Error).message;
-            }
-            window.postMessage({
-                type: 'WOT_NOSTR_PUBKEY_RESULT',
-                pubkey,
-                error
-            }, window.location.origin);
-        }
     });
 
     // ── Expose APIs ──
 
     window.nostr = window.nostr || {} as NostrProvider;
-
-    // WoT API (always set)
-    window.nostr.wot = {
-        getRelayList: (pubkey) => wot.call('getRelayList', { pubkey }) as Promise<RelayListEntry[] | null>,
-        getRelayPool: () => wot.call('getRelayPool', {}) as Promise<RelayPoolEntry[]>,
-    };
 
     // NIP-07 signer methods
     window.nostr.getPublicKey = () => nip07.call('getPublicKey', {}) as Promise<string>;

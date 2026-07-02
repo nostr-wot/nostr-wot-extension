@@ -111,14 +111,6 @@ export interface RequestDecision {
   reason?: string;
 }
 
-// ── Relay Discovery ──
-
-export interface RelayListEntry {
-  url: string;
-  read: boolean;
-  write: boolean;
-}
-
 // ── Scoring ──
 
 export interface ScoringConfig {
@@ -128,17 +120,6 @@ export interface ScoringConfig {
 }
 
 // ── Storage / Graph ──
-
-export interface StorageStats {
-  nodes: number;
-  edges: number;
-  uniquePubkeys: number;
-  lastSync: number | null;
-  nodesPerDepth: Record<number, number> | null;
-  syncDepth: number | null;
-  dbSizeBytes: number;
-  relayListCount: number;
-}
 
 export interface SyncResult {
   nodes: number;

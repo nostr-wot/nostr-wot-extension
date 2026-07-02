@@ -56,7 +56,6 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
     setRemoving(true);
     try {
       try { await rpc('vault_removeAccount', { accountId: confirmId }); } catch {}
-      try { await rpc('deleteAccountDatabase', { accountId: confirmId }); } catch {}
       // Clean up local accounts array
       const data: any = await browser.storage.local.get(['accounts', 'activeAccountId']);
       const remaining = (data.accounts || []).filter((a: any) => a.id !== confirmId);

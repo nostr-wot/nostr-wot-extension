@@ -34,29 +34,11 @@ export interface LocalAccountEntry {
     readOnly: boolean;
 }
 
-// ── Graph (deprecated) ──
-//
-// The trust-graph subsystem was removed. `resetLocalGraph` is retained as a
-// no-op so the many account-switching handlers that called it after a DB
-// change need not be edited; it has no remaining effect.
-export function resetLocalGraph(): void { /* trust-graph removed — no-op */ }
-
 // ── Profile Cache ──
 
 export const PROFILE_CACHE_TTL = PROFILE_CACHE_TTL_MS;
 export interface ProfileCacheEntry { metadata: Record<string, unknown>; fetchedAt: number; }
 export const profileCache = new Map<string, ProfileCacheEntry>();
-
-// ── Rate Limiting ──
-
-// The only rate-limited methods were trust-graph queries, which have been
-// removed. The set is now empty; checkRateLimit always allows. Kept as a stub
-// so background.ts's dispatch loop need not change.
-export const RATE_LIMITED_METHODS = new Set<string>();
-
-export function checkRateLimit(_method: string): boolean {
-    return true;
-}
 
 // ── Method Sets ──
 
