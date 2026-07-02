@@ -82,14 +82,6 @@ export function npubToHex(npub: string): string | null {
     try { return npubDecode(npub); } catch { return null; }
 }
 
-export function sanitizeCSS(css: string): string {
-    if (!css) return css;
-    return css
-        .replace(/@import\b[^;]*;?/gi, '/* @import removed */')
-        .replace(/url\s*\([^)]*\)/gi, '/* url() removed */')
-        .replace(/expression\s*\([^)]*\)/gi, '/* expression() removed */');
-}
-
 // ── Handler type ──
 
 export type HandlerFn = (params: Record<string, unknown>) => Promise<unknown>;

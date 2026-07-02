@@ -1,21 +1,3 @@
-export interface SensitivityPreset {
-  labelKey: string;
-  descKey: string;
-  weights: Record<number, number>;
-  pathBonus: Record<number, number>;
-  maxPathBonus: number;
-}
-
-export const SENSITIVITY_PRESETS: readonly SensitivityPreset[] = [
-  { labelKey: 'scoring.strict', descKey: 'scoring.strictDesc', weights: { 2: 0.3, 3: 0.1, 4: 0.05 }, pathBonus: { 2: 0.1, 3: 0.05, 4: 0.02 }, maxPathBonus: 0.3 },
-  { labelKey: 'scoring.conservative', descKey: 'scoring.conservativeDesc', weights: { 2: 0.4, 3: 0.15, 4: 0.08 }, pathBonus: { 2: 0.12, 3: 0.08, 4: 0.03 }, maxPathBonus: 0.4 },
-  { labelKey: 'scoring.balanced', descKey: 'scoring.balancedDesc', weights: { 2: 0.5, 3: 0.25, 4: 0.1 }, pathBonus: { 2: 0.15, 3: 0.1, 4: 0.05 }, maxPathBonus: 0.5 },
-  { labelKey: 'scoring.open', descKey: 'scoring.openDesc', weights: { 2: 0.6, 3: 0.35, 4: 0.15 }, pathBonus: { 2: 0.2, 3: 0.15, 4: 0.08 }, maxPathBonus: 0.6 },
-  { labelKey: 'scoring.veryOpen', descKey: 'scoring.veryOpenDesc', weights: { 2: 0.75, 3: 0.5, 4: 0.25 }, pathBonus: { 2: 0.25, 3: 0.2, 4: 0.1 }, maxPathBonus: 0.7 },
-] as const;
-
-export const KNOWN_ORACLES: readonly string[] = ['https://wot-oracle.mappingbitcoin.com'] as const;
-
 export const DEFAULT_RELAYS = 'wss://relay.damus.io,wss://nos.lol,wss://nostr-01.yakihonne.com' as const;
 
 export const KIND_LABELS: Record<number, string> = {

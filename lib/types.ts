@@ -111,14 +111,6 @@ export interface RequestDecision {
   reason?: string;
 }
 
-// ── Scoring ──
-
-export interface ScoringConfig {
-  distanceWeights: Record<number, number>;
-  pathBonus: Record<number, number>;
-  maxPathBonus: number;
-}
-
 // ── Storage / Graph ──
 
 export interface SyncResult {

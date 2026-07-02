@@ -34,9 +34,6 @@ export const WEBLN_CALL_TIMEOUT_MS = 120_000;
 
 // ── Rate Limits ──
 
-/** Background handler rate limit (per method, per second) */
-export const BG_RATE_LIMIT_PER_SECOND = 50;
-
 /** Content script rate limit (per second) */
 export const CONTENT_RATE_LIMIT_PER_SECOND = 100;
 
