@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import browser from '@shared/browser.ts';
 import { t } from '@lib/i18n.js';
 import { DEFAULT_RELAYS } from '@shared/constants.ts';
-import Card from '@components/Card/Card';
-import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
-import { IconGlobe, IconChevronRight } from '@assets';
-import styles from './HomeTab.module.css';
+import NavCard from '@components/NavCard/NavCard';
+import { IconGlobe } from '@assets';
 
 /**
  * Home-screen module for the user's NIP-65 relay list. Shows the relay count
@@ -25,16 +23,12 @@ export default function RelaysCard({ onOpen }: { onOpen: () => void }) {
   }, []);
 
   return (
-    <Card className={styles.blocksCard} onClick={onOpen}>
-      <IconGlobe size={16} className={styles.blocksIcon} />
-      <div className={styles.blocksText}>
-        <strong>
-          {t('network.relays')}
-          <InfoTooltip text={t('network.relaysInfo')} />
-        </strong>
-        <span>{t('network.relaysSummary', { count })}</span>
-      </div>
-      <IconChevronRight size={16} />
-    </Card>
+    <NavCard
+      icon={<IconGlobe size={16} />}
+      title={t('network.relays')}
+      info={t('network.relaysInfo')}
+      subtitle={t('network.relaysSummary', { count })}
+      onClick={onOpen}
+    />
   );
 }

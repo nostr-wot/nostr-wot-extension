@@ -1,10 +1,8 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import useRpc from '@shared/hooks/useRpc.js';
-import Card from '@components/Card/Card';
-import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
-import { IconShield, IconChevronRight } from '@assets';
-import styles from './HomeTab.module.css';
+import NavCard from '@components/NavCard/NavCard';
+import { IconShield } from '@assets';
 
 interface MyMuteList {
   people: string[];
@@ -25,16 +23,12 @@ export default function MutesCard({ onOpen }: { onOpen: () => void }) {
     (data?.people?.length || 0) + (data?.words?.length || 0) + (data?.hashtags?.length || 0);
 
   return (
-    <Card className={styles.blocksCard} onClick={onOpen}>
-      <IconShield size={16} className={styles.blocksIcon} />
-      <div className={styles.blocksText}>
-        <strong>
-          {t('mutes.cardTitle')}
-          <InfoTooltip text={t('mutes.cardInfo')} />
-        </strong>
-        <span>{t('mutes.cardSummary', { count })}</span>
-      </div>
-      <IconChevronRight size={16} />
-    </Card>
+    <NavCard
+      icon={<IconShield size={16} />}
+      title={t('mutes.cardTitle')}
+      info={t('mutes.cardInfo')}
+      subtitle={t('mutes.cardSummary', { count })}
+      onClick={onOpen}
+    />
   );
 }

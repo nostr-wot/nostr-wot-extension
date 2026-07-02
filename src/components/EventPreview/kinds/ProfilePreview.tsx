@@ -1,5 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
+import Avatar from '@components/Avatar/Avatar';
 import styles from '../EventPreview.module.css';
 
 interface NostrEvent {
@@ -40,11 +41,12 @@ export default function ProfilePreview({ event }: ProfilePreviewProps) {
             </div>
           )}
           <div className={styles.profileHeader}>
-            {meta.picture ? (
-              <img src={meta.picture} alt="" className={styles.profileAvatar} />
-            ) : (
-              <div className={styles.profileAvatarPlaceholder}>{initial}</div>
-            )}
+            <Avatar
+              src={meta.picture}
+              fallback={initial}
+              imgClassName={styles.profileAvatar}
+              fallbackClassName={styles.profileAvatarPlaceholder}
+            />
             <span className={styles.profileName}>{displayName || '\u2014'}</span>
           </div>
           {meta.about && <div className={styles.profileAbout}>{meta.about}</div>}

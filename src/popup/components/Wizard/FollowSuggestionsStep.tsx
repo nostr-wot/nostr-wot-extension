@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { npubDecode, npubEncode } from '@lib/crypto/bech32.ts';
+import { npubDecode } from '@lib/crypto/bech32.ts';
 import { liveQuery } from '@lib/relay.ts';
 import { DEFAULT_RELAYS } from '@shared/constants.ts';
 import browser from '@lib/browser.ts';
 import type { LiveEvent } from '@lib/types.ts';
 import Button from '@components/Button/Button';
+import Avatar from '@components/Avatar/Avatar';
+import { truncateNpub, getInitial as getInitialChar } from '@shared/format/text.ts';
 import styles from './WizardOverlay.module.css';
 
 /* ------------------------------------------------------------------ */
@@ -199,24 +201,19 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
     }
   };
 
-  const truncateNpub = (npub: string) => npub.slice(0, 12) + '...' + npub.slice(-6);
-
-  const getName = (hex: string, npub: string) => {
+  const getName = (hex: string) => {
     const p = profiles[hex];
-    return p?.display_name || p?.name || truncateNpub(npub);
+    return p?.display_name || p?.name || truncateNpub(hex);
   };
 
-  const getSubtitle = (hex: string, npub: string) => {
+  const getSubtitle = (hex: string) => {
     const p = profiles[hex];
-    return p?.nip05 || truncateNpub(npub);
+    return p?.nip05 || truncateNpub(hex);
   };
 
   const getAvatar = (hex: string) => profiles[hex]?.picture || null;
 
-  const getInitial = (hex: string, npub: string) => {
-    const name = getName(hex, npub);
-    return name.charAt(0).toUpperCase();
-  };
+  const getInitial = (hex: string) => getInitialChar(getName(hex));
 
   return (
     <div className={styles.step}>
@@ -233,26 +230,15 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
               className={`${styles.suggestionCard} ${isSelected ? styles.suggestionCardSelected : ''}`}
               onClick={() => toggle(hex)}
             >
-              {avatar ? (
-                <img
-                  className={styles.suggestionAvatar}
-                  src={avatar}
-                  alt=""
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove(styles.suggestionHidden); }}
-                />
-              ) : null}
-              {!avatar ? (
-                <div className={styles.suggestionAvatarFallback}>
-                  {getInitial(hex, npub)}
-                </div>
-              ) : (
-                <div className={`${styles.suggestionAvatarFallback} ${styles.suggestionHidden}`}>
-                  {getInitial(hex, npub)}
-                </div>
-              )}
+              <Avatar
+                src={avatar}
+                fallback={getInitial(hex)}
+                imgClassName={styles.suggestionAvatar}
+                fallbackClassName={styles.suggestionAvatarFallback}
+              />
               <div className={styles.suggestionInfo}>
-                <span className={styles.suggestionName}>{getName(hex, npub)}</span>
-                <span className={styles.suggestionNip05}>{getSubtitle(hex, npub)}</span>
+                <span className={styles.suggestionName}>{getName(hex)}</span>
+                <span className={styles.suggestionNip05}>{getSubtitle(hex)}</span>
               </div>
               <div className={`${styles.suggestionCheck} ${isSelected ? styles.suggestionCheckActive : ''}`}>
                 {isSelected && (

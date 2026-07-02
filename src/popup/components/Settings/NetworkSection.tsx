@@ -5,50 +5,11 @@ import { t } from '@lib/i18n.js';
 import { DEFAULT_RELAYS } from '@shared/constants.ts';
 import { formatTimeAgo } from '@shared/format/time.ts';
 import { isValidWssUrl } from '@shared/url.ts';
-import Button from '@components/Button/Button';
-import InputRow from '@components/InputRow/InputRow';
 import StatusDot from '@components/StatusDot/StatusDot';
-import RemoveButton from '@components/RemoveButton/RemoveButton';
+import EditableList from '@components/EditableList/EditableList';
+import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Settings.module.css';
-
-interface EndpointListProps {
-  items: string[];
-  health: Record<string, string>;
-  inputValue: string;
-  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  placeholder: string;
-  onAdd: () => void;
-  onRemove: (url: string) => void;
-  error: string;
-  renderExtra?: (url: string) => React.ReactNode;
-}
-
-function EndpointList({ items, health, inputValue, onInputChange, placeholder, onAdd, onRemove, error, renderExtra }: EndpointListProps) {
-  return (
-    <>
-      <div className={styles.relayList}>
-        {items.map((url) => (
-          <div key={url} className={styles.relayRow}>
-            <StatusDot status={health[url]} />
-            <span className={styles.relayUrl}>{url.replace(/^wss:\/\/|^https:\/\//, '')}</span>
-            {renderExtra?.(url)}
-            <RemoveButton onClick={() => onRemove(url)} />
-          </div>
-        ))}
-      </div>
-      <InputRow
-        value={inputValue}
-        onChange={onInputChange}
-        placeholder={placeholder}
-        onSubmit={onAdd}
-        buttonLabel={t('common.add')}
-        error={error}
-        mono
-      />
-    </>
-  );
-}
 
 interface RelayFlags {
   read: boolean;
@@ -159,16 +120,12 @@ export default function NetworkSection() {
   return (
     <div className={styles.section}>
       <SectionLabel>{t('network.identityRelays')}</SectionLabel>
-      <EndpointList
+      <EditableList
         items={relays}
-        health={relayHealth}
-        inputValue={newRelay}
-        onInputChange={(e: ChangeEvent<HTMLInputElement>) => { setNewRelay(e.target.value); setRelayError(''); }}
-        placeholder={t('network.relayPlaceholder')}
-        onAdd={addRelay}
-        onRemove={removeRelay}
-        error={relayError}
-        renderExtra={(url) => {
+        classNames={{ list: styles.relayList, row: styles.relayRow, item: styles.relayUrl }}
+        renderItem={(url) => url.replace(/^wss:\/\/|^https:\/\//, '')}
+        leading={(url) => <StatusDot status={relayHealth[url]} />}
+        trailing={(url) => {
           const flags = relayFlags[url] || { read: true, write: true };
           return (
             <div className={styles.relayChips}>
@@ -183,25 +140,31 @@ export default function NetworkSection() {
             </div>
           );
         }}
+        placeholder={t('network.relayPlaceholder')}
+        buttonLabel={t('common.add')}
+        onRemove={removeRelay}
+        mono
+        inputValue={newRelay}
+        onInputChange={(e: ChangeEvent<HTMLInputElement>) => { setNewRelay(e.target.value); setRelayError(''); }}
+        onAdd={addRelay}
+        error={relayError}
       />
 
-      <div className={styles.publishRow}>
-        <span className={`${styles.publishInfo} ${publishUnsaved ? styles.publishUnsaved : ''} ${publishResult === 'success' ? styles.publishSuccess : ''} ${publishResult === 'error' ? styles.publishError : ''}`}>
-          {publishing
-            ? t('common.publishing')
-            : publishResult === 'success'
-              ? t('network.relayListPublished')
-              : publishResult === 'error'
-                ? t('network.relayListFailed')
-                : publishUnsaved
-                  ? t('network.relayListChanged')
-                  : lastPublish
-                    ? t('network.lastPublished', { time: formatTimeAgo(lastPublish) })
-                    : t('network.notPublishedYet')}
-        </span>
-        {publishing && <div className={styles.publishSpinner} />}
-        <Button small variant="secondary" onClick={publishRelayList} disabled={publishing}>{t('common.publish')}</Button>
-      </div>
+      <PublishRow
+        publishing={publishing}
+        status={publishResult}
+        dirty={publishUnsaved}
+        labels={{
+          idle: lastPublish
+            ? t('network.lastPublished', { time: formatTimeAgo(lastPublish) })
+            : t('network.notPublishedYet'),
+          unsaved: t('network.relayListChanged'),
+          success: t('network.relayListPublished'),
+          error: t('network.relayListFailed'),
+          publishing: t('common.publishing'),
+        }}
+        onPublish={publishRelayList}
+      />
     </div>
   );
 }

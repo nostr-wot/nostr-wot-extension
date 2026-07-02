@@ -940,10 +940,6 @@
   flex-shrink: 0;
 }
 
-.suggestionHidden {
-  display: none;
-}
-
 .suggestionInfo {
   display: flex;
   flex-direction: column;

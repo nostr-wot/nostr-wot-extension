@@ -5,6 +5,7 @@ import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.js';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.js';
+import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import styles from './UnlockModal.module.css';
 
@@ -99,11 +100,12 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
     <div className={`${styles.overlay} ${fullScreen ? styles.fullScreen : ''} ${animating ? styles.exiting : ''}`}>
       <div className={`${styles.card} ${fullScreen ? styles.cardFullScreen : ''} ${animating ? styles.cardExiting : ''}`}>
         <div className={styles.account}>
-          {avatarUrl ? (
-            <img className={styles.avatar} src={avatarUrl} alt="" />
-          ) : (
-            <div className={styles.avatarFallback}>{initial}</div>
-          )}
+          <Avatar
+            src={avatarUrl}
+            fallback={initial}
+            imgClassName={styles.avatar}
+            fallbackClassName={styles.avatarFallback}
+          />
           <div className={styles.name}>{displayName}</div>
         </div>
         <div className={styles.count}>{message || t('unlock.vaultLocked')}</div>

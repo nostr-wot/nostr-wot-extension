@@ -497,47 +497,6 @@
   border-color: rgba(99, 102, 241, 0.2);
 }
 
-/* Publish relay row */
-.publishRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  margin-top: 4px;
-}
-
-.publishInfo {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.publishUnsaved {
-  color: var(--warning);
-  font-weight: 500;
-}
-
-.publishSuccess {
-  color: var(--success);
-  font-weight: 500;
-}
-
-.publishError {
-  color: var(--error);
-  font-weight: 500;
-}
-
-.publishSpinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--card-border);
-  border-top-color: var(--brand);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
 /* Toggle row */
 .toggleRow {
   display: flex;

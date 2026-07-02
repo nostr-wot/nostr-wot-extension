@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { getDomainFromUrl } from '@shared/url.ts';
+import { formatSats } from '@shared/format/number.ts';
 import { resolveSiteState, shouldAutoAddDomain } from '@shared/siteState.ts';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '../../context/AccountContext';
@@ -273,7 +274,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           <div className={styles.walletCardInfo}>
             <IconZap size={14} className={styles.walletCardIcon} />
             <div className={styles.walletCardText}>
-              <strong>{Math.round(walletState.balance).toLocaleString()} sats</strong>
+              <strong>{formatSats(walletState.balance)}</strong>
               <span>{t('wallet.balance')}</span>
             </div>
           </div>

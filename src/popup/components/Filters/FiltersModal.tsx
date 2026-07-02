@@ -6,8 +6,9 @@ import { truncateNpub } from '@shared/format/text.js';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Button from '@components/Button/Button';
 import InputRow from '@components/InputRow/InputRow';
-import RemoveButton from '@components/RemoveButton/RemoveButton';
+import EditableList from '@components/EditableList/EditableList';
 import EmptyState from '@components/EmptyState/EmptyState';
+import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Filters.module.css';
 
@@ -53,55 +54,13 @@ function toHexPubkey(input: string): string | null {
   }
 }
 
-interface MuteGroupProps {
-  label: string;
-  hint: string;
-  placeholder: string;
-  items: string[];
-  render?: (item: string) => string;
-  validate?: (raw: string) => string | null; // returns normalized value or null if invalid
-  invalidMsg?: string;
-  onAdd: (value: string) => void;
-  onRemove: (value: string) => void;
-}
-
-function MuteGroup({ label, hint, placeholder, items, render, validate, invalidMsg, onAdd, onRemove }: MuteGroupProps) {
-  const [value, setValue] = useState('');
-  const [error, setError] = useState('');
-
-  const handleAdd = () => {
-    const raw = value.trim();
-    if (!raw) return;
-    const normalized = validate ? validate(raw) : raw;
-    if (normalized === null) { setError(invalidMsg || t('mutes.invalidEntry')); return; }
-    setError('');
-    setValue('');
-    onAdd(normalized);
-  };
-
-  return (
-    <div className={styles.muteGroup}>
-      <SectionLabel>{label}</SectionLabel>
-      <div className={styles.blockList}>
-        {items.map((item) => (
-          <div key={item} className={styles.blockItem}>
-            <span className={styles.blockPubkey} title={item}>{render ? render(item) : item}</span>
-            <RemoveButton onClick={() => onRemove(item)} />
-          </div>
-        ))}
-      </div>
-      <InputRow
-        value={value}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => { setValue(e.target.value); setError(''); }}
-        placeholder={placeholder}
-        onSubmit={handleAdd}
-        buttonLabel={t('common.add')}
-        error={error}
-      />
-      {items.length === 0 && <div className={styles.muteGroupHint}>{hint}</div>}
-    </div>
-  );
-}
+const muteClassNames = {
+  group: styles.muteGroup,
+  list: styles.blockList,
+  row: styles.blockItem,
+  item: styles.blockPubkey,
+  hint: styles.muteGroupHint,
+};
 
 export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
   const [list, setList] = useState<MyMuteList | null>(null);
@@ -216,33 +175,39 @@ export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
           <EmptyState text={t('common.loading')} />
         ) : (
           <>
-            <MuteGroup
+            <EditableList
               label={t('mutes.people')}
               hint={t('mutes.peopleHint')}
               placeholder={t('mutes.peoplePlaceholder')}
+              buttonLabel={t('common.add')}
               items={cur.people}
-              render={(pk) => truncateNpub(pk)}
+              classNames={muteClassNames}
+              renderItem={(pk) => truncateNpub(pk)}
               validate={toHexPubkey}
               invalidMsg={t('mutes.invalidPubkey')}
               onAdd={(v) => update({ people: addUnique(cur.people, v) })}
               onRemove={(v) => update({ people: cur.people.filter((p) => p !== v) })}
             />
 
-            <MuteGroup
+            <EditableList
               label={t('mutes.words')}
               hint={t('mutes.wordsHint')}
               placeholder={t('mutes.wordsPlaceholder')}
+              buttonLabel={t('common.add')}
               items={cur.words}
+              classNames={muteClassNames}
               validate={(raw) => raw.toLowerCase()}
               onAdd={(v) => update({ words: addUnique(cur.words, v) })}
               onRemove={(v) => update({ words: cur.words.filter((w) => w !== v) })}
             />
 
-            <MuteGroup
+            <EditableList
               label={t('mutes.hashtags')}
               hint={t('mutes.hashtagsHint')}
               placeholder={t('mutes.hashtagsPlaceholder')}
+              buttonLabel={t('common.add')}
               items={cur.hashtags}
+              classNames={muteClassNames}
               validate={(raw) => raw.replace(/^#/, '').toLowerCase()}
               onAdd={(v) => update({ hashtags: addUnique(cur.hashtags, v) })}
               onRemove={(v) => update({ hashtags: cur.hashtags.filter((h) => h !== v) })}
@@ -272,23 +237,19 @@ export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
               <div className={styles.muteGroupHint}>{t('mutes.importHint')}</div>
             </div>
 
-            <div className={styles.publishRow}>
-              <span className={`${styles.publishInfo} ${dirty ? styles.publishUnsaved : ''} ${publishResult === 'success' ? styles.publishSuccess : ''} ${publishResult === 'error' ? styles.publishError : ''}`}>
-                {publishing
-                  ? t('common.publishing')
-                  : publishResult === 'success'
-                    ? t('mutes.published')
-                    : publishResult === 'error'
-                      ? t('mutes.publishFailed')
-                      : dirty
-                        ? t('mutes.unsaved')
-                        : cur.createdAt > 0
-                          ? t('mutes.published')
-                          : t('mutes.notPublished')}
-              </span>
-              {publishing && <div className={styles.publishSpinner} />}
-              <Button small variant="secondary" onClick={handlePublish} disabled={publishing}>{t('common.publish')}</Button>
-            </div>
+            <PublishRow
+              publishing={publishing}
+              status={publishResult}
+              dirty={dirty}
+              labels={{
+                idle: cur.createdAt > 0 ? t('mutes.published') : t('mutes.notPublished'),
+                unsaved: t('mutes.unsaved'),
+                success: t('mutes.published'),
+                error: t('mutes.publishFailed'),
+                publishing: t('common.publishing'),
+              }}
+              onPublish={handlePublish}
+            />
           </>
         )}
       </div>

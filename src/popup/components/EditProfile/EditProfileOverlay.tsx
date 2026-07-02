@@ -4,6 +4,7 @@ import { rpc } from '@shared/rpc.js';
 import { uploadToBlossom } from '@shared/blossom.js';
 import { useAccount } from '../../context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
+import Avatar from '@components/Avatar/Avatar';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.js';
@@ -274,11 +275,12 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
     <div className={styles.body}>
       <div className={styles.previewCard}>
         <div className={styles.previewHeader}>
-          {previewMeta?.picture ? (
-            <img src={previewMeta.picture} alt="" className={styles.previewAvatar} />
-          ) : (
-            <div className={styles.previewAvatarPlaceholder}>{initial}</div>
-          )}
+          <Avatar
+            src={previewMeta?.picture}
+            fallback={initial}
+            imgClassName={styles.previewAvatar}
+            fallbackClassName={styles.previewAvatarPlaceholder}
+          />
           <span className={styles.previewName}>{previewMeta?.name || previewMeta?.display_name || '\u2014'}</span>
         </div>
         {previewMeta?.about && <div className={styles.previewAbout}>{previewMeta.about}</div>}

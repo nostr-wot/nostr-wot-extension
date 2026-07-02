@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, MouseEvent, SyntheticEvent } from 'react';
+import React, { useState, useEffect, useRef, MouseEvent } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
@@ -6,6 +6,7 @@ import { npubEncode } from '@lib/crypto/bech32.js';
 import { useAccount } from '../../context/AccountContext';
 import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { IconClose, IconCopy, IconPencil } from '@assets';
+import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import styles from './TopBar.module.css';
 
@@ -104,16 +105,11 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                 }}
               >
                 <div className={styles.dropdownAvatar}>
-                  {cached?.picture ? (
-                    <img
-                      className={styles.avatar}
-                      src={cached.picture}
-                      alt=""
-                      onError={(e: SyntheticEvent<HTMLImageElement>) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  ) : (
-                    getInitial(name)
-                  )}
+                  <Avatar
+                    src={cached?.picture}
+                    fallback={getInitial(name)}
+                    imgClassName={styles.avatar}
+                  />
                 </div>
                 <div className={styles.dropdownInfo}>
                   <div className={styles.dropdownNameRow}>

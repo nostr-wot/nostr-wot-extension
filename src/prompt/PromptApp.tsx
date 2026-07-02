@@ -3,6 +3,7 @@ import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
+import { formatSats } from '@shared/format/number.ts';
 import '@shared/theme.css';
 import EventPreview from './components/EventPreview';
 import DecisionRow from './components/DecisionRow';
@@ -97,7 +98,7 @@ export default function PromptApp() {
           </div>
           {prompt.walletAmount !== undefined && prompt.walletAmount > 0 && (
             <div className={styles.paymentAmount}>
-              {Math.round(prompt.walletAmount).toLocaleString()} sats
+              {formatSats(prompt.walletAmount)}
             </div>
           )}
         </>

@@ -9,6 +9,7 @@ import QrCode from '@components/QrCode/QrCode';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import { IconSettings, IconTuner } from '@assets/index';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
+import { formatSats } from '@shared/format/number.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 
 import styles from './Wallet.module.css';
@@ -501,7 +502,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
                   {t('wallet.paymentReceived')}
                 </div>
                 <div className={styles.success} style={{ fontSize: '16px' }}>
-                  {`+${Math.round(depositPaid.amount).toLocaleString()} sats`}
+                  {`+${formatSats(depositPaid.amount)}`}
                 </div>
               </div>
             ) : !depositBolt11 ? (
