@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nostr WoT",
-  "version": "0.3.84",
+  "version": "0.3.85",
   "browser_specific_settings": {
     "gecko": {
       "id": "nostr-wot@dandelionlabs.io",
@@ -11,10 +11,9 @@
       }
     }
   },
-  "description": "Nostr identity provider, NIP-07 signer, Web of Trust provider, and Lightning wallet.",
+  "description": "Nostr Web of Trust identity and wallet provider — NIP-07 signer and built-in Lightning wallet.",
   "permissions": [
     "storage",
-    "scripting",
     "activeTab",
     "alarms"
   ],

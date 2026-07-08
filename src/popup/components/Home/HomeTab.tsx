@@ -14,6 +14,7 @@ import RelaysCard from './RelaysCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { IconGlobe, IconZap, IconChevronRight } from '@assets';
 import styles from './HomeTab.module.css';
 import type { PendingRequest } from '@lib/types.ts';
@@ -319,9 +320,18 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
         />
       )}
 
-      {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
-      {active && <MutesCard onOpen={onManageFilters} />}
-      {active && <RelaysCard onOpen={onOpenRelays} />}
+      {/* Account — profile, mutes, and relays that follow the identity, grouped
+          into one card so they read as a single list. */}
+      {active && (
+        <div className={styles.accountSection}>
+          <SectionLabel>{t('home.account')}</SectionLabel>
+          <Card className={styles.accountCard}>
+            {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
+            <MutesCard onOpen={onManageFilters} />
+            <RelaysCard onOpen={onOpenRelays} />
+          </Card>
+        </div>
+      )}
     </>
   );
 }

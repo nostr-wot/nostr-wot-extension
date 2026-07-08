@@ -99,8 +99,8 @@ describe('signer -- pending request queue', () => {
   it('concurrent queueRequest calls do not lose entries (mutex test)', async () => {
     await setupVault();
 
-    // Fire 10 concurrent signEvent requests
-    const N = 10;
+    // Fire 5 concurrent signEvent requests (the per-origin pending cap)
+    const N = 5;
     const promises: Promise<any>[] = [];
     for (let i = 0; i < N; i++) {
       promises.push(
@@ -901,6 +901,291 @@ describe('signer -- getPublicKey cooldown', () => {
     await new Promise<void>(r => setTimeout(r, 50));
     pending = await signer.getPending();
     assert.strictEqual(pending.length, 0);
+  });
+});
+
+// -- Account switch invalidation (identity-leak fix) --
+
+describe('signer -- account switch invalidates pending getPublicKey', () => {
+  const SECOND_PUBKEY_HEX = '1212121212121212121212121212121212121212121212121212121212121212';
+
+  function makeTwoAccountPayload(): VaultPayload {
+    const payload = makePayload();
+    payload.accounts.push({
+      id: 'acct2',
+      name: 'Second',
+      type: 'nsec',
+      pubkey: SECOND_PUBKEY_HEX,
+      privkey: '0000000000000000000000000000000000000000000000000000000000000002',
+      mnemonic: null,
+      nip46Config: null,
+      readOnly: false,
+      createdAt: 2000000
+    });
+    return payload;
+  }
+
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+    await vault.create(TEST_PASSWORD, makeTwoAccountPayload());
+    await browserMock.storage.local.set({
+      accounts: [
+        { id: 'acct1', type: 'nsec', pubkey: TEST_PUBKEY_HEX },
+        { id: 'acct2', type: 'nsec', pubkey: SECOND_PUBKEY_HEX },
+      ],
+      activeAccountId: 'acct1',
+    });
+    await browserMock.storage.sync.set({ myPubkey: TEST_PUBKEY_HEX });
+  });
+
+  it('onActiveAccountChanged rejects a pending getPublicKey prompt for the old account', async () => {
+    const p: Promise<any> = signer.handleGetPublicKey('site.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    assert.strictEqual((await signer.getPending()).length, 1);
+
+    // Simulate what every account-change path now does
+    await signer.onActiveAccountChanged('acct1', 'acct2');
+
+    await assert.rejects(p, /User denied access/);
+    assert.strictEqual((await signer.getPending()).length, 0, 'Pending prompt must be cleared');
+  });
+
+  it('approval after a mid-prompt account change never returns account B pubkey', async () => {
+    const p: Promise<any> = signer.handleGetPublicKey('site.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1);
+    assert.strictEqual(pending[0].pubkey, TEST_PUBKEY_HEX, 'Prompt shows account A identity');
+
+    // Account switches to B while the prompt is open (bypassing invalidation)
+    await vault.setActiveAccount('acct2');
+    await browserMock.storage.local.set({ activeAccountId: 'acct2' });
+    await browserMock.storage.sync.set({ myPubkey: SECOND_PUBKEY_HEX });
+
+    // Approving now must NOT hand out B's pubkey
+    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    await assert.rejects(p, /Account switched/);
+  });
+
+  it('approval with unchanged account returns the snapshotted pubkey', async () => {
+    const p: Promise<any> = signer.handleGetPublicKey('site.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    const pending: any[] = await signer.getPending();
+    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    assert.strictEqual(await p, TEST_PUBKEY_HEX);
+  });
+
+  it('vault_setActiveAccount handler rejects pending prompts for the previous account', async () => {
+    const vaultHandlers = await import('../lib/bg/vault-handlers.ts');
+    const setActive = vaultHandlers.handlers.get('vault_setActiveAccount')!;
+
+    const p: Promise<any> = signer.handleGetPublicKey('site.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    assert.strictEqual((await signer.getPending()).length, 1);
+
+    await setActive({ accountId: 'acct2' });
+
+    await assert.rejects(p, /User denied access/);
+    assert.strictEqual((await signer.getPending()).length, 0);
+  });
+
+  it('onboarding_addToVault rejects pending prompts for the previous account', async () => {
+    const addToVault = onboarding.handlers.get('onboarding_addToVault')!;
+
+    const p: Promise<any> = signer.handleGetPublicKey('site.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    assert.strictEqual((await signer.getPending()).length, 1);
+
+    await addToVault({
+      account: {
+        id: 'acct3',
+        name: 'New',
+        type: 'nsec',
+        pubkey: SECOND_PUBKEY_HEX,
+        privkey: '0000000000000000000000000000000000000000000000000000000000000003',
+        mnemonic: null,
+        nip46Config: null,
+        readOnly: false,
+        createdAt: 3000000,
+      },
+    });
+
+    await assert.rejects(p, /User denied access/);
+    assert.strictEqual((await signer.getPending()).length, 0);
+  });
+
+  it('onboarding_createVault rejects pending prompts for the previous account', async () => {
+    const createVault = onboarding.handlers.get('onboarding_createVault')!;
+
+    const p: Promise<any> = signer.handleGetPublicKey('site.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+    assert.strictEqual((await signer.getPending()).length, 1);
+
+    await createVault({
+      password: 'newvaultpass123',
+      account: {
+        id: 'acctNew',
+        name: 'Fresh',
+        type: 'nsec',
+        pubkey: SECOND_PUBKEY_HEX,
+        privkey: '0000000000000000000000000000000000000000000000000000000000000004',
+        mnemonic: null,
+        nip46Config: null,
+        readOnly: false,
+        createdAt: 4000000,
+      },
+    });
+
+    await assert.rejects(p, /User denied access/);
+    assert.strictEqual((await signer.getPending()).length, 0);
+  });
+});
+
+// -- NIP-46 local deny (permission check before remote routing) --
+
+describe('signer -- NIP-46 accounts honor local deny', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+    await browserMock.storage.local.set({
+      accounts: [{ id: 'n1', type: 'nip46', pubkey: TEST_PUBKEY_HEX }],
+      activeAccountId: 'n1',
+    });
+  });
+
+  it('signEvent with a local per-origin deny throws before routing to the bunker', async () => {
+    await permissions.save('evil.com', 'signEvent', 1, 'deny');
+    await assert.rejects(
+      signer.handleSignEvent(
+        { kind: 1, content: 'hi', tags: [], created_at: Math.floor(Date.now() / 1000) },
+        'evil.com'
+      ),
+      /Permission denied/
+    );
+    assert.strictEqual((await signer.getPending()).length, 0, 'Nothing queued or forwarded');
+  });
+
+  it('nip04Encrypt with a local deny throws before routing to the bunker', async () => {
+    await permissions.save('evil.com', 'nip04Encrypt', null, 'deny');
+    await assert.rejects(
+      signer.handleNip04Encrypt(THEIR_PUBKEY_HEX, 'secret', 'evil.com'),
+      /Permission denied/
+    );
+    assert.strictEqual((await signer.getPending()).length, 0);
+  });
+
+  it('nip44Decrypt with a local deny throws before routing to the bunker', async () => {
+    await permissions.save('evil.com', 'nip44Decrypt', null, 'deny');
+    await assert.rejects(
+      signer.handleNip44Decrypt(THEIR_PUBKEY_HEX, 'ciphertext', 'evil.com'),
+      /Permission denied/
+    );
+  });
+});
+
+// -- Full event snapshot in the approval prompt --
+
+describe('signer -- pending entry carries full content and tags', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+  });
+
+  it('stores untruncated content and all tags for a non-kind-3 event', async () => {
+    await setupVault();
+
+    const longContent = 'x'.repeat(1000);
+    const tags = [['e', 'abc'], ['p', THEIR_PUBKEY_HEX], ['payload', 'hidden-in-tags']];
+    const p: Promise<any> = signer.handleSignEvent(
+      { kind: 30078, content: longContent, tags, created_at: Math.floor(Date.now() / 1000) },
+      'test.com'
+    );
+
+    await new Promise<void>(r => setTimeout(r, 50));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1);
+    assert.strictEqual(pending[0].event.content, longContent, 'Content must not be truncated');
+    assert.deepStrictEqual(pending[0].event.tags, tags, 'All tags must be stored for every kind');
+
+    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    await assert.rejects(p, /User denied/);
+  });
+});
+
+// -- Per-origin pending request cap (popup-spam / DoS guard) --
+
+describe('signer -- per-origin pending request cap', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+  });
+
+  it('rejects the 6th concurrent request from one origin; other origins unaffected', async () => {
+    await setupVault();
+
+    const mkEvent = (i: number) => ({
+      kind: 1, content: `spam ${i}`, tags: [] as string[][], created_at: Math.floor(Date.now() / 1000)
+    });
+
+    const promises: Promise<any>[] = [];
+    for (let i = 0; i < 5; i++) {
+      promises.push(signer.handleSignEvent(mkEvent(i), 'spam.com'));
+    }
+    await new Promise<void>(r => setTimeout(r, 300));
+    assert.strictEqual((await signer.getPending()).length, 5);
+
+    // 6th request from the same origin is rejected outright
+    await assert.rejects(
+      signer.handleSignEvent(mkEvent(6), 'spam.com'),
+      /Too many pending requests/
+    );
+
+    // A different origin still queues fine
+    const other: Promise<any> = signer.handleSignEvent(mkEvent(7), 'ok.com');
+    await new Promise<void>(r => setTimeout(r, 100));
+    assert.strictEqual((await signer.getPending()).length, 6);
+
+    // Clean up
+    for (const req of await signer.getPending()) {
+      signer.resolveRequest(req.id, { allow: false, remember: false });
+    }
+    for (const p of promises) await assert.rejects(p, /User denied/);
+    await assert.rejects(other, /User denied/);
+  });
+
+  it('resolving requests frees capacity for the origin', async () => {
+    await setupVault();
+
+    const mkEvent = (i: number) => ({
+      kind: 1, content: `msg ${i}`, tags: [] as string[][], created_at: Math.floor(Date.now() / 1000)
+    });
+
+    const promises: Promise<any>[] = [];
+    for (let i = 0; i < 5; i++) {
+      promises.push(signer.handleSignEvent(mkEvent(i), 'busy.com'));
+    }
+    await new Promise<void>(r => setTimeout(r, 300));
+
+    // Deny all to free capacity
+    for (const req of await signer.getPending()) {
+      signer.resolveRequest(req.id, { allow: false, remember: false });
+    }
+    for (const p of promises) await assert.rejects(p, /User denied/);
+    await new Promise<void>(r => setTimeout(r, 100));
+
+    // New request queues again
+    const next: Promise<any> = signer.handleSignEvent(mkEvent(9), 'busy.com');
+    await new Promise<void>(r => setTimeout(r, 100));
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1, 'Capacity must be freed after resolve');
+    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    await assert.rejects(next, /User denied/);
   });
 });
 

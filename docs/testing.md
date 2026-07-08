@@ -23,11 +23,12 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet
 ```
 
 `tests/run.sh` runs these groups in sequence: crypto, wallet (no-mock),
-wizardMachine + openPopupForActiveTab, then the browser-mocked module + wallet
-group (vault, permissions, accounts, signer, security-hardening, communication,
-wallet permissions/background-handlers, vault-wallet). Some additional test files
-exist in the tree (`domain-handlers`, `relay`, `site-state`) that are not part of
-the default `run.sh` sequence.
+wizardMachine + openPopupForActiveTab + safeUrl, then the browser-mocked module +
+wallet group (vault, permissions, accounts, signer, security-hardening,
+communication, wallet permissions/background-handlers, vault-wallet, relay,
+publish-handlers). Some additional test files exist in the tree
+(`domain-handlers`, `site-state`) that are not part of the default `run.sh`
+sequence.
 
 ---
 
@@ -55,10 +56,12 @@ the default `run.sh` sequence.
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
 | `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers (not in default `run.sh`) |
-| `tests/relay.test.ts` | Relay utilities (not in default `run.sh`) |
+| `tests/relay.test.ts` | Relay utilities, liveQuery streaming, inbound event signature verification (forged events rejected) |
+| `tests/publish-handlers.test.ts` | `checkRelayHealth` SSRF hardening (scheme allowlist, private-host rejection) |
+| `tests/safeUrl.test.ts` | `safeImageUrl` sanitizer for untrusted profile image URLs |
 | `tests/site-state.test.ts` | Per-site state helpers (not in default `run.sh`) |
-| `tests/wallet/nwc.test.ts` | NWC provider: connection, balance, pay, make invoice |
-| `tests/wallet/lnbits.test.ts` | LNbits provider: REST API calls, error handling |
+| `tests/wallet/nwc.test.ts` | NWC provider: connection, balance, pay, make invoice (msats), response verification/DoS hardening |
+| `tests/wallet/lnbits.test.ts` | LNbits provider: REST API calls, error handling, HTTPS enforcement |
 | `tests/wallet/lnbits-provision.test.ts` | Auto-provisioning: challenge-response flow |
 | `tests/wallet/bolt11.test.ts` | BOLT11 decoder: amount parsing, descriptions, expiry, networks |
 | `tests/wallet/background-handlers.test.ts` | Wallet background RPC handlers |

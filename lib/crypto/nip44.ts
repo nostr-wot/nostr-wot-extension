@@ -47,6 +47,10 @@ function unpad(padded: Uint8Array): string {
   if (unpaddedLen < 1 || unpaddedLen > padded.length - 2) {
     throw new Error('Invalid padding');
   }
+  // Padded length must be exactly canonical for the declared plaintext length
+  if (padded.length !== 2 + calcPaddedLen(unpaddedLen)) {
+    throw new Error('Invalid padding');
+  }
   const unpadded = padded.slice(2, 2 + unpaddedLen);
   return new TextDecoder().decode(unpadded);
 }
@@ -73,11 +77,13 @@ interface MessageKeys {
 
 function getMessageKeys(conversationKey: Uint8Array, nonce: Uint8Array): MessageKeys {
   const keys = hkdfExpand(sha256, conversationKey, nonce, 76);
-  return {
+  const messageKeys: MessageKeys = {
     chachaKey: keys.slice(0, 32),
     chaChaNonce: keys.slice(32, 44),
     hmacKey: keys.slice(44, 76)
   };
+  keys.fill(0); // slices are copies — zero the combined hkdf output
+  return messageKeys;
 }
 
 // ── Public API ──
@@ -114,6 +120,8 @@ export async function nip44Encrypt(plaintext: string, privkey: Uint8Array, their
 export async function nip44Decrypt(data: string, privkey: Uint8Array, theirPubkey: Uint8Array): Promise<string> {
   const raw = base64ToArray(data);
   if (raw.length < 99) throw new Error('Payload too short');
+  // Spec max: 1 (version) + 32 (nonce) + 2 + 65536 (padded) + 32 (mac) = 65603
+  if (raw.length > 65603) throw new Error('Payload too long');
 
   const version = raw[0];
   if (version !== NIP44_VERSION) throw new Error(`Unsupported NIP-44 version: ${version}`);

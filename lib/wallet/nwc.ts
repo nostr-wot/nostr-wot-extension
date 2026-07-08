@@ -12,6 +12,7 @@
 import type { UnsignedEvent, SignedEvent } from '../types.ts';
 import type { WalletProvider, WalletProviderInfo, Transaction } from './types.ts';
 import { hexToBytes, bytesToHex } from '../crypto/utils.ts';
+import { verifyEvent as verifyEventNip01 } from '../crypto/nip01.ts';
 
 // ── Parsed URI ──
 
@@ -28,6 +29,8 @@ export interface NwcCryptoDeps {
   decrypt(ciphertext: string, privkey: Uint8Array, theirPubkey: Uint8Array): Promise<string>;
   getPubkey(privkey: Uint8Array): Uint8Array;
   signEvent(event: UnsignedEvent, privkey: Uint8Array): Promise<SignedEvent>;
+  /** Optional override for tests — defaults to the real NIP-01 verifyEvent. */
+  verifyEvent?(event: SignedEvent): Promise<boolean>;
 }
 
 // ── NWC config ──
@@ -140,7 +143,8 @@ export class NwcProvider implements WalletProvider {
     amount: number,
     memo?: string,
   ): Promise<{ bolt11: string; paymentHash: string }> {
-    const params: Record<string, unknown> = { amount };
+    // NIP-47 make_invoice takes millisatoshis; our interface takes sats.
+    const params: Record<string, unknown> = { amount: amount * 1000 };
     if (memo !== undefined) {
       params.description = memo;
     }
@@ -310,6 +314,12 @@ export class NwcProvider implements WalletProvider {
     // S-19: Verify the response actually came from the wallet service
     if (event.pubkey !== this.walletPubkey) return;
 
+    // Anyone can put the wallet's pubkey on an event; require a valid
+    // schnorr signature before correlating with a pending request, so a
+    // malicious relay can't forge responses.
+    const verify = this.deps.verifyEvent ?? verifyEventNip01;
+    if (!(await verify(event))) return;
+
     // Find the 'e' tag that references the original request
     const eTag = event.tags?.find((t) => t[0] === 'e');
     if (!eTag || !eTag[1]) return;
@@ -318,12 +328,21 @@ export class NwcProvider implements WalletProvider {
     const entry = this.pending.get(requestId);
     if (!entry) return;
 
+    const walletPubkeyBytes = hexToBytes(this.walletPubkey);
+    let decrypted: string;
+    try {
+      decrypted = await this.deps.decrypt(event.content, this.secret, walletPubkeyBytes);
+    } catch {
+      // Undecryptable — not a genuine response. Keep the pending entry so
+      // the real response (or the timeout) can still settle the request.
+      return;
+    }
+
+    // Only a verified, decryptable response consumes the pending request.
     clearTimeout(entry.timer);
     this.pending.delete(requestId);
 
     try {
-      const walletPubkeyBytes = hexToBytes(this.walletPubkey);
-      const decrypted = await this.deps.decrypt(event.content, this.secret, walletPubkeyBytes);
       const content = JSON.parse(decrypted) as NwcResponseContent;
 
       if (content.error) {

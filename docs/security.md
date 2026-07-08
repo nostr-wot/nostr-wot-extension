@@ -25,7 +25,10 @@ The configured interval is stored as `autoLockMs` in `browser.storage.local`, bu
 
 **Service-worker keep-alive**: On Chrome MV3 the service worker is torn down frequently (including around page refreshes), which wipes the in-memory decrypted key and makes a timed-mode vault appear locked well before the configured interval. While the vault is unlocked in timed-lock mode (`autoLockMs > 0`), `vault.ts` arms a periodic `browser.alarms` keep-alive (`'vault-keepalive'`, ~30s period — Chrome clamps the minimum). The `onAlarm` listener in `background.ts` does a trivial async storage read on each tick, resetting the SW idle timer so the worker stays alive until the auto-lock actually fires. The alarm is cleared on every `lock()` and is **never** used to persist the decrypted key — it only holds the worker open, preserving the security model. It is a graceful no-op where `browser.alarms` is unavailable (Safari's persistent background page, tests).
 
-**Brute-force protection**: The `useVaultUnlock` hook enforces escalating lockout after failed password attempts. Every 5 consecutive failures trigger a lockout: 1 min, 5 min, 15 min, 30 min (cap). The countdown is displayed in the UI and the input is disabled during lockout. A successful unlock resets the counter. The counter is shared across hook instances (module-level state) so remounting components does not reset it; however, it resets on full page reload (extension restart).
+**Brute-force protection**: Two layers with the same escalation schedule (every 5 consecutive failures: 1 min, 5 min, 15 min, 30 min cap):
+
+1. **Popup-side** — the `useVaultUnlock` hook displays the countdown and disables the input during lockout. Module-level state, so remounting components does not reset it; it does reset on full page reload.
+2. **Background-side (authoritative)** — the `vault_unlock` handler (`lib/bg/vault-handlers.ts`) keeps a persisted failure counter in `browser.storage.local` under `vaultUnlockGuard { failures, lockedUntil }`. While `lockedUntil` is in the future, `vault_unlock` throws `Too many failed attempts. Try again in Ns` without attempting decryption — even for the correct password. A failed attempt increments the counter; a successful unlock removes the guard; `vault_destroy` clears it. Because it is persisted, popup reloads and service-worker restarts do not reset it.
 
 **Vault destroy** (`vault.destroy()`): Irreversibly wipes the encrypted vault from `browser.storage.local` and clears all in-memory state. The `vault_destroy` RPC handler also clears wallet providers, cancels pending signer requests, and removes account metadata from storage. Exposed via "Forgot password?" on the full-screen lock overlay with a confirmation step.
 
@@ -42,7 +45,9 @@ Private keys are stored differently on disk vs in memory:
 | Disk (JSON) | `Account.mnemonic: string` | N/A |
 | Memory | `MemoryAccount.mnemonicBytes: Uint8Array` | Yes |
 
-On `unlock()`, hex strings are converted to `Uint8Array` via `toMemoryAccount()`. On `lock()`, every account's `privkeyBytes` and `mnemonicBytes` are zeroed with `.fill(0)` before the reference is nulled. This prevents hex strings (which are immutable JS strings and cannot be zeroed) from lingering in the GC heap.
+On `unlock()`, hex strings are converted to `Uint8Array` via `toMemoryAccount()`. On `lock()`, every account's `privkeyBytes` and `mnemonicBytes` are zeroed with `.fill(0)` (`zeroDecryptedKeys()`) before the reference is nulled. This prevents hex strings (which are immutable JS strings and cannot be zeroed) from lingering in the GC heap.
+
+**Replacing the decrypted payload also zeroes the old buffers**: `create()` (called while unlocked during password-change / lock-mode transitions) and a successful `unlock()` while already unlocked both run `zeroDecryptedKeys()` before assigning the new `_decrypted`, so the previous key buffers can't linger in the heap. A FAILED `unlock()` never touches the current session's buffers.
 
 On `save()` and `reEncrypt()`, memory format is serialized back to JSON via `toStoragePayload()`.
 
@@ -61,6 +66,12 @@ try {
     privkey.fill(0);
 }
 ```
+
+The same try/finally discipline applies in `lib/accounts.ts` and the vault handlers:
+
+- `createFromMnemonic` / `createFromMnemonicAtIndex` / `importFromMnemonicDerived` zero the 64-byte BIP-39 seed (`mnemonicToSeed` result) and the derived privkey `Uint8Array` in a `finally` block — only the hex copy on the returned `Account` survives.
+- `importNsec` zeroes the decoded `privkeyBytes` after deriving the pubkey.
+- `vault_exportNsec` wraps its `privkeyBytes.fill(0)` in `finally` so a throw inside `nsecEncode` cannot skip zeroing.
 
 ---
 
@@ -157,7 +168,16 @@ The auto-approve threshold (`walletThreshold_{accountId}`) is stored in `browser
 
 ## 9. Rate Limiting
 
-There is no request rate limiting — the only throttled methods were the removed Web-of-Trust computation methods and the page-facing relay-query channel, all of which have been deleted. `vault_unlock` is protected by the privilege gate (only callable from extension pages) and PBKDF2's 210,000 iterations which make brute-force impractical (~200ms per attempt).
+- **Per-origin pending-request cap** (`lib/signer.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
+- **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 210,000 iterations (~200ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----libvaultts).
+
+### 9b. Permission Resolution Is Deny-Wins
+
+`permissions.check()` consults the kind-specific key, the method-level key, and the `*` wildcard. An explicit `deny` at ANY of those levels short-circuits to `deny` — a kind-specific or wildcard `allow` can never override a `deny` at another level. When no level denies, the most specific defined value wins. See [signer.md §5](signer.md#5-permission-cascade----libpermissionsts).
+
+### 9c. Pending Onboarding TTL
+
+The redacted pending-onboarding account (XOR-split privkey, S-6) is persisted to `browser.storage.session` together with a `_pendingOnboardingCreatedAt` timestamp. The 5-minute TTL is enforced **on read** in `getPendingOnboardingAccount()` — not only via the in-memory `setTimeout`, which dies with the MV3 service worker. Expired (or timestamp-less pre-upgrade) entries are wiped from session storage and never returned.
 
 ---
 
@@ -181,3 +201,72 @@ return safe;
 ```
 
 `getActiveAccount()`, `getAccountById()`, and `listAccounts()` all strip key bytes. `getDecryptedPayload()` reconstructs hex format for JSON export but is only callable when unlocked.
+
+---
+
+## 12. Relay Event Integrity (`lib/relay.ts`)
+
+Relays are untrusted. Every inbound event consumed through `liveQuery` is
+schnorr-signature-verified with `verifyEvent()` (`lib/crypto/nip01.ts` —
+recomputed event id + BIP-340 signature check) before it is emitted, displayed,
+or cached. Verification happens **before** the event id is added to the dedup
+set, so a forged event cannot shadow a later legitimate event with the same id.
+
+The local replaceable-event cache is verified on both sides:
+
+- `writeLocalCache()` refuses to persist any event that fails `verifyEvent()`.
+- `readLocalCache()` re-verifies on read, so stale entries written before
+  verification existed (or tampered storage) are never surfaced.
+
+Per-socket message handling is serialized (promise chain) so async verification
+preserves relay ordering — an `EOSE` can't exhaust the query while an event is
+still being verified.
+
+---
+
+## 13. NWC Response Hardening (`lib/wallet/nwc.ts`)
+
+Kind-23195 NWC responses are only trusted when all of the following hold:
+
+1. `event.pubkey` equals the wallet service pubkey from the connection string.
+2. The event passes `verifyEvent()` (schnorr signature) — a malicious relay
+   cannot forge a response by just stamping the wallet's pubkey on an event.
+3. The content decrypts successfully with the connection secret.
+
+The pending-request entry is only deleted after a verified, decryptable
+response arrives — an injected garbage event can no longer consume the pending
+slot and drop the wallet's real response (previously a response-DoS vector).
+`make_invoice` amounts are converted sats → millisatoshis per NIP-47.
+
+---
+
+## 14. Relay Health Check SSRF Guard (`lib/bg/publish-handlers.ts`)
+
+`checkRelayHealth` only probes URLs that start with `ws://`/`wss://` and whose
+host is not private: `localhost`, `*.local`, `[::1]`, `0.0.0.0/8`,
+`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, and
+`169.254.0.0/16` are all rejected (`isPrivateHost()`) before any fetch, so the
+handler cannot be used to probe the local machine or internal network. The
+probe keeps its 5-second timeout.
+
+---
+
+## 15. LNbits Transport Security (`lib/wallet/lnbits.ts`)
+
+Every LNbits request calls `assertSecureUrl()` first: the admin key
+(`X-Api-Key`) is only ever sent over `https://`, with a development exception
+for `http://localhost` / `http://127.0.0.1` (exact hostname match). Any other
+non-HTTPS instance URL throws instead of leaking the key in cleartext.
+
+---
+
+## 16. Untrusted Image URLs (`src/shared/safeUrl.ts`)
+
+Relay-supplied profile metadata (`picture`, `banner`) is sanitized with
+`safeImageUrl()` before being rendered in an `<img src>`: only absolute
+`http:`/`https:` URLs pass; `javascript:`, `data:`, `blob:`, `vbscript:`,
+relative paths, and obfuscated-scheme tricks return `undefined` (the WHATWG URL
+parser normalizes case/whitespace/control characters first). Applied centrally
+in the `Avatar` component plus the direct `<img>` sites (`ProfilePreview`
+banner, `EditProfileOverlay`). Locally-created `blob:` object URLs used for
+upload previews are exempt because they never come from relay data.

@@ -1,7 +1,7 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import useRpc from '@shared/hooks/useRpc.js';
-import NavCard from '@components/NavCard/NavCard';
+import NavRow from '@components/NavRow/NavRow';
 import { IconShield } from '@assets';
 
 interface MyMuteList {
@@ -23,7 +23,7 @@ export default function MutesCard({ onOpen }: { onOpen: () => void }) {
     (data?.people?.length || 0) + (data?.words?.length || 0) + (data?.hashtags?.length || 0);
 
   return (
-    <NavCard
+    <NavRow
       icon={<IconShield size={16} />}
       title={t('mutes.cardTitle')}
       info={t('mutes.cardInfo')}

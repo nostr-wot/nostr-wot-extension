@@ -14,9 +14,6 @@ export const NWC_REQUEST_TIMEOUT_MS = 60_000;
 /** Mute list fetch timeout */
 export const MUTE_LIST_FETCH_TIMEOUT_MS = 8_000;
 
-/** WoT API call timeout (inject.ts → content.ts) */
-export const WOT_CALL_TIMEOUT_MS = 30_000;
-
 /** NIP-07 call timeout (inject.ts → content.ts) */
 export const NIP07_CALL_TIMEOUT_MS = 120_000;
 
@@ -31,11 +28,6 @@ export const GET_PUBLIC_KEY_COOLDOWN_MS = 60_000;
 
 /** WebLN call timeout (inject.ts → content.ts) */
 export const WEBLN_CALL_TIMEOUT_MS = 120_000;
-
-// ── Rate Limits ──
-
-/** Content script rate limit (per second) */
-export const CONTENT_RATE_LIMIT_PER_SECOND = 100;
 
 // ── Crypto ──
 
@@ -63,17 +55,6 @@ export const DEFAULT_AUTO_LOCK_MS = 900_000;
 
 /** Vault unlock polling interval */
 export const VAULT_POLL_INTERVAL_MS = 500;
-
-// ── Relay Discovery ──
-
-/** Maximum number of relays in the discovered pool */
-export const RELAY_POOL_MAX_SIZE = 50;
-
-/** Minimum follows that must declare a relay before it's added to the pool */
-export const RELAY_POOL_MIN_ENDORSEMENTS = 2;
-
-/** Maximum relay entries to parse from a single kind:10002 event */
-export const MAX_RELAYS_PER_EVENT = 20;
 
 // ── Onboarding ──
 

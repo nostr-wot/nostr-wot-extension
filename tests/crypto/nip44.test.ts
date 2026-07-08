@@ -1,7 +1,11 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { hexToBytes, bytesToHex } from '../../lib/crypto/utils.ts';
-import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
+import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf.js';
+import { hmac } from '@noble/hashes/hmac.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { chacha20 } from '@noble/ciphers/chacha.js';
+import { hexToBytes, bytesToHex, concatBytes } from '../../lib/crypto/utils.ts';
+import { getPublicKey, ecdh } from '../../lib/crypto/secp256k1.ts';
 import { nip44Encrypt, nip44Decrypt } from '../../lib/crypto/nip44.ts';
 
 const ALICE_PRIVKEY: Uint8Array = hexToBytes('0000000000000000000000000000000000000000000000000000000000000001');
@@ -88,6 +92,45 @@ describe('nip44Encrypt / nip44Decrypt', () => {
     await assert.rejects(
       () => nip44Decrypt(short, BOB_PRIVKEY, ALICE_PUBKEY),
       /Payload too short/
+    );
+  });
+
+  it('rejects payload longer than spec max (65603 bytes)', async () => {
+    const big = new Uint8Array(65604);
+    big[0] = 2;
+    const tooLong: string = Buffer.from(big).toString('base64');
+    await assert.rejects(
+      () => nip44Decrypt(tooLong, BOB_PRIVKEY, ALICE_PUBKEY),
+      /Payload too long/
+    );
+  });
+
+  it('rejects non-canonical padding (valid MAC, oversized pad)', async () => {
+    // Forge a payload with a correct MAC but padding longer than canonical:
+    // unpaddedLen=1 must pad to exactly 32 bytes; give it 64 instead.
+    const forge = (paddedBodyLen: number): string => {
+      const sharedX = ecdh(ALICE_PRIVKEY, BOB_PUBKEY);
+      const conversationKey = hkdfExtract(sha256, sharedX, new TextEncoder().encode('nip44-v2'));
+      const nonce = new Uint8Array(32); // fixed nonce, fine for a test forgery
+      const keys = hkdfExpand(sha256, conversationKey, nonce, 76);
+      const padded = new Uint8Array(2 + paddedBodyLen);
+      padded[1] = 1; // unpaddedLen = 1
+      padded[2] = 0x61; // 'a'
+      const ciphertext = chacha20(keys.slice(0, 32), keys.slice(32, 44), padded);
+      const mac = hmac(sha256, keys.slice(44, 76), concatBytes(nonce, ciphertext));
+      const final = concatBytes(new Uint8Array([2]), nonce, ciphertext, mac);
+      return btoa(String.fromCharCode(...final));
+    };
+
+    // Sanity: canonical padding (32) decrypts fine
+    const canonical: string = forge(32);
+    assert.strictEqual(await nip44Decrypt(canonical, BOB_PRIVKEY, ALICE_PUBKEY), 'a');
+
+    // Non-canonical padding (64) must be rejected
+    const oversized: string = forge(64);
+    await assert.rejects(
+      () => nip44Decrypt(oversized, BOB_PRIVKEY, ALICE_PUBKEY),
+      /Invalid padding/
     );
   });
 

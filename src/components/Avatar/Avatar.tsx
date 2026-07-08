@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { safeImageUrl } from '@shared/safeUrl.js';
 
 interface AvatarProps {
   src: string | null | undefined;
@@ -17,13 +18,15 @@ interface AvatarProps {
  */
 export default function Avatar({ src, fallback, imgClassName, fallbackClassName }: AvatarProps) {
   const [imgError, setImgError] = useState<boolean>(false);
-  const showImg = src && !imgError;
+  // `src` is usually relay-supplied profile metadata — only render http(s) URLs.
+  const safeSrc = safeImageUrl(src);
+  const showImg = safeSrc && !imgError;
 
   if (showImg) {
     return (
       <img
         className={imgClassName}
-        src={src!}
+        src={safeSrc}
         alt=""
         onError={() => setImgError(true)}
       />

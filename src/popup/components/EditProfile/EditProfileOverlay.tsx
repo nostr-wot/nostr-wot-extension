@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import { rpc } from '@shared/rpc.js';
 import { uploadToBlossom } from '@shared/blossom.js';
+import { safeImageUrl } from '@shared/safeUrl.js';
 import { useAccount } from '../../context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Avatar from '@components/Avatar/Avatar';
@@ -85,7 +86,9 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   if (!shouldRender) return null;
 
   const initial = (name || active?.name || '?')[0]?.toUpperCase();
-  const displayPicture = imagePreview || picture || null;
+  // imagePreview is a locally-created blob: URL (trusted); `picture` comes from
+  // relay-supplied profile metadata, so only render it if it's plain http(s).
+  const displayPicture = imagePreview || safeImageUrl(picture) || null;
 
   const hasChanges = imageFile !== null ||
     name !== (cachedProfile?.name || cachedProfile?.display_name || '') ||

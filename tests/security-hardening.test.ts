@@ -7,8 +7,11 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
+import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../lib/vault.ts';
 import * as permissions from '../lib/permissions.ts';
+import { handlers as vaultHandlers } from '../lib/bg/vault-handlers.ts';
+import * as onboarding from '../lib/bg/onboarding-handlers.ts';
 import { nip04Encrypt, nip04Decrypt } from '../lib/crypto/nip04.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../lib/crypto/nip49.ts';
 import { randomBytes, hexToBytes, bytesToHex } from '../lib/crypto/utils.ts';
@@ -249,6 +252,131 @@ describe('security: vault lock zeroing', () => {
 
     const payload = vault.getDecryptedPayload();
     assert.strictEqual(payload.accounts[0].mnemonic, TEST_MNEMONIC);
+  });
+});
+
+// ── vault_unlock brute-force guard (persisted lockout) ──
+
+describe('security: vault_unlock brute-force guard', () => {
+  const unlockHandler = vaultHandlers.get('vault_unlock')!;
+
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await vault.create(TEST_PASSWORD, makePayload());
+    vault.lock();
+  });
+
+  it('failures below the threshold return false without lockout', async () => {
+    for (let i = 0; i < 4; i++) {
+      assert.strictEqual(await unlockHandler({ password: 'wrong-password' }), false);
+    }
+    // Still no lockout: correct password unlocks
+    assert.strictEqual(await unlockHandler({ password: TEST_PASSWORD }), true);
+  });
+
+  it('5 consecutive failures lock out further attempts (even correct password)', async () => {
+    for (let i = 0; i < 5; i++) {
+      assert.strictEqual(await unlockHandler({ password: 'wrong-password' }), false);
+    }
+    await assert.rejects(
+      unlockHandler({ password: TEST_PASSWORD }),
+      /Too many failed attempts/
+    );
+
+    // Guard persisted in storage.local with a future lockedUntil
+    const data = await browserMock.storage.local.get(['vaultUnlockGuard']) as any;
+    assert.ok(data.vaultUnlockGuard, 'guard should be persisted');
+    assert.strictEqual(data.vaultUnlockGuard.failures, 5);
+    assert.ok(data.vaultUnlockGuard.lockedUntil > Date.now(), 'should be locked out');
+  });
+
+  it('after the lockout window, a successful unlock resets the counter', async () => {
+    for (let i = 0; i < 5; i++) {
+      await unlockHandler({ password: 'wrong-password' });
+    }
+    // Fast-forward: backdate the lockout expiry
+    const data = await browserMock.storage.local.get(['vaultUnlockGuard']) as any;
+    data.vaultUnlockGuard.lockedUntil = Date.now() - 1;
+    await browserMock.storage.local.set({ vaultUnlockGuard: data.vaultUnlockGuard });
+
+    assert.strictEqual(await unlockHandler({ password: TEST_PASSWORD }), true);
+
+    const after = await browserMock.storage.local.get(['vaultUnlockGuard']) as any;
+    assert.strictEqual(after.vaultUnlockGuard, undefined, 'guard reset on success');
+  });
+});
+
+// ── vault_exportNsec zeroing path ──
+
+describe('security: vault_exportNsec zeroes the key copy', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await vault.create(TEST_PASSWORD, makePayload());
+    await browserMock.storage.local.set({ activeAccountId: 'acct1' });
+  });
+
+  it('returns a valid nsec (fill(0) wrapped in try/finally)', async () => {
+    const exportHandler = vaultHandlers.get('vault_exportNsec')!;
+    const nsec = await exportHandler({});
+    assert.ok((nsec as string).startsWith('nsec1'));
+    // Vault's own copy is unaffected by the handler's zeroing
+    const pk = vault.getPrivkey('acct1')!;
+    assert.strictEqual(bytesToHex(pk), TEST_PRIVKEY_HEX);
+    pk.fill(0);
+  });
+});
+
+// ── Pending onboarding TTL survives service-worker restart ──
+
+describe('security: pending onboarding TTL enforced on read', () => {
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+    onboarding.__simulateServiceWorkerRestart();
+  });
+
+  it('pending account survives a SW restart within the TTL', async () => {
+    const validate = onboarding.handlers.get('onboarding_validateNsec')!;
+    const exportNc = onboarding.handlers.get('onboarding_exportNcryptsec')!;
+
+    await validate({ input: TEST_PRIVKEY_HEX });
+    onboarding.__simulateServiceWorkerRestart();
+
+    const enc = await exportNc({ password: 'backup-pass-123' });
+    assert.ok((enc as string).startsWith('ncryptsec1'), 'still available within TTL');
+  });
+
+  it('expired pending account is dropped after a SW restart', async () => {
+    const validate = onboarding.handlers.get('onboarding_validateNsec')!;
+    const exportNc = onboarding.handlers.get('onboarding_exportNcryptsec')!;
+
+    await validate({ input: TEST_PRIVKEY_HEX });
+
+    // Backdate createdAt beyond the 5-min TTL, then lose the in-memory timer
+    await browserMock.storage.session.set({
+      _pendingOnboardingCreatedAt: Date.now() - (6 * 60 * 1000),
+    });
+    onboarding.__simulateServiceWorkerRestart();
+
+    await assert.rejects(exportNc({ password: 'backup-pass-123' }), /No pending account/);
+
+    // Storage cleaned up on expiry
+    const data = await browserMock.storage.session.get([
+      '_pendingOnboardingAccount', '_pendingOnboardingPad', '_pendingOnboardingMasked',
+    ]) as any;
+    assert.strictEqual(data._pendingOnboardingAccount, undefined);
+    assert.strictEqual(data._pendingOnboardingPad, undefined);
+    assert.strictEqual(data._pendingOnboardingMasked, undefined);
+  });
+
+  it('persisted pending account without createdAt (pre-upgrade) is treated as expired', async () => {
+    const exportNc = onboarding.handlers.get('onboarding_exportNcryptsec')!;
+    await browserMock.storage.session.set({
+      _pendingOnboardingAccount: { id: 'x', type: 'nsec', pubkey: TEST_PUBKEY_HEX, privkey: null },
+    });
+    await assert.rejects(exportNc({ password: 'backup-pass-123' }), /No pending account/);
   });
 });
 

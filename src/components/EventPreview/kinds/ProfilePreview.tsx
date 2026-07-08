@@ -1,5 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
+import { safeImageUrl } from '@shared/safeUrl.js';
 import Avatar from '@components/Avatar/Avatar';
 import styles from '../EventPreview.module.css';
 
@@ -30,14 +31,16 @@ export default function ProfilePreview({ event }: ProfilePreviewProps) {
     const meta: ProfileMeta = JSON.parse(event.content);
     const displayName = meta.name || meta.display_name || '';
     const initial = displayName ? displayName[0].toUpperCase() : '?';
+    // Banner comes from untrusted event content — only render http(s) URLs.
+    const bannerUrl = safeImageUrl(meta.banner);
 
     return (
       <>
         <h3 className={styles.sectionTitle}>{t('event.profileUpdate')}</h3>
         <div className={styles.profileCard}>
-          {meta.banner && (
+          {bannerUrl && (
             <div className={styles.profileBanner}>
-              <img src={meta.banner} alt="" />
+              <img src={bannerUrl} alt="" />
             </div>
           )}
           <div className={styles.profileHeader}>

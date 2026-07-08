@@ -83,6 +83,13 @@ interface WalletProvider {
 
 - Parses `nostr+walletconnect://` connection string (pubkey + relay + secret)
 - Communicates via NIP-47 encrypted events over Nostr relays
+- Amounts: the `WalletProvider` interface is denominated in **sats**; NIP-47 wire
+  amounts are millisatoshis — `make_invoice` multiplies by 1000, responses
+  (`get_balance`, `lookup_invoice`, `list_transactions`) divide by 1000
+- Responses (kind 23195) are trusted only if the pubkey matches the wallet
+  service, the signature verifies (`verifyEvent`), and the content decrypts;
+  the pending request is only consumed by such a response (see
+  `docs/security.md` §13)
 - Crypto dependencies injected at runtime (cannot be constructed by the factory directly)
 - Created externally via `createNwcProvider()`, then registered with `setWalletProvider()`
 
@@ -90,6 +97,8 @@ interface WalletProvider {
 
 - Connects to a configurable LNbits instance URL
 - REST API with admin key in `X-Api-Key` header
+- HTTPS-only: requests throw for any non-`https://` instance URL except
+  `http://localhost` / `http://127.0.0.1` (see `docs/security.md` §15)
 - Endpoints: `GET /api/v1/wallet` (balance), `POST /api/v1/payments` (pay/create invoice), `GET /api/v1/payments` (transactions)
 
 ### 4.3 Provider Factory (`index.ts`)
@@ -162,8 +171,8 @@ Injected as `window.webln` in inject.ts:
 ```typescript
 window.webln = {
   enabled: false,
-  enable(): Promise<void>,
-  getInfo(): Promise<{ node: { alias: string; pubkey: string } }>,
+  enable(): Promise<void>,               // opens the Connect popup; resolves only after the user approves
+  getInfo(): Promise<{ node: { alias: string; pubkey: string } }>,  // pubkey is always "" — the Nostr identity is never exposed here
   sendPayment(paymentRequest: string): Promise<{ preimage: string }>,
   makeInvoice(args: { amount: number; defaultMemo?: string }): Promise<{ paymentRequest: string }>,
   getBalance(): Promise<{ balance: number }>,
@@ -203,20 +212,53 @@ Same structure as NIP-07, stored per-domain per-account:
 }
 ```
 
-### 7.2 Auto-Approve Threshold
+### 7.2 WebLN Consent (`weblnAllowedDomains`)
 
-Per-account setting stored in `browser.storage.local` at key `walletThreshold_{accountId}`:
+WebLN access is a **separate consent** from the NIP-07 connect. A site that is
+merely NIP-07-connected (e.g. via `getPublicKey`) cannot see the wallet at all.
 
-- Payments at or below threshold: auto-approve (no popup)
-- Payments above threshold: show approval popup
-- Default: `0` (always prompt)
+- Stored in `browser.storage.local` at key `weblnAllowedDomains` (list of
+  origins), managed by `lib/bg/domain-handlers.ts`
+  (`getWeblnAllowedDomains` / `addWeblnAllowedDomain` / `isWeblnAllowed` /
+  `removeWeblnAllowedDomain`).
+- Recorded by the `webln_enable` handler after the user approves the
+  "Connect this site" card for that origin.
+- Every other `webln_*` method (`getInfo`, `getBalance`, `sendPayment`,
+  `makeInvoice`) is gated on this list in `background.ts` — a site that never
+  called `enable()` gets "Site not connected".
+- Disconnecting a site (`removeAllowedDomain`) also revokes its WebLN consent,
+  so a re-connected site must call `enable()` again.
 
-### 7.3 Payment Approval
+### 7.3 Auto-Approve Threshold
+
+Per-account setting stored in `browser.storage.local` at key `walletThreshold_{accountId}`.
+
+A `sendPayment` is auto-approved **without a prompt only when ALL of these
+hold**:
+
+- the BOLT11 invoice amount decoded successfully and is greater than `0`, AND
+- a threshold is set (`> 0`), AND
+- the invoice amount is at or below the threshold.
+
+The cap applies **regardless of a remembered "allow"**: a saved `'allow'`
+permission means "don't ask again for amounts within my threshold", never
+"unlimited". In every other case the interactive approval prompt is required,
+even when the saved permission is `'allow'`:
+
+- amount above the threshold,
+- no threshold set (default `0` = always prompt),
+- the invoice amount could not be decoded (unknown/zero amount).
+
+Net effect: a site can never drain the wallet from a remembered allow —
+amounts above the threshold and undecodable amounts always prompt.
+
+### 7.4 Payment Approval
 
 Extends the existing signer prompt system:
-- `sendPayment` requests go through permission check
-- If permission is `'ask'`, a prompt is queued via `signer.queueRequest()` with type `webln_sendPayment`
+- `sendPayment` requests go through permission check (`deny` rejects outright)
+- Unless auto-approved within the threshold (7.3), a prompt is queued via `signer.queueRequest()` with type `webln_sendPayment`
 - User sees amount, domain, and can approve/deny with optional "remember" checkbox
+- "Remember" saves `'allow'`, which only enables threshold-capped auto-approval (see 7.3)
 
 ---
 

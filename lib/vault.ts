@@ -110,6 +110,20 @@ async function decrypt(key: CryptoKey, iv: Uint8Array, ciphertext: Uint8Array): 
   return new TextDecoder().decode(plaintext);
 }
 
+/**
+ * Zero all in-memory key material in the current decrypted payload (if any).
+ * Called on lock() and before any code path REPLACES `_decrypted` (create()
+ * during password/lock-mode transitions, unlock() while already unlocked) so
+ * stale key bytes never linger in the heap.
+ */
+function zeroDecryptedKeys(): void {
+  if (!_decrypted) return;
+  for (const acct of _decrypted.accounts) {
+    if (acct.privkeyBytes) acct.privkeyBytes.fill(0);
+    if (acct.mnemonicBytes) acct.mnemonicBytes.fill(0);
+  }
+}
+
 function resetAutoLock(): void {
   if (_autoLockTimer) clearTimeout(_autoLockTimer);
   if (_cryptoKey && _autoLockMs > 0) {
@@ -185,6 +199,9 @@ export async function create(password: string, payload: VaultPayload): Promise<v
   });
 
   _cryptoKey = key;
+  // Password-change / lock-mode transitions call create() while already
+  // unlocked: zero the old key buffers before dropping the reference.
+  zeroDecryptedKeys();
   _decrypted = {
     accounts: payload.accounts.map(toMemoryAccount),
     activeAccountId: payload.activeAccountId,
@@ -212,6 +229,10 @@ export async function unlock(password: string): Promise<boolean> {
   try {
     const json = await decrypt(key, iv, ciphertext);
     const parsed = JSON.parse(json) as VaultPayload;
+    // Password re-verification while already unlocked (e.g. change-password
+    // flow) replaces _decrypted: zero the old buffers first. Only done AFTER a
+    // successful decrypt — a failed unlock must not wipe the current session.
+    zeroDecryptedKeys();
     _decrypted = {
       accounts: parsed.accounts.map(toMemoryAccount),
       activeAccountId: parsed.activeAccountId,
@@ -251,12 +272,7 @@ export async function restoreAutoLockSetting(): Promise<void> {
  * Lock the vault -- clear decrypted data from memory
  */
 export function lock(): void {
-  if (_decrypted) {
-    for (const acct of _decrypted.accounts) {
-      if (acct.privkeyBytes) acct.privkeyBytes.fill(0);
-      if (acct.mnemonicBytes) acct.mnemonicBytes.fill(0);
-    }
-  }
+  zeroDecryptedKeys();
   _decrypted = null;
   _cryptoKey = null;
   if (_autoLockTimer) {

@@ -26,10 +26,22 @@ export class LnbitsProvider implements WalletProvider {
     this.fetchFn = fetchFn ?? globalThis.fetch.bind(globalThis);
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    if (this.instanceUrl.startsWith('http://') && !this.instanceUrl.startsWith('http://localhost')) {
-      console.warn('[LNbits] WARNING: Using insecure HTTP connection. Admin key may be exposed.');
+  /**
+   * Refuses to send the admin key over anything but HTTPS. Plain HTTP is only
+   * allowed for local development targets (localhost / 127.0.0.1).
+   */
+  private assertSecureUrl(): void {
+    if (this.instanceUrl.startsWith('https://')) return;
+    if (this.instanceUrl.startsWith('http://')) {
+      let hostname = '';
+      try { hostname = new URL(this.instanceUrl).hostname; } catch { /* fall through to throw */ }
+      if (hostname === 'localhost' || hostname === '127.0.0.1') return;
     }
+    throw new Error('LNbits: refusing to send admin key over insecure connection — use https://');
+  }
+
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    this.assertSecureUrl();
     const url = `${this.instanceUrl}${path}`;
     const init: RequestInit = {
       method,

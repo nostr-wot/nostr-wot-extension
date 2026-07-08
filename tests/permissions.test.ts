@@ -11,12 +11,20 @@ describe('permissions -- check cascade', () => {
     assert.strictEqual(result, 'ask');
   });
 
-  it('returns kind-specific permission (most specific)', async () => {
+  it('returns kind-specific permission when no other level denies', async () => {
+    await permissions.save('example.com', 'signEvent', 1, 'allow');
+    await permissions.save('example.com', 'signEvent', 7, 'deny');
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'allow');
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 7), 'deny');
+    // Kind with no entry falls through to ask
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 0), 'ask');
+  });
+
+  it('deny wins: kind-specific allow does NOT override method-level deny', async () => {
     await permissions.save('example.com', 'signEvent', 1, 'allow');
     await permissions.save('example.com', 'signEvent', null, 'deny');
-    // Kind 1 should be allow (more specific)
-    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'allow');
-    // Kind 0 should fall through to method-level deny
+    // Method-level deny short-circuits, even though signEvent:1 is allow
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'deny');
     assert.strictEqual(await permissions.check('example.com', 'signEvent', 0), 'deny');
   });
 
@@ -30,20 +38,34 @@ describe('permissions -- check cascade', () => {
     assert.strictEqual(await permissions.check('example.com', 'nip04Encrypt'), 'deny');
   });
 
-  it('cascade order: kind > method > wildcard > ask', async () => {
-    // Set wildcard allow
+  it('cascade order without deny: kind > method > wildcard > ask', async () => {
+    // Wildcard allow applies when nothing more specific exists
     await permissions.save('example.com', '*', null, 'allow');
     assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'allow');
 
-    // Set method-level deny (overrides wildcard)
-    await permissions.save('example.com', 'signEvent', null, 'deny');
-    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'deny');
-
-    // Set kind-level allow (overrides method)
+    // A more specific 'ask' cannot be stored (only allow/deny), so verify the
+    // specific-wins order with allow values across levels: kind entry read first
     await permissions.save('example.com', 'signEvent', 1, 'allow');
     assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'allow');
-    // Kind 0 still denied at method level
-    assert.strictEqual(await permissions.check('example.com', 'signEvent', 0), 'deny');
+  });
+
+  it('deny wins at ANY consulted level (kind, method, or wildcard)', async () => {
+    // Wildcard deny blocks a method-level allow
+    await permissions.save('example.com', '*', null, 'deny');
+    await permissions.save('example.com', 'signEvent', null, 'allow');
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'deny');
+
+    // ...and blocks a kind-level allow too
+    await permissions.save('example.com', 'signEvent', 1, 'allow');
+    assert.strictEqual(await permissions.check('example.com', 'signEvent', 1), 'deny');
+
+    // Kind-level deny blocks even if method and wildcard allow
+    await permissions.save('other.com', '*', null, 'allow');
+    await permissions.save('other.com', 'signEvent', null, 'allow');
+    await permissions.save('other.com', 'signEvent', 1, 'deny');
+    assert.strictEqual(await permissions.check('other.com', 'signEvent', 1), 'deny');
+    // Other kinds unaffected: method allow applies
+    assert.strictEqual(await permissions.check('other.com', 'signEvent', 0), 'allow');
   });
 });
 

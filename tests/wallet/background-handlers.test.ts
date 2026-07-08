@@ -27,6 +27,9 @@ import {
 import type { WalletProvider, WalletProviderInfo, WalletConfig } from '../../lib/wallet/types.ts';
 import type { VaultPayload } from '../../lib/types.ts';
 import { npubEncode } from '../../lib/crypto/bech32.ts';
+import {
+  addWeblnAllowedDomain, isWeblnAllowed,
+} from '../../lib/bg/domain-handlers.ts';
 
 // ── Test Constants ──
 
@@ -104,18 +107,45 @@ function makePayloadNoWallet(): VaultPayload {
 type HandlerResult = { result: unknown; error: string | null };
 
 async function handleWeblnEnable(params?: { origin?: string }): Promise<HandlerResult> {
-  // Add domain to allowlist (the WebLN connection handshake)
-  const origin = params?.origin;
-  if (origin) {
-    const { default: browser } = await import('../helpers/browser-mock.ts');
-    const data = await browser.storage.local.get('allowedDomains') as Record<string, string[]>;
-    const domains: string[] = data.allowedDomains || [];
-    if (!domains.includes(origin)) {
-      domains.push(origin);
-      await browser.storage.local.set({ allowedDomains: domains });
-    }
-  }
+  // The handler does not grant the NIP-07 domain: consent (and the
+  // domain-allowlist write) happen in the background "Connect this site" gate,
+  // driven by an explicit user click. Reaching this handler means the origin
+  // is user-approved — the handler then records the WebLN-specific consent
+  // (weblnAllowedDomains) that gates every other webln_* method, and acks.
+  // Uses the REAL addWeblnAllowedDomain from lib/bg/domain-handlers.ts.
+  if (params?.origin) await addWeblnAllowedDomain(params.origin);
   return { result: true, error: null };
+}
+
+// ── Background WebLN gate simulation ──
+//
+// Replicates the WebLN gate from background.ts handleRequest(). enable() on an
+// un-connected origin needs user consent (popup); every OTHER WebLN method
+// requires the origin to be in weblnAllowedDomains (recorded by the enable()
+// handler after the user's Connect click) — being NIP-07 connected
+// (allowedDomains) alone is NOT enough.
+type GateResult = { pass: boolean; needsConsent: boolean; error: string | null };
+
+function simulateWeblnGate(
+  method: string,
+  origin: string | undefined,
+  allowedDomains: string[],
+  weblnAllowedDomains: string[] = [],
+  dismissedDomains: string[] = [],
+): GateResult {
+  if (!method.startsWith('webln_')) return { pass: true, needsConsent: false, error: null };
+  if (!origin) return { pass: false, needsConsent: false, error: 'Site not connected' };
+  if (method === 'webln_enable') {
+    if (allowedDomains.includes(origin)) return { pass: true, needsConsent: false, error: null };
+    if (!dismissedDomains.includes(origin)) {
+      // Would open the Connect popup and wait; the user's approval (not the
+      // handler) adds the domain. Un-approved => access denied.
+      return { pass: false, needsConsent: true, error: 'WebLN access denied' };
+    }
+    return { pass: false, needsConsent: false, error: 'Site not connected' };
+  }
+  if (weblnAllowedDomains.includes(origin)) return { pass: true, needsConsent: false, error: null };
+  return { pass: false, needsConsent: false, error: 'Site not connected' };
 }
 
 async function handleWeblnGetInfo(): Promise<HandlerResult> {
@@ -129,7 +159,8 @@ async function handleWeblnGetInfo(): Promise<HandlerResult> {
     const info = await provider.getInfo();
     return {
       result: {
-        node: { alias: info.alias || '', pubkey: acct.pubkey },
+        // pubkey intentionally empty: never leak the Nostr identity via WebLN.
+        node: { alias: info.alias || '', pubkey: '' },
         supports: ['lightning'],
         methods: ['getInfo', 'sendPayment', 'makeInvoice', 'getBalance'],
       },
@@ -155,28 +186,71 @@ async function handleWeblnGetBalance(): Promise<HandlerResult> {
   }
 }
 
+// Replicates lib/bg/wallet-handlers.ts webln_sendPayment. invoiceAmountSats is
+// injected in place of decodeBolt11 (0 = decode failed / no amount), and
+// promptFn stands in for signer.queueRequest so tests never hang on a real
+// prompt. Semantics under test: auto-approve WITHOUT a prompt ONLY when the
+// amount decoded AND a threshold is set AND amount <= threshold — regardless
+// of a remembered 'allow' (which is threshold-capped, never unlimited). Every
+// other case must go through the interactive prompt.
+type PromptDecision = { allow: boolean; remember?: boolean };
+
 async function handleWeblnSendPayment(params: {
   paymentRequest?: string;
   origin?: string;
-}): Promise<HandlerResult> {
+  invoiceAmountSats?: number;
+  promptFn?: () => Promise<PromptDecision>;
+}): Promise<HandlerResult & { prompted: boolean }> {
   const { paymentRequest, origin } = params;
-  if (!paymentRequest) return { result: null, error: 'Missing paymentRequest' };
-  if (vault.isLocked()) return { result: null, error: 'Vault is locked' };
+  const invoiceAmountSats = params.invoiceAmountSats ?? 0;
+  const promptFn = params.promptFn
+    ?? (async () => { throw new Error('unexpected prompt'); });
+  if (!paymentRequest) return { result: null, error: 'Missing paymentRequest', prompted: false };
+  if (vault.isLocked()) return { result: null, error: 'Vault is locked', prompted: false };
   const acct = vault.getActiveAccountWithWallet();
-  if (!acct?.walletConfig) return { result: null, error: 'No wallet configured' };
+  if (!acct?.walletConfig) return { result: null, error: 'No wallet configured', prompted: false };
   const provider = getWalletProvider(acct.id, acct.walletConfig);
-  if (!provider) return { result: null, error: 'Wallet provider not available' };
+  if (!provider) return { result: null, error: 'Wallet provider not available', prompted: false };
 
   const perm = await permissions.check(origin || '', 'webln_sendPayment');
-  if (perm === 'deny') return { result: null, error: 'Permission denied' };
-  // 'ask' would queue for approval — skip in tests to avoid hanging
+  if (perm === 'deny') return { result: null, error: 'Permission denied', prompted: false };
+
+  // Auto-approve only within the stored per-account threshold — even for
+  // a remembered 'allow'.
+  let autoApproved = false;
+  if (invoiceAmountSats > 0) {
+    const acctId = vault.getActiveAccountId();
+    if (acctId) {
+      const { default: browser } = await import('../helpers/browser-mock.ts');
+      const data = await browser.storage.local.get(`walletThreshold_${acctId}`) as Record<string, number>;
+      const threshold = data[`walletThreshold_${acctId}`] || 0;
+      if (threshold > 0 && invoiceAmountSats <= threshold) {
+        autoApproved = true;
+      }
+    }
+  }
+
+  let prompted = false;
+  if (!autoApproved) {
+    prompted = true;
+    let decision: PromptDecision;
+    try {
+      decision = await promptFn();
+    } catch (e) {
+      return { result: null, error: (e as Error).message, prompted };
+    }
+    if (!decision.allow) return { result: null, error: 'Payment denied by user', prompted };
+    if (decision.remember) {
+      await permissions.save(origin || '', 'webln_sendPayment', null, 'allow');
+    }
+  }
 
   try {
     if (!provider.isConnected()) await provider.connect();
     const result = await provider.payInvoice(paymentRequest);
-    return { result, error: null };
+    return { result, error: null, prompted };
   } catch (e) {
-    return { result: null, error: (e as Error).message };
+    return { result: null, error: (e as Error).message, prompted };
   }
 }
 
@@ -378,26 +452,130 @@ describe('wallet handlers: webln_enable', () => {
     assert.strictEqual(r.error, null);
   });
 
-  it('adds origin to allowed domains list', async () => {
+  it('does NOT silently grant the origin (consent happens in the gate)', async () => {
     await handleWeblnEnable({ origin: 'coracle.social' });
     const { default: browser } = await import('../helpers/browser-mock.ts');
     const data = await browser.storage.local.get('allowedDomains') as Record<string, string[]>;
-    assert.ok(data.allowedDomains.includes('coracle.social'));
+    const allowed: string[] = data.allowedDomains || [];
+    assert.ok(!allowed.includes('coracle.social'),
+      'enable() must not add the domain by itself — the user Connect click does');
   });
 
-  it('does not duplicate domain if already allowed', async () => {
+  it('records WebLN consent for the origin (weblnAllowedDomains)', async () => {
+    assert.strictEqual(await isWeblnAllowed('coracle.social'), false);
     await handleWeblnEnable({ origin: 'coracle.social' });
-    await handleWeblnEnable({ origin: 'coracle.social' });
+    assert.strictEqual(await isWeblnAllowed('coracle.social'), true);
     const { default: browser } = await import('../helpers/browser-mock.ts');
-    const data = await browser.storage.local.get('allowedDomains') as Record<string, string[]>;
-    const count = data.allowedDomains.filter((d: string) => d === 'coracle.social').length;
-    assert.strictEqual(count, 1);
+    const data = await browser.storage.local.get('weblnAllowedDomains') as Record<string, string[]>;
+    assert.ok((data.weblnAllowedDomains || []).includes('coracle.social'));
   });
 
   it('returns true when origin is missing', async () => {
     const r = await handleWeblnEnable({});
     assert.strictEqual(r.result, true);
     assert.strictEqual(r.error, null);
+  });
+});
+
+describe('wallet handlers: WebLN background gate (consent)', () => {
+  it('enable on an un-connected origin requires user consent, not silent grant', () => {
+    const g = simulateWeblnGate('webln_enable', 'zap.store', []);
+    assert.strictEqual(g.pass, false);
+    assert.strictEqual(g.needsConsent, true);
+    assert.strictEqual(g.error, 'WebLN access denied');
+  });
+
+  it('enable passes once the origin is user-approved (in allowlist)', () => {
+    const g = simulateWeblnGate('webln_enable', 'zap.store', ['zap.store']);
+    assert.strictEqual(g.pass, true);
+    assert.strictEqual(g.needsConsent, false);
+  });
+
+  it('enable on a previously dismissed origin is silently rejected (no popup)', () => {
+    const g = simulateWeblnGate('webln_enable', 'zap.store', [], [], ['zap.store']);
+    assert.strictEqual(g.pass, false);
+    assert.strictEqual(g.needsConsent, false);
+    assert.strictEqual(g.error, 'Site not connected');
+  });
+
+  it('getBalance on an un-connected origin is blocked and never pops UI', () => {
+    const g = simulateWeblnGate('webln_getBalance', 'evil.example', []);
+    assert.strictEqual(g.pass, false);
+    assert.strictEqual(g.needsConsent, false);
+    assert.strictEqual(g.error, 'Site not connected');
+  });
+
+  it('getInfo on an un-connected origin is blocked (no silent identity/balance leak)', () => {
+    const g = simulateWeblnGate('webln_getInfo', 'evil.example', []);
+    assert.strictEqual(g.pass, false);
+    assert.strictEqual(g.error, 'Site not connected');
+  });
+
+  it('WebLN read methods are blocked for a NIP-07-connected site that never called enable()', () => {
+    // In allowedDomains (NIP-07 connect via getPublicKey) but NOT in
+    // weblnAllowedDomains: the wallet must stay invisible.
+    for (const m of ['webln_getInfo', 'webln_getBalance', 'webln_sendPayment', 'webln_makeInvoice']) {
+      const g = simulateWeblnGate(m, 'nostr.example', ['nostr.example'], []);
+      assert.strictEqual(g.pass, false, `${m} must be blocked without WebLN consent`);
+      assert.strictEqual(g.error, 'Site not connected');
+    }
+  });
+
+  it('WebLN methods pass once the origin has WebLN consent (post-enable)', () => {
+    for (const m of ['webln_getInfo', 'webln_getBalance', 'webln_sendPayment', 'webln_makeInvoice']) {
+      const g = simulateWeblnGate(m, 'zap.store', ['zap.store'], ['zap.store']);
+      assert.strictEqual(g.pass, true, `${m} should pass for a WebLN-consented origin`);
+    }
+  });
+
+  it('WebLN reads become allowed after enable() records the consent', async () => {
+    resetMockStorage();
+    // Gate blocks before enable...
+    assert.strictEqual(await isWeblnAllowed('zap.store'), false);
+    // ...user approves the Connect card, enable() handler runs and records:
+    await handleWeblnEnable({ origin: 'zap.store' });
+    assert.strictEqual(await isWeblnAllowed('zap.store'), true);
+    const g = simulateWeblnGate('webln_getBalance', 'zap.store', ['zap.store'], ['zap.store']);
+    assert.strictEqual(g.pass, true);
+  });
+
+  it('missing origin is rejected for every WebLN method', () => {
+    for (const m of ['webln_enable', 'webln_getInfo', 'webln_getBalance']) {
+      const g = simulateWeblnGate(m, undefined, []);
+      assert.strictEqual(g.pass, false, `${m} must reject a missing origin`);
+    }
+  });
+});
+
+// ── Port channel privilege gate simulation ──
+//
+// Replicates the onConnect gate from background.ts: the port channel is
+// exposed to content scripts on arbitrary pages, so only nip07_/webln_
+// methods may cross it — privileged methods are rejected with
+// "Permission denied" before dispatch, even if content.ts regresses.
+function portMethodAllowed(method: string | undefined): boolean {
+  return !!(method?.startsWith('nip07_') || method?.startsWith('webln_'));
+}
+
+describe('wallet handlers: port channel privilege gate', () => {
+  it('allows NIP-07 and WebLN methods over the port', () => {
+    for (const m of ['nip07_getPublicKey', 'nip07_signEvent', 'webln_enable', 'webln_getBalance']) {
+      assert.strictEqual(portMethodAllowed(m), true, `${m} should be allowed over the port`);
+    }
+  });
+
+  it('rejects privileged methods over the port', () => {
+    for (const m of [
+      'vault_unlock', 'vault_export', 'signer_resolve',
+      'wallet_getBalance', 'wallet_payInvoice', 'wallet_setAutoApproveThreshold',
+      'addAllowedDomain', 'configUpdated',
+    ]) {
+      assert.strictEqual(portMethodAllowed(m), false, `${m} must be rejected over the port`);
+    }
+  });
+
+  it('rejects a missing method', () => {
+    assert.strictEqual(portMethodAllowed(undefined), false);
   });
 });
 
@@ -410,14 +588,21 @@ describe('wallet handlers: webln_getInfo', () => {
     setWalletProvider('acct1', createMockProvider());
   });
 
-  it('returns node info with alias and pubkey on success', async () => {
+  it('returns node info without leaking the Nostr identity pubkey', async () => {
     const r = await handleWeblnGetInfo();
     assert.deepStrictEqual(r.result, {
-      node: { alias: 'TestWallet', pubkey: TEST_PUBKEY_HEX },
+      node: { alias: 'TestWallet', pubkey: '' },
       supports: ['lightning'],
       methods: ['getInfo', 'sendPayment', 'makeInvoice', 'getBalance'],
     });
     assert.strictEqual(r.error, null);
+  });
+
+  it('never returns the account pubkey (deanonymization guard)', async () => {
+    const r = await handleWeblnGetInfo();
+    const node = (r.result as { node: { pubkey: string } }).node;
+    assert.notStrictEqual(node.pubkey, TEST_PUBKEY_HEX);
+    assert.strictEqual(node.pubkey, '');
   });
 
   it('auto-connects provider if not connected', async () => {
@@ -498,6 +683,14 @@ describe('wallet handlers: webln_getBalance', () => {
 });
 
 describe('wallet handlers: webln_sendPayment', () => {
+  const approve = async () => ({ allow: true });
+  const deny = async () => ({ allow: false });
+
+  async function setThreshold(sats: number): Promise<void> {
+    const { default: browser } = await import('../helpers/browser-mock.ts');
+    await browser.storage.local.set({ walletThreshold_acct1: sats });
+  }
+
   beforeEach(async () => {
     resetMockStorage();
     clearWalletProviders();
@@ -507,12 +700,74 @@ describe('wallet handlers: webln_sendPayment', () => {
     await permissions.save('example.com', 'webln_sendPayment', null, 'allow');
   });
 
-  it('returns preimage on success', async () => {
+  it('auto-approves without a prompt when amount is within the threshold', async () => {
+    await setThreshold(1000);
     const r = await handleWeblnSendPayment({
-      paymentRequest: 'lnbc1...', origin: 'example.com',
+      paymentRequest: 'lnbc1...', origin: 'example.com', invoiceAmountSats: 500,
     });
     assert.deepStrictEqual(r.result, { preimage: 'abc123' });
     assert.strictEqual(r.error, null);
+    assert.strictEqual(r.prompted, false);
+  });
+
+  it('prompts when amount exceeds the threshold — even with a remembered allow', async () => {
+    await setThreshold(1000);
+    const r = await handleWeblnSendPayment({
+      paymentRequest: 'lnbc1...', origin: 'example.com',
+      invoiceAmountSats: 5000, promptFn: approve,
+    });
+    assert.strictEqual(r.prompted, true, 'over-threshold must always prompt');
+    assert.deepStrictEqual(r.result, { preimage: 'abc123' });
+  });
+
+  it('prompts when no threshold is set — even with a remembered allow', async () => {
+    const r = await handleWeblnSendPayment({
+      paymentRequest: 'lnbc1...', origin: 'example.com',
+      invoiceAmountSats: 1, promptFn: approve,
+    });
+    assert.strictEqual(r.prompted, true, 'no threshold means every payment prompts');
+    assert.deepStrictEqual(r.result, { preimage: 'abc123' });
+  });
+
+  it('prompts when the amount could not be decoded (0) — even within a threshold', async () => {
+    await setThreshold(100000);
+    const r = await handleWeblnSendPayment({
+      paymentRequest: 'lnbc1...', origin: 'example.com',
+      invoiceAmountSats: 0, promptFn: approve,
+    });
+    assert.strictEqual(r.prompted, true, 'unknown amounts must always prompt');
+    assert.deepStrictEqual(r.result, { preimage: 'abc123' });
+  });
+
+  it('a remembered allow can never drain the wallet: prompt denial blocks the payment', async () => {
+    await setThreshold(21);
+    let paid = false;
+    setWalletProvider('acct1', createMockProvider({
+      async payInvoice() { paid = true; return { preimage: 'x' }; },
+      isConnected() { return true; },
+    }));
+    const r = await handleWeblnSendPayment({
+      paymentRequest: 'lnbc1...', origin: 'example.com',
+      invoiceAmountSats: 1_000_000, promptFn: deny,
+    });
+    assert.strictEqual(r.result, null);
+    assert.strictEqual(r.error, 'Payment denied by user');
+    assert.strictEqual(paid, false, 'payInvoice must not run after denial');
+  });
+
+  it('prompt "remember" saves an allow that is still threshold-capped', async () => {
+    const r1 = await handleWeblnSendPayment({
+      paymentRequest: 'lnbc1...', origin: 'zap.example',
+      invoiceAmountSats: 50, promptFn: async () => ({ allow: true, remember: true }),
+    });
+    assert.strictEqual(r1.prompted, true);
+    assert.strictEqual(await permissions.check('zap.example', 'webln_sendPayment'), 'allow');
+    // Saved allow + no threshold: the next payment still prompts.
+    const r2 = await handleWeblnSendPayment({
+      paymentRequest: 'lnbc1...', origin: 'zap.example',
+      invoiceAmountSats: 50, promptFn: approve,
+    });
+    assert.strictEqual(r2.prompted, true, 'remembered allow without threshold still prompts');
   });
 
   it('returns error when paymentRequest is missing', async () => {
@@ -540,22 +795,24 @@ describe('wallet handlers: webln_sendPayment', () => {
     assert.strictEqual(r.error, 'No wallet configured');
   });
 
-  it('returns error when permission is denied', async () => {
+  it('returns error when permission is denied (no prompt, no payment)', async () => {
     await permissions.save('blocked.com', 'webln_sendPayment', null, 'deny');
     const r = await handleWeblnSendPayment({
-      paymentRequest: 'lnbc1...', origin: 'blocked.com',
+      paymentRequest: 'lnbc1...', origin: 'blocked.com', invoiceAmountSats: 10,
     });
     assert.strictEqual(r.result, null);
     assert.strictEqual(r.error, 'Permission denied');
+    assert.strictEqual(r.prompted, false);
   });
 
   it('returns error when provider throws on payInvoice', async () => {
+    await setThreshold(1000);
     setWalletProvider('acct1', createMockProvider({
       async payInvoice() { throw new Error('Insufficient balance'); },
       isConnected() { return true; },
     }));
     const r = await handleWeblnSendPayment({
-      paymentRequest: 'lnbc1...', origin: 'example.com',
+      paymentRequest: 'lnbc1...', origin: 'example.com', invoiceAmountSats: 100,
     });
     assert.strictEqual(r.result, null);
     assert.strictEqual(r.error, 'Insufficient balance');

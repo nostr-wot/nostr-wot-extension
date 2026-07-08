@@ -171,6 +171,68 @@ describe('LnbitsProvider', () => {
     });
   });
 
+  describe('transport security', () => {
+    it('refuses to send the admin key over plain HTTP to a remote host', async () => {
+      let fetchCalled = false;
+      const fn = async (_url: string, _init?: RequestInit) => {
+        fetchCalled = true;
+        return new Response('{}', { status: 200 });
+      };
+      const provider = new LnbitsProvider(
+        { instanceUrl: 'http://lnbits.example.com', adminKey: 'secretkey' },
+        fn,
+      );
+      await assert.rejects(() => provider.getBalance(), (err: Error) => {
+        assert.match(err.message, /insecure/);
+        return true;
+      });
+      assert.equal(fetchCalled, false, 'admin key must never be sent over plain HTTP');
+    });
+
+    it('rejects non-http(s) schemes', async () => {
+      const provider = new LnbitsProvider(
+        { instanceUrl: 'ftp://lnbits.example.com', adminKey: 'secretkey' },
+        mockFetch({ balance: 0 }),
+      );
+      await assert.rejects(() => provider.getBalance(), /insecure/);
+    });
+
+    it('rejects HTTP hosts that merely start with "localhost"', async () => {
+      const provider = new LnbitsProvider(
+        { instanceUrl: 'http://localhost.evil.com', adminKey: 'secretkey' },
+        mockFetch({ balance: 0 }),
+      );
+      await assert.rejects(() => provider.getBalance(), /insecure/);
+    });
+
+    it('allows plain HTTP to localhost for local development', async () => {
+      const provider = new LnbitsProvider(
+        { instanceUrl: 'http://localhost:5000', adminKey: 'key' },
+        mockFetch({ balance: 42_000 }),
+      );
+      const result = await provider.getBalance();
+      assert.deepEqual(result, { balance: 42 });
+    });
+
+    it('allows plain HTTP to 127.0.0.1 for local development', async () => {
+      const provider = new LnbitsProvider(
+        { instanceUrl: 'http://127.0.0.1:5000', adminKey: 'key' },
+        mockFetch({ balance: 42_000 }),
+      );
+      const result = await provider.getBalance();
+      assert.deepEqual(result, { balance: 42 });
+    });
+
+    it('allows HTTPS to any host', async () => {
+      const provider = new LnbitsProvider(
+        { instanceUrl: 'https://lnbits.example.com', adminKey: 'key' },
+        mockFetch({ balance: 1000 }),
+      );
+      const result = await provider.getBalance();
+      assert.deepEqual(result, { balance: 1 });
+    });
+  });
+
   describe('URL normalization', () => {
     it('strips trailing slash from instanceUrl', async () => {
       const { fn, getCapturedUrl } = capturingFetch({ balance: 0 });

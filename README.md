@@ -48,7 +48,7 @@ From the popup you can manage the account-level data that follows you across cli
 
 - **Profile (kind:0)** — edit your display name, picture, and other NIP-01 metadata and publish it.
 - **Mute list (NIP-51 kind:10000)** — manage your *own* mute list: mute people, words, and hashtags. The extension fetches your existing list from your relays, lets you edit it, and publishes a signed replaceable event. Private (NIP-44-encrypted) entries in the list content are preserved verbatim.
-- **Relays (NIP-65 kind:10002)** — edit your read/write relay list (outbox model). Relay-aware clients can also read this via `window.nostr.wot.getRelayList` / `getRelayPool`.
+- **Relays (NIP-65 kind:10002)** — edit your read/write relay list (outbox model). Relay-aware clients read this through the standard NIP-07 `window.nostr.getRelays()`.
 
 ### Multi-Account Support
 
@@ -60,20 +60,7 @@ Switch between multiple identities. Each account has its own permissions, wallet
 - Disable identity on specific sites
 - Manage signing permissions per domain. Permissions can be **shared across all accounts** (the default) or **isolated per account**.
 
----
-
-## Relay-list API
-
-The extension exposes a small `window.nostr.wot` surface so relay-aware web apps can read your stored NIP-65 relay data (the outbox model):
-
-```javascript
-if (window.nostr?.wot) {
-  const relays = await window.nostr.wot.getRelayList(targetPubkey); // [{ url, read, write }, ...] or null
-  const pool = await window.nostr.wot.getRelayPool();               // aggregated relay pool
-}
-```
-
-> **Note:** Earlier versions shipped an experimental Web-of-Trust trust-graph layer (oracles, follow-graph sync, trust scoring, and page-injected trust badges). That subsystem has been removed. `window.nostr.wot` now exposes only the two relay-list helpers above.
+> **Note:** Earlier versions shipped an experimental Web-of-Trust trust-graph layer (oracles, follow-graph sync, trust scoring, a page-injected `window.nostr.wot` API, and trust badges). That subsystem has been removed. The extension now injects only the standard NIP-07 `window.nostr` and WebLN `window.webln` providers; relay data is read via `window.nostr.getRelays()`.
 
 ---
 

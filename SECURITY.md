@@ -63,20 +63,9 @@ const isInternal = sender.id === browser.runtime.id && !sender.tab;
 
 The `!sender.tab` check ensures the message originates from an extension page (popup, onboarding, prompt) and not from a content script running in a web page tab.
 
-## Rate Limiting
-
-Two layers of rate limiting protect against abuse:
-
-| Layer | Location | Limit |
-|-------|----------|-------|
-| Content script | `content.js` | 1,000 req/sec (all methods) |
-| Background | `background.js` | 10 req/sec per method (sliding window) |
-
-`vault_unlock` is included in the background rate limiter to prevent brute-force password guessing.
-
 ## Per-Account Isolation
 
-Each account gets its own IndexedDB instance (`nostr-wot-{accountId}`), preventing cross-account data leakage in the social graph.
+Signing permissions and wallet configuration are keyed per account. Private keys and wallet secrets (LNbits admin key, NWC connection string) live only inside the AES-256-GCM vault and are stripped from the `SafeAccount` objects handed to the UI. Switching accounts clears any pending signer requests and the getPublicKey approval cooldown so one identity cannot inherit another's in-flight consent.
 
 ## NIP-07 Signing Permissions
 

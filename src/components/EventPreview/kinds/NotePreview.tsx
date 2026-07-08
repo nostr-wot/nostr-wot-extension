@@ -1,6 +1,5 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import { truncate } from '@shared/format/text.ts';
 import styles from '../EventPreview.module.css';
 
 interface NostrEvent {
@@ -19,7 +18,8 @@ export default function NotePreview({ event }: NotePreviewProps) {
   return (
     <>
       <h3 className={styles.sectionTitle}>{isReply ? t('event.reply') : t('event.shortNote')}</h3>
-      <div className={styles.noteContent}>{truncate(event.content, 500)}</div>
+      {/* Full content, scrollable — the prompt must show everything being signed */}
+      <div className={styles.noteContent}>{event.content}</div>
     </>
   );
 }

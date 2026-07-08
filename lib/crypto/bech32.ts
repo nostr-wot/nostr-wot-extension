@@ -100,6 +100,9 @@ export function nprofileEncode(pubkey: string, relays: string[] = []): string {
 
   for (const relay of relays) {
     const relayBytes = new TextEncoder().encode(relay);
+    if (relayBytes.length > 255) {
+      throw new Error(`Relay URL exceeds 255-byte TLV limit: ${relay}`);
+    }
     parts.push(new Uint8Array([0x01, relayBytes.length]));
     parts.push(relayBytes);
   }

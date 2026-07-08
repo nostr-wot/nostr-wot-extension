@@ -17,8 +17,11 @@ background.ts  -->  signer.handleSignEvent(event, origin)
 [1] Get active account info from storage (accountId, accountType)
 [2] Check vault.exists() -- throw if no vault (and not nip46)
 [3] permissions.check(origin, 'signEvent', event.kind, accountId)
-    - 'deny' --> throw "Permission denied" (STOPS HERE)
-    - 'ask' --> queue for popup approval (badge shown)
+    - 'deny' --> throw "Permission denied" (STOPS HERE — for ALL account
+      types, including nip46: an explicit local deny blocks BEFORE anything
+      is routed to the remote signer)
+    - 'ask' --> queue for popup approval (badge shown); skipped for nip46
+      accounts, whose remote signer (bunker) runs its own approval flow
     - 'allow' --> proceed
 [4] If type === 'nip46' --> route to remote signer (NIP-46)
 [5] If vault.isLocked() --> queue as waitingForUnlock
@@ -50,8 +53,11 @@ The interaction between permissions and vault state:
 
 - Pending requests stored in `browser.storage.session` under key `signerPending` as an array.
 - Popup overlay shows pending requests with approve/deny buttons.
+- **Full event snapshot**: for `signEvent` prompts the pending entry carries the FULL `content` and FULL `tags` for EVERY kind (never truncated). The approval UI (`EventPreview`) renders the complete content in a scrollable block and lists every tag, so a site cannot hide payload from the user in long content or non-contact-list tags.
+- **Identity snapshot**: `getPublicKey` prompts capture the active account's pubkey and accountId at QUEUE time. On approval, if the active account no longer matches, the request is rejected (`Account switched`); otherwise the snapshotted pubkey — the one the user actually saw — is returned, never the current account's.
 - **Storage mutex**: `withStorageLock()` prevents concurrent read-modify-write races on session storage.
 - **Request timeout**: 120 seconds. Unresolved requests are auto-rejected.
+- **Per-origin cap**: an origin may have at most 5 actionable prompts pending at once (`MAX_PENDING_PER_ORIGIN`); further `queueRequest` calls from that origin are rejected with `Too many pending requests from this origin` (popup-spam / DoS guard). NIP-46 in-flight entries and unlock markers don't count.
 - **Badge count**: Shows number of pending requests needing user action.
 - Users can choose "remember" to save the permission decision, optionally scoped to a specific event kind.
 - **Batch resolve**: `resolveBatch()` resolves all pending requests for the same origin + method + kind.
@@ -60,10 +66,17 @@ The interaction between permissions and vault state:
 
 ## 4. Account Switching
 
-When the active account changes:
-1. `signer.rejectPendingForAccount(oldAccountId)` -- rejects all pending requests for the old account with `{ allow: false, reason: 'Account switched' }`
-2. This prevents signing with the wrong key if requests were queued before the switch
-3. New requests use the new active account
+EVERY code path that changes the active account calls `signer.onActiveAccountChanged(previousAccountId, newAccountId)`:
+
+- `switchAccount` and `vault_setActiveAccount` (`lib/bg/vault-handlers.ts`)
+- `vault_removeAccount` when the removed account was active
+- `onboarding_createVault`, `onboarding_addToVault`, and `onboarding_saveReadOnly` (`lib/bg/onboarding-handlers.ts`)
+
+`onActiveAccountChanged`:
+1. Clears the per-origin `getPublicKey` auto-approve cooldown (a site must never silently receive the new account's pubkey off a cooldown earned by the old one)
+2. Calls `rejectPendingForAccount(previousAccountId)` -- rejects all pending requests for the old account with `{ allow: false, reason: 'Account switched' }`
+
+This prevents signing with the wrong key — or leaking the new account's identity — if requests were queued before the switch. As defense in depth, `handleGetPublicKey` additionally snapshots the pubkey/accountId at queue time and rejects on approval if the active account changed mid-prompt (see §3). New requests use the new active account.
 
 ---
 
@@ -91,11 +104,11 @@ Permissions are stored in `browser.storage.local` under key `signerPermissions` 
 - `useGlobalDefaults=true` -> only check `_default` bucket
 - `useGlobalDefaults=false` -> only check account-specific bucket
 
-**Cascade order** (most specific wins):
-1. `signEvent:{kind}` -- kind-specific permission (e.g., `signEvent:1`)
-2. `signEvent` -- method-level permission
-3. `*` -- domain wildcard
-4. Default: `"ask"`
+**Cascade order** (deny-wins):
+1. **Deny short-circuit**: if ANY consulted level — kind-specific (`signEvent:{kind}`), method-level (`signEvent`), or wildcard (`*`) — is `deny`, the result is `deny`. A kind-specific `allow` can never override a method-level or wildcard `deny`, and a broad `*` allow cannot bypass a narrower deny.
+2. When no consulted level denies, the most specific defined value wins:
+   `signEvent:{kind}` > `signEvent` > `*`
+3. Default: `"ask"`
 
 **DM kinds collapse into `sendMessages`**: `signEvent` for kinds `4` (NIP-04 DM), `13` (NIP-59 seal), `14` (NIP-17 chat rumor), and `1059` (NIP-59 gift wrap) resolves to the logical key `sendMessages`, which is also the key used by `nip04Encrypt` / `nip44Encrypt`. This means a single approval covers the entire send-DM flow (encrypt + sign), and a single Always-Allow does not produce a follow-up prompt for the matching `signEvent`. To deny only sign-of-DM-kind without affecting encrypt is no longer possible — it is one decision.
 
@@ -110,6 +123,7 @@ Permissions are stored in `browser.storage.local` under key `signerPermissions` 
 
 For accounts of type `nip46`, signing requests are routed to a `Nip46Client` instance (`lib/nip46.ts`) instead of the local vault:
 
+- **Local `deny` still applies**: `permissions.check()` runs for every account type. An explicit per-origin `deny` throws `Permission denied` BEFORE the request is forwarded to the remote signer. Only the local `ask` prompt is skipped for NIP-46 accounts (the bunker runs its own approval for `ask`/`allow`).
 - Client instances are cached per account ID in `_nip46Clients: Map<accountId, Nip46Client>`.
 - Ephemeral keypair generated for relay communication.
 - Supports `signEvent`, `nip04Encrypt/Decrypt`, `nip44Encrypt/Decrypt` via the remote signer protocol.

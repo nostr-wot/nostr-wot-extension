@@ -14,6 +14,7 @@ import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
 import { config, DEFAULT_RELAYS, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { syncActivePubkey } from './vault-handlers.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
+import * as signer from '../signer.ts';
 import type { Account } from '../types.ts';
 
 // ── NostrConnect sessions ──
@@ -47,12 +48,16 @@ export function __setNip46Deps(deps?: Partial<Nip46Deps>): void {
 }
 
 /**
- * Test seam: drop the in-memory live-session Map WITHOUT aborting/closing the
- * signers, simulating an MV3 service-worker suspension that loses RAM but keeps
- * browser.storage.session. After this, `ensureLiveSession` must rebuild.
+ * Test seam: drop the in-memory live-session Map and pending-onboarding memory
+ * WITHOUT aborting/closing the signers, simulating an MV3 service-worker
+ * suspension that loses RAM but keeps browser.storage.session. After this,
+ * `ensureLiveSession` / `getPendingOnboardingAccount` must rebuild from storage.
  */
 export function __simulateServiceWorkerRestart(): void {
     _nostrConnectSessions.clear();
+    _pendingOnboardingAccount = null;
+    _pendingOnboardingSetAt = 0;
+    if (_pendingOnboardingTimer) { clearTimeout(_pendingOnboardingTimer); _pendingOnboardingTimer = null; }
 }
 
 // ── Persisted (serializable) NostrConnect session mirror ──
@@ -215,6 +220,7 @@ function ensureLiveSession(persisted: PersistedNcSession): NostrConnectSession {
 // ── Pending onboarding account ──
 
 let _pendingOnboardingAccount: Account | null = null;
+let _pendingOnboardingSetAt = 0;
 let _pendingOnboardingTimer: ReturnType<typeof setTimeout> | null = null;
 const ONBOARDING_TTL_MS = 5 * 60 * 1000;
 
@@ -229,8 +235,13 @@ function xorBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 
 async function setPendingOnboardingAccount(acct: Account | null): Promise<void> {
     _pendingOnboardingAccount = acct;
+    _pendingOnboardingSetAt = acct ? Date.now() : 0;
     if (_pendingOnboardingTimer) { clearTimeout(_pendingOnboardingTimer); _pendingOnboardingTimer = null; }
     if (acct) {
+        // Persist createdAt alongside the redacted account: the in-memory
+        // setTimeout is lost on service-worker restart, so the TTL must also
+        // be enforceable on read (see getPendingOnboardingAccount).
+        const createdAt = _pendingOnboardingSetAt;
         // S-6: Split the privkey across two session storage keys via XOR so
         // neither key alone reveals the secret.
         if (acct.privkey) {
@@ -243,19 +254,24 @@ async function setPendingOnboardingAccount(acct: Account | null): Promise<void> 
             const redacted = { ...acct, privkey: null };
             await browser.storage.session.set({
                 _pendingOnboardingAccount: redacted,
+                _pendingOnboardingCreatedAt: createdAt,
                 _pendingOnboardingPad: bytesToHex(pad),
                 _pendingOnboardingMasked: bytesToHex(masked),
             });
             pad.fill(0);
             masked.fill(0);
         } else {
-            await browser.storage.session.set({ _pendingOnboardingAccount: acct });
+            await browser.storage.session.set({
+                _pendingOnboardingAccount: acct,
+                _pendingOnboardingCreatedAt: createdAt,
+            });
             await browser.storage.session.remove(['_pendingOnboardingPad', '_pendingOnboardingMasked']);
         }
         _pendingOnboardingTimer = setTimeout(() => setPendingOnboardingAccount(null), ONBOARDING_TTL_MS);
     } else {
         await browser.storage.session.remove([
             '_pendingOnboardingAccount',
+            '_pendingOnboardingCreatedAt',
             '_pendingOnboardingPad',
             '_pendingOnboardingMasked',
         ]);
@@ -263,14 +279,30 @@ async function setPendingOnboardingAccount(acct: Account | null): Promise<void> 
 }
 
 async function getPendingOnboardingAccount(): Promise<Account | null> {
-    if (_pendingOnboardingAccount) return _pendingOnboardingAccount;
+    if (_pendingOnboardingAccount) {
+        // Enforce the TTL even if the in-memory timer was throttled or lost.
+        if (Date.now() - _pendingOnboardingSetAt >= ONBOARDING_TTL_MS) {
+            await setPendingOnboardingAccount(null);
+            return null;
+        }
+        return _pendingOnboardingAccount;
+    }
     const data = await browser.storage.session.get([
         '_pendingOnboardingAccount',
+        '_pendingOnboardingCreatedAt',
         '_pendingOnboardingPad',
         '_pendingOnboardingMasked',
     ]) as Record<string, unknown>;
     const stored = data._pendingOnboardingAccount as Account | null;
     if (!stored) return null;
+
+    // The in-memory setTimeout dies with the service worker — enforce the TTL
+    // on read. Missing createdAt (pre-upgrade data) is treated as expired.
+    const createdAt = data._pendingOnboardingCreatedAt as number | undefined;
+    if (!createdAt || Date.now() - createdAt >= ONBOARDING_TTL_MS) {
+        await setPendingOnboardingAccount(null);
+        return null;
+    }
 
     // S-6: Reconstruct privkey from the XOR-split halves
     const padHex = data._pendingOnboardingPad as string | undefined;
@@ -567,6 +599,7 @@ export const handlers = new Map<string, HandlerFn>([
         const acctId = (params.account as Record<string, string>).id;
         const pubkey = (params.account as Record<string, string>).pubkey;
         const acctType = (params.account as Record<string, string>).type || 'npub';
+        const prevActiveRo = ((await browser.storage.local.get(['activeAccountId'])) as Record<string, string>).activeAccountId;
         if (pubkey) {
             config.myPubkey = pubkey;
             await browser.storage.sync.set({ myPubkey: pubkey });
@@ -583,10 +616,13 @@ export const handlers = new Map<string, HandlerFn>([
             });
         }
         await browser.storage.local.set({ accounts: accts, activeAccountId: acctId });
+        // Active-account change: same invalidation as switchAccount.
+        await signer.onActiveAccountChanged(prevActiveRo, acctId);
         return { ok: true };
     }],
 
     ['onboarding_createVault', async (params) => {
+        const prevActiveCreate = ((await browser.storage.local.get(['activeAccountId'])) as Record<string, string>).activeAccountId;
         const pendingAcct = await getPendingOnboardingAccount();
         const fullAccount = pendingAcct && pendingAcct.id === (params.account as Record<string, string>).id
             ? pendingAcct
@@ -625,11 +661,14 @@ export const handlers = new Map<string, HandlerFn>([
             if (idx !== -1) accts[idx].readOnly = !fullAccount.privkey && fullAccount.type !== 'nip46';
         }
         await browser.storage.local.set({ accounts: accts, activeAccountId: vaultAcctId });
+        // Active-account change: same invalidation as switchAccount.
+        await signer.onActiveAccountChanged(prevActiveCreate, vaultAcctId);
         return { ok: true };
     }],
 
     ['onboarding_addToVault', async (params) => {
         if (vault.isLocked()) throw new Error('Vault is locked');
+        const prevActiveAdd = ((await browser.storage.local.get(['activeAccountId'])) as Record<string, string>).activeAccountId;
 
         const pendingAcctAdd = await getPendingOnboardingAccount();
         const fullAccountAdd = pendingAcctAdd && pendingAcctAdd.id === (params.account as Record<string, string>).id
@@ -662,6 +701,8 @@ export const handlers = new Map<string, HandlerFn>([
             if (idx !== -1) addVaultAccts[idx].readOnly = !fullAccountAdd.privkey && fullAccountAdd.type !== 'nip46';
         }
         await browser.storage.local.set({ accounts: addVaultAccts, activeAccountId: fullAccountAdd.id });
+        // Active-account change: same invalidation as switchAccount.
+        await signer.onActiveAccountChanged(prevActiveAdd, fullAccountAdd.id);
         if (fullAccountAdd.pubkey) {
             broadcastAccountChanged(fullAccountAdd.pubkey);
         }

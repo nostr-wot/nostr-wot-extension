@@ -79,7 +79,11 @@ If the user clicks Connect, the domain is added to `allowedDomains` and the bloc
 
 ## 4c. WebLN Domain Gating
 
-All WebLN methods except `webln_enable` are gated behind the same domain allowlist used for NIP-07. A site must be connected (approved by the user) before it can call `getInfo`, `getBalance`, `sendPayment`, or `makeInvoice`. The `webln_enable` method is exempt from the domain check because it is the method that *adds* the requesting domain to the allowlist — matching the standard WebLN convention where `enable()` is the connection handshake. Individual methods still enforce their own permission prompts (e.g., `sendPayment` prompts the user before paying).
+WebLN methods are gated behind a **WebLN-specific consent list** (`weblnAllowedDomains`), separate from the NIP-07 domain allowlist. A site that is only NIP-07-connected (e.g. it called `getPublicKey`) cannot read the wallet — it must call `webln.enable()` first.
+
+`webln_enable()` is the consent entry point: like NIP-07, calling it from an un-connected origin opens the "Connect this site" popup (only when the request comes from the active tab) and the background **waits for the user to click Connect** before resolving. The user's approval — not the handler — adds the domain to the allowlist; the `webln_enable` handler then records the origin in `weblnAllowedDomains`. WebLN access is therefore **never granted silently**; a page that calls `enable()` on page load cannot connect itself without a user click, and a previously dismissed origin is rejected without re-prompting. Every other WebLN method (`getInfo`, `getBalance`, `sendPayment`, `makeInvoice`) requires the origin to be in `weblnAllowedDomains` and never pops UI on its own. Disconnecting a site also revokes its WebLN consent. Individual sensitive methods still enforce their own permission prompts (e.g., `sendPayment` prompts the user before paying — see docs/wallet.md §7).
+
+`webln_getInfo()` returns an empty `node.pubkey`: the Lightning-node id is not exposed, and the user's **Nostr identity pubkey is deliberately never returned here** — that stays behind the `getPublicKey` consent prompt so a merely-connected site cannot deanonymize the user via WebLN.
 
 ---
 
@@ -104,3 +108,5 @@ The three message channels are strictly separated:
 - **Internal channel** (direct `browser.runtime.sendMessage`) -- can access privileged methods
 
 A NIP-07 request cannot invoke WebLN methods and vice versa. Neither can invoke privileged methods.
+
+The background enforces this independently of content.ts: the `browser.runtime.onConnect` port listener rejects any method that does not start with `nip07_` or `webln_` ("Permission denied"), so even a compromised or regressed content script can never reach `vault_`/`signer_`/`wallet_` privileged methods over the port channel.

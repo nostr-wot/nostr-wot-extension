@@ -45,6 +45,11 @@ let _requestCounter: number = 0;
 const REQUEST_TIMEOUT_MS = SIGNER_REQUEST_TIMEOUT_MS;
 const _timeoutTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
+// Cap on concurrently-pending ACTIONABLE requests per origin. Blunts
+// popup-spam / DoS from a connected tab: once an origin has this many
+// unresolved prompts, further queueRequest calls are rejected immediately.
+const MAX_PENDING_PER_ORIGIN = 5;
+
 // Vault unlock waiters -- independent of _pendingResolvers for resilience
 const _unlockWaiters: Map<string, { resolve: () => void; reject: (err: Error) => void }> = new Map();
 
@@ -140,6 +145,9 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
     if (isGetPubkeyCooldownActive(origin)) {
       return getActivePublicKey();
     }
+    // Snapshot the identity shown in the prompt. The user approves sharing THIS
+    // pubkey — if the active account changes while the prompt is pending, the
+    // request must be rejected rather than resolved with the new account's key.
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'getPublicKey',
@@ -150,11 +158,36 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
       accountId,
     });
     if (!approved.allow) throw new Error('User denied access');
+    const { accountId: nowActiveId } = await getActiveAccountInfo();
+    if (nowActiveId !== accountId) throw new Error('Account switched');
     _getPubkeyCooldown.set(origin, Date.now() + GET_PUBLIC_KEY_COOLDOWN_MS);
+    return pubkey;
   }
 
   // getPublicKey is always local (we know the pubkey for all account types)
   return getActivePublicKey();
+}
+
+/**
+ * Invalidate signer state when the active account changes.
+ *
+ * EVERY code path that changes the active account (switchAccount,
+ * vault_setActiveAccount, vault_removeAccount of the active account, and the
+ * onboarding create/add/save-read-only flows) must call this so a site can
+ * never receive the new account's identity or signature from a prompt that was
+ * queued (and shown to the user) for the old one.
+ *
+ * @param previousAccountId - account that was active before the change
+ * @param newAccountId - account that is active after the change
+ */
+export async function onActiveAccountChanged(
+  previousAccountId?: string | null,
+  newAccountId?: string | null,
+): Promise<void> {
+  clearGetPubkeyCooldown();
+  if (previousAccountId && previousAccountId !== newAccountId) {
+    await rejectPendingForAccount(previousAccountId);
+  }
 }
 
 // -- Pending Request Queue --
@@ -179,9 +212,20 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
   const entry: PendingRequest = { id, ...request, timestamp: Date.now() };
 
   // Serialized storage write to prevent concurrent read-modify-write races
+  let limitExceeded = false;
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
+    // Per-origin cap: reject when the origin already has too many actionable
+    // (user-facing) prompts pending. In-flight NIP-46 tracking entries and
+    // unlock markers don't count — they need no user action.
+    const actionableFromOrigin = pending.filter(
+      r => r.origin === request.origin && !r.nip46InFlight && !r.waitingForUnlock
+    ).length;
+    if (actionableFromOrigin >= MAX_PENDING_PER_ORIGIN) {
+      limitExceeded = true;
+      return;
+    }
     pending.push(entry);
     await browser.storage.session.set({ signerPending: pending });
     // Don't update badge for NIP-46 in-flight (no user action needed)
@@ -189,6 +233,9 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
       await updateBadge(pending.filter(r => !r.nip46InFlight).length);
     }
   });
+  if (limitExceeded) {
+    throw new Error('Too many pending requests from this origin');
+  }
 
   // Notify popup (fire-and-forget, popup may not be open)
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
@@ -532,37 +579,38 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
 
-  // NIP-46 accounts: skip local permission prompt — the remote signer handles approval
-  if (accountType !== 'nip46') {
-    const decision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
-    if (decision === 'deny') throw new Error('Permission denied');
+  // Local permissions apply to ALL account types: an explicit per-origin 'deny'
+  // must block even for NIP-46 accounts, BEFORE anything is routed to the
+  // remote signer.
+  const decision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
+  if (decision === 'deny') throw new Error('Permission denied');
 
-    if (decision === 'ask') {
-      const pubkey = await getActivePublicKey();
-      const approved = await queueRequest({
-        type: 'signEvent',
-        origin,
-        event: (() => {
-          const e: Partial<UnsignedEvent> = { kind: event.kind, content: event.content?.slice(0, 200) };
-          if (event.kind === 3 && event.tags) e.tags = event.tags;
-          return e;
-        })(),
-        pubkey: pubkey ?? undefined,
-        permKey: permissions.permissionKey('signEvent', event.kind),
-        eventKind: event.kind,
-        needsPermission: true,
-        accountId,
-      });
-      if (!approved.allow) throw new Error('User denied signing');
+  // NIP-46 accounts skip the local 'ask' prompt — the remote signer (bunker)
+  // runs its own approval flow for 'ask'/'allow'.
+  if (accountType !== 'nip46' && decision === 'ask') {
+    const pubkey = await getActivePublicKey();
+    const approved = await queueRequest({
+      type: 'signEvent',
+      // Store the FULL content and FULL tags for every kind — the approval
+      // prompt must show exactly what will be signed, so a site cannot hide
+      // payload in long content or in tags of non-contact-list kinds.
+      origin,
+      event: { kind: event.kind, content: event.content, tags: event.tags },
+      pubkey: pubkey ?? undefined,
+      permKey: permissions.permissionKey('signEvent', event.kind),
+      eventKind: event.kind,
+      needsPermission: true,
+      accountId,
+    });
+    if (!approved.allow) throw new Error('User denied signing');
 
-      // Save permission and batch-resolve remaining requests if user chose "remember"
-      if (approved.remember) {
-        const kind = approved.rememberKind !== false ? event.kind : null;
-        await permissions.save(origin, 'signEvent', kind ?? null, 'allow', accountId ?? undefined);
-        // Batch-resolve remaining requests with the same permKey as the one just approved
-        const batchPermKey = permissions.permissionKey('signEvent', event.kind);
-        await resolveBatch(origin, batchPermKey, { allow: true, remember: false });
-      }
+    // Save permission and batch-resolve remaining requests if user chose "remember"
+    if (approved.remember) {
+      const kind = approved.rememberKind !== false ? event.kind : null;
+      await permissions.save(origin, 'signEvent', kind ?? null, 'allow', accountId ?? undefined);
+      // Batch-resolve remaining requests with the same permKey as the one just approved
+      const batchPermKey = permissions.permissionKey('signEvent', event.kind);
+      await resolveBatch(origin, batchPermKey, { allow: true, remember: false });
     }
   }
 
@@ -579,7 +627,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     const ac = new AbortController();
     _nip46Aborts.set(nip46ReqId, ac);
     try {
-      return await raceAbort(ac.signal, handleNip46Request(acct, 'signEvent', event, origin));
+      return await raceAbort(ac.signal, handleNip46Request(acct, 'signEvent', event, origin)) as SignedEvent;
     } finally {
       _nip46Aborts.delete(nip46ReqId);
       await removeNip46InFlight(nip46ReqId);
@@ -620,23 +668,24 @@ async function handleCryptoRequest(
 
   if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
 
-  if (accountType !== 'nip46') {
-    const decision = await permissions.check(origin, method, undefined, accountId ?? undefined);
-    if (decision === 'deny') throw new Error('Permission denied');
+  // Local permissions apply to ALL account types: an explicit per-origin 'deny'
+  // blocks even NIP-46 accounts before anything reaches the remote signer.
+  const decision = await permissions.check(origin, method, undefined, accountId ?? undefined);
+  if (decision === 'deny') throw new Error('Permission denied');
 
-    if (decision === 'ask') {
-      const pubkey = await getActivePublicKey();
-      const approved = await queueRequest({
-        type: method,
-        origin,
-        theirPubkey,
-        pubkey: pubkey ?? undefined,
-        permKey: permissions.permissionKey(method),
-        needsPermission: true,
-        accountId,
-      });
-      if (!approved.allow) throw new Error(denyMessage);
-    }
+  // NIP-46 accounts skip the local 'ask' prompt — the bunker runs its own approval.
+  if (accountType !== 'nip46' && decision === 'ask') {
+    const pubkey = await getActivePublicKey();
+    const approved = await queueRequest({
+      type: method,
+      origin,
+      theirPubkey,
+      pubkey: pubkey ?? undefined,
+      permKey: permissions.permissionKey(method),
+      needsPermission: true,
+      accountId,
+    });
+    if (!approved.allow) throw new Error(denyMessage);
   }
 
   if (accountType === 'nip46') {
@@ -650,7 +699,7 @@ async function handleCryptoRequest(
     const ac = new AbortController();
     _nip46Aborts.set(nip46ReqId, ac);
     try {
-      return await raceAbort(ac.signal, handleNip46Request(acct, method, nip46Data, origin));
+      return await raceAbort(ac.signal, handleNip46Request(acct, method, nip46Data, origin)) as string;
     } finally {
       _nip46Aborts.delete(nip46ReqId);
       await removeNip46InFlight(nip46ReqId);

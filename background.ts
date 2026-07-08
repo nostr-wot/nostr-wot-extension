@@ -20,6 +20,7 @@ import { handlers as miscHandlers, logActivity } from './lib/bg/misc-handlers.ts
 import {
     handlers as domainHandlers,
     isDomainAllowed, isDomainDismissed,
+    isWeblnAllowed,
     waitForDomainAllowed,
     isActiveAccountReadOnly,
 } from './lib/bg/domain-handlers.ts';
@@ -117,11 +118,38 @@ async function handleRequest({ method, params }: { method: string; params: Recor
         }
     }
 
-    // Gate WebLN methods (except enable) behind the same domain allowlist
-    if (method.startsWith('webln_') && method !== 'webln_enable') {
+    // Gate WebLN methods behind explicit WebLN consent. enable() is the consent
+    // entry point: like NIP-07, an un-connected origin opens the "Connect this
+    // site" popup and we wait for the user to approve — WebLN access (balance,
+    // node info, invoices) is NEVER granted silently. Every other WebLN method
+    // requires the origin to be in weblnAllowedDomains (recorded by the
+    // webln_enable handler after the user's Connect click) — being NIP-07
+    // connected alone is NOT enough — and never pops UI on its own.
+    if (method.startsWith('webln_')) {
         const origin = params?.origin as string;
-        if (!origin || !(await isDomainAllowed(origin))) {
-            logActivity({ domain: origin || 'unknown', method: method.replace('webln_', ''), decision: 'blocked' });
+        if (!origin) {
+            logActivity({ domain: 'unknown', method: method.replace('webln_', ''), decision: 'blocked' });
+            throw new Error('Site not connected');
+        }
+        if (method === 'webln_enable') {
+            if (!(await isDomainAllowed(origin))) {
+                if (!(await isDomainDismissed(origin))) {
+                    // First enable(): show the Connect card on the active tab and
+                    // wait for the user's click (which adds the domain to the
+                    // allowlist). Background/inactive tabs get no popup and time out.
+                    await openPopupForActiveTab(origin);
+                    const connected = await waitForDomainAllowed(origin);
+                    if (!connected) {
+                        logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
+                        throw new Error('WebLN access denied');
+                    }
+                } else {
+                    logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
+                    throw new Error('Site not connected');
+                }
+            }
+        } else if (!(await isWeblnAllowed(origin))) {
+            logActivity({ domain: origin, method: method.replace('webln_', ''), decision: 'blocked' });
             throw new Error('Site not connected');
         }
     }
@@ -190,6 +218,16 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
 
     port.onMessage.addListener(async (request: Record<string, unknown>) => {
         const method = request.method as string;
+
+        // Defense-in-depth: the port channel is exposed to content scripts on
+        // arbitrary pages, so only NIP-07 and WebLN methods may cross it.
+        // Privileged methods (vault_/signer_/wallet_/...) are for internal
+        // extension pages via onMessage only — mirror that gate here so the
+        // port can never reach them even if content.ts regresses.
+        if (!method?.startsWith('nip07_') && !method?.startsWith('webln_')) {
+            try { port.postMessage({ error: 'Permission denied' }); } catch {}
+            return;
+        }
 
         // Defense-in-depth: derive origin from browser-verified sender info
         if (method?.startsWith('nip07_') || method?.startsWith('webln_')) {

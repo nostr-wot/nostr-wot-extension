@@ -103,6 +103,21 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
         </div>
       )}
 
+      {/* Always list every tag, for every kind — the user must be able to see
+          the FULL payload being signed, not just the kind-specific summary. */}
+      {event.tags && event.tags.length > 0 && (
+        <>
+          <h3 className={`${styles.sectionTitle} ${styles.tagsTitle}`}>
+            {t('event.tags', { count: event.tags.length })}
+          </h3>
+          <div className={styles.tagsList}>
+            {event.tags.map((tag, i) => (
+              <div key={i} className={styles.tagRow}>{JSON.stringify(tag)}</div>
+            ))}
+          </div>
+        </>
+      )}
+
       <button
         className={styles.expandToggle}
         onClick={() => setShowRaw(!showRaw)}

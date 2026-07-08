@@ -95,10 +95,9 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `permissions.ts` | `formatPermMethod` |
 | `url.ts` | `getDomainFromUrl` |
 | `activity.ts` | `groupActivityEntries` |
-| `constants.ts` | `AUTO_LOCK_OPTIONS`, `DEFAULT_RELAYS`, `KIND_LABELS`, etc. (`SENSITIVITY_PRESETS` / `KNOWN_ORACLES` remain as dead leftovers from the removed trust-graph feature) |
+| `constants.ts` | `AUTO_LOCK_OPTIONS`, `DEFAULT_RELAYS`, `KIND_LABELS`, etc. |
 | `browser.ts` | Browser detection and API utilities for UI code |
 | `clientIcons.ts` | Known Nostr client icon mappings |
-| `adapterDefaults.ts` | Dead leftover from the removed trust-badge feature (no longer imported) |
 | `blossom.ts` | Blossom media upload utilities |
 | `wizardMachine.ts` | Onboarding wizard state machine |
 

@@ -1,5 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { schnorr } from '@noble/curves/secp256k1.js';
 import {
   isReplaceable,
   replaceableKey,
@@ -7,22 +8,37 @@ import {
   writeLocalCache,
   liveQuery,
 } from '../lib/relay.ts';
-import { resetMockStorage } from './helpers/browser-mock.ts';
-import type { SignedEvent, LiveEvent } from '../lib/types.ts';
+import { signEvent } from '../lib/crypto/nip01.ts';
+import { bytesToHex } from '../lib/crypto/utils.ts';
+import mock, { resetMockStorage } from './helpers/browser-mock.ts';
+import type { SignedEvent, UnsignedEvent, LiveEvent } from '../lib/types.ts';
 
 // ── Helpers ──
 
-function makeEvent(overrides: Partial<SignedEvent> = {}): SignedEvent {
-  return {
-    id: 'event_' + Math.random().toString(36).slice(2, 10),
-    pubkey: 'aabbccdd' + '0'.repeat(56),
+// Inbound relay events are now signature-verified (lib/relay.ts), so test
+// events must be genuinely signed — fabricated ids/sigs get dropped.
+const PRIV1 = new Uint8Array(32).fill(1);
+const PRIV2 = new Uint8Array(32).fill(2);
+const PK1 = bytesToHex(schnorr.getPublicKey(PRIV1));
+const PK2 = bytesToHex(schnorr.getPublicKey(PRIV2));
+
+async function makeEvent(
+  overrides: Partial<UnsignedEvent> = {},
+  privkey: Uint8Array = PRIV1,
+): Promise<SignedEvent> {
+  const unsigned: UnsignedEvent = {
     kind: 0,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
     content: '{}',
-    sig: 'sig_' + Math.random().toString(36).slice(2, 10),
     ...overrides,
   };
+  return signEvent(unsigned, privkey);
+}
+
+/** A copy of a validly-signed event with tampered content — id/sig no longer match. */
+function forge(event: SignedEvent, content = '{"name":"forged"}'): SignedEvent {
+  return { ...event, content };
 }
 
 /** Minimal WebSocket mock for liveQuery tests */
@@ -120,16 +136,16 @@ describe('readLocalCache / writeLocalCache', () => {
   beforeEach(() => resetMockStorage());
 
   it('round-trips a replaceable event', async () => {
-    const event = makeEvent({ kind: 0, pubkey: 'aabb' + '0'.repeat(60) });
+    const event = await makeEvent({ kind: 0 });
     await writeLocalCache(event);
 
-    const results = await readLocalCache([{ kinds: [0], authors: ['aabb' + '0'.repeat(60)] }]);
+    const results = await readLocalCache([{ kinds: [0], authors: [PK1] }]);
     assert.strictEqual(results.length, 1);
     assert.strictEqual(results[0].id, event.id);
   });
 
   it('returns empty for non-replaceable kinds', async () => {
-    const event = makeEvent({ kind: 1 });
+    const event = await makeEvent({ kind: 1 });
     await writeLocalCache(event);
 
     const results = await readLocalCache([{ kinds: [1], authors: [event.pubkey] }]);
@@ -142,16 +158,36 @@ describe('readLocalCache / writeLocalCache', () => {
   });
 
   it('handles multiple authors', async () => {
-    const e1 = makeEvent({ kind: 0, pubkey: 'pk1_' + '0'.repeat(60) });
-    const e2 = makeEvent({ kind: 0, pubkey: 'pk2_' + '0'.repeat(60) });
+    const e1 = await makeEvent({ kind: 0 }, PRIV1);
+    const e2 = await makeEvent({ kind: 0 }, PRIV2);
     await writeLocalCache(e1);
     await writeLocalCache(e2);
 
-    const results = await readLocalCache([{
-      kinds: [0],
-      authors: ['pk1_' + '0'.repeat(60), 'pk2_' + '0'.repeat(60)],
-    }]);
+    const results = await readLocalCache([{ kinds: [0], authors: [PK1, PK2] }]);
     assert.strictEqual(results.length, 2);
+  });
+
+  it('refuses to persist an event with an invalid signature', async () => {
+    const forged = forge(await makeEvent({ kind: 0 }));
+    await writeLocalCache(forged);
+
+    const results = await readLocalCache([{ kinds: [0], authors: [PK1] }]);
+    assert.strictEqual(results.length, 0, 'Forged event must not be cached');
+  });
+
+  it('drops unverified events planted directly in storage', async () => {
+    // Sanity check: a validly-signed event planted directly in storage IS
+    // surfaced (proves the plant lands where readLocalCache looks) ...
+    const valid = await makeEvent({ kind: 0 });
+    await mock.storage.local.set({ [replaceableKey(0, PK1)]: valid });
+    const before = await readLocalCache([{ kinds: [0], authors: [PK1] }]);
+    assert.strictEqual(before.length, 1, 'Valid planted event should be surfaced');
+
+    // ... then a stale/poisoned entry from before verification existed is not.
+    const forged = forge(valid);
+    await mock.storage.local.set({ [replaceableKey(0, PK1)]: forged });
+    const results = await readLocalCache([{ kinds: [0], authors: [PK1] }]);
+    assert.strictEqual(results.length, 0, 'Unverified cache entry must not be surfaced');
   });
 });
 
@@ -159,23 +195,18 @@ describe('liveQuery', () => {
   beforeEach(() => resetMockStorage());
 
   it('yields cached events first, then relay events, then exhausted', async () => {
-    const pk = 'lqpk' + '0'.repeat(60);
-    const cachedEvent = makeEvent({ kind: 0, pubkey: pk, created_at: 1000 });
+    const cachedEvent = await makeEvent({ kind: 0, created_at: 1000 });
     await writeLocalCache(cachedEvent);
 
-    const relayEvent = makeEvent({ kind: 0, pubkey: pk, created_at: 2000, id: 'relay_ev_1' });
+    const relayEvent = await makeEvent({ kind: 0, created_at: 2000, content: '{"name":"new"}' });
 
-    let ws: MockWebSocket | null = null;
     const gen = liveQuery(
-      [{ kinds: [0], authors: [pk] }],
+      [{ kinds: [0], authors: [PK1] }],
       ['wss://relay.test'],
       {
         closeOnExhaust: true,
         _createSocket: (url: string) => {
-          ws = new MockWebSocket(url);
-          // Send event + EOSE after open
-          const origOnOpen = ws.onopen;
-          const socket = ws;
+          const socket = new MockWebSocket(url);
           queueMicrotask(() => {
             // Wait for liveQuery to attach handlers
             setTimeout(() => {
@@ -183,7 +214,7 @@ describe('liveQuery', () => {
               socket._eose('lq000000000000');
             }, 10);
           });
-          return ws as unknown as WebSocket;
+          return socket as unknown as WebSocket;
         },
       },
     );
@@ -204,7 +235,7 @@ describe('liveQuery', () => {
     const updates = events.filter(e => e.type === 'update');
     assert.strictEqual(updates.length, 1, 'Should have 1 update event');
     if (updates[0].type === 'update') {
-      assert.strictEqual(updates[0].event.id, 'relay_ev_1');
+      assert.strictEqual(updates[0].event.id, relayEvent.id);
       assert.strictEqual(updates[0].supersedes, cachedEvent.id);
     }
 
@@ -213,11 +244,10 @@ describe('liveQuery', () => {
   });
 
   it('deduplicates events by ID', async () => {
-    const pk = 'ddpk' + '0'.repeat(60);
-    const event = makeEvent({ kind: 1, pubkey: pk, id: 'dup_event_1' });
+    const event = await makeEvent({ kind: 1, content: 'dup me' });
 
     const gen = liveQuery(
-      [{ kinds: [1], authors: [pk] }],
+      [{ kinds: [1], authors: [PK1] }],
       ['wss://relay1.test', 'wss://relay2.test'],
       {
         closeOnExhaust: true,
@@ -242,6 +272,52 @@ describe('liveQuery', () => {
 
     const relayEvents = events.filter(e => e.type === 'event' && e.source === 'relay');
     assert.strictEqual(relayEvents.length, 1, 'Should deduplicate — only 1 relay event');
+  });
+
+  it('drops forged events (invalid signature) and accepts valid ones', async () => {
+    const validEvent = await makeEvent({ kind: 1, content: 'legit' });
+    // Same real id/sig, tampered content — id and signature no longer match.
+    const forgedSameId = forge(validEvent, 'evil payload');
+    // Fully fabricated sig on otherwise-plausible event.
+    const forgedBadSig: SignedEvent = {
+      ...(await makeEvent({ kind: 1, content: 'other' })),
+      sig: '00'.repeat(64),
+    };
+
+    const gen = liveQuery(
+      [{ kinds: [1], authors: [PK1] }],
+      ['wss://relay.test'],
+      {
+        closeOnExhaust: true,
+        _createSocket: (url: string) => {
+          const ws = new MockWebSocket(url);
+          queueMicrotask(() => {
+            setTimeout(() => {
+              // Forged event with the VALID event's id arrives first — it must
+              // neither be emitted nor shadow the later legitimate event.
+              ws._event('lq000000000000', forgedSameId);
+              ws._event('lq000000000000', forgedBadSig);
+              ws._event('lq000000000000', validEvent);
+              ws._eose('lq000000000000');
+            }, 10);
+          });
+          return ws as unknown as WebSocket;
+        },
+      },
+    );
+
+    const events: LiveEvent[] = [];
+    for await (const ev of gen) {
+      events.push(ev);
+      if (ev.type === 'exhausted') break;
+    }
+
+    const relayEvents = events.filter(e => e.type === 'event' && e.source === 'relay');
+    assert.strictEqual(relayEvents.length, 1, 'Only the validly-signed event should be emitted');
+    if (relayEvents[0].type === 'event') {
+      assert.strictEqual(relayEvents[0].event.id, validEvent.id);
+      assert.strictEqual(relayEvents[0].event.content, 'legit');
+    }
   });
 
   it('yields exhausted immediately when no relays', async () => {
@@ -284,11 +360,10 @@ describe('liveQuery', () => {
   });
 
   it('writes to cache when cache option is true', async () => {
-    const pk = 'cachepk' + '0'.repeat(56);
-    const event = makeEvent({ kind: 0, pubkey: pk, created_at: 5000 });
+    const event = await makeEvent({ kind: 0, created_at: 5000 });
 
     const gen = liveQuery(
-      [{ kinds: [0], authors: [pk] }],
+      [{ kinds: [0], authors: [PK1] }],
       ['wss://relay.test'],
       {
         closeOnExhaust: true,
@@ -313,7 +388,7 @@ describe('liveQuery', () => {
     // Allow cache write to complete
     await new Promise(r => setTimeout(r, 20));
 
-    const cached = await readLocalCache([{ kinds: [0], authors: [pk] }]);
+    const cached = await readLocalCache([{ kinds: [0], authors: [PK1] }]);
     assert.strictEqual(cached.length, 1, 'Event should be cached');
     assert.strictEqual(cached[0].id, event.id);
   });

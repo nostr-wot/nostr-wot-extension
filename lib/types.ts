@@ -91,7 +91,13 @@ export interface PendingRequest {
   id: string;
   type: string;
   origin: string;
+  /** Pubkey of the account snapshotted when the request was queued — the
+   *  identity the user saw in the prompt, NOT the current active account. */
   pubkey?: string;
+  /** Snapshot of the event to be signed, shown in the approval UI.
+   *  For signEvent requests this carries the FULL `content` and FULL `tags`
+   *  for EVERY kind — never truncated — so the prompt displays exactly what
+   *  will be signed and a site cannot hide payload from the user. */
   event?: Partial<UnsignedEvent>;
   theirPubkey?: string;
   permKey?: string | null;
@@ -109,32 +115,6 @@ export interface RequestDecision {
   remember?: boolean;
   rememberKind?: boolean;
   reason?: string;
-}
-
-// ── Storage / Graph ──
-
-export interface SyncResult {
-  nodes: number;
-  fetched: number;
-  failed: number;
-  nodesPerDepth: Record<number, number>;
-  aborted?: boolean;
-}
-
-export interface SyncProgress {
-  fetched: number;
-  pending: number;
-  currentDepth: number;
-  maxDepth: number;
-  nodesPerDepth: Record<number, number>;
-  total: number;
-  connectedRelays?: number;
-  totalRelays?: number;
-}
-
-export interface DistanceInfo {
-  hops: number;
-  paths: number | null;
 }
 
 // ── i18n ──

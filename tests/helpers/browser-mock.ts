@@ -159,7 +159,7 @@ export function resetMockStorage(): void {
   session._reset();
   alarms._reset();
   // Fire onChanged with a wildcard marker so all in-memory caches are invalidated
-  fireOnChanged({ signerPermissions: {}, signerUseGlobalDefaults: {}, allowedDomains: {}, dismissedDomains: {} }, 'local');
+  fireOnChanged({ signerPermissions: {}, signerUseGlobalDefaults: {}, allowedDomains: {}, weblnAllowedDomains: {}, dismissedDomains: {} }, 'local');
 }
 
 export default mock;

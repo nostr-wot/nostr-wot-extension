@@ -110,7 +110,7 @@ Read existing code and documentation before modifying anything.
 | Message handling, new RPC methods | `docs/message-flow.md` |
 | `src/components/`, `src/popup/` | `docs/component-standards.md` |
 | Test files or test infrastructure | `docs/testing.md` |
-| Badge engine (`badges/engine.ts`) | `tests/badges/engine.test.ts` |
+| `lib/wallet/`, `lib/bg/wallet-handlers.ts` | `docs/wallet.md`, `docs/security.md` |
 
 ## After Writing Code
 
@@ -143,8 +143,8 @@ These thoughts mean stop and verify:
 # Targeted test (example: crypto)
 node --import tsx --test tests/crypto/*.test.ts
 
-# Targeted test (example: badge engine)
-node --import tsx --test tests/badges/engine.test.ts
+# Targeted test (example: wallet/WebLN handlers)
+node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet/*.test.ts
 
 # Module tests (need browser mock)
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts

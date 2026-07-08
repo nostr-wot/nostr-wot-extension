@@ -127,8 +127,7 @@ Read [docs/architecture.md](docs/architecture.md) for the full technical referen
 - **No build system** — files are loaded directly by the browser
 - **Message passing** — inject.js → content.js → background.js via `postMessage` and `runtime.sendMessage`
 - **Privileged methods** — vault, permission, and management operations are gated to internal extension pages via sender ID verification
-- **Per-account databases** — each account gets its own IndexedDB named `nostr-wot-{accountId}`
-- **Precomputed graph** — distances are cached in typed arrays for O(1) lookup after first query
+- **Per-account isolation** — signing permissions and wallet configuration are keyed per account; keys and wallet secrets live only inside the encrypted vault
 
 ## Security Guidelines
 

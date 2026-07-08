@@ -83,6 +83,9 @@ function createMockDeps(overrides?: Partial<NwcCryptoDeps>): NwcCryptoDeps {
       pubkey: LOCAL_PUBKEY_HEX,
       sig: 'test-sig',
     } as SignedEvent),
+    // Mock responses use fake sigs, so accept everything by default; individual
+    // tests override this to exercise signature rejection.
+    verifyEvent: async (_event: SignedEvent) => true,
     ...overrides,
   };
 }
@@ -461,7 +464,7 @@ describe('NwcProvider', () => {
       assert.equal(result.preimage, 'abc123preimage');
     });
 
-    it('makeInvoice() sends make_invoice request with amount and description', async () => {
+    it('makeInvoice() sends make_invoice request with amount in msats and description', async () => {
       const invoicePromise = provider.makeInvoice(50000, 'test payment');
       await flushAsync();
 
@@ -469,7 +472,8 @@ describe('NwcProvider', () => {
       const encryptedPayload = sentEvent.content.replace('encrypted:', '');
       const parsed = JSON.parse(encryptedPayload);
       assert.equal(parsed.method, 'make_invoice');
-      assert.equal(parsed.params.amount, 50000);
+      // NIP-47 make_invoice amount is millisatoshis: 50000 sats = 50_000_000 msats
+      assert.equal(parsed.params.amount, 50_000_000);
       assert.equal(parsed.params.description, 'test payment');
 
       // Respond
@@ -495,7 +499,8 @@ describe('NwcProvider', () => {
       const encryptedPayload = sentEvent.content.replace('encrypted:', '');
       const parsed = JSON.parse(encryptedPayload);
       assert.equal(parsed.method, 'make_invoice');
-      assert.equal(parsed.params.amount, 10000);
+      // 10000 sats = 10_000_000 msats
+      assert.equal(parsed.params.amount, 10_000_000);
       assert.equal(parsed.params.description, undefined);
 
       // Respond
@@ -788,6 +793,98 @@ describe('NwcProvider', () => {
 
       const result = await balancePromise;
       assert.equal(result.balance, 10); // 10000 msats = 10 sats
+    });
+
+    it('drops responses that fail signature verification and keeps the request pending', async () => {
+      // Provider that rejects events carrying a forged signature
+      const provider2 = createProvider({
+        verifyEvent: async (event: SignedEvent) => event.sig !== 'forged-sig',
+      });
+      const p = provider2.connect();
+      const ws2 = latestWs();
+      ws2.simulateOpen();
+      await p;
+      ws2.sentMessages = [];
+
+      const balancePromise = provider2.getBalance();
+      await flushAsync();
+      const sentEvent = JSON.parse(ws2.sentMessages[0])[1] as SignedEvent;
+
+      // Malicious relay injects an unsigned event with the wallet's pubkey and
+      // the (public) request id — it must not settle or consume the request.
+      const forgedEvent = {
+        id: 'forged-response',
+        pubkey: WALLET_PUBKEY,
+        kind: 23195,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['e', sentEvent.id],
+          ['p', LOCAL_PUBKEY_HEX],
+        ],
+        content: `encrypted:${JSON.stringify({ result_type: 'get_balance', error: { code: 'FORGED', message: 'nope' } })}`,
+        sig: 'forged-sig',
+      };
+      ws2.simulateMessage(JSON.stringify(['EVENT', 'nwc-sub', forgedEvent]));
+      await flushAsync();
+
+      // The genuine response must still resolve the request afterwards.
+      const response = buildResponseMessage(
+        sentEvent.id,
+        JSON.stringify({ result_type: 'get_balance', result: { balance: 21000 } }),
+      );
+      ws2.simulateMessage(response);
+
+      const result = await balancePromise;
+      assert.equal(result.balance, 21); // 21000 msats = 21 sats
+
+      provider2.disconnect();
+    });
+
+    it('does not consume the pending request when decryption fails', async () => {
+      const provider2 = createProvider({
+        decrypt: async (ciphertext: string) => {
+          if (ciphertext.includes('poison')) throw new Error('decryption failed');
+          return ciphertext.replace('encrypted:', '');
+        },
+      });
+      const p = provider2.connect();
+      const ws2 = latestWs();
+      ws2.simulateOpen();
+      await p;
+      ws2.sentMessages = [];
+
+      const balancePromise = provider2.getBalance();
+      await flushAsync();
+      const sentEvent = JSON.parse(ws2.sentMessages[0])[1] as SignedEvent;
+
+      // A verified-looking but undecryptable response must NOT delete the
+      // pending entry (previously this dropped the legitimate response).
+      const poisonEvent = {
+        id: 'poison-response',
+        pubkey: WALLET_PUBKEY,
+        kind: 23195,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['e', sentEvent.id],
+          ['p', LOCAL_PUBKEY_HEX],
+        ],
+        content: 'encrypted:poison',
+        sig: 'poison-sig',
+      };
+      ws2.simulateMessage(JSON.stringify(['EVENT', 'nwc-sub', poisonEvent]));
+      await flushAsync();
+
+      // The real, decryptable response still resolves the request.
+      const response = buildResponseMessage(
+        sentEvent.id,
+        JSON.stringify({ result_type: 'get_balance', result: { balance: 63000 } }),
+      );
+      ws2.simulateMessage(response);
+
+      const result = await balancePromise;
+      assert.equal(result.balance, 63); // 63000 msats = 63 sats
+
+      provider2.disconnect();
     });
 
     it('ignores events with non-23195 kind', async () => {

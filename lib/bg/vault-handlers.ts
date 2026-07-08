@@ -16,7 +16,7 @@ import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
 import type { Account, VaultPayload } from '../types.ts';
 
-// ── Sync active pubkey to WoT config ──
+// ── Mirror active pubkey into the background config / storage.sync ──
 
 export async function syncActivePubkey(): Promise<void> {
     const pubkey = vault.getActivePubkey();
@@ -29,12 +29,53 @@ export async function syncActivePubkey(): Promise<void> {
     }
 }
 
+// ── Unlock brute-force guard (persisted, background-side) ──
+//
+// The popup's useVaultUnlock hook has its own escalating lockout, but that
+// state is in-page and resets on reload. This counter lives in storage.local
+// so repeated vault_unlock RPCs hit a server-side lockout regardless of how
+// the caller resets its UI. Reset on successful unlock and on vault_destroy.
+
+const UNLOCK_GUARD_KEY = 'vaultUnlockGuard';
+const UNLOCK_FAILURES_PER_LOCKOUT = 5;
+// Every 5 consecutive failures: 1 min, 5 min, 15 min, 30 min (cap)
+const UNLOCK_LOCKOUT_STEPS_MS = [60_000, 300_000, 900_000, 1_800_000];
+
+interface UnlockGuard { failures: number; lockedUntil: number; }
+
+async function readUnlockGuard(): Promise<UnlockGuard> {
+    const data = await browser.storage.local.get([UNLOCK_GUARD_KEY]) as Record<string, UnlockGuard | undefined>;
+    return data[UNLOCK_GUARD_KEY] ?? { failures: 0, lockedUntil: 0 };
+}
+
+async function recordUnlockFailure(): Promise<void> {
+    const guard = await readUnlockGuard();
+    guard.failures += 1;
+    if (guard.failures % UNLOCK_FAILURES_PER_LOCKOUT === 0) {
+        const step = Math.min(
+            guard.failures / UNLOCK_FAILURES_PER_LOCKOUT - 1,
+            UNLOCK_LOCKOUT_STEPS_MS.length - 1
+        );
+        guard.lockedUntil = Date.now() + UNLOCK_LOCKOUT_STEPS_MS[step];
+    }
+    await browser.storage.local.set({ [UNLOCK_GUARD_KEY]: guard });
+}
+
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
     ['vault_unlock', async (params) => {
+        const guard = await readUnlockGuard();
+        if (guard.lockedUntil > Date.now()) {
+            const secondsLeft = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
+            throw new Error(`Too many failed attempts. Try again in ${secondsLeft}s`);
+        }
         const unlockResult = await vault.unlock(params.password as string);
+        if (!unlockResult) {
+            await recordUnlockFailure();
+        }
         if (unlockResult) {
+            await browser.storage.local.remove(UNLOCK_GUARD_KEY);
             // Re-arm the persisted auto-lock interval (not the 15-min default that
             // _autoLockMs resets to on every service-worker cold start). See bug #10.
             await vault.restoreAutoLockSetting();
@@ -130,6 +171,11 @@ export const handlers = new Map<string, HandlerFn>([
             updates.activeAccountId = vault.getActiveAccountId() || (rmAccts[0] as { id: string })?.id || null;
         }
         await browser.storage.local.set(updates);
+        if (rmLocalData.activeAccountId === removedId) {
+            // Removing the active account changes the active identity — same
+            // invalidation as an explicit switch.
+            await signer.onActiveAccountChanged(removedId, updates.activeAccountId as string | null);
+        }
         return { ok: true };
     }],
 
@@ -150,9 +196,7 @@ export const handlers = new Map<string, HandlerFn>([
             await browser.storage.sync.set({ myPubkey: switchPubkey });
         }
         await browser.storage.local.set({ activeAccountId: switchId });
-        if (oldAccountId && oldAccountId !== switchId) {
-            await signer.rejectPendingForAccount(oldAccountId);
-        }
+        await signer.onActiveAccountChanged(oldAccountId, switchId);
         if (switchPubkey) {
             broadcastAccountChanged(switchPubkey);
         }
@@ -160,8 +204,13 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['vault_setActiveAccount', async (params) => {
-        await vault.setActiveAccount(params.accountId as string);
+        const newActiveId = params.accountId as string;
+        const prevData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        await vault.setActiveAccount(newActiveId);
         await syncActivePubkey();
+        // Same invalidation as switchAccount: reject the previous account's
+        // pending prompts and clear the getPublicKey cooldown.
+        await signer.onActiveAccountChanged(prevData.activeAccountId, newActiveId);
         return { ok: true };
     }],
 
@@ -171,9 +220,12 @@ export const handlers = new Map<string, HandlerFn>([
         const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
         const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
         if (!privkeyBytes) throw new Error('No private key available');
-        const nsec = nsecEncode(bytesToHex(privkeyBytes));
-        privkeyBytes.fill(0);
-        return nsec;
+        try {
+            return nsecEncode(bytesToHex(privkeyBytes));
+        } finally {
+            // finally: a throw inside nsecEncode must not skip zeroing
+            privkeyBytes.fill(0);
+        }
     }],
 
     ['vault_exportNcryptsec', async (params) => {
@@ -226,7 +278,7 @@ export const handlers = new Map<string, HandlerFn>([
         clearWalletProviders();
         await signer.cancelAllUnlockWaiters();
         await vault.destroy();
-        await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs']);
+        await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';
         return { ok: true };

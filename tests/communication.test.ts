@@ -1547,14 +1547,23 @@ describe('communication: permissions × lock — cross-cutting', () => {
     assert.strictEqual(enc, 'deny');
   });
 
-  it('kind-specific overrides method-level permission', async () => {
+  it('deny wins: method-level deny blocks a kind-specific allow', async () => {
     await permissions.save('app.com', 'signEvent', null, 'deny'); // method-level deny
     await permissions.save('app.com', 'signEvent', 1, 'allow');   // kind 1 allowed
 
     const kind1 = await permissions.check('app.com', 'signEvent', 1);
     const kind4 = await permissions.check('app.com', 'signEvent', 4);
-    assert.strictEqual(kind1, 'allow'); // kind-specific override
-    assert.strictEqual(kind4, 'deny');  // falls back to method-level
+    assert.strictEqual(kind1, 'deny');  // deny at any consulted level short-circuits
+    assert.strictEqual(kind4, 'deny');  // method-level deny applies to all kinds
+  });
+
+  it('kind-specific permission applies when no other level denies', async () => {
+    await permissions.save('site.com', 'signEvent', 1, 'allow');
+    await permissions.save('site.com', 'signEvent', 7, 'deny');
+
+    assert.strictEqual(await permissions.check('site.com', 'signEvent', 1), 'allow');
+    assert.strictEqual(await permissions.check('site.com', 'signEvent', 7), 'deny');
+    assert.strictEqual(await permissions.check('site.com', 'signEvent', 0), 'ask');
   });
 
   it('locking vault does not change permission decisions', async () => {

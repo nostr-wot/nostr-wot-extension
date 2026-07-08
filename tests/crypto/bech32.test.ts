@@ -64,6 +64,14 @@ describe('nprofileEncode / nprofileDecode', () => {
   it('rejects invalid nprofile', () => {
     assert.throws(() => nprofileDecode('nprofile1invalid'), /Invalid/);
   });
+
+  it('rejects relay URLs longer than 255 bytes (TLV length limit)', () => {
+    const longRelay = 'wss://' + 'a'.repeat(300) + '.example.com';
+    assert.throws(
+      () => nprofileEncode(TEST_PUBKEY_HEX, [longRelay]),
+      /255-byte TLV limit/
+    );
+  });
 });
 
 describe('normalizeToHex', () => {

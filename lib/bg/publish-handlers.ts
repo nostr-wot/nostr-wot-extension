@@ -64,6 +64,28 @@ export async function broadcastEvent(signedEvent: SignedEvent, relayUrls: string
     return results;
 }
 
+// ── Relay health check helpers ──
+
+/**
+ * Rejects private/loopback/link-local hosts so checkRelayHealth can't be used
+ * as an SSRF probe against the local machine or internal network.
+ */
+export function isPrivateHost(hostname: string): boolean {
+    const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (host === 'localhost' || host === '::1' || host.endsWith('.local')) return true;
+
+    const m = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!m) return false;
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    return a === 0 ||                          // 0.0.0.0/8
+        a === 127 ||                           // 127.0.0.0/8 loopback
+        a === 10 ||                            // 10.0.0.0/8
+        (a === 172 && b >= 16 && b <= 31) ||   // 172.16.0.0/12
+        (a === 192 && b === 168) ||            // 192.168.0.0/16
+        (a === 169 && b === 254);              // 169.254.0.0/16 link-local
+}
+
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
@@ -210,7 +232,20 @@ export const handlers = new Map<string, HandlerFn>([
     ['checkRelayHealth', async (params) => {
         const { url } = params as { url: string };
         try {
-            const httpUrl = url.replace('wss://', 'https://').replace('ws://', 'http://');
+            // Only probe genuine relay URLs (ws:// or wss://) — never let the
+            // caller point this fetch at arbitrary schemes or internal hosts.
+            if (typeof url !== 'string' || !/^wss?:\/\//i.test(url)) {
+                return { reachable: false };
+            }
+            const parsed = new URL(url);
+            if (parsed.protocol !== 'ws:' && parsed.protocol !== 'wss:') {
+                return { reachable: false };
+            }
+            if (isPrivateHost(parsed.hostname)) {
+                return { reachable: false };
+            }
+            const scheme = parsed.protocol === 'wss:' ? 'https:' : 'http:';
+            const httpUrl = `${scheme}//${parsed.host}${parsed.pathname}${parsed.search}`;
             const res = await fetch(httpUrl, {
                 headers: { 'Accept': 'application/nostr+json' },
                 signal: AbortSignal.timeout(5000)

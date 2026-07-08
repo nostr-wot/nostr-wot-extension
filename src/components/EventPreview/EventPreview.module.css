@@ -18,7 +18,32 @@
   font-size: 14px;
   line-height: 1.5;
   white-space: pre-wrap;
+  word-break: break-word;
   color: var(--text-heading);
+  /* Full (untruncated) content: keep the card compact by scrolling */
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.tagsTitle {
+  margin-top: 10px;
+}
+
+.tagsList {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 11px;
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 6px;
+  padding: 8px 10px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.tagRow {
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 1px 0;
+  color: var(--text-body);
 }
 
 .eventNote {

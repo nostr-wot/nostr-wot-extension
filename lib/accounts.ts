@@ -9,7 +9,8 @@
  *   - external: Delegates to another NIP-07 extension
  *
  * All account types are stored in the encrypted vault. Only the active account's
- * pubkey is synced to the WoT configuration for trust graph queries.
+ * pubkey is mirrored into the background config / `storage.sync.myPubkey` as the
+ * canonical "current identity" pointer used by the signer and activity log.
  *
  * @see https://github.com/nostr-protocol/nips/blob/master/06.md -- NIP-06: Key derivation from mnemonic (m/44'/1237'/0'/0/0)
  * @see https://github.com/nostr-protocol/nips/blob/master/19.md -- NIP-19: bech32 entities (nsec, npub)
@@ -40,22 +41,30 @@ export async function createFromMnemonic(mnemonic: string, name: string = 'Main'
   const valid = await validateMnemonic(mnemonic);
   if (!valid) throw new Error('Invalid mnemonic');
 
+  // Zero the 64-byte BIP-39 seed and the derived privkey bytes after use —
+  // only the hex copy on the returned Account survives.
   const seed = await mnemonicToSeed(mnemonic);
-  const privkey = await derivePath(seed, NIP06_PATH);
-  const pubkey = getPublicKey(privkey);
+  let privkey: Uint8Array | null = null;
+  try {
+    privkey = await derivePath(seed, NIP06_PATH);
+    const pubkey = getPublicKey(privkey);
 
-  return {
-    id: generateId(),
-    name,
-    type: 'generated',
-    pubkey: bytesToHex(pubkey),
-    privkey: bytesToHex(privkey),
-    mnemonic,
-    nip46Config: null,
-    readOnly: false,
-    createdAt: Math.floor(Date.now() / 1000),
-    derivationIndex: 0
-  };
+    return {
+      id: generateId(),
+      name,
+      type: 'generated',
+      pubkey: bytesToHex(pubkey),
+      privkey: bytesToHex(privkey),
+      mnemonic,
+      nip46Config: null,
+      readOnly: false,
+      createdAt: Math.floor(Date.now() / 1000),
+      derivationIndex: 0
+    };
+  } finally {
+    seed.fill(0);
+    if (privkey) privkey.fill(0);
+  }
 }
 
 /**
@@ -71,22 +80,28 @@ export async function createFromMnemonicAtIndex(mnemonic: string, index: number,
   if (!valid) throw new Error('Invalid mnemonic');
 
   const seed = await mnemonicToSeed(mnemonic);
-  const path = `m/44'/1237'/0'/0/${index}`;
-  const privkey = await derivePath(seed, path);
-  const pubkey = getPublicKey(privkey);
+  let privkey: Uint8Array | null = null;
+  try {
+    const path = `m/44'/1237'/0'/0/${index}`;
+    privkey = await derivePath(seed, path);
+    const pubkey = getPublicKey(privkey);
 
-  return {
-    id: generateId(),
-    name: name || `Account ${index + 1}`,
-    type: 'generated',
-    pubkey: bytesToHex(pubkey),
-    privkey: bytesToHex(privkey),
-    mnemonic,
-    nip46Config: null,
-    readOnly: false,
-    createdAt: Math.floor(Date.now() / 1000),
-    derivationIndex: index
-  };
+    return {
+      id: generateId(),
+      name: name || `Account ${index + 1}`,
+      type: 'generated',
+      pubkey: bytesToHex(pubkey),
+      privkey: bytesToHex(privkey),
+      mnemonic,
+      nip46Config: null,
+      readOnly: false,
+      createdAt: Math.floor(Date.now() / 1000),
+      derivationIndex: index
+    };
+  } finally {
+    seed.fill(0);
+    if (privkey) privkey.fill(0);
+  }
 }
 
 /**
@@ -112,20 +127,26 @@ export async function importFromMnemonicDerived(mnemonic: string, name: string =
   if (!valid) throw new Error('Invalid mnemonic');
 
   const seed = await mnemonicToSeed(mnemonic);
-  const privkey = await derivePath(seed, NIP06_PATH);
-  const pubkey = getPublicKey(privkey);
+  let privkey: Uint8Array | null = null;
+  try {
+    privkey = await derivePath(seed, NIP06_PATH);
+    const pubkey = getPublicKey(privkey);
 
-  return {
-    id: generateId(),
-    name,
-    type: 'nsec',
-    pubkey: bytesToHex(pubkey),
-    privkey: bytesToHex(privkey),
-    mnemonic: null,
-    nip46Config: null,
-    readOnly: false,
-    createdAt: Math.floor(Date.now() / 1000)
-  };
+    return {
+      id: generateId(),
+      name,
+      type: 'nsec',
+      pubkey: bytesToHex(pubkey),
+      privkey: bytesToHex(privkey),
+      mnemonic: null,
+      nip46Config: null,
+      readOnly: false,
+      createdAt: Math.floor(Date.now() / 1000)
+    };
+  } finally {
+    seed.fill(0);
+    if (privkey) privkey.fill(0);
+  }
 }
 
 /**
@@ -146,7 +167,12 @@ export async function importNsec(input: string, name: string = 'Imported'): Prom
   }
 
   const privkeyBytes = hexToBytes(privkeyHex);
-  const pubkey = getPublicKey(privkeyBytes);
+  let pubkey: Uint8Array;
+  try {
+    pubkey = getPublicKey(privkeyBytes);
+  } finally {
+    privkeyBytes.fill(0);
+  }
 
   return {
     id: generateId(),

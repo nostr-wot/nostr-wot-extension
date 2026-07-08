@@ -112,26 +112,24 @@ export async function check(domain: string, method: string, kind?: number, accou
     return 'ask';
   }
 
-  // Cascade: kind-specific > method-level > wildcard > ask
+  // Deny-wins cascade: consult kind-specific, method-level, and wildcard keys.
+  // An explicit 'deny' at ANY consulted level short-circuits to 'deny' — a
+  // kind-specific 'allow' can never override a method-level or wildcard 'deny',
+  // and a broad '*' allow cannot bypass a narrower deny. When no level denies,
+  // the most specific defined value wins (kind > method > wildcard > ask).
   const kindKey = permissionKey(method, kind);
   const methodKey = method;
+  const consulted = kindKey !== methodKey ? [kindKey, methodKey, '*'] : [methodKey, '*'];
 
-  // 1. Kind-specific (e.g. "signEvent:1") — only when kind is provided
-  if (kindKey !== methodKey && data[kindKey]) {
-    if (data[kindKey] === 'deny') console.warn('[PERMISSIONS] deny:', domain, kindKey, 'bucket:', bucket);
-    return data[kindKey];
+  for (const key of consulted) {
+    if (data[key] === 'deny') {
+      console.warn('[PERMISSIONS] deny:', domain, key, 'bucket:', bucket);
+      return 'deny';
+    }
   }
 
-  // 2. Method-level (e.g. "signEvent")
-  if (data[methodKey]) {
-    if (data[methodKey] === 'deny') console.warn('[PERMISSIONS] deny:', domain, methodKey, 'bucket:', bucket);
-    return data[methodKey];
-  }
-
-  // 3. Wildcard
-  if (data['*']) {
-    if (data['*'] === 'deny') console.warn('[PERMISSIONS] deny:', domain, '*', 'bucket:', bucket);
-    return data['*'];
+  for (const key of consulted) {
+    if (data[key]) return data[key];
   }
 
   return 'ask';

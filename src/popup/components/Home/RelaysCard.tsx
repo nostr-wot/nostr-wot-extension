@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import browser from '@shared/browser.ts';
 import { t } from '@lib/i18n.js';
 import { DEFAULT_RELAYS } from '@shared/constants.ts';
-import NavCard from '@components/NavCard/NavCard';
+import NavRow from '@components/NavRow/NavRow';
 import { IconGlobe } from '@assets';
 
 /**
@@ -23,7 +23,7 @@ export default function RelaysCard({ onOpen }: { onOpen: () => void }) {
   }, []);
 
   return (
-    <NavCard
+    <NavRow
       icon={<IconGlobe size={16} />}
       title={t('network.relays')}
       info={t('network.relaysInfo')}

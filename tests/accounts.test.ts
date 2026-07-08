@@ -4,6 +4,8 @@ import {
   createFromMnemonic, createFromMnemonicAtIndex, generateNewAccount, importNsec, importNpub, connectNip46, importFromMnemonicDerived
 } from '../lib/accounts.ts';
 import { nsecEncode, npubEncode } from '../lib/crypto/bech32.ts';
+import { bytesToHex, hexToBytes } from '../lib/crypto/utils.ts';
+import { getPublicKey } from '../lib/crypto/secp256k1.ts';
 
 const VALID_MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';
@@ -218,6 +220,35 @@ describe('connectNip46', () => {
       () => connectNip46('bunker://shortpubkey?relay=wss://relay.example.com'),
       /Invalid bunker URL/
     );
+  });
+});
+
+describe('key hygiene -- internal buffers zeroed, returned account stays valid', () => {
+  // The seed and derived-privkey Uint8Arrays are zeroed in try/finally; the
+  // returned hex copies must remain a consistent, usable keypair.
+
+  it('createFromMnemonic: returned privkey still derives the returned pubkey', async () => {
+    const acct: any = await createFromMnemonic(VALID_MNEMONIC);
+    const derived = bytesToHex(getPublicKey(hexToBytes(acct.privkey)));
+    assert.strictEqual(derived, acct.pubkey);
+  });
+
+  it('createFromMnemonicAtIndex: returned privkey still derives the returned pubkey', async () => {
+    const acct: any = await createFromMnemonicAtIndex(VALID_MNEMONIC, 2);
+    const derived = bytesToHex(getPublicKey(hexToBytes(acct.privkey)));
+    assert.strictEqual(derived, acct.pubkey);
+  });
+
+  it('importFromMnemonicDerived: returned privkey still derives the returned pubkey', async () => {
+    const acct: any = await importFromMnemonicDerived(VALID_MNEMONIC);
+    const derived = bytesToHex(getPublicKey(hexToBytes(acct.privkey)));
+    assert.strictEqual(derived, acct.pubkey);
+  });
+
+  it('importNsec: returned privkey still derives the returned pubkey', async () => {
+    const acct: any = await importNsec(TEST_PRIVKEY_HEX);
+    const derived = bytesToHex(getPublicKey(hexToBytes(acct.privkey)));
+    assert.strictEqual(derived, acct.pubkey);
   });
 });
 

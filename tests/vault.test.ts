@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import { resetMockStorage, hasAlarm } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../lib/vault.ts';
+import { bytesToHex } from '../lib/crypto/utils.ts';
 import type { VaultPayload } from '../lib/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
@@ -269,6 +270,45 @@ describe('vault -- seed export', () => {
     const decrypted = vault.getDecryptedPayload();
     const acct = decrypted.accounts.find(a => a.id === 'seed1');
     assert.strictEqual(acct!.mnemonic, TEST_MNEMONIC);
+  });
+});
+
+describe('vault -- replacing _decrypted zeroes old buffers (key hygiene)', () => {
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  it('unlock() while already unlocked (password re-verify) keeps keys usable', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    // change-password flow re-verifies the current password while unlocked
+    const ok = await vault.unlock(TEST_PASSWORD);
+    assert.strictEqual(ok, true);
+    const pk = vault.getPrivkey()!;
+    assert.strictEqual(bytesToHex(pk), TEST_PRIVKEY_HEX);
+    pk.fill(0);
+  });
+
+  it('FAILED unlock() while unlocked does not wipe the current session keys', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    const ok = await vault.unlock('totally-wrong-password');
+    assert.strictEqual(ok, false);
+    // Old buffers must only be zeroed AFTER a successful decrypt
+    assert.strictEqual(vault.isLocked(), false);
+    const pk = vault.getPrivkey()!;
+    assert.strictEqual(bytesToHex(pk), TEST_PRIVKEY_HEX);
+    pk.fill(0);
+  });
+
+  it('create() over an unlocked vault (lock-mode transition) keeps keys usable', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    const payload = vault.getDecryptedPayload();
+    // vault_setAutoLock "never lock" transition re-creates with empty password
+    await vault.create('', payload);
+    assert.strictEqual(vault.isLocked(), false);
+    const pk = vault.getPrivkey()!;
+    assert.strictEqual(bytesToHex(pk), TEST_PRIVKEY_HEX);
+    pk.fill(0);
   });
 });
 

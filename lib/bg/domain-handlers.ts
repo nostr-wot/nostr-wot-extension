@@ -10,10 +10,12 @@ import { isRestrictedUrl, type HandlerFn, type LocalAccountEntry } from './state
 // ── Domain permission functions (with in-memory cache) ──
 
 let _cachedDomains: string[] | null = null;
+let _cachedWeblnDomains: string[] | null = null;
 let _cachedDismissedDomains: string[] | null = null;
 let _cachedAccountReadOnly: { accountId: string | undefined; readOnly: boolean } | null = null;
 
 function invalidateDomainCache(): void { _cachedDomains = null; }
+function invalidateWeblnDomainCache(): void { _cachedWeblnDomains = null; }
 function invalidateDismissedCache(): void { _cachedDismissedDomains = null; }
 function invalidateAccountCache(): void { _cachedAccountReadOnly = null; }
 
@@ -22,6 +24,7 @@ try {
     browser.storage.onChanged.addListener((changes: Record<string, unknown>, area: string) => {
         if (area === 'local') {
             if ((changes as Record<string, unknown>).allowedDomains) invalidateDomainCache();
+            if ((changes as Record<string, unknown>).weblnAllowedDomains) invalidateWeblnDomainCache();
             if ((changes as Record<string, unknown>).dismissedDomains) invalidateDismissedCache();
             if ((changes as Record<string, unknown>).accounts || (changes as Record<string, unknown>).activeAccountId) invalidateAccountCache();
         }
@@ -57,6 +60,46 @@ export async function removeAllowedDomain(domain: string): Promise<boolean> {
     const filtered = domains.filter(d => d !== domain);
     await browser.storage.local.set({ allowedDomains: filtered });
     invalidateDomainCache();
+    // Disconnecting a site revokes its WebLN consent too — a re-connected
+    // site must call enable() again before it can touch the wallet.
+    await removeWeblnAllowedDomain(domain);
+    return true;
+}
+
+// ── WebLN-allowed domains (separate consent from the NIP-07 connect) ──
+//
+// A NIP-07-connected site does NOT automatically get wallet access. WebLN
+// consent is recorded only when the site calls webln.enable() and the user
+// approves the Connect card for it. Every webln_* method except enable is
+// gated on this list (see background.ts).
+
+export async function getWeblnAllowedDomains(): Promise<string[]> {
+    if (_cachedWeblnDomains !== null) return _cachedWeblnDomains;
+    const data = await browser.storage.local.get('weblnAllowedDomains');
+    _cachedWeblnDomains = (data as Record<string, string[]>).weblnAllowedDomains || [];
+    return _cachedWeblnDomains;
+}
+
+export async function isWeblnAllowed(domain: string): Promise<boolean> {
+    const domains = await getWeblnAllowedDomains();
+    return domains.includes(domain);
+}
+
+export async function addWeblnAllowedDomain(domain: string): Promise<boolean> {
+    const domains = await getWeblnAllowedDomains();
+    if (!domains.includes(domain)) {
+        domains.push(domain);
+        await browser.storage.local.set({ weblnAllowedDomains: domains });
+        invalidateWeblnDomainCache();
+    }
+    return true;
+}
+
+export async function removeWeblnAllowedDomain(domain: string): Promise<boolean> {
+    const domains = await getWeblnAllowedDomains();
+    const filtered = domains.filter(d => d !== domain);
+    await browser.storage.local.set({ weblnAllowedDomains: filtered });
+    invalidateWeblnDomainCache();
     return true;
 }
 
@@ -143,6 +186,15 @@ export async function broadcastAccountChanged(pubkey: string): Promise<void> {
         const tabs = await browser.tabs.query({});
         for (const tab of tabs) {
             if (isRestrictedUrl(tab.url)) continue;
+            const domain = getDomainFromUrl(tab.url || '');
+            if (!domain) continue;
+            // Only notify origins the user has actually connected (and not
+            // disabled identity for). Broadcasting the active pubkey to every
+            // open tab would leak the user's Nostr identity to unconnected —
+            // possibly hostile — sites idling in background tabs, defeating the
+            // getPublicKey consent gate.
+            if (!(await isDomainAllowed(domain))) continue;
+            if (await isIdentityDisabled(domain)) continue;
             browser.tabs.sendMessage(tab.id!, { type: 'NOSTR_ACCOUNT_CHANGED', pubkey }).catch(() => {});
         }
     } catch (e: unknown) {

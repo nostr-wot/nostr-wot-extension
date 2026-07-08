@@ -27,7 +27,6 @@
     "background.ts",
     "content.ts",
     "inject.ts",
-    "badges/**/*.ts",
     "tests/**/*.ts",
     "vite.config.ts",
     "vite-env.d.ts"

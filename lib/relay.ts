@@ -7,6 +7,7 @@
  */
 
 import browser from './browser.ts';
+import { verifyEvent } from './crypto/nip01.ts';
 import type { SignedEvent, NostrFilter, LiveEvent, LiveQueryOptions } from './types.ts';
 
 // ── Helpers ──
@@ -48,13 +49,17 @@ export async function readLocalCache(filters: NostrFilter[]): Promise<SignedEven
   const data = await browser.storage.local.get(keys) as Record<string, SignedEvent | undefined>;
   for (const key of keys) {
     const ev = data[key];
-    if (ev && ev.id && ev.sig) results.push(ev);
+    // Signature-verify on read as well as on write: storage may hold entries
+    // written before verification existed, so never surface unverified data.
+    if (ev && ev.id && ev.sig && await verifyEvent(ev)) results.push(ev);
   }
   return results;
 }
 
 export async function writeLocalCache(event: SignedEvent): Promise<void> {
   if (!isReplaceable(event.kind)) return;
+  // Never persist an event whose id/signature don't check out.
+  if (!(await verifyEvent(event))) return;
   const key = replaceableKey(event.kind, event.pubkey);
   await browser.storage.local.set({ [key]: event });
 }
@@ -110,9 +115,16 @@ export async function* liveQuery(
     }
   }
 
-  function processEvent(event: SignedEvent, relay: string) {
+  async function processEvent(event: SignedEvent, relay: string) {
     // Dedup by event ID
     if (seenIds.has(event.id)) return;
+
+    // Drop forged events: relays are untrusted, so every inbound event must
+    // pass schnorr signature + id verification before it is accepted,
+    // yielded, or cached. Verify BEFORE marking the id as seen so a forged
+    // event can't shadow a later legitimate one with the same id.
+    if (!(await verifyEvent(event))) return;
+
     seenIds.add(event.id);
 
     // Kind 5 deletion
@@ -196,21 +208,28 @@ export async function* liveQuery(
         }
       };
 
+      // Serialize message handling per socket: processEvent awaits async
+      // signature verification, so chain messages to keep relay ordering
+      // (EVENT before EOSE) — otherwise EOSE could exhaust the query while
+      // an event is still being verified.
+      let msgChain: Promise<void> = Promise.resolve();
       ws.onmessage = (msg: MessageEvent) => {
-        try {
-          const data = JSON.parse(typeof msg.data === 'string' ? msg.data : '');
-          if (!Array.isArray(data)) return;
+        msgChain = msgChain.then(async () => {
+          try {
+            const data = JSON.parse(typeof msg.data === 'string' ? msg.data : '');
+            if (!Array.isArray(data)) return;
 
-          if (data[0] === 'EVENT' && data[2]) {
-            processEvent(data[2] as SignedEvent, relay);
-          } else if (data[0] === 'EOSE') {
-            clearTimeout(timer);
-            queue.push({ type: 'eose', relay });
-            try { ws.close(); } catch { /* ignore */ }
-            eoseCount++;
-            checkExhausted();
-          }
-        } catch { /* malformed message — ignore */ }
+            if (data[0] === 'EVENT' && data[2]) {
+              await processEvent(data[2] as SignedEvent, relay);
+            } else if (data[0] === 'EOSE') {
+              clearTimeout(timer);
+              queue.push({ type: 'eose', relay });
+              try { ws.close(); } catch { /* ignore */ }
+              eoseCount++;
+              checkExhausted();
+            }
+          } catch { /* malformed message — ignore */ }
+        });
       };
 
       ws.onerror = () => {

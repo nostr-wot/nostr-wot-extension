@@ -1,5 +1,4 @@
 import React from 'react';
-import { truncate } from '@shared/format/text.ts';
 import { KIND_LABELS } from '@shared/constants.ts';
 import styles from '../EventPreview.module.css';
 
@@ -20,7 +19,7 @@ export default function GenericPreview({ event }: GenericPreviewProps) {
     <>
       <h3 className={styles.sectionTitle}>{kindLabel}</h3>
       {event.content && (
-        <div className={styles.noteContent}>{truncate(event.content, 300)}</div>
+        <div className={styles.noteContent}>{event.content}</div>
       )}
     </>
   );

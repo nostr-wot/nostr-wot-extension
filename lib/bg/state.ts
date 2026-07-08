@@ -52,7 +52,7 @@ export const NIP07_SIGNING_METHODS = new Set([
  * This is called once at startup by background.ts — any method registered in a handler map
  * is automatically privileged (restricted to internal extension pages only).
  *
- * Methods NOT in handler maps (e.g. WoT API queries from content scripts) are unprivileged.
+ * Methods NOT in handler maps (the page-facing nip07_/webln_ methods) are unprivileged.
  */
 export function buildPrivilegedMethods(...handlerMaps: Map<string, HandlerFn>[]): Set<string> {
     const methods = new Set<string>();

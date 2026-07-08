@@ -9,12 +9,12 @@ import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
 import { npubEncode } from '../crypto/bech32.ts';
 import { signEvent } from '../crypto/nip01.ts';
+import { addWeblnAllowedDomain } from './domain-handlers.ts';
 import { getWalletProvider, removeWalletProvider, type WalletConfig } from '../wallet/';
 import { decodeBolt11 } from '../wallet/bolt11.ts';
 import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress, DEFAULT_LNBITS_URL } from '../wallet/lnbits-provision.ts';
 import type { SignedEvent } from '../types.ts';
 import type { HandlerFn } from './state.ts';
-import { addAllowedDomain } from './domain-handlers.ts';
 
 // ── Shared utilities ──
 
@@ -49,16 +49,26 @@ export function createNip98SignFn(acctId: string, endpointUrl: string): (challen
 
 export const handlers = new Map<string, HandlerFn>([
     ['webln_enable', async (params) => {
-        const origin = (params as { origin?: string }).origin;
-        if (origin) await addAllowedDomain(origin);
+        const { origin } = params as { origin?: string };
+        // Consent + domain grant happen in the background connect gate
+        // (see background.ts). Reaching here means the user has approved WebLN
+        // access for this origin via the "Connect this site" card. Record the
+        // WebLN-specific consent: every other webln_* method is gated on the
+        // weblnAllowedDomains list, so a site that never called enable() (e.g.
+        // one only NIP-07-connected) cannot read the wallet.
+        if (origin) await addWeblnAllowedDomain(origin);
         return true;
     }],
 
     ['webln_getInfo', async () => {
-        const { provider, acct } = await getConnectedProvider();
+        const { provider } = await getConnectedProvider();
         const info = await provider.getInfo();
         return {
-            node: { alias: info.alias || '', pubkey: acct.pubkey },
+            // node.pubkey is the Lightning node id. We don't expose one, and we
+            // MUST NOT leak the user's Nostr identity pubkey here — that stays
+            // behind the getPublicKey consent prompt (a connected site does not
+            // automatically learn the identity).
+            node: { alias: info.alias || '', pubkey: '' },
             supports: ['lightning'],
             methods: ['getInfo', 'sendPayment', 'makeInvoice', 'getBalance'],
         };
@@ -89,9 +99,15 @@ export const handlers = new Map<string, HandlerFn>([
         const perm = await signerPermissions.check(origin, 'webln_sendPayment');
         if (perm === 'deny') throw new Error('Permission denied');
 
-        // S-18: Auto-approve if amount is within the stored threshold
+        // S-18: Auto-approve WITHOUT a prompt only when the invoice amount
+        // decoded successfully AND a per-account threshold is set AND the
+        // amount is within it. This cap applies even when perm === 'allow':
+        // a remembered "allow" means "don't ask again for amounts within my
+        // threshold", NOT "unlimited". Undecodable/zero amounts, amounts
+        // above the threshold, and no-threshold all fall through to the
+        // interactive prompt — a site can never drain the wallet silently.
         let autoApproved = false;
-        if (perm === 'allow' && invoiceAmountSats > 0) {
+        if (invoiceAmountSats > 0) {
             const acctId = vault.getActiveAccountId();
             if (acctId) {
                 const data = await browser.storage.local.get(`walletThreshold_${acctId}`) as Record<string, number>;
@@ -102,7 +118,7 @@ export const handlers = new Map<string, HandlerFn>([
             }
         }
 
-        if (!autoApproved && perm === 'ask') {
+        if (!autoApproved) {
             const decision = await signer.queueRequest({
                 type: 'webln_sendPayment',
                 origin,
@@ -111,6 +127,7 @@ export const handlers = new Map<string, HandlerFn>([
             });
             if (!decision.allow) throw new Error('Payment denied by user');
             if (decision.remember) {
+                // 'allow' here only enables threshold-capped auto-approval
                 await signerPermissions.save(origin, 'webln_sendPayment', null, 'allow');
             }
         }
