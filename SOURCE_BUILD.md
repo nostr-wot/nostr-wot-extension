@@ -1,9 +1,32 @@
 # Building Nostr WoT from source (reviewer instructions)
 
 This add-on's uploaded files are produced by a bundler (Vite + `@crxjs/vite-plugin`)
-from the TypeScript/React source in this archive. The build is **deterministic** —
-building from this source with the pinned dependencies reproduces the exact same
-files that are in the uploaded add-on. **The build is not minified.**
+from the TypeScript/React source. The build is **deterministic** — building from this
+source with the pinned dependencies reproduces the exact same files that are in the
+uploaded add-on. **The build is not minified.**
+
+Each release is tagged, so you can build from the exact commit that produced the
+upload.
+
+## Getting the source (any one of these — all identical)
+
+**A. From the tagged release (recommended)**
+
+```bash
+git clone https://github.com/nostr-wot/nostr-wot-extension.git
+cd nostr-wot-extension
+git checkout v0.3.86        # the tag matching this add-on version
+```
+
+**B. Download the release source archive** from
+<https://github.com/nostr-wot/nostr-wot-extension/releases/tag/v0.3.86>
+(or directly: `https://github.com/nostr-wot/nostr-wot-extension/archive/refs/tags/v0.3.86.zip`).
+Unzip and `cd` into the extracted folder.
+
+**C. The `nostr-wot-source-<version>.zip`** attached to this AMO submission — the same
+tree as the tag.
+
+Then run the build below.
 
 ## Build environment
 
