@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.86] - 2026-07-08
+
+### Fixed
+- **Packaging:** the `package:chrome` / `package:firefox` scripts used `zip -r`, which *appends* to an existing archive — so repeated builds accumulated stale entries (old content-hashed assets and the long-removed `badges/` files). The zip is now removed before repackaging (`rm -f` + `zip -rX`), so each package contains exactly the current build and nothing else. Verified reproducible: a fresh `npm ci && npm run package:firefox` from the source package reproduces the add-on byte-for-byte.
+
+No functional changes to the extension from 0.3.85 — this is a packaging-correctness and version bump for the store submissions.
+
 ## [0.3.85] - 2026-07-08
 
 ### Security
