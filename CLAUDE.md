@@ -55,12 +55,23 @@ open "safari-build/DerivedData/Build/Products/Debug/Nostr WoT.app"
 
 **App Store upload (release flow, separate from local install):**
 
-Do not waste time looking for App Store Connect API keys, Issuer IDs, or app-specific passwords. They are NOT needed. Xcode's `IDEDistribution.framework` reads cached Apple ID credentials from a system keychain item that `security find-generic-password` cannot see — but `xcodebuild -exportArchive` with `destination=upload` can. Just run the upload; if there is no cached credential the command will print an obvious auth error and only then escalate.
+Upload authenticates with an **App Store Connect API key** (`.p8`). The plain
+`xcodebuild -exportArchive ... destination=upload` fails on this machine with
+`Failed to Use Accounts` — there is NO cached Apple ID credential, so pass the
+API key explicitly via `-authenticationKey*` flags (see step 4). The key files
+live in `~/Downloads/` and `~/private_keys/`; the working Key ID + Issuer ID for
+the Dandelion team are recorded in the agent's private memory (not committed —
+this repo is public). Verify auth read-only first:
+`xcrun altool --list-apps --apiKey <KEYID> --apiIssuer <ISSUER> --output-format json`
+should list `com.nostr-wot.extension`.
 
 ```bash
-# 1. Bump versions
+# 1. Bump versions — MARKETING_VERSION *and* CURRENT_PROJECT_VERSION (build
+#    number). Apple rejects a duplicate build number even with a new version.
 sed -i '' 's/"version": "OLD"/"version": "NEW"/' package.json manifest.json
 sed -i '' 's/MARKETING_VERSION = OLD/MARKETING_VERSION = NEW/g' \
+  "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj/project.pbxproj"
+sed -i '' 's/CURRENT_PROJECT_VERSION = OLD/CURRENT_PROJECT_VERSION = NEW/g' \
   "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj/project.pbxproj"
 
 # 2. Build & sync (sync:safari also converts background → persistent page;
@@ -78,13 +89,18 @@ xcodebuild archive \
   DEVELOPMENT_TEAM=R3M572YZ8S \
   CODE_SIGN_STYLE=Automatic
 
-# 4. Re-sign for distribution AND upload to App Store Connect.
-#    The existing safari-build/ExportOptions.plist already has
-#    method=app-store-connect + destination=upload + teamID=R3M572YZ8S.
+# 4. Re-sign for distribution AND upload to App Store Connect via API key.
+#    ExportOptions.plist already has method=app-store-connect +
+#    destination=upload + teamID=R3M572YZ8S. The -authenticationKey* flags
+#    supply the API-key credential (KEYID/ISSUER are in agent memory).
 xcodebuild -exportArchive \
   -archivePath safari-build/NostrWoT.xcarchive \
   -exportOptionsPlist safari-build/ExportOptions.plist \
-  -exportPath safari-build/Upload
+  -exportPath safari-build/Upload \
+  -authenticationKeyPath "$HOME/Downloads/AuthKey_<KEYID>.p8" \
+  -authenticationKeyID <KEYID> \
+  -authenticationKeyIssuerID <ISSUER> \
+  -allowProvisioningUpdates
 ```
 
 The build then has to be selected in App Store Connect (Apps → Nostr WoT → TestFlight or App Store distribution) — that part is web-UI only.
