@@ -25,6 +25,9 @@ icons/icon128.svg
 # Local settings
 .claude/
 
+# Local-only docs holding credentials/secrets (referenced from CLAUDE.md)
+*.local.md
+
 # Git worktrees
 .worktrees/
 

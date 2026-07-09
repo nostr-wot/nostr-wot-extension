@@ -59,9 +59,9 @@ Upload authenticates with an **App Store Connect API key** (`.p8`). The plain
 `xcodebuild -exportArchive ... destination=upload` fails on this machine with
 `Failed to Use Accounts` — there is NO cached Apple ID credential, so pass the
 API key explicitly via `-authenticationKey*` flags (see step 4). The key files
-live in `~/Downloads/` and `~/private_keys/`; the working Key ID + Issuer ID for
-the Dandelion team are recorded in the agent's private memory (not committed —
-this repo is public). Verify auth read-only first:
+live in `~/Downloads/` and `~/private_keys/`; the working **Key ID + Issuer ID
+and the exact commands are in `DEPLOY.local.md`** (gitignored, repo-root — not
+committed because this repo is public). Verify auth read-only first:
 `xcrun altool --list-apps --apiKey <KEYID> --apiIssuer <ISSUER> --output-format json`
 should list `com.nostr-wot.extension`.
 
@@ -92,7 +92,7 @@ xcodebuild archive \
 # 4. Re-sign for distribution AND upload to App Store Connect via API key.
 #    ExportOptions.plist already has method=app-store-connect +
 #    destination=upload + teamID=R3M572YZ8S. The -authenticationKey* flags
-#    supply the API-key credential (KEYID/ISSUER are in agent memory).
+#    supply the API-key credential (KEYID/ISSUER are in DEPLOY.local.md).
 xcodebuild -exportArchive \
   -archivePath safari-build/NostrWoT.xcarchive \
   -exportOptionsPlist safari-build/ExportOptions.plist \
