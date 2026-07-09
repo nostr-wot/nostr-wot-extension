@@ -192,19 +192,32 @@ export async function* liveQuery(
       }
       sockets.push(ws);
 
-      const timer = setTimeout(() => {
-        try { ws.close(); } catch { /* ignore */ }
+      // Count this relay toward exhaustion EXACTLY once, whichever terminal
+      // signal arrives first: EOSE, error, close-without-EOSE, send failure,
+      // or the failsafe timer. Previously ws.onclose only cleared the timer —
+      // a relay that closed its socket without sending EOSE (server-initiated
+      // clean close, e.g. rate-limit/policy, fires `close` but NOT `error`)
+      // was never counted, so 'exhausted' never fired and closeOnExhaust
+      // consumers (e.g. the onboarding follow-suggestions check) hung forever.
+      let settled = false;
+      const settleRelay = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
         eoseCount++;
         checkExhausted();
+      };
+
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch { /* ignore */ }
+        settleRelay();
       }, RELAY_TIMEOUT_MS);
 
       ws.onopen = () => {
         try {
           ws.send(JSON.stringify(['REQ', subId, ...filters]));
         } catch {
-          clearTimeout(timer);
-          eoseCount++;
-          checkExhausted();
+          settleRelay();
         }
       };
 
@@ -222,24 +235,22 @@ export async function* liveQuery(
             if (data[0] === 'EVENT' && data[2]) {
               await processEvent(data[2] as SignedEvent, relay);
             } else if (data[0] === 'EOSE') {
-              clearTimeout(timer);
               queue.push({ type: 'eose', relay });
               try { ws.close(); } catch { /* ignore */ }
-              eoseCount++;
-              checkExhausted();
+              settleRelay();
             }
           } catch { /* malformed message — ignore */ }
         });
       };
 
       ws.onerror = () => {
-        clearTimeout(timer);
-        eoseCount++;
-        checkExhausted();
+        settleRelay();
       };
 
+      // A close without a prior EOSE/error (server-initiated clean close)
+      // must still count the relay, or the query never exhausts.
       ws.onclose = () => {
-        clearTimeout(timer);
+        settleRelay();
       };
     }
 

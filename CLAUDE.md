@@ -20,8 +20,14 @@ The Safari wrapper project already exists in `safari-xcode/`. Do NOT regenerate 
 # 1. Build the web extension
 npm run build
 
-# 2. Sync dist/ into the Xcode project's Resources/ (delete-mode rsync to drop removed files)
-rsync -a --delete dist/ "safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/"
+# 2. Sync dist/ into the Xcode project's Resources/ AND convert the manifest's
+#    background to a persistent background page. Safari cannot reliably start the
+#    Chrome-style MV3 `service_worker` background — it reports "background content
+#    is not loaded" and every popup RPC hangs forever (splash never dismisses).
+#    `npm run sync:safari` rsyncs (delete-mode) then rewrites background to
+#    { scripts: ["service-worker-loader.js"], persistent: true }. Do NOT replace
+#    this with a raw rsync — that reintroduces the hang.
+npm run sync:safari
 
 # 3. Bump MARKETING_VERSION in the pbxproj to match package.json
 NEW_VERSION=$(node -p "require('./package.json').version")
@@ -57,9 +63,10 @@ sed -i '' 's/"version": "OLD"/"version": "NEW"/' package.json manifest.json
 sed -i '' 's/MARKETING_VERSION = OLD/MARKETING_VERSION = NEW/g' \
   "safari-xcode/Nostr WoT/Nostr WoT.xcodeproj/project.pbxproj"
 
-# 2. Build & sync
+# 2. Build & sync (sync:safari also converts background → persistent page;
+#    see the local-install note — a raw rsync reintroduces the SW-not-loaded hang)
 npm run build
-rsync -a --delete dist/ "safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/"
+npm run sync:safari
 
 # 3. Archive (Release config, automatic signing with the Dandelion team)
 rm -rf safari-build/NostrWoT.xcarchive

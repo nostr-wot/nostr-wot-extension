@@ -1,11 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubDecode } from '@lib/crypto/bech32.ts';
-import { liveQuery } from '@lib/relay.ts';
-import { DEFAULT_RELAYS } from '@shared/constants.ts';
-import browser from '@lib/browser.ts';
-import type { LiveEvent } from '@lib/types.ts';
 import Button from '@components/Button/Button';
 import Avatar from '@components/Avatar/Avatar';
 import { truncateNpub, getInitial as getInitialChar } from '@shared/format/text.ts';
@@ -91,40 +87,13 @@ interface FollowSuggestionsStepProps {
 }
 
 export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepProps) {
-  const [checking, setChecking] = useState(true);
-  const skippedRef = useRef(false);
-
-  // Check if user already has follows — if so, skip this step
-  useEffect(() => {
-    let unmounted = false;
-    (async () => {
-      try {
-        const data = await browser.storage.sync.get(['myPubkey']) as Record<string, string>;
-        const myPubkey = data.myPubkey;
-        if (!myPubkey) { setChecking(false); return; }
-
-        const relays = DEFAULT_RELAYS.split(',');
-        const gen = liveQuery(
-          [{ kinds: [3], authors: [myPubkey], limit: 1 }],
-          relays,
-          { closeOnExhaust: true, cache: true },
-        );
-        for await (const msg of gen) {
-          if (unmounted) break;
-          if ((msg.type === 'event' || msg.type === 'update') &&
-              msg.event.kind === 3 && msg.event.tags.length > 0) {
-            skippedRef.current = true;
-            gen.return(undefined);
-            if (!unmounted) onNext();
-            return;
-          }
-        }
-      } catch { /* proceed to show suggestions */ }
-      if (!unmounted) setChecking(false);
-    })();
-    return () => { unmounted = true; };
-  }, [onNext]);
-
+  // Relay-backed profile loading and the "are you already following anyone?"
+  // auto-skip are intentionally disabled here for now. In Safari the extension
+  // popup cannot reach the Nostr relays, and the pending WebSocket/verify work
+  // was locking up this step (cards visible, but buttons unresponsive). The
+  // suggestions render statically from the curated list; names/avatars fall
+  // back to the shortened key + initial. Re-enable once relay access in Safari
+  // is fixed — as a background load that never gates the UI.
   const npubs = useMemo(() => selectAccounts(), []);
   const hexKeys = useMemo(
     () => npubs.reduce<Array<{ npub: string; hex: string }>>((acc, npub) => {
@@ -139,40 +108,8 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
   const hexList = useMemo(() => hexKeys.map((a) => a.hex), [hexKeys]);
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(hexList));
-  const [profiles, setProfiles] = useState<Record<string, ProfileMeta>>({});
   const [publishing, setPublishing] = useState(false);
-
-  // Stream profiles via liveQuery
-  useEffect(() => {
-    let gen: AsyncGenerator<LiveEvent> | null = null;
-    let unmounted = false;
-
-    (async () => {
-      const relays = DEFAULT_RELAYS.split(',');
-      gen = liveQuery(
-        [{ kinds: [0], authors: hexList }],
-        relays,
-        { closeOnExhaust: true, cache: true },
-      );
-      for await (const msg of gen) {
-        if (unmounted) break;
-        if (msg.type === 'event' || msg.type === 'update') {
-          if (msg.event.kind === 0) {
-            try {
-              const meta = JSON.parse(msg.event.content);
-              setProfiles(prev => {
-                if (prev[msg.event.pubkey]?._ts !== undefined &&
-                    prev[msg.event.pubkey]!._ts! >= msg.event.created_at) return prev;
-                return { ...prev, [msg.event.pubkey]: { ...meta, _ts: msg.event.created_at } };
-              });
-            } catch { /* malformed content */ }
-          }
-        }
-      }
-    })();
-
-    return () => { unmounted = true; gen?.return(undefined); };
-  }, [hexList]);
+  const profiles: Record<string, ProfileMeta> = {};
 
   const toggle = (hex: string) => {
     setSelected((prev) => {
@@ -195,10 +132,8 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
         created_at: Math.floor(Date.now() / 1000),
       };
       await rpc('signAndPublishEvent', { event });
-      onNext();
-    } catch {
-      setPublishing(false);
-    }
+    } catch { /* publish failed (e.g. relays unreachable) — proceed anyway so onboarding is never trapped */ }
+    onNext();
   };
 
   const getName = (hex: string) => {
@@ -257,12 +192,14 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
       </div>
 
       <div className={styles.stepActions}>
-        <Button variant="secondary" onClick={onNext} disabled={checking}>{t('wizard.skipForNow')}</Button>
+        {/* Skip is NEVER disabled: a still-loading (or hung) relay query must
+            not trap the user on this step. */}
+        <Button variant="secondary" onClick={onNext}>{t('wizard.skipForNow')}</Button>
         <Button
           onClick={handleFollow}
-          disabled={selected.size === 0 || publishing || checking}
+          disabled={selected.size === 0 || publishing}
         >
-          {checking ? t('common.loading') : publishing ? t('wizard.followPublishing') : t('wizard.followSuggestions')}
+          {publishing ? t('wizard.followPublishing') : t('wizard.followSuggestions')}
         </Button>
       </div>
     </div>

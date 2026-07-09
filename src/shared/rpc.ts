@@ -31,12 +31,23 @@ async function sendWithWakeupRetry(payload: { method: string; params: unknown })
   let attempt = 0;
   while (true) {
     try {
-      return await browser.runtime.sendMessage(payload);
+      const resp = await browser.runtime.sendMessage(payload);
+      // Safari expresses "no responder" (background SW terminated / listener
+      // not yet re-registered) by RESOLVING with `undefined` instead of
+      // rejecting the way Chrome does. The background always replies with a
+      // { result } or { error } envelope, so a missing envelope is the same
+      // transport failure — retry it, and never hand `undefined` to callers.
+      if (resp !== undefined) return resp;
+      attempt++;
+      if (attempt >= MAX_ATTEMPTS) {
+        throw new RpcError('No response from the background service', payload.method);
+      }
     } catch (err) {
+      if (err instanceof RpcError) throw err;
       attempt++;
       if (!isWakeupError(err) || attempt >= MAX_ATTEMPTS) throw err;
-      await new Promise((r) => setTimeout(r, 100 * attempt));
     }
+    await new Promise((r) => setTimeout(r, 100 * attempt));
   }
 }
 

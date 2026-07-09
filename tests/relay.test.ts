@@ -393,3 +393,103 @@ describe('liveQuery', () => {
     assert.strictEqual(cached[0].id, event.id);
   });
 });
+
+// ── Regression: relays that close without EOSE must still exhaust the query ──
+//
+// Safari bug report: the onboarding follow-suggestions step hung forever on
+// `checking` because liveQuery never yielded 'exhausted'. Root cause: a relay
+// that closed its socket WITHOUT sending EOSE (server-initiated clean close —
+// rate-limit/policy — fires `close` but NOT `error` per the WebSocket spec)
+// cleared the 4s failsafe timer in ws.onclose without ever counting the relay
+// toward eoseCount, so checkExhausted() could never fire.
+
+/** Drive a liveQuery generator with a deadline so a hang fails the test instead of wedging it. */
+async function collectWithDeadline(
+  gen: AsyncGenerator<LiveEvent>,
+  deadlineMs: number,
+): Promise<{ events: LiveEvent[]; timedOut: boolean }> {
+  const events: LiveEvent[] = [];
+  const deadline = new Promise<'timeout'>(resolve => {
+    const t = setTimeout(() => resolve('timeout'), deadlineMs);
+    if (typeof t === 'object' && 'unref' in t) (t as NodeJS.Timeout).unref();
+  });
+  while (true) {
+    const nxt = await Promise.race([gen.next(), deadline]);
+    if (nxt === 'timeout') return { events, timedOut: true };
+    if (nxt.done) return { events, timedOut: false };
+    events.push(nxt.value);
+    if (nxt.value.type === 'exhausted') return { events, timedOut: false };
+  }
+}
+
+describe('liveQuery: exhaustion when relays close without EOSE', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('counts a relay whose socket closes cleanly without EOSE (no infinite hang)', async () => {
+    const gen = liveQuery(
+      [{ kinds: [3], authors: [PK1], limit: 1 }],
+      ['wss://relay.test'],
+      {
+        closeOnExhaust: true,
+        _createSocket: (url: string) => {
+          const socket = new MockWebSocket(url);
+          queueMicrotask(() => {
+            setTimeout(() => {
+              // Server-initiated clean close: fires onclose but NOT onerror,
+              // and no EOSE was ever sent.
+              socket.readyState = 3;
+              socket.onclose?.({ code: 1000 } as CloseEvent);
+            }, 10);
+          });
+          return socket as unknown as WebSocket;
+        },
+      },
+    );
+
+    const { events, timedOut } = await collectWithDeadline(gen, 2000);
+    assert.strictEqual(timedOut, false, 'liveQuery hung: close-without-EOSE relay was never counted');
+    assert.ok(events.some(e => e.type === 'exhausted'), 'generator must yield exhausted');
+  });
+
+  it('counts each relay at most once (error + close on the same socket)', async () => {
+    // relay1 fires BOTH onerror and onclose (the normal failure sequence).
+    // If it were counted twice, 'exhausted' would fire before relay2 delivers
+    // its event, and the event would be lost to closeOnExhaust consumers.
+    const event = await makeEvent({ kind: 0 });
+
+    const gen = liveQuery(
+      [{ kinds: [0], authors: [PK1] }],
+      ['wss://bad.test', 'wss://good.test'],
+      {
+        closeOnExhaust: true,
+        _createSocket: (url: string) => {
+          const socket = new MockWebSocket(url);
+          if (url === 'wss://bad.test') {
+            queueMicrotask(() => {
+              setTimeout(() => {
+                socket.onerror?.({} as Event);
+                socket.onclose?.({ code: 1006 } as CloseEvent);
+              }, 5);
+            });
+          } else {
+            queueMicrotask(() => {
+              setTimeout(() => {
+                socket._event('lq000000000000', event);
+                socket._eose('lq000000000000');
+              }, 40);
+            });
+          }
+          return socket as unknown as WebSocket;
+        },
+      },
+    );
+
+    const { events, timedOut } = await collectWithDeadline(gen, 2000);
+    assert.strictEqual(timedOut, false, 'liveQuery hung');
+    assert.ok(
+      events.some(e => (e.type === 'event' || e.type === 'update') && e.event.id === event.id),
+      'event from the healthy relay must be delivered before exhausted (no double-count early exhaust)',
+    );
+    assert.ok(events.some(e => e.type === 'exhausted'), 'generator must yield exhausted');
+  });
+});

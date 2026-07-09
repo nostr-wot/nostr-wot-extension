@@ -56,7 +56,9 @@ sequence.
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
 | `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers (not in default `run.sh`) |
-| `tests/relay.test.ts` | Relay utilities, liveQuery streaming, inbound event signature verification (forged events rejected) |
+| `tests/relay.test.ts` | Relay utilities, liveQuery streaming, inbound event signature verification (forged events rejected), exhaustion when relays close without EOSE |
+| `tests/rpc.test.ts` | Popup `rpc()` transport: envelope unwrapping, Chrome wakeup-rejection retry, Safari undefined-response retry (throws `RpcError` instead of resolving `undefined`) |
+| `tests/delete-recreate.test.ts` | Delete last account / destroy vault → re-run onboarding (`onboarding_generateAccount` + `onboarding_createVault`), incl. simulated service-worker restart |
 | `tests/publish-handlers.test.ts` | `checkRelayHealth` SSRF hardening (scheme allowlist, private-host rejection) |
 | `tests/safeUrl.test.ts` | `safeImageUrl` sanitizer for untrusted profile image URLs |
 | `tests/site-state.test.ts` | Per-site state helpers (not in default `run.sh`) |
