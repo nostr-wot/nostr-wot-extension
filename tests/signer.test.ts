@@ -6,6 +6,7 @@ import * as vault from '../lib/vault.ts';
 import * as permissions from '../lib/permissions.ts';
 import * as signer from '../lib/signer.ts';
 import * as onboarding from '../lib/bg/onboarding-handlers.ts';
+import { addAllowedDomain, removeAllowedDomain } from '../lib/bg/domain-handlers.ts';
 import type { VaultPayload } from '../lib/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
@@ -901,6 +902,94 @@ describe('signer -- getPublicKey cooldown', () => {
     await new Promise<void>(r => setTimeout(r, 50));
     pending = await signer.getPending();
     assert.strictEqual(pending.length, 0);
+  });
+});
+
+// -- getPublicKey on already-connected sites (no self-opening popup) --
+//
+// Connecting a site IS the consent to share the identity pubkey, so a site on
+// the allowlist must never queue a getPublicKey prompt. Before this, approving
+// the prompt persisted nothing but a 60s in-memory cooldown, so the prompt --
+// and the popup it auto-opens -- came back on every service-worker restart.
+
+describe('signer -- getPublicKey on connected sites', () => {
+  // A prompted call stays unresolved for the full 120s request timeout, which
+  // would hang the suite instead of failing it. Bound the wait so a regression
+  // surfaces as a failed assertion.
+  function withinTimeout<T>(p: Promise<T>, ms = 500): Promise<T> {
+    return Promise.race([p, new Promise<T>((_, reject) => {
+      const t = setTimeout(() => reject(new Error('handleGetPublicKey did not resolve -- it prompted')), ms);
+      t.unref?.();
+    })]);
+  }
+
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+  });
+
+  it('a connected site gets the pubkey with no prompt', async () => {
+    await setupVault();
+    await addAllowedDomain('chat.com');
+
+    const call: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 0, 'a connected site must not enqueue a prompt');
+    assert.strictEqual(await withinTimeout(call), TEST_PUBKEY_HEX);
+  });
+
+  it('does not re-prompt after a service-worker restart', async () => {
+    await setupVault();
+    await addAllowedDomain('chat.com');
+    await withinTimeout(signer.handleGetPublicKey('chat.com'));
+
+    // cleanupStale() drops all in-memory signer state, as an MV3 SW restart does
+    await signer.cleanupStale();
+
+    const call: Promise<any> = signer.handleGetPublicKey('chat.com');
+    await new Promise<void>(r => setTimeout(r, 50));
+
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 0, 'the grant must survive a service-worker restart');
+    assert.strictEqual(await withinTimeout(call), TEST_PUBKEY_HEX);
+  });
+
+  it('an explicit deny still blocks a connected site', async () => {
+    await setupVault();
+    await addAllowedDomain('chat.com');
+    await permissions.save('chat.com', 'getPublicKey', null, 'deny', 'acct1');
+
+    await assert.rejects(signer.handleGetPublicKey('chat.com'), /Permission denied/);
+  });
+
+  it('an origin that is not connected still prompts', async () => {
+    await setupVault();
+
+    signer.handleGetPublicKey('stranger.com').catch(() => {});
+    await new Promise<void>(r => setTimeout(r, 50));
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1, 'an unconnected origin must still ask');
+    assert.strictEqual(pending[0].origin, 'stranger.com');
+
+    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+  });
+
+  it('disconnecting the site restores the prompt', async () => {
+    await setupVault();
+    await addAllowedDomain('chat.com');
+    await withinTimeout(signer.handleGetPublicKey('chat.com'));
+
+    await removeAllowedDomain('chat.com');
+
+    signer.handleGetPublicKey('chat.com').catch(() => {});
+    await new Promise<void>(r => setTimeout(r, 50));
+    const pending: any[] = await signer.getPending();
+    assert.strictEqual(pending.length, 1, 'a disconnected site must ask again');
+
+    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
   });
 });
 

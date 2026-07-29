@@ -42,10 +42,16 @@ The interaction between permissions and vault state:
 | `deny`     | unlocked | REJECTED     | REJECTED                      |
 | `allow`    | locked   | WORKS *      | BLOCKED (queues waitingForUnlock) |
 | `allow`    | unlocked | WORKS        | WORKS                         |
-| `ask`      | locked   | QUEUED       | QUEUED                        |
-| `ask`      | unlocked | QUEUED       | QUEUED                        |
+| `ask`      | locked   | WORKS † / QUEUED | QUEUED                    |
+| `ask`      | unlocked | WORKS † / QUEUED | QUEUED                    |
 
 \* `getPublicKey` reads from `browser.storage.sync.myPubkey`, not from the vault
+
+† **Connected sites never prompt for `getPublicKey`.** Connecting a site *is* the consent to share the identity pubkey: the "Connect this site" flow adds the origin to `allowedDomains` and clears `identityDisabled` for it, `background.ts` refuses every NIP-07 method from an origin that is not on that list, and `broadcastAccountChanged` already pushes the active pubkey to every connected tab unprompted. So with `ask`, `handleGetPublicKey` returns the pubkey directly when the origin is in `allowedDomains`, and only QUEUES a prompt for an origin that is not (which the NIP-07 path cannot reach — it is a guard for any other caller).
+
+Both opt-outs still win over this: an explicit `deny` is rejected before the connected check, and `lib/bg/nip07-handlers.ts` rejects the call earlier still when identity is disabled for the site. Disconnecting the site restores prompting.
+
+Prompting a connected site was the cause of the "popup opens by itself" bug: approving that prompt persisted nothing but the 60-second in-memory cooldown below, so the prompt — and the popup it auto-opens — returned on every service-worker restart, account switch, or page load a minute later.
 
 ---
 

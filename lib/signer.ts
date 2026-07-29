@@ -27,6 +27,7 @@
 import type { RequestDecision, PendingRequest, UnsignedEvent, SignedEvent, SafeAccount, AccountType } from './types.ts';
 import browser from './browser.ts';
 import { openPopupForActiveTab } from './openPopupForActiveTab.ts';
+import { isDomainAllowed } from './bg/domain-handlers.ts';
 import * as vault from './vault.ts';
 import * as permissions from './permissions.ts';
 import { AsyncLock } from './utils/async-lock.ts';
@@ -142,6 +143,22 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
   if (decision === 'deny') throw new Error('Permission denied');
 
   if (decision === 'ask') {
+    // Connecting a site IS the consent to share the identity pubkey: the
+    // "Connect this site" flow adds the origin to allowedDomains AND clears
+    // identityDisabled for it, background.ts refuses every NIP-07 method from
+    // an origin that is not on that list, and broadcastAccountChanged already
+    // pushes the active pubkey to every connected tab unprompted. Asking again
+    // here re-requested permission the user had already given — and since a
+    // plain "Allow" persisted nothing but the 60s in-memory cooldown, the
+    // prompt (and the popup it auto-opens) came back on every service-worker
+    // restart, account switch, or page load a minute later.
+    //
+    // Both opt-outs still win over this: an explicit 'deny' is handled above,
+    // and lib/bg/nip07-handlers.ts rejects the call before it reaches us when
+    // identity is disabled for the site.
+    if (await isDomainAllowed(origin)) {
+      return getActivePublicKey();
+    }
     if (isGetPubkeyCooldownActive(origin)) {
       return getActivePublicKey();
     }
