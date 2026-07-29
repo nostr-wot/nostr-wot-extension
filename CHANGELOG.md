@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.88] - 2026-07-29
+
+### Fixed
+- **The popup opened by itself on sites you had already connected.** A site calling `nostr.getPublicKey()` — which clients do on page load — was prompted for approval even though the user had already clicked "Connect this site", and approving that prompt persisted *nothing*: it only set a 60-second in-memory cooldown, wiped by every MV3 service-worker restart and every account switch. Because queuing a prompt auto-opens the popup, the extension appeared to open on its own after any reload more than a minute later. Connecting a site is now treated as the consent to share the identity pubkey (which it already was everywhere else: the connect flow clears `identityDisabled`, `background.ts` refuses NIP-07 calls from unconnected origins, and the active-pubkey broadcast already reaches every connected tab), so a connected site never prompts for `getPublicKey`. An explicit `deny` and the per-site "identity access" toggle still take precedence, and disconnecting the site restores prompting.
+- **Dismissing the "Connect this site" card did nothing, so the popup kept coming back.** `addDismissedDomain` had no caller anywhere in the extension and was not registered as an RPC — the `dismissedDomains` check in `background.ts` could therefore never be true. Closing the card recorded no decision and the site's next request re-opened the popup, repeatedly. The connect card now has a **"Not now"** button that records the dismissal (all six locales), after which the site's requests are rejected silently until the user connects it; the background's connect wait also resolves immediately on dismissal instead of holding the site's request open for the full two-minute timeout. Connecting later clears the dismissal, and the card still appears if the user opens the popup on that site again.
+- **A page making several NIP-07 calls at once re-opened the popup once per call.** The first-visit connect gate ran independently for every in-flight request, so a site that called `getPublicKey()` and `signEvent()` together — or polled — could re-open the popup right after the user closed it. Concurrent requests from one origin now share a single connect gate (`waitForConnectDecision`) and therefore a single popup and a single decision.
+- **Approve/reject buttons were unreachable on long events.** The approval modal was a flex column with no scroll container anywhere in the chain, and the popup is a fixed 380×600 window with `overflow: hidden` — so a tall event (a kind:0 profile card, a kind:3 follow diff, or many tags, none of which are height-capped the way note content is) pushed the action buttons past the bottom of the popup where they were clipped and could not be scrolled to. The event body now scrolls in its own region and the approve/deny row is pinned below it, so the buttons are always reachable regardless of event size.
+
+## [0.3.87] - 2026-07-09
+
+### Fixed
+- **Safari popup hung on open** — the Chrome-style MV3 `service_worker` background is not reliably started by Safari ("background content is not loaded"), so every popup RPC hung forever and the splash never dismissed. The Safari resource sync (`npm run sync:safari`) now rewrites the embedded manifest's background to a persistent background page.
+
 ## [0.3.86] - 2026-07-08
 
 ### Fixed
