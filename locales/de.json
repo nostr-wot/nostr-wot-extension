@@ -48,6 +48,7 @@
   "home.siteControlsHint": "Seitensteuerung und Aktivität werden hier angezeigt, während du surfst.",
   "home.siteNotConnected": "Diese Seite ist nicht verbunden. Aktiviere die Erweiterung, um deine Identität hier zu nutzen.",
   "home.connectThisSite": "Diese Seite verbinden",
+  "home.notNow": "Jetzt nicht",
   "home.siteInfoError": "Der Verbindungsstatus dieser Seite konnte nicht geladen werden.",
   "home.retry": "Wiederholen",
   "home.allowIdentity": "Identitätszugriff erlauben",

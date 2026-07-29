@@ -14,6 +14,9 @@ import {
   addWeblnAllowedDomain,
   removeWeblnAllowedDomain,
   broadcastAccountChanged,
+  waitForDomainAllowed,
+  waitForConnectDecision,
+  handlers,
 } from '../lib/bg/domain-handlers.ts';
 
 describe('broadcastAccountChanged -- only notifies connected origins', () => {
@@ -24,11 +27,11 @@ describe('broadcastAccountChanged -- only notifies connected origins', () => {
     const sent: Array<{ id: number; pubkey: string }> = [];
     const origQuery = browserMock.tabs.query;
     const origSend = (browserMock.tabs as Record<string, unknown>).sendMessage;
-    browserMock.tabs.query = () => Promise.resolve([
+    browserMock.tabs.query = (() => Promise.resolve([
       { id: 1, url: 'https://allowed.com/feed' },
       { id: 2, url: 'https://evil.com/' },          // never connected — must be skipped
       { id: 3, url: 'chrome://extensions' },        // restricted — must be skipped
-    ]);
+    ])) as typeof browserMock.tabs.query;
     (browserMock.tabs as Record<string, unknown>).sendMessage =
       (id: number, msg: { pubkey: string }) => { sent.push({ id, pubkey: msg.pubkey }); return Promise.resolve(); };
     try {
@@ -100,6 +103,95 @@ describe('dismissed domains -- interaction with allowed domains', () => {
     assert.strictEqual(await isDomainDismissed('good.com'), false);
     assert.strictEqual(await isDomainAllowed('bad.com'), false);
     assert.strictEqual(await isDomainDismissed('bad.com'), true);
+  });
+});
+
+// The connect gate: what happens while the "Connect this site" card is up.
+// Dismissal used to be unreachable from the UI, so closing the card recorded
+// nothing and the site's next request re-opened the popup.
+
+describe('connect gate -- waiting for the user decision', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('addDismissedDomain is reachable as an RPC handler', () => {
+    assert.ok(handlers.has('addDismissedDomain'), 'the popup must be able to record a dismissal');
+  });
+
+  it('waitForDomainAllowed resolves true when the user connects', async () => {
+    const wait = waitForDomainAllowed('site.com');
+    await addAllowedDomain('site.com');
+    assert.strictEqual(await wait, true);
+  });
+
+  it('waitForDomainAllowed resolves false as soon as the user dismisses', async () => {
+    const wait = waitForDomainAllowed('site.com');
+    await addDismissedDomain('site.com');
+    assert.strictEqual(await wait, false, 'must not hold the request open for the full timeout');
+  });
+
+  it('waitForDomainAllowed ignores decisions about other domains', async () => {
+    const wait = waitForDomainAllowed('site.com');
+    await addDismissedDomain('other.com');
+    await addAllowedDomain('other.com');
+
+    const settled = await Promise.race([
+      wait.then(v => ({ done: true, v })),
+      new Promise<{ done: boolean }>(r => { const t = setTimeout(() => r({ done: false }), 100); t.unref?.(); }),
+    ]);
+    assert.strictEqual(settled.done, false, 'another domain must not settle this wait');
+
+    // Settle it so the pending timer does not outlive the test
+    await addDismissedDomain('site.com');
+    assert.strictEqual(await wait, false);
+  });
+
+  it('concurrent requests from one origin share a single connect gate', async () => {
+    let popupOpens = 0;
+    const origQuery = browserMock.tabs.query;
+    const origOpen = (browserMock.action as Record<string, unknown>).openPopup;
+    browserMock.tabs.query = (() => Promise.resolve([{ id: 1, url: 'https://site.com/feed' }])) as typeof browserMock.tabs.query;
+    (browserMock.action as Record<string, unknown>).openPopup = () => { popupOpens++; return Promise.resolve(); };
+
+    try {
+      const waits = [
+        waitForConnectDecision('site.com'),
+        waitForConnectDecision('site.com'),
+        waitForConnectDecision('site.com'),
+      ];
+      await new Promise<void>(r => { const t = setTimeout(r, 50); t.unref?.(); });
+      await addAllowedDomain('site.com');
+
+      assert.deepStrictEqual(await Promise.all(waits), [true, true, true]);
+      assert.strictEqual(popupOpens, 1, 'three concurrent calls must open the popup once');
+    } finally {
+      browserMock.tabs.query = origQuery;
+      (browserMock.action as Record<string, unknown>).openPopup = origOpen;
+    }
+  });
+
+  it('a new request after the gate settles opens the popup again', async () => {
+    let popupOpens = 0;
+    const origQuery = browserMock.tabs.query;
+    const origOpen = (browserMock.action as Record<string, unknown>).openPopup;
+    browserMock.tabs.query = (() => Promise.resolve([{ id: 1, url: 'https://site.com/feed' }])) as typeof browserMock.tabs.query;
+    (browserMock.action as Record<string, unknown>).openPopup = () => { popupOpens++; return Promise.resolve(); };
+
+    try {
+      const first = waitForConnectDecision('site.com');
+      await new Promise<void>(r => { const t = setTimeout(r, 50); t.unref?.(); });
+      await addDismissedDomain('site.com');
+      assert.strictEqual(await first, false);
+
+      // Gate released — a later call is a fresh decision, not a stale cached one
+      const second = waitForConnectDecision('site.com');
+      await new Promise<void>(r => { const t = setTimeout(r, 50); t.unref?.(); });
+      await addAllowedDomain('site.com');
+      assert.strictEqual(await second, true);
+      assert.strictEqual(popupOpens, 2);
+    } finally {
+      browserMock.tabs.query = origQuery;
+      (browserMock.action as Record<string, unknown>).openPopup = origOpen;
+    }
   });
 });
 

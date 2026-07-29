@@ -48,6 +48,7 @@
   "home.siteControlsHint": "Os controles do site e a atividade aparecerão aqui quando você estiver navegando.",
   "home.siteNotConnected": "Este site não está conectado. Ative a extensão para usar sua identidade aqui.",
   "home.connectThisSite": "Conectar este site",
+  "home.notNow": "Agora não",
   "home.siteInfoError": "Não foi possível carregar o status de conexão deste site.",
   "home.retry": "Tentar novamente",
   "home.allowIdentity": "Permitir acesso à identidade",

@@ -9,6 +9,12 @@
   margin-bottom: 0;
 }
 
+.connectActions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
 /* Site controls */
 .siteControls {
   padding: 0;

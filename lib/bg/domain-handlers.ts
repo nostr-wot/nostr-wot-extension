@@ -5,6 +5,7 @@
 
 import browser from '../browser.ts';
 import { getDomainFromUrl } from '@shared/url.ts';
+import { openPopupForActiveTab } from '../openPopupForActiveTab.ts';
 import { isRestrictedUrl, type HandlerFn, type LocalAccountEntry } from './state.ts';
 
 // ── Domain permission functions (with in-memory cache) ──
@@ -141,32 +142,70 @@ async function removeDismissedDomain(domain: string): Promise<void> {
 const CONNECT_WAIT_TIMEOUT_MS = 120_000; // 2 minutes
 
 /**
- * Wait for a domain to appear in allowedDomains.
- * Resolves true when the domain is added, false on timeout.
- * Used after opening the popup so the user can click the Connect button.
+ * Wait for the user's decision on the "Connect this site" card.
+ * Resolves true when the domain is added to allowedDomains ("Connect"), false
+ * when it is dismissed ("Not now") or the wait times out.
+ * Used after opening the popup so the user can answer.
  */
 export function waitForDomainAllowed(domain: string): Promise<boolean> {
     return new Promise((resolve) => {
-        const timer = setTimeout(() => {
+        let settled = false;
+        let timer: ReturnType<typeof setTimeout>;
+
+        function finish(value: boolean): void {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
             browser.storage.onChanged.removeListener(listener);
-            resolve(false);
-        }, CONNECT_WAIT_TIMEOUT_MS);
+            resolve(value);
+        }
 
         function listener(changes: Record<string, unknown>, area: string) {
-            if (area === 'local' && (changes as Record<string, unknown>).allowedDomains) {
+            if (area !== 'local') return;
+            if ((changes as Record<string, unknown>).allowedDomains) {
                 // Check if the domain is now allowed
-                isDomainAllowed(domain).then((allowed) => {
-                    if (allowed) {
-                        clearTimeout(timer);
-                        browser.storage.onChanged.removeListener(listener);
-                        resolve(true);
-                    }
-                });
+                isDomainAllowed(domain).then((allowed) => { if (allowed) finish(true); });
+            }
+            // "Not now" on the connect card: reject the site's request right
+            // away instead of holding it open for the full 2-minute timeout.
+            if ((changes as Record<string, unknown>).dismissedDomains) {
+                isDomainDismissed(domain).then((dismissed) => { if (dismissed) finish(false); });
             }
         }
 
+        timer = setTimeout(() => finish(false), CONNECT_WAIT_TIMEOUT_MS);
         browser.storage.onChanged.addListener(listener);
     });
+}
+
+// In-flight connect gates, keyed by origin. A page that calls several NIP-07
+// methods at once (or polls one) would otherwise run the gate once per call,
+// re-opening the popup each time — including right after the user closed it.
+// The first call owns the gate; every other call awaits the same decision.
+const _connectWaits = new Map<string, Promise<boolean>>();
+
+/**
+ * Show the "Connect this site" card for `origin` and wait for the user's
+ * answer. Concurrent calls for the same origin share one popup and one wait.
+ * @returns true if the user connected the site, false on "Not now" or timeout.
+ */
+export function waitForConnectDecision(origin: string): Promise<boolean> {
+    const existing = _connectWaits.get(origin);
+    if (existing) return existing;
+
+    const wait = (async () => {
+        try {
+            await openPopupForActiveTab(origin);
+            return await waitForDomainAllowed(origin);
+        } catch {
+            return false;
+        } finally {
+            _connectWaits.delete(origin);
+        }
+    })();
+
+    _connectWaits.set(origin, wait);
+    return wait;
 }
 
 // ── Host permissions ──
@@ -283,6 +322,9 @@ export const handlers = new Map<string, HandlerFn>([
     ['isDomainDismissed', async (params) => isDomainDismissed(params.domain as string)],
     ['addAllowedDomain', async (params) => addAllowedDomain(params.domain as string)],
     ['removeAllowedDomain', async (params) => removeAllowedDomain(params.domain as string)],
+    // "Not now" on the connect card. Without this the dismissal was never
+    // recorded, so the next request from the site re-opened the popup.
+    ['addDismissedDomain', async (params) => addDismissedDomain(params.domain as string)],
     ['hasHostPermission', async () => hasHostPermission()],
     ['requestHostPermission', async () => requestHostPermission()],
     ['enableForCurrentDomain', async () => enableForCurrentDomain()],

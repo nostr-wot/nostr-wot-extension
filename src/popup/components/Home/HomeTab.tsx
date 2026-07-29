@@ -194,6 +194,19 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
     loadHomeState();
   };
 
+  // "Not now": record the dismissal so the site's next request is rejected
+  // silently instead of re-opening the popup, then get out of the way. The
+  // connect card still shows if the user opens the popup here again, and
+  // connecting later clears the dismissal.
+  const handleDismiss = async () => {
+    if (!domain) return;
+    try {
+      await rpc('addDismissedDomain', { domain });
+    } finally {
+      window.close();
+    }
+  };
+
   // Profile card shows for signing accounts (can edit kind:0)
   const canEditProfile = !!active && !isReadOnly;
 
@@ -252,7 +265,10 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
             text={domain!}
             hint={t('home.siteNotConnected')}
           >
-            <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
+            <div className={styles.connectActions}>
+              <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
+              <Button small variant="secondary" onClick={handleDismiss}>{t('home.notNow')}</Button>
+            </div>
           </EmptyState>
         </Card>
       </div>

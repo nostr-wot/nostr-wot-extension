@@ -21,7 +21,7 @@ import {
     handlers as domainHandlers,
     isDomainAllowed, isDomainDismissed,
     isWeblnAllowed,
-    waitForDomainAllowed,
+    waitForConnectDecision,
     isActiveAccountReadOnly,
 } from './lib/bg/domain-handlers.ts';
 import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
@@ -108,9 +108,9 @@ async function handleRequest({ method, params }: { method: string; params: Recor
             // card — but only when the request comes from the tab they're actually
             // looking at. A background/inactive tab making nostr requests (or one
             // polling) must not pop the popup open.
-            await openPopupForActiveTab(origin);
-            // Wait for the user to click Connect (domain added to allowedDomains)
-            const connected = await waitForDomainAllowed(origin);
+            // Waits for the user to click Connect (domain added to allowedDomains)
+            // or "Not now" (domain dismissed).
+            const connected = await waitForConnectDecision(origin);
             if (!connected) {
                 logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
                 throw new Error('Site not connected');
@@ -137,8 +137,7 @@ async function handleRequest({ method, params }: { method: string; params: Recor
                     // First enable(): show the Connect card on the active tab and
                     // wait for the user's click (which adds the domain to the
                     // allowlist). Background/inactive tabs get no popup and time out.
-                    await openPopupForActiveTab(origin);
-                    const connected = await waitForDomainAllowed(origin);
+                    const connected = await waitForConnectDecision(origin);
                     if (!connected) {
                         logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
                         throw new Error('WebLN access denied');
