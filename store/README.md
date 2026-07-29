@@ -92,6 +92,21 @@ or any host permission up front.
 
 ---
 
+## Release notes — 0.3.88
+
+Paste into AMO "Release notes" and the Mac App Store "What's New". Chrome has no
+what's-new field; use it in the listing update summary if prompted.
+
+> **Fixes**
+>
+> • **The popup no longer opens on its own.** Sites you had already connected were still asking permission to read your public key, and approving it was only remembered for a minute — so the popup kept reappearing as you browsed. Connecting a site now covers reading your public key, and you can still revoke it per site.
+>
+> • **"Not now" on the connect prompt.** Dismissing the "Connect this site" card did nothing before, so it reappeared on the site's next request. There is now a "Not now" button, and the site stays quiet until you choose to connect it.
+>
+> • **Approve and reject are always reachable.** On long events — large profiles, big follow lists, events with many tags — the buttons were pushed past the bottom of the popup with no way to scroll to them. The event now scrolls and the buttons stay in place.
+
+---
+
 ## Chrome Web Store
 
 - **Listing:** https://chromewebstore.google.com/detail/nostr-wot-extension/gfmefgdkmjpjinecjchlangpamhclhdo
