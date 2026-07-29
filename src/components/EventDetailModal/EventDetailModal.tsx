@@ -128,72 +128,76 @@ export default function EventDetailModal({
       zIndex={zIndex}
     >
       <div className={styles.content}>
-        {/* Origin / domain */}
-        {origin && (
-          <div className={styles.origin}>{origin}</div>
-        )}
+        {/* Scrollable event body -- the actions below stay pinned so a long
+            event can never push them out of reach (see the CSS module). */}
+        <div className={styles.scrollArea}>
+          {/* Origin / domain */}
+          {origin && (
+            <div className={styles.origin}>{origin}</div>
+          )}
 
-        {/* Approval: method badge + description */}
-        {isApproval && (
-          <div className={styles.summary}>
-            <div className={styles.methodBadge}>{title}</div>
-            {description && <p className={styles.description}>{description}</p>}
-          </div>
-        )}
-
-        {/* Event content */}
-        {isApproval ? (
-          <EventPreview
-            type={type}
-            event={event || null}
-            theirPubkey={theirPubkey}
-          />
-        ) : allIdentical ? (
-          <>
-            {entries.length > 0 && (
-              <EventPreview
-                type={entryType(entries[0])}
-                event={entries[0].event || null}
-                theirPubkey={entries[0].theirPubkey || null}
-              />
-            )}
-            {entries.length > 1 && (
-              <div className={styles.countNote}>
-                &times;{entries.length} {t('activity.requests', { count: entries.length })}
-              </div>
-            )}
-          </>
-        ) : (
-          uniqueEntries.map((entry, i) => (
-            <div key={i} className={styles.entryBlock}>
-              <div className={styles.entryHeader}>
-                <StatusDot status={entry.decision || ''} />
-                <span className={styles.entryTime}>{formatTime(entry.timestamp ?? 0)}</span>
-              </div>
-              <EventPreview
-                type={entryType(entry)}
-                event={entry.event || null}
-                theirPubkey={entry.theirPubkey || null}
-              />
+          {/* Approval: method badge + description */}
+          {isApproval && (
+            <div className={styles.summary}>
+              <div className={styles.methodBadge}>{title}</div>
+              {description && <p className={styles.description}>{description}</p>}
             </div>
-          ))
-        )}
+          )}
 
-        {/* NIP-46 in-flight: pending message + cancel button */}
-        {nip46InFlight && request && (
-          <>
+          {/* Event content */}
+          {isApproval ? (
+            <EventPreview
+              type={type}
+              event={event || null}
+              theirPubkey={theirPubkey}
+            />
+          ) : allIdentical ? (
+            <>
+              {entries.length > 0 && (
+                <EventPreview
+                  type={entryType(entries[0])}
+                  event={entries[0].event || null}
+                  theirPubkey={entries[0].theirPubkey || null}
+                />
+              )}
+              {entries.length > 1 && (
+                <div className={styles.countNote}>
+                  &times;{entries.length} {t('activity.requests', { count: entries.length })}
+                </div>
+              )}
+            </>
+          ) : (
+            uniqueEntries.map((entry, i) => (
+              <div key={i} className={styles.entryBlock}>
+                <div className={styles.entryHeader}>
+                  <StatusDot status={entry.decision || ''} />
+                  <span className={styles.entryTime}>{formatTime(entry.timestamp ?? 0)}</span>
+                </div>
+                <EventPreview
+                  type={entryType(entry)}
+                  event={entry.event || null}
+                  theirPubkey={entry.theirPubkey || null}
+                />
+              </div>
+            ))
+          )}
+
+          {/* NIP-46 in-flight: pending message (the cancel button is pinned below) */}
+          {nip46InFlight && request && (
             <div className={styles.nip46Pending}>
               <div className={styles.nip46Spinner} />
               <span>{t('approval.pendingSignature')}</span>
             </div>
-            {onDeny && (
-              <div className={styles.actions}>
-                <Button variant="danger" small onClick={onDeny}>
-                  {t('approval.cancelNip46')}
-                </Button>
-              </div>
-            )}
-          </>
+          )}
+        </div>
+
+        {/* NIP-46 in-flight: cancel button */}
+        {nip46InFlight && request && onDeny && (
+          <div className={styles.actions}>
+            <Button variant="danger" small onClick={onDeny}>
+              {t('approval.cancelNip46')}
+            </Button>
+          </div>
         )}
 
         {/* Approval action buttons */}

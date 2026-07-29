@@ -1,7 +1,28 @@
+/*
+ * The modal fills the fixed-height popup, so the event body must scroll and the
+ * approve/deny actions must stay pinned. Without this, a long event (a kind:0
+ * profile card, a kind:3 follow diff, or many tags -- none of which are height
+ * capped the way .noteContent is) pushed .actions past the bottom of the popup
+ * with no scroll container anywhere in the chain, leaving the buttons
+ * unreachable. .content must carry flex/min-height so .scrollArea has a bounded
+ * height to scroll within.
+ */
 .content {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.scrollArea {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .origin {
@@ -71,6 +92,8 @@
   padding-top: 12px;
   border-top: 1px solid var(--card-border);
   margin-top: 4px;
+  /* Never shrink or scroll away -- the user must always be able to decide */
+  flex-shrink: 0;
 }
 
 .actionsRow {
