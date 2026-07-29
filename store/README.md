@@ -4,7 +4,7 @@ Copy-paste-ready metadata for the Chrome Web Store, Firefox Add-ons (AMO), and t
 Mac App Store (Safari). Keep this in sync with `manifest.json` and `CHANGELOG.md`
 on each release.
 
-- **Current version:** 0.3.86
+- **Current version:** 0.3.88
 - **Extension name:** Nostr WoT
 - **Category:** Productivity / Tools
 - **Homepage / support:** https://nostr-wot.com

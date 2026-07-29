@@ -11,10 +11,10 @@ Get the source (any one — all identical):
 A) Tagged release:
    git clone https://github.com/nostr-wot/nostr-wot-extension.git
    cd nostr-wot-extension
-   git checkout v0.3.86
+   git checkout v0.3.88
 B) Release archive:
-   https://github.com/nostr-wot/nostr-wot-extension/archive/refs/tags/v0.3.86.zip
-C) The attached nostr-wot-source-0.3.86.zip (same tree as the tag).
+   https://github.com/nostr-wot/nostr-wot-extension/archive/refs/tags/v0.3.88.zip
+C) The attached nostr-wot-source-0.3.88.zip (same tree as the tag).
 
 Build:
    npm ci
