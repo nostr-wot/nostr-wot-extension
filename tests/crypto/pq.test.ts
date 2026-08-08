@@ -20,9 +20,9 @@ const b64 = (u8: Uint8Array): string => Buffer.from(u8).toString('base64');
 
 describe('post-quantum key derivation', () => {
   it('derivation profile strings are stable', () => {
-    assert.strictEqual(kemInfo(0), 'nip-pqc/v1/ml-kem-768/0');
-    assert.strictEqual(dsaInfo(0), 'nip-pqc/v1/ml-dsa-65/0');
-    assert.strictEqual(kemInfo(3), 'nip-pqc/v1/ml-kem-768/3');
+    assert.strictEqual(kemInfo(0), 'nip-pqc/v1/ml-kem-1024/0');
+    assert.strictEqual(dsaInfo(0), 'nip-pqc/v1/ml-dsa-87/0');
+    assert.strictEqual(kemInfo(3), 'nip-pqc/v1/ml-kem-1024/3');
   });
 
   it('the seed still produces the secp256k1 key NIP-06 publishes', async () => {
@@ -41,11 +41,11 @@ describe('post-quantum key derivation', () => {
 
     assert.strictEqual(
       bytesToHex(sha256(kem.publicKey)),
-      'fe2ffbc5611faabedc747b12f689dcafeb75f146bba4d8a678e2cbbcf2079826'
+      'f15e1a31adc3198a3e09f1d473aa0f2cd3e28392b77f1e350468bae15dfa251b'
     );
     assert.strictEqual(
       bytesToHex(sha256(dsa.publicKey)),
-      'b0a39a12ce1de3341de4f148a774ec50d004c49b20c2054e9238922f951331c3'
+      '6912f6f1dd8f8e6c1d9e7d349d75ef1b582ccf2aa95636bf2445b0e22be18e16'
     );
   });
 

@@ -1,5 +1,5 @@
 /**
- * Post-Quantum Key Derivation (ML-KEM / ML-DSA)
+ * Post-Quantum Key Derivation (ML-KEM-1024 / ML-DSA-87)
  *
  * Thin wrapper over @noble/post-quantum. Derives a post-quantum key pair from the
  * same BIP-39 seed the secp256k1 identity key comes from, so a single mnemonic
@@ -23,8 +23,8 @@
  * @module lib/crypto/pq
  */
 
-import { ml_kem768 } from '@noble/post-quantum/ml-kem.js';
-import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
+import { ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
+import { ml_dsa87 } from '@noble/post-quantum/ml-dsa.js';
 import { expand as hkdfExpand, extract as hkdfExtract } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
@@ -32,12 +32,12 @@ import { sha256 } from '@noble/hashes/sha2.js';
 export const PQ_PROFILE: string = 'nip-pqc/v1';
 
 /** Algorithm identifiers as they appear in the attestation event. */
-export const ALG_KEM: string = 'ml-kem-768';
-export const ALG_DSA: string = 'ml-dsa-65';
+export const ALG_KEM: string = 'ml-kem-1024';
+export const ALG_DSA: string = 'ml-dsa-87';
 
 /** Public key sizes in bytes, per FIPS 203 / 204. Used to reject malformed keys. */
-export const KEM_PUBLIC_KEY_BYTES: number = 1184;
-export const DSA_PUBLIC_KEY_BYTES: number = 1952;
+export const KEM_PUBLIC_KEY_BYTES: number = 1568;
+export const DSA_PUBLIC_KEY_BYTES: number = 2592;
 
 const KEM_SEED_BYTES = 64; // ML-KEM keygen takes d || z
 const DSA_SEED_BYTES = 32; // ML-DSA keygen takes xi
@@ -99,8 +99,8 @@ export function derivePqKeys(seed: Uint8Array, account: number = 0): PqKeys {
   const dsaSeed = deriveSeed(seed, dsaInfo(account), DSA_SEED_BYTES);
   try {
     return {
-      kem: ml_kem768.keygen(kemSeed),
-      dsa: ml_dsa65.keygen(dsaSeed),
+      kem: ml_kem1024.keygen(kemSeed),
+      dsa: ml_dsa87.keygen(dsaSeed),
     };
   } finally {
     kemSeed.fill(0);
@@ -121,13 +121,13 @@ export function popMessage(pubkeyHex: string, kemPublicKeyB64: string, dsaPublic
 
 /** Sign the proof-of-possession message with the ML-DSA secret key. */
 export function signPop(message: Uint8Array, dsaSecretKey: Uint8Array): Uint8Array {
-  return ml_dsa65.sign(message, dsaSecretKey);
+  return ml_dsa87.sign(message, dsaSecretKey);
 }
 
 /** Verify a proof-of-possession signature against a published ML-DSA public key. */
 export function verifyPop(signature: Uint8Array, message: Uint8Array, dsaPublicKey: Uint8Array): boolean {
   try {
-    return ml_dsa65.verify(signature, message, dsaPublicKey);
+    return ml_dsa87.verify(signature, message, dsaPublicKey);
   } catch {
     return false;
   }
@@ -138,10 +138,10 @@ export function encapsulate(kemPublicKey: Uint8Array): { cipherText: Uint8Array;
   if (kemPublicKey.length !== KEM_PUBLIC_KEY_BYTES) {
     throw new Error('Invalid ML-KEM public key length');
   }
-  return ml_kem768.encapsulate(kemPublicKey);
+  return ml_kem1024.encapsulate(kemPublicKey);
 }
 
 /** Decapsulate a ciphertext with our ML-KEM secret key. Returns the shared secret. */
 export function decapsulate(cipherText: Uint8Array, kemSecretKey: Uint8Array): Uint8Array {
-  return ml_kem768.decapsulate(cipherText, kemSecretKey);
+  return ml_kem1024.decapsulate(cipherText, kemSecretKey);
 }
