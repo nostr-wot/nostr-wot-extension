@@ -117,7 +117,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     <div className={styles.step}>
       <h2 className={styles.stepTitle}>{t('wizard.recoveryTitle')}</h2>
       <p className={styles.stepDesc}>
-        {t('wizard.recoveryDesc')}
+        {t('wizard.recoveryDesc', { count: words.length })}
       </p>
 
       <div className={styles.warningBox}>
@@ -126,7 +126,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       </div>
 
       <div className={styles.mnemonicWrapper}>
-        <div className={`${styles.mnemonicDisplay} ${!revealed ? styles.mnemonicBlurred : ''}`}>
+        <div className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''} ${!revealed ? styles.mnemonicBlurred : ''}`}>
           {words.map((word, i) => (
             <div key={i} className={styles.mnemonicWord}>
               <span className={styles.wordNum}>{i + 1}</span>

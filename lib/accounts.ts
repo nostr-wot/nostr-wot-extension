@@ -110,7 +110,11 @@ export async function createFromMnemonicAtIndex(mnemonic: string, index: number,
  * @returns Object with account and mnemonic
  */
 export async function generateNewAccount(name: string = 'Main'): Promise<{ account: Account; mnemonic: string }> {
-  const mnemonic = await generateMnemonic(128); // 12 words
+  // 256-bit entropy (24 words). A 12-word phrase carries only 128 bits, which
+  // becomes the limiting factor once post-quantum keys are derived from the same
+  // seed — the seed, not the algorithm, would be the weakest link. Existing
+  // 12-word accounts keep working; this affects newly generated identities only.
+  const mnemonic = await generateMnemonic(256); // 24 words
   const account = await createFromMnemonic(mnemonic, name);
   return { account, mnemonic };
 }

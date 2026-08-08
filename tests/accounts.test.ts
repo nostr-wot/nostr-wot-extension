@@ -97,14 +97,51 @@ describe('createFromMnemonicAtIndex', () => {
   });
 });
 
+// Both official NIP-06 test vectors. The 12-word case is the backward-compatibility
+// guard: existing accounts were created with 12 words and MUST keep deriving the same
+// key now that new accounts default to 24.
+// https://github.com/nostr-protocol/nips/blob/master/06.md
+describe('NIP-06 derivation vectors', () => {
+  const VECTORS = [
+    {
+      words: 12,
+      mnemonic: 'leader monkey parrot ring guide accident before fence cannon height naive bean',
+      privkey: '7f7ff03d123792d6ac594bfa67bf6d0c0ab55b6b1fdb6249303fe861f1ccba9a',
+      pubkey: '17162c921dc4d2518f9a101db33695df1afb56ab82f5ff3e5da6eec3ca5cd917'
+    },
+    {
+      words: 24,
+      mnemonic: 'what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade',
+      privkey: 'c15d739894c81a2fcfd3a2df85a0d2c0dbc47a280d092799f144d73d7ae78add',
+      pubkey: 'd41b22899549e1f3d335a31002cfd382174006e166d3e658e3a5eecdb6463573'
+    }
+  ];
+
+  for (const v of VECTORS) {
+    it(`derives the published key from the ${v.words}-word vector`, async () => {
+      assert.strictEqual(v.mnemonic.split(' ').length, v.words);
+      const acct: any = await createFromMnemonic(v.mnemonic, 'Vector');
+      assert.strictEqual(acct.privkey, v.privkey);
+      assert.strictEqual(acct.pubkey, v.pubkey);
+    });
+  }
+});
+
 describe('generateNewAccount', () => {
-  it('generates valid 12-word mnemonic and account', async () => {
+  it('generates valid 24-word mnemonic and account', async () => {
     const { account, mnemonic }: any = await generateNewAccount('New');
-    assert.strictEqual(mnemonic.split(' ').length, 12);
+    assert.strictEqual(mnemonic.split(' ').length, 24);
     assert.strictEqual(account.type, 'generated');
     assert.strictEqual(account.name, 'New');
     assert.match(account.pubkey, /^[0-9a-f]{64}$/);
     assert.match(account.privkey, /^[0-9a-f]{64}$/);
+  });
+
+  it('generated mnemonic round-trips through createFromMnemonic', async () => {
+    const { account, mnemonic }: any = await generateNewAccount('RoundTrip');
+    const reimported: any = await createFromMnemonic(mnemonic, 'RoundTrip');
+    assert.strictEqual(reimported.pubkey, account.pubkey);
+    assert.strictEqual(reimported.privkey, account.privkey);
   });
 
   it('different calls produce different keys', async () => {

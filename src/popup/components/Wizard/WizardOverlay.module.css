@@ -236,6 +236,24 @@
   transition: filter 0.3s;
 }
 
+/* 24-word phrases: 3 columns would be 8 rows, which pushes the backup actions
+   under the sticky footer in the 380x600 popup. 4 columns keeps it to 6 rows. */
+.mnemonicDisplayWide {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px 2px;
+}
+
+.mnemonicDisplayWide .mnemonicWord {
+  gap: 4px;
+  padding: 4px 5px;
+  font-size: 11px;
+}
+
+.mnemonicDisplayWide .wordNum {
+  min-width: 13px;
+  font-size: 9px;
+}
+
 .mnemonicBlurred {
   filter: blur(6px);
   user-select: none;

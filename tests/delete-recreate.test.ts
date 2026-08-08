@@ -84,7 +84,7 @@ describe('delete→recreate: remove last account then onboard again', () => {
     const second = (await withTimeout(gen({}), 'onboarding_generateAccount (2nd)')) as GenerateResult;
     assert.ok(second, 'second generateAccount returned nothing');
     assert.ok(second.account?.pubkey, 'second generateAccount returned no account');
-    assert.strictEqual(second.mnemonic.split(' ').length, 12);
+    assert.strictEqual(second.mnemonic.split(' ').length, 24);
     assert.notStrictEqual(second.account.pubkey, first.account.pubkey, 'new identity expected');
 
     // And the wizard can complete again (PasswordStep treats vault-with-0-accounts as new vault)
