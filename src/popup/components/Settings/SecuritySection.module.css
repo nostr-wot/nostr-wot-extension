@@ -49,3 +49,81 @@
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* ── Post-quantum section ── */
+.pqcNotice,
+.pqcNoticeOk {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.pqcNotice {
+  background: rgba(217, 119, 6, 0.08);
+  color: #b45309;
+}
+
+.pqcNoticeOk {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803d;
+}
+
+.pqcNotice strong,
+.pqcNoticeOk strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.pqcNotice p,
+.pqcNoticeOk p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
+.pqcBlocked {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pqcKeyRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--card-border);
+  font-size: 12px;
+}
+
+.pqcKeyRow span {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.pqcKeyRow code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-heading);
+  word-break: break-all;
+}
+
+.pqcLimits {
+  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 8px 0 12px;
+}

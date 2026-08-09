@@ -730,5 +730,19 @@
   "mutes.published": "Pubblicato",
   "mutes.publishFailed": "Pubblicazione non riuscita",
   "mutes.unsaved": "Modifiche non salvate",
-  "mutes.notPublished": "Non ancora pubblicato"
+  "mutes.notPublished": "Non ancora pubblicato",
+  "pqc.menuLabel": "Chiave post-quantistica",
+  "pqc.menuDesc": "Chiavi che restano private anche dopo la rottura di secp256k1",
+  "pqc.unavailableTitle": "Non disponibile per questo account",
+  "pqc.reasonShortSeed": "Questo account usa una frase seme di {count} parole. Le chiavi post-quantistiche richiedono 24 parole: una più corta porta solo 128 bit di entropia e diventerebbe l'anello debole.",
+  "pqc.reason.read-only": "Account di sola lettura. Senza chiave privata non può avere chiavi post-quantistiche.",
+  "pqc.reason.remote-signer": "Questo account firma tramite un firmatario remoto, e quel protocollo non ha ancora operazioni post-quantistiche.",
+  "pqc.reason.no-seed": "Questo account è stato importato da una chiave privata, quindi non c'è una frase seme da cui derivare.",
+  "pqc.independentHint": "Puoi comunque aggiungere una chiave post-quantistica indipendente con il comando pqc:keygen. Non è recuperabile dalla frase seme, quindi va salvata a parte.",
+  "pqc.readyTitle": "Pronto per il post-quantistico",
+  "pqc.readyDesc": "Le tue chiavi derivano dalla frase seme di 24 parole. Nulla di aggiuntivo da salvare: le parole già annotate le ripristinano.",
+  "pqc.showKeys": "Mostra le mie chiavi",
+  "pqc.copyAttestation": "Copia attestazione",
+  "pqc.publishDesc": "Pubblica questo evento sui tuoi relay perché altri possano inviarti messaggi cifrati post-quantistici. Fino ad allora i mittenti useranno la cifratura classica.",
+  "pqc.limits": "Questo protegge in modo permanente la riservatezza dei messaggi inviati da ora. Non impedisce a un attaccante quantistico di falsificare eventi a tuo nome: servirebbe una migrazione delle firme, che non fa parte di questo."
 }

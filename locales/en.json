@@ -730,5 +730,19 @@
   "mutes.published": "Published",
   "mutes.publishFailed": "Publish failed",
   "mutes.unsaved": "Unsaved changes",
-  "mutes.notPublished": "Not published yet"
+  "mutes.notPublished": "Not published yet",
+  "pqc.menuLabel": "Post-quantum key",
+  "pqc.menuDesc": "Keys that stay private even after secp256k1 is broken",
+  "pqc.unavailableTitle": "Not available for this account",
+  "pqc.reasonShortSeed": "This account uses a {count}-word seed phrase. Post-quantum keys must come from a 24-word phrase — a shorter one carries only 128 bits of entropy, which would become the weakest link.",
+  "pqc.reason.read-only": "This is a watch-only account. It has no private key, so it cannot hold post-quantum keys.",
+  "pqc.reason.remote-signer": "This account signs through a remote signer, and that protocol has no post-quantum operations yet.",
+  "pqc.reason.no-seed": "This account was imported from a private key, so there is no seed phrase to derive from.",
+  "pqc.independentHint": "You can still add a standalone post-quantum key using the pqc:keygen command. It is not recoverable from a seed phrase, so you must back it up separately.",
+  "pqc.readyTitle": "Ready for post-quantum",
+  "pqc.readyDesc": "Your keys are derived from your 24-word seed phrase. Nothing extra to back up — the words you already wrote down restore them.",
+  "pqc.showKeys": "Show my keys",
+  "pqc.copyAttestation": "Copy attestation",
+  "pqc.publishDesc": "Publish this event to your relays so others can send you post-quantum encrypted messages. Until you do, senders fall back to classic encryption.",
+  "pqc.limits": "This protects the confidentiality of messages sent from now on, permanently. It does not stop a quantum attacker from forging events in your name — that needs a signature migration, which is not part of this."
 }

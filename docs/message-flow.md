@@ -100,6 +100,22 @@ This ensures the message comes from an extension page (popup, onboarding, prompt
 
 ---
 
+## 5b. Post-Quantum Status (`pqc_getStatus`)
+
+A privileged method (internal pages only, like `vault_*`). Returns whether the active
+account can hold post-quantum keys and, when it can, the derived public keys plus an
+unsigned `kind:10203` attestation for the popup to display and the user to publish.
+
+Nothing is persisted. Post-quantum keys are a deterministic function of the mnemonic
+already in the vault, so they are recomputed on each call rather than stored — no vault
+migration, and no extra secret material at rest. Secret key bytes are zeroed before the
+handler returns and are never included in the response.
+
+The handler refuses derivation for four cases, each reported with a distinct `reason` so
+the UI can explain it: `read-only` (watch-only account), `remote-signer` (NIP-46 has no
+post-quantum operations), `no-seed` (imported from an nsec), and `short-seed` (a 12-word
+mnemonic — 128 bits would be the weakest link).
+
 ## 6. Channel Isolation
 
 The three message channels are strictly separated:

@@ -730,5 +730,19 @@
   "mutes.published": "Veröffentlicht",
   "mutes.publishFailed": "Veröffentlichung fehlgeschlagen",
   "mutes.unsaved": "Nicht gespeicherte Änderungen",
-  "mutes.notPublished": "Noch nicht veröffentlicht"
+  "mutes.notPublished": "Noch nicht veröffentlicht",
+  "pqc.menuLabel": "Post-Quanten-Schlüssel",
+  "pqc.menuDesc": "Schlüssel, die privat bleiben, auch wenn secp256k1 gebrochen wird",
+  "pqc.unavailableTitle": "Für dieses Konto nicht verfügbar",
+  "pqc.reasonShortSeed": "Dieses Konto nutzt eine Seed-Phrase mit {count} Wörtern. Post-Quanten-Schlüssel erfordern 24 Wörter — eine kürzere Phrase trägt nur 128 Bit Entropie und wäre damit das schwächste Glied.",
+  "pqc.reason.read-only": "Dies ist ein Nur-Lese-Konto. Ohne privaten Schlüssel kann es keine Post-Quanten-Schlüssel halten.",
+  "pqc.reason.remote-signer": "Dieses Konto signiert über einen entfernten Signierdienst, und dieses Protokoll kennt noch keine Post-Quanten-Operationen.",
+  "pqc.reason.no-seed": "Dieses Konto wurde aus einem privaten Schlüssel importiert, es gibt also keine Seed-Phrase zum Ableiten.",
+  "pqc.independentHint": "Sie können trotzdem einen eigenständigen Post-Quanten-Schlüssel per pqc:keygen anlegen. Er lässt sich nicht aus der Seed-Phrase wiederherstellen — sichern Sie ihn separat.",
+  "pqc.readyTitle": "Bereit für Post-Quanten",
+  "pqc.readyDesc": "Ihre Schlüssel werden aus Ihrer 24-Wort-Phrase abgeleitet. Nichts zusätzlich zu sichern — die bereits notierten Wörter stellen sie wieder her.",
+  "pqc.showKeys": "Meine Schlüssel anzeigen",
+  "pqc.copyAttestation": "Attestierung kopieren",
+  "pqc.publishDesc": "Veröffentlichen Sie dieses Event auf Ihren Relays, damit andere Ihnen post-quantensicher verschlüsselte Nachrichten senden können. Bis dahin fallen Absender auf klassische Verschlüsselung zurück.",
+  "pqc.limits": "Dies schützt dauerhaft die Vertraulichkeit ab jetzt gesendeter Nachrichten. Es hindert einen Quantenangreifer nicht daran, Events in Ihrem Namen zu fälschen — dafür wäre eine Signatur-Migration nötig, die hier nicht enthalten ist."
 }

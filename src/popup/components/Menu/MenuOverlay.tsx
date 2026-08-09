@@ -6,6 +6,7 @@ import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
 import Button from '@components/Button/Button';
 import MenuSection from './MenuSection';
+import PqcSection from '../Settings/PqcSection';
 import PermissionsSection from '../Settings/PermissionsSection';
 import SecuritySection from '../Settings/SecuritySection';
 import NetworkSection from '../Settings/NetworkSection';
@@ -89,6 +90,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     network: t('settings.network'),
     wallet: t('wallet.title'),
     'site-permissions': permDetailDomain || t('security.permissions'),
+    pqc: t('pqc.menuLabel'),
   };
 
   if (!shouldRender) return null;
@@ -161,6 +163,18 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
                 )}
               </>
             )}
+            <NavItem
+              icon={<IconKey />}
+              label={t('pqc.menuLabel')}
+              desc={t('pqc.menuDesc')}
+              onClick={() => pushSection('pqc')}
+            />
+          </MenuSection>
+        );
+      case 'pqc':
+        return (
+          <MenuSection>
+            <PqcSection />
           </MenuSection>
         );
       case 'site-permissions':

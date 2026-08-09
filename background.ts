@@ -28,11 +28,12 @@ import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
 import { handlers as walletHandlers } from './lib/bg/wallet-handlers.ts';
 import { handlers as nip07Handlers, validateNip07Params } from './lib/bg/nip07-handlers.ts';
 import { handlers as onboardingHandlers } from './lib/bg/onboarding-handlers.ts';
+import { handlers as pqcHandlers } from './lib/bg/pqc-handlers.ts';
 
 // ── Assemble handler map ──
 
 const allHandlers = new Map<string, HandlerFn>();
-const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers];
+const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers];
 for (const group of handlerGroups) {
     for (const [method, fn] of group) {
         if (allHandlers.has(method)) {
@@ -49,7 +50,7 @@ allHandlers.set('configUpdated', async () => {
 });
 
 // Auto-derive PRIVILEGED_METHODS from all handler maps (no manual allowlist needed)
-const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers];
+const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers];
 setPrivilegedMethods(buildPrivilegedMethods(...privilegedHandlerGroups));
 // Also add configUpdated and other locally-defined handlers
 PRIVILEGED_METHODS.add('configUpdated');

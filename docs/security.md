@@ -166,6 +166,27 @@ The auto-approve threshold (`walletThreshold_{accountId}`) is stored in `browser
 
 ---
 
+## 8d. Post-Quantum Key Derivation (`lib/bg/pqc-handlers.ts`)
+
+Post-quantum keys are derived from the BIP-39 seed as **siblings** of the secp256k1 key,
+never from the private key itself. This is the property the scheme depends on: deriving
+`pq = KDF(nsec)` would be circular, since an adversary who recovers `nsec` from `npub` could
+repeat the derivation. Because BIP-32 and HKDF are one-way, recovering the secp256k1 private
+key reveals nothing about the seed and therefore nothing about the post-quantum keys.
+`tests/crypto/pq.test.ts` asserts the two derivations differ, so a refactor cannot silently
+reintroduce the circularity.
+
+Keys are **not stored**. They are recomputed from the vault's mnemonic when requested, which
+avoids a vault migration and keeps additional secret material out of storage entirely.
+Within the handler, ML-KEM and ML-DSA secret keys are zeroed immediately after use and the
+seed is zeroed in a `finally` block. The response contains public keys only; a test asserts
+no secret material appears in it.
+
+Derivation requires a 24-word (256-bit) mnemonic. A 12-word mnemonic would mechanically
+work, but carries 128 bits of entropy — the seed, not the algorithm, would bound the
+security — so those accounts are refused with `reason: 'short-seed'` and pointed at an
+independently generated key instead.
+
 ## 9. Rate Limiting
 
 - **Per-origin pending-request cap** (`lib/signer.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.

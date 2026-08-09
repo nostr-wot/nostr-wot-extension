@@ -730,5 +730,19 @@
   "mutes.published": "Publicado",
   "mutes.publishFailed": "Falha ao publicar",
   "mutes.unsaved": "Alterações não salvas",
-  "mutes.notPublished": "Ainda não publicado"
+  "mutes.notPublished": "Ainda não publicado",
+  "pqc.menuLabel": "Chave pós-quântica",
+  "pqc.menuDesc": "Chaves que continuam privadas mesmo depois de quebrarem o secp256k1",
+  "pqc.unavailableTitle": "Indisponível para esta conta",
+  "pqc.reasonShortSeed": "Esta conta usa uma frase semente de {count} palavras. Chaves pós-quânticas exigem uma frase de 24 palavras — uma menor carrega apenas 128 bits de entropia e se tornaria o elo mais fraco.",
+  "pqc.reason.read-only": "Esta é uma conta somente leitura. Sem chave privada, não pode ter chaves pós-quânticas.",
+  "pqc.reason.remote-signer": "Esta conta assina por um assinador remoto, e esse protocolo ainda não tem operações pós-quânticas.",
+  "pqc.reason.no-seed": "Esta conta foi importada de uma chave privada, portanto não há frase semente para derivar.",
+  "pqc.independentHint": "Você ainda pode adicionar uma chave pós-quântica independente com o comando pqc:keygen. Ela não é recuperável pela frase semente, então guarde-a separadamente.",
+  "pqc.readyTitle": "Pronta para pós-quântico",
+  "pqc.readyDesc": "Suas chaves derivam da sua frase semente de 24 palavras. Nada extra para fazer backup — as palavras que você já anotou as restauram.",
+  "pqc.showKeys": "Ver minhas chaves",
+  "pqc.copyAttestation": "Copiar atestação",
+  "pqc.publishDesc": "Publique este evento nos seus relays para que outros possam lhe enviar mensagens cifradas pós-quânticas. Até lá, os remetentes usam cifragem clássica.",
+  "pqc.limits": "Isto protege permanentemente a confidencialidade das mensagens enviadas a partir de agora. Não impede que um atacante quântico forje eventos em seu nome — isso exige migrar as assinaturas, o que não faz parte disto."
 }

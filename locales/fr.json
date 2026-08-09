@@ -730,5 +730,19 @@
   "mutes.published": "Publié",
   "mutes.publishFailed": "Échec de la publication",
   "mutes.unsaved": "Modifications non enregistrées",
-  "mutes.notPublished": "Pas encore publié"
+  "mutes.notPublished": "Pas encore publié",
+  "pqc.menuLabel": "Clé post-quantique",
+  "pqc.menuDesc": "Des clés qui restent privées même après la rupture de secp256k1",
+  "pqc.unavailableTitle": "Indisponible pour ce compte",
+  "pqc.reasonShortSeed": "Ce compte utilise une phrase de récupération de {count} mots. Les clés post-quantiques exigent 24 mots : une phrase plus courte n'apporte que 128 bits d'entropie et deviendrait le maillon faible.",
+  "pqc.reason.read-only": "Compte en lecture seule. Sans clé privée, il ne peut pas détenir de clés post-quantiques.",
+  "pqc.reason.remote-signer": "Ce compte signe via un signataire distant, et ce protocole n'a pas encore d'opérations post-quantiques.",
+  "pqc.reason.no-seed": "Ce compte a été importé depuis une clé privée : il n'y a pas de phrase de récupération dont dériver.",
+  "pqc.independentHint": "Vous pouvez tout de même ajouter une clé post-quantique indépendante avec la commande pqc:keygen. Elle n'est pas récupérable depuis votre phrase, sauvegardez-la séparément.",
+  "pqc.readyTitle": "Prêt pour le post-quantique",
+  "pqc.readyDesc": "Vos clés dérivent de votre phrase de 24 mots. Rien de plus à sauvegarder : les mots déjà notés les restaurent.",
+  "pqc.showKeys": "Afficher mes clés",
+  "pqc.copyAttestation": "Copier l'attestation",
+  "pqc.publishDesc": "Publiez cet événement sur vos relais pour que d'autres puissent vous envoyer des messages chiffrés post-quantiques. D'ici là, les expéditeurs retombent sur le chiffrement classique.",
+  "pqc.limits": "Ceci protège durablement la confidentialité des messages envoyés à partir de maintenant. Cela n'empêche pas un attaquant quantique de forger des événements en votre nom : il faudrait migrer les signatures, ce qui n'est pas inclus ici."
 }

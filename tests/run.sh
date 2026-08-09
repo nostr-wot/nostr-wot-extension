@@ -14,4 +14,4 @@ node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts 
 node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts tests/safeUrl.test.ts tests/rpc.test.ts
 
 # Module + wallet tests (need browser mock for vault/permissions/accounts)
-node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/vault-wallet.test.ts tests/relay.test.ts tests/publish-handlers.test.ts
+node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/vault-wallet.test.ts tests/relay.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts
