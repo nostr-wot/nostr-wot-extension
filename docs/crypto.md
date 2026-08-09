@@ -17,3 +17,32 @@ Pure JavaScript implementations with no external dependencies. All cryptographic
 | `bech32.ts` | Bech32 and bech32m encoding/decoding for Nostr entities: `npubEncode`, `npubDecode`, `nsecEncode`, `nsecDecode`. |
 | `bip39-wordlist.js` | BIP-39 English wordlist (2048 words). Plain JS, no TypeScript needed. |
 | `utils.ts` | Hex-to-bytes and bytes-to-hex conversion utilities (`hexToBytes`, `bytesToHex`). |
+
+## Post-quantum message sizes
+
+The wire format and the reference implementation live in
+[`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq). Measured
+on the complete `kind:1059` gift wrap, as a relay sees it:
+
+| message | classic NIP-17 | post-quantum | overhead | ratio |
+|---|---|---|---|---|
+| "hi" (2 chars) | 1,533 B | 4,605 B | +3,072 B | 3.0x |
+| chat line (32) | 1,701 B | 4,605 B | +2,904 B | 2.7x |
+| a tweet (280) | 2,213 B | 5,285 B | +3,072 B | 2.4x |
+| a paragraph (1 KB) | 3,921 B | 7,333 B | +3,412 B | 1.9x |
+| a long note (4 KB) | 11,429 B | 14,161 B | +2,732 B | 1.2x |
+| a document (16 KB) | 38,737 B | 44,197 B | +5,460 B | 1.1x |
+
+About **3 KB constant overhead**, almost all of it the 1568-byte ML-KEM ciphertext, which
+base64 expands at every NIP-59 layer. At 100 messages a day that is +300 KB/day, or
++107 MB/year per conversation.
+
+The `kind:10203` attestation itself is roughly 12 KB, but it is a replaceable event
+published once per identity and only rewritten on key rotation.
+
+Note that NIP-59 is already expensive on its own terms — a *classic* two-character "hi"
+costs 1,533 bytes. Post-quantum raises that floor rather than creating it.
+
+Placing the post-quantum envelope at the **seal** layer rather than inside the rumor saves
+16-28%, because it removes one of the three base64 expansions the ML-KEM ciphertext would
+otherwise pass through. That is a framing choice, not a cryptographic one.

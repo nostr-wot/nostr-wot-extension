@@ -12,7 +12,7 @@ Create or import your Nostr identity and use it across any Nostr web client. The
 
 | Account Type | Description |
 |--------------|-------------|
-| **Generate new keys** | BIP-39 mnemonic with NIP-06 derivation — back up your seed phrase |
+| **Generate new keys** | 24-word BIP-39 mnemonic with NIP-06 derivation — back up your seed phrase |
 | **Import nsec** | Bring your existing private key |
 | **Watch-only (npub)** | View-only — no signing |
 | **NIP-46 Bunker** | Remote signing via `bunker://` URL |
@@ -64,6 +64,48 @@ Switch between multiple identities. Each account has its own permissions, wallet
 
 ---
 
+### Post-Quantum Keys
+
+Nostr public keys are published to every relay they touch, and Shor's algorithm recovers a
+private key from a public key. That means every encrypted DM sent today can be decrypted
+later by anyone who archived it — the damage is already accruing.
+
+The extension derives **ML-KEM-1024** and **ML-DSA-87** keys ([FIPS 203] / [FIPS 204]) from
+the same 24-word seed phrase your Nostr key comes from. Crucially they are derived as
+*siblings* of the secp256k1 key, never *from* it: recovering your Nostr private key reveals
+nothing about the seed, so messages encrypted to your post-quantum key stay confidential
+permanently. One mnemonic still restores everything — nothing extra to back up.
+
+Open **Menu → Security → Post-quantum key** to see your keys and copy a ready-to-publish
+`kind:10203` attestation. Or generate one offline:
+
+```bash
+npm run pqc:keygen
+```
+
+Requires a 24-word phrase. A 12-word phrase carries only 128 bits of entropy, which would
+become the weakest link, so the extension refuses to label such keys as seed-derived and
+explains the alternative instead.
+
+**What this does not do:** it does not stop a quantum adversary forging events in your
+name — events are still signed with secp256k1. It makes *past* messages permanently
+confidential, which is the only half of the problem that cannot be fixed after the fact.
+
+Message cost, measured on the full `kind:1059` gift wrap:
+
+| message | classic NIP-17 | post-quantum | ratio |
+|---|---|---|---|
+| chat line (32 chars) | 1,701 B | 4,605 B | 2.7x |
+| a tweet (280) | 2,213 B | 5,285 B | 2.4x |
+| a paragraph (1 KB) | 3,921 B | 7,333 B | 1.9x |
+
+About **3 KB constant overhead**, almost all of it the ML-KEM ciphertext. Encryption takes
+~1.3 ms. See [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq)
+for the wire format, the full size tables and the reference implementation.
+
+[FIPS 203]: https://csrc.nist.gov/pubs/fips/203/final
+[FIPS 204]: https://csrc.nist.gov/pubs/fips/204/final
+
 ## Install
 
 **Chrome Web Store:** [Install from Chrome Web Store](https://chromewebstore.google.com/detail/nostr-wot-extension/gfmefgdkmjpjinecjchlangpamhclhdo)
@@ -92,6 +134,8 @@ Switch between multiple identities. Each account has its own permissions, wallet
 
 - [Architecture Reference](docs/architecture.md) — Technical deep dive into the extension's internals
 - [Wallet & Lightning](docs/wallet.md) — Wallet providers, WebLN API, auto-provisioning, permissions
+- [Cryptography](docs/crypto.md) — Primitives, key derivation, and post-quantum keys
+- [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq) — The post-quantum wire format and reference library
 - [Contributing](CONTRIBUTING.md) — How to contribute to the project
 - [Security](SECURITY.md) — Security model and vulnerability reporting
 - [Deployment](DEPLOY.md) — Building and publishing to browser stores
