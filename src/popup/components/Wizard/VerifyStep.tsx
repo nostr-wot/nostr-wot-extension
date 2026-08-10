@@ -96,7 +96,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
         {t('wizard.verifyDesc')}
       </p>
 
-      <div className={styles.mnemonicDisplay}>
+      <div className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''}`}>
         {words.map((word, i) => {
           const isBlank = blankIndices.includes(i);
           const filled = filledSlots[i];
