@@ -43,6 +43,20 @@ export function validateNip07Params(method: string, params: Record<string, unkno
         if (typeof params.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(params.pubkey))
             throw new Error('Invalid pubkey');
         if (typeof params.plaintext !== 'string') throw new Error('Invalid plaintext');
+
+        // Optional post-quantum options. Validated here rather than deeper in, because
+        // the ML-KEM key is 1568 bytes and would fail the 64-hex checks these handlers
+        // otherwise apply to key material.
+        if (params.opts !== undefined) {
+            if (method !== 'nip07_nip44Encrypt') throw new Error('Options are only supported for nip44');
+            const opts = params.opts as Record<string, unknown>;
+            if (typeof opts !== 'object' || opts === null) throw new Error('Invalid options');
+            if (opts.scheme !== 'pq') throw new Error('Unsupported scheme');
+            if (typeof opts.recipientKemKey !== 'string' || !/^[A-Za-z0-9+/]+=*$/.test(opts.recipientKemKey))
+                throw new Error('Invalid recipientKemKey');
+            // 1568 raw bytes base64-encode to 2092 characters.
+            if (opts.recipientKemKey.length !== 2092) throw new Error('Invalid recipientKemKey length');
+        }
     }
     if (method === 'nip07_nip04Decrypt' || method === 'nip07_nip44Decrypt') {
         if (typeof params.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(params.pubkey))
@@ -126,7 +140,12 @@ export const handlers = new Map<string, HandlerFn>([
         signer.handleNip04Decrypt(params.pubkey as string, params.ciphertext as string, origin))],
 
     ['nip07_nip44Encrypt', withIdentityGuard('nip44Encrypt', (origin, params) =>
-        signer.handleNip44Encrypt(params.pubkey as string, params.plaintext as string, origin))],
+        signer.handleNip44Encrypt(
+            params.pubkey as string,
+            params.plaintext as string,
+            origin,
+            params.opts as signer.PqEncryptOptions | undefined,
+        ))],
 
     ['nip07_nip44Decrypt', withIdentityGuard('nip44Decrypt', (origin, params) =>
         signer.handleNip44Decrypt(params.pubkey as string, params.ciphertext as string, origin))],

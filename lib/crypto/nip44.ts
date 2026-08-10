@@ -57,7 +57,7 @@ function unpad(padded: Uint8Array): string {
 
 // ── NIP-44 conversation key ──
 
-function getConversationKey(privkey: Uint8Array, theirPubkey: Uint8Array): Uint8Array {
+export function getConversationKey(privkey: Uint8Array, theirPubkey: Uint8Array): Uint8Array {
   const sharedX = ecdh(privkey, theirPubkey);
   try {
     const salt = new TextEncoder().encode('nip44-v2');

@@ -145,3 +145,155 @@ export function encapsulate(kemPublicKey: Uint8Array): { cipherText: Uint8Array;
 export function decapsulate(cipherText: Uint8Array, kemSecretKey: Uint8Array): Uint8Array {
   return ml_kem1024.decapsulate(cipherText, kemSecretKey);
 }
+
+// ── Message envelope ────────────────────────────────────────────────────────
+
+/**
+ * The post-quantum message envelope, matching @nostr-wot/pq on the wire.
+ *
+ *   version 1B (0x01) | alg 1B (0x01) | kem_ct 1568B | nonce 24B | AEAD(padded)
+ *
+ * Self-describing on purpose: `isPqEnvelope` lets `nip44Decrypt` route a payload by
+ * looking at it, so a caller never has to say which scheme a ciphertext used. The
+ * encrypt side cannot infer anything — it needs the recipient's ML-KEM key — so that
+ * direction stays an explicit opt-in.
+ */
+
+import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
+import { randomBytes } from '@noble/hashes/utils.js';
+import { arrayToBase64 as _b64, base64ToArray as _unb64 } from './utils.ts';
+
+export const ENVELOPE_VERSION = 0x01;
+export const ALG_MLKEM1024_XCHACHA = 0x01;
+export const KEM_CIPHERTEXT_BYTES = 1568;
+
+const NONCE_BYTES = 24;
+const TAG_BYTES = 16;
+const HEADER_BYTES = 2 + KEM_CIPHERTEXT_BYTES + NONCE_BYTES;
+const MAX_PLAINTEXT_BYTES = 65535;
+
+function calcPaddedLen(len: number): number {
+  if (len <= 32) return 32;
+  const nextPower = 1 << (Math.floor(Math.log2(len - 1)) + 1);
+  const chunk = nextPower <= 256 ? 32 : nextPower / 8;
+  return chunk * (Math.floor((len - 1) / chunk) + 1);
+}
+
+function pad(plaintext: Uint8Array): Uint8Array {
+  if (plaintext.length === 0) throw new Error('Cannot encrypt an empty message');
+  if (plaintext.length > MAX_PLAINTEXT_BYTES) throw new Error('Message too long');
+  const padded = new Uint8Array(2 + calcPaddedLen(plaintext.length));
+  new DataView(padded.buffer).setUint16(0, plaintext.length, false);
+  padded.set(plaintext, 2);
+  return padded;
+}
+
+function unpad(padded: Uint8Array): Uint8Array {
+  if (padded.length < 2) throw new Error('bad padding');
+  const len = new DataView(padded.buffer, padded.byteOffset, padded.byteLength).getUint16(0, false);
+  if (len === 0 || len > MAX_PLAINTEXT_BYTES) throw new Error('bad padding');
+  const out = padded.subarray(2, 2 + len);
+  if (out.length !== len || padded.length !== 2 + calcPaddedLen(len)) throw new Error('bad padding');
+  return out;
+}
+
+/** Binds version, algorithm and both pubkeys so a ciphertext cannot be moved or downgraded. */
+function associatedData(sender: string, recipient: string, kemCt: Uint8Array): Uint8Array {
+  const prefix = encoder.encode(
+    `${PQ_PROFILE}/env:${ENVELOPE_VERSION}:${ALG_MLKEM1024_XCHACHA}:${sender}:${recipient}:`,
+  );
+  const ad = new Uint8Array(prefix.length + kemCt.length);
+  ad.set(prefix, 0);
+  ad.set(kemCt, prefix.length);
+  return ad;
+}
+
+/** Combine the KEM secret with the classic NIP-44 conversation key. Never use either alone. */
+export function hybridKey(sharedSecret: Uint8Array, conversationKey: Uint8Array): Uint8Array {
+  const ikm = new Uint8Array(sharedSecret.length + conversationKey.length);
+  ikm.set(sharedSecret, 0);
+  ikm.set(conversationKey, sharedSecret.length);
+  const prk = hkdfExtract(sha256, ikm, undefined);
+  try {
+    return hkdfExpand(sha256, prk, encoder.encode(`${PQ_PROFILE}/hybrid`), 32);
+  } finally {
+    ikm.fill(0);
+    prk.fill(0);
+  }
+}
+
+/** True if this payload is one of our envelopes, so decrypt can route without being told. */
+export function isPqEnvelope(payload: string): boolean {
+  try {
+    const bytes = _unb64(payload);
+    return (
+      bytes.length >= HEADER_BYTES + TAG_BYTES &&
+      bytes[0] === ENVELOPE_VERSION &&
+      bytes[1] === ALG_MLKEM1024_XCHACHA
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function pqEncrypt(
+  plaintext: string,
+  recipientKemKey: Uint8Array,
+  conversationKey: Uint8Array,
+  sender: string,
+  recipient: string,
+): string {
+  if (recipientKemKey.length !== KEM_PUBLIC_KEY_BYTES) throw new Error('Invalid ML-KEM public key length');
+  if (conversationKey.length !== 32) throw new Error('Invalid conversation key');
+
+  const { cipherText: kemCt, sharedSecret } = encapsulate(recipientKemKey);
+  const key = hybridKey(sharedSecret, conversationKey);
+  const nonce = randomBytes(NONCE_BYTES);
+  try {
+    const sealed = xchacha20poly1305(key, nonce, associatedData(sender, recipient, kemCt))
+      .encrypt(pad(encoder.encode(plaintext)));
+    const out = new Uint8Array(HEADER_BYTES + sealed.length);
+    out[0] = ENVELOPE_VERSION;
+    out[1] = ALG_MLKEM1024_XCHACHA;
+    out.set(kemCt, 2);
+    out.set(nonce, 2 + KEM_CIPHERTEXT_BYTES);
+    out.set(sealed, HEADER_BYTES);
+    return _b64(out);
+  } finally {
+    key.fill(0);
+    sharedSecret.fill(0);
+  }
+}
+
+/** One generic error for every failure — distinguishing them would be an oracle. */
+export function pqDecrypt(
+  payload: string,
+  kemSecretKey: Uint8Array,
+  conversationKey: Uint8Array,
+  sender: string,
+  recipient: string,
+): string {
+  try {
+    if (conversationKey.length !== 32) throw new Error('x');
+    const bytes = _unb64(payload);
+    if (bytes.length < HEADER_BYTES + TAG_BYTES) throw new Error('x');
+    if (bytes[0] !== ENVELOPE_VERSION || bytes[1] !== ALG_MLKEM1024_XCHACHA) throw new Error('x');
+
+    const kemCt = bytes.subarray(2, 2 + KEM_CIPHERTEXT_BYTES);
+    const nonce = bytes.subarray(2 + KEM_CIPHERTEXT_BYTES, HEADER_BYTES);
+    const sealed = bytes.subarray(HEADER_BYTES);
+
+    const sharedSecret = decapsulate(kemCt, kemSecretKey);
+    const key = hybridKey(sharedSecret, conversationKey);
+    try {
+      return new TextDecoder().decode(
+        unpad(xchacha20poly1305(key, nonce, associatedData(sender, recipient, kemCt)).decrypt(sealed)),
+      );
+    } finally {
+      key.fill(0);
+      sharedSecret.fill(0);
+    }
+  } catch {
+    throw new Error('Decryption failed');
+  }
+}

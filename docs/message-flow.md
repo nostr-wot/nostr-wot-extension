@@ -116,6 +116,38 @@ the UI can explain it: `read-only` (watch-only account), `remote-signer` (NIP-46
 post-quantum operations), `no-seed` (imported from an nsec), and `short-seed` (a 12-word
 mnemonic — 128 bits would be the weakest link).
 
+## 5c. Post-Quantum via NIP-44 (no new namespace)
+
+Post-quantum encryption reuses `window.nostr.nip44` rather than adding a parallel
+`nostr.pq` namespace. The two directions are treated differently on purpose:
+
+**`decrypt` is polymorphic and takes no flag.** The envelope is self-describing — a
+version byte and an algorithm byte — so `handleNip44Decrypt` inspects the payload with
+`isPqEnvelope` and routes it. Existing callers are untouched and cannot get it wrong.
+A test asserts classic NIP-44 payloads are never mistaken for envelopes, since a false
+positive there would break ordinary traffic.
+
+**`encrypt` requires an explicit opt-in:**
+
+```js
+window.nostr.nip44.encrypt(pubkey, plaintext, { scheme: 'pq', recipientKemKey })
+```
+
+Inferring here was rejected deliberately. The signer does not have the recipient's
+ML-KEM key, so inferring would mean fetching their `kind:10203` attestation from relays
+inside a signing call — network I/O with latency and a failure mode. When that lookup
+failed the only options would be to break every existing caller or to fall back to
+classic silently, and a silent downgrade is precisely what this scheme exists to
+prevent. The calling application owns that decision and passes the key it already has.
+
+`opts` is validated in `nip07-handlers.ts` rather than deeper in, because an ML-KEM key
+is 1568 bytes (2092 base64 characters) and would fail the 64-hex checks those handlers
+apply to other key material.
+
+Post-quantum keys are recomputed from the vault's mnemonic per request and zeroed after
+use; nothing extra is stored. Accounts without a 24-word seed are refused with an
+explanation rather than silently downgraded.
+
 ## 6. Channel Isolation
 
 The three message channels are strictly separated:

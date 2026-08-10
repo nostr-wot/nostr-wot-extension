@@ -36,7 +36,10 @@ import { signEvent as cryptoSignEvent } from './crypto/nip01.ts';
 import { bytesToHex, hexToBytes, randomBytes } from './crypto/utils.ts';
 import { getPublicKey } from './crypto/secp256k1.ts';
 import { nip04Encrypt, nip04Decrypt } from './crypto/nip04.ts';
-import { nip44Encrypt, nip44Decrypt } from './crypto/nip44.ts';
+import { nip44Encrypt, nip44Decrypt, getConversationKey } from './crypto/nip44.ts';
+import { derivePqKeys, pqEncrypt, pqDecrypt, isPqEnvelope } from './crypto/pq.ts';
+import { base64ToArray } from './crypto/utils.ts';
+import { mnemonicToSeed } from './crypto/bip39.ts';
 import { BunkerSigner, parseBunkerInput } from 'nostr-tools/nip46';
 
 // In-memory resolvers for pending requests (keyed by request ID)
@@ -747,14 +750,105 @@ export async function handleNip04Decrypt(theirPubkey: string, ciphertext: string
     { pubkey: theirPubkey, ciphertext }, nip04Decrypt, 'User denied decryption');
 }
 
-export async function handleNip44Encrypt(theirPubkey: string, plaintext: string, origin: string): Promise<string> {
-  return handleCryptoRequest('nip44Encrypt', theirPubkey, plaintext, origin,
-    { pubkey: theirPubkey, plaintext }, nip44Encrypt, 'User denied encryption');
+/** Post-quantum options a caller may pass to nip44Encrypt. */
+export interface PqEncryptOptions {
+  scheme: 'pq';
+  /** Recipient's ML-KEM-1024 key, base64, from their kind:10203 attestation. */
+  recipientKemKey: string;
 }
 
+/**
+ * Derive this account's post-quantum keys from the mnemonic held in the vault.
+ *
+ * Nothing is stored: the keys are a deterministic function of the seed, so they are
+ * recomputed per request rather than persisted. Only 24-word accounts qualify — a
+ * 12-word seed carries 128 bits, which would make the seed the limiting factor.
+ */
+async function activePqKeys() {
+  if (vault.isLocked()) throw new Error('Vault is locked');
+  const payload = vault.getDecryptedPayload();
+  const activeId = (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
+  const acct = payload.accounts.find(a => a.id === activeId);
+  if (!acct?.mnemonic) throw new Error('This account has no seed phrase, so it cannot use post-quantum keys');
+  if (acct.mnemonic.trim().split(/\s+/).length !== 24) {
+    throw new Error('Post-quantum keys require a 24-word seed phrase');
+  }
+  const seed = await mnemonicToSeed(acct.mnemonic);
+  try {
+    return { keys: derivePqKeys(seed, acct.derivationIndex ?? 0), pubkey: acct.pubkey };
+  } finally {
+    seed.fill(0);
+  }
+}
+
+/**
+ * Encrypt with NIP-44, or post-quantum when the caller explicitly asks for it.
+ *
+ * The post-quantum path is opt-in rather than inferred, deliberately. Inferring would
+ * mean this signer fetching the recipient's attestation from relays mid-call — network
+ * I/O inside a signing operation — and then deciding what to do when the lookup fails.
+ * The only options there are to break every existing caller or to fall back to classic
+ * silently, and a silent downgrade is exactly the failure this whole scheme exists to
+ * prevent. The calling application owns that decision, so it passes the key it already
+ * has.
+ */
+export async function handleNip44Encrypt(
+  theirPubkey: string,
+  plaintext: string,
+  origin: string,
+  opts?: PqEncryptOptions,
+): Promise<string> {
+  if (opts?.scheme !== 'pq') {
+    return handleCryptoRequest('nip44Encrypt', theirPubkey, plaintext, origin,
+      { pubkey: theirPubkey, plaintext }, nip44Encrypt, 'User denied encryption');
+  }
+
+  return handleCryptoRequest(
+    'nip44Encrypt', theirPubkey, plaintext, origin,
+    { pubkey: theirPubkey, plaintext },
+    async (payload, privkey, theirPubkeyBytes) => {
+      const { keys, pubkey } = await activePqKeys();
+      try {
+        const kem = base64ToArray(opts.recipientKemKey);
+        const conv = getConversationKey(privkey, theirPubkeyBytes);
+        return pqEncrypt(payload, kem, conv, pubkey, theirPubkey);
+      } finally {
+        keys.kem.secretKey.fill(0);
+        keys.dsa.secretKey.fill(0);
+      }
+    },
+    'User denied encryption',
+  );
+}
+
+/**
+ * Decrypt with NIP-44, or post-quantum when the payload says so.
+ *
+ * This direction needs no flag and takes none. Our envelope is self-describing — a
+ * version byte and an algorithm byte — so the payload itself determines the route.
+ * A caller cannot get it wrong, and existing clients keep working untouched.
+ */
 export async function handleNip44Decrypt(theirPubkey: string, ciphertext: string, origin: string): Promise<string> {
-  return handleCryptoRequest('nip44Decrypt', theirPubkey, ciphertext, origin,
-    { pubkey: theirPubkey, ciphertext }, nip44Decrypt, 'User denied decryption');
+  if (!isPqEnvelope(ciphertext)) {
+    return handleCryptoRequest('nip44Decrypt', theirPubkey, ciphertext, origin,
+      { pubkey: theirPubkey, ciphertext }, nip44Decrypt, 'User denied decryption');
+  }
+
+  return handleCryptoRequest(
+    'nip44Decrypt', theirPubkey, ciphertext, origin,
+    { pubkey: theirPubkey, ciphertext },
+    async (payload, privkey, theirPubkeyBytes) => {
+      const { keys, pubkey } = await activePqKeys();
+      try {
+        const conv = getConversationKey(privkey, theirPubkeyBytes);
+        return pqDecrypt(payload, keys.kem.secretKey, conv, theirPubkey, pubkey);
+      } finally {
+        keys.kem.secretKey.fill(0);
+        keys.dsa.secretKey.fill(0);
+      }
+    },
+    'User denied decryption',
+  );
 }
 
 // -- NIP-46 Remote Signer (nostr-tools BunkerSigner) --

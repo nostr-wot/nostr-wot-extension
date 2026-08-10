@@ -20,8 +20,16 @@ interface NostrNip04 {
     decrypt: (pubkey: string, ciphertext: string) => Promise<string>;
 }
 
+/** Opt-in post-quantum encryption. Omit for classic NIP-44 — the signature is additive. */
+interface PqEncryptOptions {
+    scheme: 'pq';
+    /** Recipient's ML-KEM-1024 key, base64, from their kind:10203 attestation. */
+    recipientKemKey: string;
+}
+
 interface NostrNip44 {
-    encrypt: (pubkey: string, plaintext: string) => Promise<string>;
+    encrypt: (pubkey: string, plaintext: string, opts?: PqEncryptOptions) => Promise<string>;
+    /** No options: the payload is self-describing, so the signer routes it. */
     decrypt: (pubkey: string, ciphertext: string) => Promise<string>;
 }
 
@@ -140,7 +148,11 @@ declare global {
     };
 
     window.nostr.nip44 = {
-        encrypt: (pubkey, plaintext) => nip07.call('nip44Encrypt', { pubkey, plaintext }) as Promise<string>,
+        // `opts` is optional and additive: existing two-argument callers are untouched.
+        // Pass { scheme: 'pq', recipientKemKey } to encrypt post-quantum. Decrypt takes
+        // no flag — the payload is self-describing, so the signer routes it.
+        encrypt: (pubkey, plaintext, opts) =>
+            nip07.call('nip44Encrypt', opts ? { pubkey, plaintext, opts } : { pubkey, plaintext }) as Promise<string>,
         decrypt: (pubkey, ciphertext) => nip07.call('nip44Decrypt', { pubkey, ciphertext }) as Promise<string>
     };
 
