@@ -749,5 +749,7 @@
   "pqc.cardDesc": "Los mensajes que te envíen seguirán privados incluso cuando se rompa la criptografía actual",
   "pqc.publish": "Publicar en mis relés",
   "pqc.publishing": "Publicando…",
-  "pqc.published": "Publicado en {sent} de {relays} relés. Ya pueden enviarte mensajes post-cuánticos."
+  "pqc.published": "Publicado en {sent} de {relays} relés. Ya pueden enviarte mensajes post-cuánticos.",
+  "pqc.alreadyPublished": "Tus claves post-cuánticas ya están publicadas y actualizadas.",
+  "pqc.staleAttestation": "Las claves publicadas ya no coinciden con esta cuenta. Publica de nuevo para que se use la clave correcta."
 }

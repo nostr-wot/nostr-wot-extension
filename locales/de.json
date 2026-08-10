@@ -749,5 +749,7 @@
   "pqc.cardDesc": "An Sie gesendete Nachrichten bleiben privat, auch wenn die heutige Kryptografie gebrochen ist",
   "pqc.publish": "Auf meinen Relays veröffentlichen",
   "pqc.publishing": "Wird veröffentlicht…",
-  "pqc.published": "Auf {sent} von {relays} Relays veröffentlicht. Sie können jetzt post-quantensichere Nachrichten empfangen."
+  "pqc.published": "Auf {sent} von {relays} Relays veröffentlicht. Sie können jetzt post-quantensichere Nachrichten empfangen.",
+  "pqc.alreadyPublished": "Ihre Post-Quanten-Schlüssel sind bereits veröffentlicht und aktuell.",
+  "pqc.staleAttestation": "Die veröffentlichten Schlüssel passen nicht mehr zu diesem Konto. Erneut veröffentlichen, damit der richtige Schlüssel verwendet wird."
 }

@@ -24,11 +24,14 @@ export default function PqcSection() {
   const [publishing, setPublishing] = useState<boolean>(false);
   const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
   const [publishError, setPublishError] = useState<string>('');
+  const [existing, setExisting] = useState<{ published: boolean; current: boolean } | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         setStatus(await rpc<PqcStatus>('pqc_getStatus'));
+        // Answered from relays, so it stays right when published from another device.
+        setExisting(await rpc<{ published: boolean; current: boolean }>('pqc_checkPublished'));
       } catch (e: any) {
         setError(e?.message || t('common.error'));
       }
@@ -90,8 +93,33 @@ export default function PqcSection() {
         </div>
       </div>
 
+      {/* Publishing is what makes the account reachable, so it comes before the keys
+          rather than behind a reveal step nobody needs to take. */}
+      <p className={styles.desc}>{t('pqc.publishDesc')}</p>
+
+      {existing?.published && existing.current ? (
+        <p className={styles.pqcPublished}>{t('pqc.alreadyPublished')}</p>
+      ) : published ? (
+        <p className={styles.pqcPublished}>
+          {t('pqc.published', { sent: published.sent, relays: published.relays })}
+        </p>
+      ) : (
+        <>
+          {existing?.published && !existing.current && (
+            <p className={styles.desc}>{t('pqc.staleAttestation')}</p>
+          )}
+          <Button onClick={handlePublish} disabled={publishing}>
+            {publishing ? t('pqc.publishing') : t('pqc.publish')}
+          </Button>
+        </>
+      )}
+
+      {publishError && <div className={styles.error}>{publishError}</div>}
+
       {!revealed ? (
-        <Button onClick={() => setRevealed(true)}>{t('pqc.showKeys')}</Button>
+        <div style={{ marginTop: 14 }}>
+          <Button variant="secondary" onClick={() => setRevealed(true)}>{t('pqc.showKeys')}</Button>
+        </div>
       ) : (
         <>
           <div className={styles.pqcKeyRow}>
@@ -102,20 +130,6 @@ export default function PqcSection() {
             <span>ml-dsa-87</span>
             <code>{status.keys!.dsa.slice(0, 32)}…</code>
           </div>
-
-          <p className={styles.desc}>{t('pqc.publishDesc')}</p>
-
-          {published ? (
-            <p className={styles.pqcPublished}>
-              {t('pqc.published', { sent: published.sent, relays: published.relays })}
-            </p>
-          ) : (
-            <Button onClick={handlePublish} disabled={publishing}>
-              {publishing ? t('pqc.publishing') : t('pqc.publish')}
-            </Button>
-          )}
-
-          {publishError && <div className={styles.error}>{publishError}</div>}
 
           {/* Copy stays available for anyone who would rather publish it themselves. */}
           <button className={styles.pqcCopyLink} onClick={handleCopy}>

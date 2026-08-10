@@ -749,5 +749,7 @@
   "pqc.cardDesc": "Messages sent to you stay private even after today's cryptography is broken",
   "pqc.publish": "Publish to my relays",
   "pqc.publishing": "Publishing…",
-  "pqc.published": "Published to {sent} of {relays} relays. People can now send you post-quantum messages."
+  "pqc.published": "Published to {sent} of {relays} relays. People can now send you post-quantum messages.",
+  "pqc.alreadyPublished": "Your post-quantum keys are already published and up to date.",
+  "pqc.staleAttestation": "Your published keys no longer match this account. Publish again so senders use the right key."
 }

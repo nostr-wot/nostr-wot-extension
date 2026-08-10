@@ -27,7 +27,8 @@ import {
 } from '../crypto/pq.ts';
 import { signEvent } from '../crypto/nip01.ts';
 import { broadcastEvent } from './publish-handlers.ts';
-import type { HandlerFn } from './state.ts';
+import { liveQuery } from '../relay.ts';
+import { config, type HandlerFn } from './state.ts';
 import type { UnsignedEvent } from '../types.ts';
 
 /** Replaceable kind carrying post-quantum public keys. See the proposed NIP. */
@@ -74,7 +75,9 @@ async function writeRelays(): Promise<string[]> {
   const all = (relayData.relays || '').split(',').map(r => r.trim()).filter(Boolean);
   const flags = flagData.relayFlags || {};
   const writable = all.filter(url => (flags[url] ?? { write: true }).write);
-  return writable.length ? writable : all;
+  // storage.sync is empty until the user edits their relay list, so fall back to the
+  // in-memory defaults the rest of the extension publishes to.
+  return writable.length ? writable : (all.length ? all : config.relays);
 }
 
 export const handlers = new Map<string, HandlerFn>([
@@ -153,5 +156,38 @@ export const handlers = new Map<string, HandlerFn>([
     if (sent === 0) throw new Error('No relay accepted the attestation');
 
     return { sent, failed, relays: relays.length, eventId: signed.id };
+  }],
+
+  /**
+   * Is an attestation already on the user's relays, and does it match the current keys?
+   *
+   * Answered by querying relays rather than a local flag, so it stays correct when the
+   * attestation was published from another device — or when it was never really accepted.
+   */
+  ['pqc_checkPublished', async () => {
+    const status = (await handlers.get('pqc_getStatus')!({})) as PqcStatus;
+    if (!status.canDerive || !status.pubkey) return { published: false, current: false };
+
+    const relays = await writeRelays();
+    let found: { tags: string[][] } | null = null;
+    try {
+      for await (const ev of liveQuery(
+        [{ kinds: [PQC_KIND], authors: [status.pubkey], limit: 1 }],
+        relays,
+        { closeOnExhaust: true },
+      )) {
+        const e = (ev as { event?: { tags: string[][] } }).event;
+        if (e) { found = e; break; }
+      }
+    } catch {
+      return { published: false, current: false };
+    }
+
+    if (!found) return { published: false, current: false };
+
+    // Published is not enough: if the keys rotated, what is out there is stale and
+    // senders would encrypt to a key this account no longer uses.
+    const kemTag = found.tags.find(t => t[0] === 'alg' && t[1] === ALG_KEM);
+    return { published: true, current: kemTag?.[2] === status.keys?.kem };
   }],
 ]);

@@ -749,5 +749,7 @@
   "pqc.cardDesc": "Les messages qui vous sont envoyés resteront privés même après la rupture de la cryptographie actuelle",
   "pqc.publish": "Publier sur mes relais",
   "pqc.publishing": "Publication…",
-  "pqc.published": "Publié sur {sent} relais sur {relays}. On peut désormais vous envoyer des messages post-quantiques."
+  "pqc.published": "Publié sur {sent} relais sur {relays}. On peut désormais vous envoyer des messages post-quantiques.",
+  "pqc.alreadyPublished": "Vos clés post-quantiques sont déjà publiées et à jour.",
+  "pqc.staleAttestation": "Les clés publiées ne correspondent plus à ce compte. Republiez pour que la bonne clé soit utilisée."
 }

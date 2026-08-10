@@ -749,5 +749,7 @@
   "pqc.cardDesc": "As mensagens enviadas a você continuam privadas mesmo depois que a criptografia atual for quebrada",
   "pqc.publish": "Publicar nos meus relays",
   "pqc.publishing": "Publicando…",
-  "pqc.published": "Publicado em {sent} de {relays} relays. Já podem lhe enviar mensagens pós-quânticas."
+  "pqc.published": "Publicado em {sent} de {relays} relays. Já podem lhe enviar mensagens pós-quânticas.",
+  "pqc.alreadyPublished": "Suas chaves pós-quânticas já estão publicadas e atualizadas.",
+  "pqc.staleAttestation": "As chaves publicadas não correspondem mais a esta conta. Publique novamente para que usem a chave certa."
 }
