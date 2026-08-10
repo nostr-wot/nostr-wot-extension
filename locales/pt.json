@@ -746,5 +746,8 @@
   "pqc.publishDesc": "Publique este evento nos seus relays para que outros possam lhe enviar mensagens cifradas pós-quânticas. Até lá, os remetentes usam cifragem clássica.",
   "pqc.limits": "Isto protege permanentemente a confidencialidade das mensagens enviadas a partir de agora. Não impede que um atacante quântico forje eventos em seu nome — isso exige migrar as assinaturas, o que não faz parte disto.",
   "pqc.cardTitle": "Ative as chaves pós-quânticas",
-  "pqc.cardDesc": "As mensagens enviadas a você continuam privadas mesmo depois que a criptografia atual for quebrada"
+  "pqc.cardDesc": "As mensagens enviadas a você continuam privadas mesmo depois que a criptografia atual for quebrada",
+  "pqc.publish": "Publicar nos meus relays",
+  "pqc.publishing": "Publicando…",
+  "pqc.published": "Publicado em {sent} de {relays} relays. Já podem lhe enviar mensagens pós-quânticas."
 }

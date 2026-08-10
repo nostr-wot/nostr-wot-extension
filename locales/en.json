@@ -746,5 +746,8 @@
   "pqc.publishDesc": "Publish this event to your relays so others can send you post-quantum encrypted messages. Until you do, senders fall back to classic encryption.",
   "pqc.limits": "This protects the confidentiality of messages sent from now on, permanently. It does not stop a quantum attacker from forging events in your name — that needs a signature migration, which is not part of this.",
   "pqc.cardTitle": "Turn on post-quantum keys",
-  "pqc.cardDesc": "Messages sent to you stay private even after today's cryptography is broken"
+  "pqc.cardDesc": "Messages sent to you stay private even after today's cryptography is broken",
+  "pqc.publish": "Publish to my relays",
+  "pqc.publishing": "Publishing…",
+  "pqc.published": "Published to {sent} of {relays} relays. People can now send you post-quantum messages."
 }

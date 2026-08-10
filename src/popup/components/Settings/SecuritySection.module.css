@@ -127,3 +127,26 @@
   color: var(--text-secondary);
   margin: 8px 0 12px;
 }
+
+.pqcPublished {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--success, #16a34a);
+}
+
+.pqcCopyLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pqcCopyLink:hover {
+  color: var(--brand);
+}

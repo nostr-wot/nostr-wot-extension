@@ -21,6 +21,9 @@ export default function PqcSection() {
   const [error, setError] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
   const [revealed, setRevealed] = useState<boolean>(false);
+  const [publishing, setPublishing] = useState<boolean>(false);
+  const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
+  const [publishError, setPublishError] = useState<string>('');
 
   useEffect(() => {
     (async () => {
@@ -31,6 +34,18 @@ export default function PqcSection() {
       }
     })();
   }, []);
+
+  const handlePublish = async () => {
+    setPublishError('');
+    setPublishing(true);
+    try {
+      setPublished(await rpc<{ sent: number; relays: number }>('pqc_publishAttestation'));
+    } catch (e: any) {
+      setPublishError(e?.message || t('common.error'));
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const handleCopy = async () => {
     if (!status?.attestation) return;
@@ -89,10 +104,24 @@ export default function PqcSection() {
           </div>
 
           <p className={styles.desc}>{t('pqc.publishDesc')}</p>
-          <Button onClick={handleCopy}>
-            <IconCopy size={14} />
+
+          {published ? (
+            <p className={styles.pqcPublished}>
+              {t('pqc.published', { sent: published.sent, relays: published.relays })}
+            </p>
+          ) : (
+            <Button onClick={handlePublish} disabled={publishing}>
+              {publishing ? t('pqc.publishing') : t('pqc.publish')}
+            </Button>
+          )}
+
+          {publishError && <div className={styles.error}>{publishError}</div>}
+
+          {/* Copy stays available for anyone who would rather publish it themselves. */}
+          <button className={styles.pqcCopyLink} onClick={handleCopy}>
+            <IconCopy size={12} />
             {copied ? t('common.copied') : t('pqc.copyAttestation')}
-          </Button>
+          </button>
         </>
       )}
 

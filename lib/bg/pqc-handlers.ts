@@ -25,7 +25,10 @@ import {
   derivePqKeys, popMessage, signPop,
   ALG_KEM, ALG_DSA, PQ_PROFILE,
 } from '../crypto/pq.ts';
+import { signEvent } from '../crypto/nip01.ts';
+import { broadcastEvent } from './publish-handlers.ts';
 import type { HandlerFn } from './state.ts';
+import type { UnsignedEvent } from '../types.ts';
 
 /** Replaceable kind carrying post-quantum public keys. See the proposed NIP. */
 export const PQC_KIND = 10203;
@@ -59,6 +62,19 @@ async function activeAccount() {
     (await browser.storage.local.get(['activeAccountId'])) as Record<string, string>
   ).activeAccountId;
   return payload.accounts.find((a) => a.id === activeId) ?? null;
+}
+
+/** The user's write relays, falling back to the read list when none are flagged. */
+async function writeRelays(): Promise<string[]> {
+  const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
+  const flagData = await browser.storage.local.get(['relayFlags']) as Record<
+    string,
+    Record<string, { read: boolean; write: boolean }>
+  >;
+  const all = (relayData.relays || '').split(',').map(r => r.trim()).filter(Boolean);
+  const flags = flagData.relayFlags || {};
+  const writable = all.filter(url => (flags[url] ?? { write: true }).write);
+  return writable.length ? writable : all;
 }
 
 export const handlers = new Map<string, HandlerFn>([
@@ -111,5 +127,31 @@ export const handlers = new Map<string, HandlerFn>([
     } finally {
       seed.fill(0);
     }
+  }],
+
+  /**
+   * Sign and publish the kind:10203 attestation.
+   *
+   * Without this the feature is only half usable: a user can hold post-quantum keys but
+   * nobody can send to them, because a sender learns the ML-KEM key from this event and
+   * from nowhere else. Copying JSON into another tool is not a real answer.
+   */
+  ['pqc_publishAttestation', async () => {
+    const status = (await handlers.get('pqc_getStatus')!({})) as PqcStatus;
+    if (!status.canDerive || !status.attestation) {
+      throw new Error('This account cannot publish post-quantum keys');
+    }
+
+    const privkey = vault.getPrivkey();
+    if (!privkey) throw new Error('Vault is locked');
+
+    const relays = await writeRelays();
+    if (relays.length === 0) throw new Error('No relays configured');
+
+    const signed = await signEvent(status.attestation as UnsignedEvent, privkey);
+    const { sent, failed } = await broadcastEvent(signed, relays);
+    if (sent === 0) throw new Error('No relay accepted the attestation');
+
+    return { sent, failed, relays: relays.length, eventId: signed.id };
   }],
 ]);

@@ -746,5 +746,8 @@
   "pqc.publishDesc": "Veröffentlichen Sie dieses Event auf Ihren Relays, damit andere Ihnen post-quantensicher verschlüsselte Nachrichten senden können. Bis dahin fallen Absender auf klassische Verschlüsselung zurück.",
   "pqc.limits": "Dies schützt dauerhaft die Vertraulichkeit ab jetzt gesendeter Nachrichten. Es hindert einen Quantenangreifer nicht daran, Events in Ihrem Namen zu fälschen — dafür wäre eine Signatur-Migration nötig, die hier nicht enthalten ist.",
   "pqc.cardTitle": "Post-Quanten-Schlüssel aktivieren",
-  "pqc.cardDesc": "An Sie gesendete Nachrichten bleiben privat, auch wenn die heutige Kryptografie gebrochen ist"
+  "pqc.cardDesc": "An Sie gesendete Nachrichten bleiben privat, auch wenn die heutige Kryptografie gebrochen ist",
+  "pqc.publish": "Auf meinen Relays veröffentlichen",
+  "pqc.publishing": "Wird veröffentlicht…",
+  "pqc.published": "Auf {sent} von {relays} Relays veröffentlicht. Sie können jetzt post-quantensichere Nachrichten empfangen."
 }
