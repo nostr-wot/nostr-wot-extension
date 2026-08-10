@@ -106,6 +106,7 @@ function PopupInner() {
             onManageFilters={() => setActiveOverlay('filters')}
             onEditProfile={() => setActiveOverlay('editProfile')}
             onOpenRelays={() => { setMenuSection('network'); setActiveOverlay('menu'); }}
+            onOpenPqc={() => { setMenuSection('pqc'); setActiveOverlay('menu'); }}
             onOpenWallet={() => { setMenuSection('wallet'); setActiveOverlay('menu'); }}
             menuOpen={activeOverlay === 'menu'}
           />

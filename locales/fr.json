@@ -744,5 +744,7 @@
   "pqc.showKeys": "Afficher mes clés",
   "pqc.copyAttestation": "Copier l'attestation",
   "pqc.publishDesc": "Publiez cet événement sur vos relais pour que d'autres puissent vous envoyer des messages chiffrés post-quantiques. D'ici là, les expéditeurs retombent sur le chiffrement classique.",
-  "pqc.limits": "Ceci protège durablement la confidentialité des messages envoyés à partir de maintenant. Cela n'empêche pas un attaquant quantique de forger des événements en votre nom : il faudrait migrer les signatures, ce qui n'est pas inclus ici."
+  "pqc.limits": "Ceci protège durablement la confidentialité des messages envoyés à partir de maintenant. Cela n'empêche pas un attaquant quantique de forger des événements en votre nom : il faudrait migrer les signatures, ce qui n'est pas inclus ici.",
+  "pqc.cardTitle": "Activez les clés post-quantiques",
+  "pqc.cardDesc": "Les messages qui vous sont envoyés resteront privés même après la rupture de la cryptographie actuelle"
 }

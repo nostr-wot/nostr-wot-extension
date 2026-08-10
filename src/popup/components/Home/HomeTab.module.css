@@ -339,3 +339,47 @@
   letter-spacing: 0.3px;
   font-weight: 600;
 }
+
+/* ── Post-quantum offer ── */
+.pqcCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.pqcCard:hover {
+  border-color: var(--brand);
+}
+
+.pqcIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--brand);
+}
+
+.pqcText strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.pqcText span {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}

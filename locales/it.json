@@ -744,5 +744,7 @@
   "pqc.showKeys": "Mostra le mie chiavi",
   "pqc.copyAttestation": "Copia attestazione",
   "pqc.publishDesc": "Pubblica questo evento sui tuoi relay perché altri possano inviarti messaggi cifrati post-quantistici. Fino ad allora i mittenti useranno la cifratura classica.",
-  "pqc.limits": "Questo protegge in modo permanente la riservatezza dei messaggi inviati da ora. Non impedisce a un attaccante quantistico di falsificare eventi a tuo nome: servirebbe una migrazione delle firme, che non fa parte di questo."
+  "pqc.limits": "Questo protegge in modo permanente la riservatezza dei messaggi inviati da ora. Non impedisce a un attaccante quantistico di falsificare eventi a tuo nome: servirebbe una migrazione delle firme, che non fa parte di questo.",
+  "pqc.cardTitle": "Attiva le chiavi post-quantistiche",
+  "pqc.cardDesc": "I messaggi inviati a te restano privati anche dopo che la crittografia attuale sarà violata"
 }

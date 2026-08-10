@@ -10,6 +10,7 @@ import { useVault } from '../../context/VaultContext';
 import SiteControls from './SiteControls';
 import ProfileCard from './ProfileCard';
 import MutesCard from './MutesCard';
+import PqcCard from './PqcCard';
 import RelaysCard from './RelaysCard';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
@@ -25,6 +26,7 @@ interface HomeTabProps {
   onManageFilters: () => void;
   onEditProfile: () => void;
   onOpenRelays: () => void;
+  onOpenPqc: () => void;
   onOpenWallet: () => void;
   menuOpen?: boolean;
 }
@@ -142,7 +144,7 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
 
 // ── HomeTab component ──
 
-export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenRelays, onOpenWallet, menuOpen }: HomeTabProps) {
+export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenRelays, onOpenPqc, onOpenWallet, menuOpen }: HomeTabProps) {
   const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
 
@@ -343,6 +345,7 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           <SectionLabel>{t('home.account')}</SectionLabel>
           <Card className={styles.accountCard}>
             {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
+            <PqcCard onOpen={onOpenPqc} />
             <MutesCard onOpen={onManageFilters} />
             <RelaysCard onOpen={onOpenRelays} />
           </Card>

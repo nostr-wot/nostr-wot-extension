@@ -744,5 +744,7 @@
   "pqc.showKeys": "Meine Schlüssel anzeigen",
   "pqc.copyAttestation": "Attestierung kopieren",
   "pqc.publishDesc": "Veröffentlichen Sie dieses Event auf Ihren Relays, damit andere Ihnen post-quantensicher verschlüsselte Nachrichten senden können. Bis dahin fallen Absender auf klassische Verschlüsselung zurück.",
-  "pqc.limits": "Dies schützt dauerhaft die Vertraulichkeit ab jetzt gesendeter Nachrichten. Es hindert einen Quantenangreifer nicht daran, Events in Ihrem Namen zu fälschen — dafür wäre eine Signatur-Migration nötig, die hier nicht enthalten ist."
+  "pqc.limits": "Dies schützt dauerhaft die Vertraulichkeit ab jetzt gesendeter Nachrichten. Es hindert einen Quantenangreifer nicht daran, Events in Ihrem Namen zu fälschen — dafür wäre eine Signatur-Migration nötig, die hier nicht enthalten ist.",
+  "pqc.cardTitle": "Post-Quanten-Schlüssel aktivieren",
+  "pqc.cardDesc": "An Sie gesendete Nachrichten bleiben privat, auch wenn die heutige Kryptografie gebrochen ist"
 }
