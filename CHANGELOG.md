@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-11
+
+Post-quantum keys, derived from the seed phrase you already have.
+
+### Added
+- **Post-quantum keys for your Nostr identity.** The extension now derives an ML-KEM-1024 encryption key and an ML-DSA-87 signing key (FIPS 203 and FIPS 204, the CNSA 2.0 parameter sets) from your existing BIP-39 seed. Both are derived *from the seed*, alongside your Nostr key rather than from it: an attacker who breaks secp256k1 and recovers your private key cannot walk back to the seed, so messages encrypted to your post-quantum key stay confidential permanently. Your words do not change, and there is nothing new to back up.
+- **A post-quantum card on the dashboard**, so the feature is offered rather than buried. It reports whether your account can derive keys, and says plainly why not when it cannot — a 12-word mnemonic, a bare `nsec` import, a remote signer, or a read-only account.
+- **Publish your attestation from the extension.** One button signs and publishes the `kind:10203` event that carries your public keys, which is the only way anyone can discover them and send you a post-quantum message. It checks your relays first and reports how many accepted it, and it detects an attestation you have already published — including one published from another device.
+- **Proof of possession.** The attestation is counter-signed by your ML-DSA key over a message binding your npub to both public keys, so advertising a key you cannot actually decrypt with is detectable. ML-KEM cannot sign, which is why this is also what proves possession of the encryption key.
+- **Post-quantum direct messages over NIP-44 and NIP-59.** The post-quantum shared secret is combined with the existing NIP-44 conversation key through HKDF, so the result is never weaker than today's encryption even if a lattice scheme is later broken. Decryption routes automatically because the payload is self-describing; encryption requires an explicit opt-in so a message can never be silently downgraded. Outer gift-wrap layers are unchanged, so these messages cross the existing relay network with no relay or client changes.
+- **`npm run pqc:keygen`** — an offline command-line tool that derives the keys and prints the signed attestation without the browser. It refuses 12-word mnemonics rather than quietly producing something that looks post-quantum and is not.
+
+### Changed
+- **New identities are generated with 24 words instead of 12.** BIP-39 expands any mnemonic to a 64-byte seed, so 12 words would derive working post-quantum keys — but they carry only 128 bits of real entropy, which would make your seed, not the lattice, the weakest link. This costs nothing today and cannot be applied retroactively. Existing 12-word identities keep working; the verification screen lays out in four columns when there are more than 12 words.
+- **The post-quantum row moved to the bottom of the account card.** The rows people open every day come first; setting up post-quantum keys is a once-per-identity errand.
+- **The language screen's button now always reads "Continue"** and matches the width of the picker above it, instead of showing the language name at content width.
+
+### Documentation
+- The README covers post-quantum keys with measured message sizes: a 12,200-byte attestation, and roughly 4,600 bytes on the wire for a post-quantum direct message against 1,700 for a classic one — the difference being almost entirely the 1,568-byte ML-KEM ciphertext.
+
 ## [0.3.88] - 2026-07-29
 
 ### Fixed

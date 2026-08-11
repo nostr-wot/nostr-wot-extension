@@ -345,9 +345,11 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           <SectionLabel>{t('home.account')}</SectionLabel>
           <Card className={styles.accountCard}>
             {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
-            <PqcCard onOpen={onOpenPqc} />
             <MutesCard onOpen={onManageFilters} />
             <RelaysCard onOpen={onOpenRelays} />
+            {/* Last in the list: the everyday rows people came for come first, and
+                post-quantum setup is a once-per-identity errand. */}
+            <PqcCard onOpen={onOpenPqc} />
           </Card>
         </div>
       )}

@@ -10,9 +10,9 @@ Requirements:
 Get the source (any one — all identical):
 A) git clone https://github.com/nostr-wot/nostr-wot-extension.git
    cd nostr-wot-extension
-   git checkout v0.3.88
-B) https://github.com/nostr-wot/nostr-wot-extension/archive/refs/tags/v0.3.88.zip
-C) The attached nostr-wot-source-0.3.88.zip (same tree as the tag).
+   git checkout v0.4.0
+B) https://github.com/nostr-wot/nostr-wot-extension/archive/refs/tags/v0.4.0.zip
+C) The attached nostr-wot-source-0.4.0.zip (same tree as the tag).
 
 Build:
    npm ci
@@ -22,7 +22,7 @@ Result: nostr-wot-firefox.zip in the repo root — the same files as the uploade
 
 Verify against the uploaded add-on:
    mkdir ours theirs
-   (cd ours   && unzip -q ../nostr_wot-0.3.88.xpi)     # the uploaded add-on
+   (cd ours   && unzip -q ../nostr_wot-0.4.0.xpi)     # the uploaded add-on
    (cd theirs && unzip -q ../nostr-wot-firefox.zip)    # your build
    diff -r ours theirs                                 # no differences
 

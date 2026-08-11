@@ -74,8 +74,11 @@ export default function LangStep({ onSelect }: LangStepProps) {
           <div className={styles.langTrigger}>
             <span className={styles.langTriggerSelected}>{lang.flag} {lang.native}</span>
           </div>
-          <Button onClick={() => { setLanguage(lang.code); onSelect(lang.code); }}>
-            {lang.native}
+          <Button
+            className={styles.langConfirm}
+            onClick={() => { setLanguage(lang.code); onSelect(lang.code); }}
+          >
+            {t('common.continue')}
           </Button>
         </div>
       </TopoBg>
@@ -125,7 +128,9 @@ export default function LangStep({ onSelect }: LangStepProps) {
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </div>
-        <Button onClick={handleConfirm}>{t('common.continue')}</Button>
+        <Button className={styles.langConfirm} onClick={handleConfirm}>
+          {t('common.continue')}
+        </Button>
       </div>
 
       {/* Full-screen language modal with scroll wheel picker */}
@@ -161,8 +166,8 @@ export default function LangStep({ onSelect }: LangStepProps) {
           </div>
 
           <div className={styles.langModalBottom}>
-            <Button onClick={handleConfirm}>
-              {t('common.confirm')}
+            <Button className={styles.langConfirm} onClick={handleConfirm}>
+              {t('common.continue')}
             </Button>
           </div>
         </div>

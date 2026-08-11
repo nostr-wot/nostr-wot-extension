@@ -697,6 +697,13 @@
   gap: 12px;
 }
 
+/* Matches the picker above it, so the primary action reads as the primary action
+   instead of a small pill under a wide control. */
+.langConfirm {
+  width: 100%;
+  max-width: 260px;
+}
+
 .langLabel {
   font-size: 13px;
   font-weight: 500;
