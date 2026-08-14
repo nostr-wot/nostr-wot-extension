@@ -307,6 +307,13 @@ async function setPendingOnboardingAccount(acct: Account | null): Promise<void> 
             ]);
         }
         _pendingOnboardingTimer = setTimeout(() => setPendingOnboardingAccount(null), ONBOARDING_TTL_MS);
+        // Don't keep the Node.js process alive for the full 5-minute TTL (matters in
+        // tests, where an un-cleared pending account otherwise holds the runner open
+        // until the timer fires — the same reason vault.ts unrefs its auto-lock timer).
+        // No-op in the browser, where timers have no unref.
+        if (typeof _pendingOnboardingTimer === 'object' && 'unref' in _pendingOnboardingTimer) {
+            (_pendingOnboardingTimer as NodeJS.Timeout).unref();
+        }
     } else {
         await browser.storage.session.remove(PENDING_KEYS);
     }

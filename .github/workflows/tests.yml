@@ -28,9 +28,15 @@ jobs:
       - name: Run crypto tests
         run: node --import tsx --test tests/crypto/*.test.ts
 
+      # Mirrors the browser-mocked group in tests/run.sh. It had drifted: several suites
+      # that run locally were never gated here, including the post-quantum handlers.
       - name: Run module tests
-        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts
+        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts
         timeout-minutes: 5
+
+      - name: Run remaining unit tests
+        run: node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/inject-webln.test.ts tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts tests/safeUrl.test.ts tests/rpc.test.ts
+        timeout-minutes: 3
 
       - name: Run relay tests
         run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/relay.test.ts
