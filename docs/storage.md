@@ -10,7 +10,7 @@ Persisted state lives in three places:
 
 | Area | Backing store | Notes |
 |------|---------------|-------|
-| Encrypted vault (keys, mnemonics, wallet configs) | `browser.storage.local` (`keyVault`) | AES-256-GCM + PBKDF2, see [Security](security.md) |
+| Encrypted vault (keys, mnemonics, imported post-quantum keys, wallet configs) | `browser.storage.local` (`keyVault`) | AES-256-GCM + PBKDF2, see [Security](security.md) |
 | Config (`myPubkey`, `relays`) | `browser.storage.sync` | Synced across the user's browsers |
 | Accounts list, active account, domain allowlists, profile cache | `browser.storage.local` | Plaintext metadata (no secrets) |
 | NostrConnect session mirrors, pending onboarding | `browser.storage.session` | Ephemeral; cleared when the browser closes — **except on Safari**, see below |

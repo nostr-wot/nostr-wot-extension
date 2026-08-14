@@ -41,6 +41,13 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | [Component Standards](component-standards.md) | Shared components, hooks, utilities, CSS patterns, import aliases |
 | [Testing](testing.md) | Test runner, test files, communication test suite, infrastructure |
 
+### Design records
+
+| Document | Description |
+|----------|-------------|
+| [Specs](superpowers/specs/) | Point-in-time design documents, agreed before implementation and marked with their outcome |
+| [Code Review](code-review.md) | March 2026 audit snapshot — historical, see its own note for what has since changed |
+
 ---
 
 ## Quick Reference

@@ -55,6 +55,9 @@ On `unlock()`, hex strings are converted to `Uint8Array` via `toMemoryAccount()`
 
 This reduces the exposure; it does not eliminate it, and the previous wording here overstated it. Every call that serializes the vault — `getDecryptedPayload()`, `save()`, `reEncrypt()` — runs `toStoragePayload()`, which materializes every account's private key and mnemonic as JS strings for `JSON.stringify`. Those strings cannot be zeroed and stay in the heap until the GC collects them. That is unavoidable at encryption time, but it means the guarantee is "no *persistent* plaintext copy", not "no plaintext copy ever".
 
+**Imported post-quantum keys are held the same way.** An account that cannot derive (no mnemonic, or a 12-word one) may import an ML-KEM-1024 / ML-DSA-87 pair. Those secrets live in the encrypted vault payload as `Account.pqKeys` and in memory as `pqKemSecretBytes` / `pqDsaSecretBytes` — `Uint8Array`, zeroed by `zeroDecryptedKeys()` with everything else. `'pqKeys'` is omitted from `SafeAccount` and `SafeAccountWithWallet`, and every accessor that returns a `SafeAccount` strips the memory fields, so the popup's account list never carries them. Reads go through `withImportedPqKeys()`, which zeroes its copies on every path including throws; `pqc_getStatus` reports only `source: 'imported'` and the public halves.
+
+Unlike derived keys these are **not** recoverable from the seed phrase, which is a real change to the backup story for those accounts — the panel says so persistently rather than once.
 
 **Replacing the decrypted payload also zeroes the old buffers**: `create()` (called while unlocked during password-change / lock-mode transitions) and a successful `unlock()` while already unlocked both run `zeroDecryptedKeys()` before assigning the new `_decrypted`, so the previous key buffers can't linger in the heap. A FAILED `unlock()` never touches the current session's buffers.
 

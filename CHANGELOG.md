@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Import your own post-quantum key.** An account with no 24-word seed to derive from — one imported from an `nsec`, or on a 12-word phrase — can now generate a standalone ML-KEM-1024 / ML-DSA-87 pair offline and import it, instead of only being told why it cannot have one. `npm run pqc:keygen -- --independent --keyfile keys.json` writes the file (mode 0600), and the panel links to the generator's source so you can read it before running it. The extension signs and publishes the attestation with the account's own key, so the generator never needs your `nsec` for this.
+- The key file is validated by **round trip, not by length**: ML-KEM encapsulates and decapsulates, ML-DSA signs and verifies. A public key paired with somebody else's secret would otherwise import cleanly, publish an attestation senders encrypt to, and then fail to decrypt anything with no indication why. Imported attestations are tagged `origin: independent` with no `seed_strength` claim, so the provenance stays honest on relays.
+
+### Fixed
+- **The popup no longer opens by itself on requests you already approved.** In "Never lock" mode the vault re-unlocks on every service-worker cold start, and that unlock is asynchronous (PBKDF2). A `signEvent` arriving inside that window looked like a locked vault, so the extension queued an unlock marker and opened the popup — for an unlock you never had to perform, showing an empty popup. Request paths now wait for a startup auto-unlock to settle before concluding the vault is locked.
+- **The seed phrase is no longer written to session storage in the clear during onboarding.** The privkey was XOR-split; the mnemonic — which restores every derived account — sat beside it unprotected. On Safari `storage.session` is backed by `storage.local`, which means disk. All three secrets (privkey, mnemonic, NIP-46 local key) are now split together, and an abandoned onboarding is swept at startup rather than waiting for a read that may never come.
+- **`vault_changePassword` no longer accepts an empty new password**, which silently re-encrypted the vault under `""` while it still presented as password-protected.
+- `pqc_publishAttestation` zeroed no copy of the private key on any path; a new `withPrivkey()` wrapper makes the vault's "caller must zero" contract impossible to forget.
+
+### Changed
+- **Vault password KDF raised to 600,000 PBKDF2-SHA-256 iterations** (OWASP's figure for SHA-256). The previous 210,000 is OWASP's number for SHA-**512** — the wrong row of the same table. Existing vaults record the count they were written with and are re-encrypted at the stronger one on the next unlock, with no action needed. "Never lock" vaults stay at the cheap count deliberately: their password is the empty string and the code supplying it is public, so the work factor buys nothing there while running on every cold start.
+- `generateMnemonic()` now defaults to 256-bit entropy, matching the policy the rest of the extension already enforces.
+- The README documents the entropy path end to end and justifies every cryptographic dependency — versions, audit status with report links, and the honest caveat that those audits cover earlier versions than what ships.
+
 ## [0.4.0] - 2026-08-11
 
 Post-quantum keys, derived from the seed phrase you already have.

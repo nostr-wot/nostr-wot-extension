@@ -194,9 +194,10 @@ Central type definitions shared across all modules:
 |------|---------|
 | `UnsignedEvent` | Nostr event before signing: `{ kind, created_at, tags, content }` |
 | `SignedEvent` | Nostr event with `id`, `pubkey`, `sig` |
-| `Account` | Storage format: `{ id, name, type, pubkey, privkey, mnemonic, nip46Config, readOnly, createdAt }` |
-| `SafeAccount` | Account without `privkey` or `mnemonic` (for public APIs) |
-| `MemoryAccount` | In-memory format: replaces `privkey: string` with `privkeyBytes: Uint8Array`, `mnemonic: string` with `mnemonicBytes: Uint8Array` |
+| `Account` | Storage format: `{ id, name, type, pubkey, privkey, mnemonic, nip46Config, readOnly, createdAt, pqKeys? }` |
+| `PqImportedKeys` | Externally generated post-quantum keys for an account that cannot derive: `{ profile, kem: { public, secret }, dsa: { public, secret }, importedAt }` |
+| `SafeAccount` | Account without `privkey`, `mnemonic` or `pqKeys` (for public APIs) |
+| `MemoryAccount` | In-memory format: replaces `privkey: string` with `privkeyBytes: Uint8Array`, `mnemonic: string` with `mnemonicBytes: Uint8Array`, and `pqKeys` with `pqPublic` + `pqKemSecretBytes` / `pqDsaSecretBytes` (all zeroable) |
 | `MemoryVaultPayload` | `{ accounts: MemoryAccount[], activeAccountId: string \| null }` |
 | `VaultPayload` | Storage/JSON format: `{ accounts: Account[], activeAccountId: string \| null }` |
 | `PendingRequest` | Signer queue entry: `{ id, type, origin, accountId, timestamp, waitingForUnlock?, needsPermission?, nip46InFlight? }` |

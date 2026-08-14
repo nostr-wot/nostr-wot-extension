@@ -69,21 +69,36 @@ let _kdfIterations: number = PBKDF2_ITERATIONS;
 
 /** Convert Account (JSON storage format) to MemoryAccount (in-memory format) */
 function toMemoryAccount(acct: Account): MemoryAccount {
-  const { privkey, mnemonic, ...rest } = acct;
+  const { privkey, mnemonic, pqKeys, ...rest } = acct;
   return {
     ...rest,
     privkeyBytes: privkey ? hexToBytes(privkey) : null,
     mnemonicBytes: mnemonic ? new TextEncoder().encode(mnemonic) : null,
+    // Imported post-quantum secrets get the same treatment as the nsec: held as bytes
+    // so lock() can zero them, rather than as strings that linger until GC.
+    pqPublic: pqKeys
+      ? { profile: pqKeys.profile, kem: pqKeys.kem.public, dsa: pqKeys.dsa.public, importedAt: pqKeys.importedAt }
+      : null,
+    pqKemSecretBytes: pqKeys ? base64ToArray(pqKeys.kem.secret) : null,
+    pqDsaSecretBytes: pqKeys ? base64ToArray(pqKeys.dsa.secret) : null,
   };
 }
 
 /** Convert MemoryAccount back to Account (JSON storage format) */
 function toStorageAccount(acct: MemoryAccount): Account {
-  const { privkeyBytes, mnemonicBytes, ...rest } = acct;
+  const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...rest } = acct;
   return {
     ...rest,
     privkey: privkeyBytes ? bytesToHex(privkeyBytes) : null,
     mnemonic: mnemonicBytes ? new TextDecoder().decode(mnemonicBytes) : null,
+    pqKeys: pqPublic && pqKemSecretBytes && pqDsaSecretBytes
+      ? {
+          profile: pqPublic.profile,
+          kem: { public: pqPublic.kem, secret: arrayToBase64(pqKemSecretBytes) },
+          dsa: { public: pqPublic.dsa, secret: arrayToBase64(pqDsaSecretBytes) },
+          importedAt: pqPublic.importedAt,
+        }
+      : null,
   };
 }
 
@@ -150,6 +165,8 @@ function zeroDecryptedKeys(): void {
   for (const acct of _decrypted.accounts) {
     if (acct.privkeyBytes) acct.privkeyBytes.fill(0);
     if (acct.mnemonicBytes) acct.mnemonicBytes.fill(0);
+    if (acct.pqKemSecretBytes) acct.pqKemSecretBytes.fill(0);
+    if (acct.pqDsaSecretBytes) acct.pqDsaSecretBytes.fill(0);
   }
 }
 
@@ -416,7 +433,7 @@ export function getActiveAccount(): SafeAccount | null {
   if (!_decrypted) return null;
   const acct = _decrypted.accounts.find(a => a.id === _decrypted!.activeAccountId);
   if (!acct) return null;
-  const { privkeyBytes, mnemonicBytes, ...safe } = acct;
+  const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...safe } = acct;
   return safe;
 }
 
@@ -429,7 +446,7 @@ export function getActiveAccountWithWallet(): SafeAccountWithWallet | null {
   if (!_decrypted) return null;
   const acct = _decrypted.accounts.find(a => a.id === _decrypted!.activeAccountId);
   if (!acct) return null;
-  const { privkeyBytes, mnemonicBytes, ...safe } = acct;
+  const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...safe } = acct;
   return safe;
 }
 
@@ -458,6 +475,88 @@ export function getPrivkey(accountId?: string): Uint8Array | null {
 
   // Return a copy so caller's fill(0) doesn't affect vault
   return new Uint8Array(acct.privkeyBytes);
+}
+
+/**
+ * Store externally generated post-quantum keys on an account, and persist.
+ *
+ * Callers must have validated the pair first (`parsePqKeyfile`) — this only stores.
+ * @param accountId
+ * @param keys - validated ML-KEM / ML-DSA pairs
+ * @param profile - derivation profile the key file declared
+ */
+export async function setImportedPqKeys(
+  accountId: string,
+  keys: { kem: { publicKey: Uint8Array; secretKey: Uint8Array }; dsa: { publicKey: Uint8Array; secretKey: Uint8Array } },
+  profile: string,
+): Promise<void> {
+  if (!_decrypted) throw new Error('Vault is locked');
+  const acct = _decrypted.accounts.find(a => a.id === accountId);
+  if (!acct) throw new Error('Account not found');
+
+  // Replacing an existing import: zero the outgoing secrets first.
+  if (acct.pqKemSecretBytes) acct.pqKemSecretBytes.fill(0);
+  if (acct.pqDsaSecretBytes) acct.pqDsaSecretBytes.fill(0);
+
+  acct.pqPublic = {
+    profile,
+    kem: arrayToBase64(keys.kem.publicKey),
+    dsa: arrayToBase64(keys.dsa.publicKey),
+    importedAt: Date.now(),
+  };
+  acct.pqKemSecretBytes = new Uint8Array(keys.kem.secretKey);
+  acct.pqDsaSecretBytes = new Uint8Array(keys.dsa.secretKey);
+  await save();
+}
+
+/**
+ * Remove an account's imported post-quantum keys, zeroing the secrets.
+ * @returns true if there was something to remove
+ */
+export async function clearImportedPqKeys(accountId: string): Promise<boolean> {
+  if (!_decrypted) throw new Error('Vault is locked');
+  const acct = _decrypted.accounts.find(a => a.id === accountId);
+  if (!acct || !acct.pqPublic) return false;
+  if (acct.pqKemSecretBytes) acct.pqKemSecretBytes.fill(0);
+  if (acct.pqDsaSecretBytes) acct.pqDsaSecretBytes.fill(0);
+  acct.pqPublic = null;
+  acct.pqKemSecretBytes = null;
+  acct.pqDsaSecretBytes = null;
+  await save();
+  return true;
+}
+
+/**
+ * Run `fn` with an account's imported post-quantum secret keys, zeroing the copies
+ * afterwards on every path. Mirrors withPrivkey.
+ *
+ * @returns null when the account has no imported keys, so callers can fall back to
+ *          deriving from the seed
+ */
+export async function withImportedPqKeys<T>(
+  accountId: string | undefined,
+  fn: (keys: { kemSecret: Uint8Array; dsaSecret: Uint8Array; kemPublic: string; dsaPublic: string }) => Promise<T>,
+): Promise<T | null> {
+  if (!_decrypted) throw new Error('Vault is locked');
+  const id = accountId || _decrypted.activeAccountId;
+  const acct = _decrypted.accounts.find(a => a.id === id);
+  if (!acct?.pqPublic || !acct.pqKemSecretBytes || !acct.pqDsaSecretBytes) return null;
+
+  const kemSecret = new Uint8Array(acct.pqKemSecretBytes);
+  const dsaSecret = new Uint8Array(acct.pqDsaSecretBytes);
+  try {
+    return await fn({ kemSecret, dsaSecret, kemPublic: acct.pqPublic.kem, dsaPublic: acct.pqPublic.dsa });
+  } finally {
+    kemSecret.fill(0);
+    dsaSecret.fill(0);
+  }
+}
+
+/** Does this account carry imported post-quantum keys? Reveals nothing secret. */
+export function hasImportedPqKeys(accountId?: string): boolean {
+  if (!_decrypted) return false;
+  const id = accountId || _decrypted.activeAccountId;
+  return !!_decrypted.accounts.find(a => a.id === id)?.pqPublic;
 }
 
 /**
@@ -494,7 +593,7 @@ export function getAccountById(accountId: string): SafeAccount | null {
   const acct = _decrypted.accounts.find(a => a.id === accountId);
   if (!acct) return null;
   // Return a copy without key bytes for safety
-  const { privkeyBytes, mnemonicBytes, ...safe } = acct;
+  const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...safe } = acct;
   return safe;
 }
 

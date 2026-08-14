@@ -751,5 +751,19 @@
   "pqc.publishing": "Publicando…",
   "pqc.published": "Publicado em {sent} de {relays} relays. Já podem lhe enviar mensagens pós-quânticas.",
   "pqc.alreadyPublished": "Suas chaves pós-quânticas já estão publicadas e atualizadas.",
-  "pqc.staleAttestation": "As chaves publicadas não correspondem mais a esta conta. Publique novamente para que usem a chave certa."
+  "pqc.staleAttestation": "As chaves publicadas não correspondem mais a esta conta. Publique novamente para que usem a chave certa.",
+  "pqc.importTitle": "Adicione a sua própria chave",
+  "pqc.importDesc": "Pode gerar uma chave pós-quântica independente no seu próprio computador e importá-la aqui. Nada é enviado para lado nenhum: o gerador funciona offline e pode ler o código antes de o executar.",
+  "pqc.importCommand": "Gere-a com:",
+  "pqc.importViewSource": "Ver o código do gerador",
+  "pqc.importPaste": "Cole o ficheiro de chaves, ou escolha-o abaixo",
+  "pqc.importPastePlaceholder": "{ \"v\": \"nip-pqc/v1\", ... }",
+  "pqc.importChooseFile": "Escolher ficheiro",
+  "pqc.importSubmit": "Importar chave",
+  "pqc.importing": "A importar…",
+  "pqc.importedTitle": "Chave pós-quântica importada",
+  "pqc.importedBackupWarning": "Esta chave não é recuperável a partir da sua frase semente. Se perder a sua cópia do ficheiro, as mensagens enviadas para ela nunca mais poderão ser lidas.",
+  "pqc.importRemove": "Remover chave importada",
+  "pqc.importRemoveConfirm": "Remover esta chave? Quem já tiver a sua atestação continuará a cifrar para ela, e deixará de conseguir ler essas mensagens.",
+  "pqc.importFileUnreadable": "Não foi possível ler esse ficheiro."
 }

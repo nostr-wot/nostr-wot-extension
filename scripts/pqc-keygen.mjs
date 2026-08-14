@@ -10,6 +10,11 @@
  *   npm run pqc:keygen -- --account 1        # a different NIP-06 account index
  *   npm run pqc:keygen -- --out event.json   # also write the event to a file
  *
+ * To generate keys for an account that cannot derive them (a 12-word seed, or one
+ * imported from an nsec), write a key file and import it in the extension:
+ *
+ *   npm run pqc:keygen -- --independent --keyfile keys.json
+ *
  * Seed-derived keys require a 24-word mnemonic. A 12-word mnemonic has 128 bits of
  * entropy, which would become the weakest link, so this script refuses to label such
  * keys as seed-derived. Use --independent to generate a standalone key pair instead
@@ -95,12 +100,42 @@ async function main() {
     seedStrength = '256';
   }
 
-  // The signing key. For --independent we still need one to sign the attestation.
+  const { kem, dsa } = derivePqKeys(seed, account);
+
+  // --keyfile writes the pair in the shape the extension imports. That flow needs no
+  // identity key at all: the extension signs the attestation with the account's own
+  // key once the keys are in its vault. So a keyfile-only run must not demand --nsec.
+  const keyfilePath = arg('keyfile');
+  if (typeof keyfilePath === 'string') {
+    writeFileSync(keyfilePath, JSON.stringify({
+      v: PQ_PROFILE,
+      origin,
+      alg: { kem: ALG_KEM, dsa: ALG_DSA },
+      kem: { public: b64(kem.publicKey), secret: b64(kem.secretKey) },
+      dsa: { public: b64(dsa.publicKey), secret: b64(dsa.secretKey) },
+    }, null, 2) + '\n', { mode: 0o600 });
+    console.log(`\n  Key file written to ${keyfilePath} (mode 0600).`);
+    console.log('  It contains SECRET keys. Import it in the extension under');
+    console.log('  Menu -> Security -> Post-quantum key, then store it somewhere safe or delete it.\n');
+  }
+
+  // The signing key. For --independent we need one to sign the attestation — unless the
+  // run was only asked for a key file, in which case there is nothing left to sign.
   let privkey;
   if (independent) {
     const nsec = arg('nsec');
     if (typeof nsec !== 'string') {
-      die('--independent needs the identity that will sign the attestation: pass --nsec <hex private key>.');
+      if (typeof keyfilePath === 'string') {
+        if (seed) seed.fill(0);
+        kem.secretKey.fill(0);
+        dsa.secretKey.fill(0);
+        return;
+      }
+      die(
+        '--independent needs the identity that will sign the attestation: pass --nsec <hex private key>.\n' +
+        '  Or pass --keyfile <path> alone to write a key file for the extension to import,\n' +
+        '  which signs the attestation for you.'
+      );
     }
     if (!/^[0-9a-f]{64}$/i.test(nsec)) die('--nsec must be a 64-character hex private key.');
     privkey = Uint8Array.from(Buffer.from(nsec, 'hex'));
@@ -109,7 +144,6 @@ async function main() {
   }
 
   const pubkeyHex = bytesToHex(getPublicKey(privkey));
-  const { kem, dsa } = derivePqKeys(seed, account);
 
   const kemB64 = b64(kem.publicKey);
   const dsaB64 = b64(dsa.publicKey);

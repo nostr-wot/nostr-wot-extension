@@ -751,5 +751,19 @@
   "pqc.publishing": "Publishing…",
   "pqc.published": "Published to {sent} of {relays} relays. People can now send you post-quantum messages.",
   "pqc.alreadyPublished": "Your post-quantum keys are already published and up to date.",
-  "pqc.staleAttestation": "Your published keys no longer match this account. Publish again so senders use the right key."
+  "pqc.staleAttestation": "Your published keys no longer match this account. Publish again so senders use the right key.",
+  "pqc.importTitle": "Add your own key",
+  "pqc.importDesc": "You can generate a standalone post-quantum key on your own machine and import it here. Nothing is sent anywhere — the generator runs offline, and you can read its source before running it.",
+  "pqc.importCommand": "Generate one with:",
+  "pqc.importViewSource": "Read the generator source",
+  "pqc.importPaste": "Paste the key file, or choose it below",
+  "pqc.importPastePlaceholder": "{ \"v\": \"nip-pqc/v1\", ... }",
+  "pqc.importChooseFile": "Choose key file",
+  "pqc.importSubmit": "Import key",
+  "pqc.importing": "Importing…",
+  "pqc.importedTitle": "Imported post-quantum key",
+  "pqc.importedBackupWarning": "This key is not recoverable from your seed phrase. If you lose your copy of the key file, messages sent to it can never be read again.",
+  "pqc.importRemove": "Remove imported key",
+  "pqc.importRemoveConfirm": "Remove this key? Anyone who already has your attestation will keep encrypting to it, and you will no longer be able to read those messages.",
+  "pqc.importFileUnreadable": "That file could not be read."
 }

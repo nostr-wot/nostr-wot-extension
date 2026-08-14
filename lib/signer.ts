@@ -774,8 +774,30 @@ export interface PqEncryptOptions {
  */
 async function activePqKeys() {
   if (vault.isLocked()) throw new Error('Vault is locked');
-  const payload = vault.getDecryptedPayload();
   const activeId = (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
+
+  // Imported keys win: an account only holds them when it could not derive, and they
+  // are the keys its published attestation advertises. Checking storage first also
+  // avoids materializing the mnemonic for accounts that never had one.
+  if (vault.hasImportedPqKeys(activeId)) {
+    const imported = await vault.withImportedPqKeys(activeId, async ({ kemSecret, dsaSecret, kemPublic, dsaPublic }) => {
+      const payload = vault.getDecryptedPayload();
+      const acct = payload.accounts.find(a => a.id === activeId);
+      if (!acct) throw new Error('No active account');
+      // Copies, because withImportedPqKeys zeroes its own as soon as this returns —
+      // the caller zeroes these in its own finally block.
+      return {
+        keys: {
+          kem: { publicKey: base64ToArray(kemPublic), secretKey: new Uint8Array(kemSecret) },
+          dsa: { publicKey: base64ToArray(dsaPublic), secretKey: new Uint8Array(dsaSecret) },
+        },
+        pubkey: acct.pubkey,
+      };
+    });
+    if (imported) return imported;
+  }
+
+  const payload = vault.getDecryptedPayload();
   const acct = payload.accounts.find(a => a.id === activeId);
   if (!acct?.mnemonic) throw new Error('This account has no seed phrase, so it cannot use post-quantum keys');
   if (acct.mnemonic.trim().split(/\s+/).length !== 24) {

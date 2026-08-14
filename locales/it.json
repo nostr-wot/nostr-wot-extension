@@ -751,5 +751,19 @@
   "pqc.publishing": "Pubblicazione…",
   "pqc.published": "Pubblicato su {sent} di {relays} relay. Ora possono inviarti messaggi post-quantistici.",
   "pqc.alreadyPublished": "Le tue chiavi post-quantistiche sono già pubblicate e aggiornate.",
-  "pqc.staleAttestation": "Le chiavi pubblicate non corrispondono più a questo account. Pubblica di nuovo così useranno la chiave giusta."
+  "pqc.staleAttestation": "Le chiavi pubblicate non corrispondono più a questo account. Pubblica di nuovo così useranno la chiave giusta.",
+  "pqc.importTitle": "Aggiungi la tua chiave",
+  "pqc.importDesc": "Puoi generare una chiave post-quantistica indipendente sul tuo computer e importarla qui. Nulla viene inviato altrove: il generatore funziona offline e puoi leggerne il codice prima di eseguirlo.",
+  "pqc.importCommand": "Generala con:",
+  "pqc.importViewSource": "Vedi il codice del generatore",
+  "pqc.importPaste": "Incolla il file delle chiavi, oppure scegli il file qui sotto",
+  "pqc.importPastePlaceholder": "{ \"v\": \"nip-pqc/v1\", ... }",
+  "pqc.importChooseFile": "Scegli file",
+  "pqc.importSubmit": "Importa chiave",
+  "pqc.importing": "Importazione…",
+  "pqc.importedTitle": "Chiave post-quantistica importata",
+  "pqc.importedBackupWarning": "Questa chiave non è recuperabile dalla tua frase seme. Se perdi la tua copia del file, i messaggi inviati a questa chiave non saranno più leggibili.",
+  "pqc.importRemove": "Rimuovi la chiave importata",
+  "pqc.importRemoveConfirm": "Rimuovere questa chiave? Chi ha già la tua attestazione continuerà a cifrare verso di essa e non potrai più leggere quei messaggi.",
+  "pqc.importFileUnreadable": "Non è stato possibile leggere il file."
 }

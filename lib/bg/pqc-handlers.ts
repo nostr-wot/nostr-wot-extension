@@ -22,7 +22,7 @@ import * as vault from '../vault.ts';
 import { mnemonicToSeed } from '../crypto/bip39.ts';
 import { arrayToBase64 } from '../crypto/utils.ts';
 import {
-  derivePqKeys, popMessage, signPop,
+  derivePqKeys, popMessage, signPop, parsePqKeyfile,
   ALG_KEM, ALG_DSA, PQ_PROFILE,
 } from '../crypto/pq.ts';
 import { signEvent } from '../crypto/nip01.ts';
@@ -41,12 +41,28 @@ export type PqcBlockReason =
   | 'no-seed'        // imported from an nsec; there is no mnemonic to derive from
   | 'short-seed';    // 12 words: 128 bits would be the weakest link
 
+/**
+ * Which blocked accounts may import keys instead.
+ *
+ * A read-only account can sign nothing, so it could neither publish an attestation nor
+ * take part in the hybrid key agreement — post-quantum decryption needs the classical
+ * private key too. A NIP-46 account's nip44 traffic is routed to the bunker, which knows
+ * nothing about our envelope, so imported keys would sit unused. The other two blocked
+ * reasons describe accounts that hold a perfectly good secp256k1 key and merely have no
+ * mnemonic to derive from — exactly what an imported key is for.
+ */
+const IMPORTABLE_REASONS: ReadonlySet<PqcBlockReason> = new Set<PqcBlockReason>(['no-seed', 'short-seed']);
+
 export type PqcStatus = {
   canDerive: boolean;
   reason: PqcBlockReason | null;
   wordCount: number | null;
   pubkey: string | null;
   keys: { kem: string; dsa: string } | null;
+  /** Where the keys came from. null when the account has none. */
+  source: 'derived' | 'imported' | null;
+  /** True when this account has no keys but may import them. */
+  canImport: boolean;
   /** Unsigned attestation, ready for the caller to sign and publish. */
   attestation: {
     kind: number;
@@ -80,17 +96,64 @@ async function writeRelays(): Promise<string[]> {
   return writable.length ? writable : (all.length ? all : config.relays);
 }
 
-export const handlers = new Map<string, HandlerFn>([
+/**
+ * Build the status for an account carrying imported keys, or null if it has none.
+ *
+ * The attestation is tagged `origin: independent` and carries NO `seed_strength` tag —
+ * the same vocabulary scripts/pqc-keygen.mjs uses for its own independent keys, so a
+ * relay reader can tell the two provenances apart. Claiming a seed strength here would
+ * be a lie: these keys did not come from the account's seed, and for a 12-word account
+ * there is no 256-bit seed to point at in the first place.
+ */
+async function importedStatus(acct: { id: string; pubkey: string }): Promise<PqcStatus | null> {
+  return vault.withImportedPqKeys(acct.id, async ({ kemSecret: _kem, dsaSecret, kemPublic, dsaPublic }) => {
+    void _kem;
+    const pop = signPop(popMessage(acct.pubkey, kemPublic, dsaPublic), dsaSecret);
+    return {
+      canDerive: true,
+      reason: null,
+      wordCount: null,
+      pubkey: acct.pubkey,
+      keys: { kem: kemPublic, dsa: dsaPublic },
+      source: 'imported' as const,
+      canImport: false,
+      attestation: {
+        kind: PQC_KIND,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['alg', ALG_KEM, kemPublic],
+          ['alg', ALG_DSA, dsaPublic],
+          ['origin', 'independent'],
+          ['v', PQ_PROFILE],
+          ['pop', ALG_DSA, arrayToBase64(pop)],
+        ],
+        content: '',
+      },
+    };
+  });
+}
+
+// Explicitly annotated: several handlers call pqc_getStatus through this same map, and
+// without an annotation that self-reference makes the map's type infer as `any`.
+export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
   ['pqc_getStatus', async (): Promise<PqcStatus> => {
     const acct = await activeAccount();
     if (!acct) throw new Error('No active account');
 
     const blocked = (reason: PqcBlockReason, wordCount: number | null = null): PqcStatus => ({
-      canDerive: false, reason, wordCount, pubkey: acct.pubkey, keys: null, attestation: null,
+      canDerive: false, reason, wordCount, pubkey: acct.pubkey, keys: null,
+      source: null, canImport: IMPORTABLE_REASONS.has(reason), attestation: null,
     });
 
     if (acct.readOnly || acct.type === 'npub') return blocked('read-only');
     if (acct.type === 'nip46') return blocked('remote-signer');
+
+    // Imported keys answer for the accounts that cannot derive. Checked before the
+    // seed reasons so an account that has already imported reports its keys rather
+    // than the explanation of why it cannot derive them.
+    const imported = await importedStatus(acct);
+    if (imported) return imported;
+
     if (!acct.mnemonic) return blocked('no-seed');
 
     const wordCount = acct.mnemonic.trim().split(/\s+/).length;
@@ -113,6 +176,8 @@ export const handlers = new Map<string, HandlerFn>([
         wordCount,
         pubkey: acct.pubkey,
         keys: { kem: kemB64, dsa: dsaB64 },
+        source: 'derived',
+        canImport: false,
         attestation: {
           kind: PQC_KIND,
           created_at: Math.floor(Date.now() / 1000),
@@ -130,6 +195,47 @@ export const handlers = new Map<string, HandlerFn>([
     } finally {
       seed.fill(0);
     }
+  }],
+
+  /**
+   * Import externally generated post-quantum keys for an account that cannot derive.
+   *
+   * Restricted to the accounts pqc_getStatus reports as importable: offering this to a
+   * read-only or NIP-46 account would store secrets that nothing could ever use, and
+   * offering it to a 24-word account would replace keys recoverable from the seed with
+   * keys that are not.
+   */
+  ['pqc_importKeys', async (params) => {
+    const acct = await activeAccount();
+    if (!acct) throw new Error('No active account');
+
+    const status = (await handlers.get('pqc_getStatus')!({})) as PqcStatus;
+    if (!status.canImport) {
+      throw new Error(
+        status.source
+          ? 'This account already has post-quantum keys'
+          : 'This account cannot use imported post-quantum keys',
+      );
+    }
+
+    // Throws with a specific message when the file is malformed or the pairs do not
+    // match each other. Nothing is stored unless both pairs prove themselves.
+    const keys = parsePqKeyfile(params.keyfile as string);
+    try {
+      await vault.setImportedPqKeys(acct.id, keys, PQ_PROFILE);
+    } finally {
+      keys.kem.secretKey.fill(0);
+      keys.dsa.secretKey.fill(0);
+    }
+    return handlers.get('pqc_getStatus')!({}) as Promise<PqcStatus>;
+  }],
+
+  /** Remove imported keys, so a wrong key file is not a permanent state. */
+  ['pqc_removeImportedKeys', async () => {
+    const acct = await activeAccount();
+    if (!acct) throw new Error('No active account');
+    const removed = await vault.clearImportedPqKeys(acct.id);
+    return { removed };
   }],
 
   /**

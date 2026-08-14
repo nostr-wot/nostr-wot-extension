@@ -751,5 +751,19 @@
   "pqc.publishing": "Publication…",
   "pqc.published": "Publié sur {sent} relais sur {relays}. On peut désormais vous envoyer des messages post-quantiques.",
   "pqc.alreadyPublished": "Vos clés post-quantiques sont déjà publiées et à jour.",
-  "pqc.staleAttestation": "Les clés publiées ne correspondent plus à ce compte. Republiez pour que la bonne clé soit utilisée."
+  "pqc.staleAttestation": "Les clés publiées ne correspondent plus à ce compte. Republiez pour que la bonne clé soit utilisée.",
+  "pqc.importTitle": "Ajouter votre propre clé",
+  "pqc.importDesc": "Vous pouvez générer une clé post-quantique indépendante sur votre machine et l'importer ici. Rien n'est envoyé nulle part : le générateur fonctionne hors ligne et vous pouvez lire son code avant de l'exécuter.",
+  "pqc.importCommand": "Générez-la avec :",
+  "pqc.importViewSource": "Voir le code du générateur",
+  "pqc.importPaste": "Collez le fichier de clés, ou choisissez-le ci-dessous",
+  "pqc.importPastePlaceholder": "{ \"v\": \"nip-pqc/v1\", ... }",
+  "pqc.importChooseFile": "Choisir un fichier",
+  "pqc.importSubmit": "Importer la clé",
+  "pqc.importing": "Importation…",
+  "pqc.importedTitle": "Clé post-quantique importée",
+  "pqc.importedBackupWarning": "Cette clé n'est pas récupérable à partir de votre phrase de récupération. Si vous perdez votre copie du fichier, les messages qui lui sont envoyés seront définitivement illisibles.",
+  "pqc.importRemove": "Supprimer la clé importée",
+  "pqc.importRemoveConfirm": "Supprimer cette clé ? Ceux qui disposent déjà de votre attestation continueront à chiffrer vers elle, et vous ne pourrez plus lire ces messages.",
+  "pqc.importFileUnreadable": "Ce fichier n'a pas pu être lu."
 }
