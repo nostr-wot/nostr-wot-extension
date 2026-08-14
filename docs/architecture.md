@@ -58,7 +58,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 Responsibilities of `background.ts`:
 - Handler map assembly from all `lib/bg/*-handlers.ts` modules
 - `loadConfig()` -- initializes `state.config` (myPubkey, relays) and ensures an active account exists in `browser.storage.local`
-- Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `signer.cleanupStale()`
+- Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `signer.cleanupStale()`. The auto-unlock is registered through `vault.beginStartupUnlock()` so request paths can await it instead of mistaking the cold-start window for a locked vault (see [Security](security.md))
 - `browser.runtime.onMessage` listener (privilege gate, origin derivation, dispatch to `handleRequest()`)
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
 - `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))

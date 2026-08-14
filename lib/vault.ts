@@ -289,6 +289,39 @@ export function isLocked(): boolean {
   return _decrypted === null;
 }
 
+// -- Startup auto-unlock gate --
+//
+// In "Never lock" mode background.ts auto-unlocks the vault on every
+// service-worker cold start, and that unlock is asynchronous: a storage read
+// plus PBKDF2 at 210,000 iterations, so the vault reports LOCKED for a few
+// hundred milliseconds after startup. Chrome tears the worker down after ~30s
+// idle, so an ordinary signEvent from a page routinely lands inside that
+// window. Without this gate the request path saw `isLocked() === true`, queued
+// an unlock marker and popped the action popup open — for an unlock the user
+// never had to perform, on a request their saved permission had already
+// approved. Request paths await this before treating the vault as locked.
+
+let _startupUnlock: Promise<void> | null = null;
+
+/**
+ * Run the background's startup auto-unlock, exposing it to request paths so a
+ * cold-start window is not mistaken for a locked vault.
+ * @param run - the auto-unlock sequence; its rejection is swallowed (a failed
+ *              auto-unlock just means the vault stays locked and prompts).
+ */
+export function beginStartupUnlock(run: () => Promise<void>): Promise<void> {
+  const p = run().catch(() => {}).then(() => {
+    if (_startupUnlock === p) _startupUnlock = null;
+  });
+  _startupUnlock = p;
+  return p;
+}
+
+/** Resolves once any in-flight startup auto-unlock has settled. */
+export function whenStartupUnlockSettled(): Promise<void> {
+  return _startupUnlock || Promise.resolve();
+}
+
 /**
  * Destroy the vault -- wipe encrypted data from storage and clear memory.
  * This is irreversible: all accounts and keys are permanently lost.

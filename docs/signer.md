@@ -24,7 +24,9 @@ background.ts  -->  signer.handleSignEvent(event, origin)
       accounts, whose remote signer (bunker) runs its own approval flow
     - 'allow' --> proceed
 [4] If type === 'nip46' --> route to remote signer (NIP-46)
-[5] If vault.isLocked() --> queue as waitingForUnlock
+[5] If vault.isLocked() --> await any in-flight startup auto-unlock
+    (vault.whenStartupUnlockSettled()); if STILL locked, queue as
+    waitingForUnlock and open the popup
 [6] If still locked after queue resolves --> throw "Vault is locked"
 [7] vault.getPrivkey() --> sign with cryptoSignEvent --> privkey.fill(0)
 [8] Return signed event
@@ -40,12 +42,14 @@ The interaction between permissions and vault state:
 |------------|----------|--------------|-------------------------------|
 | `deny`     | locked   | REJECTED     | REJECTED                      |
 | `deny`     | unlocked | REJECTED     | REJECTED                      |
-| `allow`    | locked   | WORKS *      | BLOCKED (queues waitingForUnlock) |
+| `allow`    | locked   | WORKS *      | BLOCKED (queues waitingForUnlock) ‡ |
 | `allow`    | unlocked | WORKS        | WORKS                         |
 | `ask`      | locked   | WORKS † / QUEUED | QUEUED                    |
 | `ask`      | unlocked | WORKS † / QUEUED | QUEUED                    |
 
 \* `getPublicKey` reads from `browser.storage.sync.myPubkey`, not from the vault
+
+‡ **"locked" excludes the cold-start window.** In "Never lock" mode the vault re-unlocks itself on every service-worker start, asynchronously (PBKDF2). `waitForVaultUnlock()` awaits `vault.whenStartupUnlockSettled()` before queueing anything, so a request that arrives mid-startup just waits for the key and signs — it does not queue an unlock marker and does not open the popup. Only a vault that is still locked once the auto-unlock has settled (or where none was in flight) prompts the user. Skipping that wait was the cause of the "popup opens with nothing in it on every signEvent" bug.
 
 † **Connected sites never prompt for `getPublicKey`.** Connecting a site *is* the consent to share the identity pubkey: the "Connect this site" flow adds the origin to `allowedDomains` and clears `identityDisabled` for it, `background.ts` refuses every NIP-07 method from an origin that is not on that list, and `broadcastAccountChanged` already pushes the active pubkey to every connected tab unprompted. So with `ask`, `handleGetPublicKey` returns the pubkey directly when the origin is in `allowedDomains`, and only QUEUES a prompt for an origin that is not (which the NIP-07 path cannot reach — it is a guard for any other caller).
 

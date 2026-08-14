@@ -522,6 +522,14 @@ export async function cancelUnlockWaiter(markerId: string): Promise<void> {
 async function waitForVaultUnlock(origin: string, type: string, accountId: string | null): Promise<void> {
   if (!vault.isLocked()) return;
 
+  // A service-worker cold start in "Never lock" mode unlocks the vault
+  // asynchronously (PBKDF2, 210k iterations). Requests that arrive inside that
+  // window are not waiting on the user at all — popping the popup open for them
+  // showed an empty popup on every already-approved request. Wait the auto-unlock
+  // out first; only a vault that is still locked afterwards needs the user.
+  await vault.whenStartupUnlockSettled();
+  if (!vault.isLocked()) return;
+
   const markerId = `unlock_${crypto.randomUUID()}`;
   const marker: PendingRequest = {
     id: markerId,

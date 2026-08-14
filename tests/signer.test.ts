@@ -1441,3 +1441,82 @@ describe('onboarding -- nostrconnect persisted session', () => {
     assert.strictEqual(fromUriCalls, callsAfterFirst + 1, 'resume rebuilds the live signer');
   });
 });
+
+// -- Cold-start auto-unlock --
+
+describe('signer -- cold-start auto-unlock', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await signer.cleanupStale();
+  });
+
+  it('does not open the popup while the startup auto-unlock is still running', async () => {
+    // "Never lock" vault: empty password, auto-unlocked by background.ts on
+    // every service-worker cold start.
+    await vault.create('', makePayload());
+    await permissions.save('test.com', 'signEvent', 1, 'allow');
+    vault.lock(); // the cold start itself: in-memory key is gone
+
+    const origQuery = browserMock.tabs.query;
+    const origOpenPopup = browserMock.action.openPopup;
+    let popupOpens = 0;
+    browserMock.tabs.query = () => Promise.resolve([{ url: 'https://test.com/feed' }]) as any;
+    browserMock.action.openPopup = () => { popupOpens++; return Promise.resolve(); };
+
+    try {
+      // background.ts's startup auto-unlock — still in flight (PBKDF2 at 210k
+      // iterations) when the page's signEvent arrives.
+      vault.beginStartupUnlock(async () => {
+        await vault.unlock('');
+        await signer.onVaultUnlocked();
+      });
+
+      const signed: any = await signer.handleSignEvent(
+        { kind: 1, content: 'hello', tags: [], created_at: Math.floor(Date.now() / 1000) },
+        'test.com'
+      );
+
+      assert.ok(signed.sig, 'request still signs once the auto-unlock lands');
+      assert.strictEqual(popupOpens, 0, 'popup must not open for an already-approved request');
+      const pending: any[] = await signer.getPending();
+      assert.strictEqual(pending.length, 0, 'no unlock marker should be queued');
+    } finally {
+      browserMock.tabs.query = origQuery;
+      browserMock.action.openPopup = origOpenPopup;
+    }
+  });
+
+  it('still opens the unlock popup when no startup auto-unlock is in flight', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    await permissions.save('test.com', 'signEvent', 1, 'allow');
+    vault.lock();
+
+    const origQuery = browserMock.tabs.query;
+    const origOpenPopup = browserMock.action.openPopup;
+    let popupOpens = 0;
+    browserMock.tabs.query = () => Promise.resolve([{ url: 'https://test.com/feed' }]) as any;
+    browserMock.action.openPopup = () => { popupOpens++; return Promise.resolve(); };
+
+    try {
+      const signPromise: Promise<any> = signer.handleSignEvent(
+        { kind: 1, content: 'hello', tags: [], created_at: Math.floor(Date.now() / 1000) },
+        'test.com'
+      );
+
+      await new Promise<void>(r => setTimeout(r, 50));
+      const pending: any[] = await signer.getPending();
+      assert.strictEqual(pending.length, 1);
+      assert.strictEqual(pending[0].waitingForUnlock, true);
+      assert.strictEqual(popupOpens, 1, 'a genuinely locked vault must still prompt');
+
+      await vault.unlock(TEST_PASSWORD);
+      await signer.onVaultUnlocked();
+      const signed: any = await signPromise;
+      assert.ok(signed.sig);
+    } finally {
+      browserMock.tabs.query = origQuery;
+      browserMock.action.openPopup = origOpenPopup;
+    }
+  });
+});
