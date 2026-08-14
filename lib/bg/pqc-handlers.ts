@@ -145,13 +145,15 @@ export const handlers = new Map<string, HandlerFn>([
       throw new Error('This account cannot publish post-quantum keys');
     }
 
-    const privkey = vault.getPrivkey();
-    if (!privkey) throw new Error('Vault is locked');
-
     const relays = await writeRelays();
     if (relays.length === 0) throw new Error('No relays configured');
 
-    const signed = await signEvent(status.attestation as UnsignedEvent, privkey);
+    // withPrivkey zeroes the key on every path. The previous version held a bare
+    // getPrivkey() copy across the signing AND the relay broadcast, and never zeroed
+    // it — not on success, not when a relay rejected the event.
+    const signed = await vault.withPrivkey(undefined, (privkey) =>
+      signEvent(status.attestation as UnsignedEvent, privkey));
+
     const { sent, failed } = await broadcastEvent(signed, relays);
     if (sent === 0) throw new Error('No relay accepted the attestation');
 

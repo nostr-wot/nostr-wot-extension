@@ -233,6 +233,24 @@ function xorBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
     return out;
 }
 
+/** Every session-storage key the pending-onboarding record can occupy, current and legacy. */
+const PENDING_KEYS = [
+    '_pendingOnboardingAccount',
+    '_pendingOnboardingCreatedAt',
+    '_pendingOnboardingSecrets',
+    '_pendingOnboardingSecretsPad',
+    // Legacy privkey-only split, superseded by the combined blob above.
+    '_pendingOnboardingPad',
+    '_pendingOnboardingMasked',
+];
+
+/** The secret fields of an Account. Extracted together so none can be forgotten. */
+interface PendingSecrets {
+    privkey: string | null;
+    mnemonic: string | null;
+    localPrivkey: string | null;
+}
+
 async function setPendingOnboardingAccount(acct: Account | null): Promise<void> {
     _pendingOnboardingAccount = acct;
     _pendingOnboardingSetAt = acct ? Date.now() : 0;
@@ -242,39 +260,76 @@ async function setPendingOnboardingAccount(acct: Account | null): Promise<void> 
         // setTimeout is lost on service-worker restart, so the TTL must also
         // be enforceable on read (see getPendingOnboardingAccount).
         const createdAt = _pendingOnboardingSetAt;
-        // S-6: Split the privkey across two session storage keys via XOR so
-        // neither key alone reveals the secret.
-        if (acct.privkey) {
-            const privkeyBytes = hexToBytes(acct.privkey);
-            const pad = crypto.getRandomValues(new Uint8Array(privkeyBytes.length));
-            const masked = xorBytes(privkeyBytes, pad);
-            // Zero the intermediate plaintext copy
-            privkeyBytes.fill(0);
 
-            const redacted = { ...acct, privkey: null };
+        // S-6: split EVERY secret across two session-storage keys via XOR, so neither
+        // key alone reveals anything. This used to cover the privkey only, which left
+        // the mnemonic — strictly the more valuable secret, since it restores every
+        // derived account — sitting in the clear beside it. That matters most on
+        // Safari, where storage.session is shimmed onto storage.local (lib/browser.ts)
+        // and therefore lands on disk.
+        const secrets: PendingSecrets = {
+            privkey: acct.privkey ?? null,
+            mnemonic: acct.mnemonic ?? null,
+            localPrivkey: acct.nip46Config?.localPrivkey ?? null,
+        };
+        const redacted: Account = {
+            ...acct,
+            privkey: null,
+            mnemonic: null,
+            nip46Config: acct.nip46Config
+                ? { ...acct.nip46Config, localPrivkey: undefined }
+                : acct.nip46Config,
+        };
+
+        if (secrets.privkey || secrets.mnemonic || secrets.localPrivkey) {
+            const plain = new TextEncoder().encode(JSON.stringify(secrets));
+            const pad = crypto.getRandomValues(new Uint8Array(plain.length));
+            const masked = xorBytes(plain, pad);
+            plain.fill(0);
+
             await browser.storage.session.set({
                 _pendingOnboardingAccount: redacted,
                 _pendingOnboardingCreatedAt: createdAt,
-                _pendingOnboardingPad: bytesToHex(pad),
-                _pendingOnboardingMasked: bytesToHex(masked),
+                _pendingOnboardingSecretsPad: bytesToHex(pad),
+                _pendingOnboardingSecrets: bytesToHex(masked),
             });
             pad.fill(0);
             masked.fill(0);
+            await browser.storage.session.remove(['_pendingOnboardingPad', '_pendingOnboardingMasked']);
         } else {
             await browser.storage.session.set({
-                _pendingOnboardingAccount: acct,
+                _pendingOnboardingAccount: redacted,
                 _pendingOnboardingCreatedAt: createdAt,
             });
-            await browser.storage.session.remove(['_pendingOnboardingPad', '_pendingOnboardingMasked']);
+            await browser.storage.session.remove([
+                '_pendingOnboardingSecrets', '_pendingOnboardingSecretsPad',
+                '_pendingOnboardingPad', '_pendingOnboardingMasked',
+            ]);
         }
         _pendingOnboardingTimer = setTimeout(() => setPendingOnboardingAccount(null), ONBOARDING_TTL_MS);
     } else {
-        await browser.storage.session.remove([
-            '_pendingOnboardingAccount',
-            '_pendingOnboardingCreatedAt',
-            '_pendingOnboardingPad',
-            '_pendingOnboardingMasked',
-        ]);
+        await browser.storage.session.remove(PENDING_KEYS);
+    }
+}
+
+/**
+ * Drop an expired pending-onboarding record left in session storage.
+ *
+ * The TTL is enforced on read, which is enough on Chrome — but on Safari
+ * storage.session is storage.local, so an onboarding the user simply abandoned would
+ * otherwise keep its record on disk until something happened to read it, which may be
+ * never. Called on background startup; a still-valid record is left alone, because on
+ * Chrome the service worker restarts constantly inside a live onboarding.
+ */
+export async function cleanupExpiredPendingOnboarding(): Promise<void> {
+    const data = await browser.storage.session.get([
+        '_pendingOnboardingAccount',
+        '_pendingOnboardingCreatedAt',
+    ]) as Record<string, unknown>;
+    if (!data._pendingOnboardingAccount && !data._pendingOnboardingCreatedAt) return;
+    const createdAt = data._pendingOnboardingCreatedAt as number | undefined;
+    if (!createdAt || Date.now() - createdAt >= ONBOARDING_TTL_MS) {
+        await browser.storage.session.remove(PENDING_KEYS);
     }
 }
 
@@ -287,12 +342,7 @@ async function getPendingOnboardingAccount(): Promise<Account | null> {
         }
         return _pendingOnboardingAccount;
     }
-    const data = await browser.storage.session.get([
-        '_pendingOnboardingAccount',
-        '_pendingOnboardingCreatedAt',
-        '_pendingOnboardingPad',
-        '_pendingOnboardingMasked',
-    ]) as Record<string, unknown>;
+    const data = await browser.storage.session.get(PENDING_KEYS) as Record<string, unknown>;
     const stored = data._pendingOnboardingAccount as Account | null;
     if (!stored) return null;
 
@@ -304,17 +354,38 @@ async function getPendingOnboardingAccount(): Promise<Account | null> {
         return null;
     }
 
-    // S-6: Reconstruct privkey from the XOR-split halves
-    const padHex = data._pendingOnboardingPad as string | undefined;
-    const maskedHex = data._pendingOnboardingMasked as string | undefined;
+    // A record written by an older build split the privkey only, and stored the
+    // mnemonic in the clear. Rather than read that shape back, treat it as expired:
+    // the record is at most five minutes of onboarding, and re-entering it is a far
+    // better outcome than resurrecting a format we just stopped trusting.
+    if (data._pendingOnboardingPad || data._pendingOnboardingMasked) {
+        await setPendingOnboardingAccount(null);
+        return null;
+    }
+
+    // S-6: reconstruct every secret from the XOR-split halves.
+    const padHex = data._pendingOnboardingSecretsPad as string | undefined;
+    const maskedHex = data._pendingOnboardingSecrets as string | undefined;
     if (padHex && maskedHex) {
         const pad = hexToBytes(padHex);
         const masked = hexToBytes(maskedHex);
-        const privkeyBytes = xorBytes(pad, masked);
-        stored.privkey = bytesToHex(privkeyBytes);
-        privkeyBytes.fill(0);
-        pad.fill(0);
-        masked.fill(0);
+        const plain = xorBytes(pad, masked);
+        try {
+            const secrets = JSON.parse(new TextDecoder().decode(plain)) as PendingSecrets;
+            if (secrets.privkey) stored.privkey = secrets.privkey;
+            if (secrets.mnemonic) stored.mnemonic = secrets.mnemonic;
+            if (secrets.localPrivkey && stored.nip46Config) {
+                stored.nip46Config.localPrivkey = secrets.localPrivkey;
+            }
+        } catch {
+            // A corrupt blob means the record cannot be trusted — drop it.
+            await setPendingOnboardingAccount(null);
+            return null;
+        } finally {
+            plain.fill(0);
+            pad.fill(0);
+            masked.fill(0);
+        }
     }
     return stored;
 }

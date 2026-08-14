@@ -258,9 +258,19 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['vault_changePassword', async (params) => {
+        // An empty password is meaningful to reEncrypt(): it is how "Never lock" mode
+        // stores the vault. Reaching that state through a *password change* would
+        // silently disarm the vault — it would still present as password-protected
+        // while anyone could open it, and the user's old password would stop working.
+        // The only legitimate route into never-lock is vault_setAutoLock, which asks
+        // for confirmation and re-creates the vault deliberately.
+        const newPassword = params.newPassword as string;
+        if (typeof newPassword !== 'string' || newPassword.length === 0) {
+            throw new Error('New password is required');
+        }
         const unlocked = await vault.unlock(params.currentPassword as string);
         if (!unlocked) throw new Error('Current password is incorrect');
-        await vault.reEncrypt(params.newPassword as string);
+        await vault.reEncrypt(newPassword);
         return { ok: true };
     }],
 

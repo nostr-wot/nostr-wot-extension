@@ -9,6 +9,13 @@
 > those files, the follow graph, trust scoring, oracles, or trust badges is
 > **obsolete** — it is retained only to preserve the review record, not as a
 > current to-do.
+>
+> One figure below has also since changed: §6 praises the vault's "PBKDF2 with
+> 210,000 iterations". A later audit (August 2026) found that 210,000 is OWASP's
+> recommendation for HMAC-SHA-**512**, while this vault uses SHA-**256**, whose
+> figure is 600,000 — the parameter looked calibrated because it cited OWASP, but
+> came from the wrong row. It is now 600,000, with existing vaults migrated on
+> their next unlock. See [Security](security.md).
 
 Comprehensive audit of the Nostr WoT extension codebase. Two rounds: Round 1 identified 98 findings (57 fixed, 35 deferred, 6 accepted). Round 2 is a fresh audit of the post-fix codebase by 10 parallel Opus agents covering security, performance, code quality, dead code, documentation, and future enhancements.
 

@@ -13,7 +13,22 @@ Persisted state lives in three places:
 | Encrypted vault (keys, mnemonics, wallet configs) | `browser.storage.local` (`keyVault`) | AES-256-GCM + PBKDF2, see [Security](security.md) |
 | Config (`myPubkey`, `relays`) | `browser.storage.sync` | Synced across the user's browsers |
 | Accounts list, active account, domain allowlists, profile cache | `browser.storage.local` | Plaintext metadata (no secrets) |
-| NostrConnect session mirrors, pending onboarding | `browser.storage.session` | Ephemeral; cleared when the browser closes |
+| NostrConnect session mirrors, pending onboarding | `browser.storage.session` | Ephemeral; cleared when the browser closes — **except on Safari**, see below |
+
+### The `keyVault` record
+
+```ts
+{ version: 1, iterations: 600000, salt: "<base64>", iv: "<base64>", ciphertext: "<base64>" }
+```
+
+`iterations` records the PBKDF2 work factor the record was written with, so raising the default does not lock anyone out: a record without the field predates the change, is read back at 210,000, and is re-encrypted at the current count on the next successful unlock. See [Security](security.md).
+
+### `storage.session` is not ephemeral on Safari
+
+Safari has no `storage.session`, so `lib/browser.ts` shims it onto `storage.local` behind a `__session__` prefix — which means anything written there is **on disk** and survives a browser restart. Two consequences the code has to handle rather than assume away:
+
+- Pending-onboarding secrets (`privkey`, `mnemonic`, `nip46Config.localPrivkey`) are XOR-split across `_pendingOnboardingSecrets` + `_pendingOnboardingSecretsPad`, never written in the clear, and the account stored beside them has all three fields nulled.
+- The 5-minute TTL is enforced on read, and `background.ts` additionally sweeps an expired record at startup (`cleanupExpiredPendingOnboarding`) so an abandoned onboarding is not left at rest indefinitely waiting for a read that may never come. A record still inside its TTL is left alone, since on Chrome the service worker restarts constantly during a live onboarding.
 
 ---
 

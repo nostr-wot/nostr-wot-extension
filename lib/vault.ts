@@ -5,7 +5,8 @@
  * Keys are only decrypted in memory when the vault is unlocked.
  *
  * Encryption scheme:
- *   1. password -> PBKDF2(SHA-256, 210,000 iterations, random 32-byte salt) -> 256-bit AES key
+ *   1. password -> PBKDF2(SHA-256, 600,000 iterations, random 32-byte salt) -> 256-bit AES key
+ *      ("Never lock" vaults use 210,000 — see iterationsFor)
  *   2. AES-256-GCM(key, random 12-byte IV, plaintext JSON) -> ciphertext + auth tag
  *   3. Stored as { version, salt, iv, ciphertext } in chrome.storage.local
  *
@@ -27,7 +28,31 @@ import browser from './browser.ts';
 
 const STORAGE_KEY = 'keyVault';
 const VAULT_VERSION = 1;
-const PBKDF2_ITERATIONS = 210000;
+
+// PBKDF2 work factor, in iterations of HMAC-SHA-256.
+//
+// 600,000 is OWASP's recommendation for PBKDF2-HMAC-SHA-256. The previous value,
+// 210,000, is OWASP's figure for SHA-**512** — the wrong row of the same table, which
+// made the parameter look calibrated while being ~2.9x weak. Existing vaults record the
+// count they were written with and are upgraded transparently on the next unlock.
+const PBKDF2_ITERATIONS = 600000;
+
+// The count used before that, and still used for "Never lock" vaults. Records written
+// by older builds carry no `iterations` field and must be read back at this count.
+const PBKDF2_ITERATIONS_LEGACY = 210000;
+
+/**
+ * Work factor for a given password.
+ *
+ * "Never lock" mode stores the vault under the EMPTY password, and the code that
+ * supplies it is public — the KDF cost buys nothing there, because an attacker holding
+ * the file already knows the password. It would only cost latency, and on a path that
+ * runs on every service-worker cold start (see beginStartupUnlock). So the strong count
+ * applies exactly where it can help: vaults with a real password.
+ */
+function iterationsFor(password: string): number {
+  return password.length > 0 ? PBKDF2_ITERATIONS : PBKDF2_ITERATIONS_LEGACY;
+}
 const AUTO_LOCK_DEFAULT_MS = 15 * 60 * 1000; // 15 minutes
 const KEEPALIVE_ALARM = 'vault-keepalive';
 // Chrome clamps alarm periods to a 30s (0.5 min) minimum; we just need any
@@ -38,6 +63,9 @@ let _cryptoKey: CryptoKey | null = null;
 let _decrypted: MemoryVaultPayload | null = null;
 let _autoLockTimer: ReturnType<typeof setTimeout> | null = null;
 let _autoLockMs: number = AUTO_LOCK_DEFAULT_MS;
+// Work factor `_cryptoKey` was derived with, so save() rewrites the record with the
+// count that actually matches the key held in memory.
+let _kdfIterations: number = PBKDF2_ITERATIONS;
 
 /** Convert Account (JSON storage format) to MemoryAccount (in-memory format) */
 function toMemoryAccount(acct: Account): MemoryAccount {
@@ -69,14 +97,15 @@ function toStoragePayload(mem: MemoryVaultPayload): VaultPayload {
 
 /**
  * Derive an AES-256-GCM key from a password using PBKDF2
+ * @param iterations - work factor; must match the one the record was written with
  */
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(password: string, salt: Uint8Array, iterations: number): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']
   );
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt as BufferSource, iterations, hash: 'SHA-256' },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -185,13 +214,15 @@ export async function create(password: string, payload: VaultPayload): Promise<v
     throw new Error('Password must be at least 8 characters');
   }
   const salt = crypto.getRandomValues(new Uint8Array(32));
-  const key = await deriveKey(password, salt);
+  const iterations = iterationsFor(password);
+  const key = await deriveKey(password, salt, iterations);
   const json = JSON.stringify(payload);
   const { iv, ciphertext } = await encrypt(key, json);
 
   await browser.storage.local.set({
     [STORAGE_KEY]: {
       version: VAULT_VERSION,
+      iterations,
       salt: arrayToBase64(salt),
       iv: arrayToBase64(iv),
       ciphertext: arrayToBase64(ciphertext)
@@ -199,6 +230,7 @@ export async function create(password: string, payload: VaultPayload): Promise<v
   });
 
   _cryptoKey = key;
+  _kdfIterations = iterations;
   // Password-change / lock-mode transitions call create() while already
   // unlocked: zero the old key buffers before dropping the reference.
   zeroDecryptedKeys();
@@ -217,14 +249,21 @@ export async function create(password: string, payload: VaultPayload): Promise<v
  */
 export async function unlock(password: string): Promise<boolean> {
   const data = await browser.storage.local.get(STORAGE_KEY);
-  const vault = data[STORAGE_KEY] as { salt: string; iv: string; ciphertext: string } | undefined;
+  const vault = data[STORAGE_KEY] as
+    { salt: string; iv: string; ciphertext: string; iterations?: number } | undefined;
   if (!vault) throw new Error('No vault found');
 
   const salt = base64ToArray(vault.salt);
   const iv = base64ToArray(vault.iv);
   const ciphertext = base64ToArray(vault.ciphertext);
 
-  const key = await deriveKey(password, salt);
+  // Records written before the work factor was raised carry no `iterations` field;
+  // they were all written at the legacy count. Reading it from the record means the
+  // migration costs no extra KDF work and no guessing.
+  const storedIterations = typeof vault.iterations === 'number'
+    ? vault.iterations
+    : PBKDF2_ITERATIONS_LEGACY;
+  const key = await deriveKey(password, salt, storedIterations);
 
   try {
     const json = await decrypt(key, iv, ciphertext);
@@ -238,8 +277,23 @@ export async function unlock(password: string): Promise<boolean> {
       activeAccountId: parsed.activeAccountId,
     };
     _cryptoKey = key;
+    _kdfIterations = storedIterations;
     resetAutoLock();
     armKeepAlive();
+
+    // Transparent upgrade: the password is in hand exactly once, here. Re-encrypting
+    // now is the only moment we can raise the work factor without asking the user for
+    // anything. reEncrypt() replaces _cryptoKey and _kdfIterations.
+    const target = iterationsFor(password);
+    if (storedIterations < target) {
+      try {
+        await reEncrypt(password);
+      } catch (e) {
+        // A failed upgrade must never cost the user their unlocked session — the
+        // vault is already open and the old record is still valid.
+        console.warn('[VAULT] KDF upgrade failed, keeping existing record:', (e as Error).message);
+      }
+    }
     return true;
   } catch {
     return false;
@@ -407,6 +461,30 @@ export function getPrivkey(accountId?: string): Uint8Array | null {
 }
 
 /**
+ * Run `fn` with the account's private key and zero it afterwards, on every path.
+ *
+ * `getPrivkey()` hands out a copy and documents "CALLER MUST ZERO", which makes the
+ * guarantee only as good as each call site's memory — and at least one call site had
+ * already forgotten it. Prefer this wrapper: the zeroing is not the caller's job any
+ * more, and an early return or a throw cannot skip it.
+ *
+ * @param accountId - defaults to the active account
+ * @param fn - receives the key; it is zeroed as soon as this settles
+ */
+export async function withPrivkey<T>(
+  accountId: string | undefined,
+  fn: (privkey: Uint8Array) => Promise<T>,
+): Promise<T> {
+  const privkey = getPrivkey(accountId);
+  if (!privkey) throw new Error('No private key for this account');
+  try {
+    return await fn(privkey);
+  } finally {
+    privkey.fill(0);
+  }
+}
+
+/**
  * Get an account by ID (full object including nip46Config, but not privkey)
  * @param accountId
  * @returns Safe account without privkey, or null
@@ -536,7 +614,9 @@ export function setAutoLockTimeout(ms: number): void {
 
 /**
  * Re-encrypt the vault with a new password.
- * Avoids JSON round-trip of private keys (no intermediate hex strings).
+ * Keeps the unlocked session alive rather than tearing it down and rebuilding it. It
+ * does still serialize the payload once (hex keys as JS strings, unavoidable before
+ * encryption) — an earlier comment here claimed otherwise, which was simply wrong.
  * @param newPassword - new vault password
  */
 export async function reEncrypt(newPassword: string): Promise<void> {
@@ -546,13 +626,15 @@ export async function reEncrypt(newPassword: string): Promise<void> {
   }
 
   const salt = crypto.getRandomValues(new Uint8Array(32));
-  const newKey = await deriveKey(newPassword, salt);
+  const iterations = iterationsFor(newPassword);
+  const newKey = await deriveKey(newPassword, salt, iterations);
   const json = JSON.stringify(toStoragePayload(_decrypted));
   const { iv, ciphertext } = await encrypt(newKey, json);
 
   await browser.storage.local.set({
     [STORAGE_KEY]: {
       version: VAULT_VERSION,
+      iterations,
       salt: arrayToBase64(salt),
       iv: arrayToBase64(iv),
       ciphertext: arrayToBase64(ciphertext)
@@ -560,6 +642,7 @@ export async function reEncrypt(newPassword: string): Promise<void> {
   });
 
   _cryptoKey = newKey;
+  _kdfIterations = iterations;
   resetAutoLock();
 }
 
@@ -576,9 +659,12 @@ async function save(): Promise<void> {
   const json = JSON.stringify(toStoragePayload(_decrypted));
   const { iv, ciphertext } = await encrypt(_cryptoKey, json);
 
+  // _kdfIterations, not the constant: this writes the record back under the key already
+  // in memory, which may still be a legacy-count key if the upgrade has not run.
   await browser.storage.local.set({
     [STORAGE_KEY]: {
       version: VAULT_VERSION,
+      iterations: _kdfIterations,
       salt: arrayToBase64(salt),
       iv: arrayToBase64(iv),
       ciphertext: arrayToBase64(ciphertext)

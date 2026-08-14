@@ -6,10 +6,19 @@ import {
 } from '../../lib/crypto/bip39.ts';
 
 describe('generateMnemonic', () => {
-  it('returns 12 words by default (128-bit)', async () => {
+  // The default must match the extension's own policy: every identity it mints is
+  // 256-bit / 24 words (lib/accounts.ts), and the post-quantum handlers refuse a
+  // 12-word seed as 'short-seed'. A 128-bit default was a footgun waiting for the
+  // first call site that forgot to pass a strength.
+  it('returns 24 words by default (256-bit)', async () => {
     const mnemonic: string = await generateMnemonic();
     const words: string[] = mnemonic.split(' ');
-    assert.strictEqual(words.length, 12);
+    assert.strictEqual(words.length, 24);
+  });
+
+  it('returns 12 words when 128-bit is asked for explicitly', async () => {
+    const mnemonic: string = await generateMnemonic(128);
+    assert.strictEqual(mnemonic.split(' ').length, 12);
   });
 
   it('returns 24 words for 256-bit strength', async () => {

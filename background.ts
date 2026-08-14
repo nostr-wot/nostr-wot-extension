@@ -27,7 +27,7 @@ import {
 import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
 import { handlers as walletHandlers } from './lib/bg/wallet-handlers.ts';
 import { handlers as nip07Handlers, validateNip07Params } from './lib/bg/nip07-handlers.ts';
-import { handlers as onboardingHandlers } from './lib/bg/onboarding-handlers.ts';
+import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './lib/bg/onboarding-handlers.ts';
 import { handlers as pqcHandlers } from './lib/bg/pqc-handlers.ts';
 
 // ── Assemble handler map ──
@@ -273,6 +273,10 @@ if (browser.alarms?.onAlarm) {
 loadConfig();
 
 signer.cleanupStale();
+
+// Drop an abandoned onboarding record. Matters on Safari, where storage.session is
+// storage.local and an expired record would otherwise sit on disk indefinitely.
+cleanupExpiredPendingOnboarding().catch(() => {});
 
 // Permission migrations
 (async () => {
