@@ -4,11 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-15
+
+Post-quantum keys for the accounts that could not have them, and the fixes from a full audit of how the seed phrase is made.
+
 ### Added
 - **Import your own post-quantum key.** An account with no 24-word seed to derive from — one imported from an `nsec`, or on a 12-word phrase — can now generate a standalone ML-KEM-1024 / ML-DSA-87 pair offline and import it, instead of only being told why it cannot have one. `npm run pqc:keygen -- --independent --keyfile keys.json` writes the file (mode 0600), and the panel links to the generator's source so you can read it before running it. The extension signs and publishes the attestation with the account's own key, so the generator never needs your `nsec` for this.
 - The key file is validated by **round trip, not by length**: ML-KEM encapsulates and decapsulates, ML-DSA signs and verifies. A public key paired with somebody else's secret would otherwise import cleanly, publish an attestation senders encrypt to, and then fail to decrypt anything with no indication why. Imported attestations are tagged `origin: independent` with no `seed_strength` claim, so the provenance stays honest on relays.
 
 ### Fixed
+- **Connecting a site sometimes had to be done twice.** Clicking Connect asked the browser for access to the site, and only recorded your decision *after* that dialog was answered — but the browser's dialog takes focus, which closes the extension popup and destroys everything still running in it. So the browser remembered the site access and the extension forgot the connection, leaving the Connect button exactly where it was. The second click worked only because the access was already granted by then, so no dialog appeared to interrupt it. Your decision is now recorded first, before anything that can close the popup.
 - **The popup no longer opens by itself on requests you already approved.** In "Never lock" mode the vault re-unlocks on every service-worker cold start, and that unlock is asynchronous (PBKDF2). A `signEvent` arriving inside that window looked like a locked vault, so the extension queued an unlock marker and opened the popup — for an unlock you never had to perform, showing an empty popup. Request paths now wait for a startup auto-unlock to settle before concluding the vault is locked.
 - **The seed phrase is no longer written to session storage in the clear during onboarding.** The privkey was XOR-split; the mnemonic — which restores every derived account — sat beside it unprotected. On Safari `storage.session` is backed by `storage.local`, which means disk. All three secrets (privkey, mnemonic, NIP-46 local key) are now split together, and an abandoned onboarding is swept at startup rather than waiting for a read that may never come.
 - **`vault_changePassword` no longer accepts an empty new password**, which silently re-encrypted the vault under `""` while it still presented as password-protected.
