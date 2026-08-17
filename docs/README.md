@@ -38,6 +38,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 |----------|-------------|
 | [Configuration](configuration.md) | Config storage, default relays, profile metadata caching |
 | [Crypto Library](crypto.md) | Pure JS crypto: secp256k1, Schnorr, NIP-04/44/49, BIP-32/39, bech32 |
+| [NIP proposals](../nips/README.md) | Draft specs for the post-quantum work: key derivation, `kind:10203` attestation, the NIP-44 envelope, the NIP-07 capability marker |
 | [Component Standards](component-standards.md) | Shared components, hooks, utilities, CSS patterns, import aliases |
 | [Testing](testing.md) | Test runner, test files, communication test suite, infrastructure |
 
