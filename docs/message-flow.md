@@ -167,6 +167,26 @@ Post-quantum keys are recomputed from the vault's mnemonic per request and zeroe
 use; nothing extra is stored. Accounts without a 24-word seed are refused with an
 explanation rather than silently downgraded.
 
+**The marker is a property of the signer, not of the active account.** `schemes` is a
+fixed array in `inject.ts`. Deriving it from the account would leak which kind of account
+the user holds to any page that reads `window.nostr`, before any consent, and it would
+change under a caller when the user switched accounts. So a request that correctly
+detected `pq` can still be refused, and `activePqKeys` in `lib/signer.ts` names which of
+the four reasons it hit so the client can tell the user what to change. Those messages
+reach the page, but only after the user has approved the call.
+
+**Remote-signer accounts are refused at the routing step, not in the crypto callback.**
+`handleCryptoRequest` sends every NIP-46 account to the bunker and never reaches
+`cryptoFn`, and a bunker answers `nip44Encrypt` with ordinary NIP-44 ciphertext. A
+post-quantum request would therefore have come back classic, indistinguishable to the
+caller: the silent downgrade the opt-in and the marker both exist to prevent. The
+`remoteSignerUnsupported` parameter refuses it before delegation, after the permission
+gate so an origin cannot use it to probe the account type. `tests/signer-pq-refusal.test.ts`
+covers this, including that classic NIP-44 still routes to the bunker untouched.
+
+The full wire formats and the reasoning behind them are written up as draft
+specifications in [`nips/`](../nips/README.md).
+
 ## 6. Channel Isolation
 
 The three message channels are strictly separated:

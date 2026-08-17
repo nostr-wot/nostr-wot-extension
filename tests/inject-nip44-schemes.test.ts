@@ -25,8 +25,20 @@ function createNip44Surface() {
     };
 }
 
-/** How a consumer detects support (mirrors @nostr-wot/signers' signerSupportsPq). */
-function signerSupportsPq(nip44: { schemes?: readonly string[] } | undefined): boolean {
+/**
+ * How a consumer detects support (mirrors @nostr-wot/signers' signerSupportsPq).
+ *
+ * The parameter carries `encrypt`/`decrypt` as well as `schemes` because the interesting
+ * input is an *older* signer, which has the first two and not the third. Typing it on
+ * `schemes` alone would make that case a weak-type error and the test unwritable.
+ */
+interface Nip44Like {
+    schemes?: readonly string[];
+    encrypt?: unknown;
+    decrypt?: unknown;
+}
+
+function signerSupportsPq(nip44: Nip44Like | undefined): boolean {
     const schemes = nip44?.schemes;
     return Array.isArray(schemes) && schemes.includes('pq');
 }
