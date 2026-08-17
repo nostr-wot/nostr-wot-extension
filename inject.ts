@@ -28,6 +28,12 @@ interface PqEncryptOptions {
 }
 
 interface NostrNip44 {
+    /**
+     * Encryption schemes this signer accepts. `'pq'` here is the only way a
+     * caller can know post-quantum is supported, since it rides an optional
+     * third argument to `encrypt` and is otherwise undetectable.
+     */
+    schemes: readonly string[];
     encrypt: (pubkey: string, plaintext: string, opts?: PqEncryptOptions) => Promise<string>;
     /** No options: the payload is self-describing, so the signer routes it. */
     decrypt: (pubkey: string, ciphertext: string) => Promise<string>;
@@ -148,6 +154,14 @@ declare global {
     };
 
     window.nostr.nip44 = {
+        // Which encryption schemes this signer accepts, so a caller can ask instead
+        // of guessing. Post-quantum is an *optional third argument* to `encrypt`, so
+        // a signer that supports it and one that has never heard of it are shaped
+        // identically — an unaware signer would ignore the argument and hand back
+        // classic ciphertext, which the caller would then present as post-quantum.
+        // That silent downgrade is the exact failure this scheme exists to prevent,
+        // so callers must be able to detect support rather than infer it.
+        schemes: ['nip44', 'pq'],
         // `opts` is optional and additive: existing two-argument callers are untouched.
         // Pass { scheme: 'pq', recipientKemKey } to encrypt post-quantum. Decrypt takes
         // no flag — the payload is self-describing, so the signer routes it.

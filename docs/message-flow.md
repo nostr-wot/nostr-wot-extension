@@ -144,6 +144,25 @@ prevent. The calling application owns that decision and passes the key it alread
 is 1568 bytes (2092 base64 characters) and would fail the 64-hex checks those handlers
 apply to other key material.
 
+**A caller must be able to ask, not guess — `window.nostr.nip44.schemes`.**
+
+```js
+window.nostr.nip44.schemes  // ['nip44', 'pq']
+```
+
+Because post-quantum rides an optional third argument, a signer that supports it and one
+that has never heard of it expose an identical shape. An unaware signer ignores the extra
+argument and returns classic ciphertext, and a caller that assumed support would present
+that as post-quantum. A silent downgrade dressed as protection is worse than no feature at
+all, and it is the same failure the `encrypt` opt-in above exists to avoid — so support has
+to be detectable, not inferable.
+
+The marker is additive: existing callers that only read `encrypt` and `decrypt` are
+untouched. A consumer checks `schemes.includes('pq')` and falls back to classic when it is
+absent. Note the difference between an **absent** marker (an older signer — capability
+unknown) and one advertising `['nip44']` only (a signer explicitly declaring it does not do
+post-quantum). Both mean "do not send post-quantum", but only the second is an answer.
+
 Post-quantum keys are recomputed from the vault's mnemonic per request and zeroed after
 use; nothing extra is stored. Accounts without a 24-word seed are refused with an
 explanation rather than silently downgraded.
