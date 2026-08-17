@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`window.nostr.nip44.schemes`, so a client can ask whether this signer does post-quantum instead of guessing.** Post-quantum rides an optional third argument to `nip44.encrypt`, which means a signer that supports it and one that has never heard of it are shaped identically: the unaware one ignores the argument and hands back perfectly valid *classic* ciphertext, and a client that assumed support would badge that as post-quantum. A silent downgrade dressed as protection is worse than not offering the feature. The marker is additive, so callers reading only `encrypt` and `decrypt` are untouched. Note that an absent marker (an older signer, capability unknown) and one advertising `['nip44']` alone (a signer stating it does not do post-quantum) are different answers, and only the second is one.
+- **`nips/` — draft specifications for the post-quantum work.** Four documents covering key derivation from the BIP-39 seed, the `kind:10203` attestation, the hybrid NIP-44 envelope, and the capability marker, written so a second implementation can interoperate without reading this source. None of them has a NIP number yet.
+
+### Fixed
+- **A post-quantum encryption request on a remote-signer account came back as classic ciphertext.** NIP-46 accounts are routed to the bunker before the post-quantum code runs, and a bunker answers `nip44Encrypt` with ordinary NIP-44, so the caller received a classic message in response to a post-quantum request with no way to tell the difference. Exactly the downgrade the opt-in and the marker exist to prevent, arriving by a route neither of them watched. Such requests are now refused with a reason, after the permission check so an origin cannot use the refusal to probe which kind of account is active. Classic NIP-44 still routes to the bunker untouched.
+- Post-quantum refusals now name which of the four blocking conditions was hit (remote signer, watch-only, no seed phrase, 12-word mnemonic) rather than reporting a missing seed for all of them, since `schemes` describes the signer and not the selected account, and a correctly written client can still land on one of these.
+
 ## [0.5.0] - 2026-08-15
 
 Post-quantum keys for the accounts that could not have them, and the fixes from a full audit of how the seed phrase is made.

@@ -151,9 +151,48 @@ prevent. The calling application owns that decision and passes the key it alread
 is 1568 bytes (2092 base64 characters) and would fail the 64-hex checks those handlers
 apply to other key material.
 
+**A caller must be able to ask, not guess — `window.nostr.nip44.schemes`.**
+
+```js
+window.nostr.nip44.schemes  // ['nip44', 'pq']
+```
+
+Because post-quantum rides an optional third argument, a signer that supports it and one
+that has never heard of it expose an identical shape. An unaware signer ignores the extra
+argument and returns classic ciphertext, and a caller that assumed support would present
+that as post-quantum. A silent downgrade dressed as protection is worse than no feature at
+all, and it is the same failure the `encrypt` opt-in above exists to avoid — so support has
+to be detectable, not inferable.
+
+The marker is additive: existing callers that only read `encrypt` and `decrypt` are
+untouched. A consumer checks `schemes.includes('pq')` and falls back to classic when it is
+absent. Note the difference between an **absent** marker (an older signer — capability
+unknown) and one advertising `['nip44']` only (a signer explicitly declaring it does not do
+post-quantum). Both mean "do not send post-quantum", but only the second is an answer.
+
 Post-quantum keys are recomputed from the vault's mnemonic per request and zeroed after
 use; nothing extra is stored. Accounts without a 24-word seed are refused with an
 explanation rather than silently downgraded.
+
+**The marker is a property of the signer, not of the active account.** `schemes` is a
+fixed array in `inject.ts`. Deriving it from the account would leak which kind of account
+the user holds to any page that reads `window.nostr`, before any consent, and it would
+change under a caller when the user switched accounts. So a request that correctly
+detected `pq` can still be refused, and `activePqKeys` in `lib/signer.ts` names which of
+the four reasons it hit so the client can tell the user what to change. Those messages
+reach the page, but only after the user has approved the call.
+
+**Remote-signer accounts are refused at the routing step, not in the crypto callback.**
+`handleCryptoRequest` sends every NIP-46 account to the bunker and never reaches
+`cryptoFn`, and a bunker answers `nip44Encrypt` with ordinary NIP-44 ciphertext. A
+post-quantum request would therefore have come back classic, indistinguishable to the
+caller: the silent downgrade the opt-in and the marker both exist to prevent. The
+`remoteSignerUnsupported` parameter refuses it before delegation, after the permission
+gate so an origin cannot use it to probe the account type. `tests/signer-pq-refusal.test.ts`
+covers this, including that classic NIP-44 still routes to the bunker untouched.
+
+The full wire formats and the reasoning behind them are written up as draft
+specifications in [`nips/`](../nips/README.md).
 
 ## 6. Channel Isolation
 
