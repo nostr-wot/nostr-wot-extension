@@ -4,6 +4,7 @@ import { rpc } from '@shared/rpc.ts';
 import { getDomainFromUrl } from '@shared/url.ts';
 import { formatSats } from '@shared/format/number.ts';
 import { resolveSiteState, shouldAutoAddDomain } from '@shared/siteState.ts';
+import { connectSite } from '@shared/connectSite.ts';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
@@ -181,18 +182,21 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
     await rpc('setIdentityDisabled', { domain, disabled: !checked });
   };
 
+  // Consent is recorded before the browser's host-access dialog is raised, because that
+  // dialog dismisses the popup and everything after the await dies with it. See
+  // src/shared/connectSite.ts.
   const handleConnect = async () => {
-    if (!domain) return;
-    try {
-      const granted = await browser.permissions.request({ origins: [`*://${domain}/*`] });
-      if (!granted) return;
-    } catch {
-      return;
-    }
-    await Promise.all([
-      rpc('addAllowedDomain', { domain }),
-      rpc('setIdentityDisabled', { domain, disabled: false }),
-    ]);
+    await connectSite(domain!, {
+      persistConsent: async (d) => {
+        await Promise.all([
+          rpc('addAllowedDomain', { domain: d }),
+          rpc('setIdentityDisabled', { domain: d, disabled: false }),
+        ]);
+      },
+      requestHostAccess: (d) => browser.permissions.request({ origins: [`*://${d}/*`] }),
+    });
+    // Only reached when the popup survived the dialog; otherwise the next open reads the
+    // consent that is already in storage.
     loadHomeState();
   };
 

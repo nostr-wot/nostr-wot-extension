@@ -16,13 +16,15 @@ The local `accounts` array enables UI rendering even when the vault is locked. T
 
 ## 2. Account Types
 
-| Type | Source | Can Sign | Vault Entry |
-|------|--------|----------|-------------|
-| `generated` | BIP-39 mnemonic via NIP-06 (`m/44'/1237'/0'/0/0`) | Yes | privkey + mnemonic |
-| `nsec` | Imported nsec or hex private key | Yes | privkey |
-| `npub` | Imported npub or hex public key | No | pubkey only |
-| `nip46` | NIP-46 bunker URL (remote signer) | Yes (remote) | nip46Config |
-| `external` | Another NIP-07 extension | Yes (delegated) | pubkey only |
+| Type | Source | Can Sign | Vault Entry | Post-quantum keys |
+|------|--------|----------|-------------|-------------------|
+| `generated` | BIP-39 mnemonic via NIP-06 (`m/44'/1237'/0'/0/0`) | Yes | privkey + mnemonic | Derived from the seed (24 words); a 12-word account may import instead |
+| `nsec` | Imported nsec or hex private key | Yes | privkey | Import only — no mnemonic to derive from |
+| `npub` | Imported npub or hex public key | No | pubkey only | None; cannot sign an attestation or take part in the hybrid key agreement |
+| `nip46` | NIP-46 bunker URL (remote signer) | Yes (remote) | nip46Config | None; nip44 routes to the bunker, which does not know the envelope |
+| `external` | Another NIP-07 extension | Yes (delegated) | pubkey only | None |
+
+Imported keys live in `Account.pqKeys` inside the encrypted vault. They are the one thing in the extension the seed phrase cannot restore, so they must be backed up separately — see [Security](security.md) and [Cryptography](crypto.md).
 
 ---
 

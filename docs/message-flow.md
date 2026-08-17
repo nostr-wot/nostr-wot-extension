@@ -106,15 +106,22 @@ A privileged method (internal pages only, like `vault_*`). Returns whether the a
 account can hold post-quantum keys and, when it can, the derived public keys plus an
 unsigned `kind:10203` attestation for the popup to display and the user to publish.
 
-Nothing is persisted. Post-quantum keys are a deterministic function of the mnemonic
-already in the vault, so they are recomputed on each call rather than stored — no vault
-migration, and no extra secret material at rest. Secret key bytes are zeroed before the
-handler returns and are never included in the response.
+Derived keys are not persisted. They are a deterministic function of the mnemonic already in the vault, so they are recomputed on each call rather than stored — no vault migration, and no extra secret material at rest. Secret key bytes are zeroed before the handler returns and are never included in the response.
 
 The handler refuses derivation for four cases, each reported with a distinct `reason` so
 the UI can explain it: `read-only` (watch-only account), `remote-signer` (NIP-46 has no
 post-quantum operations), `no-seed` (imported from an nsec), and `short-seed` (a 12-word
 mnemonic — 128 bits would be the weakest link).
+
+The response also carries `source` (`'derived' | 'imported' | null`) and `canImport`.
+
+### `pqc_importKeys` / `pqc_removeImportedKeys`
+
+The `no-seed` and `short-seed` accounts hold a working secp256k1 key and simply have no mnemonic to derive from, so they may import an externally generated pair instead (`canImport: true`). `read-only` and `remote-signer` may not: the first can sign nothing and cannot take part in the hybrid key agreement, and the second routes nip44 to a bunker that knows nothing about our envelope, so imported keys would sit unused.
+
+`pqc_importKeys({ keyfile })` parses and validates the key file (`parsePqKeyfile` — both pairs must prove themselves by round trip, not merely match a byte length), stores it in the encrypted vault, and returns the fresh `pqc_getStatus`. Unlike derived keys these ARE persisted, because there is nothing to recompute them from. Importing over an account that already has keys is refused; `pqc_removeImportedKeys` clears them first, zeroing the secrets. Both are privileged (internal pages only), like every other handler.
+
+An imported account's attestation is tagged `origin: independent` and carries no `seed_strength` tag — the vocabulary `scripts/pqc-keygen.mjs` already uses, so a relay reader can tell the two provenances apart.
 
 ## 5c. Post-Quantum via NIP-44 (no new namespace)
 

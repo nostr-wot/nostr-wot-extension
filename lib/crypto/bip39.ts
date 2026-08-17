@@ -16,7 +16,18 @@ import {
 } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
 
-export async function generateMnemonic(strength: number = 128): Promise<string> {
+/**
+ * Generate a BIP-39 mnemonic.
+ *
+ * Defaults to 256 bits (24 words) rather than the BIP-39 minimum, because that is the
+ * policy the rest of the extension enforces: `generateNewAccount()` mints 256-bit
+ * identities, and the post-quantum handlers reject a 12-word seed as 'short-seed' since
+ * 128 bits would become the weakest link. A 128-bit default only ever meant the next
+ * caller who forgot the argument would silently get the weaker key.
+ *
+ * @param strength - entropy in bits (128 = 12 words, 256 = 24 words)
+ */
+export async function generateMnemonic(strength: number = 256): Promise<string> {
   return _gen(wordlist, strength);
 }
 

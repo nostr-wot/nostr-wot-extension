@@ -6,7 +6,11 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
 
 **Encryption scheme:**
 
-1. User password fed to PBKDF2 with SHA-256, 210,000 iterations, random 32-byte salt, producing a 256-bit AES key.
+1. User password fed to PBKDF2 with SHA-256, **600,000 iterations**, random 32-byte salt, producing a 256-bit AES key.
+
+   600,000 is OWASP's recommendation for PBKDF2-HMAC-SHA-256. The vault previously used 210,000 — which is OWASP's figure for SHA-**512**, the wrong row of the same table, so the parameter looked calibrated while being ~2.9x weak. The record now stores the `iterations` it was written with; a record without that field predates the change and is read back at 210,000, then **transparently re-encrypted at 600,000 on the next successful unlock**, since that is the one moment the password is in hand. A failed upgrade is logged and leaves the working record alone.
+
+   **"Never lock" vaults stay at 210,000 deliberately.** That mode stores the vault under the empty password, and the code supplying it is public — the work factor protects nothing there, while this KDF runs on every service-worker cold start. Paying 600,000 on that path would be latency without security.
 2. AES-256-GCM encrypts the vault payload JSON with a random 12-byte IV.
 3. Stored in `browser.storage.local` under key `keyVault`:
 
@@ -22,6 +26,8 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
 **Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
 
 The configured interval is stored as `autoLockMs` in `browser.storage.local`, but `_autoLockMs` is module-level in-memory state that resets to the 15-minute default on every service-worker cold start. `restoreAutoLockSetting()` re-reads the persisted `autoLockMs` (defaulting to 15 min when absent) and re-arms the timer; it is called on background startup and after every successful `vault_unlock`, so the user's chosen interval — not the default — governs locking after the SW restarts (bug #10).
+
+**"Never lock" auto-unlock and the cold-start window**: with `autoLockMs === 0` the vault is stored under an empty password and `background.ts` re-unlocks it on every service-worker cold start. That unlock is asynchronous — a storage read plus PBKDF2 at 210,000 iterations — so `isLocked()` reports **locked** for a few hundred milliseconds after every startup, and no keep-alive alarm is armed in this mode (`armKeepAlive()` returns early when `_autoLockMs <= 0`), so Chrome tears the worker down after ~30s idle and cold starts are routine. The startup sequence is therefore registered via `vault.beginStartupUnlock()`, and request paths (`waitForVaultUnlock()` in `lib/signer.ts`) `await vault.whenStartupUnlockSettled()` before concluding the vault is locked. Without that gate a `signEvent` arriving inside the window queued an unlock marker and auto-opened the action popup — showing an empty popup on requests the user's saved `allow` permission had already approved.
 
 **Service-worker keep-alive**: On Chrome MV3 the service worker is torn down frequently (including around page refreshes), which wipes the in-memory decrypted key and makes a timed-mode vault appear locked well before the configured interval. While the vault is unlocked in timed-lock mode (`autoLockMs > 0`), `vault.ts` arms a periodic `browser.alarms` keep-alive (`'vault-keepalive'`, ~30s period — Chrome clamps the minimum). The `onAlarm` listener in `background.ts` does a trivial async storage read on each tick, resetting the SW idle timer so the worker stays alive until the auto-lock actually fires. The alarm is cleared on every `lock()` and is **never** used to persist the decrypted key — it only holds the worker open, preserving the security model. It is a graceful no-op where `browser.alarms` is unavailable (Safari's persistent background page, tests).
 
@@ -45,7 +51,13 @@ Private keys are stored differently on disk vs in memory:
 | Disk (JSON) | `Account.mnemonic: string` | N/A |
 | Memory | `MemoryAccount.mnemonicBytes: Uint8Array` | Yes |
 
-On `unlock()`, hex strings are converted to `Uint8Array` via `toMemoryAccount()`. On `lock()`, every account's `privkeyBytes` and `mnemonicBytes` are zeroed with `.fill(0)` (`zeroDecryptedKeys()`) before the reference is nulled. This prevents hex strings (which are immutable JS strings and cannot be zeroed) from lingering in the GC heap.
+On `unlock()`, hex strings are converted to `Uint8Array` via `toMemoryAccount()`. On `lock()`, every account's `privkeyBytes` and `mnemonicBytes` are zeroed with `.fill(0)` (`zeroDecryptedKeys()`) before the reference is nulled, so the long-lived copy of the key material is zeroable memory rather than an immutable string.
+
+This reduces the exposure; it does not eliminate it, and the previous wording here overstated it. Every call that serializes the vault — `getDecryptedPayload()`, `save()`, `reEncrypt()` — runs `toStoragePayload()`, which materializes every account's private key and mnemonic as JS strings for `JSON.stringify`. Those strings cannot be zeroed and stay in the heap until the GC collects them. That is unavoidable at encryption time, but it means the guarantee is "no *persistent* plaintext copy", not "no plaintext copy ever".
+
+**Imported post-quantum keys are held the same way.** An account that cannot derive (no mnemonic, or a 12-word one) may import an ML-KEM-1024 / ML-DSA-87 pair. Those secrets live in the encrypted vault payload as `Account.pqKeys` and in memory as `pqKemSecretBytes` / `pqDsaSecretBytes` — `Uint8Array`, zeroed by `zeroDecryptedKeys()` with everything else. `'pqKeys'` is omitted from `SafeAccount` and `SafeAccountWithWallet`, and every accessor that returns a `SafeAccount` strips the memory fields, so the popup's account list never carries them. Reads go through `withImportedPqKeys()`, which zeroes its copies on every path including throws; `pqc_getStatus` reports only `source: 'imported'` and the public halves.
+
+Unlike derived keys these are **not** recoverable from the seed phrase, which is a real change to the backup story for those accounts — the panel says so persistently rather than once.
 
 **Replacing the decrypted payload also zeroes the old buffers**: `create()` (called while unlocked during password-change / lock-mode transitions) and a successful `unlock()` while already unlocked both run `zeroDecryptedKeys()` before assigning the new `_decrypted`, so the previous key buffers can't linger in the heap. A FAILED `unlock()` never touches the current session's buffers.
 
@@ -84,7 +96,7 @@ Changes the vault password without exposing private keys as intermediate hex str
 3. Serializes `MemoryVaultPayload` -> `VaultPayload` JSON -> encrypts with new key
 4. Stores new encrypted vault, replaces internal `_cryptoKey`
 
-This avoids the old `getDecryptedPayload()` + `lock()` + `create()` pattern which created an intermediate JSON copy with hex private key strings.
+This avoids the old `getDecryptedPayload()` + `lock()` + `create()` pattern, which tore down and rebuilt the whole session. It does still produce one intermediate JSON copy containing hex private keys — step 3 serializes the payload — so the win is a smaller window and a preserved session, not the elimination of the plaintext copy.
 
 ---
 
@@ -190,7 +202,7 @@ independently generated key instead.
 ## 9. Rate Limiting
 
 - **Per-origin pending-request cap** (`lib/signer.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
-- **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 210,000 iterations (~200ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----libvaultts).
+- **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 600,000 iterations (~600ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----libvaultts).
 
 ### 9b. Permission Resolution Is Deny-Wins
 
@@ -198,7 +210,11 @@ independently generated key instead.
 
 ### 9c. Pending Onboarding TTL
 
-The redacted pending-onboarding account (XOR-split privkey, S-6) is persisted to `browser.storage.session` together with a `_pendingOnboardingCreatedAt` timestamp. The 5-minute TTL is enforced **on read** in `getPendingOnboardingAccount()` — not only via the in-memory `setTimeout`, which dies with the MV3 service worker. Expired (or timestamp-less pre-upgrade) entries are wiped from session storage and never returned.
+The redacted pending-onboarding account is persisted to `browser.storage.session` together with a `_pendingOnboardingCreatedAt` timestamp. The 5-minute TTL is enforced **on read** in `getPendingOnboardingAccount()` — not only via the in-memory `setTimeout`, which dies with the MV3 service worker. Expired (or timestamp-less pre-upgrade) entries are wiped from session storage and never returned.
+
+**S-6 covers every secret, not just the privkey.** The account's `privkey`, `mnemonic`, and `nip46Config.localPrivkey` are collected into one blob, XOR-split against a random pad, and stored as `_pendingOnboardingSecrets` + `_pendingOnboardingSecretsPad`, with all three fields nulled on the stored account. Earlier builds split the privkey alone and wrote the mnemonic beside it in the clear — the more valuable secret of the two, since it restores every derived account. That mattered most on Safari, where `storage.session` is shimmed onto `storage.local` (`lib/browser.ts`) and therefore lands on disk. Records in the old privkey-only shape are treated as expired rather than read back.
+
+Because the Safari shim persists, `background.ts` also calls `cleanupExpiredPendingOnboarding()` on startup: an abandoned onboarding is swept instead of waiting for a read that may never come. A record still inside its TTL is left alone, since on Chrome the service worker restarts constantly during a live onboarding.
 
 ---
 

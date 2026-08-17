@@ -108,6 +108,116 @@ export function derivePqKeys(seed: Uint8Array, account: number = 0): PqKeys {
   }
 }
 
+/** Secret key sizes in bytes, per FIPS 203 / 204. */
+export const KEM_SECRET_KEY_BYTES: number = 3168;
+export const DSA_SECRET_KEY_BYTES: number = 4896;
+
+/**
+ * Parse and validate an externally generated post-quantum key file.
+ *
+ * An account with no 24-word mnemonic has nothing to derive from, so its keys have to
+ * come from outside — `scripts/pqc-keygen.mjs --independent --keyfile` writes exactly
+ * this shape. Every field here is user-supplied, and the dangerous failure is not a
+ * malformed one but a *plausible* one: a public key paired with a different secret.
+ * That file imports cleanly, publishes an attestation senders encrypt to, and then
+ * fails to decrypt a single message, with nothing to indicate why. So neither pair is
+ * taken on its word:
+ *
+ *   ML-KEM  encapsulate to the public key, decapsulate with the secret, compare
+ *   ML-DSA  sign with the secret, verify against the public key
+ *
+ * Both cost a few milliseconds and turn a silent permanent failure into an import error.
+ *
+ * @param text - key file contents, pasted or read from a file
+ * @returns both validated key pairs
+ * @throws Error naming the specific algorithm and problem
+ */
+export function parsePqKeyfile(text: string): PqKeys {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(String(text).trim());
+  } catch {
+    throw new Error('That is not a valid key file (expected JSON).');
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('That is not a valid key file (expected JSON).');
+  }
+
+  const file = parsed as Record<string, any>;
+  if (file.v !== PQ_PROFILE) {
+    throw new Error(`Unsupported key file version ${JSON.stringify(file.v ?? null)} — expected ${PQ_PROFILE}.`);
+  }
+  if (file.alg?.kem !== ALG_KEM) throw new Error(`This key file is not ${ALG_KEM}.`);
+  if (file.alg?.dsa !== ALG_DSA) throw new Error(`This key file is not ${ALG_DSA}.`);
+
+  for (const section of ['kem', 'dsa'] as const) {
+    if (!file[section] || typeof file[section] !== 'object') {
+      throw new Error(`Key file is missing its ${section} section.`);
+    }
+    for (const half of ['public', 'secret'] as const) {
+      if (typeof file[section][half] !== 'string') {
+        throw new Error(`Key file is missing the ${section} ${half} key.`);
+      }
+    }
+  }
+
+  const decode = (b64: string, label: string, length: number): Uint8Array => {
+    let bytes: Uint8Array;
+    try {
+      bytes = _unb64(b64);
+    } catch {
+      throw new Error(`The ${label} could not be decoded — is the file complete?`);
+    }
+    if (bytes.length === 0) {
+      throw new Error(`The ${label} could not be decoded — is the file complete?`);
+    }
+    if (bytes.length !== length) {
+      throw new Error(`The ${label} is ${bytes.length} bytes, expected ${length} — the file looks truncated.`);
+    }
+    return bytes;
+  };
+
+  const keys: PqKeys = {
+    kem: {
+      publicKey: decode(file.kem.public, `${ALG_KEM} public key`, KEM_PUBLIC_KEY_BYTES),
+      secretKey: decode(file.kem.secret, `${ALG_KEM} secret key`, KEM_SECRET_KEY_BYTES),
+    },
+    dsa: {
+      publicKey: decode(file.dsa.public, `${ALG_DSA} public key`, DSA_PUBLIC_KEY_BYTES),
+      secretKey: decode(file.dsa.secret, `${ALG_DSA} secret key`, DSA_SECRET_KEY_BYTES),
+    },
+  };
+
+  // Prove the KEM pair: encapsulate to the public key, open it with the secret.
+  let kemMatches = false;
+  try {
+    const { cipherText, sharedSecret } = ml_kem1024.encapsulate(keys.kem.publicKey);
+    const opened = ml_kem1024.decapsulate(cipherText, keys.kem.secretKey);
+    kemMatches = opened.length === sharedSecret.length && opened.every((b, i) => b === sharedSecret[i]);
+    opened.fill(0);
+    sharedSecret.fill(0);
+  } catch {
+    kemMatches = false;
+  }
+  if (!kemMatches) {
+    throw new Error(`The ${ALG_KEM} keys do not match each other — this public key belongs to a different secret key.`);
+  }
+
+  // Prove the signature pair the same way.
+  let dsaMatches = false;
+  try {
+    const probe = encoder.encode(`${PQ_PROFILE}/keyfile-check`);
+    dsaMatches = ml_dsa87.verify(ml_dsa87.sign(probe, keys.dsa.secretKey), probe, keys.dsa.publicKey);
+  } catch {
+    dsaMatches = false;
+  }
+  if (!dsaMatches) {
+    throw new Error(`The ${ALG_DSA} keys do not match each other — this public key belongs to a different secret key.`);
+  }
+
+  return keys;
+}
+
 /**
  * Build the proof-of-possession message that the ML-DSA key signs.
  *

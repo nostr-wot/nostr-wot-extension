@@ -270,3 +270,25 @@ describe('WebLN allowed domains -- interaction with allowed domains', () => {
     assert.strictEqual(await isWeblnAllowed('b.com'), true);
   });
 });
+
+// ── The connect gate must not miss a decision that already landed ──
+
+describe('waitForDomainAllowed: decisions made before the listener attaches', () => {
+  beforeEach(() => {
+    resetMockStorage();
+  });
+
+  it('resolves true immediately when the domain is already allowed', async () => {
+    // The window is small but real: the caller checks isDomainAllowed, the user connects,
+    // and only then does the wait attach its listener. Reacting only to CHANGES meant that
+    // decision was never seen and the site's request hung for the full timeout.
+    await addAllowedDomain('already.com');
+
+    const result = await Promise.race([
+      waitForDomainAllowed('already.com'),
+      new Promise<string>(r => setTimeout(() => r('hung'), 200)),
+    ]);
+    assert.strictEqual(result, true, 'must not wait for a change that already happened');
+  });
+
+});

@@ -46,11 +46,17 @@ sequence.
 | `tests/crypto/bech32.test.ts` | Bech32 encoding/decoding, npub/nsec |
 | `tests/crypto/utils.test.ts` | Hex/bytes conversion |
 | `tests/crypto/security.test.ts` | Security-focused crypto tests |
+| `tests/crypto/nip49.test.ts` | NIP-49 `ncryptsec` encode/decode, scrypt parameters |
+| `tests/crypto/pq.test.ts` | Post-quantum key derivation vectors, domain separation, sibling-not-child property |
+| `tests/crypto/pq-envelope.test.ts` | Post-quantum envelope encrypt/decrypt, self-describing routing, hybrid key |
+| `tests/crypto/pq-import.test.ts` | Key-file parsing, length rules, and pair-proving round trips (a public key paired with the wrong secret must be rejected) |
+| `tests/crypto/pqc-keygen.test.ts` | The offline `pqc:keygen` CLI |
+| `tests/pqc-handlers.test.ts` | `pqc_getStatus` / `pqc_importKeys` / `pqc_removeImportedKeys`, attestation provenance tags, `SafeAccount` leak check, end-to-end decrypt with imported keys |
 | `tests/vault.test.ts` | Vault create/unlock/lock, encryption integrity, account management, private key security |
 | `tests/permissions.test.ts` | Permission cascade, isolation, save/clear, NIP-07 methods |
 | `tests/accounts.test.ts` | Account creation (mnemonic, nsec, npub, nip46), type coverage |
-| `tests/signer.test.ts` | NIP-07 signing flow, permission checks, pending request lifecycle |
-| `tests/security-hardening.test.ts` | NIP-49 zeroing, NIP-04 error normalization, vault reEncrypt, lock zeroing, batch 1-2 regression |
+| `tests/signer.test.ts` | NIP-07 signing flow, permission checks, pending request lifecycle, cold-start auto-unlock (the popup must not open for an already-approved request) |
+| `tests/security-hardening.test.ts` | NIP-49 zeroing, NIP-04 error normalization, vault reEncrypt, lock zeroing, batch 1-2 regression, KDF work factor + transparent 210k→600k migration, `changePassword` empty-password guard, `withPrivkey` zeroing, and the onboarding no-plaintext-secret rules |
 | `tests/communication.test.ts` | Full communication test suite (see below) |
 | `tests/wizardMachine.test.ts` | Onboarding wizard state machine transitions |
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |

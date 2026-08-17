@@ -412,3 +412,271 @@ describe('security: batch 1-2 regression', () => {
     assert.strictEqual(result, 'allow');
   });
 });
+
+// ── vault_changePassword must not silently disarm the vault ──
+
+describe('security: changePassword rejects an empty new password', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await vault.destroy();
+  });
+
+  it('refuses to re-encrypt under an empty password', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+
+    await assert.rejects(
+      () => vaultHandlers.get('vault_changePassword')!({
+        currentPassword: TEST_PASSWORD,
+        newPassword: '',
+      }),
+      /password/i,
+      'an empty new password must be rejected',
+    );
+
+    // The original password must still work — a rejected change must change nothing.
+    vault.lock();
+    assert.strictEqual(await vault.unlock(TEST_PASSWORD), true, 'old password still unlocks');
+  });
+
+  it('still refuses a too-short new password', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    await assert.rejects(
+      () => vaultHandlers.get('vault_changePassword')!({
+        currentPassword: TEST_PASSWORD,
+        newPassword: 'abc',
+      }),
+      /8 characters/i,
+    );
+  });
+
+  it('accepts a valid new password', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    const res: any = await vaultHandlers.get('vault_changePassword')!({
+      currentPassword: TEST_PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+    assert.deepStrictEqual(res, { ok: true });
+    vault.lock();
+    assert.strictEqual(await vault.unlock(NEW_PASSWORD), true);
+  });
+});
+
+// ── getPrivkey's "CALLER MUST ZERO" contract, made unbreakable ──
+
+describe('security: withPrivkey zeroes the key on every path', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await vault.destroy();
+    await vault.create(TEST_PASSWORD, makePayload());
+  });
+
+  it('zeroes the key after the callback returns', async () => {
+    let captured: Uint8Array | null = null;
+    const result = await vault.withPrivkey('acct1', async (pk) => {
+      captured = pk;
+      assert.ok(pk.some(b => b !== 0), 'callback sees real key bytes');
+      return 'done';
+    });
+    assert.strictEqual(result, 'done');
+    assert.ok(captured!.every(b => b === 0), 'key must be zeroed after use');
+  });
+
+  it('zeroes the key when the callback throws', async () => {
+    let captured: Uint8Array | null = null;
+    await assert.rejects(() => vault.withPrivkey('acct1', async (pk) => {
+      captured = pk;
+      throw new Error('boom');
+    }), /boom/);
+    assert.ok(captured!.every(b => b === 0), 'key must be zeroed on the error path too');
+  });
+
+  it('throws when the account has no key', async () => {
+    await assert.rejects(() => vault.withPrivkey('nope', async () => 'x'), /no private key/i);
+  });
+});
+
+// ── No plaintext secret reaches session storage during onboarding ──
+//
+// storage.session is not a safe place for a secret: on Safari it is shimmed onto
+// storage.local (lib/browser.ts), which is on DISK. The privkey was already XOR-split
+// across two keys; the mnemonic — which is strictly more valuable, since it restores
+// every derived account — was written in the clear alongside it.
+
+describe('security: onboarding never stores a plaintext secret', () => {
+  const M24 = 'what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade';
+
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+    onboarding.__simulateServiceWorkerRestart();
+  });
+
+  it('writes no mnemonic and no privkey into session storage', async () => {
+    await onboarding.handlers.get('onboarding_validateMnemonic')!({ mnemonic: M24 });
+
+    const all = await browserMock.storage.session.get(null) as Record<string, unknown>;
+    const dump = JSON.stringify(all);
+
+    assert.ok(!dump.includes('bleak'), 'no mnemonic word may appear in session storage');
+    assert.ok(!dump.includes(M24), 'the mnemonic must not be stored');
+
+    const stored = all._pendingOnboardingAccount as any;
+    assert.ok(stored, 'the redacted account is still persisted');
+    assert.strictEqual(stored.mnemonic, null, 'mnemonic field redacted');
+    assert.strictEqual(stored.privkey, null, 'privkey field redacted');
+  });
+
+  it('reconstructs the mnemonic and privkey after a service-worker restart', async () => {
+    const res: any = await onboarding.handlers.get('onboarding_validateMnemonic')!({ mnemonic: M24 });
+    onboarding.__simulateServiceWorkerRestart();
+
+    // The privkey half: exportNcryptsec needs the reconstructed key.
+    const enc: any = await onboarding.handlers.get('onboarding_exportNcryptsec')!({ password: 'backup-pass-123' });
+    assert.ok(String(enc).startsWith('ncryptsec1'), 'privkey survived the restart');
+
+    // The mnemonic half: createVault is its only consumer, and it must receive the
+    // words, not the redacted copy that went to storage.
+    onboarding.__simulateServiceWorkerRestart();
+    await onboarding.handlers.get('onboarding_createVault')!({
+      account: res.account,
+      password: 'vault-password-123',
+    });
+    const stored = vault.getDecryptedPayload().accounts[0];
+    assert.strictEqual(stored.mnemonic, M24, 'the mnemonic itself round-tripped intact');
+    assert.ok(stored.privkey, 'and so did the privkey');
+  });
+
+  it('does not leave a NIP-46 local privkey in the clear', async () => {
+    await onboarding.handlers.get('onboarding_validateNsec')!({ input: TEST_PRIVKEY_HEX });
+    const all = await browserMock.storage.session.get(null) as Record<string, unknown>;
+    assert.ok(!JSON.stringify(all).includes(TEST_PRIVKEY_HEX), 'privkey never in the clear');
+  });
+});
+
+describe('security: legacy privkey-only onboarding split is not resurrected', () => {
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+    onboarding.__simulateServiceWorkerRestart();
+  });
+
+  it('treats the old pad/masked shape as expired and clears it', async () => {
+    await browserMock.storage.session.set({
+      _pendingOnboardingAccount: { id: 'x', type: 'nsec', pubkey: TEST_PUBKEY_HEX, privkey: null },
+      _pendingOnboardingCreatedAt: Date.now(),
+      _pendingOnboardingPad: 'aa'.repeat(32),
+      _pendingOnboardingMasked: 'bb'.repeat(32),
+    });
+
+    await assert.rejects(
+      onboarding.handlers.get('onboarding_exportNcryptsec')!({ password: 'backup-pass-123' }),
+      /No pending account/,
+    );
+
+    const left = await browserMock.storage.session.get([
+      '_pendingOnboardingAccount', '_pendingOnboardingPad', '_pendingOnboardingMasked',
+    ]) as any;
+    assert.strictEqual(left._pendingOnboardingAccount, undefined);
+    assert.strictEqual(left._pendingOnboardingPad, undefined);
+    assert.strictEqual(left._pendingOnboardingMasked, undefined);
+  });
+
+  it('startup sweep drops an expired record but keeps a live one', async () => {
+    await onboarding.handlers.get('onboarding_validateNsec')!({ input: TEST_PRIVKEY_HEX });
+    await onboarding.cleanupExpiredPendingOnboarding();
+    let data = await browserMock.storage.session.get(['_pendingOnboardingAccount']) as any;
+    assert.ok(data._pendingOnboardingAccount, 'a live onboarding must survive a SW restart sweep');
+
+    await browserMock.storage.session.set({
+      _pendingOnboardingCreatedAt: Date.now() - (6 * 60 * 1000),
+    });
+    await onboarding.cleanupExpiredPendingOnboarding();
+    data = await browserMock.storage.session.get([
+      '_pendingOnboardingAccount', '_pendingOnboardingSecrets', '_pendingOnboardingSecretsPad',
+    ]) as any;
+    assert.strictEqual(data._pendingOnboardingAccount, undefined, 'expired record swept');
+    assert.strictEqual(data._pendingOnboardingSecrets, undefined);
+    assert.strictEqual(data._pendingOnboardingSecretsPad, undefined);
+  });
+});
+
+// ── Vault KDF work factor + transparent migration ──
+//
+// 210,000 iterations is OWASP's figure for PBKDF2-HMAC-SHA512. This vault uses
+// SHA-256, whose OWASP figure is 600,000. The file cited OWASP while using the wrong
+// row, so the parameter read as calibrated when it was ~2.9x weak.
+
+describe('security: vault KDF work factor', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+    await vault.destroy();
+  });
+
+  const readRecord = async (): Promise<any> =>
+    ((await browserMock.storage.local.get('keyVault')) as any).keyVault;
+
+  it('new password-protected vaults use 600,000 iterations', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    const rec = await readRecord();
+    assert.strictEqual(rec.iterations, 600000);
+    vault.lock();
+    assert.strictEqual(await vault.unlock(TEST_PASSWORD), true);
+  });
+
+  it('"Never lock" vaults stay at the cheap count', async () => {
+    // The password is the empty string and the code that uses it is public, so the
+    // work factor guards nothing — while this KDF runs on EVERY service-worker cold
+    // start. Paying 600k there would be latency for no security.
+    await vault.create('', makePayload());
+    const rec = await readRecord();
+    assert.strictEqual(rec.iterations, 210000);
+    vault.lock();
+    assert.strictEqual(await vault.unlock(''), true);
+  });
+
+  it('migrates a legacy 210k vault to 600k on the next unlock', async () => {
+    // Build a record exactly as the old code would have: no `iterations` field.
+    const enc = new TextEncoder();
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const material = await crypto.subtle.importKey('raw', enc.encode(TEST_PASSWORD), 'PBKDF2', false, ['deriveKey']);
+    const legacyKey = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
+      material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'],
+    );
+    const payload = makePayload();
+    const ct = new Uint8Array(await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv }, legacyKey, enc.encode(JSON.stringify(payload)),
+    ));
+    const b64 = (u8: Uint8Array) => Buffer.from(u8).toString('base64');
+    await browserMock.storage.local.set({
+      keyVault: { version: 1, salt: b64(salt), iv: b64(iv), ciphertext: b64(ct) },
+    });
+
+    // The legacy password must still work...
+    assert.strictEqual(await vault.unlock(TEST_PASSWORD), true, 'legacy vault unlocks');
+    assert.strictEqual(vault.getDecryptedPayload().accounts[0].privkey, TEST_PRIVKEY_HEX);
+
+    // ...and the record must have been rewritten at the stronger count.
+    const rec = await readRecord();
+    assert.strictEqual(rec.iterations, 600000, 'upgraded in place');
+    assert.notStrictEqual(rec.salt, b64(salt), 'a fresh salt came with the re-encryption');
+
+    // Same password, new record.
+    vault.lock();
+    assert.strictEqual(await vault.unlock(TEST_PASSWORD), true, 'unlocks after migration');
+    assert.strictEqual(vault.getDecryptedPayload().accounts[0].privkey, TEST_PRIVKEY_HEX);
+  });
+
+  it('a wrong password still fails against a legacy vault', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    await browserMock.storage.local.set({
+      keyVault: { ...(await readRecord()), iterations: undefined },
+    });
+    vault.lock();
+    assert.strictEqual(await vault.unlock('wrong-password-here'), false);
+  });
+});

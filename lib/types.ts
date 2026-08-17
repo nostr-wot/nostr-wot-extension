@@ -33,6 +33,24 @@ export interface Nip46Config {
   localPubkey?: string;
 }
 
+/**
+ * Post-quantum keys imported from outside, for an account that cannot derive its own.
+ *
+ * Only ever set on accounts with no 24-word mnemonic. Unlike derived keys these are NOT
+ * recoverable from the seed phrase — they are independent secrets the user must back up
+ * separately, which is why the UI says so persistently rather than once.
+ *
+ * All four values are base64. The two `secret` halves are key material: this type must
+ * stay out of `SafeAccount`.
+ */
+export interface PqImportedKeys {
+  /** Derivation profile the key file declared, e.g. "nip-pqc/v1". */
+  profile: string;
+  kem: { public: string; secret: string };
+  dsa: { public: string; secret: string };
+  importedAt: number;
+}
+
 export interface Account {
   id: string;
   name: string;
@@ -45,18 +63,30 @@ export interface Account {
   createdAt: number;
   derivationIndex?: number;
   walletConfig?: WalletConfig;
+  /** Imported post-quantum keys. Absent when the account derives them from its seed. */
+  pqKeys?: PqImportedKeys | null;
 }
 
-/** Account without private key — safe to expose */
-export type SafeAccount = Omit<Account, 'privkey' | 'mnemonic' | 'walletConfig'>;
+/**
+ * Account without secret material — safe to expose.
+ *
+ * `pqKeys` is omitted for the same reason as `privkey`: it carries ML-KEM and ML-DSA
+ * SECRET keys. Every account list the UI receives is a SafeAccount, so leaving it in
+ * would hand those secrets to the popup on every render.
+ */
+export type SafeAccount = Omit<Account, 'privkey' | 'mnemonic' | 'walletConfig' | 'pqKeys'>;
 
 /** Account without private key but with walletConfig — for background wallet handlers */
-export type SafeAccountWithWallet = Omit<Account, 'privkey' | 'mnemonic'>;
+export type SafeAccountWithWallet = Omit<Account, 'privkey' | 'mnemonic' | 'pqKeys'>;
 
 /** Account with private key as Uint8Array — used in vault memory only */
-export interface MemoryAccount extends Omit<Account, 'privkey' | 'mnemonic'> {
+export interface MemoryAccount extends Omit<Account, 'privkey' | 'mnemonic' | 'pqKeys'> {
   privkeyBytes: Uint8Array | null;  // zeroed on lock
   mnemonicBytes: Uint8Array | null; // zeroed on lock
+  /** Public halves stay strings (they are public); secrets are zeroable bytes. */
+  pqPublic: { profile: string; kem: string; dsa: string; importedAt: number } | null;
+  pqKemSecretBytes: Uint8Array | null; // zeroed on lock
+  pqDsaSecretBytes: Uint8Array | null; // zeroed on lock
 }
 
 /** Vault payload with Uint8Array keys — in-memory only */

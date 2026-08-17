@@ -751,5 +751,19 @@
   "pqc.publishing": "Wird veröffentlicht…",
   "pqc.published": "Auf {sent} von {relays} Relays veröffentlicht. Sie können jetzt post-quantensichere Nachrichten empfangen.",
   "pqc.alreadyPublished": "Ihre Post-Quanten-Schlüssel sind bereits veröffentlicht und aktuell.",
-  "pqc.staleAttestation": "Die veröffentlichten Schlüssel passen nicht mehr zu diesem Konto. Erneut veröffentlichen, damit der richtige Schlüssel verwendet wird."
+  "pqc.staleAttestation": "Die veröffentlichten Schlüssel passen nicht mehr zu diesem Konto. Erneut veröffentlichen, damit der richtige Schlüssel verwendet wird.",
+  "pqc.importTitle": "Eigenen Schlüssel hinzufügen",
+  "pqc.importDesc": "Du kannst einen eigenständigen Post-Quanten-Schlüssel auf deinem Rechner erzeugen und ihn hier importieren. Es wird nichts übertragen: Der Generator läuft offline, und du kannst seinen Quellcode vorher lesen.",
+  "pqc.importCommand": "Erzeuge ihn mit:",
+  "pqc.importViewSource": "Quellcode des Generators ansehen",
+  "pqc.importPaste": "Schlüsseldatei einfügen oder unten auswählen",
+  "pqc.importPastePlaceholder": "{ \"v\": \"nip-pqc/v1\", ... }",
+  "pqc.importChooseFile": "Datei auswählen",
+  "pqc.importSubmit": "Schlüssel importieren",
+  "pqc.importing": "Wird importiert…",
+  "pqc.importedTitle": "Importierter Post-Quanten-Schlüssel",
+  "pqc.importedBackupWarning": "Dieser Schlüssel lässt sich nicht aus deiner Seed-Phrase wiederherstellen. Wenn du deine Kopie der Datei verlierst, sind an ihn gesendete Nachrichten dauerhaft unlesbar.",
+  "pqc.importRemove": "Importierten Schlüssel entfernen",
+  "pqc.importRemoveConfirm": "Diesen Schlüssel entfernen? Wer deine Attestierung bereits hat, verschlüsselt weiterhin an ihn — und du kannst diese Nachrichten dann nicht mehr lesen.",
+  "pqc.importFileUnreadable": "Diese Datei konnte nicht gelesen werden."
 }

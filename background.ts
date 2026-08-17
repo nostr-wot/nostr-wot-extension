@@ -27,7 +27,7 @@ import {
 import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
 import { handlers as walletHandlers } from './lib/bg/wallet-handlers.ts';
 import { handlers as nip07Handlers, validateNip07Params } from './lib/bg/nip07-handlers.ts';
-import { handlers as onboardingHandlers } from './lib/bg/onboarding-handlers.ts';
+import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './lib/bg/onboarding-handlers.ts';
 import { handlers as pqcHandlers } from './lib/bg/pqc-handlers.ts';
 
 // ── Assemble handler map ──
@@ -274,6 +274,10 @@ loadConfig();
 
 signer.cleanupStale();
 
+// Drop an abandoned onboarding record. Matters on Safari, where storage.session is
+// storage.local and an expired record would otherwise sit on disk indefinitely.
+cleanupExpiredPendingOnboarding().catch(() => {});
+
 // Permission migrations
 (async () => {
     try {
@@ -290,8 +294,14 @@ signer.cleanupStale();
     }
 })();
 
-// Auto-unlock vault when auto-lock is "Never"
-(async () => {
+// Auto-unlock vault when auto-lock is "Never".
+//
+// Registered through vault.beginStartupUnlock so request paths can await it:
+// this runs on EVERY service-worker cold start and takes a few hundred ms
+// (PBKDF2), during which the vault reports locked. A signEvent landing in that
+// window used to queue an unlock marker and pop the popup open even though the
+// site's permission was already saved as 'allow'.
+vault.beginStartupUnlock(async () => {
     try {
         // Restore the configured auto-lock interval on cold start. _autoLockMs is
         // module-level in-memory state that otherwise reverts to the 15-min default
@@ -314,4 +324,4 @@ signer.cleanupStale();
     } catch (e: unknown) {
         console.warn('[VAULT] Auto-unlock failed:', (e as Error).message);
     }
-})();
+});

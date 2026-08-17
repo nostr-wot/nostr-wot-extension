@@ -169,9 +169,24 @@ describe('NIP-04 -- cross-key decryption fails', () => {
   const pubC: Uint8Array = getPublicKey(keyC);
 
   it('third party cannot decrypt NIP-04 message', async () => {
+    // NIP-04 is AES-CBC with no authentication, so a wrong key is NOT guaranteed to
+    // throw: decryption only fails when the garbage it produces happens to end in an
+    // invalid PKCS#7 padding byte. Roughly 1 in 256 random IVs produce a valid one and
+    // decryption "succeeds" with garbage, which made asserting a rejection flaky —
+    // measured at 14 non-rejections in 3000 runs, and it failed CI exactly that way.
+    //
+    // The property that actually matters is that the plaintext is never recovered, and
+    // that held in all 3000. Assert that instead of the incidental padding behaviour.
+    // The NIP-44 sibling test below can still demand a rejection, because NIP-44 is
+    // authenticated and a wrong key always fails its MAC.
     const encrypted: string = await nip04Encrypt('secret', keyA, pubB);
-    // C trying to decrypt with wrong shared secret should fail
-    await assert.rejects(() => nip04Decrypt(encrypted, keyC, pubA));
+    let decrypted: string | null = null;
+    try {
+      decrypted = await nip04Decrypt(encrypted, keyC, pubA);
+    } catch {
+      return; // rejected, which is the common case
+    }
+    assert.notStrictEqual(decrypted, 'secret', 'a third party must never recover the plaintext');
   });
 
   it('empty plaintext round-trips', async () => {

@@ -522,6 +522,14 @@ export async function cancelUnlockWaiter(markerId: string): Promise<void> {
 async function waitForVaultUnlock(origin: string, type: string, accountId: string | null): Promise<void> {
   if (!vault.isLocked()) return;
 
+  // A service-worker cold start in "Never lock" mode unlocks the vault
+  // asynchronously (PBKDF2, 210k iterations). Requests that arrive inside that
+  // window are not waiting on the user at all — popping the popup open for them
+  // showed an empty popup on every already-approved request. Wait the auto-unlock
+  // out first; only a vault that is still locked afterwards needs the user.
+  await vault.whenStartupUnlockSettled();
+  if (!vault.isLocked()) return;
+
   const markerId = `unlock_${crypto.randomUUID()}`;
   const marker: PendingRequest = {
     id: markerId,
@@ -792,8 +800,30 @@ export interface PqEncryptOptions {
  */
 async function activePqKeys() {
   if (vault.isLocked()) throw new Error('Vault is locked');
-  const payload = vault.getDecryptedPayload();
   const activeId = (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
+
+  // Imported keys win: an account only holds them when it could not derive, and they
+  // are the keys its published attestation advertises. Checking storage first also
+  // avoids materializing the mnemonic for accounts that never had one.
+  if (vault.hasImportedPqKeys(activeId)) {
+    const imported = await vault.withImportedPqKeys(activeId, async ({ kemSecret, dsaSecret, kemPublic, dsaPublic }) => {
+      const payload = vault.getDecryptedPayload();
+      const acct = payload.accounts.find(a => a.id === activeId);
+      if (!acct) throw new Error('No active account');
+      // Copies, because withImportedPqKeys zeroes its own as soon as this returns —
+      // the caller zeroes these in its own finally block.
+      return {
+        keys: {
+          kem: { publicKey: base64ToArray(kemPublic), secretKey: new Uint8Array(kemSecret) },
+          dsa: { publicKey: base64ToArray(dsaPublic), secretKey: new Uint8Array(dsaSecret) },
+        },
+        pubkey: acct.pubkey,
+      };
+    });
+    if (imported) return imported;
+  }
+
+  const payload = vault.getDecryptedPayload();
   const acct = payload.accounts.find(a => a.id === activeId);
   if (!acct) throw new Error('No active account');
   if (acct.readOnly || acct.type === 'npub') {

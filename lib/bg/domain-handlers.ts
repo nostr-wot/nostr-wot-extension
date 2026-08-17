@@ -175,6 +175,17 @@ export function waitForDomainAllowed(domain: string): Promise<boolean> {
 
         timer = setTimeout(() => finish(false), CONNECT_WAIT_TIMEOUT_MS);
         browser.storage.onChanged.addListener(listener);
+
+        // The listener only ever sees CHANGES, so a connect that landed between the
+        // caller's isDomainAllowed() check and this line would never arrive — the site's
+        // request would hang for the full two minutes and then be rejected, despite the
+        // user having connected. Re-read once now that the listener is attached; anything
+        // later is a real change and the listener catches it.
+        //
+        // Only the allowed side is re-read. A dismissal cannot be missed the same way:
+        // background.ts rejects a dismissed origin before ever opening this gate, so the
+        // gate is only ever entered for an undecided domain.
+        isDomainAllowed(domain).then((allowed) => { if (allowed) finish(true); });
     });
 }
 

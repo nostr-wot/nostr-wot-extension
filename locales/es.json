@@ -751,5 +751,19 @@
   "pqc.publishing": "Publicando…",
   "pqc.published": "Publicado en {sent} de {relays} relés. Ya pueden enviarte mensajes post-cuánticos.",
   "pqc.alreadyPublished": "Tus claves post-cuánticas ya están publicadas y actualizadas.",
-  "pqc.staleAttestation": "Las claves publicadas ya no coinciden con esta cuenta. Publica de nuevo para que se use la clave correcta."
+  "pqc.staleAttestation": "Las claves publicadas ya no coinciden con esta cuenta. Publica de nuevo para que se use la clave correcta.",
+  "pqc.importTitle": "Añade tu propia clave",
+  "pqc.importDesc": "Puedes generar una clave post-cuántica independiente en tu propio equipo e importarla aquí. No se envía nada a ningún sitio: el generador funciona sin conexión y puedes leer su código antes de ejecutarlo.",
+  "pqc.importCommand": "Genérala con:",
+  "pqc.importViewSource": "Ver el código del generador",
+  "pqc.importPaste": "Pega el archivo de claves, o elígelo abajo",
+  "pqc.importPastePlaceholder": "{ \"v\": \"nip-pqc/v1\", ... }",
+  "pqc.importChooseFile": "Elegir archivo",
+  "pqc.importSubmit": "Importar clave",
+  "pqc.importing": "Importando…",
+  "pqc.importedTitle": "Clave post-cuántica importada",
+  "pqc.importedBackupWarning": "Esta clave no se puede recuperar desde tu frase semilla. Si pierdes tu copia del archivo, los mensajes enviados a ella no podrán leerse nunca más.",
+  "pqc.importRemove": "Eliminar clave importada",
+  "pqc.importRemoveConfirm": "¿Eliminar esta clave? Quien ya tenga tu atestación seguirá cifrando hacia ella, y dejarás de poder leer esos mensajes.",
+  "pqc.importFileUnreadable": "No se ha podido leer ese archivo."
 }

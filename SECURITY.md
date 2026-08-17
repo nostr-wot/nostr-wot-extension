@@ -16,9 +16,11 @@ The extension handles sensitive cryptographic key material. The security design 
 
 Private keys are encrypted at rest using **AES-256-GCM**:
 
-- Password-derived key via **PBKDF2** with SHA-256, **210,000 iterations**, and a random 32-byte salt
+- Password-derived key via **PBKDF2** with SHA-256, **600,000 iterations** (OWASP's recommendation for SHA-256), and a random 32-byte salt
 - Random 12-byte IV per encryption
-- Stored in `browser.storage.local` as base64-encoded salt + IV + ciphertext
+- Stored in `browser.storage.local` as base64-encoded salt + IV + ciphertext, alongside the iteration count the record was written with
+- Vaults created before the work factor was raised are re-encrypted at the current count on the next successful unlock, with no action needed
+- "Never lock" vaults are stored under an empty password and stay at 210,000: the password is public, so the work factor protects nothing there, while that KDF runs on every service-worker start
 
 Keys are only decrypted in memory when the vault is explicitly unlocked.
 
