@@ -1,6 +1,22 @@
 # Workflow Rules
 
-**NEVER use git worktrees.** Always work directly on the main repo. The extension is loaded from the main repo's `dist/` — worktree builds go to a different directory and changes are invisible.
+**Anything you need to see in the browser must be built in the main clone.** The
+browser loads this extension unpacked from the main clone's `dist/`. A worktree builds
+into its own `dist/`, which nothing is watching, so the change looks like it did not
+happen — you will chase a phantom bug. The same applies to the Safari wrapper, which
+syncs from that same `dist/`.
+
+That is the whole constraint, and it is about *where the build output lands*, not about
+worktrees as such. Work in a worktree when the change never has to be loaded: docs,
+`nips/`, tests, refactors verified by `npm run test` and `npm run typecheck`. Two things
+to know before you do:
+
+- Run `npm install` in the worktree. `node_modules/` is not shared.
+- `DEPLOY.local.md` is gitignored, so it will not be there. Read it from the main clone.
+
+If a change starts in a worktree and then needs eyes in a browser, push it and build the
+branch from the main clone rather than loading a second unpacked copy — two copies of the
+extension installed at once fight over the same origins and the same vault.
 
 # Safari Build & Install
 
