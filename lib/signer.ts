@@ -683,6 +683,20 @@ async function handleCryptoRequest(
   nip46Data: Record<string, string>,
   cryptoFn: (payload: string, privkey: Uint8Array, theirPubkeyBytes: Uint8Array) => Promise<string>,
   denyMessage: string,
+  /**
+   * Message to reject a NIP-46 account with instead of delegating to the bunker.
+   *
+   * Post-quantum passes this, and must. A bunker knows nothing about our envelope and
+   * answers `nip44Encrypt` with ordinary NIP-44 ciphertext, so without this the caller
+   * would receive classic ciphertext in response to a post-quantum request with no way
+   * to tell the difference. That silent downgrade is the exact failure the opt-in and
+   * the `schemes` marker exist to prevent, and it cannot be caught in `cryptoFn`, which
+   * a remote-signer account never reaches. See `nips/04-nip07-encryption-capability.md`.
+   *
+   * Checked after the permission gate, so an origin cannot probe the active account's
+   * type without first being allowed to make the call at all.
+   */
+  remoteSignerUnsupported?: string,
 ): Promise<string> {
   const { accountId, accountType } = await getActiveAccountInfo();
 
@@ -709,6 +723,7 @@ async function handleCryptoRequest(
   }
 
   if (accountType === 'nip46') {
+    if (remoteSignerUnsupported) throw new Error(remoteSignerUnsupported);
     if (vault.isLocked()) {
       await waitForVaultUnlock(origin, method, accountId);
     }
@@ -763,13 +778,30 @@ export interface PqEncryptOptions {
  * Nothing is stored: the keys are a deterministic function of the seed, so they are
  * recomputed per request rather than persisted. Only 24-word accounts qualify — a
  * 12-word seed carries 128 bits, which would make the seed the limiting factor.
+ *
+ * The four refusals below carry distinct messages on purpose. `window.nostr.nip44.schemes`
+ * advertises what this signer accepts, not what the selected account can do, so a caller
+ * that correctly detected `pq` support can still land here — and the only way it can tell
+ * the user what to change is if we say which of the four it hit. See
+ * `nips/04-nip07-encryption-capability.md`.
+ *
+ * These strings reach the page, so they disclose the shape of the active account. That is
+ * a deliberate and narrow trade: it happens only after the user has approved an encryption
+ * request from a connected site, never during the pre-consent capability check, which is
+ * exactly why `schemes` is a fixed signer-level array and not derived from the account.
  */
 async function activePqKeys() {
   if (vault.isLocked()) throw new Error('Vault is locked');
   const payload = vault.getDecryptedPayload();
   const activeId = (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
   const acct = payload.accounts.find(a => a.id === activeId);
-  if (!acct?.mnemonic) throw new Error('This account has no seed phrase, so it cannot use post-quantum keys');
+  if (!acct) throw new Error('No active account');
+  if (acct.readOnly || acct.type === 'npub') {
+    throw new Error('This account is watch-only, so it cannot use post-quantum keys');
+  }
+  // NIP-46 is not checked here: those accounts never reach this function, because
+  // handleCryptoRequest refuses them at the routing step via `remoteSignerUnsupported`.
+  if (!acct.mnemonic) throw new Error('This account has no seed phrase, so it cannot use post-quantum keys');
   if (acct.mnemonic.trim().split(/\s+/).length !== 24) {
     throw new Error('Post-quantum keys require a 24-word seed phrase');
   }
@@ -818,6 +850,7 @@ export async function handleNip44Encrypt(
       }
     },
     'User denied encryption',
+    'Remote signers do not support post-quantum encryption',
   );
 }
 
@@ -848,6 +881,7 @@ export async function handleNip44Decrypt(theirPubkey: string, ciphertext: string
       }
     },
     'User denied decryption',
+    'Remote signers cannot read post-quantum messages',
   );
 }
 

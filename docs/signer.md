@@ -132,7 +132,7 @@ For accounts of type `nip46`, signing requests are routed to a `Nip46Client` ins
 - **Local `deny` still applies**: `permissions.check()` runs for every account type. An explicit per-origin `deny` throws `Permission denied` BEFORE the request is forwarded to the remote signer. Only the local `ask` prompt is skipped for NIP-46 accounts (the bunker runs its own approval for `ask`/`allow`).
 - Client instances are cached per account ID in `_nip46Clients: Map<accountId, Nip46Client>`.
 - Ephemeral keypair generated for relay communication.
-- Supports `signEvent`, `nip04Encrypt/Decrypt`, `nip44Encrypt/Decrypt` via the remote signer protocol.
+- Supports `signEvent`, `nip04Encrypt/Decrypt`, `nip44Encrypt/Decrypt` via the remote signer protocol. **Post-quantum is the exception**: NIP-46 defines no post-quantum operations, and a `nip44Encrypt` sent to a bunker comes back as classic ciphertext. A post-quantum request is therefore refused before delegation rather than answered classically — see §8.
 - NIP-46 in-flight requests are tracked in `signerPending` but do NOT show badges (no user action needed).
 - `nostrconnect://` flow validates a shared secret before accepting the remote signer (see [Security](security.md#7-nip-46-connect-secret)).
 
@@ -177,3 +177,45 @@ Every sign/encrypt/decrypt operation (both approved and rejected) is logged to `
 ```
 
 The log is capped at 200 entries (newest first, oldest trimmed).
+
+---
+
+## 8. Post-quantum Encryption
+
+`nip44Encrypt` takes an optional third argument, `{ scheme: 'pq', recipientKemKey }`, which
+switches it to the hybrid ML-KEM-1024 envelope. `nip44Decrypt` takes no flag: the envelope
+is self-describing, so `handleNip44Decrypt` routes on the payload. The mechanics are in
+[Message Flow §5c](message-flow.md#5c-post-quantum-via-nip-44-no-new-namespace); the wire
+formats are specified in [`nips/`](../nips/README.md).
+
+Two things matter at the signer level.
+
+**Only the signer can do this.** Encryption needs the raw NIP-44 conversation key and
+decryption needs the ML-KEM secret key. Neither ever leaves this process, so no client
+library can implement the scheme on top of the NIP-07 surface however it is layered.
+
+**Which is why `window.nostr.nip44.schemes` exists.** Post-quantum rides an optional
+argument, so a signer that supports it and one that ignores it are shaped identically and
+both return valid-looking ciphertext. Callers must be able to ask.
+
+### Refusals
+
+`schemes` describes the signer, not the active account, so `pq` requests can still fail.
+Four reasons, each with its own message, so a client can say what to change:
+
+| Account | Message | Where |
+|---|---|---|
+| Remote signer (NIP-46) | `Remote signers do not support post-quantum encryption` | `handleCryptoRequest`, before delegation |
+| Watch-only / `readOnly` | `This account is watch-only…` | `activePqKeys` |
+| Imported from an `nsec` | `This account has no seed phrase…` | `activePqKeys` |
+| 12-word mnemonic | `Post-quantum keys require a 24-word seed phrase` | `activePqKeys` |
+
+The NIP-46 case is the one that must not be missed. `handleCryptoRequest` routes remote
+accounts to the bunker and never reaches `cryptoFn`, so a guard placed with the other three
+would never run and the caller would receive classic ciphertext for a post-quantum request.
+It is refused via the `remoteSignerUnsupported` parameter instead, after the permission gate
+so that an origin cannot use it to probe the account type. `tests/signer-pq-refusal.test.ts`
+covers all four, plus the requirement that classic NIP-44 still reaches the bunker.
+
+None of these refusals ever downgrades. A caller that asked for post-quantum either gets
+post-quantum or gets an error.

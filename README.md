@@ -103,6 +103,24 @@ About **3 KB constant overhead**, almost all of it the ML-KEM ciphertext. Encryp
 ~1.3 ms. See [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq)
 for the wire format, the full size tables and the reference implementation.
 
+**Clients can ask whether a signer supports this.** Post-quantum rides an optional third
+argument to `nip44.encrypt`, so a signer that supports it and one that has never heard of
+it look identical — the unaware one ignores the argument and returns ordinary ciphertext,
+which a client would then badge as post-quantum. That silent downgrade is worse than not
+offering the feature, so support is announced rather than inferred:
+
+```js
+window.nostr.nip44.schemes                  // ['nip44', 'pq']
+window.nostr.nip44.encrypt(pubkey, text, { scheme: 'pq', recipientKemKey })
+```
+
+Decryption needs no flag: the envelope is self-describing. A request the active account
+cannot perform is refused with a reason, never answered classically.
+
+None of this is a standard yet. The drafts are in [`nips/`](nips/README.md), written so a
+second implementation can interoperate without reading this source, and feedback on them is
+more useful now than after another client ships.
+
 [FIPS 203]: https://csrc.nist.gov/pubs/fips/203/final
 [FIPS 204]: https://csrc.nist.gov/pubs/fips/204/final
 
