@@ -53,10 +53,14 @@ here is message *confidentiality* against an adversary recording traffic now.
 Authenticity, identity and the attestation binding itself all still rest on
 secp256k1. Draft 02 says where that bites.
 
-**They do not replace NIP-44.** The post-quantum key is mixed *with* the
-classic conversation key, never instead of it. If ML-KEM turns out to be broken,
-the result is exactly NIP-44, which is where we started. That property is worth
-more than the smaller payloads a KEM-only construction would give.
+**They do not replace NIP-44, yet.** The post-quantum key is mixed *with* the
+classic conversation key rather than instead of it, and that is a sequencing
+decision rather than a principle. Replacing the classic key exchange outright is
+the right destination and needs relays, signers and every client to move
+together. Hybrid is what one implementation can deploy on its own, and it closes
+harvest-now-decrypt-later, which is the half that cannot be fixed retroactively
+and so cannot wait for that coordination. It also means that if ML-KEM turns out
+to be broken, the result is exactly NIP-44, which is where we started.
 
 **They do not cover metadata.** Who talks to whom is NIP-17's problem, and
 NIP-17 is not affected by any of this. See
