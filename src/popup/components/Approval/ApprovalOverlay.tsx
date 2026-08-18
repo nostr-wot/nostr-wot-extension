@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import browser from '@shared/browser.js';
 import { rpc } from '@shared/rpc.js';
 import { t } from '@lib/i18n.js';
-import { getDomainFromUrl } from '@shared/url.js';
+import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
 import ApprovalCard from './ApprovalCard';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import { useVault } from '../../context/VaultContext';
@@ -48,17 +48,18 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   const { active, accounts } = useAccount();
 
   const refresh = useCallback(async () => {
-    let currentDomain: string | null = null;
-    try {
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-      if (tab?.url) currentDomain = getDomainFromUrl(tab.url);
-    } catch { /* ignore */ }
+    const { domain: currentDomain } = await resolveActiveTabDomain();
 
     const pending: PendingRequest[] = await rpc('signer_getPending') || [];
 
+    // Fail closed. Falling back to "show everything" when the site could not be identified
+    // meant one site's popup listed another site's pending signing requests — origin,
+    // event kind and full content included. Showing nothing is safe: the pending queue is
+    // cleared whenever the service worker restarts, so a tab with no known origin has no
+    // requests of its own to approve anyway.
     const filtered = currentDomain
       ? pending.filter((r) => r.origin === currentDomain)
-      : pending;
+      : [];
 
     const actionable = filtered.filter((r) => r.needsPermission && !r.nip46InFlight);
     const nip46InFlight = filtered.filter((r) => r.nip46InFlight);

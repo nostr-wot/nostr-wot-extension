@@ -218,3 +218,71 @@
 .pqcFileLabel:hover {
   opacity: 0.85;
 }
+
+/* ── Post-quantum: how it works ── */
+
+.pqcHow {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+}
+
+.pqcHow > strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--text-heading);
+}
+
+.pqcSteps {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.pqcSteps li {
+  margin-bottom: 6px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-body);
+}
+
+.pqcHowLimit {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* The generator instructions, folded away. Generating a key file is a one-off; the paste
+   box is what someone returning to this screen needs to reach without scrolling. */
+.pqcGenerate {
+  margin-top: 12px;
+  font-size: 11px;
+}
+
+.pqcGenerate > summary {
+  cursor: pointer;
+  color: var(--accent);
+  list-style: none;
+}
+
+.pqcGenerate > summary::-webkit-details-marker {
+  display: none;
+}
+
+.pqcGenerate > summary::before {
+  content: '▸ ';
+}
+
+.pqcGenerate[open] > summary::before {
+  content: '▾ ';
+}
+
+.pqcGenerate > summary:hover {
+  opacity: 0.85;
+}
+
+.pqcGenerate > * {
+  margin-top: 8px;
+}

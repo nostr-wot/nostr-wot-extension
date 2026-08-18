@@ -57,12 +57,14 @@ describe('parsePqKeyfile — rejects malformed input', () => {
     assert.throws(() => parsePqKeyfile(JSON.stringify(obj)), pattern);
   };
 
-  it('rejects non-JSON', () => {
-    assert.throws(() => parsePqKeyfile('not json at all'), /not a valid key file/i);
+  it('rejects text that is neither a key file nor a pair of secret keys', () => {
+    // Non-JSON is no longer an error in itself — it is read as pasted secret keys — so the
+    // complaint names what was actually missing.
+    assert.throws(() => parsePqKeyfile('not json at all'), /could not find an ml-kem-1024 secret key/i);
   });
 
   it('rejects an empty string', () => {
-    assert.throws(() => parsePqKeyfile('   '), /not a valid key file/i);
+    assert.throws(() => parsePqKeyfile('   '), /nothing to import/i);
   });
 
   it('rejects a JSON array', () => {
@@ -120,5 +122,68 @@ describe('parsePqKeyfile — rejects mismatched pairs', () => {
     bytes[1] ^= 0xff;
     obj.kem.secret = bytes.toString('base64');
     assert.throws(() => parsePqKeyfile(JSON.stringify(obj)), /ml-kem-1024 keys do not match/i);
+  });
+});
+
+// ── Importing the secret keys alone ──
+//
+// The generator prints the two secret keys to the terminal; making someone hand-build a
+// JSON file around them, or keep the whole file just to re-import, is friction for no
+// security. Both algorithms can recompute their public key from the secret, so the secrets
+// are the whole input — the public halves are derived and then proven by round trip, which
+// is a stronger check than trusting a public key someone pasted alongside.
+
+function secretsOf(seed: Uint8Array) {
+  const { kem, dsa } = derivePqKeys(seed, 0);
+  return { kem: arrayToBase64(kem.secretKey), dsa: arrayToBase64(dsa.secretKey) };
+}
+
+describe('parsePqKeyfile — secret keys on their own', () => {
+  it('accepts the two secret keys pasted as the generator prints them', () => {
+    const s = secretsOf(seedA);
+    const pasted = `  ml-kem-1024 secret: ${s.kem}\n  ml-dsa-87 secret: ${s.dsa}\n`;
+    const keys = parsePqKeyfile(pasted);
+    assert.strictEqual(keys.kem.secretKey.length, 3168);
+    assert.strictEqual(keys.dsa.secretKey.length, 4896);
+  });
+
+  it('derives the public keys rather than being told them', () => {
+    const expected = derivePqKeys(seedA, 0);
+    const s = secretsOf(seedA);
+    const keys = parsePqKeyfile(`${s.kem}\n${s.dsa}`);
+    assert.deepStrictEqual(keys.kem.publicKey, expected.kem.publicKey);
+    assert.deepStrictEqual(keys.dsa.publicKey, expected.dsa.publicKey);
+  });
+
+  it('does not care about order or surrounding noise', () => {
+    const s = secretsOf(seedA);
+    const messy = `Back these up somewhere safe.\n\nml-dsa-87 secret: ${s.dsa}\nml-kem-1024 secret: ${s.kem}\n\ndone`;
+    const keys = parsePqKeyfile(messy);
+    assert.deepStrictEqual(keys.kem.publicKey, derivePqKeys(seedA, 0).kem.publicKey);
+  });
+
+  it('accepts a JSON file carrying only the secrets', () => {
+    const s = secretsOf(seedA);
+    const keys = parsePqKeyfile(JSON.stringify({ v: PQ_PROFILE, kem: { secret: s.kem }, dsa: { secret: s.dsa } }));
+    assert.strictEqual(keys.kem.publicKey.length, 1568);
+  });
+
+  it('rejects a paste with only one of the two secrets', () => {
+    const s = secretsOf(seedA);
+    assert.throws(() => parsePqKeyfile(s.kem), /ml-dsa-87/i);
+    assert.throws(() => parsePqKeyfile(s.dsa), /ml-kem-1024/i);
+  });
+
+  it('rejects a truncated secret rather than deriving nonsense from it', () => {
+    const s = secretsOf(seedA);
+    assert.throws(() => parsePqKeyfile(`${s.kem.slice(0, 200)}\n${s.dsa}`), /ml-kem-1024|could not/i);
+  });
+
+  it('still verifies the pair after deriving it', () => {
+    // A corrupted secret must not silently produce a matching-but-wrong pair.
+    const s = secretsOf(seedA);
+    const bytes = Buffer.from(s.kem, 'base64');
+    bytes[5] ^= 0xff;
+    assert.throws(() => parsePqKeyfile(`${bytes.toString('base64')}\n${s.dsa}`), /ml-kem-1024/i);
   });
 });

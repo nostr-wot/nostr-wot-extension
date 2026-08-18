@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
-import { getDomainFromUrl } from '@shared/url.ts';
+import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
 import { formatSats } from '@shared/format/number.ts';
-import { resolveSiteState, shouldAutoAddDomain } from '@shared/siteState.ts';
-import { connectSite } from '@shared/connectSite.ts';
+import { resolveSiteState } from '@shared/siteState.ts';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '../../context/AccountContext';
 import { useVault } from '../../context/VaultContext';
@@ -53,17 +52,10 @@ function useSiteState(active: Account | null) {
     setSiteState(null);
     let resolvedDomain: string | null = null;
     try {
-      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs[0];
-      if (!tab?.url) {
-        setSiteState('empty');
-        return;
-      }
-
-      const d = getDomainFromUrl(tab.url);
-      if (!d || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') ||
-          tab.url.startsWith('about:') || tab.url.startsWith('moz-extension://') ||
-          tab.url.startsWith('chrome-extension://')) {
+      // Not tab.url: the browser withholds it from us on a site we hold no host
+      // permission for, which is now every site. See shared/activeTabDomain.
+      const { domain: d, restricted } = await resolveActiveTabDomain();
+      if (restricted || !d) {
         setSiteState('empty');
         return;
       }
@@ -87,11 +79,6 @@ function useSiteState(active: Account | null) {
       }
 
       const identityDisabledSet = new Set<string>(identityDisabled || []);
-
-      // If site has signer permissions but isn't in allowedDomains yet, add it
-      if (shouldAutoAddDomain(allowedDomains, perms, d)) {
-        rpc('addAllowedDomain', { domain: d }).catch(() => {});
-      }
 
       setIdentityEnabled(!identityDisabledSet.has(d));
 
@@ -182,32 +169,30 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
     await rpc('setIdentityDisabled', { domain, disabled: !checked });
   };
 
-  // Consent is recorded before the browser's host-access dialog is raised, because that
-  // dialog dismisses the popup and everything after the await dies with it. See
-  // src/shared/connectSite.ts.
+  // Connecting is one step: the click. The extension used to also ask the browser for
+  // per-site host access, but that dialog gated nothing (identity release is decided by
+  // the allowlist this RPC writes), it dismissed the popup and lost the click, and the
+  // fix for that released the identity while the dialog was still unanswered.
   const handleConnect = async () => {
-    await connectSite(domain!, {
-      persistConsent: async (d) => {
-        await Promise.all([
-          rpc('addAllowedDomain', { domain: d }),
-          rpc('setIdentityDisabled', { domain: d, disabled: false }),
-        ]);
-      },
-      requestHostAccess: (d) => browser.permissions.request({ origins: [`*://${d}/*`] }),
-    });
-    // Only reached when the popup survived the dialog; otherwise the next open reads the
-    // consent that is already in storage.
-    loadHomeState();
+    if (!domain) return;
+    try {
+      await rpc('connectDomain', { domain });
+    } finally {
+      loadHomeState();
+    }
   };
 
   // "Not now": record the dismissal so the site's next request is rejected
-  // silently instead of re-opening the popup, then get out of the way. The
-  // connect card still shows if the user opens the popup here again, and
-  // connecting later clears the dismissal.
-  const handleDismiss = async () => {
+  // silently instead of re-opening the popup, then get out of the way.
+  //
+  // "Not now" lasts as long as the user chose in Settings (a week by default) rather than
+  // forever, and "Never" is explicit. Both are listed in Settings with an undo — this used
+  // to be a permanent, invisible dead end whose only escape was discovering that connecting
+  // cleared it.
+  const handleDismiss = async (permanent = false) => {
     if (!domain) return;
     try {
-      await rpc('addDismissedDomain', { domain });
+      await rpc('addDismissedDomain', { domain, permanent });
     } finally {
       window.close();
     }
@@ -273,7 +258,8 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           >
             <div className={styles.connectActions}>
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
-              <Button small variant="secondary" onClick={handleDismiss}>{t('home.notNow')}</Button>
+              <Button small variant="secondary" onClick={() => handleDismiss(false)}>{t('home.notNow')}</Button>
+              <Button small variant="secondary" onClick={() => handleDismiss(true)}>{t('home.never')}</Button>
             </div>
           </EmptyState>
         </Card>

@@ -8,7 +8,7 @@ import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
 import type { UnsignedEvent, RequestDecision } from '../types.ts';
 import type { HandlerFn } from './state.ts';
-import { isIdentityDisabled, addAllowedDomain } from './domain-handlers.ts';
+import { isIdentityDisabled } from './domain-handlers.ts';
 import { logActivity } from './misc-handlers.ts';
 
 // ── Validation ──
@@ -101,7 +101,6 @@ export const handlers = new Map<string, HandlerFn>([
         try {
             const result = await signer.handleGetPublicKey(origin);
             logActivity({ domain: origin, method: 'getPublicKey', decision: 'approved' });
-            if (origin) addAllowedDomain(origin).catch(() => {});
             return result;
         } catch (e) {
             logActivity({ domain: origin, method: 'getPublicKey', decision: 'rejected' });

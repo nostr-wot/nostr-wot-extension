@@ -4,13 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- **`window.nostr.nip44.schemes`, so a client can ask whether this signer does post-quantum instead of guessing.** Post-quantum rides an optional third argument to `nip44.encrypt`, which means a signer that supports it and one that has never heard of it are shaped identically: the unaware one ignores the argument and hands back perfectly valid *classic* ciphertext, and a client that assumed support would badge that as post-quantum. A silent downgrade dressed as protection is worse than not offering the feature. The marker is additive, so callers reading only `encrypt` and `decrypt` are untouched. Note that an absent marker (an older signer, capability unknown) and one advertising `['nip44']` alone (a signer stating it does not do post-quantum) are different answers, and only the second is one.
-- **`nips/` — draft specifications for the post-quantum work.** Four documents covering key derivation from the BIP-39 seed, the `kind:10203` attestation, the hybrid NIP-44 envelope, and the capability marker, written so a second implementation can interoperate without reading this source. None of them has a NIP number yet.
+## [0.5.1] - 2026-08-18
+
+Fewer permissions asked for, and the connect flow says what it means.
+
+### Changed
+- **The extension no longer asks for access to each site you connect.** Clicking "Connect this site" is now the whole ceremony. The browser dialog that used to follow it granted the extension nothing it needed — whether a site may see your identity is decided by the extension's own allowlist — and it caused two problems of its own: it closed the popup and lost the click, and working around that released your key while the dialog was still unanswered. Any per-site access granted by an earlier version is handed back automatically the next time the extension starts, so your browser stops listing those sites as ones it can read.
 
 ### Fixed
-- **A post-quantum encryption request on a remote-signer account came back as classic ciphertext.** NIP-46 accounts are routed to the bunker before the post-quantum code runs, and a bunker answers `nip44Encrypt` with ordinary NIP-44, so the caller received a classic message in response to a post-quantum request with no way to tell the difference. Exactly the downgrade the opt-in and the marker exist to prevent, arriving by a route neither of them watched. Such requests are now refused with a reason, after the permission check so an origin cannot use the refusal to probe which kind of account is active. Classic NIP-44 still routes to the bunker untouched.
-- Post-quantum refusals now name which of the four blocking conditions was hit (remote signer, watch-only, no seed phrase, 12-word mnemonic) rather than reporting a missing seed for all of them, since `schemes` describes the signer and not the selected account, and a correctly written client can still land on one of these.
+- **"Not now" no longer means "never".** Declining a site's connection request silently blocked it forever, with nothing in the interface to show it had happened and no way back except connecting to it. Declining now lasts as long as you choose — until you restart the browser, a day, a week, or a month — and there is a **Never** button when you really do mean never. Every declined site is listed under Settings → Permissions with an undo, including the permanent ones.
+- **Disconnecting a site now sticks.** Disconnect left the site's saved signing rules behind, and the popup treated any site with saved rules as connected — so it silently reconnected itself on the next open. Worse, that check counted a rule of any kind, including one that said *deny*, so a site you had explicitly refused could be reconnected. Disconnecting now clears everything for that site.
+- **Wallet access is no longer granted silently to connected sites.** A site you had connected for signing could call `webln.enable()` and be granted access to your wallet without you being asked, despite that being documented as a separate consent. It now asks.
+- **Sites are told about account switches again.** The account-change broadcast identified tabs by their URL, which the browser withholds from us without site-specific permission — so with no permissions granted it reached nobody. It now tracks tabs by the connection their content script opens.
+- **The popup knows which site opened it.** When a site's request opened the popup, it showed "Navigate to a website to connect" and you had to close and reopen it by hand before the Connect card appeared — the browser only reveals the current tab's address when *you* open the extension, not when we do. The background now says which site it opened the popup for.
+- **The post-quantum card said "Turn on" even when it was already on.** It now reports what it finds: on, needs republishing, ready to set up, or ready to import — and explains how the feature works, with a link to the step-by-step guide.
 
 ## [0.5.0] - 2026-08-15
 

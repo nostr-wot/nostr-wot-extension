@@ -140,7 +140,24 @@ const mock = {
     openPopup: () => Promise.resolve()
   },
   tabs: {
-    query: () => Promise.resolve([])
+    query: () => Promise.resolve([]),
+    sendMessage: () => Promise.resolve(),
+  },
+  // Mutable in tests: the grant migration reads getAll and calls remove.
+  permissions: {
+    _granted: { origins: [] as string[], permissions: [] as string[] },
+    getAll(): Promise<{ origins: string[]; permissions: string[] }> {
+      return Promise.resolve({ ...mock.permissions._granted });
+    },
+    contains({ origins }: { origins?: string[] }): Promise<boolean> {
+      return Promise.resolve((origins || []).every(o => mock.permissions._granted.origins.includes(o)));
+    },
+    remove({ origins }: { origins?: string[] }): Promise<boolean> {
+      mock.permissions._granted.origins = mock.permissions._granted.origins
+        .filter(o => !(origins || []).includes(o));
+      return Promise.resolve(true);
+    },
+    request(): Promise<boolean> { return Promise.resolve(true); },
   },
   windows: {
     create: () => Promise.resolve({ id: 1 }),

@@ -106,6 +106,9 @@ async function main() {
   // identity key at all: the extension signs the attestation with the account's own
   // key once the keys are in its vault. So a keyfile-only run must not demand --nsec.
   const keyfilePath = arg('keyfile');
+  const b64kem = b64(kem.secretKey);
+  const b64dsa = b64(dsa.secretKey);
+
   if (typeof keyfilePath === 'string') {
     writeFileSync(keyfilePath, JSON.stringify({
       v: PQ_PROFILE,
@@ -125,17 +128,19 @@ async function main() {
   if (independent) {
     const nsec = arg('nsec');
     if (typeof nsec !== 'string') {
-      if (typeof keyfilePath === 'string') {
-        if (seed) seed.fill(0);
-        kem.secretKey.fill(0);
-        dsa.secretKey.fill(0);
-        return;
-      }
-      die(
-        '--independent needs the identity that will sign the attestation: pass --nsec <hex private key>.\n' +
-        '  Or pass --keyfile <path> alone to write a key file for the extension to import,\n' +
-        '  which signs the attestation for you.'
-      );
+      // No identity to sign with, and none needed: the extension signs the attestation
+      // once these keys are in its vault. Print the secrets so they can be pasted
+      // straight into the import box — the extension recomputes the public halves.
+      console.log('\n  Post-quantum secret keys. The extension derives the public keys from these.');
+      console.log('  Paste both lines into Menu -> Security -> Post-quantum key.\n');
+      console.log(`  ${ALG_KEM} secret: ${b64kem}`);
+      console.log(`  ${ALG_DSA} secret: ${b64dsa}\n`);
+      console.log('  These are NOT recoverable from any seed phrase. Back them up before you');
+      console.log('  close this terminal, or the messages sent to them become unreadable.\n');
+      if (seed) seed.fill(0);
+      kem.secretKey.fill(0);
+      dsa.secretKey.fill(0);
+      return;
     }
     if (!/^[0-9a-f]{64}$/i.test(nsec)) die('--nsec must be a 64-character hex private key.');
     privkey = Uint8Array.from(Buffer.from(nsec, 'hex'));
@@ -179,8 +184,8 @@ async function main() {
   if (origin === 'independent') {
     console.log('  This key is NOT recoverable from a seed phrase. Back up the secret keys below');
     console.log('  separately, or you will lose the ability to read messages sent to it.\n');
-    console.log(`  ${ALG_KEM} secret: ${b64(kem.secretKey)}`);
-    console.log(`  ${ALG_DSA} secret: ${b64(dsa.secretKey)}\n`);
+    console.log(`  ${ALG_KEM} secret: ${b64kem}`);
+    console.log(`  ${ALG_DSA} secret: ${b64dsa}\n`);
   } else {
     console.log('  These keys are recoverable from your seed phrase alone. Nothing extra to back up.\n');
   }

@@ -20,6 +20,8 @@ import { handlers as miscHandlers, logActivity } from './lib/bg/misc-handlers.ts
 import {
     handlers as domainHandlers,
     isDomainAllowed, isDomainDismissed,
+    rememberTabOrigin, forgetTabOrigin,
+    releaseLegacyHostGrants,
     isWeblnAllowed,
     waitForConnectDecision,
     isActiveAccountReadOnly,
@@ -90,7 +92,10 @@ async function loadConfig(): Promise<void> {
 
 // ── Request dispatch ──
 
-async function handleRequest({ method, params }: { method: string; params: Record<string, unknown> }): Promise<unknown> {
+async function handleRequest(
+    { method, params }: { method: string; params: Record<string, unknown> },
+    requestingTabId?: number,
+): Promise<unknown> {
     // NIP-07: validate params and gate behind domain allowlist
     if (method.startsWith('nip07_')) {
         validateNip07Params(method, params);
@@ -111,7 +116,7 @@ async function handleRequest({ method, params }: { method: string; params: Recor
             // polling) must not pop the popup open.
             // Waits for the user to click Connect (domain added to allowedDomains)
             // or "Not now" (domain dismissed).
-            const connected = await waitForConnectDecision(origin);
+            const connected = await waitForConnectDecision(origin, requestingTabId);
             if (!connected) {
                 logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
                 throw new Error('Site not connected');
@@ -133,16 +138,22 @@ async function handleRequest({ method, params }: { method: string; params: Recor
             throw new Error('Site not connected');
         }
         if (method === 'webln_enable') {
+            // Whether the Connect card was shown for THIS wallet request. If it was, the
+            // user answered a prompt raised by the wallet call and that is the consent. If
+            // the site was already connected over NIP-07, they have seen nothing about the
+            // wallet, and the handler must ask before granting it.
+            (params as Record<string, unknown>).shownConnectCard = false;
             if (!(await isDomainAllowed(origin))) {
                 if (!(await isDomainDismissed(origin))) {
                     // First enable(): show the Connect card on the active tab and
                     // wait for the user's click (which adds the domain to the
                     // allowlist). Background/inactive tabs get no popup and time out.
-                    const connected = await waitForConnectDecision(origin);
+                    const connected = await waitForConnectDecision(origin, requestingTabId);
                     if (!connected) {
                         logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
                         throw new Error('WebLN access denied');
                     }
+                    (params as Record<string, unknown>).shownConnectCard = true;
                 } else {
                     logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
                     throw new Error('Site not connected');
@@ -202,7 +213,10 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
         (request.params as Record<string, unknown>).origin = new URL(originUrl).hostname;
     }
 
-    handleRequest(request as { method: string; params: Record<string, unknown> })
+    // The requesting tab's id, so the connect gate can tell "this is the tab the user is
+    // looking at" without needing to read its URL — which tabs.query strips unless we hold
+    // an explicit host permission for it. See lib/originMatchesActiveTab.ts.
+    handleRequest(request as { method: string; params: Record<string, unknown> }, sender.tab?.id)
         .then(result => {
             sendResponse({ result });
         })
@@ -215,6 +229,8 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
 // Port-based handler for NIP-07 and WebLN requests from content scripts
 browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
     if (port.name !== 'nip07' && port.name !== 'webln') return;
+
+    port.onDisconnect.addListener(() => forgetTabOrigin(port.sender?.tab?.id));
 
     port.onMessage.addListener(async (request: Record<string, unknown>) => {
         const method = request.method as string;
@@ -238,11 +254,18 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
                 try { port.postMessage({ error: 'Cannot determine request origin' }); } catch {}
                 return;
             }
-            (request.params as Record<string, unknown>).origin = new URL(originUrl).hostname;
+            const originHost = new URL(originUrl).hostname;
+            (request.params as Record<string, unknown>).origin = originHost;
+            // Remember which tab is showing which origin, so account-change broadcasts do
+            // not depend on tabs.query returning a URL we are not permitted to see.
+            rememberTabOrigin(port.sender?.tab?.id, originHost);
         }
 
         try {
-            const result = await handleRequest(request as { method: string; params: Record<string, unknown> });
+            const result = await handleRequest(
+                request as { method: string; params: Record<string, unknown> },
+                port.sender?.tab?.id,
+            );
             try { port.postMessage({ result }); } catch {}
         } catch (error) {
             console.error('[PORT]', port.name, 'error:', method, (error as Error).message);
@@ -277,6 +300,12 @@ signer.cleanupStale();
 // Drop an abandoned onboarding record. Matters on Safari, where storage.session is
 // storage.local and an expired record would otherwise sit on disk indefinitely.
 cleanupExpiredPendingOnboarding().catch(() => {});
+
+// Hand back the per-site host permissions older versions asked for. They gated nothing,
+// and until they are removed Chrome still lists those sites as ones we can read.
+releaseLegacyHostGrants()
+    .then((released) => { if (released.length) console.info('[BG] released', released.length, 'legacy host grants'); })
+    .catch(() => {});
 
 // Permission migrations
 (async () => {

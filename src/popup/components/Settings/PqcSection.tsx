@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconWarning, IconCopy } from '@assets';
 import Button from '@components/Button/Button';
+import Modal from '@components/Modal/Modal';
+import browser from '@shared/browser.ts';
 import styles from './SecuritySection.module.css';
 
 type BlockReason = 'read-only' | 'remote-signer' | 'no-seed' | 'short-seed';
@@ -16,6 +18,50 @@ interface PqcStatus {
   source: 'derived' | 'imported' | null;
   canImport: boolean;
   attestation: { kind: number; created_at: number; tags: string[][]; content: string } | null;
+}
+
+/**
+ * Step-by-step guide, linked from the panel. Kept as one constant so it is changed in one
+ * place rather than hunted through six locale files.
+ *
+ * Points at the extension-facing guide, not the command-line one: someone who tapped this
+ * link is in the popup, not at a terminal. English only on the site today (next-intl is
+ * configured `localePrefix: 'as-needed'`, so the default locale is unprefixed and this URL
+ * resolves). Linking the unprefixed English page from every locale is deliberate — it
+ * exists, whereas /es/guides/... does not.
+ */
+const GUIDE_URL = 'https://nostr-wot.com/guides/turn-on-post-quantum-keys';
+
+/** Remembers that the explainer has been shown once, so it does not reappear every visit. */
+const HOW_SEEN_KEY = 'pqcHowItWorksSeen';
+
+/**
+ * What this actually does, in the order it happens.
+ *
+ * Shown once, the first time the panel is opened, and reachable afterwards from the info
+ * button in the panel header. It used to sit inline above everything else, which pushed
+ * the import panel below the fold — a user who came here specifically to add their own key
+ * could not see where to do it without scrolling past an explanation they had already read.
+ */
+function HowItWorks({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal
+      title={t('pqc.howTitle')}
+      onClose={onClose}
+      zIndex={720}
+      footer={<Button onClick={onClose}>{t('common.gotIt')}</Button>}
+    >
+      <ol className={styles.pqcSteps}>
+        <li>{t('pqc.howStep1')}</li>
+        <li>{t('pqc.howStep2')}</li>
+        <li>{t('pqc.howStep3')}</li>
+      </ol>
+      <p className={styles.pqcHowLimit}>{t('pqc.howLimit')}</p>
+      <a className={styles.pqcCopyLink} href={GUIDE_URL} target="_blank" rel="noreferrer noopener">
+        {t('pqc.guideLink')}
+      </a>
+    </Modal>
+  );
 }
 
 const KEYGEN_SOURCE_URL =
@@ -64,17 +110,6 @@ function PqcImportPanel({ onImported }: { onImported: (s: PqcStatus) => void }) 
       <strong>{t('pqc.importTitle')}</strong>
       <p className={styles.desc}>{t('pqc.importDesc')}</p>
 
-      <p className={styles.desc}>{t('pqc.importCommand')}</p>
-      <code className={styles.pqcCommand}>{KEYGEN_COMMAND}</code>
-      <a
-        className={styles.pqcCopyLink}
-        href={KEYGEN_SOURCE_URL}
-        target="_blank"
-        rel="noreferrer noopener"
-      >
-        {t('pqc.importViewSource')}
-      </a>
-
       <label className={styles.desc} htmlFor="pqc-keyfile">{t('pqc.importPaste')}</label>
       <textarea
         id="pqc-keyfile"
@@ -92,16 +127,35 @@ function PqcImportPanel({ onImported }: { onImported: (s: PqcStatus) => void }) 
         </Button>
         <label className={styles.pqcFileLabel}>
           {t('pqc.importChooseFile')}
-          <input type="file" accept="application/json,.json" onChange={onFile} disabled={busy} hidden />
+          <input type="file" accept="application/json,.json,.txt,text/plain" onChange={onFile} disabled={busy} hidden />
         </label>
       </div>
 
       {error && <div className={styles.error}>{error}</div>}
+
+      {/* The one-off part, folded away: you generate the file once, then come back here to
+          paste it. Keeping it expanded pushed the paste box and buttons off-screen. */}
+      <details className={styles.pqcGenerate}>
+        <summary>{t('pqc.importCommand')}</summary>
+        <code className={styles.pqcCommand}>{KEYGEN_COMMAND}</code>
+        <a
+          className={styles.pqcCopyLink}
+          href={KEYGEN_SOURCE_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          {t('pqc.importViewSource')}
+        </a>
+      </details>
     </div>
   );
 }
 
-export default function PqcSection() {
+export interface PqcSectionHandle {
+  openHowItWorks: () => void;
+}
+
+function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   const [status, setStatus] = useState<PqcStatus | null>(null);
   const [error, setError] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
@@ -111,6 +165,24 @@ export default function PqcSection() {
   const [publishError, setPublishError] = useState<string>('');
   const [existing, setExisting] = useState<{ published: boolean; current: boolean } | null>(null);
   const [removing, setRemoving] = useState<boolean>(false);
+  const [howOpen, setHowOpen] = useState<boolean>(false);
+
+  useImperativeHandle(ref, () => ({ openHowItWorks: () => setHowOpen(true) }), []);
+
+  // First visit only: explain before asking for a decision, then get out of the way.
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await browser.storage.local.get(HOW_SEEN_KEY) as Record<string, boolean>;
+        if (!data[HOW_SEEN_KEY]) setHowOpen(true);
+      } catch { /* never block the panel on this */ }
+    })();
+  }, []);
+
+  const closeHow = () => {
+    setHowOpen(false);
+    browser.storage.local.set({ [HOW_SEEN_KEY]: true }).catch(() => {});
+  };
 
   useEffect(() => {
     (async () => {
@@ -158,8 +230,10 @@ export default function PqcSection() {
     }
   };
 
-  if (error) return <div className={styles.error}>{error}</div>;
-  if (!status) return <p className={styles.desc}>{t('common.loading')}</p>;
+  const how = howOpen ? <HowItWorks onClose={closeHow} /> : null;
+
+  if (error) return <>{how}<div className={styles.error}>{error}</div></>;
+  if (!status) return <>{how}<p className={styles.desc}>{t('common.loading')}</p></>;
 
   const imported = status.source === 'imported';
 
@@ -167,6 +241,8 @@ export default function PqcSection() {
   if (!status.canDerive) {
     const reason = status.reason as BlockReason;
     return (
+      <>
+      {how}
       <div className={styles.pqcBlocked}>
         <div className={styles.pqcNotice}>
           <IconWarning size={18} />
@@ -183,11 +259,13 @@ export default function PqcSection() {
             read-only or remote-signer account would store secrets nothing can use. */}
         {status.canImport && <PqcImportPanel onImported={setStatus} />}
       </div>
+      </>
     );
   }
 
   return (
     <div>
+      {how}
       <div className={styles.pqcNoticeOk}>
         <IconKey size={18} />
         <div>
@@ -264,3 +342,5 @@ export default function PqcSection() {
     </div>
   );
 }
+
+export default forwardRef(PqcSection);
