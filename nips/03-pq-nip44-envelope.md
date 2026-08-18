@@ -13,7 +13,7 @@ under it is recoverable by anyone who can solve discrete log on that curve, whic
 is what Shor's algorithm does. Traffic captured now is decryptable then, and no
 change made later helps the messages already recorded.
 
-## Hybrid, not replacement
+## Hybrid first
 
 The ML-KEM shared secret is mixed **with** the NIP-44 conversation key, never used
 instead of it.
@@ -26,11 +26,23 @@ PRK = HKDF-Extract(SHA-256, salt = "", IKM = shared_secret || conversation_key)
 key = HKDF-Expand(SHA-256, PRK, info = "nip-pqc/v1/hybrid", L = 32)
 ```
 
-An implementation MUST NOT use either input alone. Lattice cryptography is young
-by comparison with elliptic curves, and if ML-KEM is broken tomorrow the hybrid
-degrades to exactly NIP-44, which is where every Nostr client already is. A
-KEM-only construction would trade that safety for a smaller payload, which is a
-bad trade at this stage of confidence.
+An implementation of **this profile** MUST NOT use either input alone.
+
+That is a statement about `nip-pqc/v1`, not a position on where Nostr should end
+up. Replacing the classic key exchange outright is the better destination, and it
+is one no single client can reach: it needs relays, signers and every other client
+to move together. Hybrid is what can be deployed unilaterally in the meantime,
+and it closes harvest-now-decrypt-later, which is the half of the problem that
+cannot be fixed retroactively and therefore cannot wait for that coordination.
+
+Being incremental costs little. Lattice cryptography is young by comparison with
+elliptic curves, and if ML-KEM is broken tomorrow the hybrid degrades to exactly
+NIP-44, which is where every Nostr client already is. A KEM-only construction
+would trade that floor away for a smaller payload, which is a poor trade while
+the ecosystem is still deciding.
+
+A future profile that drops the classic input is expected, and the version and
+algorithm bytes exist so it can be introduced without breaking this one.
 
 The ordering `shared_secret || conversation_key` is fixed and MUST be preserved.
 
