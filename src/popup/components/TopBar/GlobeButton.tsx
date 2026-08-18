@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc, rpcNotify } from '@shared/rpc.ts';
-import { connectSite } from '@shared/connectSite.ts';
 import { t } from '@lib/i18n.js';
 import { getClientIconUrl } from '@shared/clientIcons.ts';
 import { IconGlobe } from '@assets';
@@ -49,15 +48,10 @@ export default function GlobeButton() {
     }
   }, [open]);
 
-  // Same ordering as the home card: record consent first, then raise the browser's
-  // host-access dialog, which dismisses this popup and kills everything after the await.
-  // See src/shared/connectSite.ts.
+  // One step, same as the home card. See lib/bg/domain-handlers.ts connectDomain.
   const handleConnect = async () => {
-    const { connected: ok } = await connectSite(domain!, {
-      persistConsent: async (d) => { await rpc('addAllowedDomain', { domain: d }); },
-      requestHostAccess: (d) => browser.permissions.request({ origins: [`*://${d}/*`] }),
-    });
-    if (!ok) return;
+    if (!domain) return;
+    await rpc('connectDomain', { domain });
     setConnected(true);
     rpcNotify('configUpdated');
   };
@@ -67,7 +61,6 @@ export default function GlobeButton() {
     setDisconnecting(true);
     try {
       await rpc('removeAllowedDomain', { domain });
-      await browser.permissions.remove({ origins: [`*://${domain}/*`] }).catch(() => {});
       setConnected(false);
       setOpen(false);
       rpcNotify('configUpdated');

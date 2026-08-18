@@ -1,75 +1,67 @@
+/**
+ * A site's connection state comes from the allowlist, and from nothing else.
+ *
+ * This file previously asserted the opposite: that leftover signer permissions made a site
+ * "connected" and should be auto-added back to the allowlist. That turned Disconnect into a
+ * suggestion — `removeAllowedDomain` never cleared signer permissions, so the next popup
+ * render silently re-added the domain and the pubkey was released again through the
+ * allowlist shortcut in lib/signer.ts.
+ *
+ * It was worse than it looks: the check counted ANY non-empty permission map, including one
+ * whose only entry is an explicit `deny`. A site the user had specifically refused was
+ * therefore auto-connected. The tests asserting that behaviour are why nothing caught it.
+ */
+
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { resolveSiteState, shouldAutoAddDomain } from '../src/shared/siteState.ts';
+import { resolveSiteState } from '../src/shared/siteState.ts';
 
 const DOMAIN = 'example.com';
 
 describe('resolveSiteState', () => {
-  it('returns "connected" when the domain is in allowedDomains', () => {
+  it('returns "connected" only when the domain is in allowedDomains', () => {
     assert.strictEqual(resolveSiteState(['example.com', 'other.com'], {}, DOMAIN), 'connected');
   });
 
-  it('returns "connected" when signer perms exist but domain is not in allowedDomains', () => {
-    assert.strictEqual(resolveSiteState([], { getPublicKey: 'allow' }, DOMAIN), 'connected');
-  });
-
-  it('returns "connected" when both allowlist and signer perms match', () => {
+  it('returns "notConnected" when signer perms exist but the domain is not allowed', () => {
+    // Leftover permissions from a previous connection are not consent. Disconnect must
+    // stick until the user connects again.
     assert.strictEqual(
-      resolveSiteState(['example.com'], { signEvent: 'allow' }, DOMAIN),
-      'connected',
+      resolveSiteState([], { 'signEvent:1': 'allow' }, DOMAIN),
+      'notConnected',
+      'stale permissions must not resurrect a disconnected site',
     );
   });
 
-  it('returns "notConnected" when allowlist and perms are both empty', () => {
-    assert.strictEqual(resolveSiteState([], {}, DOMAIN), 'notConnected');
+  it('returns "notConnected" when the only record is an explicit deny', () => {
+    assert.strictEqual(
+      resolveSiteState([], { 'signEvent:1': 'deny' }, DOMAIN),
+      'notConnected',
+      'a refusal must never read as a connection',
+    );
   });
 
-  it('returns "notConnected" when domain is absent from a non-empty allowlist and has no perms', () => {
+  it('returns "connected" when both the allowlist and signer perms agree', () => {
+    assert.strictEqual(resolveSiteState(['example.com'], { getPublicKey: 'allow' }, DOMAIN), 'connected');
+  });
+
+  it('returns "notConnected" for an unknown domain', () => {
     assert.strictEqual(resolveSiteState(['other.com'], {}, DOMAIN), 'notConnected');
   });
 
-  it('returns "error" only when BOTH inputs failed to load (null)', () => {
+  it('returns "notConnected" when the allowlist loaded but is empty', () => {
+    assert.strictEqual(resolveSiteState([], {}, DOMAIN), 'notConnected');
+  });
+
+  it('returns "error" only when the allowlist itself could not be read', () => {
+    // Without the allowlist there is no way to answer the question, and guessing
+    // "connected" would release the identity on a failed read.
     assert.strictEqual(resolveSiteState(null, null, DOMAIN), 'error');
+    assert.strictEqual(resolveSiteState(null, {}, DOMAIN), 'error');
   });
 
-  it('does not error when only allowedDomains failed but perms exist', () => {
-    assert.strictEqual(resolveSiteState(null, { getPublicKey: 'allow' }, DOMAIN), 'connected');
-  });
-
-  it('does not error when only allowedDomains failed and perms are empty -> notConnected', () => {
-    assert.strictEqual(resolveSiteState(null, {}, DOMAIN), 'notConnected');
-  });
-
-  it('does not error when only perms failed but domain is allowlisted', () => {
+  it('does not depend on the signer-permission read succeeding', () => {
     assert.strictEqual(resolveSiteState(['example.com'], null, DOMAIN), 'connected');
-  });
-
-  it('does not error when only perms failed and domain is not allowlisted -> notConnected', () => {
-    assert.strictEqual(resolveSiteState(['other.com'], null, DOMAIN), 'notConnected');
-  });
-});
-
-describe('shouldAutoAddDomain', () => {
-  it('is true when signer perms exist but domain is not in allowedDomains', () => {
-    assert.strictEqual(shouldAutoAddDomain([], { getPublicKey: 'allow' }, DOMAIN), true);
-  });
-
-  it('is false when domain is already in allowedDomains', () => {
-    assert.strictEqual(
-      shouldAutoAddDomain(['example.com'], { getPublicKey: 'allow' }, DOMAIN),
-      false,
-    );
-  });
-
-  it('is false when there are no signer perms', () => {
-    assert.strictEqual(shouldAutoAddDomain([], {}, DOMAIN), false);
-  });
-
-  it('treats null allowedDomains as empty (auto-add when perms exist)', () => {
-    assert.strictEqual(shouldAutoAddDomain(null, { signEvent: 'allow' }, DOMAIN), true);
-  });
-
-  it('is false when both inputs are null', () => {
-    assert.strictEqual(shouldAutoAddDomain(null, null, DOMAIN), false);
+    assert.strictEqual(resolveSiteState([], null, DOMAIN), 'notConnected');
   });
 });

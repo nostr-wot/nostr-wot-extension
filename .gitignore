@@ -35,3 +35,8 @@ icons/icon128.svg
 *.zip
 
 CLADE.md
+
+# Post-quantum key files. The guide tells users to generate keys.json inside a clone
+# of this repo, so make it impossible to commit one by accident — it holds secret keys.
+keys.json
+*.keyfile.json

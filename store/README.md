@@ -73,11 +73,11 @@ Nostr web app can log you in and request signatures without ever seeing your pri
 | `storage` | Store the encrypted key vault, per-site permissions, settings, and the connected-site allowlist locally. |
 | `activeTab` | Read the current tab's URL to show which site is asking, and open the approval popup only for the tab you're actually on. |
 | `alarms` | On Manifest V3, keep the background service worker alive while the vault is unlocked so the configured auto-lock timer actually governs locking. |
-| `optional_host_permissions: <all_urls>` | **Optional, requested at runtime** only when you connect a site — never granted up front. Lets the extension interact with the specific sites you approve. |
-| Content scripts on `<all_urls>` | Injects the standard `window.nostr` (NIP-07) and `window.webln` (WebLN) providers so Nostr web apps can detect the signer and request approval. No page data is read or sent anywhere; the scripts only relay approved requests to the background. |
+| Content scripts on `<all_urls>` | Injects the standard `window.nostr` (NIP-07) and `window.webln` (WebLN) providers so Nostr web apps can detect the signer and ask for approval. This is what lets a site reach the extension at all — a page cannot call a signer that is not present. No page data is read or sent anywhere; the scripts only relay approved requests to the background. |
 
-The extension does **not** request `scripting`, `tabs`, `history`, `cookies`, `webRequest`,
-or any host permission up front.
+The extension requests **no host permissions at all** — not up front, and not at runtime. It also does not request `scripting`, `tabs`, `history`, `cookies`, or `webRequest`.
+
+Earlier versions asked for access to each site as you connected it. That request gated nothing — whether a site may see your identity is decided by the extension's own allowlist, which the "Connect this site" card writes — so it was removed, and any per-site access granted by an earlier version is handed back automatically on upgrade.
 
 ---
 

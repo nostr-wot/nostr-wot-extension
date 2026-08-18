@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, ReactNode } from 'react';
 import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js';
-import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap } from '@assets';
+import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap, IconInfo } from '@assets';
 import { version as appVersion } from '../../../../package.json';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
+import Modal from '@components/Modal/Modal';
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
 import Button from '@components/Button/Button';
 import MenuSection from './MenuSection';
-import PqcSection from '../Settings/PqcSection';
+import PqcSection, { type PqcSectionHandle } from '../Settings/PqcSection';
 import PermissionsSection from '../Settings/PermissionsSection';
 import SecuritySection from '../Settings/SecuritySection';
 import NetworkSection from '../Settings/NetworkSection';
@@ -44,6 +45,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   const [langModalOpen, setLangModalOpen] = useState<boolean>(false);
   const [langSelected, setLangSelected] = useState<Language | null>(null);
   const [permDetailDomain, setPermDetailDomain] = useState<string | null>(null);
+  const pqcSectionRef = useRef<PqcSectionHandle>(null);
   const permsSectionRef = useRef<any>(null);
   const vault = useVault();
   const { isReadOnly, isNip46, active } = useAccount();
@@ -174,7 +176,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       case 'pqc':
         return (
           <MenuSection>
-            <PqcSection />
+            <PqcSection ref={pqcSectionRef} />
           </MenuSection>
         );
       case 'site-permissions':
@@ -194,6 +196,17 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       onClose={handleClose}
       onBack={currentSection ? popSection : null}
       animating={animating}
+      headerRight={currentSection === 'pqc' ? (
+        // The explainer shows itself once; this is how it is reached again afterwards.
+        <button
+          className={styles.headerHelp}
+          title={t('pqc.howTitle')}
+          aria-label={t('pqc.howTitle')}
+          onClick={() => pqcSectionRef.current?.openHowItWorks()}
+        >
+          <IconInfo size={16} />
+        </button>
+      ) : undefined}
     >
       <div className={styles.menuContent}>
         <div key={currentSection || '_root'} className={styles.sectionContent}>
@@ -237,22 +250,12 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       </div>
 
       {langModalOpen && (
-        <div className={styles.langModal}>
-          <div className={styles.langModalHeader}>
-            <span className={styles.langModalTitle}>
-              {langSelected?.prompt || languages[0].prompt}
-            </span>
-            <button
-              className={styles.langModalClose}
-              onClick={() => setLangModalOpen(false)}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          </div>
-
+        <Modal
+          title={langSelected?.prompt || languages[0].prompt}
+          onClose={() => setLangModalOpen(false)}
+          zIndex={720}
+          footer={<Button onClick={handleLangConfirm}>{t('common.confirm')}</Button>}
+        >
           <div className={styles.langModalWheel}>
             <ScrollWheelPicker
               items={languages}
@@ -266,13 +269,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
               )}
             />
           </div>
-
-          <div className={styles.langModalBottom}>
-            <Button onClick={handleLangConfirm}>
-              {t('common.confirm')}
-            </Button>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {keyAction && (

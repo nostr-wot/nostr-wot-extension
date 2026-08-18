@@ -383,3 +383,23 @@
   line-height: 1.4;
   color: var(--text-secondary);
 }
+
+/* Post-quantum card states. "On" is a status, not a call to action, so it reads calmer
+   than the setup invitation; "stale" needs to catch the eye because senders are currently
+   encrypting to the wrong key. */
+
+.pqcCardOn .pqcIcon {
+  color: var(--success, #16a34a);
+}
+
+.pqcCardOn strong {
+  color: var(--text-heading);
+}
+
+.pqcCardWarn {
+  border-color: var(--warning, #f59e0b);
+}
+
+.pqcCardWarn .pqcIcon {
+  color: var(--warning, #f59e0b);
+}

@@ -41,7 +41,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 | Module | Responsibility |
 |--------|---------------|
 | `state.ts` | Shared mutable state (`config`), constants, method sets, utility functions |
-| `domain-handlers.ts` | Domain allowlist, dismissed domains, first-visit connect prompt, host permissions, identity disable |
+| `domain-handlers.ts` | Domain allowlist (`connectDomain` is its only writer), dismissed domains, first-visit connect prompt, the tab→origin registry behind account broadcasts, identity disable |
 | `vault-handlers.ts` | Vault lifecycle (unlock/lock/create), account switching |
 | `nip07-handlers.ts` | NIP-07 signer methods (sign, encrypt/decrypt), permission management |
 | `wallet-handlers.ts` | WebLN page methods + privileged wallet management (connect, provision, Lightning Address) |
@@ -151,7 +151,6 @@ From `manifest.json` (MV3):
     "manifest_version": 3,
     "permissions": ["storage", "scripting", "activeTab"],
     "optional_permissions": ["notifications"],
-    "optional_host_permissions": ["<all_urls>"],
     "background": {
         "scripts": ["background.ts"],
         "service_worker": "background.ts",

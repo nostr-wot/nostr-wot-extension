@@ -112,13 +112,80 @@ export function derivePqKeys(seed: Uint8Array, account: number = 0): PqKeys {
 export const KEM_SECRET_KEY_BYTES: number = 3168;
 export const DSA_SECRET_KEY_BYTES: number = 4896;
 
+/** Pull base64 blobs of the two secret-key lengths out of arbitrary pasted text. */
+function findSecretKeys(text: string): { kem?: string; dsa?: string } {
+  // Base64 of 3168 bytes is 4224 chars; of 4896 bytes, 6528. Matching on length is what
+  // lets the labels, order and surrounding chatter be irrelevant.
+  const found: { kem?: string; dsa?: string } = {};
+  for (const token of text.match(/[A-Za-z0-9+/=]{64,}/g) || []) {
+    let bytes: Uint8Array;
+    try {
+      bytes = _unb64(token);
+    } catch {
+      continue;
+    }
+    if (bytes.length === KEM_SECRET_KEY_BYTES && !found.kem) found.kem = token;
+    else if (bytes.length === DSA_SECRET_KEY_BYTES && !found.dsa) found.dsa = token;
+  }
+  return found;
+}
+
+/**
+ * Build both key pairs from the secret keys alone.
+ *
+ * ML-KEM and ML-DSA can each recompute their public key from their secret, so a pasted
+ * public key would add nothing except another thing to get wrong. Deriving it and then
+ * proving the pair by round trip is strictly stronger than trusting one that was supplied.
+ */
+function fromSecretKeys(secrets: { kem?: string; dsa?: string }): PqKeys {
+  if (!secrets.kem) {
+    throw new Error(`Could not find an ${ALG_KEM} secret key (${KEM_SECRET_KEY_BYTES} bytes) in what you pasted.`);
+  }
+  if (!secrets.dsa) {
+    throw new Error(`Could not find an ${ALG_DSA} secret key (${DSA_SECRET_KEY_BYTES} bytes) in what you pasted.`);
+  }
+
+  const kemSecret = decodeKey(secrets.kem, `${ALG_KEM} secret key`, KEM_SECRET_KEY_BYTES);
+  const dsaSecret = decodeKey(secrets.dsa, `${ALG_DSA} secret key`, DSA_SECRET_KEY_BYTES);
+
+  let keys: PqKeys;
+  try {
+    keys = {
+      kem: { publicKey: ml_kem1024.getPublicKey(kemSecret), secretKey: kemSecret },
+      dsa: { publicKey: ml_dsa87.getPublicKey(dsaSecret), secretKey: dsaSecret },
+    };
+  } catch {
+    throw new Error('Those secret keys could not be read. Check you copied them completely.');
+  }
+  return provePairs(keys);
+}
+
+/** Decode one base64 key and check its length. */
+function decodeKey(b64: string, label: string, length: number): Uint8Array {
+  let bytes: Uint8Array;
+  try {
+    bytes = _unb64(b64);
+  } catch {
+    throw new Error(`The ${label} could not be decoded — is it complete?`);
+  }
+  if (bytes.length !== length) {
+    throw new Error(`The ${label} is ${bytes.length} bytes, expected ${length} — it looks truncated.`);
+  }
+  return bytes;
+}
+
 /**
  * Parse and validate an externally generated post-quantum key file.
  *
- * An account with no 24-word mnemonic has nothing to derive from, so its keys have to
- * come from outside — `scripts/pqc-keygen.mjs --independent --keyfile` writes exactly
- * this shape. Every field here is user-supplied, and the dangerous failure is not a
- * malformed one but a *plausible* one: a public key paired with a different secret.
+ * An account with no 24-word mnemonic has nothing to derive from, so its keys have to come
+ * from outside — `scripts/pqc-keygen.mjs --independent --keyfile` writes the file shape.
+ *
+ * The secret keys ALONE are also accepted, pasted as the generator prints them, because
+ * both algorithms can recompute their public key from their secret. That makes the public
+ * halves derived rather than supplied, which removes a whole class of mistake: there is no
+ * longer a public key that could fail to match. Every field is user-supplied, and the
+ * dangerous failure is not a malformed one but a *plausible* one: a public key paired with
+ * a different secret.
  * That file imports cleanly, publishes an attestation senders encrypt to, and then
  * fails to decrypt a single message, with nothing to indicate why. So neither pair is
  * taken on its word:
@@ -133,14 +200,29 @@ export const DSA_SECRET_KEY_BYTES: number = 4896;
  * @throws Error naming the specific algorithm and problem
  */
 export function parsePqKeyfile(text: string): PqKeys {
+  const raw = String(text ?? '').trim();
+  if (!raw) throw new Error('Nothing to import.');
+
   let parsed: unknown;
   try {
-    parsed = JSON.parse(String(text).trim());
+    parsed = JSON.parse(raw);
   } catch {
-    throw new Error('That is not a valid key file (expected JSON).');
+    // Not JSON: accept the secret keys as the generator prints them, with or without
+    // labels and in either order. The public halves are recomputed below, so the secrets
+    // are the whole input — there is nothing else worth asking the user to carry around.
+    return fromSecretKeys(findSecretKeys(raw));
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error('That is not a valid key file (expected JSON).');
+  }
+
+  // A file carrying only the secrets is enough too.
+  const asObj = parsed as Record<string, any>;
+  if (typeof asObj.kem?.public !== 'string' && typeof asObj.dsa?.public !== 'string') {
+    return fromSecretKeys({
+      kem: typeof asObj.kem?.secret === 'string' ? asObj.kem.secret : undefined,
+      dsa: typeof asObj.dsa?.secret === 'string' ? asObj.dsa.secret : undefined,
+    });
   }
 
   const file = parsed as Record<string, any>;
@@ -188,6 +270,11 @@ export function parsePqKeyfile(text: string): PqKeys {
     },
   };
 
+  return provePairs(keys);
+}
+
+/** Prove each pair belongs together, by using it. */
+function provePairs(keys: PqKeys): PqKeys {
   // Prove the KEM pair: encapsulate to the public key, open it with the secret.
   let kemMatches = false;
   try {

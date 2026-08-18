@@ -352,6 +352,25 @@ export async function clear(domain?: string, accountId?: string): Promise<void> 
 }
 
 /**
+ * Remove every stored permission for a domain, across all account buckets.
+ *
+ * Disconnecting is a full revocation. `clear()` only touches the active mode's bucket,
+ * which would leave another account's rules behind for a site the user just disconnected —
+ * and stale rules for a disconnected site are exactly what used to resurrect it.
+ * @param domain
+ */
+export async function clearAllForDomain(domain: string): Promise<void> {
+  if (!domain) return;
+  await _lock.run(async () => {
+    const perms = await load();
+    if (!perms[domain]) return;
+    delete perms[domain];
+    await browser.storage.local.set({ [STORAGE_KEY]: perms });
+    invalidateCache();
+  });
+}
+
+/**
  * Remove all permission overrides for a specific account across all domains.
  * Called on account deletion.
  * @param accountId

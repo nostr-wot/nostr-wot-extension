@@ -9,12 +9,13 @@ import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
 import { npubEncode } from '../crypto/bech32.ts';
 import { signEvent } from '../crypto/nip01.ts';
-import { addWeblnAllowedDomain } from './domain-handlers.ts';
+import { addWeblnAllowedDomain, isWeblnAllowed } from './domain-handlers.ts';
 import { getWalletProvider, removeWalletProvider, type WalletConfig } from '../wallet/';
 import { decodeBolt11 } from '../wallet/bolt11.ts';
 import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress, DEFAULT_LNBITS_URL } from '../wallet/lnbits-provision.ts';
 import type { SignedEvent } from '../types.ts';
 import type { HandlerFn } from './state.ts';
+import { logActivity } from './misc-handlers.ts';
 
 // ── Shared utilities ──
 
@@ -49,14 +50,28 @@ export function createNip98SignFn(acctId: string, endpointUrl: string): (challen
 
 export const handlers = new Map<string, HandlerFn>([
     ['webln_enable', async (params) => {
-        const { origin } = params as { origin?: string };
-        // Consent + domain grant happen in the background connect gate
-        // (see background.ts). Reaching here means the user has approved WebLN
-        // access for this origin via the "Connect this site" card. Record the
-        // WebLN-specific consent: every other webln_* method is gated on the
-        // weblnAllowedDomains list, so a site that never called enable() (e.g.
-        // one only NIP-07-connected) cannot read the wallet.
-        if (origin) await addWeblnAllowedDomain(origin);
+        const { origin, shownConnectCard } = params as { origin?: string; shownConnectCard?: boolean };
+        if (!origin) return true;
+        if (await isWeblnAllowed(origin)) return true;
+
+        // Wallet access is a separate consent from the NIP-07 connect, and it has to be
+        // asked for separately too. A site that saw the "Connect this site" card BECAUSE
+        // of this enable() call has answered a wallet prompt — that counts. A site already
+        // connected over NIP-07 has seen nothing about the wallet, and used to fall
+        // straight through this handler: one silent enable() away from reading balances.
+        if (!shownConnectCard) {
+            const decision = await signer.queueRequest({
+                type: 'webln_enable',
+                origin,
+                needsPermission: true,
+            });
+            if (!decision.allow) {
+                logActivity({ domain: origin, method: 'enable', decision: 'rejected' });
+                throw new Error('WebLN access denied');
+            }
+        }
+
+        await addWeblnAllowedDomain(origin);
         return true;
     }],
 
