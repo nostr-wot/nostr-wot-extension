@@ -12,7 +12,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20, 22]
+        # Node 20 reached end of life in April 2026. AMO rejects add-ons built on
+        # unsupported runtimes, so it is not enough to stop declaring it — we must stop
+        # testing on it too, or CI green means nothing for what we ship.
+        node-version: [22, 24]
 
     steps:
       - uses: actions/checkout@v4
