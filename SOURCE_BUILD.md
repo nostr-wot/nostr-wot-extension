@@ -3,8 +3,8 @@ Build instructions — Nostr WoT (Firefox)
 The uploaded add-on is bundled with Vite (+ @crxjs/vite-plugin) from TypeScript/React source. It is NOT minified, and building from source with the pinned dependencies reproduces the uploaded files exactly.
 
 Requirements:
-- Node.js 20.x (built with v20.19.6)
-- npm 10.x or 11.x (built with 11.7.0)
+- Node.js 22.x or 24.x (built with v24.3.0). Node 20 reached end of life in April 2026 and is no longer supported.
+- npm 11.x (built with 11.4.2)
 - macOS or Linux (Windows via WSL)
 
 Get the source (any one — all identical):

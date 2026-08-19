@@ -1,8 +1,11 @@
 {
   "name": "nostr-wot-extension",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

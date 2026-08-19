@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-08-19
+
+### Changed
+- **Built on supported Node versions only.** Mozilla flagged 0.4.0 for declaring Node 20.x as its build environment, which reached end of life in April 2026 — add-ons built on unsupported runtimes are not accepted. The build, the CI matrix and the reviewer instructions now name Node 22.x and 24.x, and `package.json` declares `engines.node >= 22` so the requirement is checkable rather than prose. Nothing about the extension's behaviour changes.
+
 ## [0.5.1] - 2026-08-18
 
 Fewer permissions asked for, and the connect flow says what it means.
