@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Send to a Lightning Address.** The wallet could already receive at one (`you@zaps.nostr-wot.com`), but the Send box only took an invoice — paste `alice@getalby.com` and it said "Could not decode invoice". It now recognises an address, looks it up (LUD-16 → LNURL-pay), shows who you are paying, what they accept, and their note, and lets you enter an amount and — where their server allows it — a comment. The invoice that comes back is checked to be for the amount you approved before anything is paid, and the lookup refuses non-HTTPS, loopback and private-network endpoints. ([#20](https://github.com/nostr-wot/nostr-wot-extension/issues/20))
+
 ## [0.5.2] - 2026-08-19
 
 ### Changed

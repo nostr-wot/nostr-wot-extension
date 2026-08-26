@@ -321,3 +321,36 @@ parser normalizes case/whitespace/control characters first). Applied centrally
 in the `Avatar` component plus the direct `<img>` sites (`ProfilePreview`
 banner, `EditProfileOverlay`). Locally-created `blob:` object URLs used for
 upload previews are exempt because they never come from relay data.
+
+---
+
+## 17. LNURL-pay Hardening (`lib/wallet/lnurl.ts`)
+
+Paying a Lightning Address makes the background service worker — the context
+holding the wallet's admin key — fetch a URL derived from user input, then a
+second URL chosen by that first server. Both are treated as untrusted:
+
+- **`assertPublicHttpsUrl()`** runs on the well-known URL *and* on the callback
+  the endpoint returns. `https://` only (no localhost exception here — unlike
+  LNbits, there is no development target to reach), and it rejects `localhost`,
+  `*.local`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0/8`, `10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fc00::/7`,
+  `fe80::/10`, and bare IP literals. A pasted "address" cannot be used to probe
+  the local machine or the user's network, and the endpoint cannot redirect the
+  second hop inward.
+- **The user's amount is the amount.** The invoice returned by the callback is
+  decoded and its amount compared to the approved amount; a mismatch, an
+  undecodable invoice, or an amountless invoice throws and nothing is paid. A
+  hostile or compromised LNURL server therefore cannot set the price.
+- **Range and comment limits** come from the endpoint's own `minSendable`,
+  `maxSendable`, and `commentAllowed`, enforced client-side before any callback
+  request; `commentAllowed` is itself capped at 1000 characters.
+- **Bounded responses**: 64 KB cap on the body, JSON-object shape required,
+  LUD-06 `{ status: "ERROR", reason }` surfaced (truncated to 200 chars).
+- **No callback in the popup's hands.** `wallet_resolveLightningAddress`
+  returns display fields only, and `wallet_payToLightningAddress` re-resolves
+  the address itself, so the endpoint that was shown is the endpoint that is
+  paid.
+
+Both handlers are privileged (extension pages only) — the port listener still
+rejects everything that is not `nip07_`/`webln_`, so a page cannot reach them.
