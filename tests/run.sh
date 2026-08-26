@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 node --import tsx --test tests/crypto/*.test.ts
 
 # Wallet tests (no browser mock needed)
-node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/inject-webln.test.ts tests/inject-nip44-schemes.test.ts
+node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/wallet/lnurl.test.ts tests/inject-webln.test.ts tests/inject-nip44-schemes.test.ts
 
 # Wizard state machine + popup-gating + rpc transport tests (no browser mock needed)
 node --import tsx --test tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts tests/safeUrl.test.ts tests/rpc.test.ts tests/active-tab-domain.test.ts

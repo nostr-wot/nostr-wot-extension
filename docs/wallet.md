@@ -43,6 +43,7 @@ lib/wallet/
   lnbits.ts             # LNbits REST provider
   lnbits-provision.ts   # Auto-provisioning via challenge-response
   bolt11.ts             # BOLT11 invoice decoder
+  lnurl.ts              # LNURL-pay / Lightning Address resolution (LUD-16, LUD-06)
 
 src/popup/components/
   Wallet/
@@ -54,6 +55,7 @@ tests/wallet/
   lnbits.test.ts         # LNbits provider tests
   lnbits-provision.test.ts # Auto-provisioning tests
   bolt11.test.ts         # BOLT11 decoder tests
+  lnurl.test.ts          # Lightning Address / LNURL-pay tests
   background-handlers.test.ts # Background RPC handler tests
   permissions.test.ts    # Wallet permission tests
   approval.test.ts       # Payment approval flow tests
@@ -161,6 +163,49 @@ Client functions in `lib/wallet/lnbits-provision.ts`:
 - `claimLightningAddress(instanceUrl, username, signFn)`
 - `getLightningAddress(instanceUrl, pubkey)`
 - `releaseLightningAddress(instanceUrl, signFn)`
+
+### 5.3 Paying a Lightning Address (`lnurl.ts`)
+
+The Send flow accepts a Lightning Address (`name@domain`) in the same field as
+a BOLT11 invoice. Resolution is LUD-16 → LUD-06:
+
+```
+User pastes name@domain
+  → GET  https://{domain}/.well-known/lnurlp/{name}  → pay params
+  → Popup shows domain, description, min/max, comment field
+  → GET  {callback}?amount={msats}&comment={text}     → { pr: <bolt11> }
+  → Decode the invoice, check its amount == the approved amount
+  → provider.payInvoice(bolt11)
+```
+
+Both hops are attacker-influenced — the user pastes the address, the *server*
+picks the callback — so `lib/wallet/lnurl.ts` constrains every one of them
+(see [Security §17](security.md#17-lnurl-pay-hardening-libwalletlnurlts)):
+
+| Guard | Why |
+|-------|-----|
+| HTTPS only, on both the well-known URL and the callback | No cleartext, no downgrade |
+| No loopback / private / link-local / IP-literal hosts | A pasted "address" must not probe the LAN |
+| Amount clamped to `[minSendable, maxSendable]` before any request | Endpoint's own stated limits |
+| Returned invoice decoded and its amount compared to the approved amount | The server must not set the price |
+| Amountless invoices refused | Same reason |
+| Comment truncated to `commentAllowed` (itself capped at 1000) | LUD-12 |
+| 64 KB response cap, LUD-06 `status: "ERROR"` surfaced verbatim | Bounded, legible failures |
+
+Exports:
+- `parseLightningAddress(input)` / `isLightningAddress(input)` — parse/detect; never throws
+- `lightningAddressToLnurlpUrl(address)` — the LUD-16 well-known URL
+- `assertPublicHttpsUrl(url)` — the guard above; returns the parsed `URL`
+- `fetchPayParams(address, fetchFn?)` — validated `LnurlPayParams`
+- `requestInvoice(params, amountSats, comment?, fetchFn?)` — amount-verified `{ bolt11, amountSats }`
+
+Note: this runs in the background service worker with no host permission for
+arbitrary domains, so the LNURL server must serve permissive CORS (nearly all
+do). A server that does not is reported as "could not reach the endpoint".
+
+`wallet_payToLightningAddress` re-resolves the address instead of trusting a
+callback URL passed back from the popup, and the resolve handler never returns
+the callback — the endpoint the user saw is the endpoint that gets paid.
 
 ---
 
@@ -280,6 +325,8 @@ Extends the existing signer prompt system:
 | `wallet_getNwcUri` | Get NWC connection URI (if available) |
 | `wallet_hasConfig` | Check if wallet is configured |
 | `wallet_provision` | Auto-provision a new LNbits wallet |
+| `wallet_resolveLightningAddress` | Resolve a Lightning Address to pay params (min/max sats, description, comment limit) |
+| `wallet_payToLightningAddress` | Resolve, request an amount-verified invoice, and pay it |
 | `wallet_claimLightningAddress` | Claim a Lightning Address username |
 | `wallet_getLightningAddress` | Look up current Lightning Address |
 | `wallet_releaseLightningAddress` | Release a claimed Lightning Address |
@@ -349,6 +396,11 @@ See [Storage](storage.md#9-wallet-storage) and [Security](security.md#8-wallet-s
 **Connected wallet** (`Wallet.tsx`):
 - **Balance card** with gear icon for settings
 - **Deposit/Send buttons** — open centered modals (rendered via `createPortal` to escape parent overflow)
+- **Send modal** takes either a BOLT11 invoice or a Lightning Address. An
+  address is detected as it is typed, resolved (debounced 400 ms) via
+  `wallet_resolveLightningAddress`, and shown as destination + description +
+  accepted range, with amount and — where the endpoint allows it — comment
+  fields. Pay stays disabled until the amount is inside the range.
 - **Transaction list** with search and pagination
 - **Settings overlay** (full-page): provider info + disconnect, NWC URI copy, auto-approve threshold, Lightning Address claim/view (LNbits only)
 
