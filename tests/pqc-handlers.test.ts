@@ -313,3 +313,59 @@ describe('imported keys decrypt a post-quantum message', () => {
     );
   });
 });
+
+// ── The dashboard must never touch the network ──
+//
+// The post-quantum card renders on every popup open. It briefly asked the relays whether
+// the attestation was published, which meant a WebSocket round trip to every write relay
+// each time the popup opened — the popup took tens of seconds to become usable and the
+// console filled with socket-state noise. The answer is cached by the panel instead.
+
+describe('pqc_getPublishedCached', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    await vault.destroy();
+  });
+
+  const cached = () => handlers.get('pqc_getPublishedCached')!({}) as Promise<any>;
+
+  it('returns nothing before any check has run', async () => {
+    await vaultWith(await createFromMnemonic(M24, 'Main'));
+    assert.strictEqual(await cached(), null, 'no answer is better than a guessed one');
+  });
+
+  it('returns the answer the relay check stored', async () => {
+    const acct = await createFromMnemonic(M24, 'Main');
+    await vaultWith(acct);
+    await browserMock.storage.local.set({
+      pqcPublishState: { pubkey: acct.pubkey, published: true, current: true, at: Date.now() },
+    });
+    const r = await cached();
+    assert.strictEqual(r.published, true);
+    assert.strictEqual(r.current, true);
+  });
+
+  it('ignores an answer belonging to a different account', async () => {
+    const acct = await createFromMnemonic(M24, 'Main');
+    await vaultWith(acct);
+    await browserMock.storage.local.set({
+      pqcPublishState: { pubkey: 'someone-else', published: true, current: true, at: Date.now() },
+    });
+    assert.strictEqual(await cached(), null, 'another account\'s state is not this one\'s');
+  });
+
+  it('opens no sockets — it is a local read', async () => {
+    // If this ever reaches the network again, the dashboard regression is back.
+    const acct = await createFromMnemonic(M24, 'Main');
+    await vaultWith(acct);
+    const originalWs = (globalThis as any).WebSocket;
+    let opened = 0;
+    (globalThis as any).WebSocket = function () { opened++; return { close() {}, send() {} }; };
+    try {
+      await cached();
+    } finally {
+      (globalThis as any).WebSocket = originalWs;
+    }
+    assert.strictEqual(opened, 0, 'the dashboard card must not talk to relays');
+  });
+});

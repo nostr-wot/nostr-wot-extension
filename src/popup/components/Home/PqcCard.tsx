@@ -54,10 +54,14 @@ export default function PqcCard({ onOpen }: PqcCardProps) {
         }
 
         // Keys exist. Whether the feature is ON depends on the attestation being out
-        // there and matching — asked of the relays, so it stays right when it was
-        // published from another device.
-        const pub = await rpc<Published>('pqc_checkPublished').catch(() => null);
+        // there and matching — but that is a relay round trip, and this card renders on
+        // every popup open. Asking the network here made the popup take tens of seconds
+        // to become usable. Read the last answer instead; the post-quantum panel refreshes
+        // it whenever the user opens it, which is also when it can act on it.
+        const pub = await rpc<Published | null>('pqc_getPublishedCached').catch(() => null);
         if (cancelled) return;
+        // No answer yet: invite rather than assert. Claiming "on" without evidence would
+        // be the one wrong thing to say here.
         if (!pub?.published) setState('setup');
         else setState(pub.current ? 'enabled' : 'stale');
       } catch {

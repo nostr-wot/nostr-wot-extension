@@ -31,6 +31,22 @@ import { liveQuery } from '../relay.ts';
 import { config, type HandlerFn } from './state.ts';
 import type { UnsignedEvent } from '../types.ts';
 
+/** Where the last relay answer is kept, so the dashboard never has to ask the network. */
+const PUBLISH_CACHE_KEY = 'pqcPublishState';
+
+interface PublishCache {
+  pubkey: string;
+  published: boolean;
+  current: boolean;
+  at: number;
+}
+
+async function cachePublishState(pubkey: string, r: { published: boolean; current: boolean }): Promise<void> {
+  try {
+    await browser.storage.local.set({ [PUBLISH_CACHE_KEY]: { pubkey, ...r, at: Date.now() } });
+  } catch { /* the answer is still returned; caching is best-effort */ }
+}
+
 /** Replaceable kind carrying post-quantum public keys. See the proposed NIP. */
 export const PQC_KIND = 10203;
 
@@ -267,6 +283,25 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
   }],
 
   /**
+   * The last relay answer, without asking the relays.
+   *
+   * The dashboard card needs to know whether post-quantum keys are published, and it is
+   * rendered on every popup open. Asking the relays there meant a WebSocket round trip to
+   * every write relay each time the popup opened — which is why the popup could take tens
+   * of seconds to become usable and why the console filled with socket-state noise. The
+   * card reads this instead; the panel refreshes it when the user actually opens it.
+   */
+  ['pqc_getPublishedCached', async () => {
+    const acct = await activeAccount();
+    if (!acct) return null;
+    const data = await browser.storage.local.get(PUBLISH_CACHE_KEY) as Record<string, PublishCache | undefined>;
+    const cached = data[PUBLISH_CACHE_KEY];
+    // Tied to the pubkey: another account's answer is not this account's answer.
+    if (!cached || cached.pubkey !== acct.pubkey) return null;
+    return { published: cached.published, current: cached.current, at: cached.at };
+  }],
+
+  /**
    * Is an attestation already on the user's relays, and does it match the current keys?
    *
    * Answered by querying relays rather than a local flag, so it stays correct when the
@@ -291,11 +326,16 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
       return { published: false, current: false };
     }
 
-    if (!found) return { published: false, current: false };
+    if (!found) {
+      await cachePublishState(status.pubkey, { published: false, current: false });
+      return { published: false, current: false };
+    }
 
     // Published is not enough: if the keys rotated, what is out there is stale and
     // senders would encrypt to a key this account no longer uses.
     const kemTag = found.tags.find(t => t[0] === 'alg' && t[1] === ALG_KEM);
-    return { published: true, current: kemTag?.[2] === status.keys?.kem };
+    const result = { published: true, current: kemTag?.[2] === status.keys?.kem };
+    await cachePublishState(status.pubkey, result);
+    return result;
   }],
 ]);
