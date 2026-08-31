@@ -94,6 +94,8 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `format/` | `truncateNpub`, `getInitial`, `formatTimeAgo`, `formatBytes`, `toPercent`, `toFraction` |
 | `permissions.ts` | `formatPermMethod` |
 | `url.ts` | `getDomainFromUrl` |
+| `activeTabDomain.ts` | `resolveActiveTabDomain` — which site the popup is looking at |
+| `siteState.ts` | `resolveSiteState` — connected / notConnected / empty / error |
 | `activity.ts` | `groupActivityEntries` |
 | `constants.ts` | `AUTO_LOCK_OPTIONS`, `DEFAULT_RELAYS`, `KIND_LABELS`, etc. |
 | `browser.ts` | Browser detection and API utilities for UI code |
@@ -129,3 +131,38 @@ Always use aliases instead of relative paths when crossing module boundaries.
 | `useRpc(method, params, opts)` | React hook for loading data on mount |
 
 This ensures consistent error handling, type narrowing, and makes it easy to find all RPC call sites.
+
+---
+
+## 9. Effects in a Popup
+
+The popup is a window that is destroyed on focus loss, talking to a service worker that is torn down after ~30s idle. Effects written for a long-lived web page misbehave here in ways that are easy to ship and hard to see. Four rules, each of which exists because breaking it produced a real bug.
+
+**Key effects on stable identities, not on objects.** `AccountContext` recomputes `active` with `accounts.find(...)` on every render, so any storage write it watches — a profile resolving, for instance — hands consumers a brand-new object for the same account. An effect keyed on `[active]` re-runs on all of them. Depend on `active?.id`. `HomeTab` keyed on the object re-ran its whole site detection, flipped back to "Loading…", and remounted every card below it, each of which re-fired its own fetches.
+
+**Give every async effect a way to know it is obsolete.** Either a `cancelled` flag cleared in the effect's teardown, or — when the effect can re-run while an earlier pass is still in flight — a version ref, so the slower of two overlapping runs cannot win by finishing last:
+
+```ts
+const runRef = useRef(0);
+const load = useCallback(async () => {
+  const run = ++runRef.current;
+  const current = () => run === runRef.current;
+  const data = await rpc('...');
+  if (!current()) return;
+  setState(data);
+}, []);
+```
+
+**A failed read is unknown, not a negative answer.** `catch → false` turns a service-worker wake-up failure into a confident "not connected", "no wallet", or "post-quantum not set up", each of which invites the user to redo something already done. Keep the state nullable and render the third case.
+
+**`storage.onChanged` is how an open popup hears about a write; `runtime.sendMessage` is not.** Runtime messages are not delivered back to the document that sent them, so a popup cannot notify itself, and a background broadcast only reaches a popup that was already open. Storage changes reach every extension context including the writer. Filter on the area — most keys are `local`, but `relays` is `sync`:
+
+```ts
+const onChanged = (changes: Record<string, unknown>, area: string) => {
+  if (area === 'local' && changes.allowedDomains) read();
+};
+browser.storage.onChanged.addListener(onChanged);
+return () => browser.storage.onChanged.removeListener(onChanged);
+```
+
+**No mount effect may open a socket.** Relay and NWC round trips on popup open put the slowest relay on the path to first paint. Ask the background for a cached answer and let it refresh behind.

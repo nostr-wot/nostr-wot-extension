@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
@@ -46,7 +46,15 @@ function useSiteState(active: Account | null) {
   const [siteState, setSiteState] = useState<string | null>(null); // null = loading, 'empty' | 'notConnected' | 'connected' | 'error'
   const [identityEnabled, setIdentityEnabled] = useState<boolean>(true);
 
+  // Which run of loadHomeState is the current one. Without this the slower of
+  // two overlapping runs wins simply by finishing last, and paints its stale
+  // answer over the newer one.
+  const runRef = useRef(0);
+
   const loadHomeState = useCallback(async () => {
+    const run = ++runRef.current;
+    const current = () => run === runRef.current;
+
     // Re-enter the loading state so re-runs (e.g. when `active` resolves) don't
     // linger on a stale connected view while async detection is in flight.
     setSiteState(null);
@@ -55,6 +63,7 @@ function useSiteState(active: Account | null) {
       // Not tab.url: the browser withholds it from us on a site we hold no host
       // permission for, which is now every site. See shared/activeTabDomain.
       const { domain: d, restricted } = await resolveActiveTabDomain();
+      if (!current()) return;
       if (restricted || !d) {
         setSiteState('empty');
         return;
@@ -67,6 +76,7 @@ function useSiteState(active: Account | null) {
         rpc<string[]>('getIdentityDisabledSites'),
         rpc<Record<string, string>>('signer_getPermissionsForDomain', { domain: d }),
       ]);
+      if (!current()) return;
 
       const allowedDomains = allowedR.status === 'fulfilled' ? (allowedR.value || []) : null;
       const identityDisabled = identityR.status === 'fulfilled' ? (identityR.value || []) : [];
@@ -84,13 +94,24 @@ function useSiteState(active: Account | null) {
 
       setSiteState(state);
     } catch {
+      if (!current()) return;
       setSiteState(resolvedDomain ? 'error' : 'empty');
     }
   }, []);
 
+  // `active.id`, not `active`. AccountContext recomputes `active` with
+  // `accounts.find(...)` on every render, so any write it watches — including a
+  // profileCache write, which happens whenever a profile resolves — hands this
+  // effect a new object identity for the same account. It then re-ran the whole
+  // detection, reset siteState to null ("Loading…"), and remounted every card
+  // below, each of which re-fired its own fetches. With several accounts that is
+  // the same work several times over on a single popup open.
+  //
+  // loadHomeState never reads `active`; it only needed to re-run when the
+  // account genuinely changes.
   useEffect(() => {
     loadHomeState();
-  }, [active, loadHomeState]);
+  }, [active?.id, loadHomeState]);
 
   return { domain, siteState, identityEnabled, setIdentityEnabled, loadHomeState };
 }

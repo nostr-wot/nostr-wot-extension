@@ -10,9 +10,14 @@ interface ApprovalRequest {
   [key: string]: any;
 }
 
+// A second, shadow copy of ApprovalOverlay's ApprovalGroup. It had drifted:
+// the overlay passes `permKey` on every group it renders, and this type did not
+// admit it, so the call site has been a type error. The card does not read the
+// field — it is optional here to describe what it is actually handed.
 interface ApprovalGroup {
   origin: string;
   method: string;
+  permKey?: string;
   nip46InFlight?: boolean;
   requests: ApprovalRequest[];
 }
