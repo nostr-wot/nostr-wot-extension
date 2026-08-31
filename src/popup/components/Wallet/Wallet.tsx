@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
@@ -11,6 +11,7 @@ import { IconSettings, IconTuner } from '@assets/index';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
 import { isLightningAddress } from '@lib/wallet/lnurl.ts';
 import { formatSats } from '@shared/format/number.ts';
+import { resolveSendTarget } from '@shared/sendTarget.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 
 import styles from './Wallet.module.css';
@@ -298,20 +299,28 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   };
 
   const handleSend = async () => {
-    const trimmed = sendInput.trim();
-    if (!trimmed) return;
+    // Ask once, act on that answer. Recomputing the recipient here — or
+    // branching on `sendAddress` while the button gated on something else — is
+    // how the previous address got paid.
+    const target = sendTarget;
+    if (target.kind === 'none') return;
     setSendLoading(true);
     setSendError('');
     setSendSuccess('');
     try {
-      if (sendAddress) {
+      if (target.kind === 'address') {
         await rpc<{ preimage: string }>('wallet_payToLightningAddress', {
-          address: sendAddress.address,
-          amountSats: Number(sendAmount),
-          comment: sendAddress.commentAllowed > 0 ? sendComment.trim() || undefined : undefined,
+          address: target.address,
+          amountSats: target.amountSats,
+          comment: sendAddress && sendAddress.commentAllowed > 0
+            ? sendComment.trim() || undefined
+            : undefined,
+          // One id per click, so a transport-level rpc() retry replays the
+          // result instead of sending a second payment.
+          intentId: crypto.randomUUID(),
         });
       } else {
-        await rpc<{ preimage: string }>('wallet_payInvoice', { bolt11: trimmed });
+        await rpc<{ preimage: string }>('wallet_payInvoice', { bolt11: target.bolt11 });
       }
       setSendSuccess(t('wallet.paymentSent'));
       fetchBalance();
@@ -437,15 +446,27 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
 
   // Resolve a typed Lightning Address to its pay params, debounced so a partial
   // address does not fire a request on every keystroke.
+  //
+  // The address we last resolved lives in a ref rather than in the dependency
+  // array: keying the effect on `sendAddress?.address` made it re-enter itself
+  // as soon as the body cleared that state.
+  const resolvedForRef = useRef<string | null>(null);
   useEffect(() => {
     const trimmed = sendInput.trim().toLowerCase();
     if (!sendIsAddress) {
+      resolvedForRef.current = null;
       setSendAddress(null);
       setResolveError('');
       setResolveLoading(false);
       return;
     }
-    if (sendAddress?.address === trimmed) return;
+    if (resolvedForRef.current === trimmed) return;
+
+    // Drop the old resolution NOW, before the debounce. Leaving it in place is
+    // what let the Pay button stay enabled against the previous recipient for
+    // 400ms while the field already showed a different address.
+    resolvedForRef.current = null;
+    setSendAddress(null);
 
     let cancelled = false;
     setResolveLoading(true);
@@ -454,12 +475,14 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       try {
         const resolved = await rpc<ResolvedAddress>('wallet_resolveLightningAddress', { address: trimmed });
         if (cancelled) return;
+        resolvedForRef.current = trimmed;
         setSendAddress(resolved);
         // Seed the amount with the minimum so a one-amount endpoint (a fixed
         // price, min === max) needs no typing at all.
         setSendAmount((prev) => prev || String(resolved.minSats));
       } catch (e: unknown) {
         if (cancelled) return;
+        resolvedForRef.current = null;
         setSendAddress(null);
         setResolveError((e as Error).message);
       } finally {
@@ -468,7 +491,17 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     }, 400);
 
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [sendInput, sendIsAddress, sendAddress?.address]);
+  }, [sendInput, sendIsAddress]);
+
+  // The single answer to "what would Pay send?", shared by the button's guard
+  // and the handler so the two cannot disagree. See src/shared/sendTarget.ts.
+  const sendTarget = useMemo(() => resolveSendTarget({
+    input: sendInput,
+    isAddress: sendIsAddress,
+    resolved: sendAddress,
+    amount: sendAmount,
+    invoiceDecodable: !!decodedInvoice,
+  }), [sendInput, sendIsAddress, sendAddress, sendAmount, decodedInvoice]);
 
   const sendAmountSats = Number(sendAmount);
   const sendAmountValid = sendAddress
@@ -751,9 +784,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
                     small
                     onClick={handleSend}
                     disabled={
-                      sendLoading
-                      || !sendInput.trim()
-                      || (sendIsAddress ? !sendAddress || !sendAmountValid : !decodedInvoice)
+                      sendLoading || sendTarget.kind === 'none'
                     }
                   >
                     {sendLoading ? t('common.loading') : t('wallet.confirmPay')}
