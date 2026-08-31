@@ -138,7 +138,28 @@ describe('assertPublicHttpsUrl', () => {
   it('rejects bare public IPs and IPv6 literals', () => {
     assert.throws(() => assertPublicHttpsUrl('https://8.8.8.8/cb'), /bare IP/);
     assert.throws(() => assertPublicHttpsUrl('https://[2001:4860:4860::8888]/cb'), /bare IP/);
-    assert.throws(() => assertPublicHttpsUrl('https://[::1]/cb'), /private-network/);
+    // Refused as a bare IP rather than as private-network: an IPv6 literal is
+    // the only hostname that can contain a colon, so the literal check covers
+    // ::1, fc00::/7 and fe80::/10 without inspecting the range.
+    assert.throws(() => assertPublicHttpsUrl('https://[::1]/cb'), /bare IP/);
+  });
+
+  it('rejects every private IPv6 range, whatever the message says', () => {
+    for (const host of ['[::1]', '[fc00::1]', '[fd12:3456::1]', '[fe80::1]']) {
+      assert.throws(() => assertPublicHttpsUrl(`https://${host}/cb`), /LNURL:/, host);
+    }
+  });
+
+  it('accepts real domains that merely start with fc or fd', () => {
+    // The guard used to prefix-match hostnames for "fc"/"fd" reaching for IPv6
+    // unique-local addresses, which made ordinary domains unpayable.
+    for (const host of ['fdn.fr', 'fc2.com', 'fdroid.org', 'fcbarcelona.com']) {
+      assert.equal(
+        assertPublicHttpsUrl(`https://${host}/cb`).hostname,
+        host,
+        `${host} is a domain, not a private address`,
+      );
+    }
   });
 
   it('rejects malformed URLs', () => {
@@ -301,5 +322,98 @@ describe('requestInvoice', () => {
       /private-network/,
     );
     assert.equal(urls.length, 0);
+  });
+});
+
+describe('parseLightningAddress — names that look like invoices', () => {
+  it('accepts local parts and domains beginning "lnurl" or "lnbc"', () => {
+    // These were rejected by a prefix test on the whole input. An invoice or an
+    // LNURL string is bech32 and can never contain "@", so requiring "@" is
+    // what separates the two — the prefix test only cost real users.
+    for (const address of ['lnurlpay@example.com', 'lnurl@example.com', 'bob@lnbc.io', 'lnbc@example.com']) {
+      assert.deepEqual(
+        parseLightningAddress(address),
+        { name: address.split('@')[0], domain: address.split('@')[1] },
+        address,
+      );
+    }
+  });
+
+  it('still refuses actual invoices and LNURL strings', () => {
+    assert.equal(parseLightningAddress(INVOICE_250K), null);
+    assert.equal(parseLightningAddress('lnurl1dp68gurn8ghj7ampd3kx2ar0'), null);
+  });
+});
+
+describe('fetchJson hardening', () => {
+  /** Like mockFetch, but keeps the RequestInit so the guarantees can be asserted. */
+  function recordingFetch(res: Response) {
+    const inits: RequestInit[] = [];
+    const fetchFn = async (_url: string, init?: RequestInit): Promise<Response> => {
+      inits.push(init || {});
+      return res;
+    };
+    return { fetchFn, inits };
+  }
+
+  it('refuses to follow redirects', async () => {
+    // docs/security.md §17 promises "the endpoint cannot redirect the second hop
+    // inward". assertPublicHttpsUrl vouches for the URL we request; it cannot
+    // vouch for wherever a 302 points, so the redirect must never be followed.
+    const { fetchFn, inits } = recordingFetch(jsonResponse(PAY_PARAMS_BODY));
+    await fetchPayParams('alice@example.com', fetchFn);
+    assert.equal(inits[0].redirect, 'error');
+  });
+
+  it('bounds every request with a timeout', async () => {
+    const { fetchFn, inits } = recordingFetch(jsonResponse(PAY_PARAMS_BODY));
+    await fetchPayParams('alice@example.com', fetchFn);
+    assert.ok(inits[0].signal, 'a hostile endpoint must not be able to hang the worker forever');
+  });
+
+  it('reports a timeout as a timeout', async () => {
+    const timeout = Object.assign(new Error('aborted'), { name: 'TimeoutError' });
+    const { fetchFn } = mockFetch([timeout]);
+    await assert.rejects(fetchPayParams('alice@example.com', fetchFn), /took too long/);
+  });
+
+  it('stops reading a body that exceeds the cap', async () => {
+    // The cap has to bite while reading. Buffering first and measuring after
+    // means the oversized body has already been pulled into the worker.
+    const huge = new Response('x'.repeat(70 * 1024));
+    const { fetchFn } = mockFetch([huge]);
+    await assert.rejects(fetchPayParams('alice@example.com', fetchFn), /too large/);
+  });
+
+  it('refuses an oversized body on its declared length alone', async () => {
+    const res = new Response('{}', { headers: { 'content-length': String(80 * 1024) } });
+    const { fetchFn } = mockFetch([res]);
+    await assert.rejects(fetchPayParams('alice@example.com', fetchFn), /too large/);
+  });
+
+  it('still reads a normal body correctly', async () => {
+    const { fetchFn } = mockFetch([jsonResponse(PAY_PARAMS_BODY)]);
+    const params = await fetchPayParams('alice@example.com', fetchFn);
+    assert.equal(params.address, 'alice@example.com');
+    assert.equal(params.minSendable, 1000);
+  });
+});
+
+describe('requestInvoice — ranges with no whole sat in them', () => {
+  it('says so instead of asking for an amount between 1 and 0', async () => {
+    const { fetchFn, urls } = mockFetch([jsonResponse({ pr: INVOICE_250K })]);
+    await assert.rejects(
+      requestInvoice({ ...BASE_PARAMS, minSendable: 500, maxSendable: 900 }, 1, undefined, fetchFn),
+      /does not accept any whole-sat amount/,
+    );
+    assert.equal(urls.length, 0, 'nothing should be requested for an impossible range');
+  });
+
+  it('still gives the real range when one exists', async () => {
+    const { fetchFn } = mockFetch([jsonResponse({ pr: INVOICE_250K })]);
+    await assert.rejects(
+      requestInvoice({ ...BASE_PARAMS, minSendable: 10_000, maxSendable: 50_000 }, 1, undefined, fetchFn),
+      /between 10 and 50 sats/,
+    );
   });
 });

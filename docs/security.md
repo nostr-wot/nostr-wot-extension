@@ -334,10 +334,25 @@ second URL chosen by that first server. Both are treated as untrusted:
   the endpoint returns. `https://` only (no localhost exception here — unlike
   LNbits, there is no development target to reach), and it rejects `localhost`,
   `*.local`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0/8`, `10.0.0.0/8`,
-  `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fc00::/7`,
-  `fe80::/10`, and bare IP literals. A pasted "address" cannot be used to probe
-  the local machine or the user's network, and the endpoint cannot redirect the
-  second hop inward.
+  `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, and every bare IP
+  literal. A pasted "address" cannot be used to probe the local machine or the
+  user's network.
+
+  The IPv6 private ranges (`::1`, `fc00::/7`, `fe80::/10`) are covered by the
+  bare-literal rule rather than by a range test: an IPv6 literal is the only
+  hostname that may contain a colon, so requiring a *name* excludes all of them
+  at once. An earlier version prefix-matched hostnames for `fc`/`fd`, reaching
+  for unique-local addresses; because it ran against every hostname it rejected
+  real domains — `fdn.fr`, `fc2.com`, `fdroid.org` — as private endpoints.
+  Matching a name against an address range is a category error.
+- **Redirects are refused, not followed** (`redirect: 'error'`).
+  `assertPublicHttpsUrl` vouches for the URL being requested and can say nothing
+  about wherever a `302` points; following one would let an endpoint that passed
+  the check hand back an internal address and walk the fetch straight inside.
+  This is what makes "the endpoint cannot redirect the second hop inward" true.
+- **Every request is bounded in time**, 15s via `AbortSignal.timeout`, so an
+  endpoint that accepts a connection and then says nothing cannot hold the
+  service worker open.
 - **The user's amount is the amount.** The invoice returned by the callback is
   decoded and its amount compared to the approved amount; a mismatch, an
   undecodable invoice, or an amountless invoice throws and nothing is paid. A
@@ -345,8 +360,12 @@ second URL chosen by that first server. Both are treated as untrusted:
 - **Range and comment limits** come from the endpoint's own `minSendable`,
   `maxSendable`, and `commentAllowed`, enforced client-side before any callback
   request; `commentAllowed` is itself capped at 1000 characters.
-- **Bounded responses**: 64 KB cap on the body, JSON-object shape required,
-  LUD-06 `{ status: "ERROR", reason }` surfaced (truncated to 200 chars).
+- **Bounded responses**: 64 KB cap on the body, enforced *while reading* — the
+  declared `Content-Length` is checked first, then the stream is read chunk by
+  chunk and cancelled the moment it exceeds the cap. Measuring after buffering
+  would only decline to parse a body already pulled into the worker. JSON-object
+  shape required, LUD-06 `{ status: "ERROR", reason }` surfaced (truncated to
+  200 chars).
 - **No callback in the popup's hands.** `wallet_resolveLightningAddress`
   returns display fields only, and `wallet_payToLightningAddress` re-resolves
   the address itself, so the endpoint that was shown is the endpoint that is
