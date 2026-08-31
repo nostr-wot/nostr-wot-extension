@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
@@ -9,10 +9,23 @@ import QrCode from '@components/QrCode/QrCode';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import { IconSettings, IconTuner } from '@assets/index';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
+import { isLightningAddress } from '@lib/wallet/lnurl.ts';
 import { formatSats } from '@shared/format/number.ts';
+import { resolveSendTarget } from '@shared/sendTarget.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 
 import styles from './Wallet.module.css';
+
+/** What `wallet_resolveLightningAddress` hands back for the confirmation card. */
+interface ResolvedAddress {
+  address: string;
+  domain: string;
+  minSats: number;
+  maxSats: number;
+  description: string | null;
+  commentAllowed: number;
+  allowsNostr: boolean;
+}
 
 interface WalletProps {
   providerType: string;
@@ -71,10 +84,16 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
 
   // Send modal
   const [showSend, setShowSend] = useState<boolean>(false);
-  const [sendBolt11, setSendBolt11] = useState<string>('');
+  const [sendInput, setSendInput] = useState<string>('');
   const [sendLoading, setSendLoading] = useState<boolean>(false);
   const [sendError, setSendError] = useState<string>('');
   const [sendSuccess, setSendSuccess] = useState<string>('');
+  // Lightning Address send (LUD-16)
+  const [sendAddress, setSendAddress] = useState<ResolvedAddress | null>(null);
+  const [resolveLoading, setResolveLoading] = useState<boolean>(false);
+  const [resolveError, setResolveError] = useState<string>('');
+  const [sendAmount, setSendAmount] = useState<string>('');
+  const [sendComment, setSendComment] = useState<string>('');
 
   // Lightning Address
   const [lnAddress, setLnAddress] = useState<string | null>(null);
@@ -280,12 +299,29 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   };
 
   const handleSend = async () => {
-    if (!sendBolt11.trim()) return;
+    // Ask once, act on that answer. Recomputing the recipient here — or
+    // branching on `sendAddress` while the button gated on something else — is
+    // how the previous address got paid.
+    const target = sendTarget;
+    if (target.kind === 'none') return;
     setSendLoading(true);
     setSendError('');
     setSendSuccess('');
     try {
-      await rpc<{ preimage: string }>('wallet_payInvoice', { bolt11: sendBolt11.trim() });
+      if (target.kind === 'address') {
+        await rpc<{ preimage: string }>('wallet_payToLightningAddress', {
+          address: target.address,
+          amountSats: target.amountSats,
+          comment: sendAddress && sendAddress.commentAllowed > 0
+            ? sendComment.trim() || undefined
+            : undefined,
+          // One id per click, so a transport-level rpc() retry replays the
+          // result instead of sending a second payment.
+          intentId: crypto.randomUUID(),
+        });
+      } else {
+        await rpc<{ preimage: string }>('wallet_payInvoice', { bolt11: target.bolt11 });
+      }
       setSendSuccess(t('wallet.paymentSent'));
       fetchBalance();
       fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
@@ -329,9 +365,13 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
 
   const closeSend = () => {
     setShowSend(false);
-    setSendBolt11('');
+    setSendInput('');
     setSendError('');
     setSendSuccess('');
+    setSendAddress(null);
+    setResolveError('');
+    setSendAmount('');
+    setSendComment('');
   };
 
   const handleClaimUsername = async () => {
@@ -393,12 +433,82 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setShowUpdateProfile(false);
   };
 
+  // A Lightning Address goes in the same field as an invoice; decide which one
+  // this is before trying to decode it as BOLT11.
+  const sendIsAddress = useMemo(() => isLightningAddress(sendInput), [sendInput]);
+
   // Decode pasted invoice for preview
   const decodedInvoice = useMemo(() => {
-    const trimmed = sendBolt11.trim();
-    if (!trimmed) return null;
+    const trimmed = sendInput.trim();
+    if (!trimmed || sendIsAddress) return null;
     return decodeBolt11(trimmed);
-  }, [sendBolt11]);
+  }, [sendInput, sendIsAddress]);
+
+  // Resolve a typed Lightning Address to its pay params, debounced so a partial
+  // address does not fire a request on every keystroke.
+  //
+  // The address we last resolved lives in a ref rather than in the dependency
+  // array: keying the effect on `sendAddress?.address` made it re-enter itself
+  // as soon as the body cleared that state.
+  const resolvedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    const trimmed = sendInput.trim().toLowerCase();
+    if (!sendIsAddress) {
+      resolvedForRef.current = null;
+      setSendAddress(null);
+      setResolveError('');
+      setResolveLoading(false);
+      return;
+    }
+    if (resolvedForRef.current === trimmed) return;
+
+    // Drop the old resolution NOW, before the debounce. Leaving it in place is
+    // what let the Pay button stay enabled against the previous recipient for
+    // 400ms while the field already showed a different address.
+    resolvedForRef.current = null;
+    setSendAddress(null);
+
+    let cancelled = false;
+    setResolveLoading(true);
+    setResolveError('');
+    const timer = setTimeout(async () => {
+      try {
+        const resolved = await rpc<ResolvedAddress>('wallet_resolveLightningAddress', { address: trimmed });
+        if (cancelled) return;
+        resolvedForRef.current = trimmed;
+        setSendAddress(resolved);
+        // Seed the amount with the minimum so a one-amount endpoint (a fixed
+        // price, min === max) needs no typing at all.
+        setSendAmount((prev) => prev || String(resolved.minSats));
+      } catch (e: unknown) {
+        if (cancelled) return;
+        resolvedForRef.current = null;
+        setSendAddress(null);
+        setResolveError((e as Error).message);
+      } finally {
+        if (!cancelled) setResolveLoading(false);
+      }
+    }, 400);
+
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [sendInput, sendIsAddress]);
+
+  // The single answer to "what would Pay send?", shared by the button's guard
+  // and the handler so the two cannot disagree. See src/shared/sendTarget.ts.
+  const sendTarget = useMemo(() => resolveSendTarget({
+    input: sendInput,
+    isAddress: sendIsAddress,
+    resolved: sendAddress,
+    amount: sendAmount,
+    invoiceDecodable: !!decodedInvoice,
+  }), [sendInput, sendIsAddress, sendAddress, sendAmount, decodedInvoice]);
+
+  const sendAmountSats = Number(sendAmount);
+  const sendAmountValid = sendAddress
+    ? Number.isInteger(sendAmountSats)
+      && sendAmountSats >= sendAddress.minSats
+      && sendAmountSats <= sendAddress.maxSats
+    : false;
 
   const handleShowMore = () => {
     fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
@@ -558,14 +668,76 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
             <div className={styles.form}>
               <Input
                 type="text"
-                placeholder={t('wallet.pasteInvoice')}
-                value={sendBolt11}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSendBolt11(e.target.value)}
+                placeholder={t('wallet.pasteInvoiceOrAddress')}
+                value={sendInput}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setSendInput(e.target.value)}
                 small
               />
 
+              {/* Lightning Address preview + amount */}
+              {sendIsAddress && !sendSuccess && (
+                resolveLoading ? (
+                  <div className={styles.invoicePreview}>
+                    <div className={styles.invoiceRow}>
+                      <span className={styles.invoiceLabel}>{t('wallet.resolvingAddress')}</span>
+                    </div>
+                  </div>
+                ) : sendAddress ? (
+                  <>
+                    <div className={styles.invoicePreview}>
+                      <div className={styles.invoiceRow}>
+                        <span className={styles.invoiceLabel}>{t('wallet.payTo')}</span>
+                        <span className={styles.invoiceValue}>{sendAddress.address}</span>
+                      </div>
+                      {sendAddress.description && (
+                        <div className={styles.invoiceRow}>
+                          <span className={styles.invoiceLabel}>{t('wallet.invoiceDescription')}</span>
+                          <span className={styles.invoiceValue}>{sendAddress.description}</span>
+                        </div>
+                      )}
+                      <div className={styles.invoiceRow}>
+                        <span className={styles.invoiceLabel}>{t('wallet.addressRange')}</span>
+                        <span className={styles.invoiceValue}>
+                          {t('wallet.addressRangeValue', {
+                            min: sendAddress.minSats.toLocaleString(),
+                            max: sendAddress.maxSats.toLocaleString(),
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <Input
+                      type="number"
+                      placeholder={t('wallet.amountSats')}
+                      value={sendAmount}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setSendAmount(e.target.value)}
+                      small
+                    />
+                    {sendAddress.commentAllowed > 0 && (
+                      <Input
+                        type="text"
+                        placeholder={t('wallet.commentPlaceholder')}
+                        value={sendComment}
+                        maxLength={sendAddress.commentAllowed}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setSendComment(e.target.value)}
+                        small
+                      />
+                    )}
+                    {sendAmount !== '' && !sendAmountValid && (
+                      <div className={styles.invoiceError}>
+                        {t('wallet.amountOutOfRange', {
+                          min: sendAddress.minSats.toLocaleString(),
+                          max: sendAddress.maxSats.toLocaleString(),
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : resolveError ? (
+                  <div className={styles.invoiceError}>{resolveError}</div>
+                ) : null
+              )}
+
               {/* Invoice preview */}
-              {sendBolt11.trim() && !sendSuccess && (
+              {sendInput.trim() && !sendIsAddress && !sendSuccess && (
                 decodedInvoice ? (
                   <div className={styles.invoicePreview}>
                     <div className={styles.invoiceRow}>
@@ -611,7 +783,9 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
                   <Button
                     small
                     onClick={handleSend}
-                    disabled={sendLoading || !sendBolt11.trim() || (sendBolt11.trim() !== '' && !decodedInvoice)}
+                    disabled={
+                      sendLoading || sendTarget.kind === 'none'
+                    }
                   >
                     {sendLoading ? t('common.loading') : t('wallet.confirmPay')}
                   </Button>
