@@ -14,6 +14,7 @@ import { getWalletProvider, removeWalletProvider, type WalletConfig } from '../w
 import { decodeBolt11 } from '../wallet/bolt11.ts';
 import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress, DEFAULT_LNBITS_URL } from '../wallet/lnbits-provision.ts';
 import { fetchPayParams, requestInvoice } from '../wallet/lnurl.ts';
+import { runPaymentOnce } from '../wallet/payment-intents.ts';
 import type { SignedEvent } from '../types.ts';
 import type { HandlerFn } from './state.ts';
 import { logActivity } from './misc-handlers.ts';
@@ -239,14 +240,22 @@ export const handlers = new Map<string, HandlerFn>([
         if (vault.isLocked()) throw new Error('Vault is locked');
         const { address } = params as { address: string };
         const payParams = await fetchPayParams(address);
+        const minSats = Math.ceil(payParams.minSendable / 1000);
+        const maxSats = Math.floor(payParams.maxSendable / 1000);
+        // Rounding the ends of a sub-sat range inward inverts it (500–900 msats
+        // becomes 1–0), which the popup would render as a form no amount can
+        // satisfy. Refuse here, where we can say why.
+        if (maxSats < minSats) {
+            throw new Error('This endpoint does not accept any whole-sat amount');
+        }
         // Only what the popup needs to render a confirmation — the callback URL
         // stays in the background, so the resolution the user sees is the one
         // that gets paid (the popup can't be talked into a different callback).
         return {
             address: payParams.address,
             domain: payParams.domain,
-            minSats: Math.ceil(payParams.minSendable / 1000),
-            maxSats: Math.floor(payParams.maxSendable / 1000),
+            minSats,
+            maxSats,
             description: payParams.description,
             commentAllowed: payParams.commentAllowed,
             allowsNostr: payParams.allowsNostr,
@@ -254,17 +263,23 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_payToLightningAddress', async (params) => {
-        const { address, amountSats, comment } = params as {
-            address: string; amountSats: number; comment?: string;
+        const { address, amountSats, comment, intentId } = params as {
+            address: string; amountSats: number; comment?: string; intentId?: string;
         };
         const { provider } = await getConnectedProvider();
         if (!provider) throw new Error('Provider not available');
-        // Re-resolve rather than trusting anything cached in the popup: the
-        // invoice must come from the address the user is looking at right now.
-        const payParams = await fetchPayParams(address);
-        const { bolt11 } = await requestInvoice(payParams, amountSats, comment);
-        const { preimage } = await provider.payInvoice(bolt11);
-        return { preimage, bolt11, amountSats, address: payParams.address };
+        // At most once per click. Each call asks the endpoint for a NEW invoice,
+        // so a blind rpc() retry after a lost reply would pay a second, unrelated
+        // payment hash that the node cannot recognise as a duplicate.
+        // See lib/wallet/payment-intents.ts.
+        return await runPaymentOnce(intentId, async () => {
+            // Re-resolve rather than trusting anything cached in the popup: the
+            // invoice must come from the address the user is looking at right now.
+            const payParams = await fetchPayParams(address);
+            const { bolt11 } = await requestInvoice(payParams, amountSats, comment);
+            const { preimage } = await provider.payInvoice(bolt11);
+            return { preimage, bolt11, amountSats, address: payParams.address };
+        });
     }],
 
     ['wallet_provision', async (params) => {

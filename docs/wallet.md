@@ -190,7 +190,9 @@ picks the callback — so `lib/wallet/lnurl.ts` constrains every one of them
 | Returned invoice decoded and its amount compared to the approved amount | The server must not set the price |
 | Amountless invoices refused | Same reason |
 | Comment truncated to `commentAllowed` (itself capped at 1000) | LUD-12 |
-| 64 KB response cap, LUD-06 `status: "ERROR"` surfaced verbatim | Bounded, legible failures |
+| Redirects refused rather than followed | The guard vouches for the URL requested, not for wherever a `302` points |
+| 15s timeout on every request | An endpoint that stops answering must not hold the worker open |
+| 64 KB response cap, enforced while reading; LUD-06 `status: "ERROR"` surfaced verbatim | Bounded, legible failures |
 
 Exports:
 - `parseLightningAddress(input)` / `isLightningAddress(input)` — parse/detect; never throws
@@ -206,6 +208,26 @@ do). A server that does not is reported as "could not reach the endpoint".
 `wallet_payToLightningAddress` re-resolves the address instead of trusting a
 callback URL passed back from the popup, and the resolve handler never returns
 the callback — the endpoint the user saw is the endpoint that gets paid.
+
+#### At most once per click (`payment-intents.ts`)
+
+`rpc()` retries up to three times when the message port closes without a reply,
+because an MV3 worker that was asleep and a worker that ran the handler and then
+died look identical from the popup. Re-running most handlers is harmless. This
+one is not: it asks the endpoint for a **fresh invoice** on every call, so the
+retry carries a different payment hash and the node has no way to recognise it
+as a duplicate — it simply pays again. (`wallet_payInvoice` needs no such guard;
+the same bolt11 carries the same payment hash, and the node refuses it itself.)
+
+So the popup stamps one `intentId` per click and `runPaymentOnce` records it in
+`storage.session` — not in a module variable, since the point is to survive the
+very teardown that causes the retry. A replay of a completed intent returns the
+first result; a replay while the first is still in flight is refused; a payment
+that *threw* clears its record, because `rpc()` does not retry application
+errors and the user is the one deciding whether to try again.
+
+The residual risk is the one every Lightning wallet has: a payment that failed
+after the sats left cannot be told apart from one that never left.
 
 ---
 
