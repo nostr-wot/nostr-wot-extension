@@ -14,12 +14,31 @@ export default function RelaysCard({ onOpen }: { onOpen: () => void }) {
   const [count, setCount] = useState<number>(0);
 
   useEffect(() => {
-    browser.storage.sync.get(['relays'])
-      .then((d: Record<string, unknown>) => {
-        const str = (d.relays as string) || DEFAULT_RELAYS;
-        setCount(str.split(',').map((s) => s.trim()).filter(Boolean).length);
-      })
-      .catch(() => {});
+    let cancelled = false;
+
+    const read = () => {
+      browser.storage.sync.get(['relays'])
+        .then((d: Record<string, unknown>) => {
+          if (cancelled) return;
+          const str = (d.relays as string) || DEFAULT_RELAYS;
+          setCount(str.split(',').map((s) => s.trim()).filter(Boolean).length);
+        })
+        .catch(() => {});
+    };
+    read();
+
+    // The relay editor this card opens writes the list, and the card stayed on
+    // its mount-time count afterwards — edit relays, close the panel, still the
+    // old number. Note the area: relays live in storage.sync, unlike everything
+    // else the popup listens for.
+    const onChanged = (changes: Record<string, unknown>, area: string) => {
+      if (area === 'sync' && changes.relays) read();
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => {
+      cancelled = true;
+      browser.storage.onChanged.removeListener(onChanged);
+    };
   }, []);
 
   return (

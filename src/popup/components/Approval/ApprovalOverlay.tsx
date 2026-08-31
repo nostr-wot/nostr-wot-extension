@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@shared/browser.js';
 import { rpc } from '@shared/rpc.js';
 import { t } from '@lib/i18n.js';
@@ -47,6 +47,21 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   const permissions = usePermissions();
   const { active, accounts } = useAccount();
 
+  // Held in refs so `refresh` does not depend on their identity. PopupApp passes
+  // `onRequestUnlock` as an inline arrow, so it was a new function on every
+  // parent render; that made a new `refresh`, which re-ran the effect below,
+  // which called `refresh`, which pushed a fresh array into the parent's state
+  // and re-rendered it. The popup sat in that circle for as long as it was open,
+  // re-querying the active tab and the pending queue the whole time, and tearing
+  // the runtime listener down and back up between laps — which can lose a
+  // `signerPendingUpdated` broadcast that lands in the gap.
+  const onRequestUnlockRef = useRef(onRequestUnlock);
+  onRequestUnlockRef.current = onRequestUnlock;
+  const onUnlockWaitersChangeRef = useRef(onUnlockWaitersChange);
+  onUnlockWaitersChangeRef.current = onUnlockWaitersChange;
+  // What we last told the parent, so an unchanged list does not re-render it.
+  const lastWaiterKeyRef = useRef<string | null>(null);
+
   const refresh = useCallback(async () => {
     const { domain: currentDomain } = await resolveActiveTabDomain();
 
@@ -65,9 +80,16 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     const nip46InFlight = filtered.filter((r) => r.nip46InFlight);
     const unlockWaiters = filtered.filter((r) => r.waitingForUnlock);
 
-    onUnlockWaitersChange?.(unlockWaiters);
+    // Only tell the parent when the set actually changed. The array is rebuilt
+    // on every refresh, and handing it over unconditionally re-rendered PopupApp
+    // for a list identical to the one it already had.
+    const waiterKey = unlockWaiters.map((r) => r.id).join(',');
+    if (waiterKey !== lastWaiterKeyRef.current) {
+      lastWaiterKeyRef.current = waiterKey;
+      onUnlockWaitersChangeRef.current?.(unlockWaiters);
+    }
     if (unlockWaiters.length > 0 && vault.locked) {
-      onRequestUnlock?.();
+      onRequestUnlockRef.current?.();
     }
 
     // Group actionable requests
@@ -104,7 +126,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
     setGroups([...groupMap.values()]);
     setNip46Groups([...nip46Map.values()]);
-  }, [vault.locked, onRequestUnlock]);
+  }, [vault.locked]);
 
   useEffect(() => {
     refresh();
