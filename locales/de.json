@@ -717,6 +717,7 @@
   "wallet.releaseAddress": "Adresse freigeben",
   "common.later": "Später",
   "mutes.title": "Stummgeschaltet",
+  "mutes.readFailed": "Deine Stummschaltungsliste konnte nicht gelesen werden — kein Relay hat geantwortet. Es wurde nichts geändert.",
   "mutes.cardTitle": "Stummgeschaltet",
   "mutes.cardInfo": "Deine NIP-51-Stummschaltliste (kind:10000). Stummgeschaltete Personen, Wörter und Hashtags werden an deine Relays veröffentlicht, sodass jeder Nostr-Client sie ausblendet. Bestehende private Stummschaltungen bleiben erhalten.",
   "mutes.cardSummary": "{count} stummgeschaltet",

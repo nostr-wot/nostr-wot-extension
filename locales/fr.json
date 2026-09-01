@@ -717,6 +717,7 @@
   "wallet.releaseAddress": "Libérer l adresse",
   "common.later": "Plus tard",
   "mutes.title": "Masqués",
+  "mutes.readFailed": "Impossible de lire votre liste de sourdine — aucun relais n'a répondu. Rien n'a été modifié.",
   "mutes.cardTitle": "Masqués",
   "mutes.cardInfo": "Votre liste de masquage NIP-51 (kind:10000). Les personnes, mots et hashtags masqués sont publiés sur vos relais afin que tous vos clients Nostr les masquent. Les masquages privés existants sont préservés.",
   "mutes.cardSummary": "{count} masqués",

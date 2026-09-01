@@ -68,6 +68,8 @@ export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
   const [dirty, setDirty] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<'success' | 'error' | null>(null);
+  const [readFailed, setReadFailed] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
 
   const [importValue, setImportValue] = useState('');
   const [importError, setImportError] = useState('');
@@ -81,16 +83,27 @@ export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
     setLoading(true);
     setDirty(false);
     setPublishResult(null);
+    setReadFailed(false);
     (async () => {
       try {
-        const data = await rpc<MyMuteList>('getMyMuteList');
-        if (mounted.current && data) setList(data);
+        const data = await rpc<MyMuteList & { reachable?: boolean }>('getMyMuteList');
+        if (!mounted.current) return;
+        // A read no relay answered is not an empty mute list. Rendering it as
+        // one produced an editable, apparently-empty list whose Publish replaced
+        // the real kind:10000 — including every NIP-44-encrypted private mute,
+        // which survives only by round-tripping the rawContent this read did not
+        // get. Show the failure instead and let the user retry.
+        if (!data || data.reachable === false) {
+          setReadFailed(true);
+        } else {
+          setList(data);
+        }
       } catch {
-        if (mounted.current) setList({ people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 });
+        if (mounted.current) setReadFailed(true);
       }
       if (mounted.current) setLoading(false);
     })();
-  }, [visible]);
+  }, [visible, reloadNonce]);
 
   if (!visible) return null;
 
@@ -154,6 +167,9 @@ export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
         words: cur.words,
         events: cur.events,
         rawContent: cur.rawContent,
+        // The background refuses without this: rawContent carries the user's
+        // private mutes, and it is only trustworthy when a relay answered.
+        readReachable: true,
       });
       if (result?.sent) {
         setPublishResult('success');
@@ -173,6 +189,12 @@ export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
       <div className={styles.content}>
         {loading ? (
           <EmptyState text={t('common.loading')} />
+        ) : readFailed ? (
+          <EmptyState text={t('mutes.readFailed')}>
+            <Button small onClick={() => { setLoading(true); setReadFailed(false); setReloadNonce((n) => n + 1); }}>
+              {t('common.retry')}
+            </Button>
+          </EmptyState>
         ) : (
           <>
             <EditableList

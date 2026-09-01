@@ -717,6 +717,7 @@
   "wallet.releaseAddress": "Rilascia indirizzo",
   "common.later": "Più tardi",
   "mutes.title": "Silenziati",
+  "mutes.readFailed": "Impossibile leggere la tua lista dei silenziati: nessun relay ha risposto. Non è stato modificato nulla.",
   "mutes.cardTitle": "Silenziati",
   "mutes.cardInfo": "La tua lista di silenziati NIP-51 (kind:10000). Persone, parole e hashtag silenziati vengono pubblicati sui tuoi relay così ogni client Nostr che usi li nasconde. I silenziati privati esistenti vengono conservati.",
   "mutes.cardSummary": "{count} silenziati",

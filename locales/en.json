@@ -717,6 +717,7 @@
   "wallet.releaseAddress": "Unlink",
   "common.later": "Later",
   "mutes.title": "Mutes",
+  "mutes.readFailed": "Could not read your mute list — no relay answered. Nothing has been changed.",
   "mutes.cardTitle": "Mutes",
   "mutes.cardInfo": "Your NIP-51 mute list (kind:10000). Muted people, words and hashtags are published to your relays so every Nostr client you use hides them. Existing private mutes are preserved.",
   "mutes.cardSummary": "{count} muted",

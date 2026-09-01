@@ -147,15 +147,25 @@ export function fetchKind0Read(pubkey: string, relayUrls: string[]): Promise<Pro
  * NOT decrypted here — the raw string is returned verbatim as `rawContent` so a
  * later publish can round-trip them without destroying the user's private mutes.
  * Returns a zeroed GroupedMuteList (createdAt 0) if no list is found.
+ *
+ * `reachable` reports whether any relay actually answered — delivered the event,
+ * or reached EOSE, which is a relay stating it holds no list. Without it a total
+ * relay timeout resolved the zeroed list through the SUCCESS path, and a caller
+ * could not tell "you mute nobody" from "nobody answered". That distinction is
+ * load-bearing: the empty `rawContent` of an unreachable read, published back,
+ * replaces the user's NIP-44-encrypted private mutes with nothing. The comment
+ * on publishMuteList calls round-tripping rawContent CRITICAL for exactly this
+ * reason, and a failed read is the one case where it silently is not doing it.
  */
-export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<GroupedMuteList> {
+export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<GroupedMuteList & { reachable: boolean }> {
     return new Promise((resolve) => {
         const best: GroupedMuteList = { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
         let remaining = relayUrls.length;
         let resolved = false;
+        let answered = false;
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve(best); }
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ ...best, reachable: answered }); }
         };
         const timer = setTimeout(done, 8000);
         const checkRemaining = () => { if (--remaining <= 0) done(); };
@@ -179,6 +189,7 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
                             const event = msg[2];
                             if (event.pubkey === pubkey && event.kind === 10000 && event.created_at > best.createdAt) {
+                                answered = true;
                                 best.createdAt = event.created_at;
                                 best.rawContent = typeof event.content === 'string' ? event.content : '';
                                 best.people = [];
@@ -194,6 +205,8 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
                                 }
                             }
                         } else if (msg[0] === 'EOSE') {
+                            // An answer, including when it means "I hold no list".
+                            answered = true;
                             closeWs();
                         }
                     } catch { /* ignored */ }
@@ -259,7 +272,8 @@ export const handlers = new Map<string, HandlerFn>([
     ['getMyMuteList', async () => {
         const myPubkey = vault.getActivePubkey();
         if (!myPubkey) {
-            return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
+            // No account is a definite answer, not a failed read.
+            return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0, reachable: true };
         }
         const relays = await getUserRelays();
         return await fetchMuteList(myPubkey, relays);
