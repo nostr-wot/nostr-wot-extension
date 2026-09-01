@@ -13,6 +13,8 @@ export default function GlobeButton() {
   const [connected, setConnected] = useState<boolean | null>(null); // null = loading
   const [open, setOpen] = useState<boolean>(false);
   const [disconnecting, setDisconnecting] = useState<boolean>(false);
+  const [connecting, setConnecting] = useState<boolean>(false);
+  const [connectError, setConnectError] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Which site is this? Not `tab.url` — the browser withholds it from an
@@ -73,11 +75,24 @@ export default function GlobeButton() {
   }, [open]);
 
   // One step, same as the home card. See lib/bg/domain-handlers.ts connectDomain.
+  //
+  // Guarded like handleDisconnect three lines below, which it was not: a failed
+  // connectDomain — the worker asleep past rpc()'s three wake retries — was an
+  // unhandled rejection, so the dot stayed as it was and the user got no
+  // indication that the click had done nothing.
   const handleConnect = async () => {
     if (!domain) return;
-    await rpc('connectDomain', { domain });
-    setConnected(true);
-    rpcNotify('configUpdated');
+    setConnecting(true);
+    try {
+      await rpc('connectDomain', { domain });
+      setConnected(true);
+      setOpen(false);
+      rpcNotify('configUpdated');
+    } catch {
+      setConnectError(true);
+    } finally {
+      setConnecting(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -137,9 +152,14 @@ export default function GlobeButton() {
             </Button>
           )}
           {connected === false && domain && (
-            <Button small onClick={handleConnect} style={{ width: '100%' }}>
-              {t('common.connect')}
-            </Button>
+            <>
+              {connectError && (
+                <div className={styles.globeError}>{t('globe.connectFailed')}</div>
+              )}
+              <Button small onClick={handleConnect} disabled={connecting} style={{ width: '100%' }}>
+                {connecting ? t('common.loading') : t('common.connect')}
+              </Button>
+            </>
           )}
         </div>
       )}

@@ -221,6 +221,14 @@ export async function isDomainDismissed(domain: string): Promise<boolean> {
  */
 export async function addDismissedDomain(domain: string, permanent = false): Promise<boolean> {
     if (!domain) return false;
+
+    // A connected site cannot also be a dismissed one. The two surfaces that
+    // write these got out of step: connect from the top-bar globe and the home
+    // card behind it still offered "Never", which wrote a permanent dismissal
+    // for a domain sitting in the allowlist. Dismissal answers "do not ask me
+    // about this site"; it is not a way to un-connect one, and Disconnect is.
+    if (await isDomainAllowed(domain)) return false;
+
     const now = Date.now();
     const duration = await getDismissDuration();
 

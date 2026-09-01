@@ -71,18 +71,16 @@ function useSiteState(active: Account | null) {
       resolvedDomain = d;
       setDomain(d);
 
-      const [allowedR, identityR, permsR] = await Promise.allSettled([
+      const [allowedR, identityR] = await Promise.allSettled([
         rpc<string[]>('getAllowedDomains'),
         rpc<string[]>('getIdentityDisabledSites'),
-        rpc<Record<string, string>>('signer_getPermissionsForDomain', { domain: d }),
       ]);
       if (!current()) return;
 
       const allowedDomains = allowedR.status === 'fulfilled' ? (allowedR.value || []) : null;
       const identityDisabled = identityR.status === 'fulfilled' ? (identityR.value || []) : [];
-      const perms = permsR.status === 'fulfilled' ? (permsR.value || {}) : null;
 
-      const state = resolveSiteState(allowedDomains, perms, d);
+      const state = resolveSiteState(allowedDomains, d);
       if (state === 'error') {
         setSiteState('error');
         return;
@@ -113,6 +111,24 @@ function useSiteState(active: Account | null) {
     loadHomeState();
   }, [active?.id, loadHomeState]);
 
+  // The allowlist can change while this view is mounted — from the globe button
+  // in the top bar, or from the background — and the card kept showing whatever
+  // it decided when it loaded. That is how the globe and the home card ended up
+  // contradicting each other inside one 380px window: the dot went green while
+  // the card below it still offered Connect.
+  //
+  // storage.onChanged rather than a runtime message: runtime messages are not
+  // delivered back to the document that sent them, so the popup cannot notify
+  // itself this way. See docs/component-standards.md §9.
+  useEffect(() => {
+    const onChanged = (changes: Record<string, unknown>, area: string) => {
+      if (area !== 'local') return;
+      if (changes.allowedDomains || changes.identityDisabledSites) loadHomeState();
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => browser.storage.onChanged.removeListener(onChanged);
+  }, [loadHomeState]);
+
   return { domain, siteState, identityEnabled, setIdentityEnabled, loadHomeState };
 }
 
@@ -120,14 +136,23 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
   const [walletState, setWalletState] = useState<null | false | { balance: number }>(null);
   const [walletDismissed, setWalletDismissed] = useState<boolean>(false);
 
+  const walletRunRef = useRef(0);
   const checkWallet = useCallback(async () => {
+    const run = ++walletRunRef.current;
+    const current = () => run === walletRunRef.current;
     try {
       const configType = await rpc<string | false>('wallet_hasConfig');
+      if (!current()) return;
       if (!configType) { setWalletState(false); return; }
       const result = await rpc<{ balance: number }>('wallet_getBalance');
+      if (!current()) return;
       setWalletState({ balance: result?.balance ?? 0 });
     } catch {
-      setWalletState(false);
+      // `false` here means "this account has no wallet", which is a claim a
+      // failed RPC cannot support — it showed "set up a wallet" to someone who
+      // already had one. Unknown stays unknown.
+      if (!current()) return;
+      setWalletState(null);
     }
   }, []);
 
@@ -141,9 +166,15 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
     });
   }, [active?.id, canUseWallet, checkWallet]);
 
-  // Re-check wallet state when menu overlay closes (e.g. after wallet setup)
+  // Re-check when the menu overlay *closes*, e.g. after wallet setup. Keyed on
+  // the transition, not the value: `menuOpen` starts out false, so this fired on
+  // mount alongside the effect above and every popup open paid for two NWC round
+  // trips instead of one.
+  const prevMenuOpenRef = useRef<boolean | undefined>(menuOpen);
   useEffect(() => {
-    if (menuOpen === false && canUseWallet) {
+    const was = prevMenuOpenRef.current;
+    prevMenuOpenRef.current = menuOpen;
+    if (was === true && menuOpen === false && canUseWallet) {
       checkWallet();
     }
   }, [menuOpen, canUseWallet, checkWallet]);

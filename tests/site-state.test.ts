@@ -10,6 +10,12 @@
  * It was worse than it looks: the check counted ANY non-empty permission map, including one
  * whose only entry is an explicit `deny`. A site the user had specifically refused was
  * therefore auto-connected. The tests asserting that behaviour are why nothing caught it.
+ *
+ * The permissions argument is now gone from the signature entirely — it had been kept,
+ * ignored via `void`, behind a comment claiming callers loaded it anyway, which was untrue:
+ * the one caller fetched it for this call and nothing else, so every popup open paid for a
+ * round trip whose result was discarded on the next line. The property those cases guarded
+ * is structural now rather than asserted, which is why they are not replaced below.
  */
 
 import { describe, it } from 'node:test';
@@ -20,48 +26,32 @@ const DOMAIN = 'example.com';
 
 describe('resolveSiteState', () => {
   it('returns "connected" only when the domain is in allowedDomains', () => {
-    assert.strictEqual(resolveSiteState(['example.com', 'other.com'], {}, DOMAIN), 'connected');
+    assert.strictEqual(resolveSiteState(['example.com', 'other.com'], DOMAIN), 'connected');
   });
 
-  it('returns "notConnected" when signer perms exist but the domain is not allowed', () => {
-    // Leftover permissions from a previous connection are not consent. Disconnect must
-    // stick until the user connects again.
+  it('returns "notConnected" for a domain absent from the allowlist', () => {
+    // Whatever else is stored about a site — signer permissions from a previous
+    // connection, an explicit deny — Disconnect must stick until the user
+    // connects again. The allowlist is the only thing consulted.
     assert.strictEqual(
-      resolveSiteState([], { 'signEvent:1': 'allow' }, DOMAIN),
+      resolveSiteState([], DOMAIN),
       'notConnected',
-      'stale permissions must not resurrect a disconnected site',
+      'nothing outside the allowlist may resurrect a disconnected site',
     );
-  });
-
-  it('returns "notConnected" when the only record is an explicit deny', () => {
-    assert.strictEqual(
-      resolveSiteState([], { 'signEvent:1': 'deny' }, DOMAIN),
-      'notConnected',
-      'a refusal must never read as a connection',
-    );
-  });
-
-  it('returns "connected" when both the allowlist and signer perms agree', () => {
-    assert.strictEqual(resolveSiteState(['example.com'], { getPublicKey: 'allow' }, DOMAIN), 'connected');
   });
 
   it('returns "notConnected" for an unknown domain', () => {
-    assert.strictEqual(resolveSiteState(['other.com'], {}, DOMAIN), 'notConnected');
+    assert.strictEqual(resolveSiteState(['other.com'], DOMAIN), 'notConnected');
   });
 
   it('returns "notConnected" when the allowlist loaded but is empty', () => {
-    assert.strictEqual(resolveSiteState([], {}, DOMAIN), 'notConnected');
+    assert.strictEqual(resolveSiteState([], DOMAIN), 'notConnected');
   });
 
-  it('returns "error" only when the allowlist itself could not be read', () => {
-    // Without the allowlist there is no way to answer the question, and guessing
-    // "connected" would release the identity on a failed read.
-    assert.strictEqual(resolveSiteState(null, null, DOMAIN), 'error');
-    assert.strictEqual(resolveSiteState(null, {}, DOMAIN), 'error');
-  });
-
-  it('does not depend on the signer-permission read succeeding', () => {
-    assert.strictEqual(resolveSiteState(['example.com'], null, DOMAIN), 'connected');
-    assert.strictEqual(resolveSiteState([], null, DOMAIN), 'notConnected');
+  it('returns "error" when the allowlist could not be read', () => {
+    // Without the allowlist there is no way to answer the question. Guessing
+    // "notConnected" shows the Connect card to a connected site; guessing
+    // "connected" would release the identity on a failed read, which is worse.
+    assert.strictEqual(resolveSiteState(null, DOMAIN), 'error');
   });
 });

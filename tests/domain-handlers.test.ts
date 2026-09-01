@@ -111,6 +111,33 @@ describe('dismissed domains -- interaction with allowed domains', () => {
     assert.strictEqual(await isDomainAllowed('bad.com'), false);
     assert.strictEqual(await isDomainDismissed('bad.com'), true);
   });
+
+  it('refuses to dismiss a domain that is currently connected', async () => {
+    // Two surfaces write these and they got out of step: connecting from the
+    // top-bar globe left the home card behind it still offering "Never", which
+    // wrote a permanent dismissal for a site sitting in the allowlist.
+    await addAllowedDomain('example.com');
+
+    const recorded = await addDismissedDomain('example.com');
+
+    assert.strictEqual(recorded, false, 'the dismissal must be refused');
+    assert.strictEqual(await isDomainDismissed('example.com'), false);
+    assert.strictEqual(await isDomainAllowed('example.com'), true, 'and the connection stands');
+  });
+
+  it('refuses a permanent dismissal of a connected domain too', async () => {
+    // "Never" is the one that leaves a lasting mark, so it is the one that
+    // matters most. Disconnect is how a site stops being connected.
+    await addAllowedDomain('example.com');
+
+    assert.strictEqual(await addDismissedDomain('example.com', true), false);
+    assert.strictEqual(await isDomainDismissed('example.com'), false);
+  });
+
+  it('still dismisses a domain that is not connected', async () => {
+    assert.strictEqual(await addDismissedDomain('stranger.com'), true);
+    assert.strictEqual(await isDomainDismissed('stranger.com'), true);
+  });
 });
 
 // The connect gate: what happens while the "Connect this site" card is up.
