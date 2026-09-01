@@ -96,6 +96,7 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `url.ts` | `getDomainFromUrl` |
 | `activeTabDomain.ts` | `resolveActiveTabDomain` — which site the popup is looking at |
 | `siteState.ts` | `resolveSiteState` — connected / notConnected / empty / error |
+| `sendTarget.ts` | `resolveSendTarget`, `canSend` — what the wallet's Send box may pay |
 | `activity.ts` | `groupActivityEntries` |
 | `constants.ts` | `AUTO_LOCK_OPTIONS`, `DEFAULT_RELAYS`, `KIND_LABELS`, etc. |
 | `browser.ts` | Browser detection and API utilities for UI code |
