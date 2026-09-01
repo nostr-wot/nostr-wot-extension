@@ -28,6 +28,8 @@ interface PqcStatus {
 interface Published {
   published: boolean;
   current: boolean;
+  /** True when the relays could not be reached, so `published` carries no information. */
+  unreachable?: boolean;
 }
 
 type CardState = 'enabled' | 'stale' | 'setup' | 'import';
@@ -63,7 +65,7 @@ export default function PqcCard({ onOpen }: PqcCardProps) {
         // to that told a user who had published to go and set it up again, and
         // would have had them republish an attestation that was already correct —
         // on exactly the flaky-relay day that produced the failed read.
-        if (!pub) return;
+        if (!pub || pub.unreachable) return;
 
         if (!pub.published) setState('setup');
         else setState(pub.current ? 'enabled' : 'stale');
