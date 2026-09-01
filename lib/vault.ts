@@ -25,6 +25,7 @@
 import type { VaultPayload, Account, SafeAccount, SafeAccountWithWallet, MemoryAccount, MemoryVaultPayload } from './types.ts';
 import { hexToBytes, bytesToHex, arrayToBase64, base64ToArray } from './crypto/utils.ts';
 import browser from './browser.ts';
+import { LOCK_STATE_KEY } from './constants.ts';
 
 const STORAGE_KEY = 'keyVault';
 const VAULT_VERSION = 1;
@@ -351,6 +352,16 @@ export function lock(): void {
     _autoLockTimer = null;
   }
   clearKeepAlive();
+
+  // Locking left no trace an open popup could see. Auto-lock fires on a
+  // background timer, so a popup sitting open past the interval went on
+  // rendering unlocked UI over a locked vault — and an incoming request that
+  // queued an unlock waiter got no unlock prompt at all, because the surface
+  // that raises one only does so when it believes the vault is locked. It just
+  // timed out. Writing here is what the popup's listener has to observe.
+  //
+  // Fire-and-forget: locking must not depend on a storage write succeeding.
+  browser.storage.local.set({ [LOCK_STATE_KEY]: Date.now() }).catch(() => {});
 }
 
 /**

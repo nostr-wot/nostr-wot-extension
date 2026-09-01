@@ -60,3 +60,17 @@ export const VAULT_POLL_INTERVAL_MS = 500;
 
 /** Pending onboarding account TTL (5 minutes) */
 export const ONBOARDING_PENDING_TTL_MS = 5 * 60 * 1000;
+
+// ── Storage keys observed across contexts ──
+
+/**
+ * Written by `vault.lock()` so an open popup can learn the vault locked
+ * underneath it.
+ *
+ * It lives here rather than in `lib/vault.ts` so the popup can watch for it
+ * without importing the vault module — and with it the whole crypto stack —
+ * into its bundle. `storage.onChanged` is the only channel that works for this:
+ * runtime messages are not delivered back to the document that sent them, and a
+ * background broadcast reaches only a popup that is already listening.
+ */
+export const LOCK_STATE_KEY = 'vaultLockedAt';

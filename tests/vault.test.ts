@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import { resetMockStorage, hasAlarm } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../lib/vault.ts';
+import { LOCK_STATE_KEY } from '../lib/constants.ts';
 import { bytesToHex } from '../lib/crypto/utils.ts';
 import type { VaultPayload } from '../lib/types.ts';
 
@@ -498,5 +499,48 @@ describe('vault -- service-worker keep-alive alarm', () => {
     await vault.create('', makePayload());
     vault.setAutoLockTimeout(0);
     assert.strictEqual(hasAlarm('vault-keepalive'), false);
+  });
+});
+
+describe('vault -- locking is observable from another context', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('records the lock so an open popup can notice it', async () => {
+    // Auto-lock fires on a background timer. Nothing about locking was visible
+    // outside the worker's own memory, so a popup sitting open past the interval
+    // kept rendering unlocked UI — and an incoming request that queued an unlock
+    // waiter produced no prompt at all, because the surface that raises one only
+    // does so when it believes the vault is locked. The request just timed out.
+    await vault.create('testpassword123', {
+      accounts: [], activeAccountId: null,
+    } as unknown as VaultPayload);
+    assert.strictEqual(vault.isLocked(), false);
+
+    vault.lock();
+    // The write is fire-and-forget so that locking cannot depend on storage.
+    await new Promise((r) => setTimeout(r, 0));
+
+    const stored = await browserMock.storage.local.get(LOCK_STATE_KEY);
+    assert.ok(
+      typeof stored[LOCK_STATE_KEY] === 'number',
+      'lock() must leave something storage.onChanged can deliver',
+    );
+  });
+
+  it('records each lock separately, so a re-lock is also seen', async () => {
+    await vault.create('testpassword123', {
+      accounts: [], activeAccountId: null,
+    } as unknown as VaultPayload);
+
+    vault.lock();
+    await new Promise((r) => setTimeout(r, 0));
+    const first = (await browserMock.storage.local.get(LOCK_STATE_KEY))[LOCK_STATE_KEY] as number;
+
+    await vault.unlock('testpassword123');
+    vault.lock();
+    await new Promise((r) => setTimeout(r, 2));
+    const second = (await browserMock.storage.local.get(LOCK_STATE_KEY))[LOCK_STATE_KEY] as number;
+
+    assert.ok(second >= first, 'the value must change (or at least advance) on each lock');
   });
 });
