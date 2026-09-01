@@ -167,14 +167,20 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   const canUseWallet = active && !isReadOnly && !isNip46 && !locked;
   const { walletState, walletDismissed, setWalletDismissed } = useWalletBanner(active, canUseWallet, menuOpen);
 
+  const pendingRunRef = useRef(0);
   useEffect(() => {
     async function checkPending() {
+      const run = ++pendingRunRef.current;
       try {
         const pending: PendingRequest[] = await rpc('signer_getPending') || [];
+        if (run !== pendingRunRef.current) return;
         const actionable = pending.filter((r) => (r.needsPermission || r.waitingForUnlock) && !r.nip46InFlight);
         setPendingCount(actionable.length);
       } catch {
-        setPendingCount(0);
+        // A failed read is not "no pending requests". Zeroing the badge on a
+        // transport failure hides the queue instead of reporting it; keep the
+        // last count we actually managed to read.
+        if (run !== pendingRunRef.current) return;
       }
     }
     checkPending();

@@ -131,7 +131,9 @@ const mock = {
   runtime: {
     getURL: (path: string) => `chrome-extension://test-id/${path}`,
     id: 'test-extension-id',
-    sendMessage: () => Promise.resolve(),
+    // Takes the message, as the real API does — so a test can swap in a spy and
+    // assert on what was broadcast.
+    sendMessage: (_message?: unknown) => Promise.resolve(),
     onMessage: { addListener: () => {} }
   },
   action: {

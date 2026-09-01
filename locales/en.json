@@ -220,6 +220,7 @@
   "profileEdit.publish": "Publish",
   "approval.pendingRequests": "Pending Requests",
   "approval.noPending": "No pending requests",
+  "approval.actionFailed": "Something went wrong. The request may still be pending.",
   "approval.deny": "Deny",
   "approval.approve": "Approve",
   "approval.signEvent": "Sign event",

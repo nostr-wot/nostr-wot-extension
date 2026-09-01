@@ -216,6 +216,7 @@
   "profileEdit.publish": "Pubblica",
   "approval.pendingRequests": "Richieste in attesa",
   "approval.noPending": "Nessuna richiesta in attesa",
+  "approval.actionFailed": "Qualcosa è andato storto. La richiesta potrebbe essere ancora in attesa.",
   "approval.deny": "Nega",
   "approval.approve": "Approva",
   "approval.signEvent": "Firma evento",

@@ -216,6 +216,7 @@
   "profileEdit.publish": "Publier",
   "approval.pendingRequests": "Requêtes en attente",
   "approval.noPending": "Aucune requête en attente",
+  "approval.actionFailed": "Une erreur s'est produite. La requête est peut-être toujours en attente.",
   "approval.deny": "Refuser",
   "approval.approve": "Approuver",
   "approval.signEvent": "Signer un événement",

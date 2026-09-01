@@ -216,6 +216,7 @@
   "profileEdit.publish": "Publicar",
   "approval.pendingRequests": "Solicitações pendentes",
   "approval.noPending": "Sem solicitações pendentes",
+  "approval.actionFailed": "Algo deu errado. A solicitação pode continuar pendente.",
   "approval.deny": "Negar",
   "approval.approve": "Aprovar",
   "approval.signEvent": "Assinar evento",

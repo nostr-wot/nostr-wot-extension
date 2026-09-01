@@ -1520,3 +1520,82 @@ describe('signer -- cold-start auto-unlock', () => {
     }
   });
 });
+
+// -- Queue-wipe broadcast --
+
+describe('signer -- cleanupStale announces the wipe', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  /** Capture every runtime.sendMessage type for the duration of `fn`. */
+  async function recordBroadcasts(fn: () => Promise<void>): Promise<string[]> {
+    const seen: string[] = [];
+    const original = browserMock.runtime.sendMessage;
+    browserMock.runtime.sendMessage = (message?: unknown) => {
+      const type = (message as { type?: string } | undefined)?.type;
+      if (type) seen.push(type);
+      return Promise.resolve();
+    };
+    try {
+      await fn();
+    } finally {
+      browserMock.runtime.sendMessage = original;
+    }
+    return seen;
+  }
+
+  it('broadcasts signerPendingUpdated after clearing the queue', async () => {
+    // Every other mutation of signerPending broadcasts. This one did not, and it
+    // is the one that empties the queue — so a popup open across a worker restart
+    // kept rendering approvals the background had already dropped, and Approve on
+    // one of them returned ok against nothing.
+    await browserMock.storage.session.set({
+      signerPending: [
+        { id: 'a', type: 'signEvent', origin: 'example.com', needsPermission: true, timestamp: Date.now() },
+      ],
+    });
+
+    const seen = await recordBroadcasts(() => signer.cleanupStale());
+
+    assert.ok(
+      seen.includes('signerPendingUpdated'),
+      'an open popup has no other way to learn the queue was wiped',
+    );
+    assert.deepStrictEqual(await signer.getPending(), [], 'the queue is cleared');
+  });
+
+  it('broadcasts even when the queue was already empty', async () => {
+    // The popup cannot tell "nothing was there" from "the worker restarted", so
+    // the announcement must not depend on what was in the queue.
+    const seen = await recordBroadcasts(() => signer.cleanupStale());
+    assert.ok(seen.includes('signerPendingUpdated'));
+  });
+});
+
+// -- Resolution ordering --
+
+describe('signer -- resolveRequest completes its removal', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  it('has removed the request from storage by the time it resolves', async () => {
+    // The popup refreshes as soon as signer_resolve replies. When the removal was
+    // fired and forgotten, that read could still see the request and repaint a
+    // card the user had just approved.
+    await browserMock.storage.session.set({
+      signerPending: [
+        { id: 'a', type: 'signEvent', origin: 'example.com', needsPermission: true, timestamp: Date.now() },
+        { id: 'b', type: 'signEvent', origin: 'example.com', needsPermission: true, timestamp: Date.now() },
+      ],
+    });
+
+    await signer.resolveRequest('a', { allow: true, remember: false });
+
+    const ids = (await signer.getPending()).map((r) => r.id);
+    assert.deepStrictEqual(ids, ['b'], 'the resolved request is gone once the promise settles');
+  });
+});

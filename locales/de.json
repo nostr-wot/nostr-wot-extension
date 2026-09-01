@@ -251,6 +251,7 @@
   "profileEdit.publish": "Veröffentlichen",
   "approval.pendingRequests": "Ausstehende Anfragen",
   "approval.noPending": "Keine ausstehenden Anfragen",
+  "approval.actionFailed": "Etwas ist schiefgelaufen. Die Anfrage ist möglicherweise noch offen.",
   "approval.deny": "Ablehnen",
   "approval.approve": "Genehmigen",
   "approval.signEvent": "Ereignis signieren",
