@@ -57,15 +57,41 @@ export async function fetchProfileMetadata(pubkey: string): Promise<Record<strin
     return metadata;
 }
 
-export function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<string, unknown> | null> {
+/** The outcome of a profile read, distinguishing "nothing there" from "could not ask". */
+export interface ProfileRead {
+    metadata: Record<string, unknown> | null;
+    /**
+     * True when at least one relay actually answered — delivered the event, or
+     * reached EOSE, which is a relay saying authoritatively that it holds no
+     * kind:0 for this pubkey. False means every relay errored or timed out, and
+     * the null metadata carries no information at all.
+     */
+    reachable: boolean;
+}
+
+export async function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<string, unknown> | null> {
+    return (await fetchKind0Read(pubkey, relayUrls)).metadata;
+}
+
+/**
+ * Read a pubkey's kind:0, reporting whether anyone answered.
+ *
+ * Merging a patch into the result of a *failed* read and publishing it destroys
+ * the profile: kind:0 is replaceable, so a document containing only the field
+ * being added replaces the one with the user's name, picture and nip05. That is
+ * indistinguishable from a legitimate first-ever profile unless the reader says
+ * which case it saw, so it says.
+ */
+export function fetchKind0Read(pubkey: string, relayUrls: string[]): Promise<ProfileRead> {
     return new Promise((resolve) => {
         let best: Record<string, unknown> | null = null;
         let bestCreatedAt = 0;
         let remaining = relayUrls.length;
         let resolved = false;
+        let answered = false;
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve(best); }
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ metadata: best, reachable: answered }); }
         };
 
         const timer = setTimeout(done, 5000);
@@ -92,11 +118,15 @@ export function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
                             const event = msg[2];
                             if (event.pubkey !== pubkey || event.kind !== 0) return;
+                            answered = true;
                             if (event.created_at > bestCreatedAt) {
                                 bestCreatedAt = event.created_at;
                                 best = JSON.parse(event.content);
                             }
                         } else if (msg[0] === 'EOSE') {
+                            // EOSE is an answer: this relay has told us what it holds,
+                            // including when that is nothing.
+                            answered = true;
                             closeWs();
                         }
                     } catch { /* ignore parse errors */ }
@@ -182,6 +212,19 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
 
 export const handlers = new Map<string, HandlerFn>([
     ['getProfileMetadata', async (params) => fetchProfileMetadata(params.pubkey as string)],
+
+    /**
+     * A profile read for a caller that is about to merge into it and publish.
+     *
+     * Deliberately not `getProfileMetadata`: that one caches, and it collapses
+     * "no profile" and "no relay answered" into the same null. A caller building
+     * a replaceable kind:0 needs both distinctions — the freshest document it can
+     * get, and an honest signal when it could not get one.
+     */
+    ['getProfileForMerge', async (params) => {
+        const relays = config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
+        return await fetchKind0Read(params.pubkey as string, relays);
+    }],
 
     ['getProfileMetadataBatch', async (params) => {
         const pubkeys = params.pubkeys as string[];

@@ -164,6 +164,24 @@ Client functions in `lib/wallet/lnbits-provision.ts`:
 - `getLightningAddress(instanceUrl, pubkey)`
 - `releaseLightningAddress(instanceUrl, signFn)`
 
+#### Adding the address to the profile never overwrites what it could not read
+
+`kind:0` is **replaceable**: publishing one replaces the user's profile outright.
+So the "Add to profile" prompt reads the current profile, merges `lud16` into it,
+and publishes the result — which makes that read load-bearing rather than a
+nicety. Merging into the result of a *failed* read publishes a document
+containing only `lud16`, and the name, picture, about and nip05 are gone.
+Silently, and worst on exactly the flaky-relay day that caused it.
+
+`fetchKind0` could not express the difference: it returned `null` both for "this
+user has no profile" and for "every relay timed out". `fetchKind0Read` returns
+`{ metadata, reachable }`, where `reachable` is true only if at least one relay
+actually answered — delivered the event, or reached EOSE, which is a relay
+stating it holds no `kind:0`. The `getProfileForMerge` handler exposes that
+uncached (a stale cache could drop a field changed elsewhere), and the popup
+refuses to publish when `reachable` is false, saying so instead of closing the
+dialog as though it had worked.
+
 ### 5.3 Paying a Lightning Address (`lnurl.ts`)
 
 The Send flow accepts a Lightning Address (`name@domain`) in the same field as

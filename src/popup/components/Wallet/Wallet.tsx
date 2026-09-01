@@ -117,6 +117,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [claimError, setClaimError] = useState<string>('');
   const [addressCopied, setAddressCopied] = useState<boolean>(false);
   const [showUpdateProfile, setShowUpdateProfile] = useState<boolean>(false);
+  const [profileError, setProfileError] = useState<string>('');
+  const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [releaseLoading, setReleaseLoading] = useState<boolean>(false);
 
   // Transactions
@@ -426,13 +428,36 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setReleaseLoading(false);
   };
 
+  /**
+   * Add the Lightning Address to the user's kind:0.
+   *
+   * kind:0 is replaceable, so what gets published here replaces the profile
+   * outright. That makes the read beforehand load-bearing rather than a nicety:
+   * merging `lud16` into the result of a *failed* read publishes a document
+   * containing only `lud16`, and the user's name, picture, about and nip05 are
+   * gone — silently, and worst on exactly the flaky-relay day that caused it.
+   *
+   * `getProfileForMerge` says whether anyone actually answered, which is the
+   * distinction `getProfileMetadata`'s null cannot make. No answer, no publish.
+   */
   const handleUpdateProfile = async () => {
     if (!lnAddress) return;
+    setProfileError('');
+    setProfileLoading(true);
     try {
       const pubkey = await rpc<string>('vault_getActivePubkey');
-      if (!pubkey) return;
-      const existing = await rpc<Record<string, unknown> | null>('getProfileMetadata', { pubkey });
-      const metadata = { ...(existing || {}), lud16: lnAddress };
+      if (!pubkey) throw new Error('no active account');
+
+      const read = await rpc<{ metadata: Record<string, unknown> | null; reachable: boolean }>(
+        'getProfileForMerge', { pubkey },
+      );
+      if (!read?.reachable) {
+        setProfileError(t('wallet.profileReadFailed'));
+        setProfileLoading(false);
+        return;
+      }
+
+      const metadata = { ...(read.metadata || {}), lud16: lnAddress };
       await rpc('signAndPublishEvent', {
         event: {
           kind: 0,
@@ -442,10 +467,13 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         },
       });
       await rpc('updateProfileCache', { pubkey, metadata });
-    } catch {
-      // ignore — profile update is best-effort
+      setShowUpdateProfile(false);
+    } catch (e: unknown) {
+      // Not best-effort any more: closing the dialog on a failure told the user
+      // their profile had been updated when it had not.
+      setProfileError((e as Error)?.message || t('wallet.profileReadFailed'));
     }
-    setShowUpdateProfile(false);
+    setProfileLoading(false);
   };
 
   // A Lightning Address goes in the same field as an invoice; decide which one
@@ -1022,12 +1050,13 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
             <div className={styles.overlayDesc}>
               {t('wallet.updateProfileDesc', { address: lnAddress })}
             </div>
+            {profileError && <div className={styles.error}>{profileError}</div>}
             <div className={styles.qrActions}>
               <Button small variant="secondary" onClick={() => setShowUpdateProfile(false)}>
                 {t('common.later')}
               </Button>
-              <Button small onClick={handleUpdateProfile}>
-                {t('wallet.updateProfile')}
+              <Button small onClick={handleUpdateProfile} disabled={profileLoading}>
+                {profileLoading ? t('common.loading') : t('wallet.updateProfile')}
               </Button>
             </div>
           </div>
