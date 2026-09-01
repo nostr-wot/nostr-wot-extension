@@ -544,3 +544,45 @@ describe('vault -- locking is observable from another context', () => {
     assert.ok(second >= first, 'the value must change (or at least advance) on each lock');
   });
 });
+
+describe('vault -- unlocking is observable too', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('records a successful unlock, not just a lock', async () => {
+    // A "Never lock" vault is auto-unlocked by the background on every cold
+    // start. A popup that opened during that window was told "locked" and had
+    // no way to ever hear the correction, so it hid the wallet card and every
+    // locked-gated action for as long as it stayed open.
+    await vault.create('testpassword123', { accounts: [], activeAccountId: null } as unknown as VaultPayload);
+    vault.lock();
+    await new Promise((r) => setTimeout(r, 0));
+
+    await browserMock.storage.local.remove(LOCK_STATE_KEY);
+    assert.equal((await browserMock.storage.local.get(LOCK_STATE_KEY))[LOCK_STATE_KEY], undefined);
+
+    const ok = await vault.unlock('testpassword123');
+    assert.equal(ok, true);
+    await new Promise((r) => setTimeout(r, 0));
+
+    assert.ok(
+      typeof (await browserMock.storage.local.get(LOCK_STATE_KEY))[LOCK_STATE_KEY] === 'number',
+      'an open popup needs a signal for the unlock as much as for the lock',
+    );
+  });
+
+  it('does not record anything for a failed unlock', async () => {
+    await vault.create('testpassword123', { accounts: [], activeAccountId: null } as unknown as VaultPayload);
+    vault.lock();
+    await new Promise((r) => setTimeout(r, 0));
+    await browserMock.storage.local.remove(LOCK_STATE_KEY);
+
+    assert.equal(await vault.unlock('wrongpassword'), false);
+    await new Promise((r) => setTimeout(r, 0));
+
+    assert.equal(
+      (await browserMock.storage.local.get(LOCK_STATE_KEY))[LOCK_STATE_KEY],
+      undefined,
+      'nothing changed, so nothing to announce',
+    );
+  });
+});

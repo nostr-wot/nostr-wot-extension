@@ -299,6 +299,13 @@ export async function unlock(password: string): Promise<boolean> {
     resetAutoLock();
     armKeepAlive();
 
+    // Announce the unlock, not just the lock. On a "Never lock" vault the
+    // background auto-unlocks on every cold start, and a popup that opened
+    // during that window was told "locked" with no way to ever hear the
+    // correction — so it hid the wallet card and every locked-gated action for
+    // as long as it stayed open.
+    noteLockStateChanged();
+
     // Transparent upgrade: the password is in hand exactly once, here. Re-encrypting
     // now is the only moment we can raise the work factor without asking the user for
     // anything. reEncrypt() replaces _cryptoKey and _kdfIterations.
@@ -361,6 +368,16 @@ export function lock(): void {
   // timed out. Writing here is what the popup's listener has to observe.
   //
   // Fire-and-forget: locking must not depend on a storage write succeeding.
+  noteLockStateChanged();
+}
+
+/**
+ * Bump the marker an open popup watches for lock-state changes.
+ *
+ * Fire-and-forget in both directions: neither locking nor unlocking may depend
+ * on a storage write succeeding.
+ */
+function noteLockStateChanged(): void {
   browser.storage.local.set({ [LOCK_STATE_KEY]: Date.now() }).catch(() => {});
 }
 

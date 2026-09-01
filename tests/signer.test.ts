@@ -1105,30 +1105,51 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
     assert.strictEqual((await signer.getPending()).length, 0);
   });
 
-  it('onboarding_createVault rejects pending prompts for the previous account', async () => {
+  it('onboarding_createVault refuses over a populated vault without disturbing the queue', async () => {
+    // This case used to assert that createVault invalidated prompts for the
+    // previous account. That premise is no longer reachable: createVault now
+    // refuses to run over a vault that still holds accounts (it replaces the
+    // vault outright, so accepting it destroys every stored key), and in the
+    // state where it CAN run — the last account removed — there is no previous
+    // account for it to invalidate against. The property itself is still
+    // covered, by the onActiveAccountChanged / vault_setActiveAccount /
+    // onboarding_addToVault cases above.
+    //
+    // What matters here now is that the refusal is clean: it must not swallow
+    // or half-resolve a request that is waiting on the user.
     const createVault = onboarding.handlers.get('onboarding_createVault')!;
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
     assert.strictEqual((await signer.getPending()).length, 1);
 
-    await createVault({
-      password: 'newvaultpass123',
-      account: {
-        id: 'acctNew',
-        name: 'Fresh',
-        type: 'nsec',
-        pubkey: SECOND_PUBKEY_HEX,
-        privkey: '0000000000000000000000000000000000000000000000000000000000000004',
-        mnemonic: null,
-        nip46Config: null,
-        readOnly: false,
-        createdAt: 4000000,
-      },
-    });
+    await assert.rejects(
+      createVault({
+        password: 'newvaultpass123',
+        account: {
+          id: 'acctNew',
+          name: 'Fresh',
+          type: 'nsec',
+          pubkey: SECOND_PUBKEY_HEX,
+          privkey: '0000000000000000000000000000000000000000000000000000000000000004',
+          mnemonic: null,
+          nip46Config: null,
+          readOnly: false,
+          createdAt: 4000000,
+        },
+      }),
+      /already exists/,
+    );
 
-    await assert.rejects(p, /User denied access/);
-    assert.strictEqual((await signer.getPending()).length, 0);
+    assert.strictEqual(
+      (await signer.getPending()).length,
+      1,
+      'the pending request is still the user\'s to answer',
+    );
+
+    // Leave nothing dangling for the runner.
+    await signer.resolveRequest((await signer.getPending())[0].id, { allow: false, remember: false });
+    await assert.rejects(p);
   });
 });
 

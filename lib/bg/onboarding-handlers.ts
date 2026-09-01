@@ -700,6 +700,38 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['onboarding_createVault', async (params) => {
+        // Creating replaces the vault outright: the payload below is
+        // `accounts: [fullAccount]`, so every other key in it is gone. There is
+        // therefore exactly one situation in which this may run — no vault yet.
+        //
+        // The popup already tries to enforce that, and cannot be relied on to.
+        // PasswordStep probes for an existing vault and falls into
+        // `catch { setVaultExists(false) }` (PasswordStep.tsx:50-51), which turns
+        // *any* failure of that probe — a cold worker, or the persisted
+        // brute-force guard throwing during a lockout — into "there is no vault",
+        // and the next screen offers to create one. Accepting that here would
+        // destroy every stored key while telling the user we were setting their
+        // security up.
+        //
+        // Adding an account to an existing vault is onboarding_addToVault, and
+        // deliberately replacing one means vault_destroy first.
+        //
+        // The test is "holds accounts", not merely "exists": removing the last
+        // account leaves an empty vault behind, and onboarding through that is a
+        // supported flow (see tests/delete-recreate.test.ts). The account list in
+        // storage.local is what makes this answerable while the vault is LOCKED,
+        // which is exactly the state the dangerous path arrives in — the decrypted
+        // payload is unreadable then, so asking the vault itself would answer
+        // "no accounts" and wave the overwrite through.
+        if (await vault.exists()) {
+            const known = ((await browser.storage.local.get(['accounts'])) as Record<string, LocalAccountEntry[]>).accounts || [];
+            const holdsAccounts = known.length > 0
+                || (!vault.isLocked() && vault.listAccounts().length > 0);
+            if (holdsAccounts) {
+                throw new Error('A vault already exists on this device. Unlock it to add an account.');
+            }
+        }
+
         const prevActiveCreate = ((await browser.storage.local.get(['activeAccountId'])) as Record<string, string>).activeAccountId;
         const pendingAcct = await getPendingOnboardingAccount();
         const fullAccount = pendingAcct && pendingAcct.id === (params.account as Record<string, string>).id
