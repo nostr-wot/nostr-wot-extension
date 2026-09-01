@@ -54,7 +54,7 @@ describe('runPaymentOnce', () => {
 
     await assert.rejects(
       runPaymentOnce('intent-1', send),
-      /already being sent/,
+      /PAYMENT_IN_FLIGHT/,
       'a concurrent replay must not start a second payment',
     );
 
@@ -115,5 +115,80 @@ describe('runPaymentOnce', () => {
     const stored = await browserMock.storage.session.get('walletPaymentIntents');
     assert.equal(stored.walletPaymentIntents.old, undefined, 'stale intents must be pruned');
     assert.equal(sends, 1);
+  });
+});
+
+describe('runPaymentOnce -- concurrent claims', () => {
+  it('does not lose an in-flight record to a concurrent claim for a different intent', async () => {
+    // Two payments claimed at once both read the store, both write it back whole.
+    // Whichever writes second erases the other's in-flight marker — and once the
+    // marker is gone a retry finds nothing and sends a second, unrelated invoice,
+    // which is precisely what this module exists to stop.
+    let releaseA: () => void = () => {};
+    const gateA = new Promise<void>((r) => { releaseA = r; });
+
+    let sendsA = 0;
+    const sendA = async () => {
+      sendsA++;
+      // Only the first send holds the payment open; a replay that wrongly gets
+      // through must return promptly, or it would deadlock against the very
+      // gate the test uses to end it.
+      if (sendsA === 1) await gateA;
+      return { preimage: 'a' };
+    };
+    const sendB = async () => ({ preimage: 'b' });
+
+    const a = runPaymentOnce('intent-a', sendA);
+    const b = runPaymentOnce('intent-b', sendB);
+    await b;
+
+    // intent-a is still in flight, so its record must still be there and this
+    // replay must be refused rather than allowed to send a second invoice.
+    let replayError: Error | null = null;
+    try {
+      await runPaymentOnce('intent-a', sendA);
+    } catch (e) {
+      replayError = e as Error;
+    }
+
+    releaseA();
+    await a.catch(() => {});
+
+    assert.match(
+      replayError?.message || '(the replay was allowed to send)',
+      /PAYMENT_IN_FLIGHT/,
+      "the concurrent claim for intent-b erased intent-a's in-flight record",
+    );
+    assert.equal(sendsA, 1, 'intent-a must have been sent exactly once');
+  });
+
+  it('keeps a completed result across a concurrent claim', async () => {
+    const first = await runPaymentOnce('intent-a', async () => ({ preimage: 'a' }));
+    await runPaymentOnce('intent-b', async () => ({ preimage: 'b' }));
+
+    let resent = 0;
+    const replay = await runPaymentOnce('intent-a', async () => { resent++; return { preimage: 'x' }; });
+
+    assert.equal(resent, 0, 'a completed intent must never re-send');
+    assert.deepEqual(replay, first);
+  });
+
+  it('does not prune an in-flight record just because it is old', async () => {
+    // The prune dropped anything past the TTL regardless of status. An in-flight
+    // record is the one thing that must outlive it: deleting it re-arms the
+    // double payment it was placed there to prevent.
+    await browserMock.storage.session.set({
+      walletPaymentIntents: {
+        stuck: { status: 'in-flight', at: Date.now() - 11 * 60 * 1000 },
+      },
+    });
+
+    await runPaymentOnce('other', async () => ({ preimage: 'x' }));
+
+    const stored = await browserMock.storage.session.get('walletPaymentIntents');
+    assert.ok(
+      stored.walletPaymentIntents.stuck,
+      'an in-flight record must survive the done-record TTL',
+    );
   });
 });

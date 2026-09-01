@@ -226,8 +226,32 @@ first result; a replay while the first is still in flight is refused; a payment
 that *threw* clears its record, because `rpc()` does not retry application
 errors and the user is the one deciding whether to try again.
 
-The residual risk is the one every Lightning wallet has: a payment that failed
-after the sats left cannot be told apart from one that never left.
+**Claiming an intent is serialized** through the same `AsyncLock` that
+`lib/signer.ts` and `lib/permissions.ts` use for their session-storage maps.
+Read-modify-write on one key is not atomic, and the guard cannot itself be racy:
+two claims that both read before either writes each store back a map missing the
+other's record, and once an in-flight marker is gone a retry finds nothing and
+sends a second invoice — the precise failure the module exists to prevent.
+
+**In-flight records are not pruned on the completed-record TTL.** Completed
+intents expire after 10 minutes; a record still marked in-flight is kept for 24
+hours. Dropping one on the short timer would re-arm the double payment it was
+written to stop. Intent ids are per-click UUIDs, so a stranded marker blocks
+nothing — the long bound exists only so the leak cannot grow without limit.
+
+Errors that cross back to the popup are **stable codes**, not sentences
+(`PAYMENT_IN_FLIGHT`, in `lib/wallet/types.ts` — the one wallet module that
+imports nothing, so the popup can recognise it without pulling the background's
+storage shim into its bundle). A sentence thrown in the background is an English
+sentence in all six locales.
+
+Two limits worth stating. The residual risk is the one every Lightning wallet
+has: a payment that failed after the sats left cannot be told apart from one that
+never left. And this covers the *machine* retry only — a popup destroyed by the
+user switching to a wallet app takes its `intentId` with it, so clicking Pay
+again after reopening is a new intent and a second payment. Closing that needs a
+background in-flight record keyed by payment hash and surfaced when the wallet
+mounts; see `docs/frontend-remediation-round-2.md` R3.
 
 ---
 

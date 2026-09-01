@@ -673,6 +673,7 @@
   "wallet.amountOutOfRange": "Saisissez un montant entre {min} et {max} sats",
   "wallet.pay": "Payer",
   "wallet.paymentSent": "Paiement envoyé",
+  "wallet.paymentInFlight": "Ce paiement est déjà en cours d'envoi.",
   "wallet.paymentReceived": "Paiement reçu !",
   "wallet.transactions": "Transactions",
   "wallet.searchTransactions": "Rechercher transactions...",

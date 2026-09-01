@@ -12,7 +12,7 @@ import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
 import { isLightningAddress } from '@lib/wallet/lnurl.ts';
 import { formatSats } from '@shared/format/number.ts';
 import { resolveSendTarget } from '@shared/sendTarget.ts';
-import type { Transaction } from '@lib/wallet/types.ts';
+import { PAYMENT_IN_FLIGHT, type Transaction } from '@lib/wallet/types.ts';
 
 import styles from './Wallet.module.css';
 
@@ -36,6 +36,21 @@ const PROVIDER_LABELS: Record<string, string> = {
   nwc: 'Nostr Wallet Connect',
   lnbits: 'LNbits',
 };
+
+/**
+ * Turn a payment failure into something worth showing.
+ *
+ * Most of what reaches here is an LNURL or provider message written in English
+ * in the background, which is its own problem; the codes the background raises
+ * deliberately are at least translated. Anything unrecognised is passed through
+ * rather than replaced by a generic string — a specific English reason beats an
+ * accurate but useless one.
+ */
+function paymentErrorMessage(e: unknown): string {
+  const message = (e as Error)?.message || '';
+  if (message.includes(PAYMENT_IN_FLIGHT)) return t('wallet.paymentInFlight');
+  return message;
+}
 
 function formatTxDate(ts: number): string {
   if (!ts || ts <= 0) return '—';
@@ -326,7 +341,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       fetchBalance();
       fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
     } catch (e: unknown) {
-      setSendError((e as Error).message);
+      setSendError(paymentErrorMessage(e));
     }
     setSendLoading(false);
   };
