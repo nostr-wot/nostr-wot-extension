@@ -7,6 +7,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import QrCode from '@components/QrCode/QrCode';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
+import Modal from '@components/Modal/Modal';
 import { IconSettings, IconTuner } from '@assets/index';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
 import { isLightningAddress } from '@lib/wallet/lnurl.ts';
@@ -120,6 +121,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [profileError, setProfileError] = useState<string>('');
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [releaseLoading, setReleaseLoading] = useState<boolean>(false);
+  const [confirmRelease, setConfirmRelease] = useState<boolean>(false);
 
   // Transactions
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -416,12 +418,17 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     }
   };
 
+  // Releasing is irreversible and outward-facing: the username goes back in the
+  // pool for someone else to claim, and any kind:0 already advertising it keeps
+  // advertising it — so zaps aimed at the user start arriving for whoever claims
+  // it next. That was one click on a danger button with no confirmation.
   const handleReleaseAddress = async () => {
     setReleaseLoading(true);
     setClaimError('');
     try {
       await rpc('wallet_releaseLightningAddress');
       setLnAddress(null);
+      setConfirmRelease(false);
     } catch (e: unknown) {
       setClaimError((e as Error).message);
     }
@@ -510,6 +517,14 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     // 400ms while the field already showed a different address.
     resolvedForRef.current = null;
     setSendAddress(null);
+    // And the amount and comment that belonged to the old recipient. `prev ||`
+    // below only seeds an EMPTY field, so a figure typed for alice survived into
+    // bob's form — and where it happened to fall inside bob's range it was
+    // payable with one inattentive click, at an amount chosen for someone else.
+    // The comment is worse: it is sent to the endpoint, so a note meant for one
+    // person would be delivered to another.
+    setSendAmount('');
+    setSendComment('');
 
     let cancelled = false;
     setResolveLoading(true);
@@ -545,13 +560,6 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     amount: sendAmount,
     invoiceDecodable: !!decodedInvoice,
   }), [sendInput, sendIsAddress, sendAddress, sendAmount, decodedInvoice]);
-
-  const sendAmountSats = Number(sendAmount);
-  const sendAmountValid = sendAddress
-    ? Number.isInteger(sendAmountSats)
-      && sendAmountSats >= sendAddress.minSats
-      && sendAmountSats <= sendAddress.maxSats
-    : false;
 
   const handleShowMore = () => {
     fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
@@ -765,7 +773,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
                         small
                       />
                     )}
-                    {sendAmount !== '' && !sendAmountValid && (
+                    {sendAmount !== '' && sendTarget.kind === 'none' && sendTarget.reason === 'amount' && (
                       <div className={styles.invoiceError}>
                         {t('wallet.amountOutOfRange', {
                           min: sendAddress.minSats.toLocaleString(),
@@ -1016,8 +1024,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
                     <Button small variant="secondary" onClick={() => setShowUpdateProfile(true)}>
                       {t('wallet.addToProfile')}
                     </Button>
-                    <Button small variant="danger" onClick={handleReleaseAddress} disabled={releaseLoading}>
-                      {releaseLoading ? t('common.loading') : t('wallet.releaseAddress')}
+                    <Button small variant="danger" onClick={() => setConfirmRelease(true)} disabled={releaseLoading}>
+                      {t('wallet.releaseAddress')}
                     </Button>
                   </div>
                 </div>
@@ -1043,6 +1051,27 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       )}
 
       {/* Update profile prompt */}
+      {confirmRelease && lnAddress && (
+        <Modal
+          title={t('wallet.releaseAddress')}
+          onClose={() => setConfirmRelease(false)}
+          dismissOnBackdrop={false}
+          footer={
+            <>
+              <Button small variant="secondary" onClick={() => setConfirmRelease(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button small variant="danger" onClick={handleReleaseAddress} disabled={releaseLoading}>
+                {releaseLoading ? t('common.loading') : t('wallet.releaseAddress')}
+              </Button>
+            </>
+          }
+        >
+          <p>{t('wallet.releaseWarning', { address: lnAddress })}</p>
+          {claimError && <div className={styles.invoiceError}>{claimError}</div>}
+        </Modal>
+      )}
+
       {showUpdateProfile && lnAddress && createPortal(
         <div className={styles.qrOverlay} onClick={() => setShowUpdateProfile(false)}>
           <div className={styles.qrModal} onClick={(e) => e.stopPropagation()}>
