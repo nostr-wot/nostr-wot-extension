@@ -351,12 +351,15 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
             <ApprovalCard
               key={`nip46::${group.origin}::${group.method}`}
               group={group}
-              onCancel={async () => {
+              // Through runAction like every other action here. These two were
+              // the only paths still bypassing it — on the request type whose
+              // characteristic failure is "the remote signer never answers",
+              // where a silent cancel is exactly what the user cannot afford.
+              onCancel={() => runAction(async () => {
                 for (const req of group.requests) {
                   await rpc('signer_cancelNip46', { id: req.id });
                 }
-                refresh();
-              }}
+              })}
               onClick={() => setSelectedNip46(group)}
             />
           ))}
@@ -391,12 +394,11 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
         <EventDetailModal
           request={selectedNip46.requests[0]}
           nip46InFlight
-          onDeny={async () => {
+          onDeny={() => runAction(async () => {
             for (const req of selectedNip46.requests) {
               await rpc('signer_cancelNip46', { id: req.id });
             }
-            closeAndRefresh();
-          }}
+          })}
           onClose={() => setSelectedNip46(null)}
           zIndex={510}
         />
