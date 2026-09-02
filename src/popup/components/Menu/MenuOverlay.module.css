@@ -12,7 +12,22 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  animation: sectionSlideIn 0.2s ease-out both;
+  /* `backwards`, not `both`.
+   *
+   * `both` includes `forwards`, so this element kept the final keyframe's
+   * `transform: translateX(0)` permanently — and a transform that is not `none`
+   * makes an element a containing block for its `position: fixed` descendants.
+   * Every fixed overlay rendered inside a menu section was therefore positioned
+   * and clipped against the section's box instead of the popup: the wallet's
+   * settings overlay (Wallet.module.css:580) and the permissions add-rule modal
+   * (Settings.module.css:252) are both fixed, and both are inside one.
+   *
+   * The end state is unchanged — translateX(0) and no transform paint
+   * identically — so this removes the containing block and nothing else. It is
+   * also the precondition for un-portaling the dialogs that currently escape to
+   * #root to avoid this.
+   */
+  animation: sectionSlideIn 0.2s ease-out backwards;
 }
 
 @keyframes sectionSlideIn {
@@ -197,4 +212,29 @@
 .aboutVersion {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* The post-quantum panel's "How it works" button. It had no rule at all: the
+   class was referenced, nothing defined it, so even once OverlayPanel started
+   rendering the button it would have been an unstyled default. Matches
+   OverlayPanel's .closeBtn so the two sit together as a pair.
+
+   Note: OverlayPanel's centered header is `justify-content: space-between` with
+   a 36px placeholder balancing the back button, so a right side holding both
+   this and the close button shifts the title slightly left on this one panel. */
+.headerHelp {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+
+.headerHelp:hover {
+  background: rgba(99, 102, 241, 0.06);
+  color: var(--text-body);
 }
