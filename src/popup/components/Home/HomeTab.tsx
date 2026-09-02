@@ -198,6 +198,10 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   const canUseWallet = active && !isReadOnly && !isNip46 && !locked;
   const { walletState, walletDismissed, setWalletDismissed } = useWalletBanner(active, canUseWallet, menuOpen);
 
+  // Set when a connect / dismiss / identity-toggle RPC fails, so the click is
+  // not silently lost. All three used to fail without saying anything.
+  const [connectFailed, setConnectFailed] = useState<boolean>(false);
+
   const pendingRunRef = useRef(0);
   useEffect(() => {
     async function checkPending() {
@@ -223,8 +227,17 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   }, []);
 
   const handleIdentityToggle = async (checked: boolean) => {
+    const previous = identityEnabled;
     setIdentityEnabled(checked);
-    await rpc('setIdentityDisabled', { domain, disabled: !checked });
+    try {
+      await rpc('setIdentityDisabled', { domain, disabled: !checked });
+    } catch {
+      // A privacy control must not lie. The optimistic flip had no revert, so a
+      // failed write left the toggle showing a setting that was never saved —
+      // and the one it misreports is whether this site may see the identity.
+      setIdentityEnabled(previous);
+      setConnectFailed(true);
+    }
   };
 
   // Connecting is one step: the click. The extension used to also ask the browser for
@@ -233,8 +246,15 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   // fix for that released the identity while the dialog was still unanswered.
   const handleConnect = async () => {
     if (!domain) return;
+    setConnectFailed(false);
     try {
       await rpc('connectDomain', { domain });
+    } catch {
+      // try/finally with no catch made a failed connect an unhandled rejection:
+      // the card re-read state, found the site still not connected, and offered
+      // Connect again with nothing said. The globe's twin was given this in
+      // d18d127; this one was missed.
+      setConnectFailed(true);
     } finally {
       loadHomeState();
     }
@@ -249,10 +269,16 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   // cleared it.
   const handleDismiss = async (permanent = false) => {
     if (!domain) return;
+    setConnectFailed(false);
     try {
       await rpc('addDismissedDomain', { domain, permanent });
-    } finally {
       window.close();
+    } catch {
+      // Closing in a `finally` made a failed dismissal indistinguishable from a
+      // successful one — the popup vanished either way, and the site re-prompted
+      // a user who had said Never. Staying open is the only way they can tell,
+      // and the only way they can try again.
+      setConnectFailed(true);
     }
   };
 
@@ -314,6 +340,9 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
             text={domain!}
             hint={t('home.siteNotConnected')}
           >
+            {connectFailed && (
+              <div className={styles.actionError} role="alert">{t('home.actionFailed')}</div>
+            )}
             <div className={styles.connectActions}>
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
               <Button small variant="secondary" onClick={() => handleDismiss(false)}>{t('home.notNow')}</Button>
@@ -377,13 +406,18 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           </EmptyState>
         </Card>
       ) : (
-        <SiteControls
-          identityEnabled={identityEnabled}
-          isNip46={isNip46}
-          onIdentityToggle={handleIdentityToggle}
-          onManagePermissions={() => onManagePermissions(domain!)}
-          onRecentActivity={() => onViewAllActivity(domain)}
-        />
+        <>
+          {connectFailed && (
+            <div className={styles.actionError} role="alert">{t('home.actionFailed')}</div>
+          )}
+          <SiteControls
+            identityEnabled={identityEnabled}
+            isNip46={isNip46}
+            onIdentityToggle={handleIdentityToggle}
+            onManagePermissions={() => onManagePermissions(domain!)}
+            onRecentActivity={() => onViewAllActivity(domain)}
+          />
+        </>
       )}
 
       {/* Account — profile, mutes, and relays that follow the identity, grouped
