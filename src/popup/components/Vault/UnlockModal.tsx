@@ -47,7 +47,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
     onUnlocked?.();
   }, [vault, onUnlocked]);
 
-  const { password, setPassword, error, lockedUntil, inputRef, unlock, reset, focus } =
+  const { password, setPassword, error, loading, lockedUntil, inputRef, unlock, reset, focus } =
     useVaultUnlock({
       onSuccess: handleSuccess,
       messages: {
@@ -58,6 +58,13 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
     });
 
   const isLockedOut = lockedUntil > Date.now();
+  // The hook has always exposed and set `loading`; this component never read it.
+  // Deriving the key takes PBKDF2 at 600,000 iterations, plus a cold-worker wake
+  // on top, so pressing Unlock changed nothing on screen for one to three
+  // seconds — the single most-used gate in the product reading as dead. Enter
+  // could also fire a second vault_unlock mid-flight, and a wrong password then
+  // counted twice against the persisted brute-force guard.
+  const busy = loading || isLockedOut;
 
   // Auto-unlock for "Never" mode vaults (encrypted with empty password)
   useEffect(() => {
@@ -116,9 +123,9 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           placeholder={t('unlock.enterPassword')}
           value={password}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !isLockedOut && unlock()}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !busy && unlock()}
           autoComplete="off"
-          disabled={isLockedOut}
+          disabled={busy}
         />
         {error && <div className={styles.error}>{error}</div>}
         {unlockWaiters && unlockWaiters.length > 0 && (
@@ -147,7 +154,9 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
               {t('common.cancel')}
             </Button>
           )}
-          <Button small onClick={unlock} disabled={isLockedOut}>{t('common.unlock')}</Button>
+          <Button small onClick={unlock} disabled={busy}>
+            {loading ? t('common.loading') : t('common.unlock')}
+          </Button>
         </div>
         {fullScreen && !confirmReset && (
           <button className={styles.resetLink} onClick={() => setConfirmReset(true)}>

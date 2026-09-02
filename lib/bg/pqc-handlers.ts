@@ -288,7 +288,12 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
         if (e) { found = e; break; }
       }
     } catch {
-      return { published: false, current: false };
+      // Not `published: false`. This handler exists to ask the relays, so a
+      // failure to reach them is the one answer it cannot give — reporting "not
+      // published" told a user whose attestation is live to set post-quantum
+      // keys up again, and would have had them republish a correct one, on
+      // exactly the flaky-relay day that caused the failure.
+      return { published: false, current: false, unreachable: true };
     }
 
     if (!found) return { published: false, current: false };

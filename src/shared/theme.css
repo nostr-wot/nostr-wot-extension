@@ -4,8 +4,14 @@
   --bg-html: #f8f8fc;
   --text-heading: rgba(0, 0, 0, 0.8);
   --text-body: rgba(0, 0, 0, 0.7);
-  --text-secondary: rgba(0, 0, 0, 0.5);
-  --text-muted: rgba(0, 0, 0, 0.35);
+  /* Both were below WCAG AA on the page background: 0.5 gives 3.95:1 where body
+     text wants 4.5:1, and 0.35 gave 2.55:1. Raised to 4.7:1 and 3.2:1.
+     --text-muted is deliberately NOT taken to 4.5 — at that point it is the same
+     colour as --text-secondary, and the hierarchy the two tokens exist to express
+     disappears. 3:1 is the threshold for the large and secondary text it is used
+     for. tests/theme-tokens.test.ts pins both, and pins them apart. */
+  --text-secondary: rgba(0, 0, 0, 0.56);
+  --text-muted: rgba(0, 0, 0, 0.45);
   --card-bg: rgba(99, 102, 241, 0.06);
   --card-border: rgba(99, 102, 241, 0.1);
   --card-active: rgba(99, 102, 241, 0.12);
@@ -21,6 +27,32 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  /* ── Aliases ──
+   *
+   * Names the stylesheets already reach for that nothing defined. CSS fails
+   * silently here: a var() with no fallback invalidates its whole declaration,
+   * so `background: var(--bg-card)` on the InfoTooltip bubble rendered
+   * transparent, and the four `var(--accent)` rules were simply dropped. The
+   * ones that carried a fallback were quieter but not better — the fallback
+   * became the real value, so the palette had no say and two files reaching for
+   * the same idea drifted (--danger appeared as both #ef4444 and #dc2626).
+   *
+   * tests/theme-tokens.test.ts keeps this list honest.
+   */
+  --accent: var(--brand);
+  --text-primary: var(--text-heading);
+  --text-tertiary: var(--text-muted);
+  --danger: var(--error);
+  --border-light: var(--card-border);
+  /* Opaque on purpose. --card-bg is rgba(…, 0.06), so aliasing to it would
+     leave the tooltip bubble that motivated this just as see-through. */
+  --bg-card: var(--bg-page-solid);
+  --bg-surface: var(--bg-html);
+  --bg-sunken: rgba(0, 0, 0, 0.04);
+  --input-bg: transparent;
+  --overlay-z: 300;
+  --modal-z: 700;
 }
 
 *, *::before, *::after {
@@ -39,6 +71,20 @@ body {
   font-size: 13px;
   color: var(--text-body);
   background: var(--bg-page);
+}
+
+/* Nothing in the popup respected this. Animations are shortened rather than set
+   to `none`: several overlays unmount on a setTimeout matched to their duration,
+   and removing the animation outright would not shorten that wait — it would
+   just make the surface sit there motionless until the timer fired. A near-zero
+   duration keeps every animationend and timing assumption intact. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .hidden {

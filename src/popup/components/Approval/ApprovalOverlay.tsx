@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@shared/browser.js';
 import { rpc } from '@shared/rpc.js';
 import { t } from '@lib/i18n.js';
@@ -43,14 +43,55 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [selectedNip46, setSelectedNip46] = useState<ApprovalGroup | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [actionError, setActionError] = useState<string>('');
   const vault = useVault();
   const permissions = usePermissions();
   const { active, accounts } = useAccount();
 
+  // Held in refs so `refresh` does not depend on their identity. PopupApp passes
+  // `onRequestUnlock` as an inline arrow, so it was a new function on every
+  // parent render; that made a new `refresh`, which re-ran the effect below,
+  // which called `refresh`, which pushed a fresh array into the parent's state
+  // and re-rendered it. The popup sat in that circle for as long as it was open,
+  // re-querying the active tab and the pending queue the whole time, and tearing
+  // the runtime listener down and back up between laps — which can lose a
+  // `signerPendingUpdated` broadcast that lands in the gap.
+  const onRequestUnlockRef = useRef(onRequestUnlock);
+  onRequestUnlockRef.current = onRequestUnlock;
+  const onUnlockWaitersChangeRef = useRef(onUnlockWaitersChange);
+  onUnlockWaitersChangeRef.current = onUnlockWaitersChange;
+  // What we last told the parent, so an unchanged list does not re-render it.
+  const lastWaiterKeyRef = useRef<string | null>(null);
+  // `vault.locked` is read inside refresh but must not key it: as a dependency it
+  // rebuilt refresh on the very transition that matters, re-running the effect and
+  // leaving a gap where the runtime listener is detached — exactly when the unlock
+  // that just happened is broadcasting.
+  const vaultLockedRef = useRef(vault.locked);
+  vaultLockedRef.current = vault.locked;
+
+  // Which run of refresh is current. Approving a group of N fires N+1 overlapping
+  // refreshes, and the background's removal is not instantaneous, so without this
+  // the slowest run wins by finishing last and repaints requests that were just
+  // resolved — as approvable cards. This is the rule docs/component-standards.md
+  // §9 states; the function that motivated writing it down was not given it.
+  const runRef = useRef(0);
+  // The tab the popup belongs to cannot change while the popup is alive, so the
+  // domain is resolved once and reused.
+  const domainRef = useRef<string | null | undefined>(undefined);
+
   const refresh = useCallback(async () => {
-    const { domain: currentDomain } = await resolveActiveTabDomain();
+    const run = ++runRef.current;
+    const current = () => run === runRef.current;
+
+    if (domainRef.current === undefined) {
+      const { domain } = await resolveActiveTabDomain();
+      if (!current()) return;
+      domainRef.current = domain;
+    }
+    const currentDomain = domainRef.current;
 
     const pending: PendingRequest[] = await rpc('signer_getPending') || [];
+    if (!current()) return;
 
     // Fail closed. Falling back to "show everything" when the site could not be identified
     // meant one site's popup listed another site's pending signing requests — origin,
@@ -65,9 +106,16 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     const nip46InFlight = filtered.filter((r) => r.nip46InFlight);
     const unlockWaiters = filtered.filter((r) => r.waitingForUnlock);
 
-    onUnlockWaitersChange?.(unlockWaiters);
-    if (unlockWaiters.length > 0 && vault.locked) {
-      onRequestUnlock?.();
+    // Only tell the parent when the set actually changed. The array is rebuilt
+    // on every refresh, and handing it over unconditionally re-rendered PopupApp
+    // for a list identical to the one it already had.
+    const waiterKey = unlockWaiters.map((r) => r.id).join(',');
+    if (waiterKey !== lastWaiterKeyRef.current) {
+      lastWaiterKeyRef.current = waiterKey;
+      onUnlockWaitersChangeRef.current?.(unlockWaiters);
+    }
+    if (unlockWaiters.length > 0 && vaultLockedRef.current) {
+      onRequestUnlockRef.current?.();
     }
 
     // Group actionable requests
@@ -102,9 +150,22 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
       nip46Map.get(key)!.requests.push(req);
     }
 
+    if (!current()) return;
     setGroups([...groupMap.values()]);
     setNip46Groups([...nip46Map.values()]);
-  }, [vault.locked, onRequestUnlock]);
+
+    // A detail modal holds a snapshot taken when it opened. The request behind it
+    // can be gone by now — timed out, resolved from another surface, or dropped
+    // when the worker restarted — and nothing was reconciling that, so the modal
+    // outlived its request and Approve acknowledged an id the background no
+    // longer had, then closed as though it had signed.
+    const live = new Set(pending.map((r) => r.id));
+    setSelectedRequest((sel) => (sel && !live.has(sel.id) ? null : sel));
+    setSelectedGroup((sel) =>
+      sel && !sel.requests.some((r) => live.has(r.id)) ? null : sel);
+    setSelectedNip46((sel) =>
+      sel && !sel.requests.some((r) => live.has(r.id)) ? null : sel);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -116,6 +177,13 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     return () => browser.runtime.onMessage.removeListener(listener);
   }, [refresh]);
 
+  // The vault unlocking is a transition the pending queue's own broadcasts do not
+  // cover: nothing about `signerPending` changed, but what the popup should show
+  // for it did. Refresh on the flip without making it a dependency of `refresh`.
+  useEffect(() => {
+    if (!vault.locked) refresh();
+  }, [vault.locked, refresh]);
+
   const closeAndRefresh = () => {
     setSelectedGroup(null);
     setSelectedRequest(null);
@@ -123,90 +191,108 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     refresh();
   };
 
+  /**
+   * Every action on this surface runs through here.
+   *
+   * None of them had a catch. A failing RPC — the worker asleep past its three
+   * wake retries, a storage write refused — rejected somewhere inside the loop,
+   * so the remaining requests stayed pending, the overlay never closed or
+   * refreshed, and the user was told nothing at all. On a surface whose whole
+   * job is releasing the user's signing key, silence is the wrong failure mode.
+   *
+   * The refresh runs either way: after a partial failure the queue on screen
+   * must match the queue in the background, whatever is left in it.
+   */
+  const runAction = async (action: () => Promise<void>) => {
+    setActionError('');
+    try {
+      await action();
+    } catch {
+      setActionError(t('approval.actionFailed'));
+    } finally {
+      closeAndRefresh();
+    }
+  };
+
   // --- Group actions ---
 
-  const handleApprove = async (group: ApprovalGroup) => {
+  const handleApprove = (group: ApprovalGroup) => runAction(async () => {
     for (const req of group.requests) {
       await rpc('signer_resolve', { id: req.id, decision: { allow: true, remember: false } });
     }
-    closeAndRefresh();
-  };
+  });
 
-  const handleAlwaysAllow = async (group: ApprovalGroup) => {
+  // Resolve first, then remember. The old order granted a standing permission
+  // and only then tried to resolve the queue, so a failure between the two left
+  // the site permanently allowed with its requests still hanging — the worst of
+  // both outcomes. This way a failure costs the user one more prompt, nothing more.
+  const handleAlwaysAllow = (group: ApprovalGroup) => runAction(async () => {
     const accountId = group.requests[0]?.accountId || active?.id || null;
-    await permissions.savePermission(group.origin, group.permKey, 'allow', accountId);
     await rpc('signer_resolveBatch', {
       origin: group.origin,
       permKey: group.permKey,
       decision: { allow: true, remember: false },
     });
-    closeAndRefresh();
-  };
+    await permissions.savePermission(group.origin, group.permKey, 'allow', accountId);
+  });
 
-  const handleDeny = async (group: ApprovalGroup) => {
+  const handleDeny = (group: ApprovalGroup) => runAction(async () => {
     for (const req of group.requests) {
       await rpc('signer_resolve', { id: req.id, decision: { allow: false, remember: false } });
     }
-    closeAndRefresh();
-  };
+  });
 
-  const handleAlwaysDeny = async (group: ApprovalGroup) => {
+  const handleAlwaysDeny = (group: ApprovalGroup) => runAction(async () => {
     const accountId = group.requests[0]?.accountId || active?.id || null;
-    await permissions.savePermission(group.origin, group.permKey, 'deny', accountId);
     await rpc('signer_resolveBatch', {
       origin: group.origin,
       permKey: group.permKey,
       decision: { allow: false, remember: false },
     });
-    closeAndRefresh();
-  };
+    await permissions.savePermission(group.origin, group.permKey, 'deny', accountId);
+  });
 
   // --- Single request actions (expanded mode) ---
 
-  const handleApproveSingle = async (req: PendingRequest) => {
+  const handleApproveSingle = (req: PendingRequest) => runAction(async () => {
     await rpc('signer_resolve', { id: req.id, decision: { allow: true, remember: false } });
-    closeAndRefresh();
-  };
+  });
 
-  const handleDenySingle = async (req: PendingRequest) => {
+  const handleDenySingle = (req: PendingRequest) => runAction(async () => {
     await rpc('signer_resolve', { id: req.id, decision: { allow: false, remember: false } });
-    closeAndRefresh();
-  };
+  });
 
-  const handleAlwaysAllowSingle = async (req: PendingRequest) => {
+  const handleAlwaysAllowSingle = (req: PendingRequest) => runAction(async () => {
     const accountId = req.accountId || active?.id || null;
     const permKey = req.permKey || req.type;
-    await permissions.savePermission(req.origin, permKey, 'allow', accountId);
     await rpc('signer_resolveBatch', {
       origin: req.origin,
       permKey,
       decision: { allow: true, remember: false },
     });
-    closeAndRefresh();
-  };
+    await permissions.savePermission(req.origin, permKey, 'allow', accountId);
+  });
 
-  const handleAlwaysDenySingle = async (req: PendingRequest) => {
+  const handleAlwaysDenySingle = (req: PendingRequest) => runAction(async () => {
     const accountId = req.accountId || active?.id || null;
     const permKey = req.permKey || req.type;
-    await permissions.savePermission(req.origin, permKey, 'deny', accountId);
     await rpc('signer_resolveBatch', {
       origin: req.origin,
       permKey,
       decision: { allow: false, remember: false },
     });
-    closeAndRefresh();
-  };
+    await permissions.savePermission(req.origin, permKey, 'deny', accountId);
+  });
 
   // --- Reject all ---
 
-  const handleRejectAll = async () => {
+  const handleRejectAll = () => runAction(async () => {
     for (const group of groups) {
       for (const req of group.requests) {
         await rpc('signer_resolve', { id: req.id, decision: { allow: false, remember: false } });
       }
     }
-    closeAndRefresh();
-  };
+  });
 
   // All individual requests for expanded view
   const allRequests = groups.flatMap((g) => g.requests);
@@ -235,6 +321,9 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
             )}
           </div>
         </div>
+        {actionError && (
+          <div className={styles.actionError} role="alert">{actionError}</div>
+        )}
         {groups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
           <div className={styles.legend}>
             {t('approval.appliesToAllAccounts')}
@@ -262,12 +351,15 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
             <ApprovalCard
               key={`nip46::${group.origin}::${group.method}`}
               group={group}
-              onCancel={async () => {
+              // Through runAction like every other action here. These two were
+              // the only paths still bypassing it — on the request type whose
+              // characteristic failure is "the remote signer never answers",
+              // where a silent cancel is exactly what the user cannot afford.
+              onCancel={() => runAction(async () => {
                 for (const req of group.requests) {
                   await rpc('signer_cancelNip46', { id: req.id });
                 }
-                refresh();
-              }}
+              })}
               onClick={() => setSelectedNip46(group)}
             />
           ))}
@@ -302,12 +394,11 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
         <EventDetailModal
           request={selectedNip46.requests[0]}
           nip46InFlight
-          onDeny={async () => {
+          onDeny={() => runAction(async () => {
             for (const req of selectedNip46.requests) {
               await rpc('signer_cancelNip46', { id: req.id });
             }
-            closeAndRefresh();
-          }}
+          })}
           onClose={() => setSelectedNip46(null)}
           zIndex={510}
         />

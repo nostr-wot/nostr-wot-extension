@@ -48,10 +48,20 @@ export default function OverlayPanel({
                 <div className={styles.placeholder} />
               )}
               <span className={`${styles.title} ${noPadding ? styles.titleSmall : ''}`}>{title}</span>
-              {onClose ? (
-                <button className={styles.closeBtn} onClick={onClose}>
-                  <IconClose />
-                </button>
+              {/* This branch used to drop `headerRight` on the floor. It is taken
+                  whenever `onBack` is passed — which MenuOverlay always does — so
+                  the post-quantum panel's "How it works" button, the only way back
+                  to an explainer that shows itself once, has never rendered at all.
+                  Silently: passing a prop the component ignores is not a type error. */}
+              {onClose || headerRight ? (
+                <div className={styles.headerRight}>
+                  {headerRight}
+                  {onClose && (
+                    <button className={styles.closeBtn} onClick={onClose}>
+                      <IconClose />
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className={styles.placeholder} />
               )}

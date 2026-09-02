@@ -65,12 +65,28 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
     }
   }, [visible, initialDomain, initialPubkey]);
 
-  // Load raw log once when modal opens
+  // Load raw log once when modal opens.
+  //
+  // This had no catch and no loading flag, so an unread log and a failed read
+  // both rendered as "No activity yet" — the first only briefly, the second
+  // permanently, and neither distinguishable from a genuinely empty log. On a
+  // surface whose job is showing what sites have done with the user's key,
+  // "nothing happened" is the one wrong answer that reassures.
+  const [loading, setLoading] = useState<boolean>(false);
+  const [loadFailed, setLoadFailed] = useState<boolean>(false);
+
   const loadActivity = useCallback(async () => {
-    const log = await rpc<ActivityEntry[]>('getActivityLog') || [];
-    rawLog.current = log;
-    setLogVersion((v) => v + 1);
-    setSelectedGroup(null);
+    setLoading(true);
+    setLoadFailed(false);
+    try {
+      const log = await rpc<ActivityEntry[]>('getActivityLog') || [];
+      rawLog.current = log;
+      setLogVersion((v) => v + 1);
+      setSelectedGroup(null);
+    } catch {
+      setLoadFailed(true);
+    }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -256,7 +272,14 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
       </div>
 
       <div className={styles.list}>
-        {dayGroups.length === 0 ? (
+        {loading ? (
+          <div className={styles.empty}>{t('common.loading')}</div>
+        ) : loadFailed ? (
+          <div className={styles.empty}>
+            <div role="alert">{t('activity.loadFailed')}</div>
+            <Button small onClick={loadActivity}>{t('common.retry')}</Button>
+          </div>
+        ) : dayGroups.length === 0 ? (
           <div className={styles.empty}>
             {t('activity.noActivity')}
           </div>

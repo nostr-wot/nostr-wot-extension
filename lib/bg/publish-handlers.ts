@@ -139,6 +139,20 @@ export const handlers = new Map<string, HandlerFn>([
         // CRITICAL: `.content` is set to the caller-supplied `rawContent` (the
         // user's existing NIP-44-encrypted PRIVATE entries, fetched verbatim by
         // getMyMuteList) so publishing public mutes never destroys private ones.
+        // Checked before the key is touched, because it is a fact about the
+        // caller's input rather than about this device.
+        //
+        // The round-trip above is only CRITICAL while `rawContent` is genuinely
+        // the user's. When the read that produced it reached no relay at all,
+        // `rawContent` is the empty string that a total timeout resolves — and
+        // publishing that replaces every NIP-44-encrypted private mute with
+        // nothing. The caller must state that its list came from a read someone
+        // answered; an unstated one is treated as unreachable rather than
+        // assumed good, because this event is replaceable and the loss is total.
+        if (params.readReachable !== true) {
+            throw new Error('Refusing to publish a mute list built from a read no relay answered');
+        }
+
         const privkeyBytes = vault.getPrivkey();
         if (!privkeyBytes) throw new Error('Vault is locked or no private key');
 

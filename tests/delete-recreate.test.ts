@@ -141,3 +141,50 @@ describe('delete→recreate: remove last account then onboard again', () => {
     assert.strictEqual(vault.listAccounts()[0].pubkey, second.account.pubkey);
   });
 });
+
+describe('onboarding_createVault refuses to replace a vault that holds accounts', () => {
+  beforeEach(() => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  it('throws rather than overwriting, even while the vault is locked', async () => {
+    // Creating replaces the vault outright — the payload is `accounts: [one]`.
+    // The wizard is supposed to route to addToVault instead, but PasswordStep's
+    // probe swallows every failure into `setVaultExists(false)`, so a cold
+    // worker or an active brute-force lockout lands the user on "create a new
+    // vault" over a real one. Accepting that destroys every stored key while
+    // telling the user we are setting their security up.
+    const first = await onboardNewAccount();
+    assert.strictEqual(vault.listAccounts().length, 1);
+
+    // The dangerous state: a real vault, locked, so its contents are unreadable.
+    vault.lock();
+    const second = (await gen({})) as GenerateResult;
+
+    await assert.rejects(
+      createVault({ password: TEST_PASSWORD, account: second.account, upgradeFromReadOnly: null }),
+      /already exists/,
+    );
+
+    // And the original is untouched.
+    assert.strictEqual(await vault.exists(), true);
+    await vault.unlock(TEST_PASSWORD);
+    const accts = vault.listAccounts();
+    assert.strictEqual(accts.length, 1);
+    assert.strictEqual(accts[0].pubkey, first.account.pubkey, 'the original key must still be there');
+  });
+
+  it('still allows onboarding into a vault left empty by removing the last account', async () => {
+    // Not merely "exists": removing the last account leaves an empty vault
+    // behind, and onboarding through that is supported (the test above this one).
+    const first = await onboardNewAccount();
+    await removeAccount({ accountId: first.account.id });
+    await browserMock.storage.local.set({ accounts: [], activeAccountId: null });
+
+    const second = (await gen({})) as GenerateResult;
+    await createVault({ password: TEST_PASSWORD, account: second.account, upgradeFromReadOnly: null });
+
+    assert.strictEqual(vault.listAccounts().length, 1);
+  });
+});

@@ -25,6 +25,7 @@
 import type { VaultPayload, Account, SafeAccount, SafeAccountWithWallet, MemoryAccount, MemoryVaultPayload } from './types.ts';
 import { hexToBytes, bytesToHex, arrayToBase64, base64ToArray } from './crypto/utils.ts';
 import browser from './browser.ts';
+import { LOCK_STATE_KEY } from './constants.ts';
 
 const STORAGE_KEY = 'keyVault';
 const VAULT_VERSION = 1;
@@ -298,6 +299,13 @@ export async function unlock(password: string): Promise<boolean> {
     resetAutoLock();
     armKeepAlive();
 
+    // Announce the unlock, not just the lock. On a "Never lock" vault the
+    // background auto-unlocks on every cold start, and a popup that opened
+    // during that window was told "locked" with no way to ever hear the
+    // correction — so it hid the wallet card and every locked-gated action for
+    // as long as it stayed open.
+    noteLockStateChanged();
+
     // Transparent upgrade: the password is in hand exactly once, here. Re-encrypting
     // now is the only moment we can raise the work factor without asking the user for
     // anything. reEncrypt() replaces _cryptoKey and _kdfIterations.
@@ -351,6 +359,26 @@ export function lock(): void {
     _autoLockTimer = null;
   }
   clearKeepAlive();
+
+  // Locking left no trace an open popup could see. Auto-lock fires on a
+  // background timer, so a popup sitting open past the interval went on
+  // rendering unlocked UI over a locked vault — and an incoming request that
+  // queued an unlock waiter got no unlock prompt at all, because the surface
+  // that raises one only does so when it believes the vault is locked. It just
+  // timed out. Writing here is what the popup's listener has to observe.
+  //
+  // Fire-and-forget: locking must not depend on a storage write succeeding.
+  noteLockStateChanged();
+}
+
+/**
+ * Bump the marker an open popup watches for lock-state changes.
+ *
+ * Fire-and-forget in both directions: neither locking nor unlocking may depend
+ * on a storage write succeeding.
+ */
+function noteLockStateChanged(): void {
+  browser.storage.local.set({ [LOCK_STATE_KEY]: Date.now() }).catch(() => {});
 }
 
 /**

@@ -23,17 +23,19 @@ export type SiteConnectionState = 'connected' | 'notConnected' | 'error';
 /**
  * Decide a site's connection state.
  *
+ * This used to take the signer permissions too, ignore them (`void signerPerms`),
+ * and carry a comment saying they were kept "because callers already load it for
+ * other purposes". That was not true: the only caller fetched them for this call
+ * and nothing else, so every popup open paid for a round trip whose result was
+ * discarded on the next line. The parameter is gone and so is the fetch.
+ *
  * @param allowedDomains Allowlist from `getAllowedDomains`, or null if that RPC failed.
- * @param signerPerms Kept in the signature because callers already load it for other
- *   purposes; it is not consulted. Only a failed allowlist read produces 'error'.
  * @param domain The hostname being evaluated.
  */
 export function resolveSiteState(
   allowedDomains: string[] | null,
-  signerPerms: Record<string, unknown> | null,
   domain: string,
 ): SiteConnectionState {
-  void signerPerms;
   // A failed read is not a "no" and must not be reported as one: answering 'notConnected'
   // would show the Connect card to an already-connected site, and answering 'connected'
   // would be worse.

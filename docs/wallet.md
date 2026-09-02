@@ -43,6 +43,7 @@ lib/wallet/
   lnbits.ts             # LNbits REST provider
   lnbits-provision.ts   # Auto-provisioning via challenge-response
   bolt11.ts             # BOLT11 invoice decoder
+  lnurl.ts              # LNURL-pay / Lightning Address resolution (LUD-16, LUD-06)
 
 src/popup/components/
   Wallet/
@@ -54,6 +55,7 @@ tests/wallet/
   lnbits.test.ts         # LNbits provider tests
   lnbits-provision.test.ts # Auto-provisioning tests
   bolt11.test.ts         # BOLT11 decoder tests
+  lnurl.test.ts          # Lightning Address / LNURL-pay tests
   background-handlers.test.ts # Background RPC handler tests
   permissions.test.ts    # Wallet permission tests
   approval.test.ts       # Payment approval flow tests
@@ -161,6 +163,113 @@ Client functions in `lib/wallet/lnbits-provision.ts`:
 - `claimLightningAddress(instanceUrl, username, signFn)`
 - `getLightningAddress(instanceUrl, pubkey)`
 - `releaseLightningAddress(instanceUrl, signFn)`
+
+#### Adding the address to the profile never overwrites what it could not read
+
+`kind:0` is **replaceable**: publishing one replaces the user's profile outright.
+So the "Add to profile" prompt reads the current profile, merges `lud16` into it,
+and publishes the result — which makes that read load-bearing rather than a
+nicety. Merging into the result of a *failed* read publishes a document
+containing only `lud16`, and the name, picture, about and nip05 are gone.
+Silently, and worst on exactly the flaky-relay day that caused it.
+
+`fetchKind0` could not express the difference: it returned `null` both for "this
+user has no profile" and for "every relay timed out". `fetchKind0Read` returns
+`{ metadata, reachable }`, where `reachable` is true only if at least one relay
+actually answered — delivered the event, or reached EOSE, which is a relay
+stating it holds no `kind:0`. The `getProfileForMerge` handler exposes that
+uncached (a stale cache could drop a field changed elsewhere), and the popup
+refuses to publish when `reachable` is false, saying so instead of closing the
+dialog as though it had worked.
+
+### 5.3 Paying a Lightning Address (`lnurl.ts`)
+
+The Send flow accepts a Lightning Address (`name@domain`) in the same field as
+a BOLT11 invoice. Resolution is LUD-16 → LUD-06:
+
+```
+User pastes name@domain
+  → GET  https://{domain}/.well-known/lnurlp/{name}  → pay params
+  → Popup shows domain, description, min/max, comment field
+  → GET  {callback}?amount={msats}&comment={text}     → { pr: <bolt11> }
+  → Decode the invoice, check its amount == the approved amount
+  → provider.payInvoice(bolt11)
+```
+
+Both hops are attacker-influenced — the user pastes the address, the *server*
+picks the callback — so `lib/wallet/lnurl.ts` constrains every one of them
+(see [Security §17](security.md#17-lnurl-pay-hardening-libwalletlnurlts)):
+
+| Guard | Why |
+|-------|-----|
+| HTTPS only, on both the well-known URL and the callback | No cleartext, no downgrade |
+| No loopback / private / link-local / IP-literal hosts | A pasted "address" must not probe the LAN |
+| Amount clamped to `[minSendable, maxSendable]` before any request | Endpoint's own stated limits |
+| Returned invoice decoded and its amount compared to the approved amount | The server must not set the price |
+| Amountless invoices refused | Same reason |
+| Comment truncated to `commentAllowed` (itself capped at 1000) | LUD-12 |
+| Redirects refused rather than followed | The guard vouches for the URL requested, not for wherever a `302` points |
+| 15s timeout on every request | An endpoint that stops answering must not hold the worker open |
+| 64 KB response cap, enforced while reading; LUD-06 `status: "ERROR"` surfaced verbatim | Bounded, legible failures |
+
+Exports:
+- `parseLightningAddress(input)` / `isLightningAddress(input)` — parse/detect; never throws
+- `lightningAddressToLnurlpUrl(address)` — the LUD-16 well-known URL
+- `assertPublicHttpsUrl(url)` — the guard above; returns the parsed `URL`
+- `fetchPayParams(address, fetchFn?)` — validated `LnurlPayParams`
+- `requestInvoice(params, amountSats, comment?, fetchFn?)` — amount-verified `{ bolt11, amountSats }`
+
+Note: this runs in the background service worker with no host permission for
+arbitrary domains, so the LNURL server must serve permissive CORS (nearly all
+do). A server that does not is reported as "could not reach the endpoint".
+
+`wallet_payToLightningAddress` re-resolves the address instead of trusting a
+callback URL passed back from the popup, and the resolve handler never returns
+the callback — the endpoint the user saw is the endpoint that gets paid.
+
+#### At most once per click (`payment-intents.ts`)
+
+`rpc()` retries up to three times when the message port closes without a reply,
+because an MV3 worker that was asleep and a worker that ran the handler and then
+died look identical from the popup. Re-running most handlers is harmless. This
+one is not: it asks the endpoint for a **fresh invoice** on every call, so the
+retry carries a different payment hash and the node has no way to recognise it
+as a duplicate — it simply pays again. (`wallet_payInvoice` needs no such guard;
+the same bolt11 carries the same payment hash, and the node refuses it itself.)
+
+So the popup stamps one `intentId` per click and `runPaymentOnce` records it in
+`storage.session` — not in a module variable, since the point is to survive the
+very teardown that causes the retry. A replay of a completed intent returns the
+first result; a replay while the first is still in flight is refused; a payment
+that *threw* clears its record, because `rpc()` does not retry application
+errors and the user is the one deciding whether to try again.
+
+**Claiming an intent is serialized** through the same `AsyncLock` that
+`lib/signer.ts` and `lib/permissions.ts` use for their session-storage maps.
+Read-modify-write on one key is not atomic, and the guard cannot itself be racy:
+two claims that both read before either writes each store back a map missing the
+other's record, and once an in-flight marker is gone a retry finds nothing and
+sends a second invoice — the precise failure the module exists to prevent.
+
+**In-flight records are not pruned on the completed-record TTL.** Completed
+intents expire after 10 minutes; a record still marked in-flight is kept for 24
+hours. Dropping one on the short timer would re-arm the double payment it was
+written to stop. Intent ids are per-click UUIDs, so a stranded marker blocks
+nothing — the long bound exists only so the leak cannot grow without limit.
+
+Errors that cross back to the popup are **stable codes**, not sentences
+(`PAYMENT_IN_FLIGHT`, in `lib/wallet/types.ts` — the one wallet module that
+imports nothing, so the popup can recognise it without pulling the background's
+storage shim into its bundle). A sentence thrown in the background is an English
+sentence in all six locales.
+
+Two limits worth stating. The residual risk is the one every Lightning wallet
+has: a payment that failed after the sats left cannot be told apart from one that
+never left. And this covers the *machine* retry only — a popup destroyed by the
+user switching to a wallet app takes its `intentId` with it, so clicking Pay
+again after reopening is a new intent and a second payment. Closing that needs a
+background in-flight record keyed by payment hash and surfaced when the wallet
+mounts; see `docs/frontend-remediation-round-2.md` R3.
 
 ---
 
@@ -280,6 +389,8 @@ Extends the existing signer prompt system:
 | `wallet_getNwcUri` | Get NWC connection URI (if available) |
 | `wallet_hasConfig` | Check if wallet is configured |
 | `wallet_provision` | Auto-provision a new LNbits wallet |
+| `wallet_resolveLightningAddress` | Resolve a Lightning Address to pay params (min/max sats, description, comment limit) |
+| `wallet_payToLightningAddress` | Resolve, request an amount-verified invoice, and pay it |
 | `wallet_claimLightningAddress` | Claim a Lightning Address username |
 | `wallet_getLightningAddress` | Look up current Lightning Address |
 | `wallet_releaseLightningAddress` | Release a claimed Lightning Address |
@@ -349,6 +460,11 @@ See [Storage](storage.md#9-wallet-storage) and [Security](security.md#8-wallet-s
 **Connected wallet** (`Wallet.tsx`):
 - **Balance card** with gear icon for settings
 - **Deposit/Send buttons** — open centered modals (rendered via `createPortal` to escape parent overflow)
+- **Send modal** takes either a BOLT11 invoice or a Lightning Address. An
+  address is detected as it is typed, resolved (debounced 400 ms) via
+  `wallet_resolveLightningAddress`, and shown as destination + description +
+  accepted range, with amount and — where the endpoint allows it — comment
+  fields. Pay stays disabled until the amount is inside the range.
 - **Transaction list** with search and pagination
 - **Settings overlay** (full-page): provider info + disconnect, NWC URI copy, auto-approve threshold, Lightning Address claim/view (LNbits only)
 

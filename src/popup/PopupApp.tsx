@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import browser from '@shared/browser.ts';
 import { rpcNotify } from '@shared/rpc.ts';
 import '@shared/theme.css';
@@ -42,12 +42,25 @@ function PopupInner() {
   const account = useAccount();
   const vault = useVault();
 
-  // Capture active tab screenshot for backdrop
+  // Capture active tab screenshot for backdrop.
+  //
+  // Deferred past first paint: it is decoration, and it competes with the reads
+  // the popup actually needs to become usable. It also depends on `activeTab`,
+  // which the browser grants when the USER opens the extension and not when the
+  // background opens it for an incoming request — so on precisely those popups
+  // this fails, and that is expected rather than a permission worth adding.
   useEffect(() => {
-    browser.tabs.captureVisibleTab({ format: 'jpeg', quality: 20 })
-      .then((dataUrl: string) => setScreenshot(dataUrl))
-      .catch(() => {}); // Fails on chrome:// pages etc — just skip
+    const id = setTimeout(() => {
+      browser.tabs.captureVisibleTab({ format: 'jpeg', quality: 20 })
+        .then((dataUrl: string) => setScreenshot(dataUrl))
+        .catch(() => {}); // chrome:// page, or no activeTab grant — just skip
+    }, 0);
+    return () => clearTimeout(id);
   }, []);
+
+  // Stable identity. Passed inline, this was a new function on every render,
+  // and ApprovalOverlay's refresh depended on it — see the comment there.
+  const handleRequestUnlock = useCallback(() => setUnlockVisible(true), []);
 
   // Dismiss splash after init
   useEffect(() => {
@@ -113,7 +126,7 @@ function PopupInner() {
         </div>
 
         <ApprovalOverlay
-          onRequestUnlock={() => setUnlockVisible(true)}
+          onRequestUnlock={handleRequestUnlock}
           onUnlockWaitersChange={setUnlockWaiters}
         />
 
@@ -154,7 +167,11 @@ function PopupInner() {
             onBack={() => { setActiveOverlay(null); setPermsDomain(null); }}
             zIndex={300}
           >
-            <PermissionsSection />
+            {/* The domain was captured to open this panel and then dropped, so
+                "Manage permissions" from a site's card landed on the all-sites
+                list and made the user find the site they had just been looking
+                at. PermissionsSection has honoured this prop all along. */}
+            <PermissionsSection initialDomain={permsDomain} />
           </OverlayPanel>
         )}
 

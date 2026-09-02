@@ -23,11 +23,13 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
 }
 ```
 
-**Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
+**Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. It also writes `LOCK_STATE_KEY` (`vaultLockedAt`, `lib/constants.ts`) to `storage.local`, fire-and-forget, because locking left no trace an open popup could observe: `VaultContext` re-checked only when the active account changed, so a popup sitting open past the interval went on rendering unlocked UI over a locked vault — and an incoming request that queued an unlock waiter produced no prompt at all, since the surface that raises one only does so when it believes the vault is locked. The request simply timed out after two minutes with no UI ever shown. `storage.onChanged` is the only channel that carries this: runtime messages are not delivered back to the document that sent them, and a background broadcast reaches only a popup already listening. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
 
 The configured interval is stored as `autoLockMs` in `browser.storage.local`, but `_autoLockMs` is module-level in-memory state that resets to the 15-minute default on every service-worker cold start. `restoreAutoLockSetting()` re-reads the persisted `autoLockMs` (defaulting to 15 min when absent) and re-arms the timer; it is called on background startup and after every successful `vault_unlock`, so the user's chosen interval — not the default — governs locking after the SW restarts (bug #10).
 
 **"Never lock" auto-unlock and the cold-start window**: with `autoLockMs === 0` the vault is stored under an empty password and `background.ts` re-unlocks it on every service-worker cold start. That unlock is asynchronous — a storage read plus PBKDF2 at 210,000 iterations — so `isLocked()` reports **locked** for a few hundred milliseconds after every startup, and no keep-alive alarm is armed in this mode (`armKeepAlive()` returns early when `_autoLockMs <= 0`), so Chrome tears the worker down after ~30s idle and cold starts are routine. The startup sequence is therefore registered via `vault.beginStartupUnlock()`, and request paths (`waitForVaultUnlock()` in `lib/signer.ts`) `await vault.whenStartupUnlockSettled()` before concluding the vault is locked. Without that gate a `signEvent` arriving inside the window queued an unlock marker and auto-opened the action popup — showing an empty popup on requests the user's saved `allow` permission had already approved.
+
+**The `vault_isLocked` RPC awaits the same gate**, and did not until the UX audit found it. The popup asks that one question and trusts the answer, so on a never-lock vault every popup opened after ~30s idle — which is every ordinary open — raced the startup PBKDF2 and was told "locked". Because a *successful* unlock wrote nothing observable, the answer never corrected: the wallet balance card, the Wallet menu row and every locked-gated action stayed hidden for the whole life of that popup and reappeared on the next open for no visible reason. This was the extension's most reproducible intermittent fault. `unlock()` now bumps `LOCK_STATE_KEY` on success as well as `lock()` doing so, so the marker means "the lock state changed" in either direction and an open popup re-reads it.
 
 **Service-worker keep-alive**: On Chrome MV3 the service worker is torn down frequently (including around page refreshes), which wipes the in-memory decrypted key and makes a timed-mode vault appear locked well before the configured interval. While the vault is unlocked in timed-lock mode (`autoLockMs > 0`), `vault.ts` arms a periodic `browser.alarms` keep-alive (`'vault-keepalive'`, ~30s period — Chrome clamps the minimum). The `onAlarm` listener in `background.ts` does a trivial async storage read on each tick, resetting the SW idle timer so the worker stays alive until the auto-lock actually fires. The alarm is cleared on every `lock()` and is **never** used to persist the decrypted key — it only holds the worker open, preserving the security model. It is a graceful no-op where `browser.alarms` is unavailable (Safari's persistent background page, tests).
 
@@ -35,6 +37,8 @@ The configured interval is stored as `autoLockMs` in `browser.storage.local`, bu
 
 1. **Popup-side** — the `useVaultUnlock` hook displays the countdown and disables the input during lockout. Module-level state, so remounting components does not reset it; it does reset on full page reload.
 2. **Background-side (authoritative)** — the `vault_unlock` handler (`lib/bg/vault-handlers.ts`) keeps a persisted failure counter in `browser.storage.local` under `vaultUnlockGuard { failures, lockedUntil }`. While `lockedUntil` is in the future, `vault_unlock` throws `Too many failed attempts. Try again in Ns` without attempting decryption — even for the correct password. A failed attempt increments the counter; a successful unlock removes the guard; `vault_destroy` clears it. Because it is persisted, popup reloads and service-worker restarts do not reset it.
+
+**Creating a vault refuses to replace one that holds accounts.** `vault.create()` writes the payload it is given, so `onboarding_createVault` — whose payload is `accounts: [theNewOne]` — replaces the vault outright. Adding to an existing vault is `onboarding_addToVault`; deliberately replacing one is `vault_destroy` first. The popup tries to route between them and cannot be relied on to: `PasswordStep` probes for an existing vault and falls into `catch { setVaultExists(false) }`, so a cold worker — or the persisted brute-force guard throwing during a lockout — turns *any* failure of that probe into "there is no vault", and the next screen offers to create one. The handler therefore enforces it, refusing when a vault exists **and holds accounts**. The account list in `storage.local` is what makes that answerable while the vault is locked, which is the state the dangerous path arrives in: the decrypted payload is unreadable then, so asking the vault itself would answer "no accounts" and wave the overwrite through. An empty vault left behind by removing the last account is still a supported thing to onboard into.
 
 **Vault destroy** (`vault.destroy()`): Irreversibly wipes the encrypted vault from `browser.storage.local` and clears all in-memory state. The `vault_destroy` RPC handler also clears wallet providers, cancels pending signer requests, and removes account metadata from storage. Exposed via "Forgot password?" on the full-screen lock overlay with a confirmation step.
 
@@ -321,3 +325,55 @@ parser normalizes case/whitespace/control characters first). Applied centrally
 in the `Avatar` component plus the direct `<img>` sites (`ProfilePreview`
 banner, `EditProfileOverlay`). Locally-created `blob:` object URLs used for
 upload previews are exempt because they never come from relay data.
+
+---
+
+## 17. LNURL-pay Hardening (`lib/wallet/lnurl.ts`)
+
+Paying a Lightning Address makes the background service worker — the context
+holding the wallet's admin key — fetch a URL derived from user input, then a
+second URL chosen by that first server. Both are treated as untrusted:
+
+- **`assertPublicHttpsUrl()`** runs on the well-known URL *and* on the callback
+  the endpoint returns. `https://` only (no localhost exception here — unlike
+  LNbits, there is no development target to reach), and it rejects `localhost`,
+  `*.local`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0/8`, `10.0.0.0/8`,
+  `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, and every bare IP
+  literal. A pasted "address" cannot be used to probe the local machine or the
+  user's network.
+
+  The IPv6 private ranges (`::1`, `fc00::/7`, `fe80::/10`) are covered by the
+  bare-literal rule rather than by a range test: an IPv6 literal is the only
+  hostname that may contain a colon, so requiring a *name* excludes all of them
+  at once. An earlier version prefix-matched hostnames for `fc`/`fd`, reaching
+  for unique-local addresses; because it ran against every hostname it rejected
+  real domains — `fdn.fr`, `fc2.com`, `fdroid.org` — as private endpoints.
+  Matching a name against an address range is a category error.
+- **Redirects are refused, not followed** (`redirect: 'error'`).
+  `assertPublicHttpsUrl` vouches for the URL being requested and can say nothing
+  about wherever a `302` points; following one would let an endpoint that passed
+  the check hand back an internal address and walk the fetch straight inside.
+  This is what makes "the endpoint cannot redirect the second hop inward" true.
+- **Every request is bounded in time**, 15s via `AbortSignal.timeout`, so an
+  endpoint that accepts a connection and then says nothing cannot hold the
+  service worker open.
+- **The user's amount is the amount.** The invoice returned by the callback is
+  decoded and its amount compared to the approved amount; a mismatch, an
+  undecodable invoice, or an amountless invoice throws and nothing is paid. A
+  hostile or compromised LNURL server therefore cannot set the price.
+- **Range and comment limits** come from the endpoint's own `minSendable`,
+  `maxSendable`, and `commentAllowed`, enforced client-side before any callback
+  request; `commentAllowed` is itself capped at 1000 characters.
+- **Bounded responses**: 64 KB cap on the body, enforced *while reading* — the
+  declared `Content-Length` is checked first, then the stream is read chunk by
+  chunk and cancelled the moment it exceeds the cap. Measuring after buffering
+  would only decline to parse a body already pulled into the worker. JSON-object
+  shape required, LUD-06 `{ status: "ERROR", reason }` surfaced (truncated to
+  200 chars).
+- **No callback in the popup's hands.** `wallet_resolveLightningAddress`
+  returns display fields only, and `wallet_payToLightningAddress` re-resolves
+  the address itself, so the endpoint that was shown is the endpoint that is
+  paid.
+
+Both handlers are privileged (extension pages only) — the port listener still
+rejects everything that is not `nip07_`/`webln_`, so a page cannot reach them.

@@ -403,3 +403,12 @@
 .pqcCardWarn .pqcIcon {
   color: var(--warning, #f59e0b);
 }
+
+/* Shown when a connect, dismiss or identity-toggle RPC failed. Uses --error,
+   which theme.css defines. */
+.actionError {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--error);
+  text-align: center;
+}

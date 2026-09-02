@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
@@ -46,7 +46,15 @@ function useSiteState(active: Account | null) {
   const [siteState, setSiteState] = useState<string | null>(null); // null = loading, 'empty' | 'notConnected' | 'connected' | 'error'
   const [identityEnabled, setIdentityEnabled] = useState<boolean>(true);
 
+  // Which run of loadHomeState is the current one. Without this the slower of
+  // two overlapping runs wins simply by finishing last, and paints its stale
+  // answer over the newer one.
+  const runRef = useRef(0);
+
   const loadHomeState = useCallback(async () => {
+    const run = ++runRef.current;
+    const current = () => run === runRef.current;
+
     // Re-enter the loading state so re-runs (e.g. when `active` resolves) don't
     // linger on a stale connected view while async detection is in flight.
     setSiteState(null);
@@ -55,6 +63,7 @@ function useSiteState(active: Account | null) {
       // Not tab.url: the browser withholds it from us on a site we hold no host
       // permission for, which is now every site. See shared/activeTabDomain.
       const { domain: d, restricted } = await resolveActiveTabDomain();
+      if (!current()) return;
       if (restricted || !d) {
         setSiteState('empty');
         return;
@@ -62,17 +71,16 @@ function useSiteState(active: Account | null) {
       resolvedDomain = d;
       setDomain(d);
 
-      const [allowedR, identityR, permsR] = await Promise.allSettled([
+      const [allowedR, identityR] = await Promise.allSettled([
         rpc<string[]>('getAllowedDomains'),
         rpc<string[]>('getIdentityDisabledSites'),
-        rpc<Record<string, string>>('signer_getPermissionsForDomain', { domain: d }),
       ]);
+      if (!current()) return;
 
       const allowedDomains = allowedR.status === 'fulfilled' ? (allowedR.value || []) : null;
       const identityDisabled = identityR.status === 'fulfilled' ? (identityR.value || []) : [];
-      const perms = permsR.status === 'fulfilled' ? (permsR.value || {}) : null;
 
-      const state = resolveSiteState(allowedDomains, perms, d);
+      const state = resolveSiteState(allowedDomains, d);
       if (state === 'error') {
         setSiteState('error');
         return;
@@ -84,13 +92,42 @@ function useSiteState(active: Account | null) {
 
       setSiteState(state);
     } catch {
+      if (!current()) return;
       setSiteState(resolvedDomain ? 'error' : 'empty');
     }
   }, []);
 
+  // `active.id`, not `active`. AccountContext recomputes `active` with
+  // `accounts.find(...)` on every render, so any write it watches — including a
+  // profileCache write, which happens whenever a profile resolves — hands this
+  // effect a new object identity for the same account. It then re-ran the whole
+  // detection, reset siteState to null ("Loading…"), and remounted every card
+  // below, each of which re-fired its own fetches. With several accounts that is
+  // the same work several times over on a single popup open.
+  //
+  // loadHomeState never reads `active`; it only needed to re-run when the
+  // account genuinely changes.
   useEffect(() => {
     loadHomeState();
-  }, [active, loadHomeState]);
+  }, [active?.id, loadHomeState]);
+
+  // The allowlist can change while this view is mounted — from the globe button
+  // in the top bar, or from the background — and the card kept showing whatever
+  // it decided when it loaded. That is how the globe and the home card ended up
+  // contradicting each other inside one 380px window: the dot went green while
+  // the card below it still offered Connect.
+  //
+  // storage.onChanged rather than a runtime message: runtime messages are not
+  // delivered back to the document that sent them, so the popup cannot notify
+  // itself this way. See docs/component-standards.md §9.
+  useEffect(() => {
+    const onChanged = (changes: Record<string, unknown>, area: string) => {
+      if (area !== 'local') return;
+      if (changes.allowedDomains || changes.identityDisabledSites) loadHomeState();
+    };
+    browser.storage.onChanged.addListener(onChanged);
+    return () => browser.storage.onChanged.removeListener(onChanged);
+  }, [loadHomeState]);
 
   return { domain, siteState, identityEnabled, setIdentityEnabled, loadHomeState };
 }
@@ -99,14 +136,23 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
   const [walletState, setWalletState] = useState<null | false | { balance: number }>(null);
   const [walletDismissed, setWalletDismissed] = useState<boolean>(false);
 
+  const walletRunRef = useRef(0);
   const checkWallet = useCallback(async () => {
+    const run = ++walletRunRef.current;
+    const current = () => run === walletRunRef.current;
     try {
       const configType = await rpc<string | false>('wallet_hasConfig');
+      if (!current()) return;
       if (!configType) { setWalletState(false); return; }
       const result = await rpc<{ balance: number }>('wallet_getBalance');
+      if (!current()) return;
       setWalletState({ balance: result?.balance ?? 0 });
     } catch {
-      setWalletState(false);
+      // `false` here means "this account has no wallet", which is a claim a
+      // failed RPC cannot support — it showed "set up a wallet" to someone who
+      // already had one. Unknown stays unknown.
+      if (!current()) return;
+      setWalletState(null);
     }
   }, []);
 
@@ -120,9 +166,15 @@ function useWalletBanner(active: Account | null, canUseWallet: boolean | null, m
     });
   }, [active?.id, canUseWallet, checkWallet]);
 
-  // Re-check wallet state when menu overlay closes (e.g. after wallet setup)
+  // Re-check when the menu overlay *closes*, e.g. after wallet setup. Keyed on
+  // the transition, not the value: `menuOpen` starts out false, so this fired on
+  // mount alongside the effect above and every popup open paid for two NWC round
+  // trips instead of one.
+  const prevMenuOpenRef = useRef<boolean | undefined>(menuOpen);
   useEffect(() => {
-    if (menuOpen === false && canUseWallet) {
+    const was = prevMenuOpenRef.current;
+    prevMenuOpenRef.current = menuOpen;
+    if (was === true && menuOpen === false && canUseWallet) {
       checkWallet();
     }
   }, [menuOpen, canUseWallet, checkWallet]);
@@ -146,14 +198,24 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   const canUseWallet = active && !isReadOnly && !isNip46 && !locked;
   const { walletState, walletDismissed, setWalletDismissed } = useWalletBanner(active, canUseWallet, menuOpen);
 
+  // Set when a connect / dismiss / identity-toggle RPC fails, so the click is
+  // not silently lost. All three used to fail without saying anything.
+  const [connectFailed, setConnectFailed] = useState<boolean>(false);
+
+  const pendingRunRef = useRef(0);
   useEffect(() => {
     async function checkPending() {
+      const run = ++pendingRunRef.current;
       try {
         const pending: PendingRequest[] = await rpc('signer_getPending') || [];
+        if (run !== pendingRunRef.current) return;
         const actionable = pending.filter((r) => (r.needsPermission || r.waitingForUnlock) && !r.nip46InFlight);
         setPendingCount(actionable.length);
       } catch {
-        setPendingCount(0);
+        // A failed read is not "no pending requests". Zeroing the badge on a
+        // transport failure hides the queue instead of reporting it; keep the
+        // last count we actually managed to read.
+        if (run !== pendingRunRef.current) return;
       }
     }
     checkPending();
@@ -165,8 +227,17 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   }, []);
 
   const handleIdentityToggle = async (checked: boolean) => {
+    const previous = identityEnabled;
     setIdentityEnabled(checked);
-    await rpc('setIdentityDisabled', { domain, disabled: !checked });
+    try {
+      await rpc('setIdentityDisabled', { domain, disabled: !checked });
+    } catch {
+      // A privacy control must not lie. The optimistic flip had no revert, so a
+      // failed write left the toggle showing a setting that was never saved —
+      // and the one it misreports is whether this site may see the identity.
+      setIdentityEnabled(previous);
+      setConnectFailed(true);
+    }
   };
 
   // Connecting is one step: the click. The extension used to also ask the browser for
@@ -175,8 +246,15 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   // fix for that released the identity while the dialog was still unanswered.
   const handleConnect = async () => {
     if (!domain) return;
+    setConnectFailed(false);
     try {
       await rpc('connectDomain', { domain });
+    } catch {
+      // try/finally with no catch made a failed connect an unhandled rejection:
+      // the card re-read state, found the site still not connected, and offered
+      // Connect again with nothing said. The globe's twin was given this in
+      // d18d127; this one was missed.
+      setConnectFailed(true);
     } finally {
       loadHomeState();
     }
@@ -191,10 +269,16 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
   // cleared it.
   const handleDismiss = async (permanent = false) => {
     if (!domain) return;
+    setConnectFailed(false);
     try {
       await rpc('addDismissedDomain', { domain, permanent });
-    } finally {
       window.close();
+    } catch {
+      // Closing in a `finally` made a failed dismissal indistinguishable from a
+      // successful one — the popup vanished either way, and the site re-prompted
+      // a user who had said Never. Staying open is the only way they can tell,
+      // and the only way they can try again.
+      setConnectFailed(true);
     }
   };
 
@@ -256,6 +340,9 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
             text={domain!}
             hint={t('home.siteNotConnected')}
           >
+            {connectFailed && (
+              <div className={styles.actionError} role="alert">{t('home.actionFailed')}</div>
+            )}
             <div className={styles.connectActions}>
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
               <Button small variant="secondary" onClick={() => handleDismiss(false)}>{t('home.notNow')}</Button>
@@ -319,13 +406,18 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
           </EmptyState>
         </Card>
       ) : (
-        <SiteControls
-          identityEnabled={identityEnabled}
-          isNip46={isNip46}
-          onIdentityToggle={handleIdentityToggle}
-          onManagePermissions={() => onManagePermissions(domain!)}
-          onRecentActivity={() => onViewAllActivity(domain)}
-        />
+        <>
+          {connectFailed && (
+            <div className={styles.actionError} role="alert">{t('home.actionFailed')}</div>
+          )}
+          <SiteControls
+            identityEnabled={identityEnabled}
+            isNip46={isNip46}
+            onIdentityToggle={handleIdentityToggle}
+            onManagePermissions={() => onManagePermissions(domain!)}
+            onRecentActivity={() => onViewAllActivity(domain)}
+          />
+        </>
       )}
 
       {/* Account — profile, mutes, and relays that follow the identity, grouped

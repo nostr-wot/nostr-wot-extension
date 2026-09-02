@@ -30,6 +30,7 @@ import { npubEncode } from '../../lib/crypto/bech32.ts';
 import {
   addWeblnAllowedDomain, isWeblnAllowed,
 } from '../../lib/bg/domain-handlers.ts';
+import { fetchPayParams, requestInvoice } from '../../lib/wallet/lnurl.ts';
 
 // ── Test Constants ──
 
@@ -1387,5 +1388,193 @@ describe('wallet handlers: wallet_provision', () => {
       () => handleWalletProvision({}),
       { message: 'No active account' },
     );
+  });
+});
+
+// ── wallet_resolveLightningAddress / wallet_payToLightningAddress ──
+//
+// Same replication approach as the handlers above: the logic mirrors
+// lib/bg/wallet-handlers.ts, with fetch injected so no network is touched.
+
+async function handleWalletResolveLightningAddress(
+  params: { address: string },
+  fetchFn: typeof fetch,
+): Promise<HandlerResult> {
+  if (vault.isLocked()) return { result: null, error: 'Vault is locked' };
+  try {
+    const p = await fetchPayParams(params.address, fetchFn);
+    return {
+      result: {
+        address: p.address,
+        domain: p.domain,
+        minSats: Math.ceil(p.minSendable / 1000),
+        maxSats: Math.floor(p.maxSendable / 1000),
+        description: p.description,
+        commentAllowed: p.commentAllowed,
+        allowsNostr: p.allowsNostr,
+      },
+      error: null,
+    };
+  } catch (e) {
+    return { result: null, error: (e as Error).message };
+  }
+}
+
+async function handleWalletPayToLightningAddress(
+  params: { address: string; amountSats: number; comment?: string },
+  fetchFn: typeof fetch,
+): Promise<HandlerResult> {
+  if (vault.isLocked()) return { result: null, error: 'Vault is locked' };
+  const acct = vault.getActiveAccountWithWallet();
+  if (!acct?.walletConfig) return { result: null, error: 'No wallet configured' };
+  const provider = getWalletProvider(acct.id, acct.walletConfig);
+  if (!provider) return { result: null, error: 'Provider not available' };
+  try {
+    if (!provider.isConnected()) await provider.connect();
+    const payParams = await fetchPayParams(params.address, fetchFn);
+    const { bolt11 } = await requestInvoice(payParams, params.amountSats, params.comment, fetchFn);
+    const { preimage } = await provider.payInvoice(bolt11);
+    return { result: { preimage, bolt11, amountSats: params.amountSats, address: payParams.address }, error: null };
+  } catch (e) {
+    return { result: null, error: (e as Error).message };
+  }
+}
+
+const LNURL_INVOICE_250K =
+  'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp';
+
+function lnurlFetch(overrides?: { payParams?: Record<string, unknown>; invoice?: string }): typeof fetch {
+  const payParams = {
+    tag: 'payRequest',
+    callback: 'https://example.com/lnurlp/cb',
+    minSendable: 1000,
+    maxSendable: 1_000_000_000,
+    metadata: JSON.stringify([['text/plain', 'Sats for alice']]),
+    commentAllowed: 140,
+    ...(overrides?.payParams ?? {}),
+  };
+  return (async (url: string) => {
+    const body = String(url).includes('/.well-known/lnurlp/')
+      ? payParams
+      : { pr: overrides?.invoice ?? LNURL_INVOICE_250K };
+    return new Response(JSON.stringify(body), { status: 200 });
+  }) as unknown as typeof fetch;
+}
+
+describe('wallet handlers: wallet_resolveLightningAddress', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    clearWalletProviders();
+    vault.lock();
+    await vault.create(TEST_PASSWORD, makePayloadWithWallet());
+  });
+
+  it('returns sat-denominated pay params for the popup', async () => {
+    const r = await handleWalletResolveLightningAddress({ address: 'Alice@Example.com' }, lnurlFetch());
+    assert.strictEqual(r.error, null);
+    assert.deepStrictEqual(r.result, {
+      address: 'alice@example.com',
+      domain: 'example.com',
+      minSats: 1,
+      maxSats: 1_000_000,
+      description: 'Sats for alice',
+      commentAllowed: 140,
+      allowsNostr: false,
+    });
+  });
+
+  it('does not leak the callback URL to the popup', async () => {
+    const r = await handleWalletResolveLightningAddress({ address: 'alice@example.com' }, lnurlFetch());
+    assert.ok(!('callback' in (r.result as Record<string, unknown>)));
+  });
+
+  it('returns error when vault is locked', async () => {
+    vault.lock();
+    const r = await handleWalletResolveLightningAddress({ address: 'alice@example.com' }, lnurlFetch());
+    assert.strictEqual(r.result, null);
+    assert.strictEqual(r.error, 'Vault is locked');
+  });
+
+  it('returns error for an unparseable address', async () => {
+    const r = await handleWalletResolveLightningAddress({ address: 'not-an-address' }, lnurlFetch());
+    assert.strictEqual(r.result, null);
+    assert.match(r.error as string, /valid Lightning Address/);
+  });
+});
+
+describe('wallet handlers: wallet_payToLightningAddress', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    clearWalletProviders();
+    vault.lock();
+    await vault.create(TEST_PASSWORD, makePayloadWithWallet());
+    setWalletProvider('acct1', createMockProvider());
+  });
+
+  it('resolves, requests an invoice, and pays it', async () => {
+    const r = await handleWalletPayToLightningAddress(
+      { address: 'alice@example.com', amountSats: 250_000 }, lnurlFetch(),
+    );
+    assert.strictEqual(r.error, null);
+    assert.deepStrictEqual(r.result, {
+      preimage: 'abc123',
+      bolt11: LNURL_INVOICE_250K,
+      amountSats: 250_000,
+      address: 'alice@example.com',
+    });
+  });
+
+  it('does not pay when the endpoint returns a different amount', async () => {
+    let paid = false;
+    setWalletProvider('acct1', createMockProvider({
+      isConnected() { return true; },
+      async payInvoice() { paid = true; return { preimage: 'abc123' }; },
+    }));
+    const r = await handleWalletPayToLightningAddress(
+      { address: 'alice@example.com', amountSats: 1000 }, lnurlFetch(),
+    );
+    assert.strictEqual(r.result, null);
+    assert.match(r.error as string, /not the 1000 sats requested/);
+    assert.strictEqual(paid, false, 'must not pay an invoice the user did not approve');
+  });
+
+  it('does not pay when the amount is outside the endpoint range', async () => {
+    const r = await handleWalletPayToLightningAddress(
+      { address: 'alice@example.com', amountSats: 250_000 },
+      lnurlFetch({ payParams: { minSendable: 1_000_000, maxSendable: 2_000_000 } }),
+    );
+    assert.strictEqual(r.result, null);
+    assert.match(r.error as string, /amount must be between/);
+  });
+
+  it('returns error when vault is locked', async () => {
+    vault.lock();
+    const r = await handleWalletPayToLightningAddress(
+      { address: 'alice@example.com', amountSats: 250_000 }, lnurlFetch(),
+    );
+    assert.strictEqual(r.result, null);
+    assert.strictEqual(r.error, 'Vault is locked');
+  });
+
+  it('returns error when no wallet configured', async () => {
+    vault.lock();
+    await vault.create(TEST_PASSWORD, makePayloadNoWallet());
+    const r = await handleWalletPayToLightningAddress(
+      { address: 'alice@example.com', amountSats: 250_000 }, lnurlFetch(),
+    );
+    assert.strictEqual(r.result, null);
+    assert.strictEqual(r.error, 'No wallet configured');
+  });
+
+  it('surfaces a provider failure', async () => {
+    setWalletProvider('acct1', createMockProvider({
+      isConnected() { return true; },
+      async payInvoice() { throw new Error('Insufficient balance'); },
+    }));
+    const r = await handleWalletPayToLightningAddress(
+      { address: 'alice@example.com', amountSats: 250_000 }, lnurlFetch(),
+    );
+    assert.strictEqual(r.result, null);
+    assert.strictEqual(r.error, 'Insufficient balance');
   });
 });

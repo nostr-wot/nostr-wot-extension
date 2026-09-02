@@ -347,7 +347,7 @@ async function removePendingFromStorage(id: string): Promise<void> {
  * @param id - request ID
  * @param decision - { allow: boolean, remember: boolean, rememberKind?: boolean }
  */
-export function resolveRequest(id: string, decision: RequestDecision): void {
+export function resolveRequest(id: string, decision: RequestDecision): Promise<void> {
   const resolver = _pendingResolvers.get(id);
   if (resolver) {
     resolver(decision);
@@ -355,7 +355,10 @@ export function resolveRequest(id: string, decision: RequestDecision): void {
   }
   const timer = _timeoutTimers.get(id);
   if (timer) { clearTimeout(timer); _timeoutTimers.delete(id); }
-  removePendingFromStorage(id);
+  // Returned rather than fired and forgotten: the popup refreshes as soon as
+  // `signer_resolve` replies, and if the removal is still in flight at that
+  // point it reads the request back and repaints a card it just approved.
+  return removePendingFromStorage(id);
 }
 
 /**
@@ -449,6 +452,12 @@ export async function cleanupStale(): Promise<void> {
     await browser.storage.session.set({ signerPending: [] });
     await updateBadge(0);
   });
+  // Every other mutation of `signerPending` broadcasts; this one did not, and it
+  // is the one that empties the queue. A popup open across a worker restart —
+  // which its own RPC can trigger, since the keep-alive alarm is armed only for
+  // an unlocked timed-lock vault — kept rendering the approvals this just
+  // deleted, and Approve on one of them returned { ok: true } against nothing.
+  browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
 
 /**

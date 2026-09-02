@@ -1105,30 +1105,51 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
     assert.strictEqual((await signer.getPending()).length, 0);
   });
 
-  it('onboarding_createVault rejects pending prompts for the previous account', async () => {
+  it('onboarding_createVault refuses over a populated vault without disturbing the queue', async () => {
+    // This case used to assert that createVault invalidated prompts for the
+    // previous account. That premise is no longer reachable: createVault now
+    // refuses to run over a vault that still holds accounts (it replaces the
+    // vault outright, so accepting it destroys every stored key), and in the
+    // state where it CAN run — the last account removed — there is no previous
+    // account for it to invalidate against. The property itself is still
+    // covered, by the onActiveAccountChanged / vault_setActiveAccount /
+    // onboarding_addToVault cases above.
+    //
+    // What matters here now is that the refusal is clean: it must not swallow
+    // or half-resolve a request that is waiting on the user.
     const createVault = onboarding.handlers.get('onboarding_createVault')!;
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
     assert.strictEqual((await signer.getPending()).length, 1);
 
-    await createVault({
-      password: 'newvaultpass123',
-      account: {
-        id: 'acctNew',
-        name: 'Fresh',
-        type: 'nsec',
-        pubkey: SECOND_PUBKEY_HEX,
-        privkey: '0000000000000000000000000000000000000000000000000000000000000004',
-        mnemonic: null,
-        nip46Config: null,
-        readOnly: false,
-        createdAt: 4000000,
-      },
-    });
+    await assert.rejects(
+      createVault({
+        password: 'newvaultpass123',
+        account: {
+          id: 'acctNew',
+          name: 'Fresh',
+          type: 'nsec',
+          pubkey: SECOND_PUBKEY_HEX,
+          privkey: '0000000000000000000000000000000000000000000000000000000000000004',
+          mnemonic: null,
+          nip46Config: null,
+          readOnly: false,
+          createdAt: 4000000,
+        },
+      }),
+      /already exists/,
+    );
 
-    await assert.rejects(p, /User denied access/);
-    assert.strictEqual((await signer.getPending()).length, 0);
+    assert.strictEqual(
+      (await signer.getPending()).length,
+      1,
+      'the pending request is still the user\'s to answer',
+    );
+
+    // Leave nothing dangling for the runner.
+    await signer.resolveRequest((await signer.getPending())[0].id, { allow: false, remember: false });
+    await assert.rejects(p);
   });
 });
 
@@ -1518,5 +1539,84 @@ describe('signer -- cold-start auto-unlock', () => {
       browserMock.tabs.query = origQuery;
       browserMock.action.openPopup = origOpenPopup;
     }
+  });
+});
+
+// -- Queue-wipe broadcast --
+
+describe('signer -- cleanupStale announces the wipe', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  /** Capture every runtime.sendMessage type for the duration of `fn`. */
+  async function recordBroadcasts(fn: () => Promise<void>): Promise<string[]> {
+    const seen: string[] = [];
+    const original = browserMock.runtime.sendMessage;
+    browserMock.runtime.sendMessage = (message?: unknown) => {
+      const type = (message as { type?: string } | undefined)?.type;
+      if (type) seen.push(type);
+      return Promise.resolve();
+    };
+    try {
+      await fn();
+    } finally {
+      browserMock.runtime.sendMessage = original;
+    }
+    return seen;
+  }
+
+  it('broadcasts signerPendingUpdated after clearing the queue', async () => {
+    // Every other mutation of signerPending broadcasts. This one did not, and it
+    // is the one that empties the queue — so a popup open across a worker restart
+    // kept rendering approvals the background had already dropped, and Approve on
+    // one of them returned ok against nothing.
+    await browserMock.storage.session.set({
+      signerPending: [
+        { id: 'a', type: 'signEvent', origin: 'example.com', needsPermission: true, timestamp: Date.now() },
+      ],
+    });
+
+    const seen = await recordBroadcasts(() => signer.cleanupStale());
+
+    assert.ok(
+      seen.includes('signerPendingUpdated'),
+      'an open popup has no other way to learn the queue was wiped',
+    );
+    assert.deepStrictEqual(await signer.getPending(), [], 'the queue is cleared');
+  });
+
+  it('broadcasts even when the queue was already empty', async () => {
+    // The popup cannot tell "nothing was there" from "the worker restarted", so
+    // the announcement must not depend on what was in the queue.
+    const seen = await recordBroadcasts(() => signer.cleanupStale());
+    assert.ok(seen.includes('signerPendingUpdated'));
+  });
+});
+
+// -- Resolution ordering --
+
+describe('signer -- resolveRequest completes its removal', () => {
+  beforeEach(async () => {
+    resetMockStorage();
+    vault.lock();
+  });
+
+  it('has removed the request from storage by the time it resolves', async () => {
+    // The popup refreshes as soon as signer_resolve replies. When the removal was
+    // fired and forgotten, that read could still see the request and repaint a
+    // card the user had just approved.
+    await browserMock.storage.session.set({
+      signerPending: [
+        { id: 'a', type: 'signEvent', origin: 'example.com', needsPermission: true, timestamp: Date.now() },
+        { id: 'b', type: 'signEvent', origin: 'example.com', needsPermission: true, timestamp: Date.now() },
+      ],
+    });
+
+    await signer.resolveRequest('a', { allow: true, remember: false });
+
+    const ids = (await signer.getPending()).map((r) => r.id);
+    assert.deepStrictEqual(ids, ['b'], 'the resolved request is gone once the promise settles');
   });
 });

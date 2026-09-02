@@ -197,7 +197,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['signer_getPending', async () => signer.getPending()],
 
     ['signer_resolve', async (params) => {
-        signer.resolveRequest(params.id as string, params.decision as unknown as RequestDecision);
+        await signer.resolveRequest(params.id as string, params.decision as unknown as RequestDecision);
         return { ok: true };
     }],
 

@@ -57,15 +57,41 @@ export async function fetchProfileMetadata(pubkey: string): Promise<Record<strin
     return metadata;
 }
 
-export function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<string, unknown> | null> {
+/** The outcome of a profile read, distinguishing "nothing there" from "could not ask". */
+export interface ProfileRead {
+    metadata: Record<string, unknown> | null;
+    /**
+     * True when at least one relay actually answered — delivered the event, or
+     * reached EOSE, which is a relay saying authoritatively that it holds no
+     * kind:0 for this pubkey. False means every relay errored or timed out, and
+     * the null metadata carries no information at all.
+     */
+    reachable: boolean;
+}
+
+export async function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<string, unknown> | null> {
+    return (await fetchKind0Read(pubkey, relayUrls)).metadata;
+}
+
+/**
+ * Read a pubkey's kind:0, reporting whether anyone answered.
+ *
+ * Merging a patch into the result of a *failed* read and publishing it destroys
+ * the profile: kind:0 is replaceable, so a document containing only the field
+ * being added replaces the one with the user's name, picture and nip05. That is
+ * indistinguishable from a legitimate first-ever profile unless the reader says
+ * which case it saw, so it says.
+ */
+export function fetchKind0Read(pubkey: string, relayUrls: string[]): Promise<ProfileRead> {
     return new Promise((resolve) => {
         let best: Record<string, unknown> | null = null;
         let bestCreatedAt = 0;
         let remaining = relayUrls.length;
         let resolved = false;
+        let answered = false;
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve(best); }
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ metadata: best, reachable: answered }); }
         };
 
         const timer = setTimeout(done, 5000);
@@ -92,11 +118,15 @@ export function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
                             const event = msg[2];
                             if (event.pubkey !== pubkey || event.kind !== 0) return;
+                            answered = true;
                             if (event.created_at > bestCreatedAt) {
                                 bestCreatedAt = event.created_at;
                                 best = JSON.parse(event.content);
                             }
                         } else if (msg[0] === 'EOSE') {
+                            // EOSE is an answer: this relay has told us what it holds,
+                            // including when that is nothing.
+                            answered = true;
                             closeWs();
                         }
                     } catch { /* ignore parse errors */ }
@@ -117,15 +147,25 @@ export function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<
  * NOT decrypted here — the raw string is returned verbatim as `rawContent` so a
  * later publish can round-trip them without destroying the user's private mutes.
  * Returns a zeroed GroupedMuteList (createdAt 0) if no list is found.
+ *
+ * `reachable` reports whether any relay actually answered — delivered the event,
+ * or reached EOSE, which is a relay stating it holds no list. Without it a total
+ * relay timeout resolved the zeroed list through the SUCCESS path, and a caller
+ * could not tell "you mute nobody" from "nobody answered". That distinction is
+ * load-bearing: the empty `rawContent` of an unreachable read, published back,
+ * replaces the user's NIP-44-encrypted private mutes with nothing. The comment
+ * on publishMuteList calls round-tripping rawContent CRITICAL for exactly this
+ * reason, and a failed read is the one case where it silently is not doing it.
  */
-export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<GroupedMuteList> {
+export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<GroupedMuteList & { reachable: boolean }> {
     return new Promise((resolve) => {
         const best: GroupedMuteList = { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
         let remaining = relayUrls.length;
         let resolved = false;
+        let answered = false;
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve(best); }
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ ...best, reachable: answered }); }
         };
         const timer = setTimeout(done, 8000);
         const checkRemaining = () => { if (--remaining <= 0) done(); };
@@ -149,6 +189,7 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
                             const event = msg[2];
                             if (event.pubkey === pubkey && event.kind === 10000 && event.created_at > best.createdAt) {
+                                answered = true;
                                 best.createdAt = event.created_at;
                                 best.rawContent = typeof event.content === 'string' ? event.content : '';
                                 best.people = [];
@@ -164,6 +205,8 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
                                 }
                             }
                         } else if (msg[0] === 'EOSE') {
+                            // An answer, including when it means "I hold no list".
+                            answered = true;
                             closeWs();
                         }
                     } catch { /* ignored */ }
@@ -182,6 +225,19 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
 
 export const handlers = new Map<string, HandlerFn>([
     ['getProfileMetadata', async (params) => fetchProfileMetadata(params.pubkey as string)],
+
+    /**
+     * A profile read for a caller that is about to merge into it and publish.
+     *
+     * Deliberately not `getProfileMetadata`: that one caches, and it collapses
+     * "no profile" and "no relay answered" into the same null. A caller building
+     * a replaceable kind:0 needs both distinctions — the freshest document it can
+     * get, and an honest signal when it could not get one.
+     */
+    ['getProfileForMerge', async (params) => {
+        const relays = config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
+        return await fetchKind0Read(params.pubkey as string, relays);
+    }],
 
     ['getProfileMetadataBatch', async (params) => {
         const pubkeys = params.pubkeys as string[];
@@ -216,7 +272,8 @@ export const handlers = new Map<string, HandlerFn>([
     ['getMyMuteList', async () => {
         const myPubkey = vault.getActivePubkey();
         if (!myPubkey) {
-            return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
+            // No account is a definite answer, not a failed read.
+            return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0, reachable: true };
         }
         const relays = await getUserRelays();
         return await fetchMuteList(myPubkey, relays);

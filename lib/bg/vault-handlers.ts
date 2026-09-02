@@ -98,7 +98,22 @@ export const handlers = new Map<string, HandlerFn>([
         return { ok: true };
     }],
 
-    ['vault_isLocked', async () => vault.isLocked()],
+    // Await the startup auto-unlock before answering.
+    //
+    // In "Never lock" mode the background re-unlocks on every service-worker
+    // cold start, and that unlock is asynchronous — a storage read plus PBKDF2 —
+    // so for a few hundred milliseconds `isLocked()` reports true while an
+    // unlock that will succeed is still running. Chrome tears the worker down
+    // after ~30s idle, so a popup opened at any ordinary moment landed inside
+    // that window, was told "locked", and hid the wallet card and every
+    // locked-gated action for the rest of its life.
+    //
+    // lib/signer.ts already waits on this gate for the same reason
+    // (waitForVaultUnlock); the RPC the popup trusts did not.
+    ['vault_isLocked', async () => {
+        await vault.whenStartupUnlockSettled();
+        return vault.isLocked();
+    }],
 
     ['vault_exists', async () => vault.exists()],
 

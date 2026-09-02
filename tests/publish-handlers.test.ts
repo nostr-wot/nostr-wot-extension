@@ -118,3 +118,35 @@ describe('checkRelayHealth', () => {
     assert.deepStrictEqual(fetchedUrls, []);
   });
 });
+
+describe('publishMuteList -- refuses to build on a read nobody answered', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('throws when the caller does not vouch for its read', async () => {
+    // publishMuteList's own comment calls round-tripping `rawContent` CRITICAL,
+    // because it carries the user's NIP-44-encrypted private mutes. That holds
+    // only while rawContent is genuinely theirs. A read that reached no relay
+    // resolves an empty one through the success path, and publishing it replaces
+    // every private mute with nothing — silently, and permanently, since
+    // kind:10000 is replaceable.
+    const publishMuteList = handlers.get('publishMuteList')!;
+
+    await assert.rejects(
+      publishMuteList({ people: ['abc'], hashtags: [], words: [], events: [], rawContent: '' }),
+      /no relay answered/,
+      'an unstated read must be treated as unreachable, not assumed good',
+    );
+  });
+
+  it('throws when the caller states the read failed', async () => {
+    const publishMuteList = handlers.get('publishMuteList')!;
+
+    await assert.rejects(
+      publishMuteList({
+        people: [], hashtags: [], words: [], events: [], rawContent: '',
+        readReachable: false,
+      }),
+      /no relay answered/,
+    );
+  });
+});
