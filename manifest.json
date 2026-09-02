@@ -1,24 +1,29 @@
 {
   "manifest_version": 3,
   "name": "Nostr WoT",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "browser_specific_settings": {
     "gecko": {
       "id": "nostr-wot@dandelionlabs.io",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "financialAndPaymentInfo",
+          "personallyIdentifyingInfo"
+        ]
       }
     }
   },
-  "description": "Nostr Web of Trust identity and wallet provider — NIP-07 signer and built-in Lightning wallet.",
+  "description": "Nostr Web of Trust identity and wallet provider \u2014 NIP-07 signer and built-in Lightning wallet.",
   "permissions": [
     "storage",
     "activeTab",
     "alarms"
   ],
   "background": {
-    "scripts": ["background.ts"],
+    "scripts": [
+      "background.ts"
+    ],
     "service_worker": "background.ts",
     "type": "module"
   },
@@ -32,29 +37,41 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.ts"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.ts"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["<all_urls>"],
-      "js": ["inject.ts"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "inject.ts"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     }
   ],
-  "web_accessible_resources": [{
-    "resources": [
-      "icons/icon-base.svg",
-      "locales/en.json",
-      "locales/es.json",
-      "locales/pt.json",
-      "locales/de.json",
-      "locales/fr.json",
-      "locales/it.json",
-      "icons/clients/primal.svg",
-      "icons/clients/coracle.svg"
-    ],
-    "matches": ["<all_urls>"]
-  }]
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/icon-base.svg",
+        "locales/en.json",
+        "locales/es.json",
+        "locales/pt.json",
+        "locales/de.json",
+        "locales/fr.json",
+        "locales/it.json",
+        "icons/clients/primal.svg",
+        "icons/clients/coracle.svg"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }
