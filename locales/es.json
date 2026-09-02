@@ -83,6 +83,8 @@
   "settings.bunkerSession": "Sesión Bunker",
   "settings.network": "Red",
   "network.relays": "Relés",
+  "menu.walletDesc": "Saldo, depósitos y pagos.",
+  "menu.relaysDesc": "Los servidores donde se publican tus notas y tu perfil.",
   "network.relaysInfo": "Tu lista de relés NIP-65: los relés donde se publican y se leen tus notas.",
   "network.relaysSummary": "{count} relés",
   "settings.language": "Idioma",

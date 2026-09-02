@@ -76,20 +76,25 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     {
       id: 'wallet',
       label: t('wallet.title'),
-      desc: t('wallet.connectHint'),
+      // Not `wallet.connectHint`. That reads "Connect a Lightning wallet…",
+      // which the row went on saying to people who had already connected one.
+      desc: t('menu.walletDesc'),
       icon: <IconZap />,
     },
     {
       id: 'network',
-      label: t('settings.network'),
-      desc: undefined,
+      // "Relays", not "Network". The home screen's row for the same destination
+      // has always called it Relays, so the menu was teaching a second name for
+      // one thing; and "Network" says nothing about what is inside.
+      label: t('network.relays'),
+      desc: t('menu.relaysDesc'),
       icon: <IconGlobe />,
     },
   ];
 
   const sectionTitles: Record<string, string> = {
     security: t('settings.security'),
-    network: t('settings.network'),
+    network: t('network.relays'),
     wallet: t('wallet.title'),
     'site-permissions': permDetailDomain || t('security.permissions'),
     pqc: t('pqc.menuLabel'),
@@ -213,7 +218,15 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
           {!currentSection ? (
             <div className={styles.items}>
               {menuItems.map((item) => {
-                if (item.id === 'nip46' && !vault.isNip46) return null;
+                // NOTE: there is no 'nip46' item to filter. The row was removed
+                // without being re-homed, and this line outlived it — it cost one
+                // audit a false lead before anyone noticed. The capability it
+                // guarded is genuinely missing, not merely hidden:
+                // `nip46_revokeSession` is registered in the background
+                // (publish-handlers.ts) and has no caller anywhere, so a user on a
+                // remote signer has no way to revoke their bunker session. That
+                // needs a section, which is more than a label change; tracked in
+                // docs/ui-ux-audit.md §3 move 4.
                 if (item.id === 'wallet' && (isReadOnly || isNip46 || vault.locked)) return null;
                 return (
                   <NavItem

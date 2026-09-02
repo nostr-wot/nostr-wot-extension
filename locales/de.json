@@ -84,6 +84,8 @@
   "settings.bunkerSession": "Bunker-Sitzung",
   "settings.network": "Netzwerk",
   "network.relays": "Relays",
+  "menu.walletDesc": "Guthaben, Einzahlungen und Zahlungen.",
+  "menu.relaysDesc": "Die Server, auf denen deine Notizen und dein Profil veröffentlicht werden.",
   "network.relaysInfo": "Deine NIP-65-Relayliste – die Relays, auf denen deine Notizen veröffentlicht und gelesen werden.",
   "network.relaysSummary": "{count} Relays",
   "settings.language": "Sprache",

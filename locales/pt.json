@@ -83,6 +83,8 @@
   "settings.bunkerSession": "Sessão Bunker",
   "settings.network": "Rede",
   "network.relays": "Relays",
+  "menu.walletDesc": "Saldo, depósitos e pagamentos.",
+  "menu.relaysDesc": "Os servidores onde suas notas e seu perfil são publicados.",
   "network.relaysInfo": "Sua lista de relays NIP-65 — os relays onde suas notas são publicadas e lidas.",
   "network.relaysSummary": "{count} relays",
   "settings.language": "Idioma",
