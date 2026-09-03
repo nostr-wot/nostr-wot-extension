@@ -7,6 +7,7 @@ import WalletSetup from './WalletSetup';
 import Wallet from './Wallet';
 
 import styles from './Wallet.module.css';
+import Spinner from '@components/Spinner/Spinner';
 
 /**
  * Wallet section for the settings menu.
@@ -49,7 +50,7 @@ export default function WalletSection() {
   if (configType === null) {
     return (
       <div className={styles.loading}>
-        <div className={styles.spinner} />
+        <Spinner />
       </div>
     );
   }

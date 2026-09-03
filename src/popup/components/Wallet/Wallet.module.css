@@ -241,21 +241,6 @@
   padding: var(--sp-12) 0;
 }
 
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2.5px solid rgba(99, 102, 241, 0.15);
-  border-top-color: var(--brand);
-  border-radius: var(--radius-full);
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* ── Action buttons row ── */
 
 .actionRow {

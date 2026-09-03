@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
+import Spinner from '@components/Spinner/Spinner';
 import Button from '@components/Button/Button';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
@@ -127,7 +128,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         <span className={styles.balanceLabel}>{t('wallet.balance')}</span>
         {balanceLoading ? (
           <div className={styles.loading}>
-            <div className={styles.spinner} />
+            <Spinner />
           </div>
         ) : balanceError ? (
           <div className={styles.balanceErrorWrap}>

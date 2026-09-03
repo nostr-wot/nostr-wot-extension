@@ -13,6 +13,7 @@ import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Avatar from '@components/Avatar/Avatar';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
+import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import { IconCamera, IconChevronDown } from '@assets';
 import styles from './EditProfileOverlay.module.css';
@@ -236,7 +237,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const renderUploading = () => (
     <div className={styles.body}>
       <div className={styles.statusRow}>
-        <div className={styles.spinner} />
+        <Spinner size={28} />
         <span className={styles.statusText}>{t('profileEdit.uploading')}</span>
       </div>
     </div>
@@ -288,7 +289,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const renderPublishing = () => (
     <div className={styles.body}>
       <div className={styles.statusRow}>
-        <div className={styles.spinner} />
+        <Spinner size={28} />
         <span className={styles.statusText}>{t('common.publishing')}</span>
       </div>
     </div>

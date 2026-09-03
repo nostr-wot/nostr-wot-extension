@@ -6,6 +6,7 @@ import Button from '@components/Button/Button';
 import QrCode from '@components/QrCode/QrCode';
 import styles from './WizardOverlay.module.css';
 import nip46Styles from './Nip46Step.module.css';
+import Spinner from '@components/Spinner/Spinner';
 
 function isValidBunkerUrl(url: string): boolean {
   if (!url.startsWith('bunker://')) return false;

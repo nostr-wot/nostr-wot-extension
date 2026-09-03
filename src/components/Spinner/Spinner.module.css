@@ -1,0 +1,22 @@
+/* One ring, sized by the caller. There were four of these, differing only in
+   width, border thickness and duration — none of which was a decision anyone
+   made twice on purpose. */
+.spinner {
+  /* Defaults live here so the properties resolve on their own; the component
+     overrides them per instance via inline style. */
+  --spinner-size: 20px;
+  --spinner-border: 2px;
+
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+  border: var(--spinner-border) solid var(--card-border);
+  border-top-color: var(--brand);
+  border-radius: var(--radius-full);
+  animation: spin 0.7s linear infinite;
+}
+
+/* Local, not shared: a spinner has to work in the popup, the prompt and the
+   onboarding document without depending on which stylesheet loaded first. */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

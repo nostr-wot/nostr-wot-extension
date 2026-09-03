@@ -1,6 +1,7 @@
 import React, { useState, useMemo, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
+import Spinner from '@components/Spinner/Spinner';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import { IconTuner } from '@assets/index';
@@ -61,7 +62,7 @@ export default function TransactionList({
 
       {loading && visible.length === 0 ? (
         <div className={styles.loading}>
-          <div className={styles.spinner} />
+          <Spinner />
         </div>
       ) : !loading && visible.length === 0 ? (
         <div className={styles.txEmpty}>{t('wallet.noTransactions')}</div>
