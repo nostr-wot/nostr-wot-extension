@@ -20,17 +20,29 @@ export default function useCopy(resetAfterMs = 2000) {
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  const copy = useCallback(async (value: string) => {
+  /**
+   * Resolves to whether the write actually landed.
+   *
+   * `copied` is the right thing to render, but it is state — it is not readable
+   * by the caller until the next render, so a caller that has to *decide*
+   * something on the result (the wizard only marks a seed phrase backed up if
+   * the copy worked) cannot use it. Returning the outcome keeps that decision
+   * honest without making every caller re-implement the try/catch.
+   */
+  const copy = useCallback(async (value: string): Promise<boolean> => {
     if (timer.current) clearTimeout(timer.current);
+    let ok = true;
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
       setFailed(false);
     } catch {
+      ok = false;
       setCopied(false);
       setFailed(true);
     }
     timer.current = setTimeout(() => { setCopied(false); setFailed(false); }, resetAfterMs);
+    return ok;
   }, [resetAfterMs]);
 
   return { copy, copied, failed };

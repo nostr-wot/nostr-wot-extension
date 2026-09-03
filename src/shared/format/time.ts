@@ -11,3 +11,36 @@ export function formatTimeAgo(timestamp: number): string {
 export function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
+
+/**
+ * `formatTimeAgo` for a transaction row: seconds-based, guards a missing or
+ * future timestamp, and falls back to a short date past a week rather than
+ * counting days forever.
+ *
+ * Kept separate from `formatTimeAgo` rather than merged into it because the
+ * input unit differs — that one takes milliseconds, and a wallet's `createdAt`
+ * is seconds. Collapsing them is how you get a transaction dated 1970.
+ */
+export function formatTxDate(ts: number, now: Date = new Date()): string {
+  if (!ts || ts <= 0) return '—';
+  const d = new Date(ts * 1000);
+  if (isNaN(d.getTime())) return '—';
+
+  const diffMs = now.getTime() - d.getTime();
+  if (diffMs < 0) return d.toLocaleDateString();
+
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return t('time.justNow');
+  if (diffMin < 60) return t('time.minutesAgo', { n: diffMin });
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return t('time.hoursAgo', { n: diffHr });
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay <= 7) return t('time.daysAgo', { n: diffDay });
+
+  // Older than a week: a short date reads better than "43 days ago".
+  const sameYear = d.getFullYear() === now.getFullYear();
+  return d.toLocaleDateString(undefined, {
+    month: 'short', day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+}
