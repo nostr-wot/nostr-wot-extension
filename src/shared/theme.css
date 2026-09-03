@@ -51,8 +51,128 @@
   --bg-surface: var(--bg-html);
   --bg-sunken: rgba(0, 0, 0, 0.04);
   --input-bg: transparent;
-  --overlay-z: 300;
-  --modal-z: 700;
+
+  /* ── Spacing ──
+   *
+   * A 2px grid, derived from what the stylesheets already do rather than
+   * invented: of ~590 spacing declarations, all but a handful of 3/5/7/11/13px
+   * strays already sat on even steps. The strays are drift, not intent.
+   */
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 6px;
+  --sp-4: 8px;
+  --sp-5: 10px;
+  --sp-6: 12px;
+  --sp-7: 14px;
+  --sp-8: 16px;
+  --sp-10: 20px;
+  --sp-12: 24px;
+  --sp-14: 28px;
+
+  /* ── Type ──
+   *
+   * Nine sizes covering 304 font-size declarations that had drifted to 15
+   * distinct values, including a 13.5px and an 11.5px nobody chose on purpose.
+   */
+  --fs-2xs: 10px;     /* badges, word numbers; absorbs the 8/9px one-offs */
+  --fs-xs: 11px;      /* the workhorse: hints and meta */
+  --fs-sm: 12px;      /* secondary body */
+  --fs-md: 13px;      /* body — matches the `body` rule below */
+  --fs-lg: 14px;      /* emphasized row titles */
+  --fs-xl: 15px;      /* dialog titles */
+  --fs-2xl: 16px;     /* overlay titles */
+  --fs-3xl: 18px;     /* step titles */
+  --fs-display: 28px; /* hero numbers; absorbs the 24/26px one-offs */
+
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+
+  --lh-none: 1;
+  --lh-tight: 1.3;   /* absorbs 1.35 */
+  --lh-normal: 1.4;  /* absorbs 1.45 */
+  --lh-loose: 1.5;   /* absorbs 1.55 */
+
+  /* Extends the sm/md/lg above. */
+  --radius-xs: 4px;
+  --radius-xl: 16px;
+  --radius-full: 50%;
+  /* Sits between --radius-md (8) and --radius-lg (12), and is the single most
+     used rounding in the product — panels, list rows, boxed groups. It is a
+     real step in this design rather than drift, so it gets a name instead of
+     being snapped to a neighbour. */
+  --radius-panel: 10px;
+
+  /* 0.15s is the house rule; the other two are the only justified departures. */
+  --transition-fast: 0.1s;
+  --transition: 0.15s;
+  --transition-slow: 0.2s;
+
+  --shadow-card: 0 4px 16px rgba(99, 102, 241, 0.08);
+  --shadow-card-hover: 0 4px 20px rgba(99, 102, 241, 0.12);
+  --shadow-pop: 0 8px 24px rgba(99, 102, 241, 0.12);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.18);
+  --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.12);
+
+  /* ── Brand tints ──
+   *
+   * ~130 raw `rgba(99, 102, 241, α)` literals across the modules, at nine
+   * different alphas and in two spellings (with and without spaces). Three of
+   * those alphas already had names — 0.06 is --card-bg, 0.10 is --brand-light,
+   * 0.12 is --card-active — and were being retyped by hand anyway.
+   */
+  --brand-tint-hover: rgba(99, 102, 241, 0.04);  /* row/button hover wash */
+  --brand-tint-active: rgba(99, 102, 241, 0.08); /* selected chip or tab fill */
+
+  /* ── Status families ──
+   *
+   * One idea each had grown four spellings: green was #059669, #16a34a,
+   * #15803d and #4ade80. The -strong variants are the darker text-on-tint
+   * shades that pass AA where the base colour does not; the -bright variants
+   * are the status dots, which are decorative and want the lighter value.
+   */
+  --success-strong: #15803d;
+  --success-bright: #4ade80;
+  --success-tint: rgba(5, 150, 105, 0.1);
+  --error-bright: #ef4444;
+  --error-tint: rgba(220, 38, 38, 0.08);
+  --warning-strong: #b45309;
+  --warning-bright: #f59e0b;
+  --warning-tint: rgba(217, 119, 6, 0.08);
+  --info-tint: rgba(37, 99, 235, 0.08);
+
+  /* ── Surfaces ── */
+  --bg-elevated: #ffffff;                      /* opaque dropdown / dialog card */
+  --surface-glass: rgba(255, 255, 255, 0.85);  /* frosted card, pairs with blur */
+  --surface-glass-heavy: rgba(255, 255, 255, 0.95);
+  --scrim: rgba(0, 0, 0, 0.4);
+  --scrim-heavy: rgba(0, 0, 0, 0.6);
+  --divider: rgba(99, 102, 241, 0.06);         /* hairline; absorbs .04/.07/.08 */
+  --text-on-brand: #ffffff;
+
+  /* ── Stacking ──
+   *
+   * A ladder, because the numbers were being chosen by local trial: five
+   * different owners had independently picked 500, ties fell to DOM order
+   * (which is why the approval sheet needed 501 and its dialog 510), and the
+   * in-popup unlock prompt sat at 360 — under every surface that can demand an
+   * unlock. --z-lock exists so that cannot happen again.
+   */
+  --z-raised: 10;    /* tooltips, inline dropdowns */
+  --z-topbar: 200;   /* top bar, account dropdown, popovers */
+  --z-panel: 300;    /* full-screen navigation panels */
+  --z-sheet: 500;    /* bottom sheets, wizard, full-page sub-overlays */
+  --z-lock: 900;     /* the unlock prompt — must beat every task surface */
+  --z-splash: 1000;
+
+  --overlay-z: var(--z-panel);
+  --modal-z: 700;    /* centered dialogs; sits between sheet and lock */
+
+  /* Dialogs are full width by default; Modal's `maxWidth` prop overrides this
+     per instance by setting the property on the backdrop. */
+  --modal-max-width: none;
 }
 
 *, *::before, *::after {
@@ -68,7 +188,7 @@ html {
 
 body {
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-body);
   background: var(--bg-page);
 }
@@ -93,25 +213,25 @@ body {
 
 .mono {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 
 .error-msg {
   color: var(--error);
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: var(--fs-xs);
+  margin-top: var(--sp-2);
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: var(--sp-2);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.2);
-  border-radius: 2px;
+  border-radius: var(--sp-1);
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.4);
@@ -119,8 +239,8 @@ body {
 
 label {
   display: block;
-  font-weight: 600;
-  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
   color: var(--text-heading);
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-3);
 }
