@@ -1,10 +1,10 @@
 .topBar {
   position: relative;
-  z-index: 200;
+  z-index: var(--z-topbar);
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
   flex-shrink: 0;
 }
 
@@ -13,16 +13,16 @@
   border: none;
   color: var(--brand);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  padding: var(--sp-3);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: all 0.15s;
+  transition: all var(--transition);
   flex-shrink: 0;
 }
 
 .menuBtn:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
   color: var(--text-body);
 }
 
@@ -37,23 +37,23 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-2);
   flex: 1;
   min-width: 0;
   background: transparent;
-  border-radius: 12px;
-  padding: 8px 10px;
-  transition: background 0.15s;
+  border-radius: var(--radius-lg);
+  padding: var(--sp-4) var(--sp-5);
+  transition: background var(--transition);
 }
 
 .accountBar:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
 }
 
 .accountBarToggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-5);
   flex: 1;
   cursor: pointer;
   min-width: 0;
@@ -66,7 +66,7 @@
 .avatarWrap {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -84,9 +84,9 @@
   align-items: center;
   justify-content: center;
   background: rgba(99, 102, 241, 0.15);
-  color: #4f46e5;
-  font-weight: 700;
-  font-size: 15px;
+  color: var(--brand-hover);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xl);
 }
 
 .barInfo {
@@ -99,13 +99,13 @@
 .barNameRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
   min-width: 0;
 }
 
 .barName {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
   color: var(--text-heading);
   white-space: nowrap;
   overflow: hidden;
@@ -114,19 +114,19 @@
 
 .readOnlyBadge {
   font-size: 9px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-muted);
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--brand-tint-active);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 .barSub {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-family: var(--font-mono);
   white-space: nowrap;
@@ -137,7 +137,7 @@
 .chevron {
   color: var(--text-muted);
   flex-shrink: 0;
-  transition: transform 0.15s;
+  transition: transform var(--transition);
 }
 
 .chevronOpen {
@@ -149,26 +149,17 @@
   border: none;
   color: var(--brand);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  padding: var(--sp-3);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: all 0.15s;
+  transition: all var(--transition);
   flex-shrink: 0;
 }
 
 .lockBtn:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
   color: var(--text-body);
-}
-
-.lockLocked {
-  color: var(--warning);
-}
-
-.lockLocked:hover {
-  background: rgba(217, 119, 6, 0.1);
-  color: var(--warning);
 }
 
 .lockUnlocked {
@@ -186,13 +177,13 @@
   top: 100%;
   left: 0;
   right: 0;
-  margin-top: 4px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+  margin-top: var(--sp-2);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
   border: 1px solid var(--card-border);
-  z-index: 200;
-  animation: dropdownIn 0.15s ease-out;
+  z-index: var(--z-topbar);
+  animation: dropdownIn var(--transition) ease-out;
 }
 
 .accountList {
@@ -203,10 +194,10 @@
 .dropdownItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-7);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
   background: none;
   border: none;
   width: 100%;
@@ -214,21 +205,21 @@
 }
 
 .dropdownItem:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
 }
 
 .dropdownItemActive {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
 }
 
 .dropdownAvatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: rgba(99, 102, 241, 0.15);
-  color: #4f46e5;
-  font-weight: 700;
-  font-size: 13px;
+  color: var(--brand-hover);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -251,8 +242,8 @@
 }
 
 .dropdownName {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
   white-space: nowrap;
   overflow: hidden;
@@ -261,19 +252,19 @@
 
 .dropdownReadOnly {
   font-size: 8px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--text-muted);
-  background: rgba(99, 102, 241, 0.08);
-  padding: 1px 4px;
+  background: var(--brand-tint-active);
+  padding: 1px var(--sp-2);
   border-radius: 3px;
   flex-shrink: 0;
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 .dropdownSub {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -282,15 +273,15 @@
 
 .dropdownCheck {
   color: var(--text-body);
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
   flex-shrink: 0;
 }
 
 .dropdownActions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-1);
   flex-shrink: 0;
 }
 
@@ -303,13 +294,13 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   flex-shrink: 0;
   opacity: 0;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .dropdownItem:hover .dropdownCopyBtn {
@@ -318,14 +309,14 @@
 
 .dropdownCopyBtn:hover {
   color: var(--brand);
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--brand-tint-active);
 }
 
 .copiedLabel {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
   color: var(--success);
-  padding: 2px 4px;
+  padding: var(--sp-1) var(--sp-2);
   white-space: nowrap;
 }
 
@@ -333,9 +324,9 @@
   position: fixed;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  z-index: 400;
+  z-index: calc(var(--z-topbar) + 2);
   overflow: hidden;
   min-width: 64px;
 }
@@ -343,20 +334,20 @@
 .copyMenuItem {
   display: block;
   width: 100%;
-  padding: 6px 12px;
+  padding: var(--sp-3) var(--sp-6);
   background: none;
   border: none;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
   cursor: pointer;
   text-align: left;
   font-family: var(--font-mono);
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
 }
 
 .copyMenuItem:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
 }
 
 .copyMenuItem + .copyMenuItem {
@@ -368,13 +359,13 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   flex-shrink: 0;
   opacity: 0;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .dropdownItem:hover .dropdownEditBtn {
@@ -383,7 +374,7 @@
 
 .dropdownEditBtn:hover {
   color: var(--brand);
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--brand-tint-active);
 }
 
 .dropdownRemoveBtn {
@@ -391,13 +382,13 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   flex-shrink: 0;
   opacity: 0;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .dropdownItem:hover .dropdownRemoveBtn {
@@ -411,35 +402,35 @@
 
 /* Remove confirmation */
 .removeConfirm {
-  padding: 14px;
+  padding: var(--sp-7);
   border-top: 1px solid var(--card-border);
 }
 
 .removeConfirmTitle {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-3);
 }
 
 .removeConfirmWarning {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
-  line-height: 1.4;
-  margin-bottom: 4px;
+  line-height: var(--lh-normal);
+  margin-bottom: var(--sp-2);
 }
 
 .removeConfirmKeyWarning {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--sp-3);
+  font-size: var(--fs-xs);
   color: var(--warning);
   background: rgba(217, 119, 6, 0.06);
-  padding: 8px 10px;
-  border-radius: 8px;
-  line-height: 1.4;
-  margin-bottom: 10px;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius-md);
+  line-height: var(--lh-normal);
+  margin-bottom: var(--sp-5);
 }
 
 .removeConfirmKeyWarning svg {
@@ -449,27 +440,27 @@
 
 .removeConfirmActions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
   justify-content: flex-end;
 }
 
 .dropdownAdd {
   display: block;
   width: 100%;
-  padding: 10px 14px;
+  padding: var(--sp-5) var(--sp-7);
   border: none;
   border-top: 1px solid var(--card-border);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   cursor: pointer;
   text-align: left;
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
 }
 
 .dropdownAdd:hover {
-  background: rgba(99, 102, 241, 0.04);
+  background: var(--brand-tint-hover);
 }
 
 /* Globe */
@@ -479,16 +470,16 @@
   border: none;
   color: var(--brand);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  padding: var(--sp-3);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: all 0.15s;
+  transition: all var(--transition);
   flex-shrink: 0;
 }
 
 .globeBtn:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
   color: var(--text-body);
 }
 
@@ -498,59 +489,59 @@
   right: 4px;
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: 1.5px solid rgba(255, 255, 255, 0.8);
 }
 
 .globeConnected {
-  background: #4ade80;
+  background: var(--success-bright);
 }
 
 .globeDisconnected {
-  background: #ef4444;
+  background: var(--error-bright);
 }
 
 .clientIconLarge {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   object-fit: contain;
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-3);
 }
 
 .globePopover {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
-  background: #ffffff;
+  margin-top: var(--sp-2);
+  background: var(--bg-elevated);
   border: 1px solid var(--card-border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  z-index: 250;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+  border-radius: var(--radius-panel);
+  padding: var(--sp-6) var(--sp-7);
+  z-index: calc(var(--z-topbar) + 1);
+  box-shadow: var(--shadow-pop);
   min-width: 200px;
   text-align: center;
 }
 
 .globeDomain {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
-  margin-bottom: 2px;
+  margin-bottom: var(--sp-1);
   word-break: break-all;
 }
 
 .globeStatus {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: var(--sp-5);
 }
 
 .globeError {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--error);
-  margin-bottom: 8px;
+  margin-bottom: var(--sp-4);
 }
 
 @keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }

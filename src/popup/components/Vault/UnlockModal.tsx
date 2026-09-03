@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
-import { rpc } from '@shared/rpc.js';
+import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { useAccount } from '../../context/AccountContext';
-import { useVault } from '../../context/VaultContext';
-import useVaultUnlock from '@shared/hooks/useVaultUnlock.js';
-import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.js';
+import { useAccount } from '@popup/context/AccountContext';
+import { useVault } from '@popup/context/VaultContext';
+import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
+import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import styles from './UnlockModal.module.css';

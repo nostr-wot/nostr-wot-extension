@@ -1,11 +1,13 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
-import { downloadFile } from '@shared/downloadFile.js';
+import { downloadFile } from '@shared/downloadFile.ts';
+import useCopy from '@shared/hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
+import Modal from '@components/Modal/Modal';
 import styles from './WizardOverlay.module.css';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
@@ -21,7 +23,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
   const [revealed, setRevealed] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
+  const seedCopy = useCopy();
   const [encModalOpen, setEncModalOpen] = useState<boolean>(false);
   const [encPw, setEncPw] = useState<string>('');
   const [encConfirm, setEncConfirm] = useState<string>('');
@@ -86,10 +88,8 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const words = mnemonic ? mnemonic.split(' ') : [];
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(mnemonic!);
-    setCopied(true);
-    setBackedUp(true);
-    setTimeout(() => setCopied(false), 2000);
+    // Only counts as backed up if the clipboard actually took it.
+    if (await seedCopy.copy(mnemonic!)) setBackedUp(true);
   };
 
   const handleDownloadPlain = () => {
@@ -144,7 +144,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
         {revealed && (
           <button
-            className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ''}`}
+            className={`${styles.copyBtn} ${seedCopy.copied ? styles.copyBtnDone : ''}`}
             onClick={handleCopy}
             title={t('common.copy')}
           >
@@ -178,34 +178,37 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       </div>
 
       {encModalOpen && (
-        <div className={styles.encModal}>
-          <div className={styles.encCard}>
-            <h3>{t('wizard.encryptBackup')}</h3>
-            <p>{t('wizard.encryptBackupDesc')}</p>
-            <div className={styles.formGroup}>
-              <Input
-                type="password"
-                showToggle
-                placeholder={t('key.passwordMinChars')}
-                value={encPw}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEncPw(e.target.value)}
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <Input
-                type="password"
-                placeholder={t('key.confirmPassword')}
-                value={encConfirm}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setEncConfirm(e.target.value)}
-              />
-            </div>
-            {encError && <div className={styles.error}>{encError}</div>}
-            <div className={styles.stepActions}>
+        <Modal
+          title={t('wizard.encryptBackup')}
+          onClose={() => setEncModalOpen(false)}
+          footerRow
+          footer={(
+            <>
               <Button variant="secondary" small onClick={() => setEncModalOpen(false)}>{t('common.cancel')}</Button>
               <Button small onClick={handleDownloadEncrypted}>{t('common.download')}</Button>
-            </div>
+            </>
+          )}
+        >
+          <p>{t('wizard.encryptBackupDesc')}</p>
+          <div className={styles.formGroup}>
+            <Input
+              type="password"
+              showToggle
+              placeholder={t('key.passwordMinChars')}
+              value={encPw}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEncPw(e.target.value)}
+            />
           </div>
-        </div>
+          <div className={styles.formGroup}>
+            <Input
+              type="password"
+              placeholder={t('key.confirmPassword')}
+              value={encConfirm}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEncConfirm(e.target.value)}
+            />
+          </div>
+          {encError && <div className={styles.error}>{encError}</div>}
+        </Modal>
       )}
     </div>
   );

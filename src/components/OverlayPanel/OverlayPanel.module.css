@@ -4,16 +4,16 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #ffffff;
-  z-index: var(--overlay-z, 300);
+  background: var(--bg-elevated);
+  z-index: var(--overlay-z);
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  animation: overlaySlideIn 0.2s ease-out;
+  padding: var(--sp-8);
+  animation: overlaySlideIn var(--transition-slow) ease-out;
 }
 
 .exiting {
-  animation: overlaySlideOut 0.2s ease-in forwards;
+  animation: overlaySlideOut var(--transition-slow) ease-in forwards;
 }
 
 @keyframes overlaySlideIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -27,41 +27,41 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 10px;
+  margin-bottom: var(--sp-8);
+  padding-bottom: var(--sp-5);
   border-bottom: 1px solid var(--card-border);
 }
 
 .headerNoPadding {
-  padding: 12px 16px;
+  padding: var(--sp-6) var(--sp-8);
   margin-bottom: 0;
 }
 
 .title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .titleSmall {
-  font-size: 16px;
+  font-size: var(--fs-2xl);
 }
 
 .closeBtn, .backBtn {
   background: transparent;
   border: none;
-  padding: 8px;
+  padding: var(--sp-4);
   cursor: pointer;
   color: var(--brand);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .closeBtn:hover, .backBtn:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
   color: var(--text-body);
 }
 
@@ -72,7 +72,7 @@
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .body {

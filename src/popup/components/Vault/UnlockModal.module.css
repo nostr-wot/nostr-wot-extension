@@ -1,43 +1,43 @@
 .overlay {
   position: absolute;
   inset: 0;
-  z-index: 360;
+  z-index: var(--z-lock);
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  animation: backdropIn 0.2s ease-out;
+  padding: var(--sp-12);
+  animation: backdropIn var(--transition-slow) ease-out;
 }
 
 .fullScreen {
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-lock);
+  background: var(--scrim-heavy);
   backdrop-filter: blur(20px);
 }
 
 .exiting {
-  animation: backdropOut 0.2s ease-in forwards;
+  animation: backdropOut var(--transition-slow) ease-in forwards;
 }
 
 .card {
-  background: #ffffff;
+  background: var(--bg-elevated);
   border: 1px solid var(--card-border);
   border-radius: 14px;
-  padding: 24px;
+  padding: var(--sp-12);
   width: 100%;
   max-width: 320px;
-  animation: modalFadeIn 0.2s ease-out;
+  animation: modalFadeIn var(--transition-slow) ease-out;
 }
 
 .cardFullScreen {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--surface-glass-heavy);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
 .cardExiting {
-  animation: modalFadeOut 0.2s ease-in forwards;
+  animation: modalFadeOut var(--transition-slow) ease-in forwards;
 }
 
 @keyframes backdropIn  { from { opacity: 0; } to { opacity: 1; } }
@@ -49,14 +49,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
 }
 
 .avatar, .avatarFallback {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
 }
 
 .avatar {
@@ -68,33 +68,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
 }
 
 .name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
 }
 
 .count {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--sp-8);
 }
 
 .input {
   width: 100%;
-  padding: 10px 12px;
-  font-size: 13px;
-  background: rgba(99, 102, 241, 0.04);
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  border-radius: 8px;
+  padding: var(--sp-5) var(--sp-6);
+  font-size: var(--fs-md);
+  background: var(--brand-tint-hover);
+  border: 1px solid var(--card-active);
+  border-radius: var(--radius-md);
   color: var(--text-heading);
-  margin-bottom: 8px;
+  margin-bottom: var(--sp-4);
   box-sizing: border-box;
 }
 
@@ -105,38 +105,38 @@
 
 .error {
   color: var(--error);
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: var(--fs-xs);
+  margin-top: var(--sp-2);
 }
 
 .waitingEvents {
   width: 100%;
-  margin-top: 8px;
+  margin-top: var(--sp-4);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .waitingLabel {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 2px;
+  margin-bottom: var(--sp-1);
 }
 
 .waitingEvent {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: rgba(99, 102, 241, 0.04);
-  border-radius: 6px;
-  font-size: 12px;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--brand-tint-hover);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
 }
 
 .waitingEventLabel {
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
 }
 
@@ -153,10 +153,10 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 2px;
-  border-radius: 4px;
+  padding: var(--sp-1);
+  border-radius: var(--radius-xs);
   display: flex;
-  line-height: 1;
+  line-height: var(--lh-none);
 }
 
 .waitingEventDismiss:hover {
@@ -165,8 +165,8 @@
 
 .actions {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
 }
 
 .actions button {
@@ -176,11 +176,11 @@
 .resetLink {
   display: block;
   width: 100%;
-  margin-top: 12px;
+  margin-top: var(--sp-6);
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   text-align: center;
 }
@@ -190,23 +190,23 @@
 }
 
 .resetConfirm {
-  margin-top: 12px;
-  padding: 12px;
+  margin-top: var(--sp-6);
+  padding: var(--sp-6);
   background: rgba(239, 68, 68, 0.06);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 
 .resetWarning {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--error);
-  margin: 0 0 10px;
-  line-height: 1.4;
+  margin: 0 0 var(--sp-5);
+  line-height: var(--lh-normal);
 }
 
 .resetActions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .resetActions button {

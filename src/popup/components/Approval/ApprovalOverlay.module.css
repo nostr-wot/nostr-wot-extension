@@ -1,9 +1,9 @@
 .scrim {
   position: absolute;
   inset: 0;
-  z-index: 500;
+  z-index: var(--z-sheet);
   background: rgba(0, 0, 0, 0.25);
-  animation: scrimFadeIn 0.2s ease-out;
+  animation: scrimFadeIn var(--transition-slow) ease-out;
 }
 
 .overlay {
@@ -11,23 +11,23 @@
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 501;
+  z-index: calc(var(--z-sheet) + 1);
   max-height: 85vh;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(16px);
-  border-radius: 16px 16px 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
-  padding: 16px;
+  padding: var(--sp-8);
   animation: sheetSlideIn 0.25s ease-out;
 }
 
 .header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
   flex-wrap: wrap;
 }
 
@@ -35,20 +35,20 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .toggleBtn {
   background: none;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  padding: 3px var(--sp-4);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   color: var(--text-secondary);
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .toggleBtn:hover {
@@ -59,14 +59,14 @@
 .rejectAllBtn {
   background: none;
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--danger, #ef4444);
+  border-radius: var(--radius-md);
+  padding: 3px var(--sp-4);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--danger));
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .rejectAllBtn:hover {
@@ -75,18 +75,18 @@
 }
 
 .title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .count {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
   background: var(--brand);
-  color: #fff;
-  padding: 3px 10px;
-  border-radius: 12px;
+  color: var(--text-on-brand);
+  padding: 3px var(--sp-5);
+  border-radius: var(--radius-lg);
   min-width: 24px;
   text-align: center;
 }
@@ -96,115 +96,13 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.card {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  text-align: left;
-  font-family: inherit;
-}
-
-.card:hover {
-  background: var(--card-active);
-  border-color: var(--brand-light);
-}
-
-.cardLeft {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cardOrigin {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
-.cardMethod {
-  font-size: 12px;
-  color: var(--text-body);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.kindTag {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--brand-light);
-  color: var(--brand-hover);
-  white-space: nowrap;
-}
-
-.cardCount {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.cardChevron {
-  flex-shrink: 0;
-  color: var(--text-muted);
-}
-
-.cardNip46 {
-  cursor: default;
-  opacity: 0.75;
-  border-style: dashed;
-}
-
-.cardNip46:hover {
-  background: var(--card-bg);
-  border-color: var(--card-border);
-}
-
-.cancelBtn {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 6px;
-  background: none;
-  color: var(--danger, #ef4444);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-  padding: 0;
-}
-
-.cancelBtn:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
-.spinnerIcon {
-  animation: spin 1.5s linear infinite;
-  flex-shrink: 0;
+  gap: var(--sp-4);
 }
 
 .legend {
-  padding: 4px 12px 8px;
-  font-size: 11px;
-  color: var(--text-tertiary, #888);
+  padding: var(--sp-2) var(--sp-6) var(--sp-4);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
   text-align: center;
 }
 
@@ -212,8 +110,8 @@
    actually defines — unlike --text-tertiary above, which resolves to nothing
    and silently falls back. */
 .actionError {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: var(--sp-3) var(--sp-6);
+  font-size: var(--fs-sm);
   color: var(--error);
   text-align: center;
 }
@@ -221,4 +119,5 @@
 @keyframes scrimFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheetSlideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
 

@@ -4,7 +4,7 @@
   align-items: center;
   cursor: help;
   color: var(--text-muted);
-  margin-left: 4px;
+  margin-left: var(--sp-2);
   vertical-align: middle;
   outline: none;
 }
@@ -17,17 +17,17 @@
   transform: translateX(-50%);
   background: var(--bg-card);
   border: 1px solid var(--card-border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 11px;
+  border-radius: var(--radius-sm);
+  padding: var(--sp-3) var(--sp-5);
+  font-size: var(--fs-xs);
   font-weight: 400;
   color: var(--text-body);
-  line-height: 1.4;
+  line-height: var(--lh-normal);
   width: max-content;
   max-width: 240px;
   white-space: normal;
   text-align: left;
-  z-index: 10;
+  z-index: var(--z-raised);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   pointer-events: none;
 }

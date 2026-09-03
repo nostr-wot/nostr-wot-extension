@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback, ChangeEvent, KeyboardEvent, MouseEvent } from 'react';
-import { rpc } from '@shared/rpc.js';
+import React, { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { IconClose, IconWarning } from '@assets';
+import { IconWarning } from '@assets';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
-import useVaultUnlock from '@shared/hooks/useVaultUnlock.js';
-import { downloadFile } from '@shared/downloadFile.js';
+import Modal from '@components/Modal/Modal';
+import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
+import useCopy from '@shared/hooks/useCopy.ts';
+import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
-import { useVault } from '../../context/VaultContext';
+import { useVault } from '@popup/context/VaultContext';
 import styles from './KeyActionModal.module.css';
 
 interface KeyActionModalProps {
@@ -18,6 +20,14 @@ interface KeyActionModalProps {
 export default function KeyActionModal({ action, onClose }: KeyActionModalProps) {
   const vault = useVault();
   const [needsUnlock, setNeedsUnlock] = useState<boolean>(false);
+
+  /* One per copyable secret, so each button reports on its own write.
+     These three are why useCopy exists: they are the values a reader cannot
+     check by eye, so a clipboard the browser refused looked exactly like a
+     successful copy. */
+  const nsecCopy = useCopy();
+  const ncCopy = useCopy();
+  const seedCopy = useCopy();
 
   // nsec state
   const [nsecValue, setNsecValue] = useState<string>('');
@@ -115,10 +125,6 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     } catch { /* ignore */ }
   };
 
-  const copyNsec = () => {
-    navigator.clipboard.writeText(nsecValue);
-  };
-
   // --- ncryptsec ---
   const generateNcryptsec = async () => {
     setNcError('');
@@ -133,10 +139,6 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
       setNcError(t('key.failedExport'));
     }
     setNcGenerating(false);
-  };
-
-  const copyNcryptsec = () => {
-    navigator.clipboard.writeText(ncValue);
   };
 
   // --- seed ---
@@ -154,10 +156,6 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
         }, 60000);
       }
     } catch { /* ignore */ }
-  };
-
-  const copySeed = () => {
-    navigator.clipboard.writeText(seedWords.join(' '));
   };
 
   const downloadSeedPlain = () => {
@@ -184,10 +182,6 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     setSeedEncrypting(false);
   };
 
-  const handleOverlayClick = useCallback((e: MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) handleClose();
-  }, []);
-
   // --- change password ---
   const handleChangePassword = async () => {
     setCpError('');
@@ -208,15 +202,17 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   };
 
   return (
-    <div className={styles.overlay} onClick={handleOverlayClick}>
-      <div className={styles.modal}>
-        <div className={styles.header}>
-          <span className={styles.title}>{titles[action] || t('key.keyAction')}</span>
-          <button className={styles.closeBtn} onClick={handleClose}>
-            <IconClose />
-          </button>
-        </div>
-
+    /* Secret material is on screen here, so this deliberately does NOT dismiss
+       on the backdrop: the hand-rolled shell this replaced dismissed on `click`,
+       so selecting an nsec and releasing outside the card closed the dialog and
+       wiped the value mid-read. */
+    <Modal
+      title={titles[action] || t('key.keyAction')}
+      onClose={handleClose}
+      dismissOnBackdrop={false}
+      maxWidth={340}
+    >
+      <>
         {needsUnlock ? (
           <div className={styles.section}>
             <label>{t('key.unlockToContinue')}</label>
@@ -258,7 +254,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 <div className={styles.hint}>{`${t(nsecBlurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                  <Button small onClick={copyNsec}>{t('common.copy')}</Button>
+                  <Button small onClick={() => nsecCopy.copy(nsecValue)}>
+                    {nsecCopy.copied ? t('common.copied') : t('common.copy')}
+                  </Button>
                 </div>
               </>
             )}
@@ -295,7 +293,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 <div className={styles.keyDisplay}>{ncValue}</div>
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                  <Button small onClick={copyNcryptsec}>{t('common.copy')}</Button>
+                  <Button small onClick={() => ncCopy.copy(ncValue)}>
+                    {ncCopy.copied ? t('common.copied') : t('common.copy')}
+                  </Button>
                 </div>
               </>
             )}
@@ -353,7 +353,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 ) : (
                   <div className={styles.seedActions}>
                     <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                    <Button variant="secondary" small onClick={copySeed}>{t('common.copy')}</Button>
+                    <Button variant="secondary" small onClick={() => seedCopy.copy(seedWords.join(' '))}>
+                      {seedCopy.copied ? t('common.copied') : t('common.copy')}
+                    </Button>
                     <Button variant="secondary" small onClick={downloadSeedPlain}>{t('key.downloadPlain')}</Button>
                     <Button small onClick={() => setSeedEncMode(true)}>{t('key.downloadEncrypted')}</Button>
                   </div>
@@ -397,7 +399,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
             )}
           </div>
         ) : null}
-      </div>
-    </div>
+      </>
+    </Modal>
   );
 }

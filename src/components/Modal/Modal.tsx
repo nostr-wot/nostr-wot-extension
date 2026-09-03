@@ -28,6 +28,12 @@ interface ModalProps {
   /** Dialogs that must be answered rather than dismissed. */
   dismissOnBackdrop?: boolean;
   zIndex?: number;
+  /** Narrower than full width, in px — for dialogs that would look adrift
+   *  stretched across the popup (a QR code, a short filter form). */
+  maxWidth?: number;
+  /** Lay the footer out as equal side-by-side actions instead of one full-width
+   *  button. */
+  footerRow?: boolean;
   children?: React.ReactNode;
 }
 
@@ -37,6 +43,8 @@ export default function Modal({
   footer,
   dismissOnBackdrop = true,
   zIndex,
+  maxWidth,
+  footerRow = false,
   children,
 }: ModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -48,7 +56,10 @@ export default function Modal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const style = zIndex ? ({ '--modal-z': zIndex } as React.CSSProperties) : undefined;
+  const style = {
+    ...(zIndex ? { '--modal-z': zIndex } : null),
+    ...(maxWidth ? { '--modal-max-width': `${maxWidth}px` } : null),
+  } as React.CSSProperties;
 
   return (
     <div
@@ -77,7 +88,9 @@ export default function Modal({
           </div>
         )}
         <div className={styles.body}>{children}</div>
-        {footer && <div className={styles.footer}>{footer}</div>}
+        {footer && (
+          <div className={`${styles.footer} ${footerRow ? styles.footerRow : ''}`}>{footer}</div>
+        )}
       </div>
     </div>
   );
