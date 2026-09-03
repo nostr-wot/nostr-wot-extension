@@ -1,0 +1,36 @@
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+/* The pair stacks, so the gap between them is set here rather than by whichever
+   screen happens to use them — that is what drifted when they were separate. */
+.notice + .notice {
+  margin-top: 8px;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.label {
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ok {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803d;
+}
+
+.warn {
+  background: rgba(217, 119, 6, 0.1);
+  /* Darker than --warning (#d97706), which is under 4.5:1 on this tint. */
+  color: #b45309;
+}
