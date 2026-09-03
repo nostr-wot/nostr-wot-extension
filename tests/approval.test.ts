@@ -18,6 +18,7 @@ import {
   partitionPending,
   groupApprovals,
   groupNip46,
+  asGroup,
   liveIds,
   isRequestLive,
   isGroupLive,
@@ -148,5 +149,22 @@ describe('stale-selection reconciliation', () => {
     assert.equal(isGroupLive(partly, live), true);
     assert.equal(isGroupLive(allGone, live), false);
     assert.equal(isGroupLive(null, live), false);
+  });
+});
+
+describe('asGroup', () => {
+  it('produces the group the group handlers already expect', () => {
+    const g = asGroup(req({ id: '1', origin: 's', permKey: 'signEvent:1' }));
+    assert.deepEqual(g.requests.map((r) => r.id), ['1']);
+    assert.equal(g.origin, 's');
+    assert.equal(g.permKey, 'signEvent:1');
+  });
+
+  it('falls back to the type, matching groupApprovals', () => {
+    // The four single-request handlers each repeated this fallback by hand.
+    // If it drifted from groupApprovals, approving one request and approving a
+    // group of one would write different permission keys.
+    const r = req({ id: '1', origin: 's', type: 'nip04Encrypt' });
+    assert.equal(asGroup(r).permKey, groupApprovals([r])[0].permKey);
   });
 });

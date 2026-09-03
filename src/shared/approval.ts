@@ -95,6 +95,24 @@ export function groupNip46(requests: PendingRequest[]): ApprovalGroup[] {
 }
 
 /**
+ * Treat one request as a group of one.
+ *
+ * The expanded view acts on individual requests, and had four handlers that
+ * were the group handlers with the loop unrolled — including the same
+ * `permKey || type` fallback and the same accountId lookup, written twice. A
+ * one-request group makes them the same code path, so approving one request and
+ * approving a group of one cannot drift apart.
+ */
+export function asGroup(req: PendingRequest): ApprovalGroup {
+  return {
+    origin: req.origin,
+    method: req.type,
+    permKey: req.permKey || req.type,
+    requests: [req],
+  };
+}
+
+/**
  * Whether a selection taken when a detail view opened still refers to something
  * the background knows about.
  *
