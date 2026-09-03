@@ -1,15 +1,26 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconWarning, IconCopy } from '@assets';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
-import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
+import StatusNotice from '@components/StatusNotice/StatusNotice';
+import useCopy from '@shared/hooks/useCopy.ts';
+import { truncateMiddle } from '@shared/format/text.ts';
+import { downloadFile } from '@shared/downloadFile.js';
+import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@shared/browser.ts';
 import styles from './SecuritySection.module.css';
 
 type BlockReason = 'read-only' | 'remote-signer' | 'no-seed' | 'short-seed';
+
+interface Published {
+  published: boolean;
+  current: boolean;
+  /** True when no relay answered, so `published` carries no information. */
+  unreachable?: boolean;
+}
 
 interface PqcStatus {
   canDerive: boolean;
@@ -153,6 +164,33 @@ function PqcImportPanel({ onImported }: { onImported: (s: PqcStatus) => void }) 
   );
 }
 
+/**
+ * One key: its algorithm, a shortened form of the value, and a copy button.
+ *
+ * Shortened in the middle rather than the end. A post-quantum key is thousands
+ * of base64 characters with nothing a person reads in the middle, but both ends
+ * are what someone checks a value against — truncating the tail hides half of
+ * what showing it was for. What goes to the clipboard is always the whole thing.
+ */
+function KeyRow({ label, value }: { label: string; value: string }) {
+  const { copy, copied, failed } = useCopy();
+  return (
+    <div className={styles.pqcKeyRow}>
+      <span>{label}</span>
+      <code title={value}>{truncateMiddle(value, 12, 10)}</code>
+      <button
+        className={styles.pqcKeyCopy}
+        onClick={() => copy(value)}
+        aria-label={t('common.copy')}
+        title={t('common.copy')}
+      >
+        <IconCopy size={12} />
+        {copied ? t('common.copied') : failed ? t('common.error') : ''}
+      </button>
+    </div>
+  );
+}
+
 export interface PqcSectionHandle {
   openHowItWorks: () => void;
 }
@@ -164,12 +202,18 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   const [publishing, setPublishing] = useState<boolean>(false);
   const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
   const [publishError, setPublishError] = useState<string>('');
-  const [existing, setExisting] = useState<{ published: boolean; current: boolean } | null>(null);
+  const [existing, setExisting] = useState<Published | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [removing, setRemoving] = useState<boolean>(false);
   const [howOpen, setHowOpen] = useState<boolean>(false);
   const [keysOpen, setKeysOpen] = useState<boolean>(false);
   const [confirmRemove, setConfirmRemove] = useState<boolean>(false);
   const [removeError, setRemoveError] = useState<string>('');
+  const [exportOpen, setExportOpen] = useState<boolean>(false);
+  const [exportPw, setExportPw] = useState<string>('');
+  const [exportConfirmPw, setExportConfirmPw] = useState<string>('');
+  const [exportBusy, setExportBusy] = useState<boolean>(false);
+  const [exportError, setExportError] = useState<string>('');
 
   useImperativeHandle(ref, () => ({ openHowItWorks: () => setHowOpen(true) }), []);
 
@@ -188,17 +232,43 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     browser.storage.local.set({ [HOW_SEEN_KEY]: true }).catch(() => {});
   };
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setStatus(await rpc<PqcStatus>('pqc_getStatus'));
-        // Answered from relays, so it stays right when published from another device.
-        setExisting(await rpc<{ published: boolean; current: boolean }>('pqc_checkPublished'));
-      } catch (e: any) {
-        setError(e?.message || t('common.error'));
+  /**
+   * Load everything this panel decides on, and only then render it.
+   *
+   * The publish check is a relay round trip and can take seconds. Rendering as
+   * soon as pqc_getStatus returned meant the panel drew its whole decided state
+   * against a publish answer it did not have yet — so a user whose attestation
+   * was already live got "Publish this event to your relays…" and a Publish
+   * button, which then swapped for "already published and up to date" once the
+   * relays replied. A wrong instruction is worse than a spinner.
+   *
+   * The two run in parallel rather than in sequence: both are needed before
+   * anything renders, so waiting for the first before starting the second only
+   * added its latency to the total.
+   */
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const status = await rpc<PqcStatus>('pqc_getStatus');
+      setStatus(status);
+
+      // An account that cannot derive never reaches the publish UI, so making it
+      // wait on relays it will not use would be latency for nothing.
+      if (!status.canDerive) {
+        setExisting(null);
+        return;
       }
-    })();
+
+      setExisting(await rpc<Published>('pqc_checkPublished'));
+    } catch (e: any) {
+      setError(e?.message || t('common.error'));
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const handlePublish = async () => {
     setPublishError('');
@@ -227,10 +297,9 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     setRemoving(true);
     try {
       await rpc('pqc_removeImportedKeys');
-      setStatus(await rpc<PqcStatus>('pqc_getStatus'));
       setPublished(null);
-      setExisting(await rpc<{ published: boolean; current: boolean }>('pqc_checkPublished'));
       setConfirmRemove(false);
+      await load();
     } catch (e: any) {
       setRemoveError(e?.message || t('common.error'));
     } finally {
@@ -238,10 +307,46 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     }
   };
 
+  /**
+   * Save the key file, optionally encrypted under a password.
+   *
+   * Same two options and the same envelope as the seed-phrase export — one
+   * implementation now, in lib/crypto/keyBackup.ts, where a test proves the file
+   * can be read back. Producing a backup nobody has ever decrypted is not a
+   * thing to do twice.
+   *
+   * The exported shape is what our own importer accepts, so a file saved here
+   * can be imported here. That round trip is the format's only real spec.
+   */
+  const handleExport = async (encrypted: boolean) => {
+    setExportError('');
+    if (encrypted) {
+      if (exportPw.length < 8) { setExportError(t('key.passwordMin8')); return; }
+      if (exportPw !== exportConfirmPw) { setExportError(t('key.passwordsNoMatch')); return; }
+    }
+    setExportBusy(true);
+    try {
+      const res = await rpc<{ keyfile: string; filename: string }>('pqc_exportKeys');
+      if (encrypted) {
+        downloadFile(await encryptBackup(res.keyfile, exportPw), res.filename.replace(/\.json$/, '-encrypted.json'));
+      } else {
+        downloadFile(res.keyfile, res.filename);
+      }
+      setExportOpen(false);
+      setExportPw('');
+      setExportConfirmPw('');
+    } catch (e: any) {
+      setExportError(e?.message || t('common.error'));
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
   const how = howOpen ? <HowItWorks onClose={closeHow} /> : null;
 
   if (error) return <>{how}<div className={styles.error}>{error}</div></>;
-  if (!status) return <>{how}<p className={styles.desc}>{t('common.loading')}</p></>;
+  // Nothing is drawn until every answer this panel branches on is in hand.
+  if (loading || !status) return <>{how}<p className={styles.desc}>{t('common.loading')}</p></>;
 
   const imported = status.source === 'imported';
 
@@ -282,28 +387,28 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
           as a footnote to a screen the user had already acted on. */}
       <p className={styles.pqcLimits}>{t('pqc.limits')}</p>
 
-      {/* One line instead of two paragraphs. The prose moved into tooltips: this
-          panel has more to say than fits above the fold, and the explanations are
-          reference material — needed once, in the way every time after. */}
-      <div className={styles.pqcNoticeOk}>
-        <IconKey size={18} />
-        <strong>{imported ? t('pqc.importedTitle') : t('pqc.readyTitle')}</strong>
-        {/* Not readyDesc when imported: that says the keys come from the seed
-            phrase, which for an imported key is false — and directly contradicts
-            the backup warning shown right beside it. */}
-        <InfoTooltip text={imported ? t('pqc.importedDesc') : t('pqc.readyDesc')} />
-      </div>
+      {/* One line each instead of two paragraphs, and one component for both so
+          the pair cannot drift apart — the state and its caveat read as one
+          thing. The prose is in the tooltips: reference material, wanted once and
+          in the way every visit after.
 
-      {/* Collapsed to an icon at the owner's request, to buy vertical space. The
-          icon stays a WARNING icon in warning colour rather than the neutral (i):
-          an imported key is the one thing here the seed phrase cannot bring back,
-          so the severity has to survive at a glance, without hovering. */}
+          `info` is not readyDesc when imported: that one says the keys come from
+          the seed phrase, which for an imported key is false — and contradicted
+          the backup warning sitting right beside it. */}
+      <StatusNotice
+        tone="ok"
+        icon={<IconKey size={18} />}
+        label={imported ? t('pqc.importedTitle') : t('pqc.readyTitle')}
+        info={imported ? t('pqc.importedDesc') : t('pqc.readyDesc')}
+      />
+
       {imported && (
-        <div className={styles.pqcNoticeInline}>
-          <IconWarning size={16} />
-          <span>{t('pqc.importedBackupShort')}</span>
-          <InfoTooltip text={t('pqc.importedBackupWarning')} />
-        </div>
+        <StatusNotice
+          tone="warn"
+          icon={<IconWarning size={18} />}
+          label={t('pqc.importedBackupShort')}
+          info={t('pqc.importedBackupWarning')}
+        />
       )}
 
       {alreadyPublished ? (
@@ -314,10 +419,20 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
         </p>
       ) : (
         <>
+          {/* No relay answered, so whether this is published is genuinely unknown.
+              Saying "not published yet" would be a guess, and the guess costs a
+              needless republish of an attestation that may already be correct. */}
+          {existing?.unreachable && (
+            <div className={styles.pqcNoticeInline}>
+              <IconWarning size={16} />
+              <span>{t('pqc.checkFailed')}</span>
+              <button className={styles.pqcCopyLink} onClick={load}>{t('common.retry')}</button>
+            </div>
+          )}
           {/* Only while it is still an instruction. Telling someone to publish,
               directly above a line saying they already have, was the panel
               arguing with itself. */}
-          <p className={styles.desc}>{t('pqc.publishDesc')}</p>
+          {!existing?.unreachable && <p className={styles.desc}>{t('pqc.publishDesc')}</p>}
           {existing?.published && !existing.current && (
             <p className={styles.desc}>{t('pqc.staleAttestation')}</p>
           )}
@@ -332,8 +447,9 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
       <div className={styles.pqcActions}>
         <Button variant="secondary" onClick={() => setKeysOpen(true)}>{t('pqc.showKeys')}</Button>
         {/* Importing the wrong key file must not be a permanent state. */}
+        <Button variant="secondary" onClick={() => setExportOpen(true)}>{t('pqc.exportKeys')}</Button>
         {imported && (
-          <Button variant="secondary" onClick={() => setConfirmRemove(true)} disabled={removing}>
+          <Button variant="danger" onClick={() => setConfirmRemove(true)} disabled={removing}>
             {t('pqc.importRemove')}
           </Button>
         )}
@@ -346,14 +462,12 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
           zIndex={720}
           footer={<Button onClick={() => setKeysOpen(false)}>{t('common.close')}</Button>}
         >
-          <div className={styles.pqcKeyRow}>
-            <span>ml-kem-1024</span>
-            <code>{status.keys.kem}</code>
-          </div>
-          <div className={styles.pqcKeyRow}>
-            <span>ml-dsa-87</span>
-            <code>{status.keys.dsa}</code>
-          </div>
+          {/* Shortened in the middle, not the end. These are thousands of base64
+              characters with nothing readable in them, but the two ends are what
+              someone compares a key by — truncating only the tail hides half of
+              what the display is for. The full value goes to the clipboard. */}
+          <KeyRow label="ml-kem-1024" value={status.keys.kem} />
+          <KeyRow label="ml-dsa-87" value={status.keys.dsa} />
 
           {status.attestation && (
             <>
@@ -366,6 +480,56 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
               </button>
             </>
           )}
+        </Modal>
+      )}
+
+      {exportOpen && (
+        <Modal
+          title={t('pqc.exportKeys')}
+          onClose={() => { setExportOpen(false); setExportError(''); }}
+          zIndex={720}
+        >
+          <p className={styles.desc}>{t('pqc.exportDesc')}</p>
+          <StatusNotice
+            tone="warn"
+            icon={<IconWarning size={18} />}
+            label={t('pqc.exportWarnShort')}
+            info={t('pqc.exportWarn')}
+          />
+
+          <label className={styles.desc} htmlFor="pqc-export-pw">{t('key.encryptionPassword')}</label>
+          <input
+            id="pqc-export-pw"
+            type="password"
+            className={styles.pqcInput}
+            value={exportPw}
+            autoComplete="new-password"
+            onChange={(e) => setExportPw(e.target.value)}
+            disabled={exportBusy}
+          />
+          <input
+            type="password"
+            className={styles.pqcInput}
+            placeholder={t('key.confirmPassword')}
+            value={exportConfirmPw}
+            autoComplete="new-password"
+            onChange={(e) => setExportConfirmPw(e.target.value)}
+            disabled={exportBusy}
+          />
+
+          {exportError && <div className={styles.error}>{exportError}</div>}
+
+          <div className={styles.pqcActions}>
+            <Button onClick={() => handleExport(true)} disabled={exportBusy}>
+              {exportBusy ? t('common.loading') : t('key.downloadEncrypted')}
+            </Button>
+            {/* Plain stays available — the generator writes plaintext key files
+                and some people keep them on hardware that has no password. It is
+                second, and not the default. */}
+            <Button variant="secondary" onClick={() => handleExport(false)} disabled={exportBusy}>
+              {t('key.downloadPlain')}
+            </Button>
+          </div>
         </Modal>
       )}
 

@@ -20,7 +20,7 @@
 import browser from '../browser.ts';
 import * as vault from '../vault.ts';
 import { mnemonicToSeed } from '../crypto/bip39.ts';
-import { arrayToBase64 } from '../crypto/utils.ts';
+import { arrayToBase64, base64ToArray } from '../crypto/utils.ts';
 import {
   derivePqKeys, popMessage, signPop, parsePqKeyfile,
   ALG_KEM, ALG_DSA, PQ_PROFILE,
@@ -94,6 +94,47 @@ async function writeRelays(): Promise<string[]> {
   // storage.sync is empty until the user edits their relay list, so fall back to the
   // in-memory defaults the rest of the extension publishes to.
   return writable.length ? writable : (all.length ? all : config.relays);
+}
+
+/**
+ * The account's actual post-quantum key pair, secrets included, for export.
+ *
+ * Mirrors the resolution order in lib/signer.ts `activePqKeys`: imported keys
+ * win, because an account only holds them when it could not derive, and they are
+ * what its published attestation advertises — exporting derived keys for such an
+ * account would hand the user a file that decrypts nothing.
+ *
+ * The caller owns the returned secret bytes and must zero them.
+ */
+async function activeKeysForExport(): Promise<{
+  keys: { kem: { publicKey: Uint8Array; secretKey: Uint8Array }; dsa: { publicKey: Uint8Array; secretKey: Uint8Array } };
+  source: 'derived' | 'imported';
+}> {
+  const acct = await activeAccount();
+  if (!acct) throw new Error('No active account');
+
+  if (vault.hasImportedPqKeys(acct.id)) {
+    const imported = await vault.withImportedPqKeys(acct.id, async ({ kemSecret, dsaSecret, kemPublic, dsaPublic }) => ({
+      // Copies: withImportedPqKeys zeroes its own the moment this returns.
+      keys: {
+        kem: { publicKey: base64ToArray(kemPublic), secretKey: new Uint8Array(kemSecret) },
+        dsa: { publicKey: base64ToArray(dsaPublic), secretKey: new Uint8Array(dsaSecret) },
+      },
+      source: 'imported' as const,
+    }));
+    if (imported) return imported;
+  }
+
+  if (!acct.mnemonic) throw new Error('This account has no seed phrase, so it has no post-quantum keys to export');
+  if (acct.mnemonic.trim().split(/\s+/).length !== 24) {
+    throw new Error('Post-quantum keys require a 24-word seed phrase');
+  }
+  const seed = await mnemonicToSeed(acct.mnemonic);
+  try {
+    return { keys: derivePqKeys(seed, acct.derivationIndex ?? 0), source: 'derived' as const };
+  } finally {
+    seed.fill(0);
+  }
 }
 
 /**
@@ -228,6 +269,54 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
       keys.dsa.secretKey.fill(0);
     }
     return handlers.get('pqc_getStatus')!({}) as Promise<PqcStatus>;
+  }],
+
+  /**
+   * Export the account's post-quantum key file — SECRET KEYS INCLUDED.
+   *
+   * This is the only way to get a derived key off the device, and for an
+   * imported key it is the only way to make a second copy of the one thing in
+   * this extension a seed phrase cannot restore. Without it, "your seed phrase
+   * cannot restore this key" was advice with nothing the user could act on.
+   *
+   * The shape is exactly what `parsePqKeyfile` accepts, so a file exported here
+   * imports here — the round trip is the format's only real specification, and
+   * generating something our own importer would reject is the obvious way to
+   * get this wrong.
+   *
+   * Privileged by construction: every handler in this map is gated to internal
+   * extension pages (background.ts derives PRIVILEGED_METHODS from the maps), so
+   * no web page can call it. It still refuses on a locked vault, because the
+   * secrets are not in memory then and asking is the wrong shape of request.
+   */
+  ['pqc_exportKeys', async () => {
+    if (vault.isLocked()) throw new Error('Vault is locked');
+    const acct = await activeAccount();
+    if (!acct) throw new Error('No active account');
+
+    const { keys, source } = await activeKeysForExport();
+    try {
+      return {
+        source,
+        filename: `nostr-wot-pq-keys-${acct.pubkey.slice(0, 8)}.json`,
+        keyfile: JSON.stringify({
+          v: PQ_PROFILE,
+          alg: { kem: ALG_KEM, dsa: ALG_DSA },
+          kem: {
+            public: arrayToBase64(keys.kem.publicKey),
+            secret: arrayToBase64(keys.kem.secretKey),
+          },
+          dsa: {
+            public: arrayToBase64(keys.dsa.publicKey),
+            secret: arrayToBase64(keys.dsa.secretKey),
+          },
+        }, null, 2),
+      };
+    } finally {
+      // The copies this handler holds. withImportedPqKeys already zeroed its own.
+      keys.kem.secretKey.fill(0);
+      keys.dsa.secretKey.fill(0);
+    }
   }],
 
   /** Remove imported keys, so a wrong key file is not a permanent state. */
