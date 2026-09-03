@@ -9,7 +9,10 @@ import { PROFILE_CACHE_TTL_MS } from '../constants.ts';
 
 // ── Constants ──
 
-export const DEFAULT_RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://nostr-01.yakihonne.com'];
+/* nos.lol first: relay.damus.io led this list and is the one that stalls most
+   often, and every read here tries relays in order, so a slow first entry sits
+   on the popup's path before anything else can answer. */
+export const DEFAULT_RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://nostr-01.yakihonne.com'];
 
 // ── Config ──
 

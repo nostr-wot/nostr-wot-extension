@@ -27,6 +27,7 @@ import {
 } from '../crypto/pq.ts';
 import { signEvent } from '../crypto/nip01.ts';
 import { broadcastEvent } from './publish-handlers.ts';
+import { cachedRelayRead, PQC_PUBLISHED_CACHE } from './relayCache.ts';
 import { liveQuery } from '../relay.ts';
 import { config, type HandlerFn } from './state.ts';
 import type { UnsignedEvent } from '../types.ts';
@@ -364,32 +365,39 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
   ['pqc_checkPublished', async () => {
     const status = (await handlers.get('pqc_getStatus')!({})) as PqcStatus;
     if (!status.canDerive || !status.pubkey) return { published: false, current: false };
+    const pubkey = status.pubkey;
 
-    const relays = await writeRelays();
-    let found: { tags: string[][] } | null = null;
-    try {
-      for await (const ev of liveQuery(
-        [{ kinds: [PQC_KIND], authors: [status.pubkey], limit: 1 }],
-        relays,
-        { closeOnExhaust: true },
-      )) {
-        const e = (ev as { event?: { tags: string[][] } }).event;
-        if (e) { found = e; break; }
+    // Served from the last real answer so the home card paints immediately; the
+    // relays are asked behind and `storage.onChanged` corrects it. An
+    // unreachable read is never cached, so a stale value is always something
+    // the relays genuinely said. See lib/bg/relayCache.ts.
+    return await cachedRelayRead(PQC_PUBLISHED_CACHE, pubkey, async () => {
+      const relays = await writeRelays();
+      let found: { tags: string[][] } | null = null;
+      try {
+        for await (const ev of liveQuery(
+          [{ kinds: [PQC_KIND], authors: [pubkey], limit: 1 }],
+          relays,
+          { closeOnExhaust: true },
+        )) {
+          const e = (ev as { event?: { tags: string[][] } }).event;
+          if (e) { found = e; break; }
+        }
+      } catch {
+        // Not `published: false`. This handler exists to ask the relays, so a
+        // failure to reach them is the one answer it cannot give — reporting "not
+        // published" told a user whose attestation is live to set post-quantum
+        // keys up again, and would have had them republish a correct one, on
+        // exactly the flaky-relay day that caused the failure.
+        return { published: false, current: false, unreachable: true };
       }
-    } catch {
-      // Not `published: false`. This handler exists to ask the relays, so a
-      // failure to reach them is the one answer it cannot give — reporting "not
-      // published" told a user whose attestation is live to set post-quantum
-      // keys up again, and would have had them republish a correct one, on
-      // exactly the flaky-relay day that caused the failure.
-      return { published: false, current: false, unreachable: true };
-    }
 
-    if (!found) return { published: false, current: false };
+      if (!found) return { published: false, current: false };
 
-    // Published is not enough: if the keys rotated, what is out there is stale and
-    // senders would encrypt to a key this account no longer uses.
-    const kemTag = found.tags.find(t => t[0] === 'alg' && t[1] === ALG_KEM);
-    return { published: true, current: kemTag?.[2] === status.keys?.kem };
+      // Published is not enough: if the keys rotated, what is out there is stale and
+      // senders would encrypt to a key this account no longer uses.
+      const kemTag = found.tags.find(t => t[0] === 'alg' && t[1] === ALG_KEM);
+      return { published: true, current: kemTag?.[2] === status.keys?.kem };
+    });
   }],
 ]);
