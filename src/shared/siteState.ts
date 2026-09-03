@@ -1,7 +1,7 @@
 /**
  * Pure decision helper for a site's connection status.
  *
- * Both HomeTab (the popup home view) and GlobeButton (the top-bar connection dot) derive
+ * Both Home (the popup home view) and GlobeButton (the top-bar connection dot) derive
  * "is this site connected?" from the `allowedDomains` storage allowlist — NOT from
  * `browser.permissions.contains()`. The two can diverge: a granted `<all_urls>` makes
  * `permissions.contains` true for every site, which would make the dot read "connected"

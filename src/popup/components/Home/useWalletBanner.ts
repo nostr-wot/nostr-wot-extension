@@ -6,7 +6,7 @@ import type { Account } from './useSiteState.ts';
 /**
  * Whether to offer the wallet, and whether the user has dismissed that offer.
  *
- * Lived inside HomeTab.tsx.
+ * Lived inside Home.tsx.
  */
 export default function useWalletBanner(active: Account | null, canUseWallet: boolean | null, menuOpen?: boolean) {
   const [walletState, setWalletState] = useState<null | false | { balance: number }>(null);
@@ -58,4 +58,4 @@ export default function useWalletBanner(active: Account | null, canUseWallet: bo
   return { walletState, walletDismissed, setWalletDismissed };
 }
 
-// ── HomeTab component ──
+// ── Home component ──

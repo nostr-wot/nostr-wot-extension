@@ -2,7 +2,7 @@
  * The activity log's grouping and filtering.
  *
  * `groupActivityEntries` has been shared for a while and had no tests at all;
- * the filter pipeline lived inside ActivityModal, where nothing could reach it.
+ * the filter pipeline lived inside the activity overlay, where nothing could reach it.
  * This is the screen a user opens to answer "what has this site done with my
  * key?", so a filter that quietly drops entries is worse than a broken one.
  *

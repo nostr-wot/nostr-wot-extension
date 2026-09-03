@@ -8,7 +8,7 @@ import { IconUser } from '@assets';
  * user's kind:0 metadata. Avatar + name are already shown in the top bar, so the
  * subtitle just names what this edits.
  */
-export default function ProfileCard({ onEdit }: { onEdit: () => void }) {
+export default function ProfileRow({ onEdit }: { onEdit: () => void }) {
   return (
     <NavRow
       icon={<IconUser size={16} />}

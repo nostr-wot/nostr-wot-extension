@@ -21,7 +21,7 @@ interface PublishRowProps {
 
 /**
  * Shared "publish status text + spinner + Publish button" row used by the
- * relay list (NetworkSection) and the mute list (FiltersModal). The status
+ * relay list (NetworkSection) and the mute list (FiltersOverlay). The status
  * text is a 4-way choice: publishing → success → error → (dirty ? unsaved :
  * idle). The `idle` label is precomputed by the caller (it may itself depend
  * on last-published time / never-published state).

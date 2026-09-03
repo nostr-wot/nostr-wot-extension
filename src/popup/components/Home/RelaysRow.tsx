@@ -10,7 +10,7 @@ import { IconGlobe } from '@assets';
  * and opens the full relay editor (Network section), where read/write relays
  * are added, removed, and health-checked. The info tooltip explains NIP-65.
  */
-export default function RelaysCard({ onOpen }: { onOpen: () => void }) {
+export default function RelaysRow({ onOpen }: { onOpen: () => void }) {
   const [count, setCount] = useState<number>(0);
 
   useEffect(() => {

@@ -12,7 +12,7 @@ import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Filters.module.css';
 
-interface FiltersModalProps {
+interface FiltersOverlayProps {
   visible: boolean;
   onClose: () => void;
 }
@@ -62,7 +62,7 @@ const muteClassNames = {
   hint: styles.muteGroupHint,
 };
 
-export default function FiltersModal({ visible, onClose }: FiltersModalProps) {
+export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps) {
   const [list, setList] = useState<MyMuteList | null>(null);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);

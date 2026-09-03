@@ -17,7 +17,7 @@ interface MyMuteList {
  * quick count of muted people + words + hashtags and opens the Mutes manager.
  * The info tooltip explains what the published mute list is.
  */
-export default function MutesCard({ onOpen }: { onOpen: () => void }) {
+export default function MutesRow({ onOpen }: { onOpen: () => void }) {
   const { data, reload } = useRpc<MyMuteList>('getMyMuteList', {}, {
     defaultValue: { people: [], words: [], hashtags: [] },
   });

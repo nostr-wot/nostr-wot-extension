@@ -455,7 +455,7 @@ See [Storage](storage.md#9-wallet-storage) and [Security](security.md#8-wallet-s
 
 ## 11. UI Structure
 
-### Home Screen (HomeTab)
+### Home Screen (Home)
 
 - **Wallet exists**: Shows a balance card at the top with sats amount. Clicking opens the wallet section in the menu.
 - **No wallet**: Shows a setup banner inviting the user to create/link a wallet. Only appears after profile suggestion and sync reminder banners are resolved. Dismissible per account.

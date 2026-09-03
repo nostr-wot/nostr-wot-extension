@@ -11,19 +11,19 @@ import useSiteState, { type Account } from './useSiteState.ts';
 import useWalletBanner from './useWalletBanner.ts';
 import usePendingCount from './usePendingCount.ts';
 import SiteControls from './SiteControls';
-import ProfileCard from './ProfileCard';
-import MutesCard from './MutesCard';
+import ProfileRow from './ProfileRow';
+import MutesRow from './MutesRow';
 import PqcCard from './PqcCard';
-import RelaysCard from './RelaysCard';
+import RelaysRow from './RelaysRow';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { IconGlobe, IconZap, IconChevronRight } from '@assets';
-import styles from './HomeTab.module.css';
+import styles from './Home.module.css';
 import type { PendingRequest } from '@lib/types.ts';
 
-interface HomeTabProps {
+interface HomeProps {
   onViewAllActivity: (domain: string | null) => void;
   onManagePermissions: (domain: string) => void;
   onManageFilters: () => void;
@@ -34,7 +34,7 @@ interface HomeTabProps {
   menuOpen?: boolean;
 }
 
-export default function HomeTab({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenRelays, onOpenPqc, onOpenWallet, menuOpen }: HomeTabProps) {
+export default function Home({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenRelays, onOpenPqc, onOpenWallet, menuOpen }: HomeProps) {
   const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
 
@@ -249,9 +249,9 @@ export default function HomeTab({ onViewAllActivity, onManagePermissions, onMana
         <div className={styles.accountSection}>
           <SectionLabel>{t('home.account')}</SectionLabel>
           <Card className={styles.accountCard}>
-            {canEditProfile && <ProfileCard onEdit={onEditProfile} />}
-            <MutesCard onOpen={onManageFilters} />
-            <RelaysCard onOpen={onOpenRelays} />
+            {canEditProfile && <ProfileRow onEdit={onEditProfile} />}
+            <MutesRow onOpen={onManageFilters} />
+            <RelaysRow onOpen={onOpenRelays} />
             {/* Last in the list: the everyday rows people came for come first, and
                 post-quantum setup is a once-per-identity errand. */}
             <PqcCard onOpen={onOpenPqc} />

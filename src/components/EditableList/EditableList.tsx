@@ -47,7 +47,7 @@ interface EditableListProps {
 /**
  * List of removable items + an add-input row. Two input modes:
  *
- *  - Internal (FiltersModal / MuteGroup): pass `validate` + `onAdd`; the
+ *  - Internal (FiltersOverlay / MuteGroup): pass `validate` + `onAdd`; the
  *    component owns the input value and its inline error.
  *  - Controlled (NetworkSection / EndpointList): pass `inputValue`,
  *    `onInputChange`, `error` and an `onAdd` that reads the caller's own

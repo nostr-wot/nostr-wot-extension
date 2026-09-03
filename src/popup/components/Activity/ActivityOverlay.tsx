@@ -14,10 +14,10 @@ import { IconTuner } from '@assets';
 import { useAccount } from '@popup/context/AccountContext';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
-import styles from './ActivityModal.module.css';
+import styles from './ActivityOverlay.module.css';
 
 
-interface ActivityModalProps {
+interface ActivityOverlayProps {
   visible: boolean;
   initialDomain: string | null;
   initialPubkey: string;
@@ -29,7 +29,7 @@ interface DropdownOption {
   label: string;
 }
 
-export default function ActivityModal({ visible, initialDomain, initialPubkey, onClose }: ActivityModalProps) {
+export default function ActivityOverlay({ visible, initialDomain, initialPubkey, onClose }: ActivityOverlayProps) {
   // Plain state, not a ref plus a version counter. The counter made every memo
   // below depend on a number while reading through a ref, so the dependency
   // arrays said nothing about what they actually used and each needed a

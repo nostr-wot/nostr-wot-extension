@@ -15,7 +15,7 @@ export interface Account {
 /**
  * Which site the popup is looking at, and whether this identity is enabled there.
  *
- * Lived inside HomeTab.tsx. The run-versioning and the `active?.id` keying are
+ * Lived inside Home.tsx. The run-versioning and the `active?.id` keying are
  * the load-bearing parts — see docs/component-standards.md §9.
  */
 export default function useSiteState(active: Account | null) {

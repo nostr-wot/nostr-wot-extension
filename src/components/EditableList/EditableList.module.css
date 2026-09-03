@@ -1,5 +1,5 @@
 /* Shared skeleton for a list of removable items + an add-input row.
-   Used by NetworkSection (relays) and FiltersModal (people / words / hashtags).
+   Used by NetworkSection (relays) and FiltersOverlay (people / words / hashtags).
    Individual call sites may override the container / row / item classes via the
    `classNames` prop to preserve their exact padding / weight. */
 

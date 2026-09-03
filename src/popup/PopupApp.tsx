@@ -9,10 +9,10 @@ import { PermissionsProvider } from './context/PermissionsContext';
 import TopoBg from '@components/TopoBg/TopoBg';
 import Splash from '@components/Splash/Splash';
 import TopBar from './components/TopBar/TopBar';
-import HomeTab from './components/Home/HomeTab';
+import Home from './components/Home/Home';
 import MenuOverlay from './components/Menu/MenuOverlay';
-import FiltersModal from './components/Filters/FiltersModal';
-import ActivityModal from './components/Activity/ActivityModal';
+import FiltersOverlay from './components/Filters/FiltersOverlay';
+import ActivityOverlay from './components/Activity/ActivityOverlay';
 import ApprovalOverlay from './components/Approval/ApprovalOverlay';
 import WizardOverlay from './components/Wizard/WizardOverlay';
 import EditProfileOverlay from './components/EditProfile/EditProfileOverlay';
@@ -107,7 +107,7 @@ function PopupInner() {
         />
 
         <div className={styles.scrollArea}>
-          <HomeTab
+          <Home
             onViewAllActivity={(d: string | null) => { setActivityDomain(d || null); setActiveOverlay('activity'); }}
             onManagePermissions={(domain: string) => { setPermsDomain(domain); setActiveOverlay('permissions'); }}
             onManageFilters={() => setActiveOverlay('filters')}
@@ -130,12 +130,12 @@ function PopupInner() {
           initialSection={menuSection}
         />
 
-        <FiltersModal
+        <FiltersOverlay
           visible={activeOverlay === 'filters'}
           onClose={() => setActiveOverlay(null)}
         />
 
-        <ActivityModal
+        <ActivityOverlay
           visible={activeOverlay === 'activity'}
           initialDomain={activityDomain}
           initialPubkey={account.active?.pubkey || ''}

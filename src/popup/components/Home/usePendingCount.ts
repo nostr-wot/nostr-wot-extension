@@ -6,7 +6,7 @@ import type { PendingRequest } from '@lib/types.ts';
 /**
  * How many pending requests need the user, for the home badge.
  *
- * Lived inside HomeTab.tsx.
+ * Lived inside Home.tsx.
  */
 export default function usePendingCount(): number {
   const [pendingCount, setPendingCount] = useState(0);
