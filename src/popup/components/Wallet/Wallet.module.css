@@ -4,31 +4,31 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: var(--sp-2) 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 /* ── Setup tabs ── */
 
 .tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
 }
 
 .tab {
   flex: 1;
-  padding: 8px 12px;
+  padding: var(--sp-4) var(--sp-6);
   border: 1.5px solid var(--card-border);
   background: transparent;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition);
   font-family: inherit;
 }
 
@@ -38,7 +38,7 @@
 
 .tabActive {
   border-color: var(--brand);
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--brand-tint-active);
   color: var(--brand);
 }
 
@@ -47,23 +47,23 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-5);
 }
 
 .formActions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
   justify-content: flex-end;
-  margin-top: 4px;
+  margin-top: var(--sp-2);
 }
 
 .advancedToggle {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   cursor: pointer;
-  padding: 4px 0;
+  padding: var(--sp-2) 0;
   text-align: left;
   font-family: inherit;
 }
@@ -75,32 +75,32 @@
 /* ── Provider header ── */
 
 .providerCard {
-  padding: 10px 12px;
+  padding: var(--sp-5) var(--sp-6);
 }
 
 .providerRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .providerInfo {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .providerLabel {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
 }
 
 .providerStatus {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--success);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 /* ── NWC URI row ── */
@@ -109,12 +109,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .nwcUri {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -129,8 +129,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 16px 12px;
+  gap: var(--sp-2);
+  padding: var(--sp-8) var(--sp-6);
 }
 
 .settingsBtn {
@@ -141,21 +141,21 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .settingsBtn:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
   color: var(--brand);
 }
 
 .balanceLabel {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -163,23 +163,23 @@
 
 .balanceValue {
   font-size: 24px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .balanceUnit {
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   color: var(--text-secondary);
-  margin-left: 4px;
+  margin-left: var(--sp-2);
 }
 
 .balanceErrorWrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: var(--sp-4);
+  padding: var(--sp-2) 0;
 }
 
 /* ── Threshold row ── */
@@ -188,12 +188,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 0;
+  gap: var(--sp-4);
+  padding: var(--sp-5) 0;
 }
 
 .thresholdLabel {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-body);
   flex: 1;
 }
@@ -202,76 +202,35 @@
   width: 80px;
 }
 
-/* ── QR overlay ── */
-
-.qrOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.qrModal {
-  background: var(--bg-page-solid);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  max-width: 300px;
-  width: 90%;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.qrTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
 .qrCode {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .qrBolt11 {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   word-break: break-all;
   text-align: center;
   max-height: 60px;
   overflow-y: auto;
-  padding: 6px 8px;
+  padding: var(--sp-3) var(--sp-4);
   background: var(--card-bg);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   width: 100%;
   cursor: pointer;
-}
-
-.qrActions {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-}
-
-.qrActions > * {
-  flex: 1;
 }
 
 /* ── Error/status ── */
 
 .error {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--error);
 }
 
 .success {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--success);
 }
 
@@ -279,7 +238,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px 0;
+  padding: var(--sp-12) 0;
 }
 
 .spinner {
@@ -287,7 +246,7 @@
   height: 20px;
   border: 2.5px solid rgba(99, 102, 241, 0.15);
   border-top-color: var(--brand);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: spin 0.7s linear infinite;
 }
 
@@ -301,7 +260,7 @@
 
 .actionRow {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .actionRow > * {
@@ -319,13 +278,13 @@
 .txRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
   border-bottom: 1px solid var(--card-border);
 }
 
 .txIcon {
-  font-size: 14px;
+  font-size: var(--fs-lg);
   flex-shrink: 0;
 }
 
@@ -335,20 +294,15 @@
 }
 
 .txMemo {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.txDate {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
 .txDateBtn {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   background: none;
   border: none;
@@ -356,7 +310,7 @@
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  transition: color 0.15s;
+  transition: color var(--transition);
 }
 
 .txDateBtn:hover {
@@ -364,8 +318,8 @@
 }
 
 .txAmount {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   text-align: right;
   white-space: nowrap;
 }
@@ -383,8 +337,8 @@
 .txToolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 
 .txSearchWrap {
@@ -399,23 +353,23 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--card-border);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .txFilterBtn:hover {
-  background: rgba(99, 102, 241, 0.04);
+  background: var(--brand-tint-hover);
   color: var(--text-heading);
 }
 
 .txFilterBtnActive {
   border-color: var(--brand);
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--brand-tint-active);
   color: var(--brand);
 }
 
@@ -428,135 +382,47 @@
   padding: 0 3px;
   border-radius: 7px;
   background: var(--brand);
-  color: #fff;
+  color: var(--text-on-brand);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
-}
-
-/* ── Filter modal ── */
-
-.txFilterOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.txFilterModal {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 280px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-}
-
-.txFilterHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.txFilterTitle {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.txFilterClose {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  transition: all 0.15s;
-}
-
-.txFilterClose:hover {
-  color: var(--text-body);
-  background: rgba(0, 0, 0, 0.05);
+  line-height: var(--lh-none);
 }
 
 .txFilterSection {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .txFilterLabel {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
 
-.txFilterActions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-  padding-top: 6px;
-  border-top: 1px solid var(--card-border);
-}
-
-.txChips {
-  display: flex;
-  gap: 4px;
-}
-
-.txChip {
-  padding: 4px 10px;
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  background: transparent;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: inherit;
-}
-
-.txChip:hover {
-  background: rgba(99, 102, 241, 0.04);
-}
-
-.txChipActive {
-  border-color: var(--brand);
-  background: rgba(99, 102, 241, 0.08);
-  color: var(--brand);
-}
-
 .txDateRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .txDateInput {
   flex: 1;
   min-width: 0;
-  padding: 4px 6px;
+  padding: var(--sp-2) var(--sp-3);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--card-bg);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-family: inherit;
   color: var(--text-body);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition);
 }
 
 .txDateInput:focus {
@@ -564,47 +430,20 @@
 }
 
 .txDateSep {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .showMore {
   text-align: center;
-  padding: 8px 0;
-}
-
-/* ── Settings overlay (full-page, not centered modal) ── */
-
-.settingsOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  background: var(--bg-page-solid);
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.settingsHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-
-.settingsTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-heading);
+  padding: var(--sp-4) 0;
 }
 
 /* ── Modal/overlay description ── */
 
 .overlayDesc {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -613,23 +452,23 @@
 .invoicePreview {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-6);
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
 }
 
 .invoiceRow {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .invoiceLabel {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
@@ -637,7 +476,7 @@
 }
 
 .invoiceValue {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-body);
   text-align: right;
   overflow: hidden;
@@ -646,16 +485,16 @@
 }
 
 .invoiceAmountValue {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .invoiceError {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: center;
-  padding: 6px 0;
+  padding: var(--sp-3) 0;
 }
 
 /* ── Lightning Address ── */
@@ -663,33 +502,66 @@
 .lnAddressRow {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px 0;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
 }
 
 .lnAddressValue {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
   word-break: break-all;
 }
 
 .lnAddressActions {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .lnAddressClaimRow {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 0;
+  gap: var(--sp-2);
+  padding: var(--sp-4) 0;
   flex-wrap: wrap;
 }
 
 .lnAddressDomain {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
+/* ── Deposit: payment received ──
+   Was three inline style objects on the elements themselves. */
+.depositPaid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  text-align: center;
+}
+
+.depositPaidMark {
+  font-size: 48px;
+  line-height: var(--lh-none);
+  color: var(--success);
+}
+
+.depositPaidTitle {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--success);
+}
+
+.depositPaidAmount {
+  font-size: var(--fs-2xl);
+  color: var(--success);
+}
+
+/* Empty transaction list. Was an inline style object on the row. */
+.txEmpty {
+  padding: var(--sp-6) 0;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
