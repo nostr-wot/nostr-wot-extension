@@ -3,7 +3,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-7);
 }
 
 /* Avatar picker */
@@ -11,15 +11,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
 }
 
 .avatarCircle {
   position: relative;
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   cursor: pointer;
   overflow: hidden;
   background: var(--brand-light);
@@ -27,7 +27,7 @@
   align-items: center;
   justify-content: center;
   border: 2px solid var(--card-border);
-  transition: border-color 0.2s;
+  transition: border-color var(--transition-slow);
 }
 
 .avatarCircle:hover {
@@ -41,8 +41,8 @@
 }
 
 .avatarPlaceholder {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: var(--fs-display);
+  font-weight: var(--fw-bold);
   color: var(--brand);
   text-transform: uppercase;
 }
@@ -57,11 +57,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text-on-brand);
 }
 
 .avatarHint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -73,25 +73,25 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-6);
 }
 
 /* Advanced toggle */
 .advancedToggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
-  padding: 4px 0;
+  padding: var(--sp-2) 0;
 }
 
 .advancedToggle svg {
-  transition: transform 0.2s;
+  transition: transform var(--transition-slow);
 }
 
 .advancedToggle[data-open="true"] svg {
@@ -101,7 +101,7 @@
 .advancedFields {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-6);
 }
 
 /* Preview card */
@@ -109,22 +109,22 @@
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: var(--sp-6);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .previewHeader {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-5);
 }
 
 .previewAvatar {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   object-fit: cover;
   border: 1px solid var(--card-border);
 }
@@ -132,38 +132,38 @@
 .previewAvatarPlaceholder {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--brand-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
   color: var(--brand);
 }
 
 .previewName {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .previewAbout {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-body);
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 .previewField {
   display: flex;
-  gap: 6px;
-  font-size: 11px;
+  gap: var(--sp-3);
+  font-size: var(--fs-xs);
 }
 
 .previewField dt {
   color: var(--text-muted);
   min-width: 60px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .previewField dd {
@@ -172,7 +172,7 @@
 }
 
 .previewHint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-align: center;
 }
@@ -183,8 +183,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 24px 0;
+  gap: var(--sp-5);
+  padding: var(--sp-12) 0;
 }
 
 .spinner {
@@ -192,34 +192,34 @@
   height: 28px;
   border: 3px solid var(--card-border);
   border-top-color: var(--brand);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .statusText {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-body);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .successText {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   color: var(--success);
 }
 
 .errorText {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--error);
 }
 
 /* Actions */
 .actions {
   display: flex;
-  gap: 8px;
-  margin-top: 4px;
+  gap: var(--sp-4);
+  margin-top: var(--sp-2);
 }
 
 .actions button {

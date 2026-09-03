@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.js';
+import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubDecode } from '@lib/crypto/bech32.js';
-import { truncateNpub } from '@shared/format/text.js';
+import { truncateNpub } from '@shared/format/text.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Button from '@components/Button/Button';
 import InputRow from '@components/InputRow/InputRow';

@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { rpc } from '@shared/rpc.ts';
+import {
+  isAlreadyPublished,
+  type PqcStatus as SharedPqcStatus,
+  type PqcPublished,
+} from '@shared/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconWarning, IconCopy } from '@assets';
 import Button from '@components/Button/Button';
@@ -8,28 +13,20 @@ import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import useCopy from '@shared/hooks/useCopy.ts';
 import { truncateMiddle } from '@shared/format/text.ts';
-import { downloadFile } from '@shared/downloadFile.js';
+import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@shared/browser.ts';
-import styles from './SecuritySection.module.css';
+import styles from './PqcSection.module.css';
 
 type BlockReason = 'read-only' | 'remote-signer' | 'no-seed' | 'short-seed';
 
-interface Published {
-  published: boolean;
-  current: boolean;
-  /** True when no relay answered, so `published` carries no information. */
-  unreachable?: boolean;
-}
-
-interface PqcStatus {
-  canDerive: boolean;
+/** The panel needs more of the status than the home card does; the shared base
+ *  carries the fields both read, so the two cannot disagree about them. */
+interface PqcStatus extends SharedPqcStatus {
   reason: BlockReason | null;
   wordCount: number | null;
   pubkey: string | null;
   keys: { kem: string; dsa: string } | null;
-  source: 'derived' | 'imported' | null;
-  canImport: boolean;
   attestation: { kind: number; created_at: number; tags: string[][]; content: string } | null;
 }
 
@@ -198,11 +195,11 @@ export interface PqcSectionHandle {
 function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   const [status, setStatus] = useState<PqcStatus | null>(null);
   const [error, setError] = useState<string>('');
-  const [copied, setCopied] = useState<boolean>(false);
+  const attestationCopy = useCopy();
   const [publishing, setPublishing] = useState<boolean>(false);
   const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
   const [publishError, setPublishError] = useState<string>('');
-  const [existing, setExisting] = useState<Published | null>(null);
+  const [existing, setExisting] = useState<PqcPublished | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [removing, setRemoving] = useState<boolean>(false);
   const [howOpen, setHowOpen] = useState<boolean>(false);
@@ -260,7 +257,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
         return;
       }
 
-      setExisting(await rpc<Published>('pqc_checkPublished'));
+      setExisting(await rpc<PqcPublished>('pqc_checkPublished'));
     } catch (e: any) {
       setError(e?.message || t('common.error'));
     } finally {
@@ -280,13 +277,6 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     } finally {
       setPublishing(false);
     }
-  };
-
-  const handleCopy = async () => {
-    if (!status?.attestation) return;
-    await navigator.clipboard.writeText(JSON.stringify(status.attestation));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   // Was a native confirm(). Some popup contexts suppress those outright, which
@@ -376,7 +366,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     );
   }
 
-  const alreadyPublished = !!(existing?.published && existing.current) || !!published;
+  const alreadyPublished = isAlreadyPublished(existing, !!published);
 
   return (
     <div>
@@ -474,9 +464,9 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
               <p className={styles.desc}>{t('pqc.attestationLabel')}</p>
               <pre className={styles.pqcJson}>{JSON.stringify(status.attestation, null, 2)}</pre>
               {/* For anyone who would rather publish it themselves. */}
-              <button className={styles.pqcCopyLink} onClick={handleCopy}>
+              <button className={styles.pqcCopyLink} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
                 <IconCopy size={12} />
-                {copied ? t('common.copied') : t('pqc.copyAttestation')}
+                {attestationCopy.copied ? t('common.copied') : t('pqc.copyAttestation')}
               </button>
             </>
           )}

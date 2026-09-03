@@ -11,73 +11,8 @@
 
 .connectActions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
   justify-content: center;
-}
-
-/* Site controls */
-.siteControls {
-  padding: 0;
-  overflow: hidden;
-}
-
-.controlRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 11px 14px;
-}
-
-.controlRow + .controlRow {
-  border-top: 1px solid rgba(99, 102, 241, 0.04);
-}
-
-.controlInfo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.controlIcon {
-  color: var(--brand);
-  flex-shrink: 0;
-}
-
-.controlLabel {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-body);
-}
-
-.controlDivider {
-  border-top: 1px solid rgba(99, 102, 241, 0.04);
-}
-
-.controlLink {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px 14px;
-  background: none;
-  border: none;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.controlLink:hover {
-  background: rgba(99, 102, 241, 0.04);
-}
-
-.managedBySigner {
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  font-style: italic;
 }
 
 /* Profile suggestion */
@@ -85,14 +20,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--sp-5);
+  padding: var(--sp-6) var(--sp-7);
 }
 
 .profileSuggestionContent {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--sp-5);
   flex: 1;
   min-width: 0;
 }
@@ -100,40 +35,40 @@
 .profileSuggestionIcon {
   color: var(--brand);
   flex-shrink: 0;
-  margin-top: 2px;
+  margin-top: var(--sp-1);
 }
 
 .profileSuggestionText {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .profileSuggestionText strong {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
 }
 
 .profileSuggestionText span {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 .profileSuggestionActions {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-2);
   flex-shrink: 0;
 }
 
 .profileDismiss {
   background: none;
   border: none;
-  padding: 2px 6px;
-  font-size: 11px;
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   cursor: pointer;
   font-family: inherit;
@@ -143,111 +78,11 @@
   color: var(--text-secondary);
 }
 
-/* Activity */
-.activityCard {
-  padding: 0;
-  overflow: hidden;
-}
-
-.activityHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px 0;
-}
-
-.activityHeader label {
-  margin-bottom: 0;
-  font-size: 12px;
-}
-
-.viewAll {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.viewAll:hover {
-  color: var(--text-body);
-}
-
-.activityList {
-  max-height: 180px;
-  overflow-y: auto;
-  padding: 4px 14px 8px;
-}
-
-.activityRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 0;
-  font-size: 12px;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.04);
-  width: 100%;
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.1s;
-  border-radius: 4px;
-}
-
-.activityRow:hover {
-  background: rgba(99, 102, 241, 0.04);
-}
-
-.activityRow:last-child {
-  border-bottom: none;
-}
-
-.activityAction {
-  color: var(--text-body);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activityCount {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.activityTime {
-  color: var(--text-muted);
-  font-size: 11px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.emptyActivity {
-  color: var(--text-muted);
-  font-size: 12px;
-  padding: 8px 0;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
 /* Pending requests card */
 .pendingCard {
   display: flex;
   align-items: center;
-  padding: 10px 14px;
+  padding: var(--sp-5) var(--sp-7);
   background: rgba(245, 158, 11, 0.08);
   border: 1px solid rgba(245, 158, 11, 0.2);
   cursor: default;
@@ -256,25 +91,25 @@
 .pendingInfo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .pendingBadge {
-  background: #f59e0b;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  background: var(--warning-bright);
+  color: var(--text-on-brand);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   min-width: 20px;
   height: 20px;
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  padding: 0 var(--sp-3);
 }
 
 .pendingText {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-body);
 }
 
@@ -283,20 +118,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--sp-5);
+  padding: var(--sp-6) var(--sp-7);
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
 }
 
 /* Account group — profile / mutes / relays as one grouped card under a label */
 .accountSection {
-  margin-top: 14px;
+  margin-top: var(--sp-7);
 }
 
 .accountSection :global(label) {
-  margin-left: 2px;
-  margin-bottom: 6px;
+  margin-left: var(--sp-1);
+  margin-bottom: var(--sp-3);
 }
 
 .accountCard {
@@ -305,13 +140,13 @@
 }
 
 .walletCard:hover {
-  background: rgba(99, 102, 241, 0.04);
+  background: var(--brand-tint-hover);
 }
 
 .walletCardInfo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-5);
   min-width: 0;
 }
 
@@ -327,88 +162,26 @@
 }
 
 .walletCardText strong {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .walletCardText span {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  font-weight: 600;
-}
-
-/* ── Post-quantum offer ── */
-.pqcCard {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  border-radius: 12px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s;
-}
-
-.pqcCard:hover {
-  border-color: var(--brand);
-}
-
-.pqcIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.12);
-  color: var(--brand);
-}
-
-.pqcText strong {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
-.pqcText span {
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-}
-
-/* Post-quantum card states. "On" is a status, not a call to action, so it reads calmer
-   than the setup invitation; "stale" needs to catch the eye because senders are currently
-   encrypting to the wrong key. */
-
-.pqcCardOn .pqcIcon {
-  color: var(--success, #16a34a);
-}
-
-.pqcCardOn strong {
-  color: var(--text-heading);
-}
-
-.pqcCardWarn {
-  border-color: var(--warning, #f59e0b);
-}
-
-.pqcCardWarn .pqcIcon {
-  color: var(--warning, #f59e0b);
+  font-weight: var(--fw-semibold);
 }
 
 /* Shown when a connect, dismiss or identity-toggle RPC failed. Uses --error,
    which theme.css defines. */
 .actionError {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: var(--sp-3) var(--sp-6);
+  font-size: var(--fs-sm);
   color: var(--error);
   text-align: center;
 }
+
+

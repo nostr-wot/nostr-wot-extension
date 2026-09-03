@@ -3,7 +3,7 @@ import { t } from '@lib/i18n.js';
 import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';
 import { IconUser, IconChevronRight } from '@assets';
-import styles from './HomeTab.module.css';
+import styles from './SiteControls.module.css';
 
 interface SiteControlsProps {
   identityEnabled: boolean;

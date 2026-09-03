@@ -1,6 +1,8 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import useRpc from '@shared/hooks/useRpc.js';
+import useRpc from '@shared/hooks/useRpc.ts';
+import useRelayCache from '@shared/hooks/useRelayCache.ts';
+import { MUTE_LIST_CACHE } from '@shared/relayCacheNames.ts';
 import NavRow from '@components/NavRow/NavRow';
 import { IconShield } from '@assets';
 
@@ -16,9 +18,12 @@ interface MyMuteList {
  * The info tooltip explains what the published mute list is.
  */
 export default function MutesCard({ onOpen }: { onOpen: () => void }) {
-  const { data } = useRpc<MyMuteList>('getMyMuteList', {}, {
+  const { data, reload } = useRpc<MyMuteList>('getMyMuteList', {}, {
     defaultValue: { people: [], words: [], hashtags: [] },
   });
+  // The first read comes from the background's cache so this paints without
+  // waiting on a relay; this picks up the refreshed answer when it lands.
+  useRelayCache(MUTE_LIST_CACHE, reload);
   const count =
     (data?.people?.length || 0) + (data?.words?.length || 0) + (data?.hashtags?.length || 0);
 

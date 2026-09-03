@@ -3,7 +3,7 @@ import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubEncode } from '@lib/crypto/bech32.js';
-import { useAccount } from '../../context/AccountContext';
+import { useAccount } from '@popup/context/AccountContext';
 import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { IconClose, IconCopy, IconPencil } from '@assets';
 import Avatar from '@components/Avatar/Avatar';

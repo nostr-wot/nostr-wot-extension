@@ -3,48 +3,48 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-8);
 }
 
 /* Mute groups (people / words / hashtags / import) */
 .muteGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .muteGroupHint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
-  line-height: 1.3;
+  line-height: var(--lh-tight);
 }
 
 .suggestedRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 /* Entry list */
 .blockList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .blockItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
   border: 1px solid var(--card-border);
   background: var(--card-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
 }
 
 .blockPubkey {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-heading);
   overflow: hidden;
   text-overflow: ellipsis;

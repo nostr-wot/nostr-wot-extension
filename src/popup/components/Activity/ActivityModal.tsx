@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.js';
+import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.js';
-import { groupActivityEntries, type ActivityEntry, type GroupedActivity } from '@shared/activity.js';
-import { truncateNpub } from '@shared/format/text.js';
+import { formatLabel } from '@shared/permissions.ts';
+import { groupActivityEntries, type ActivityEntry, type GroupedActivity } from '@shared/activity.ts';
+import { truncateNpub } from '@shared/format/text.ts';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
@@ -11,8 +11,8 @@ import Input from '@components/Input/Input';
 import StatusDot from '@components/StatusDot/StatusDot';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import { IconTuner } from '@assets';
-import { useAccount } from '../../context/AccountContext';
-import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.js';
+import { useAccount } from '@popup/context/AccountContext';
+import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import styles from './ActivityModal.module.css';
 

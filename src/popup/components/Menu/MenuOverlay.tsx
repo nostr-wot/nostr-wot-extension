@@ -14,9 +14,9 @@ import NetworkSection from '../Settings/NetworkSection';
 import WalletSection from '../Wallet/WalletSection';
 import KeyActionModal from '../Vault/KeyActionModal';
 import NavItem from '@components/NavItem/NavItem';
-import { useVault } from '../../context/VaultContext';
-import { useAccount } from '../../context/AccountContext';
-import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.js';
+import { useVault } from '@popup/context/VaultContext';
+import { useAccount } from '@popup/context/AccountContext';
+import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import styles from './MenuOverlay.module.css';
 
 interface MenuOverlayProps {

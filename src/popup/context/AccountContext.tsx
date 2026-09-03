@@ -3,6 +3,7 @@ import browser from '@shared/browser.ts';
 import { t } from '@lib/i18n.js';
 import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { rpc } from '@shared/rpc.ts';
+import type { ProfileMetadata } from '@shared/profileMetadata.ts';
 
 interface Account {
   id: string;
@@ -10,17 +11,6 @@ interface Account {
   name?: string;
   readOnly?: boolean;
   type?: string;
-}
-
-interface ProfileMetadata {
-  name?: string;
-  display_name?: string;
-  about?: string;
-  picture?: string;
-  nip05?: string;
-  lud16?: string;
-  website?: string;
-  banner?: string;
 }
 
 interface ProfileCache {

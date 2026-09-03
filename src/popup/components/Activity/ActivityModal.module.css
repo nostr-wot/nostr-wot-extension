@@ -1,14 +1,14 @@
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-4);
   border-bottom: 1px solid var(--card-border);
 }
 
 .dropdowns {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-3);
   flex: 1;
   min-width: 0;
 }
@@ -25,22 +25,22 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  background: rgba(99, 102, 241, 0.04);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-active);
+  background: var(--brand-tint-hover);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
   flex-shrink: 0;
 }
 
 .filterToggle:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: var(--brand-tint-active);
   color: var(--text-heading);
 }
 
 .filterToggleActive {
-  background: rgba(99, 102, 241, 0.1);
+  background: var(--brand-light);
   color: var(--brand);
   border-color: var(--brand);
 }
@@ -51,24 +51,24 @@
   right: -4px;
   min-width: 16px;
   height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-md);
   background: var(--brand);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
+  color: var(--text-on-brand);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-bold);
   display: flex;
   align-items: center;
   justify-content: center;
-  line-height: 1;
+  line-height: var(--lh-none);
 }
 
 .filterPanel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 4px;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-6);
+  margin-bottom: var(--sp-2);
   border-bottom: 1px solid var(--card-border);
 }
 
@@ -78,8 +78,8 @@
 }
 
 .filterLabel {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -90,11 +90,11 @@
   background: none;
   border: none;
   padding: 0;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   color: var(--brand);
   cursor: pointer;
-  transition: color 0.15s;
+  transition: color var(--transition);
 }
 
 .advancedToggle:hover {
@@ -102,7 +102,7 @@
 }
 
 .filterActions {
-  padding-top: 8px;
+  padding-top: var(--sp-4);
   display: flex;
   justify-content: flex-end;
 }
@@ -113,10 +113,10 @@
 }
 
 .dayHeader {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--text-secondary);
-  padding: 8px 0 4px;
+  padding: var(--sp-4) 0 var(--sp-2);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -124,10 +124,10 @@
 .entry {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  font-size: 12px;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.04);
+  gap: var(--sp-4);
+  padding: var(--sp-3) 0;
+  font-size: var(--fs-sm);
+  border-bottom: 1px solid var(--brand-tint-hover);
   width: 100%;
   background: none;
   border-left: none;
@@ -135,18 +135,18 @@
   border-top: none;
   cursor: pointer;
   text-align: left;
-  transition: background 0.1s;
-  border-radius: 4px;
+  transition: background var(--transition-fast);
+  border-radius: var(--radius-xs);
   color: inherit;
 }
 
 .entry:hover {
-  background: rgba(99, 102, 241, 0.04);
+  background: var(--brand-tint-hover);
 }
 
 .entryTime {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
   flex-shrink: 0;
   min-width: 36px;
@@ -154,7 +154,7 @@
 
 .entryDomain {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -172,13 +172,13 @@
 
 .entryCount {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   flex-shrink: 0;
 }
 
 .empty {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-md);
   text-align: center;
-  padding: 28px 0;
+  padding: var(--sp-14) 0;
 }

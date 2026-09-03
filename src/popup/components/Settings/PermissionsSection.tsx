@@ -1,21 +1,26 @@
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
-import { createPortal } from 'react-dom';
 import { t } from '@lib/i18n.js';
 import { rpc } from '@shared/rpc.ts';
 import { formatLabel } from '@shared/permissions.ts';
+import {
+  countDecisions,
+  filterKeysForAccountKind,
+  availablePermKeys,
+  buildRuleKey,
+} from '@shared/permissionRules.ts';
 import { IconSearch, IconShield, IconChevronRight, IconUsers, IconPlus } from '@assets';
-import { useAccount } from '../../context/AccountContext';
-import { usePermissions } from '../../context/PermissionsContext';
+import { useAccount } from '@popup/context/AccountContext';
+import { usePermissions } from '@popup/context/PermissionsContext';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
+import Modal from '@components/Modal/Modal';
 import Toggle from '@components/Toggle/Toggle';
 import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Settings.module.css';
 
 const DECISIONS = ['allow', 'deny', 'ask'] as const;
-const READ_ONLY_KEYS = ['getPublicKey'];
 
 const COMMON_PERM_KEYS = [
   'getPublicKey',
@@ -91,11 +96,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   }), [detailDomain]);
 
   const getPermSummary = (bucketPerms: Record<string, string>): string => {
-    let allow = 0, deny = 0;
-    Object.values(bucketPerms).forEach((v) => {
-      if (v === 'allow') allow++;
-      else if (v === 'deny') deny++;
-    });
+    const { allow, deny } = countDecisions(bucketPerms);
     const parts: string[] = [];
     if (allow) parts.push(t('perms.allowed', { count: allow }));
     if (deny) parts.push(t('perms.denied', { count: deny }));
@@ -126,13 +127,8 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     return a.pubkey?.slice(0, 12) + '...';
   };
 
-  // Filter permission keys for read-only/NIP-46 accounts (only getPublicKey)
-  const filterKeysForAccount = (keys: string[]): string[] => {
-    if (!allAccountsMode && (isSelectedReadOnly || isSelectedNip46)) {
-      return keys.filter((k) => READ_ONLY_KEYS.includes(k));
-    }
-    return keys;
-  };
+  const filterKeysForAccount = (keys: string[]): string[] =>
+    filterKeysForAccountKind(keys, { readOnly: isSelectedReadOnly, nip46: isSelectedNip46 }, allAccountsMode);
 
   // Account scope picker block
   const hasMultipleAccounts = accounts && accounts.length > 1;
@@ -216,9 +212,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   };
 
   const handleAddRule = async () => {
-    const key = addRuleUseCustom && addRuleCustomKind.trim()
-      ? `signEvent:${addRuleCustomKind.trim()}`
-      : addRuleKey;
+    const key = buildRuleKey(addRuleKey, addRuleCustomKind, addRuleUseCustom && !!addRuleCustomKind.trim());
     await permissions.savePermission(detailDomain!, key, addRuleDecision, effectiveAccountId);
     setAddRuleOpen(false);
   };
@@ -226,9 +220,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const chipClass = (d: string) =>
     styles[`chip${d.charAt(0).toUpperCase() + d.slice(1)}`] || '';
 
-  // Available keys for add-rule dropdown (exclude already-set ones)
-  const existingKeys = new Set(Object.keys(domainPerms));
-  const availableKeys = COMMON_PERM_KEYS.filter(k => !existingKeys.has(k));
+  const availableKeys = availablePermKeys(COMMON_PERM_KEYS, domainPerms);
 
   // Detail view
   if (detailDomain) {
@@ -286,18 +278,19 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         </div>
 
         {/* Add Rule modal */}
-        {addRuleOpen && createPortal(
-          <div className={styles.permModalOverlay} onClick={() => setAddRuleOpen(false)}>
-            <div className={styles.permModal} onClick={(e) => e.stopPropagation()}>
-              <div className={styles.permModalHeader}>
-                <span className={styles.permModalTitle}>{t('perms.addRule')}</span>
-                <button className={styles.permModalClose} onClick={() => setAddRuleOpen(false)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </div>
-
+        {addRuleOpen && (
+          <Modal
+            title={t('perms.addRule')}
+            onClose={() => setAddRuleOpen(false)}
+            maxWidth={280}
+            footerRow
+            footer={(
+              <>
+                <Button small variant="secondary" onClick={() => setAddRuleOpen(false)}>{t('common.cancel')}</Button>
+                <Button small onClick={handleAddRule}>{t('perms.addRule')}</Button>
+              </>
+            )}
+          >
               <div className={styles.permModalSection}>
                 <span className={styles.permModalLabel}>{t('perms.permission')}</span>
                 {!addRuleUseCustom ? (
@@ -342,13 +335,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                 </div>
               </div>
 
-              <div className={styles.permModalActions}>
-                <Button small variant="secondary" onClick={() => setAddRuleOpen(false)}>{t('common.cancel')}</Button>
-                <Button small onClick={handleAddRule}>{t('perms.addRule')}</Button>
-              </div>
-            </div>
-          </div>,
-          document.getElementById('root') || document.body,
+          </Modal>
         )}
       </div>
     );

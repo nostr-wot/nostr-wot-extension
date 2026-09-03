@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { rpc } from '@shared/rpc.ts';
+import useRelayCache from '@shared/hooks/useRelayCache.ts';
+import { PQC_PUBLISHED_CACHE } from '@shared/relayCacheNames.ts';
+import {
+  derivePqcCardState,
+  type PqcStatus,
+  type PqcPublished,
+  type PqcCardState,
+} from '@shared/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
-import styles from './HomeTab.module.css';
+import styles from './PqcCard.module.css';
 
 /**
  * Post-quantum status on the dashboard.
@@ -18,67 +26,46 @@ import styles from './HomeTab.module.css';
  * card reports.
  */
 
-interface PqcStatus {
-  canDerive: boolean;
-  canImport: boolean;
-  source: 'derived' | 'imported' | null;
-  reason: string | null;
-}
-
-interface Published {
-  published: boolean;
-  current: boolean;
-  /** True when the relays could not be reached, so `published` carries no information. */
-  unreachable?: boolean;
-}
-
-type CardState = 'enabled' | 'stale' | 'setup' | 'import';
-
 interface PqcCardProps {
   onOpen: () => void;
 }
 
 export default function PqcCard({ onOpen }: PqcCardProps) {
-  const [state, setState] = useState<CardState | null>(null);
+  const [state, setState] = useState<PqcCardState | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const status = await rpc<PqcStatus>('pqc_getStatus');
-        if (cancelled || !status) return;
+  // Run-versioned rather than a per-call `cancelled` flag: this now re-runs
+  // whenever the background refreshes the cache, so two passes can overlap and
+  // the slower one must not win by finishing last (docs §9).
+  const runRef = useRef(0);
+  const load = useCallback(async () => {
+    const run = ++runRef.current;
+    const current = () => run === runRef.current;
+    try {
+      const status = await rpc<PqcStatus>('pqc_getStatus');
+      if (!current() || !status) return;
 
-        if (!status.canDerive) {
-          // Nothing to derive. Offer the import path only where imported keys could
-          // actually be used; otherwise say nothing rather than advertise a dead end.
-          setState(status.canImport ? 'import' : null);
-          return;
-        }
+      // Whether the feature is ON depends on the attestation being out there
+      // and matching — asked of the relays, so it stays right when it was
+      // published from another device. Only worth asking if keys exist.
+      const published = status.canDerive
+        ? await rpc<PqcPublished>('pqc_checkPublished').catch(() => null)
+        : null;
+      if (!current()) return;
 
-        // Keys exist. Whether the feature is ON depends on the attestation being out
-        // there and matching — asked of the relays, so it stays right when it was
-        // published from another device.
-        const pub = await rpc<Published>('pqc_checkPublished').catch(() => null);
-        if (cancelled) return;
-
-        // A read that did not come back is not "nothing is published". Coercing it
-        // to that told a user who had published to go and set it up again, and
-        // would have had them republish an attestation that was already correct —
-        // on exactly the flaky-relay day that produced the failed read.
-        if (!pub || pub.unreachable) return;
-
-        if (!pub.published) setState('setup');
-        else setState(pub.current ? 'enabled' : 'stale');
-      } catch {
-        // Vault locked, or no active account. Nothing to report either way.
-      }
-    })();
-    return () => { cancelled = true; };
+      setState(derivePqcCardState(status, published));
+    } catch {
+      // Vault locked, or no active account. Nothing to report either way.
+    }
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
+  // The published check is served from the background's cache so this paints
+  // without a relay round trip; this picks up the refreshed answer.
+  useRelayCache(PQC_PUBLISHED_CACHE, load);
 
   if (!state) return null;
 
-  const COPY: Record<CardState, { icon: React.ReactNode; title: string; desc: string; className: string }> = {
+  const COPY: Record<PqcCardState, { icon: React.ReactNode; title: string; desc: string; className: string }> = {
     enabled: {
       icon: <IconShield size={18} />,
       title: t('pqc.cardEnabledTitle'),

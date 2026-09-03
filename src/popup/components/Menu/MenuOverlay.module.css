@@ -18,16 +18,28 @@
    * `transform: translateX(0)` permanently — and a transform that is not `none`
    * makes an element a containing block for its `position: fixed` descendants.
    * Every fixed overlay rendered inside a menu section was therefore positioned
-   * and clipped against the section's box instead of the popup: the wallet's
-   * settings overlay (Wallet.module.css:580) and the permissions add-rule modal
-   * (Settings.module.css:252) are both fixed, and both are inside one.
+   * and clipped against the section's box instead of the popup, which is why
+   * five dialogs had escaped to `#root` portals to get away from it.
    *
    * The end state is unchanged — translateX(0) and no transform paint
-   * identically — so this removes the containing block and nothing else. It is
-   * also the precondition for un-portaling the dialogs that currently escape to
-   * #root to avoid this.
+   * identically — so this removes the containing block and nothing else. Those
+   * portals have since been removed and the dialogs now render in place on the
+   * shared Modal; keep this `backwards` or they break again.
    */
-  animation: sectionSlideIn 0.2s ease-out backwards;
+  animation: sectionSlideIn var(--transition-slow) ease-out backwards;
+
+  /* Nothing in the chain below this scrolled, so a section taller than the
+     panel — Security with its nav rows, and post-quantum in particular — ran
+     past the bottom of `.card`, which is `overflow: hidden`. The content was
+     not merely off-screen, it was unreachable.
+
+     The scroller belongs here rather than on `.section` so it spans the whole
+     panel body; the horizontal padding with matching negative margin buys back
+     the room the card shadows on the rows need, since a box that scrolls on one
+     axis clips on both. */
+  overflow-y: auto;
+  padding: 0 var(--sp-2);
+  margin: 0 calc(var(--sp-2) * -1);
 }
 
 @keyframes sectionSlideIn {
@@ -39,17 +51,17 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 4px 2px;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-1);
 }
 
 /* Menu items list — no overflow so shadows & hover transforms aren't clipped */
 .items {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
   flex: 1;
-  padding: 4px 2px;
+  padding: var(--sp-2) var(--sp-1);
 }
 
 /* Footer area: language selector + about — always at the bottom */
@@ -58,7 +70,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 12px;
+  padding-top: var(--sp-6);
   flex-shrink: 0;
 }
 
@@ -66,14 +78,14 @@
 .langRow {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  margin-bottom: var(--sp-6);
   border: 1px solid var(--card-border);
   background: rgba(255, 255, 255, 0.6);
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition);
   font-family: inherit;
 }
 
@@ -83,13 +95,13 @@
 }
 
 .langFlag {
-  font-size: 16px;
-  line-height: 1;
+  font-size: var(--fs-2xl);
+  line-height: var(--lh-none);
 }
 
 .langLabel {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
   white-space: nowrap;
 }
@@ -99,93 +111,35 @@
   color: var(--text-muted);
 }
 
-/* Language modal */
-.langModal {
-  position: absolute;
-  inset: 0;
-  z-index: 700;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-page);
-  animation: langModalIn 0.25s ease-out;
-}
-
-.langModalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--card-border);
-}
-
-.langModalTitle {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.langModalClose {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: inherit;
-}
-
-.langModalClose:hover {
-  background: var(--card-bg);
-  color: var(--text-heading);
-}
-
 .langModalWheel {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 16px;
-}
-
-.langModalBottom {
-  padding: 16px;
-}
-
-.langModalBottom > * {
-  width: 100%;
+  padding: 0 var(--sp-8);
 }
 
 .langWheelItem {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-7);
 }
 
 .langWheelItemActive .langWheelName {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .langWheelFlag {
-  font-size: 28px;
-  line-height: 1;
+  font-size: var(--fs-display);
+  line-height: var(--lh-none);
 }
 
 .langWheelName {
-  font-size: 18px;
-  font-weight: 500;
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
   letter-spacing: -0.2px;
-  transition: font-weight 0.15s;
-}
-
-@keyframes langModalIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  transition: font-weight var(--transition);
 }
 
 /* About footer */
@@ -193,8 +147,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 0;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
   opacity: 0.5;
 }
 
@@ -204,13 +158,13 @@
 }
 
 .aboutName {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
 }
 
 .aboutVersion {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -225,16 +179,16 @@
 .headerHelp {
   background: transparent;
   border: none;
-  padding: 8px;
+  padding: var(--sp-4);
   cursor: pointer;
   display: flex;
   align-items: center;
   color: var(--text-muted);
   border-radius: var(--radius-sm);
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .headerHelp:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: var(--card-bg);
   color: var(--text-body);
 }

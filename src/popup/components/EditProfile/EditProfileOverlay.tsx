@@ -1,14 +1,19 @@
 import React, { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
-import { rpc } from '@shared/rpc.js';
-import { uploadToBlossom } from '@shared/blossom.js';
-import { safeImageUrl } from '@shared/safeUrl.js';
-import { useAccount } from '../../context/AccountContext';
+import { rpc } from '@shared/rpc.ts';
+import { uploadToBlossom } from '@shared/blossom.ts';
+import { safeImageUrl } from '@shared/safeUrl.ts';
+import {
+  mergeProfileMetadata,
+  profileHasChanges,
+  type ProfileMetadata,
+} from '@shared/profileMetadata.ts';
+import { useAccount } from '@popup/context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Avatar from '@components/Avatar/Avatar';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
-import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.js';
+import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import { IconCamera, IconChevronDown } from '@assets';
 import styles from './EditProfileOverlay.module.css';
 
@@ -18,18 +23,6 @@ type StepValue = typeof STEPS[keyof typeof STEPS];
 interface EditProfileOverlayProps {
   visible: boolean;
   onClose: () => void;
-}
-
-interface ProfileMetadata {
-  name?: string;
-  display_name?: string;
-  about?: string;
-  picture?: string;
-  nip05?: string;
-  lud16?: string;
-  website?: string;
-  banner?: string;
-  [key: string]: any;
 }
 
 export default function EditProfileOverlay({ visible, onClose }: EditProfileOverlayProps) {
@@ -90,14 +83,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   // relay-supplied profile metadata, so only render it if it's plain http(s).
   const displayPicture = imagePreview || safeImageUrl(picture) || null;
 
-  const hasChanges = imageFile !== null ||
-    name !== (cachedProfile?.name || cachedProfile?.display_name || '') ||
-    about !== (cachedProfile?.about || '') ||
-    picture !== (cachedProfile?.picture || '') ||
-    nip05 !== (cachedProfile?.nip05 || '') ||
-    lud16 !== (cachedProfile?.lud16 || '') ||
-    website !== (cachedProfile?.website || '') ||
-    banner !== (cachedProfile?.banner || '');
+  const formFields = { name, about, picture, nip05, lud16, website, banner };
+  const hasChanges = profileHasChanges(cachedProfile, formFields, imageFile !== null);
 
   const handleFilePick = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,27 +97,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
     setImagePreview(url);
   };
 
-  const buildMetadata = (pictureUrl?: string | null): ProfileMetadata => {
-    // Merge with existing profile to preserve unknown fields
-    const metadata: ProfileMetadata = cachedProfile ? { ...cachedProfile } : {};
-    if (name) metadata.name = name;
-    else delete metadata.name;
-    if (about) metadata.about = about;
-    else delete metadata.about;
-    if (pictureUrl) metadata.picture = pictureUrl;
-    else if (picture) metadata.picture = picture;
-    else delete metadata.picture;
-    if (nip05) metadata.nip05 = nip05;
-    else delete metadata.nip05;
-    if (lud16) metadata.lud16 = lud16;
-    else delete metadata.lud16;
-    if (website) metadata.website = website;
-    else delete metadata.website;
-    if (banner) metadata.banner = banner;
-    else delete metadata.banner;
-    if (name) metadata.display_name = name;
-    return metadata;
-  };
+  const buildMetadata = (pictureUrl?: string | null): ProfileMetadata =>
+    mergeProfileMetadata(cachedProfile, formFields, pictureUrl);
 
   const handlePublish = async () => {
     if (!name && !about) {

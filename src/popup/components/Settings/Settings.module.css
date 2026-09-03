@@ -1,10 +1,15 @@
 /* Shared settings styles */
 .section {
   flex: 1;
-  padding: 4px 0;
+  /* Without this, the section's min-content height wins over `flex: 1` and the
+     box grows to fit its children — so `.permsList`'s own `overflow-y: auto`
+     never had anything to scroll, and a long permissions list simply ran off
+     the bottom of the card, which clips it with no scrollbar. */
+  min-height: 0;
+  padding: var(--sp-2) 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .chevron {
@@ -15,7 +20,7 @@
 /* Search bar */
 .searchWrap {
   position: relative;
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-2);
 }
 
 .searchIcon {
@@ -29,14 +34,14 @@
 
 .searchInput {
   width: 100%;
-  padding: 10px 10px 10px 34px;
+  padding: var(--sp-5) var(--sp-5) var(--sp-5) 34px;
   border: 1px solid var(--card-border);
-  border-radius: 10px;
-  font-size: 13px;
+  border-radius: var(--radius-panel);
+  font-size: var(--fs-md);
   background: var(--card-bg);
   color: var(--text-heading);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition);
 }
 
 .searchInput:focus {
@@ -49,19 +54,19 @@
   flex-direction: column;
   flex: 1;
   overflow-y: auto;
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 2px 12px var(--brand-tint-active);
 }
 
 .permRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
   border: 1px solid var(--card-border);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--surface-glass);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition);
   margin-top: -1px;
 }
 
@@ -75,7 +80,7 @@
 }
 
 .permRow:only-child {
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
 }
 
 .permRow:hover {
@@ -83,26 +88,18 @@
   z-index: 1;
 }
 
-.permFavicon {
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-
 .permFaviconFallback {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--brand-light);
   color: var(--brand);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
 }
 
 .permInfo {
@@ -111,8 +108,8 @@
 }
 
 .permDomain {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -120,7 +117,7 @@
 }
 
 .permSummary {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -129,8 +126,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(99, 102, 241, 0.06);
+  padding: var(--sp-5) 0;
+  border-bottom: 1px solid var(--card-bg);
 }
 
 .permDetailRow:last-child {
@@ -138,26 +135,26 @@
 }
 
 .permMethodName {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   color: var(--text-body);
 }
 
 .chipGroup {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .chip {
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   border: 1px solid var(--card-border);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .chip:hover {
@@ -187,7 +184,7 @@
 .permDetailActions {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
+  margin-top: var(--sp-4);
 }
 
 /* ── Inline decision dropdown ── */
@@ -201,10 +198,10 @@
   position: absolute;
   right: 0;
   top: calc(100% + 4px);
-  z-index: 10;
-  background: #ffffff;
+  z-index: var(--z-raised);
+  background: var(--bg-elevated);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   min-width: 100px;
   overflow: hidden;
@@ -213,32 +210,32 @@
 .permDecisionOption {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
   width: 100%;
-  padding: 7px 12px;
+  padding: 7px var(--sp-6);
   border: none;
   background: none;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   color: var(--text-body);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  transition: background 0.1s;
+  transition: background var(--transition-fast);
 }
 
 .permDecisionOption:hover {
-  background: rgba(99, 102, 241, 0.04);
+  background: var(--brand-tint-hover);
 }
 
 .permDecisionActive {
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .permDecisionDot {
   width: 7px;
   height: 7px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   flex-shrink: 0;
 }
 
@@ -246,91 +243,31 @@
 .permDotDeny { background: var(--error); }
 .permDotAsk { background: var(--warning); }
 
-/* ── Add Rule modal ── */
-
-.permModalOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.permModal {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 280px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-}
-
-.permModalHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.permModalTitle {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-heading);
-}
-
-.permModalClose {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  transition: all 0.15s;
-}
-
-.permModalClose:hover {
-  color: var(--text-body);
-  background: rgba(0, 0, 0, 0.05);
-}
-
 .permModalSection {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .permModalLabel {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.4px;
-}
-
-.permModalActions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-  padding-top: 6px;
-  border-top: 1px solid var(--card-border);
 }
 
 .permToggleCustom {
   background: none;
   border: none;
   padding: 0;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   color: var(--brand);
   cursor: pointer;
   font-family: inherit;
   text-align: left;
-  transition: color 0.15s;
+  transition: color var(--transition);
 }
 
 .permToggleCustom:hover {
@@ -340,12 +277,12 @@
 .permCustomKindRow {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .permCustomKindPrefix {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
   white-space: nowrap;
 }
@@ -353,15 +290,15 @@
 .permCustomKindInput {
   flex: 1;
   min-width: 0;
-  padding: 5px 8px;
+  padding: 5px var(--sp-4);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--card-bg);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   font-family: inherit;
   color: var(--text-body);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition);
 }
 
 .permCustomKindInput:focus {
@@ -372,9 +309,9 @@
 .accountScope {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-bottom: 10px;
-  margin-bottom: 6px;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-5);
+  margin-bottom: var(--sp-3);
   border-bottom: 1px solid var(--card-border);
 }
 
@@ -388,13 +325,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 11px 14px;
+  padding: 11px var(--sp-7);
 }
 
 .controlInfo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .controlIcon {
@@ -403,70 +340,70 @@
 }
 
 .controlLabel {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   color: var(--text-body);
 }
 
 .controlHint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 1px;
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 .fieldLabel {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
-  margin-bottom: 2px;
+  margin-bottom: var(--sp-1);
 }
 
 /* NIP-46 managed banner */
 .nip46Banner {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(99, 102, 241, 0.06);
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  margin-bottom: 8px;
+  gap: var(--sp-1);
+  padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  border: 1px solid var(--card-active);
+  margin-bottom: var(--sp-4);
 }
 
 .nip46BannerTitle {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   color: var(--brand);
 }
 
 .nip46BannerHint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 /* Relay / Oracle rows */
 .relayList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .relayRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
   border: 1px solid var(--card-border);
   background: var(--card-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
 }
 
 .relayUrl {
   flex: 1;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
   min-width: 0;
   overflow: hidden;
@@ -476,66 +413,25 @@
 
 .relayChips {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .relayChip {
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
+  padding: var(--sp-1) var(--sp-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
   border: 1px solid var(--card-border);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .relayChipActive {
   background: var(--brand-light);
   color: var(--brand);
   border-color: rgba(99, 102, 241, 0.2);
-}
-
-/* Toggle row */
-.toggleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  border-radius: 12px;
-}
-
-.toggleLabel {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-heading);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.detailActions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--card-border);
-}
-
-/* Separator line */
-.separator {
-  height: 1px;
-  background: var(--card-border);
-  margin: 4px 0;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
 }
 
 /* ── Declined sites ── */
@@ -545,9 +441,9 @@
 }
 
 .declinedDesc {
-  margin: 6px 0 10px;
-  font-size: 11px;
-  line-height: 1.5;
+  margin: var(--sp-3) 0 var(--sp-5);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-loose);
   color: var(--text-muted);
 }
 
@@ -555,27 +451,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-size: 12px;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-6);
+  font-size: var(--fs-sm);
   color: var(--text-body);
 }
 
 .declinedSelect {
   flex-shrink: 0;
-  padding: 5px 8px;
+  padding: 5px var(--sp-4);
   border: 1px solid var(--card-border);
-  border-radius: 6px;
-  background: var(--input-bg, transparent);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
   color: var(--text-body);
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .declinedRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--sp-5);
+  padding: var(--sp-5) var(--sp-6);
   border-top: 1px solid var(--card-border);
 }
 
@@ -587,8 +483,8 @@
   flex-shrink: 0;
   background: none;
   border: none;
-  padding: 4px 6px;
-  font-size: 12px;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
   color: var(--accent);
   cursor: pointer;
   text-decoration: underline;

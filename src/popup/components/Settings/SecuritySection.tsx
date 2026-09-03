@@ -9,7 +9,7 @@ import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import NavItem from '@components/NavItem/NavItem';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
-import { useVault } from '../../context/VaultContext';
+import { useVault } from '@popup/context/VaultContext';
 
 import styles from './SecuritySection.module.css';
 

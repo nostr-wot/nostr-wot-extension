@@ -20,20 +20,14 @@ import PermissionsSection from './components/Settings/PermissionsSection';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import UnlockModal from './components/Vault/UnlockModal';
 import { t } from '@lib/i18n.js';
-
-interface WaiterInfo {
-  id: string;
-  type: string;
-  origin: string;
-  [key: string]: unknown;
-}
+import type { PendingRequest } from '@shared/approval.ts';
 
 type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'permissions' | null;
 
 function PopupInner() {
   const [splashVisible, setSplashVisible] = useState<boolean>(true);
   const [unlockVisible, setUnlockVisible] = useState<boolean>(false);
-  const [unlockWaiters, setUnlockWaiters] = useState<WaiterInfo[]>([]);
+  const [unlockWaiters, setUnlockWaiters] = useState<PendingRequest[]>([]);
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(null);
   const [menuSection, setMenuSection] = useState<string | null>(null);
   const [activityDomain, setActivityDomain] = useState<string | null>(null);

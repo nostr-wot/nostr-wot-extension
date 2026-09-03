@@ -1,37 +1,37 @@
 .section {
   flex: 1;
-  padding: 4px 0;
+  padding: var(--sp-2) 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .passwordSection {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(99, 102, 241, 0.08);
+  gap: var(--sp-5);
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--brand-tint-active);
 }
 
 .passwordHint {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: var(--lh-normal);
   margin: 0;
 }
 
 .warningBox {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: var(--sp-4);
+  padding: var(--sp-5) var(--sp-6);
   background: rgba(217, 119, 6, 0.06);
-  border-radius: 10px;
-  font-size: 12px;
+  border-radius: var(--radius-panel);
+  font-size: var(--fs-sm);
   color: var(--warning);
-  line-height: 1.4;
+  line-height: var(--lh-normal);
 }
 
 .warningBox svg {
@@ -40,331 +40,12 @@
 }
 
 .error {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--error);
 }
 
 .confirmActions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
   justify-content: flex-end;
-}
-
-/* ── Post-quantum section ── */
-.pqcNotice,
-.pqcNoticeOk {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-}
-
-.pqcNotice {
-  background: rgba(217, 119, 6, 0.08);
-  color: #b45309;
-}
-
-.pqcNoticeOk {
-  background: rgba(22, 163, 74, 0.08);
-  color: #15803d;
-}
-
-.pqcNotice strong,
-.pqcNoticeOk strong {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 2px;
-}
-
-.pqcNotice p,
-.pqcNoticeOk p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  opacity: 0.9;
-}
-
-.pqcBlocked {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.pqcKeyRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
-  border-top: 1px solid var(--card-border);
-  font-size: 12px;
-}
-
-.pqcKeyRow span {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.pqcKeyRow code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: var(--text-heading);
-  word-break: break-all;
-}
-
-.pqcLimits {
-  margin-top: 14px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-.desc {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  margin: 8px 0 12px;
-}
-
-.pqcPublished {
-  margin: 0 0 8px;
-  font-size: 12px;
-  color: var(--success, #16a34a);
-}
-
-.pqcCopyLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 10px;
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 11px;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.pqcCopyLink:hover {
-  color: var(--brand);
-}
-
-/* ── Post-quantum key import ── */
-
-.pqcImport {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--card-border);
-}
-
-.pqcImport > strong {
-  font-size: 13px;
-  color: var(--text-heading);
-}
-
-.pqcCommand {
-  display: block;
-  padding: 8px 10px;
-  border: 1px solid var(--card-border);
-  border-radius: 6px;
-  background: var(--bg-sunken, rgba(0, 0, 0, 0.04));
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  color: var(--text-heading);
-  word-break: break-all;
-  user-select: all;
-}
-
-.pqcTextarea {
-  width: 100%;
-  min-height: 88px;
-  padding: 8px 10px;
-  border: 1px solid var(--card-border);
-  border-radius: 6px;
-  background: var(--input-bg, transparent);
-  color: var(--text-body);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  line-height: 1.45;
-  resize: vertical;
-}
-
-.pqcTextarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.pqcImportActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* The file input itself is hidden; the label is the control. */
-.pqcFileLabel {
-  font-size: 12px;
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.pqcFileLabel:hover {
-  opacity: 0.85;
-}
-
-/* ── Post-quantum: how it works ── */
-
-.pqcHow {
-  margin: 14px 0;
-  padding: 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-}
-
-.pqcHow > strong {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--text-heading);
-}
-
-.pqcSteps {
-  margin: 0 0 8px;
-  padding-left: 18px;
-}
-
-.pqcSteps li {
-  margin-bottom: 6px;
-  font-size: 11px;
-  line-height: 1.55;
-  color: var(--text-body);
-}
-
-.pqcHowLimit {
-  margin: 0 0 8px;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* The generator instructions, folded away. Generating a key file is a one-off; the paste
-   box is what someone returning to this screen needs to reach without scrolling. */
-.pqcGenerate {
-  margin-top: 12px;
-  font-size: 11px;
-}
-
-.pqcGenerate > summary {
-  cursor: pointer;
-  color: var(--accent);
-  list-style: none;
-}
-
-.pqcGenerate > summary::-webkit-details-marker {
-  display: none;
-}
-
-.pqcGenerate > summary::before {
-  content: '▸ ';
-}
-
-.pqcGenerate[open] > summary::before {
-  content: '▾ ';
-}
-
-.pqcGenerate > summary:hover {
-  opacity: 0.85;
-}
-
-.pqcGenerate > * {
-  margin-top: 8px;
-}
-
-/* PQC panel: the one-line notice rows and the keys dialog.
-   The prose that used to sit in these rows now lives in InfoTooltip bubbles —
-   this panel has more to say than fits above the fold, and the explanations are
-   reference material rather than something to re-read on every visit. */
-.pqcNoticeInline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0;
-  font-size: 12px;
-  color: var(--warning);
-}
-
-.pqcActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-/* Full keys and the attestation, so they wrap instead of overflowing the 380px
-   popup. `break-all` because these are unbroken base64 with no spaces to wrap at. */
-.pqcJson {
-  margin-top: 6px;
-  padding: 8px;
-  border-radius: var(--radius-sm);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.45;
-  color: var(--text-body);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-/* The green notice is a single row now — icon, title, (i) — rather than a
-   heading with a paragraph beneath it. Overrides the shared .pqcNotice rules
-   above, which still apply to the blocked-reason notice that is still two-line. */
-.pqcNoticeOk {
-  align-items: center;
-}
-
-.pqcNoticeOk strong {
-  display: inline;
-  margin-bottom: 0;
-}
-
-/* Key rows in the keys dialog: label, shortened value, copy. The value is
-   shortened in the MIDDLE, so it needs no wrapping and the row stays one line. */
-.pqcKeyCopy {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 11px;
-  border-radius: var(--radius-sm);
-}
-
-.pqcKeyCopy:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
-}
-
-.pqcInput {
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page-solid);
-  color: var(--text-body);
-  font-size: 13px;
 }

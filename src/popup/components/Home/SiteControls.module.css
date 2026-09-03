@@ -1,0 +1,62 @@
+/* The site-connection controls. Split out of HomeTab.module.css, which SiteControls imported wholesale for seven rules. */
+
+/* Site controls */
+.siteControls {
+  padding: 0;
+  overflow: hidden;
+}
+
+.controlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px var(--sp-7);
+}
+
+.controlRow + .controlRow {
+  border-top: 1px solid var(--brand-tint-hover);
+}
+
+.controlInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.controlIcon {
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.controlLabel {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--text-body);
+}
+
+.controlLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-5) var(--sp-7);
+  background: none;
+  border: none;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.controlLink:hover {
+  background: var(--brand-tint-hover);
+}
+
+.managedBySigner {
+  padding: var(--sp-5) var(--sp-7);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  font-style: italic;
+}
