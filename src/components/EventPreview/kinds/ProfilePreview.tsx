@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import { safeImageUrl } from '@shared/safeUrl.js';
+import { safeImageUrl } from '@shared/safeUrl.ts';
 import Avatar from '@components/Avatar/Avatar';
 import styles from '../EventPreview.module.css';
 

@@ -2,14 +2,14 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 6px 0;
-  font-size: 13px;
-  gap: 12px;
+  padding: var(--sp-3) 0;
+  font-size: var(--fs-md);
+  gap: var(--sp-6);
 }
 
 .label {
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -23,5 +23,5 @@
 
 .mono {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }

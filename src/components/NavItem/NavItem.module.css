@@ -1,25 +1,25 @@
 .navItem {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-7);
   width: 100%;
-  padding: 16px 14px;
+  padding: var(--sp-8) var(--sp-7);
   border: 1px solid var(--card-border);
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 12px;
+  background: var(--surface-glass-heavy);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-medium);
   color: var(--text-heading);
   text-align: left;
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.08);
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+  box-shadow: var(--shadow-card);
 }
 
 .navItem:hover {
-  background: #ffffff;
+  background: var(--bg-elevated);
   transform: translateX(4px);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.12);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .icon {
@@ -32,19 +32,19 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 
 .label {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-medium);
 }
 
 .desc {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 400;
   color: var(--text-muted);
-  line-height: 1.3;
+  line-height: var(--lh-tight);
 }
 
 .chevron {

@@ -3,11 +3,11 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: var(--sp-2);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: all 0.15s;
+  transition: all var(--transition);
   flex-shrink: 0;
 }
 

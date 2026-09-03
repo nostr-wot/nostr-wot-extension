@@ -1,19 +1,19 @@
 .chipGroup {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-3);
   flex-wrap: wrap;
 }
 
 .chip {
-  padding: 8px 16px;
+  padding: var(--sp-4) var(--sp-8);
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--card-bg);
   color: var(--text-body);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition);
 }
 
 .chip:hover {
@@ -22,7 +22,7 @@
 
 .chipActive {
   background: var(--brand);
-  color: #fff;
+  color: var(--text-on-brand);
   border-color: var(--brand);
 }
 

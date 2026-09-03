@@ -90,6 +90,12 @@ export default function EditableList({
     onAdd?.(normalized);
   };
 
+  /* Controlled callers own the input value, so most read their own state and
+     ignore the argument — but `onAdd` is typed as taking one, and handing it
+     straight to InputRow's zero-arg `onSubmit` passed `undefined` to anyone who
+     did read it. Pass the value we already have. */
+  const submitControlled = () => onAdd?.(inputValue ?? '');
+
   const body = (
     <>
       <div className={classNames.list || styles.list}>
@@ -110,7 +116,7 @@ export default function EditableList({
           ? onInputChange!
           : (e: ChangeEvent<HTMLInputElement>) => { setValue(e.target.value); setInternalError(''); }}
         placeholder={placeholder}
-        onSubmit={controlled ? onAdd : handleInternalAdd}
+        onSubmit={controlled ? submitControlled : handleInternalAdd}
         buttonLabel={buttonLabel}
         disabled={disabled}
         error={controlled ? error : internalError}

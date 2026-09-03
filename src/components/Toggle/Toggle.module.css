@@ -23,7 +23,7 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.15);
   border-radius: 11px;
-  transition: 0.2s;
+  transition: var(--transition-slow);
 }
 
 .slider::before {
@@ -34,8 +34,8 @@
   left: 3px;
   bottom: 3px;
   background: white;
-  border-radius: 50%;
-  transition: 0.2s;
+  border-radius: var(--radius-full);
+  transition: var(--transition-slow);
 }
 
 .switch input:checked + .slider {
@@ -44,5 +44,5 @@
 
 .switch input:checked + .slider::before {
   transform: translateX(18px);
-  background: #ffffff;
+  background: var(--bg-elevated);
 }

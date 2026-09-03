@@ -1,11 +1,11 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .error {
   color: var(--error);
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: var(--fs-xs);
+  margin-top: var(--sp-2);
 }

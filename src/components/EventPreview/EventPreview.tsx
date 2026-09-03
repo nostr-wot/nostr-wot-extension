@@ -39,7 +39,11 @@ const ENCRYPT_TYPES = new Set(['nip04Encrypt', 'nip04Decrypt', 'nip44Encrypt', '
 
 interface EventPreviewProps {
   type: string | null;
-  event: NostrEvent | null;
+  /** Partial because a queued approval carries a snapshot of the event, and
+   *  `PendingRequest.event` is a `Partial<UnsignedEvent>`. An event with no
+   *  `kind` already falls through to the unknown-event branch below, so this
+   *  only makes the signature admit what callers were always passing. */
+  event: Partial<NostrEvent> | null;
   theirPubkey?: string | null;
   className?: string;
 }
@@ -83,8 +87,11 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
     );
   }
 
-  // signEvent — dispatch to kind component
-  const kind = event.kind;
+  // signEvent — dispatch to kind component.
+  // -1 stands in for a snapshot that carries no kind: it matches no renderer and
+  // no label, so it lands in the "unknown event" branch, which is the honest
+  // rendering of "we were not told what this is".
+  const kind = event.kind ?? -1;
   const kindLabel = KIND_LABELS[kind] || `Kind ${kind}`;
   const KindComponent = KIND_RENDERERS[kind];
 
@@ -92,10 +99,13 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
     <div className={rootCls}>
       <FieldDisplay label={t('event.kind')} value={`${kind} — ${kindLabel}`} />
 
+      {/* Both branches are gated on `kind` matching a known renderer or label,
+          which a snapshot without a kind never does — so by here the event is
+          the full one a signEvent request carries. */}
       {KindComponent ? (
-        <KindComponent event={event} />
+        <KindComponent event={event as NostrEvent} />
       ) : KIND_LABELS[kind] ? (
-        <GenericPreview event={event} />
+        <GenericPreview event={event as NostrEvent} />
       ) : (
         <div className={styles.unknownWarning}>
           <IconWarning size={14} />

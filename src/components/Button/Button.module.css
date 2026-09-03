@@ -2,14 +2,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-8);
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-slow);
 }
 
 .btn:hover {
@@ -28,7 +28,7 @@
 
 .primary {
   background: var(--brand);
-  color: #ffffff;
+  color: var(--text-on-brand);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -56,6 +56,6 @@
 }
 
 .small {
-  font-size: 11px;
-  padding: 6px 12px;
+  font-size: var(--fs-xs);
+  padding: var(--sp-3) var(--sp-6);
 }

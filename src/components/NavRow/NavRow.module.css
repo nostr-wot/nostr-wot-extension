@@ -46,7 +46,7 @@
 .text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: 0;
   flex: 1;
 }
@@ -56,7 +56,7 @@
   align-items: center;
   gap: 5px;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   color: var(--text-heading);
 }
 

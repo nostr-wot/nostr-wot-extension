@@ -1,13 +1,13 @@
 .sectionLabel {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   color: var(--text-secondary);
-  margin-bottom: 2px;
+  margin-bottom: var(--sp-1);
 }
 
 .sectionHint {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
-  line-height: 1.4;
-  margin-bottom: 4px;
+  line-height: var(--lh-normal);
+  margin-bottom: var(--sp-2);
 }

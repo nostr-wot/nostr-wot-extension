@@ -29,10 +29,16 @@ interface ActivityGroup {
   entries?: ActivityEntry[];
 }
 
+/** The fields this view reads off a pending request. Structurally satisfied by
+ *  `PendingRequest` in lib/types.ts, which is what callers actually pass —
+ *  `permKey` is nullable there, and narrowing it here made every call site a
+ *  type error. */
 interface ApprovalRequest {
   type: string;
-  permKey?: string;
-  event?: NostrEvent | null;
+  permKey?: string | null;
+  /** Partial on purpose: a queued request carries a snapshot, and for the
+   *  non-signing methods there is no event on it at all. */
+  event?: Partial<NostrEvent> | null;
   origin?: string;
   theirPubkey?: string | null;
   pubkey?: string;

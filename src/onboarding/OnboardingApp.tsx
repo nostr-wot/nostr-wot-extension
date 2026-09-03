@@ -2,7 +2,7 @@ import React from 'react';
 import { rpcNotify } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import '@shared/theme.css';
-import './OnboardingApp.module.css';
+import './onboarding.css';
 import TopoBg from '@components/TopoBg/TopoBg';
 import PulseLogo from '@components/PulseLogo/PulseLogo';
 import useWizardFlow from '@shared/hooks/useWizardFlow.ts';

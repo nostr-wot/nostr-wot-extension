@@ -4,12 +4,12 @@
    painted until a forced repaint (switching tabs), so the popup opens blank.
    The .backdrop screenshot still overlays this, so the visual is unchanged. */
 :global(html) {
-  background: #f8f8fc;
+  background: var(--bg-html);
 }
 
 :global(body) {
-  padding: 8px;
-  background: #f8f8fc;
+  padding: var(--sp-4);
+  background: var(--bg-html);
   position: relative;
 }
 
@@ -31,9 +31,9 @@
   z-index: 1;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   height: calc(600px - 16px);
-  padding: 16px;
+  padding: var(--sp-8);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -46,7 +46,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .scrollArea > * {

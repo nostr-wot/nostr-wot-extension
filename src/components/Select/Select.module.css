@@ -1,12 +1,12 @@
 .select {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid rgba(99, 102, 241, 0.12);
-  border-radius: 8px;
-  font-size: 13px;
-  background: rgba(99, 102, 241, 0.04);
+  padding: var(--sp-5) var(--sp-6);
+  border: 1px solid var(--card-active);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-md);
+  background: var(--brand-tint-hover);
   color: var(--text-heading);
-  transition: all 0.2s;
+  transition: all var(--transition-slow);
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236366f1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -18,12 +18,12 @@
 .select:focus {
   outline: none;
   border-color: var(--brand);
-  background-color: rgba(99, 102, 241, 0.06);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  background-color: var(--card-bg);
+  box-shadow: var(--focus-ring);
 }
 
 .small {
-  font-size: 11px;
-  padding: 6px 10px;
-  padding-right: 28px;
+  font-size: var(--fs-xs);
+  padding: var(--sp-3) var(--sp-5);
+  padding-right: var(--sp-14);
 }

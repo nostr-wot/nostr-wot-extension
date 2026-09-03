@@ -1,11 +1,11 @@
 .message {
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--fs-md);
+  line-height: var(--lh-loose);
   color: var(--text-body);
 }
 
 .error {
-  margin-top: 10px;
-  font-size: 12px;
+  margin-top: var(--sp-5);
+  font-size: var(--fs-sm);
   color: var(--error);
 }

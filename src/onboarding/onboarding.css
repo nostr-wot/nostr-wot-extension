@@ -1,9 +1,9 @@
-:global(.onboarding-root) {
+.onboarding-root {
   min-height: 100vh;
   background: var(--bg-html);
 }
 
-:global(.onboarding-welcome) {
+.onboarding-welcome {
   position: relative;
   min-height: 100vh;
   display: flex;
@@ -12,50 +12,50 @@
   overflow: hidden;
 }
 
-:global(.onboarding-welcome-content) {
+.onboarding-welcome-content {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
+  gap: var(--sp-6);
   max-width: 400px;
-  padding: 24px;
+  padding: var(--sp-12);
 }
 
-:global(.onboarding-welcome-content h1) {
-  font-size: 28px;
-  font-weight: 800;
+.onboarding-welcome-content h1 {
+  font-size: var(--fs-display);
+  font-weight: var(--fw-heavy);
   color: var(--text-heading);
   margin: 0;
 }
 
-:global(.onboarding-welcome-content p) {
-  font-size: 15px;
+.onboarding-welcome-content p {
+  font-size: var(--fs-xl);
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: var(--lh-loose);
   margin: 0;
 }
 
-:global(.onboarding-start-btn) {
-  margin-top: 16px;
-  padding: 14px 40px;
+.onboarding-start-btn {
+  margin-top: var(--sp-8);
+  padding: var(--sp-7) 40px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--brand);
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
+  color: var(--text-on-brand);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--transition);
 }
 
-:global(.onboarding-start-btn:hover) {
+.onboarding-start-btn:hover {
   background: var(--brand-hover);
 }
 
-:global(.onboarding-step-container) {
+.onboarding-step-container {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
@@ -63,9 +63,9 @@
   flex-direction: column;
 }
 
-:global(.onboarding-body) {
+.onboarding-body {
   flex: 1;
-  padding: 24px 20px;
+  padding: var(--sp-12) var(--sp-10);
   display: flex;
   flex-direction: column;
 }

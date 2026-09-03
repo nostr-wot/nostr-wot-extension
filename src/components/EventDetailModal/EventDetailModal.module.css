@@ -10,7 +10,7 @@
 .content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-5);
   flex: 1;
   min-height: 0;
 }
@@ -18,7 +18,7 @@
 .scrollArea {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-5);
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -26,61 +26,61 @@
 }
 
 .origin {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
   color: var(--text-heading);
 }
 
 .summary {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-2);
 }
 
 .methodBadge {
   display: inline-flex;
   align-self: flex-start;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 10px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  padding: 3px var(--sp-5);
+  border-radius: var(--radius-panel);
   background: var(--brand-light);
   color: var(--brand-hover);
 }
 
 .description {
-  font-size: 13px;
+  font-size: var(--fs-md);
   color: var(--text-body);
-  margin: 4px 0 0;
+  margin: var(--sp-2) 0 0;
   line-height: 1.45;
 }
 
 .countNote {
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   text-align: center;
-  padding: 4px 0 0;
+  padding: var(--sp-2) 0 0;
 }
 
 .entryBlock {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .entryBlock + .entryBlock {
-  padding-top: 10px;
-  border-top: 1px solid rgba(99, 102, 241, 0.06);
+  padding-top: var(--sp-5);
+  border-top: 1px solid var(--card-bg);
 }
 
 .entryHeader {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-3);
 }
 
 .entryTime {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
@@ -88,17 +88,17 @@
 .actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 12px;
+  gap: var(--sp-4);
+  padding-top: var(--sp-6);
   border-top: 1px solid var(--card-border);
-  margin-top: 4px;
+  margin-top: var(--sp-2);
   /* Never shrink or scroll away -- the user must always be able to decide */
   flex-shrink: 0;
 }
 
 .actionsRow {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-4);
 }
 
 .actionsRow > * {
@@ -108,12 +108,12 @@
 .nip46Pending {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: var(--sp-5);
+  padding: var(--sp-6) var(--sp-7);
   background: var(--brand-light);
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
+  border-radius: var(--radius-panel);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
   color: var(--brand-hover);
 }
 
@@ -122,7 +122,7 @@
   height: 16px;
   border: 2px solid var(--brand-light);
   border-top-color: var(--brand);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: spin 1s linear infinite;
   flex-shrink: 0;
 }
