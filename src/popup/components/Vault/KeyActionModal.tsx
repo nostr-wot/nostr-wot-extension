@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { IconWarning } from '@assets';
@@ -7,6 +7,7 @@ import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
 import useCopy from '@shared/hooks/useCopy.ts';
+import useTimedReveal from '@shared/hooks/useTimedReveal.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
@@ -30,10 +31,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   const seedCopy = useCopy();
 
   // nsec state
-  const [nsecValue, setNsecValue] = useState<string>('');
-  const [nsecRevealed, setNsecRevealed] = useState<boolean>(false);
-  const [nsecBlurred, setNsecBlurred] = useState<boolean>(true);
-  const autoHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 30s for the nsec, 60s for the seed phrase — the two timings this screen
+  // has always used, now one machine instead of two hand-written copies.
+  const nsec = useTimedReveal<string>('', 30_000);
 
   // ncryptsec state
   const [ncPassword, setNcPassword] = useState<string>('');
@@ -43,9 +43,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   const [ncGenerating, setNcGenerating] = useState<boolean>(false);
 
   // seed state
-  const [seedWords, setSeedWords] = useState<string[]>([]);
-  const [seedRevealed, setSeedRevealed] = useState<boolean>(false);
-  const [seedBlurred, setSeedBlurred] = useState<boolean>(true);
+  const seed = useTimedReveal<string[]>([], 60_000);
   const [seedEncMode, setSeedEncMode] = useState<boolean>(false);
   const [seedEncPw, setSeedEncPw] = useState<string>('');
   const [seedEncConfirm, setSeedEncConfirm] = useState<string>('');
@@ -88,18 +86,20 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
         setNeedsUnlock(true);
       } catch { /* ignore */ }
     })();
-    return () => {
-      if (autoHideRef.current) clearTimeout(autoHideRef.current);
-    };
   }, []);
 
+  /**
+   * Closing wipes what is on screen.
+   *
+   * This used to be a nine-setter list, which is the shape where a newly added
+   * secret field is quietly left out. The two reveals clear themselves — and
+   * cancel their auto-hide timers — through the hook; the rest is the encrypt
+   * form, which holds a password rather than a key.
+   */
   const handleClose = () => {
-    if (autoHideRef.current) clearTimeout(autoHideRef.current);
-    setNsecValue('');
+    nsec.clear();
+    seed.clear();
     setNcValue('');
-    setSeedWords([]);
-    setSeedRevealed(false);
-    setSeedBlurred(true);
     setSeedEncMode(false);
     setSeedEncPw('');
     setSeedEncConfirm('');
@@ -110,18 +110,8 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   // --- nsec ---
   const revealNsec = async () => {
     try {
-      const nsec = await rpc<string>('vault_exportNsec');
-      if (nsec) {
-        setNsecValue(nsec);
-        setNsecRevealed(true);
-        setNsecBlurred(true);
-        // Auto-hide after 30s
-        autoHideRef.current = setTimeout(() => {
-          setNsecValue('');
-          setNsecRevealed(false);
-          setNsecBlurred(true);
-        }, 30000);
-      }
+      const value = await rpc<string>('vault_exportNsec');
+      if (value) nsec.reveal(value);
     } catch { /* ignore */ }
   };
 
@@ -145,21 +135,12 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   const revealSeed = async () => {
     try {
       const result = await rpc<{ mnemonic: string }>('vault_exportSeed');
-      if (result?.mnemonic) {
-        setSeedWords(result.mnemonic.split(' '));
-        setSeedRevealed(true);
-        setSeedBlurred(true);
-        autoHideRef.current = setTimeout(() => {
-          setSeedWords([]);
-          setSeedRevealed(false);
-          setSeedBlurred(true);
-        }, 60000);
-      }
+      if (result?.mnemonic) seed.reveal(result.mnemonic.split(' '));
     } catch { /* ignore */ }
   };
 
   const downloadSeedPlain = () => {
-    downloadFile(seedWords.join(' '), 'nostr-seed-phrase.txt');
+    downloadFile(seed.value.join(' '), 'nostr-seed-phrase.txt');
   };
 
   const downloadSeedEncrypted = async () => {
@@ -171,7 +152,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
       // One implementation, in lib/crypto/keyBackup.ts, where a round-trip test
       // proves the file can be read back. This was inline here — so nothing ever
       // verified that the last copy of someone's seed phrase was decryptable.
-      const payload = await encryptBackup(seedWords.join(' '), seedEncPw);
+      const payload = await encryptBackup(seed.value.join(' '), seedEncPw);
       downloadFile(payload, 'nostr-seed-phrase-encrypted.json');
       setSeedEncMode(false);
       setSeedEncPw('');
@@ -232,7 +213,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
           </div>
         ) : action === 'nsec' ? (
           <div className={styles.section}>
-            {!nsecRevealed ? (
+            {!nsec.revealed ? (
               <>
                 <div className={styles.warning}>
                   <IconWarning />
@@ -246,15 +227,15 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
             ) : (
               <>
                 <div
-                  className={`${styles.keyDisplay} ${nsecBlurred ? styles.blurred : ''}`}
-                  onClick={() => setNsecBlurred((b) => !b)}
+                  className={`${styles.keyDisplay} ${nsec.blurred ? styles.blurred : ''}`}
+                  onClick={nsec.toggleBlur}
                 >
-                  {nsecValue}
+                  {nsec.value}
                 </div>
-                <div className={styles.hint}>{`${t(nsecBlurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
+                <div className={styles.hint}>{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                  <Button small onClick={() => nsecCopy.copy(nsecValue)}>
+                  <Button small onClick={() => nsecCopy.copy(nsec.value)}>
                     {nsecCopy.copied ? t('common.copied') : t('common.copy')}
                   </Button>
                 </div>
@@ -302,7 +283,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
           </div>
         ) : action === 'seed' ? (
           <div className={styles.section}>
-            {!seedRevealed ? (
+            {!seed.revealed ? (
               <>
                 <div className={styles.warning}>
                   <IconWarning />
@@ -315,9 +296,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
               </>
             ) : (
               <>
-                <div className={styles.seedGridWrap} onClick={() => setSeedBlurred((b) => !b)}>
-                  <div className={`${styles.seedGrid} ${seedBlurred ? styles.blurred : ''}`}>
-                    {seedWords.map((word, i) => (
+                <div className={styles.seedGridWrap} onClick={seed.toggleBlur}>
+                  <div className={`${styles.seedGrid} ${seed.blurred ? styles.blurred : ''}`}>
+                    {seed.value.map((word, i) => (
                       <span key={i} className={styles.seedWord}>
                         <span className={styles.seedWordNum}>{i + 1}</span>
                         {word}
@@ -325,7 +306,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                     ))}
                   </div>
                 </div>
-                <div className={styles.hint}>{`${t(seedBlurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
+                <div className={styles.hint}>{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
                 {seedEncMode ? (
                   <>
                     <Input
@@ -353,7 +334,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 ) : (
                   <div className={styles.seedActions}>
                     <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                    <Button variant="secondary" small onClick={() => seedCopy.copy(seedWords.join(' '))}>
+                    <Button variant="secondary" small onClick={() => seedCopy.copy(seed.value.join(' '))}>
                       {seedCopy.copied ? t('common.copied') : t('common.copy')}
                     </Button>
                     <Button variant="secondary" small onClick={downloadSeedPlain}>{t('key.downloadPlain')}</Button>
