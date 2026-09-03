@@ -21,6 +21,22 @@ export interface PqcPublished {
   unreachable?: boolean;
 }
 
+export type PqcBlockReason = 'read-only' | 'remote-signer' | 'no-seed' | 'short-seed';
+
+/**
+ * Everything the settings panel needs, which is more than the home card does.
+ *
+ * Kept here rather than in the panel so the import sub-panel can hand a status
+ * back without either file importing the other.
+ */
+export interface PqcPanelStatus extends PqcStatus {
+  reason: PqcBlockReason | null;
+  wordCount: number | null;
+  pubkey: string | null;
+  keys: { kem: string; dsa: string } | null;
+  attestation: { kind: number; created_at: number; tags: string[][]; content: string } | null;
+}
+
 /** What the home card shows. `null` means: show nothing at all. */
 export type PqcCardState = 'enabled' | 'stale' | 'setup' | 'import';
 
