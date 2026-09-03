@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo, ChangeEvent } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
-import { groupActivityEntries, type ActivityEntry, type GroupedActivity } from '@shared/activity.ts';
+import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type ActivityEntry, type GroupedActivity } from '@shared/activity.ts';
 import { truncateNpub } from '@shared/format/text.ts';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -16,17 +16,6 @@ import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import styles from './ActivityModal.module.css';
 
-// Maps grouped type filter values to the actual method names
-const TYPE_METHODS: Record<string, string[]> = {
-  signEvent: ['signEvent'],
-  getPublicKey: ['getPublicKey'],
-  encrypt: ['nip04Encrypt', 'nip44Encrypt'],
-  decrypt: ['nip04Decrypt', 'nip44Decrypt'],
-  nip04Encrypt: ['nip04Encrypt'],
-  nip04Decrypt: ['nip04Decrypt'],
-  nip44Encrypt: ['nip44Encrypt'],
-  nip44Decrypt: ['nip44Decrypt'],
-};
 
 interface ActivityModalProps {
   visible: boolean;
@@ -41,8 +30,11 @@ interface DropdownOption {
 }
 
 export default function ActivityModal({ visible, initialDomain, initialPubkey, onClose }: ActivityModalProps) {
-  const rawLog = useRef<ActivityEntry[]>([]);
-  const [logVersion, setLogVersion] = useState<number>(0);
+  // Plain state, not a ref plus a version counter. The counter made every memo
+  // below depend on a number while reading through a ref, so the dependency
+  // arrays said nothing about what they actually used and each needed a
+  // `void logVersion` to look honest.
+  const [rawLog, setRawLog] = useState<ActivityEntry[]>([]);
   const [filter, setFilter] = useState<string>('');
   const [accountFilter, setAccountFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -80,8 +72,7 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
     setLoadFailed(false);
     try {
       const log = await rpc<ActivityEntry[]>('getActivityLog') || [];
-      rawLog.current = log;
-      setLogVersion((v) => v + 1);
+      setRawLog(log);
       setSelectedGroup(null);
     } catch {
       setLoadFailed(true);
@@ -95,8 +86,7 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
 
   // Build account dropdown options from log data
   const accountOptions = useMemo((): DropdownOption[] => {
-    void logVersion;
-    const pubkeys = [...new Set(rawLog.current.map((e) => e.pubkey).filter(Boolean))] as string[];
+    const pubkeys = [...new Set(rawLog.map((e) => e.pubkey).filter(Boolean))] as string[];
     const opts: DropdownOption[] = [{ value: '', label: t('activity.allAccounts') }];
     for (const pk of pubkeys) {
       const profile = profileCache?.[pk];
@@ -105,16 +95,15 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
       opts.push({ value: pk, label });
     }
     return opts;
-  }, [logVersion, accounts, profileCache]);
+  }, [rawLog, accounts, profileCache]);
 
   // Compute which methods are present in the filtered log
   const availableMethods = useMemo((): Set<string> => {
-    void logVersion;
-    let base = rawLog.current;
+    let base = rawLog;
     if (filter) base = base.filter((e) => e.domain === filter);
     if (accountFilter) base = base.filter((e) => e.pubkey === accountFilter);
     return new Set(base.map((e) => e.method).filter(Boolean) as string[]);
-  }, [logVersion, filter, accountFilter]);
+  }, [rawLog, filter, accountFilter]);
 
   // Build type options dynamically — only show types present in data
   const typeOptions = useMemo((): DropdownOption[] => {
@@ -139,9 +128,8 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
 
   // Derive domains from raw log
   const domains = useMemo((): string[] => {
-    void logVersion;
-    return [...new Set(rawLog.current.map((e) => e.domain).filter(Boolean) as string[])].sort();
-  }, [logVersion]);
+    return activityDomains(rawLog);
+  }, [rawLog]);
 
   // Domain dropdown options
   const domainOptions = useMemo((): DropdownOption[] => [
@@ -151,39 +139,17 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
 
   // Filtered + grouped entries
   const entries = useMemo((): GroupedActivity[] => {
-    void logVersion;
-    let filtered = rawLog.current;
-
-    if (accountFilter) {
-      filtered = filtered.filter((e) => e.pubkey === accountFilter);
-    }
-    if (filter) {
-      filtered = filtered.filter((e) => e.domain === filter);
-    }
-    if (typeFilter) {
-      const methods = TYPE_METHODS[typeFilter];
-      if (methods) {
-        filtered = filtered.filter((e) => methods.includes(e.method!));
-      }
-    }
-    if (pubkeyFilter) {
-      const q = pubkeyFilter.toLowerCase();
-      filtered = filtered.filter((e) => {
-        if (e.theirPubkey && e.theirPubkey.toLowerCase().includes(q)) return true;
-        if (e.event?.tags) {
-          for (const tag of e.event.tags) {
-            if (tag[0] === 'p' && tag[1] && tag[1].toLowerCase().includes(q)) return true;
-          }
-        }
-        return false;
-      });
-    }
-
+    const filtered = filterActivityEntries(rawLog, {
+      account: accountFilter,
+      domain: filter,
+      type: typeFilter,
+      pubkeyQuery: pubkeyFilter,
+    });
     return groupActivityEntries(filtered, { includeDay: true, includeDomain: true });
-  }, [logVersion, accountFilter, filter, typeFilter, pubkeyFilter]);
+  }, [rawLog, accountFilter, filter, typeFilter, pubkeyFilter]);
 
   // Active filter count for badge
-  const activeFilterCount = (typeFilter ? 1 : 0) + (pubkeyFilter ? 1 : 0);
+  const activeFilterCount = countActivityFilters({ type: typeFilter, pubkeyQuery: pubkeyFilter });
 
   const handleClear = async () => {
     await rpc('clearActivityLog', {
@@ -266,7 +232,7 @@ export default function ActivityModal({ visible, initialDomain, initialPubkey, o
             <span className={styles.filterBadge}>{activeFilterCount}</span>
           )}
         </button>
-        {rawLog.current.length > 0 && (
+        {rawLog.length > 0 && (
           <Button variant="danger" small onClick={handleClear}>{t('activity.clearAll')}</Button>
         )}
       </div>
