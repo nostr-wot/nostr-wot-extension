@@ -286,3 +286,53 @@
 .pqcGenerate > * {
   margin-top: 8px;
 }
+
+/* PQC panel: the one-line notice rows and the keys dialog.
+   The prose that used to sit in these rows now lives in InfoTooltip bubbles —
+   this panel has more to say than fits above the fold, and the explanations are
+   reference material rather than something to re-read on every visit. */
+.pqcNoticeInline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--warning);
+}
+
+.pqcActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Full keys and the attestation, so they wrap instead of overflowing the 380px
+   popup. `break-all` because these are unbroken base64 with no spaces to wrap at. */
+.pqcJson {
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--text-body);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* The green notice is a single row now — icon, title, (i) — rather than a
+   heading with a paragraph beneath it. Overrides the shared .pqcNotice rules
+   above, which still apply to the blocked-reason notice that is still two-line. */
+.pqcNoticeOk {
+  align-items: center;
+}
+
+.pqcNoticeOk strong {
+  display: inline;
+  margin-bottom: 0;
+}

@@ -7,7 +7,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import QrCode from '@components/QrCode/QrCode';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
-import Modal from '@components/Modal/Modal';
+import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import { IconSettings, IconTuner } from '@assets/index';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
 import { isLightningAddress } from '@lib/wallet/lnurl.ts';
@@ -1052,24 +1052,16 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
 
       {/* Update profile prompt */}
       {confirmRelease && lnAddress && (
-        <Modal
+        <ConfirmDialog
           title={t('wallet.releaseAddress')}
-          onClose={() => setConfirmRelease(false)}
-          dismissOnBackdrop={false}
-          footer={
-            <>
-              <Button small variant="secondary" onClick={() => setConfirmRelease(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button small variant="danger" onClick={handleReleaseAddress} disabled={releaseLoading}>
-                {releaseLoading ? t('common.loading') : t('wallet.releaseAddress')}
-              </Button>
-            </>
-          }
-        >
-          <p>{t('wallet.releaseWarning', { address: lnAddress })}</p>
-          {claimError && <div className={styles.invoiceError}>{claimError}</div>}
-        </Modal>
+          message={t('wallet.releaseWarning', { address: lnAddress })}
+          confirmLabel={t('wallet.releaseAddress')}
+          danger
+          busy={releaseLoading}
+          error={claimError}
+          onConfirm={handleReleaseAddress}
+          onCancel={() => setConfirmRelease(false)}
+        />
       )}
 
       {showUpdateProfile && lnAddress && createPortal(

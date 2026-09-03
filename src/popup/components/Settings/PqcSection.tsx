@@ -4,6 +4,8 @@ import { t } from '@lib/i18n.js';
 import { IconKey, IconWarning, IconCopy } from '@assets';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
+import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
+import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
 import browser from '@shared/browser.ts';
 import styles from './SecuritySection.module.css';
 
@@ -159,13 +161,15 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   const [status, setStatus] = useState<PqcStatus | null>(null);
   const [error, setError] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
-  const [revealed, setRevealed] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
   const [publishError, setPublishError] = useState<string>('');
   const [existing, setExisting] = useState<{ published: boolean; current: boolean } | null>(null);
   const [removing, setRemoving] = useState<boolean>(false);
   const [howOpen, setHowOpen] = useState<boolean>(false);
+  const [keysOpen, setKeysOpen] = useState<boolean>(false);
+  const [confirmRemove, setConfirmRemove] = useState<boolean>(false);
+  const [removeError, setRemoveError] = useState<string>('');
 
   useImperativeHandle(ref, () => ({ openHowItWorks: () => setHowOpen(true) }), []);
 
@@ -215,16 +219,20 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Was a native confirm(). Some popup contexts suppress those outright, which
+  // made Remove a button that sometimes silently did nothing — on a destructive
+  // action. Now the shared dialog, which also survives a failure visibly.
   const handleRemoveImported = async () => {
-    if (!confirm(t('pqc.importRemoveConfirm'))) return;
+    setRemoveError('');
     setRemoving(true);
     try {
       await rpc('pqc_removeImportedKeys');
       setStatus(await rpc<PqcStatus>('pqc_getStatus'));
       setPublished(null);
       setExisting(await rpc<{ published: boolean; current: boolean }>('pqc_checkPublished'));
+      setConfirmRemove(false);
     } catch (e: any) {
-      setError(e?.message || t('common.error'));
+      setRemoveError(e?.message || t('common.error'));
     } finally {
       setRemoving(false);
     }
@@ -263,38 +271,53 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     );
   }
 
+  const alreadyPublished = !!(existing?.published && existing.current) || !!published;
+
   return (
     <div>
       {how}
+
+      {/* What this does and does not protect, first. It is the frame for every
+          decision below it, and it was sitting at the very bottom where it read
+          as a footnote to a screen the user had already acted on. */}
+      <p className={styles.pqcLimits}>{t('pqc.limits')}</p>
+
+      {/* One line instead of two paragraphs. The prose moved into tooltips: this
+          panel has more to say than fits above the fold, and the explanations are
+          reference material — needed once, in the way every time after. */}
       <div className={styles.pqcNoticeOk}>
         <IconKey size={18} />
-        <div>
-          <strong>{imported ? t('pqc.importedTitle') : t('pqc.readyTitle')}</strong>
-          <p>{t('pqc.readyDesc')}</p>
-        </div>
+        <strong>{imported ? t('pqc.importedTitle') : t('pqc.readyTitle')}</strong>
+        {/* Not readyDesc when imported: that says the keys come from the seed
+            phrase, which for an imported key is false — and directly contradicts
+            the backup warning shown right beside it. */}
+        <InfoTooltip text={imported ? t('pqc.importedDesc') : t('pqc.readyDesc')} />
       </div>
 
-      {/* Persistent, not a one-time dialog: an imported key is the one thing in this
-          extension the seed phrase cannot bring back. */}
+      {/* Collapsed to an icon at the owner's request, to buy vertical space. The
+          icon stays a WARNING icon in warning colour rather than the neutral (i):
+          an imported key is the one thing here the seed phrase cannot bring back,
+          so the severity has to survive at a glance, without hovering. */}
       {imported && (
-        <div className={styles.pqcNotice}>
-          <IconWarning size={18} />
-          <div><p>{t('pqc.importedBackupWarning')}</p></div>
+        <div className={styles.pqcNoticeInline}>
+          <IconWarning size={16} />
+          <span>{t('pqc.importedBackupShort')}</span>
+          <InfoTooltip text={t('pqc.importedBackupWarning')} />
         </div>
       )}
 
-      {/* Publishing is what makes the account reachable, so it comes before the keys
-          rather than behind a reveal step nobody needs to take. */}
-      <p className={styles.desc}>{t('pqc.publishDesc')}</p>
-
-      {existing?.published && existing.current ? (
-        <p className={styles.pqcPublished}>{t('pqc.alreadyPublished')}</p>
-      ) : published ? (
+      {alreadyPublished ? (
         <p className={styles.pqcPublished}>
-          {t('pqc.published', { sent: published.sent, relays: published.relays })}
+          {published
+            ? t('pqc.published', { sent: published.sent, relays: published.relays })
+            : t('pqc.alreadyPublished')}
         </p>
       ) : (
         <>
+          {/* Only while it is still an instruction. Telling someone to publish,
+              directly above a line saying they already have, was the panel
+              arguing with itself. */}
+          <p className={styles.desc}>{t('pqc.publishDesc')}</p>
           {existing?.published && !existing.current && (
             <p className={styles.desc}>{t('pqc.staleAttestation')}</p>
           )}
@@ -306,39 +329,59 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
       {publishError && <div className={styles.error}>{publishError}</div>}
 
-      {!revealed ? (
-        <div style={{ marginTop: 14 }}>
-          <Button variant="secondary" onClick={() => setRevealed(true)}>{t('pqc.showKeys')}</Button>
-        </div>
-      ) : (
-        <>
+      <div className={styles.pqcActions}>
+        <Button variant="secondary" onClick={() => setKeysOpen(true)}>{t('pqc.showKeys')}</Button>
+        {/* Importing the wrong key file must not be a permanent state. */}
+        {imported && (
+          <Button variant="secondary" onClick={() => setConfirmRemove(true)} disabled={removing}>
+            {t('pqc.importRemove')}
+          </Button>
+        )}
+      </div>
+
+      {keysOpen && status.keys && (
+        <Modal
+          title={t('pqc.keysTitle')}
+          onClose={() => setKeysOpen(false)}
+          zIndex={720}
+          footer={<Button onClick={() => setKeysOpen(false)}>{t('common.close')}</Button>}
+        >
           <div className={styles.pqcKeyRow}>
             <span>ml-kem-1024</span>
-            <code>{status.keys!.kem.slice(0, 32)}…</code>
+            <code>{status.keys.kem}</code>
           </div>
           <div className={styles.pqcKeyRow}>
             <span>ml-dsa-87</span>
-            <code>{status.keys!.dsa.slice(0, 32)}…</code>
+            <code>{status.keys.dsa}</code>
           </div>
 
-          {/* Copy stays available for anyone who would rather publish it themselves. */}
-          <button className={styles.pqcCopyLink} onClick={handleCopy}>
-            <IconCopy size={12} />
-            {copied ? t('common.copied') : t('pqc.copyAttestation')}
-          </button>
-        </>
+          {status.attestation && (
+            <>
+              <p className={styles.desc}>{t('pqc.attestationLabel')}</p>
+              <pre className={styles.pqcJson}>{JSON.stringify(status.attestation, null, 2)}</pre>
+              {/* For anyone who would rather publish it themselves. */}
+              <button className={styles.pqcCopyLink} onClick={handleCopy}>
+                <IconCopy size={12} />
+                {copied ? t('common.copied') : t('pqc.copyAttestation')}
+              </button>
+            </>
+          )}
+        </Modal>
       )}
 
-      {/* Importing the wrong key file must not be a permanent state. */}
-      {imported && (
-        <div style={{ marginTop: 14 }}>
-          <Button variant="secondary" onClick={handleRemoveImported} disabled={removing}>
-            {t('pqc.importRemove')}
-          </Button>
-        </div>
+      {confirmRemove && (
+        <ConfirmDialog
+          title={t('pqc.importRemove')}
+          message={t('pqc.importRemoveConfirm')}
+          confirmLabel={t('pqc.importRemove')}
+          danger
+          busy={removing}
+          error={removeError}
+          zIndex={720}
+          onConfirm={handleRemoveImported}
+          onCancel={() => { setConfirmRemove(false); setRemoveError(''); }}
+        />
       )}
-
-      <p className={styles.pqcLimits}>{t('pqc.limits')}</p>
     </div>
   );
 }
