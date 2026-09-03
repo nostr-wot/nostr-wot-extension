@@ -6,6 +6,45 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## Unreleased
+
+No version bump yet. A structural pass over the frontend — five parallel audits covering component reuse, CSS strategy, module boundaries, the overlay system and the oversized components — plus two security fixes the audits surfaced on the way.
+
+### Fixed — security
+
+- **Two relay readers accepted events without verifying signatures.** `fetchKind0Read` and `fetchMuteList` open their own sockets and matched on `pubkey` and `kind` only — fields a relay merely asserts. Both feed a read-modify-write of a replaceable event that the user then re-signs and publishes, so a forgery was not just displayed: a `kind:0` carrying the attacker's `lud16` would have redirected the user's zaps, and a forged `kind:10000` replaces their NIP-44-encrypted private mutes with ciphertext the relay chose. `liveQuery` verified all along; these two bypassed it.
+- **A relay that serves a forgery can no longer vouch for emptiness.** Rejecting the bad event was not enough on its own — these reads also report `reachable`, and `reachable: true` with nothing found means "safe to overwrite", so garbage followed by `EOSE` would still have wiped a profile. `reachable` now counts only sockets that answered *and* never served an invalid event. See `docs/security.md` §12.1.
+
+### Fixed — the popup painting over its own consent surfaces
+
+- **The lock screen and the approval sheet could be painted over by a deposit QR.** Five dialogs escaped to `#root` portals to get out of a containing block created by the menu's slide animation. That cause was fixed in `c01f087`; the portals outlived it, and because they landed outside `.card`'s stacking context they outranked every consent surface. All five now render in place.
+- The in-popup unlock prompt sat at `z-index: 360` while wallet dialogs sat at 500 — the surface demanding an unlock outranked the one asking for it. There is now a stacking ladder in `theme.css`, and `--z-lock` beats every task surface by construction.
+- Menu sections and the permissions list had no scroller anywhere in their chain, so anything taller than the card was clipped by `overflow: hidden` — not merely off-screen, unreachable.
+
+### Fixed — other
+
+- Copying an **nsec, ncryptsec or seed phrase** used an un-awaited `navigator.clipboard.writeText` with no error path, so a clipboard the browser refused looked exactly like a successful copy — on the three values a user cannot check by eye. Nine of eleven raw call sites now use `useCopy`, which reports the outcome, and the wizard only marks a seed backed up if the write actually landed.
+- **Clearing your display name left the old one published.** `display_name` was set alongside `name` but never deleted with it, so emptying the field deleted `name` and left the previous value in the field many clients prefer.
+- The wallet's transaction filter existed as two hand-written copies of one predicate — one deciding when to stop fetching pages, one deciding what to render. They agreed, but nothing made them; a drift would have made the list quietly come up short.
+- `EditableList` passed a value-taking `onAdd` to a zero-argument `onSubmit`, so controlled callers reading that argument got `undefined`.
+
+### Changed — popup startup
+
+- The mute list and the post-quantum published check are served from the background's last real answer and refreshed behind, instead of putting a relay round trip on the popup's first paint — the rule in `docs/component-standards.md` §9 that these two were breaking. The open popup hears the refreshed answer through `storage.onChanged`. **An unreachable read is never cached and never evicts a real answer**, so a cached value is always something the relays genuinely said: stale at worst, never invented.
+- `wss://nos.lol` is now the first default relay. Reads try relays in order, and the previous first entry was the one that stalls most often.
+
+### Changed — structure
+
+- `Wallet.tsx` 1089 → 202 lines, split into `DepositDialog`, `SendDialog`, `TransactionList`, `TxFilterDialog` and `WalletSettings`. Each dialog owns its own state, so closing one *is* its reset — the parent had been clearing eight fields by hand per dialog. Wallet settings no longer fires three RPCs on every wallet open for a panel most sessions never touch.
+- `HomeTab.tsx` 440 → 263 lines; its three in-file hooks now have their own files.
+- Every centered dialog is the shared `Modal`: the wallet's deposit, send and tx-filter, the permissions add-rule, `KeyActionModal`, and the wizard's encrypted backup. They had five scrim opacities, three dismissal behaviours and no Escape key between them. `KeyActionModal` is deliberately non-dismissable — its old shell closed on `click`, so selecting an nsec and releasing outside the card wiped it mid-read.
+- **New tested decision modules** in `src/shared/`, following the `siteState.ts` precedent: `approval.ts` (including the cross-site isolation filter, which was a security boundary with no test), `profileMetadata.ts`, `txFilter.ts`, `pqcState.ts`, `permissionRules.ts` and `invoiceExpiry.ts`.
+- One canonical `PendingRequest` (was five definitions) and one `ProfileMetadata` (was three). The copies had already drifted into a type error that one of them documented in a comment rather than fixing.
+- `theme.css` gained spacing, type, weight, line-height, radius, motion, shadow, brand-tint, status and z-index scales, all derived from values already in use. Roughly 1,950 token references; colour literals 279 → 106; `var()` fallbacks 18 → 0.
+- Dead CSS removed, `PqcSection` no longer imports a sibling section's stylesheet, and `SiteControls`, `PqcCard` and `ApprovalCard` have their own modules.
+- `src/shared/animations.css` deleted — every module already defined the keyframes it used, so the shared file was loaded by the popup and referenced by nothing.
+- Tests 606 → 1175.
+
 ## 0.6.0
 
 Pay to a Lightning Address, and a long list of fixes to things that only went

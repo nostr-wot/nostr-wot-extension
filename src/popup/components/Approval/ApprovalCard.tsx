@@ -1,26 +1,9 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.js';
+import { formatLabel } from '@shared/permissions.ts';
+import type { ApprovalGroup } from '@shared/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
-import styles from './ApprovalOverlay.module.css';
-
-interface ApprovalRequest {
-  permKey?: string;
-  event?: any;
-  [key: string]: any;
-}
-
-// A second, shadow copy of ApprovalOverlay's ApprovalGroup. It had drifted:
-// the overlay passes `permKey` on every group it renders, and this type did not
-// admit it, so the call site has been a type error. The card does not read the
-// field — it is optional here to describe what it is actually handed.
-interface ApprovalGroup {
-  origin: string;
-  method: string;
-  permKey?: string;
-  nip46InFlight?: boolean;
-  requests: ApprovalRequest[];
-}
+import styles from './ApprovalCard.module.css';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;

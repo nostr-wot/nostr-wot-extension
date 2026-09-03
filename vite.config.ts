@@ -89,6 +89,7 @@ export default defineConfig({
       '@assets': resolve(__dirname, 'src/assets'),
       '@shared': resolve(__dirname, 'src/shared'),
       '@components': resolve(__dirname, 'src/components'),
+      '@popup': resolve(__dirname, 'src/popup'),
       '@lib': resolve(__dirname, 'lib'),
     },
   },

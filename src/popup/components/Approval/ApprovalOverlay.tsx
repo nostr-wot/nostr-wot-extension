@@ -1,39 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import browser from '@shared/browser.js';
-import { rpc } from '@shared/rpc.js';
+import browser from '@shared/browser.ts';
+import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
+import {
+  filterPendingForDomain,
+  partitionPending,
+  groupApprovals,
+  groupNip46,
+  liveIds,
+  isRequestLive,
+  isGroupLive,
+  type PendingRequest,
+  type ApprovalGroup,
+} from '@shared/approval.ts';
 import ApprovalCard from './ApprovalCard';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
-import { useVault } from '../../context/VaultContext';
-import { usePermissions } from '../../context/PermissionsContext';
-import { useAccount } from '../../context/AccountContext';
+import { useVault } from '@popup/context/VaultContext';
+import { usePermissions } from '@popup/context/PermissionsContext';
+import { useAccount } from '@popup/context/AccountContext';
 import styles from './ApprovalOverlay.module.css';
 
 interface ApprovalOverlayProps {
   onRequestUnlock?: () => void;
   onUnlockWaitersChange?: (waiters: PendingRequest[]) => void;
-}
-
-interface PendingRequest {
-  id: string;
-  origin: string;
-  type: string;
-  permKey?: string;
-  needsPermission?: boolean;
-  nip46InFlight?: boolean;
-  waitingForUnlock?: boolean;
-  accountId?: string;
-  event?: any;
-  [key: string]: any;
-}
-
-interface ApprovalGroup {
-  origin: string;
-  method: string;
-  permKey: string;
-  nip46InFlight?: boolean;
-  requests: PendingRequest[];
 }
 
 export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange }: ApprovalOverlayProps) {
@@ -93,18 +83,10 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     const pending: PendingRequest[] = await rpc('signer_getPending') || [];
     if (!current()) return;
 
-    // Fail closed. Falling back to "show everything" when the site could not be identified
-    // meant one site's popup listed another site's pending signing requests — origin,
-    // event kind and full content included. Showing nothing is safe: the pending queue is
-    // cleared whenever the service worker restarts, so a tab with no known origin has no
-    // requests of its own to approve anyway.
-    const filtered = currentDomain
-      ? pending.filter((r) => r.origin === currentDomain)
-      : [];
-
-    const actionable = filtered.filter((r) => r.needsPermission && !r.nip46InFlight);
-    const nip46InFlight = filtered.filter((r) => r.nip46InFlight);
-    const unlockWaiters = filtered.filter((r) => r.waitingForUnlock);
+    // Fails closed on an unknown domain; see the rationale and the tests that
+    // pin it in src/shared/approval.ts.
+    const filtered = filterPendingForDomain(pending, currentDomain);
+    const { actionable, nip46InFlight, unlockWaiters } = partitionPending(filtered);
 
     // Only tell the parent when the set actually changed. The array is rebuilt
     // on every refresh, and handing it over unconditionally re-rendered PopupApp
@@ -118,53 +100,19 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
       onRequestUnlockRef.current?.();
     }
 
-    // Group actionable requests
-    const groupMap = new Map<string, ApprovalGroup>();
-    for (const req of actionable) {
-      const groupKey = req.permKey || req.type;
-      const key = `${req.origin}::${groupKey}`;
-      if (!groupMap.has(key)) {
-        groupMap.set(key, {
-          origin: req.origin,
-          method: req.type,
-          permKey: groupKey,
-          requests: [],
-        });
-      }
-      groupMap.get(key)!.requests.push(req);
-    }
-
-    // Group NIP-46 in-flight requests
-    const nip46Map = new Map<string, ApprovalGroup>();
-    for (const req of nip46InFlight) {
-      const key = `${req.origin}::${req.type}`;
-      if (!nip46Map.has(key)) {
-        nip46Map.set(key, {
-          origin: req.origin,
-          method: req.type,
-          permKey: req.type,
-          nip46InFlight: true,
-          requests: [],
-        });
-      }
-      nip46Map.get(key)!.requests.push(req);
-    }
-
     if (!current()) return;
-    setGroups([...groupMap.values()]);
-    setNip46Groups([...nip46Map.values()]);
+    setGroups(groupApprovals(actionable));
+    setNip46Groups(groupNip46(nip46InFlight));
 
     // A detail modal holds a snapshot taken when it opened. The request behind it
     // can be gone by now — timed out, resolved from another surface, or dropped
     // when the worker restarted — and nothing was reconciling that, so the modal
     // outlived its request and Approve acknowledged an id the background no
     // longer had, then closed as though it had signed.
-    const live = new Set(pending.map((r) => r.id));
-    setSelectedRequest((sel) => (sel && !live.has(sel.id) ? null : sel));
-    setSelectedGroup((sel) =>
-      sel && !sel.requests.some((r) => live.has(r.id)) ? null : sel);
-    setSelectedNip46((sel) =>
-      sel && !sel.requests.some((r) => live.has(r.id)) ? null : sel);
+    const live = liveIds(pending);
+    setSelectedRequest((sel) => (isRequestLive(sel, live) ? sel : null));
+    setSelectedGroup((sel) => (isGroupLive(sel, live) ? sel : null));
+    setSelectedNip46((sel) => (isGroupLive(sel, live) ? sel : null));
   }, []);
 
   useEffect(() => {

@@ -468,30 +468,15 @@ See [Storage](storage.md#9-wallet-storage) and [Security](security.md#8-wallet-s
 - NWC: paste `nostr+walletconnect://` URI
 - LNbits: enter instance URL + admin key
 
-**Connected wallet** (`Wallet.tsx`) is composition only — balance, the two action
-buttons, and which child is open. Each surface owns its own state, so closing one *is*
-its reset; the parent used to clear eight fields by hand per dialog.
+**Connected wallet** (`Wallet.tsx`) is composition only — balance, the two action buttons, and which child is open. Each surface owns its own state, so closing one *is* its reset; the parent used to clear eight fields by hand per dialog.
 
 - **Balance card** with gear icon for settings
-- **Deposit** (`DepositDialog.tsx`) — amount → invoice + QR → paid, polling every 2s
-  and auto-closing 2.5s after payment lands. The amount is stored *with* the invoice
-  rather than read back from the form, which the old version did through a stale
-  closure that only worked because the field was unreachable by then.
-- **Send** (`SendDialog.tsx`) takes either a BOLT11 invoice or a Lightning Address. An
-  address is detected as it is typed, resolved (debounced 400 ms) via
-  `wallet_resolveLightningAddress`, and shown as destination + description +
-  accepted range, with amount and — where the endpoint allows it — comment
-  fields. Pay stays disabled until the amount is inside the range. The backdrop
-  stops dismissing while a payment is in flight.
-- **Transaction list** (`TransactionList.tsx`) with search and pagination; the filter
-  form is `TxFilterDialog.tsx`.
-- **Settings** (`WalletSettings.tsx`) is an `OverlayPanel`: provider info + disconnect,
-  NWC URI copy, auto-approve threshold, Lightning Address claim/view (LNbits only).
-  Its three RPCs fire when it opens, not on every wallet open.
+- **Deposit** (`DepositDialog.tsx`) — amount → invoice + QR → paid, polling every 2s and auto-closing 2.5s after payment lands. The amount is stored *with* the invoice rather than read back from the form, which the old version did through a stale closure that only worked because the field was unreachable by then.
+- **Send** (`SendDialog.tsx`) takes either a BOLT11 invoice or a Lightning Address. An address is detected as it is typed, resolved (debounced 400 ms) via `wallet_resolveLightningAddress`, and shown as destination + description + accepted range, with amount and — where the endpoint allows it — comment fields. Pay stays disabled until the amount is inside the range. The backdrop stops dismissing while a payment is in flight.
+- **Transaction list** (`TransactionList.tsx`) with search and pagination; the filter form is `TxFilterDialog.tsx`.
+- **Settings** (`WalletSettings.tsx`) is an `OverlayPanel`: provider info + disconnect, NWC URI copy, auto-approve threshold, Lightning Address claim/view (LNbits only). Its three RPCs fire when it opens, not on every wallet open.
 
-All of these are the shared `Modal`. Nothing portals to `#root` any more — that was a
-workaround for a containing-block bug fixed in `c01f087`, and it put wallet dialogs
-above the lock screen and the approval sheet. See `docs/component-standards.md` §4.
+All of these are the shared `Modal`. Nothing portals to `#root` any more — that was a workaround for a containing-block bug fixed in `c01f087`, and it put wallet dialogs above the lock screen and the approval sheet. See `docs/component-standards.md` §4.
 
 ### NIP-57 Zap Flow
 

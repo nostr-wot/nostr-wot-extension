@@ -279,36 +279,18 @@ still being verified.
 
 ### 12.1 The readers that bypassed it (`lib/bg/profile-handlers.ts`)
 
-`liveQuery` is not the only way this extension reads from a relay. Two readers
-open their own sockets — `fetchKind0Read` (profile) and `fetchMuteList` (NIP-51
-kind:10000) — and both accepted events on `pubkey` and `kind` alone. Those are
-fields the relay asserts; they are only meaningful once the signature over them
-is checked, so any relay could serve a document attributed to anyone, with a
-`created_at` high enough to win the "newest wins" comparison.
+`liveQuery` is not the only way this extension reads from a relay. Two readers open their own sockets — `fetchKind0Read` (profile) and `fetchMuteList` (NIP-51 kind:10000) — and both accepted events on `pubkey` and `kind` alone. Those are fields the relay asserts; they are only meaningful once the signature over them is checked, so any relay could serve a document attributed to anyone, with a `created_at` high enough to win the "newest wins" comparison.
 
-The consequence was worse than a wrong display, because both feed a
-read-modify-write of a **replaceable** event that the user then re-signs:
+The consequence was worse than a wrong display, because both feed a read-modify-write of a **replaceable** event that the user then re-signs:
 
-- `fetchKind0Read` backs `getProfileForMerge`, which the wallet's "Add to
-  profile" merges into and republishes. A forged `kind:0` carrying the
-  attacker's `lud16` would redirect the user's zaps — signed by the user.
-- `fetchMuteList` supplies the `rawContent` that `publishMuteList` writes back
-  verbatim as the user's NIP-44-encrypted **private mutes**. A forgery replaces
-  them with ciphertext the relay chose.
+- `fetchKind0Read` backs `getProfileForMerge`, which the wallet's "Add to profile" merges into and republishes. A forged `kind:0` carrying the attacker's `lud16` would redirect the user's zaps — signed by the user.
+- `fetchMuteList` supplies the `rawContent` that `publishMuteList` writes back verbatim as the user's NIP-44-encrypted **private mutes**. A forgery replaces them with ciphertext the relay chose.
 
-Both now verify through a shared `acceptedEvent()` (id + `verifyEvent()`) before
-an event is considered at all.
+Both now verify through a shared `acceptedEvent()` (id + `verifyEvent()`) before an event is considered at all.
 
-**A relay that served an unverifiable event cannot then vouch for emptiness.**
-Rejecting the forgery is not sufficient on its own: these readers also report
-`reachable`, and `reachable: true` with null/empty data means "a relay
-authoritatively says you have nothing — safe to overwrite". A hostile relay
-could therefore serve garbage followed by `EOSE` and still get the profile
-destroyed. Each socket now carries its own record, and `reachable` counts only
-sockets that answered *and* never served an invalid event.
+**A relay that served an unverifiable event cannot then vouch for emptiness.** Rejecting the forgery is not sufficient on its own: these readers also report `reachable`, and `reachable: true` with null/empty data means "a relay authoritatively says you have nothing — safe to overwrite". A hostile relay could therefore serve garbage followed by `EOSE` and still get the profile destroyed. Each socket now carries its own record, and `reachable` counts only sockets that answered *and* never served an invalid event.
 
-`tests/profile-read.test.ts` pins both properties, including forgeries that keep
-a valid signature and mutate the body.
+`tests/profile-read.test.ts` pins both properties, including forgeries that keep a valid signature and mutate the body.
 
 ---
 

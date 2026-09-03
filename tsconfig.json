@@ -17,6 +17,7 @@
       "@assets/*": ["./src/assets/*"],
       "@shared/*": ["./src/shared/*"],
       "@components/*": ["./src/components/*"],
+      "@popup/*": ["./src/popup/*"],
       "@lib/*": ["./lib/*"]
     }
   },
