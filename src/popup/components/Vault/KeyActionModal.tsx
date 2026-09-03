@@ -6,6 +6,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.js';
 import { downloadFile } from '@shared/downloadFile.js';
+import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '../../context/VaultContext';
 import styles from './KeyActionModal.module.css';
 
@@ -169,24 +170,10 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     if (seedEncPw !== seedEncConfirm) { setSeedEncError(t('key.passwordsNoMatch')); return; }
     setSeedEncrypting(true);
     try {
-      const enc = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(seedEncPw), 'PBKDF2', false, ['deriveKey']);
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const key = await crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-256' },
-        keyMaterial,
-        { name: 'AES-GCM', length: 256 },
-        false,
-        ['encrypt']
-      );
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(seedWords.join(' ')));
-      const payload = JSON.stringify({
-        v: 1,
-        salt: btoa(String.fromCharCode(...salt)),
-        iv: btoa(String.fromCharCode(...iv)),
-        ct: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
-      });
+      // One implementation, in lib/crypto/keyBackup.ts, where a round-trip test
+      // proves the file can be read back. This was inline here — so nothing ever
+      // verified that the last copy of someone's seed phrase was decryptable.
+      const payload = await encryptBackup(seedWords.join(' '), seedEncPw);
       downloadFile(payload, 'nostr-seed-phrase-encrypted.json');
       setSeedEncMode(false);
       setSeedEncPw('');
