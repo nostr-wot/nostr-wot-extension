@@ -18,6 +18,7 @@
       "@shared/*": ["./src/shared/*"],
       "@components/*": ["./src/components/*"],
       "@popup/*": ["./src/popup/*"],
+      "@wizard/*": ["./src/wizard/*"],
       "@lib/*": ["./lib/*"]
     }
   },

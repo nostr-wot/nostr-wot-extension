@@ -90,6 +90,7 @@ export default defineConfig({
       '@shared': resolve(__dirname, 'src/shared'),
       '@components': resolve(__dirname, 'src/components'),
       '@popup': resolve(__dirname, 'src/popup'),
+      '@wizard': resolve(__dirname, 'src/wizard'),
       '@lib': resolve(__dirname, 'lib'),
     },
   },
