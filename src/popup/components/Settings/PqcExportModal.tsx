@@ -8,6 +8,7 @@ import StatusNotice from '@components/StatusNotice/StatusNotice';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import styles from './PqcSection.module.css';
+import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 /**
  * Save the post-quantum key file, plain or encrypted.
@@ -35,8 +36,11 @@ export default function PqcExportModal({ onClose }: { onClose: () => void }) {
 const handleExport = async (encrypted: boolean) => {
   setExportError('');
   if (encrypted) {
-    if (exportPw.length < 8) { setExportError(t('key.passwordMin8')); return; }
-    if (exportPw !== exportConfirmPw) { setExportError(t('key.passwordsNoMatch')); return; }
+    const problem = validatePasswordPair(exportPw, exportConfirmPw);
+    if (problem) {
+      setExportError(t(problem === 'tooShort' ? 'key.passwordMin8' : 'key.passwordsNoMatch'));
+      return;
+    }
   }
   setExportBusy(true);
   try {

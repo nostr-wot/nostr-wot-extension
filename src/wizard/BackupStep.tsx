@@ -8,6 +8,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import styles from './WizardOverlay.module.css';
+import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 interface BackupStepProps {
   mnemonic: string | null;
@@ -34,8 +35,11 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
 
   const handleDownloadEncrypted = async () => {
     setEncError('');
-    if (encPw.length < 8) { setEncError(t('wizard.minChars')); return; }
-    if (encPw !== encConfirm) { setEncError(t('key.passwordsNoMatch')); return; }
+    const problem = validatePasswordPair(encPw, encConfirm);
+    if (problem) {
+      setEncError(t(problem === 'tooShort' ? 'wizard.minChars' : 'key.passwordsNoMatch'));
+      return;
+    }
     try {
       const ncryptsec = await rpc<string>('vault_exportNcryptsec', { password: encPw });
       if (ncryptsec) {

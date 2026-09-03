@@ -12,6 +12,7 @@ import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel
 import { useVault } from '@popup/context/VaultContext';
 
 import styles from './SecuritySection.module.css';
+import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 interface SecuritySectionProps {
   onChangePassword: () => void;
@@ -63,8 +64,11 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
     const switchingToNever = autoLockMs !== 0 && pendingMs === 0;
 
     if (switchingToTimed) {
-      if (password.length < 8) { setError(t('wizard.passwordMin8')); return; }
-      if (password !== confirm) { setError(t('wizard.passwordsNoMatch')); return; }
+      const problem = validatePasswordPair(password, confirm);
+      if (problem) {
+        setError(t(problem === 'tooShort' ? 'wizard.passwordMin8' : 'wizard.passwordsNoMatch'));
+        return;
+      }
     }
     if (switchingToNever && !password) {
       setError(t('security.enterCurrentPassword')); return;

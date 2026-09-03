@@ -9,6 +9,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import styles from './WizardOverlay.module.css';
+import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -99,8 +100,11 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   const handleDownloadEncrypted = async () => {
     setEncError('');
-    if (encPw.length < 8) { setEncError(t('wizard.minChars')); return; }
-    if (encPw !== encConfirm) { setEncError(t('key.passwordsNoMatch')); return; }
+    const problem = validatePasswordPair(encPw, encConfirm);
+    if (problem) {
+      setEncError(t(problem === 'tooShort' ? 'wizard.minChars' : 'key.passwordsNoMatch'));
+      return;
+    }
     try {
       const ncryptsec = await rpc<string>('onboarding_exportNcryptsec', { password: encPw });
       if (ncryptsec) {

@@ -9,6 +9,7 @@ import ChipGroup from '@components/ChipGroup/ChipGroup';
 import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
+import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 interface PasswordStepProps {
   account: any;
@@ -82,8 +83,11 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   const handleContinue = async () => {
     // Only validate password when creating a new vault
     if (!vaultExists && !isNever) {
-      if (password.length < 8) { setError(t('wizard.passwordMin8')); return; }
-      if (password !== confirm) { setError(t('wizard.passwordsNoMatch')); return; }
+      const problem = validatePasswordPair(password, confirm);
+      if (problem) {
+        setError(t(problem === 'tooShort' ? 'wizard.passwordMin8' : 'wizard.passwordsNoMatch'));
+        return;
+      }
     }
     if (!account) { setError(t('wizard.noAccountData')); return; }
 

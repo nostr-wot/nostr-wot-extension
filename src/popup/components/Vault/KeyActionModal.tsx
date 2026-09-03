@@ -13,6 +13,7 @@ import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
 import styles from './KeyActionModal.module.css';
+import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 interface KeyActionModalProps {
   action: string;
@@ -112,8 +113,11 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   // --- ncryptsec ---
   const generateNcryptsec = async () => {
     setNcError('');
-    if (ncPassword.length < 8) { setNcError(t('key.passwordMin8')); return; }
-    if (ncPassword !== ncConfirm) { setNcError(t('key.passwordsNoMatch')); return; }
+    const ncProblem = validatePasswordPair(ncPassword, ncConfirm);
+    if (ncProblem) {
+      setNcError(t(ncProblem === 'tooShort' ? 'key.passwordMin8' : 'key.passwordsNoMatch'));
+      return;
+    }
     setNcGenerating(true);
     try {
       const result = await rpc<string>('vault_exportNcryptsec', { password: ncPassword });
@@ -139,8 +143,11 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
 
   const downloadSeedEncrypted = async () => {
     setSeedEncError('');
-    if (seedEncPw.length < 8) { setSeedEncError(t('key.passwordMin8')); return; }
-    if (seedEncPw !== seedEncConfirm) { setSeedEncError(t('key.passwordsNoMatch')); return; }
+    const seedProblem = validatePasswordPair(seedEncPw, seedEncConfirm);
+    if (seedProblem) {
+      setSeedEncError(t(seedProblem === 'tooShort' ? 'key.passwordMin8' : 'key.passwordsNoMatch'));
+      return;
+    }
     setSeedEncrypting(true);
     try {
       // One implementation, in lib/crypto/keyBackup.ts, where a round-trip test
@@ -161,8 +168,11 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   const handleChangePassword = async () => {
     setCpError('');
     if (!cpCurrent) { setCpError(t('key.enterCurrentPassword')); return; }
-    if (cpNew.length < 8) { setCpError(t('key.newPasswordMin8')); return; }
-    if (cpNew !== cpConfirm) { setCpError(t('key.passwordsNoMatch')); return; }
+    const cpProblem = validatePasswordPair(cpNew, cpConfirm);
+    if (cpProblem) {
+      setCpError(t(cpProblem === 'tooShort' ? 'key.newPasswordMin8' : 'key.passwordsNoMatch'));
+      return;
+    }
     try {
       const result = await rpc<{ success?: boolean; error?: string }>('vault_changePassword', { currentPassword: cpCurrent, newPassword: cpNew });
       if (result?.success) {
