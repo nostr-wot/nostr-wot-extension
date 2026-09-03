@@ -161,7 +161,7 @@ From `manifest.json` (MV3):
         { "matches": ["<all_urls>"], "js": ["inject.ts"], "run_at": "document_start", "world": "MAIN" }
     ],
     "web_accessible_resources": [{
-        "resources": ["icons/icon-base.svg", "locales/*.json", "icons/clients/*.svg"],
+        "resources": ["icons/icon-base.svg", "locales/*.json"],
         "matches": ["<all_urls>"]
     }]
 }

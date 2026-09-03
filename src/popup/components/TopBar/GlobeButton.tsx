@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc, rpcNotify } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { getClientIconUrl } from '@shared/clientIcons.ts';
+import { getFaviconUrl } from '@shared/clientIcons.ts';
 import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
 import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
 import styles from './TopBar.module.css';
+import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
 
 export default function GlobeButton() {
   const [domain, setDomain] = useState<string | null>(null);
@@ -62,17 +63,7 @@ export default function GlobeButton() {
     };
   }, [domain]);
 
-  useEffect(() => {
-    function handleClick(e: globalThis.MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) {
-      document.addEventListener('mousedown', handleClick);
-      return () => document.removeEventListener('mousedown', handleClick);
-    }
-  }, [open]);
+  useOutsideClick(ref, () => setOpen(false), open);
 
   // One step, same as the home card. See lib/bg/domain-handlers.ts connectDomain.
   //
@@ -110,7 +101,7 @@ export default function GlobeButton() {
     }
   };
 
-  const iconUrl = domain ? getClientIconUrl(domain) : null;
+  const iconUrl = domain ? getFaviconUrl(domain) : null;
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>

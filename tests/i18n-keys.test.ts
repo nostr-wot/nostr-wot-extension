@@ -87,7 +87,7 @@ function dynamicKeys(): string[] {
   for (const reason of unionMembers('lib/bg/pqc-handlers.ts', 'PqcBlockReason')) {
     keys.push(`pqc.reason.${reason}`);
   }
-  for (const decision of constArrayMembers('src/popup/components/Settings/PermissionsSection.tsx', 'DECISIONS')) {
+  for (const decision of constArrayMembers('src/shared/permissionRules.ts', 'DECISIONS')) {
     keys.push(`perms.${decision}`);
   }
   return keys;

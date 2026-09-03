@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IconChevronDown } from '@assets';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import styles from './Dropdown.module.css';
+import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
 
 interface DropdownOption {
   value: string;
@@ -29,17 +30,7 @@ export default function Dropdown({
   const { shouldRender: menuVisible, animating: menuAnimating } = useAnimatedVisible(open, 150);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
+  useOutsideClick(wrapperRef, () => setOpen(false), open);
 
   const selected = options.find((o) => o.value === value);
   const label = selected ? selected.label : placeholder;

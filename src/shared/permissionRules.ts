@@ -7,6 +7,15 @@
  * something, so they are the parts worth testing — and they need no i18n.
  */
 
+/**
+ * The three answers a permission rule can hold.
+ *
+ * `tests/i18n-keys.test.ts` reads this array to check that `perms.allow`,
+ * `perms.deny` and `perms.ask` exist in every locale, so it lives in one place
+ * rather than in each screen that renders the chips.
+ */
+export const DECISIONS = ['allow', 'deny', 'ask'] as const;
+
 /** Permission keys a read-only or remote-signer account can meaningfully hold. */
 export const READ_ONLY_KEYS = ['getPublicKey'];
 

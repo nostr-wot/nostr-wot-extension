@@ -5,7 +5,7 @@ import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
 import { formatSats } from '@shared/format/number.ts';
 import '@shared/theme.css';
-import EventPreview from './components/EventPreview';
+import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './components/DecisionRow';
 import UnlockSection from './components/UnlockSection';
 import styles from './PromptApp.module.css';

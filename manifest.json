@@ -65,9 +65,7 @@
         "locales/pt.json",
         "locales/de.json",
         "locales/fr.json",
-        "locales/it.json",
-        "icons/clients/primal.svg",
-        "icons/clients/coracle.svg"
+        "locales/it.json"
       ],
       "matches": [
         "<all_urls>"

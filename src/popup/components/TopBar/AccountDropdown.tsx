@@ -9,6 +9,7 @@ import { IconClose, IconCopy, IconPencil } from '@assets';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import styles from './TopBar.module.css';
+import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
 
 interface AccountDropdownProps {
   onClose: () => void;
@@ -30,15 +31,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
   const [copyMenuPos, setCopyMenuPos] = useState<CopyMenuPos | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    function handleClick(e: globalThis.MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [onClose]);
+  useOutsideClick(ref, onClose);
 
   const handleCopy = async (pubkey: string, format: 'npub' | 'hex') => {
     const text = format === 'npub' ? npubEncode(pubkey) : pubkey;
