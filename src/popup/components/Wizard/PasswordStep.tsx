@@ -7,6 +7,8 @@ import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import styles from './WizardOverlay.module.css';
+import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
+import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 
 interface PasswordStepProps {
   account: any;
@@ -23,6 +25,32 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   const [vaultExists, setVaultExists] = useState<boolean | null>(null); // null = checking
   const [needsUnlock, setNeedsUnlock] = useState(false);
 
+  /**
+   * The unlock form for the "vault exists, add this account to it" branch.
+   *
+   * Through the shared hook so it carries the escalating brute-force lockout.
+   * It called vault_unlock directly, which made the add-account path an
+   * unthrottled password oracle while every other unlock in the product was
+   * throttled — including the one on the very next screen.
+   */
+  const unlockForm = useVaultUnlock({
+    onSuccess: async () => {
+      try {
+        await rpc('onboarding_addToVault', {
+          account,
+          upgradeFromReadOnly: upgradeId || null,
+        });
+        onNext(!!upgradeId);
+      } catch (e: unknown) {
+        unlockForm.setError((e as Error).message || t('key.failedUnlock'));
+      }
+    },
+    messages: {
+      wrongPassword: t('key.wrongPassword'),
+      unlockFailed: t('key.failedUnlock'),
+    },
+  });
+
   useEffect(() => {
     (async () => {
       try {
@@ -34,14 +62,9 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
         const accts = data.accounts || [];
         if (accts.length === 0) { setVaultExists(false); return; }
 
-        // Vault exists with accounts — auto-add without showing UI
-        // First ensure vault is unlocked
-        const locked = await rpc<boolean>('vault_isLocked');
-        if (locked) {
-          // Try empty password (Never-lock vaults)
-          const ok = await rpc<boolean>('vault_unlock', { password: '' });
-          if (!ok) { setNeedsUnlock(true); setVaultExists(true); return; }
-        }
+        // Vault exists with accounts — auto-add without showing UI, if the
+        // vault is open or can be opened without a password.
+        if (!(await isVaultOpen(rpc))) { setNeedsUnlock(true); setVaultExists(true); return; }
         // Vault unlocked — add account and proceed
         await rpc('onboarding_addToVault', {
           account,
@@ -96,23 +119,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
   // Vault exists but locked — need password to unlock
   if (vaultExists && needsUnlock) {
-    const handleUnlock = async () => {
-      if (!password) return;
-      setLoading(true);
-      setError('');
-      try {
-        const ok = await rpc<boolean>('vault_unlock', { password });
-        if (!ok) { setError(t('key.wrongPassword')); setLoading(false); return; }
-        await rpc('onboarding_addToVault', {
-          account,
-          upgradeFromReadOnly: upgradeId || null,
-        });
-        onNext(!!upgradeId);
-      } catch (e: any) {
-        setError(e.message || t('key.failedUnlock'));
-        setLoading(false);
-      }
-    };
+
 
     return (
       <div className={styles.step}>
@@ -125,18 +132,18 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
             type="password"
             showToggle
             placeholder={t('unlock.enterPassword')}
-            value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
-            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleUnlock()}
+            value={unlockForm.password}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => unlockForm.setPassword(e.target.value)}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlockForm.unlock()}
             autoFocus
           />
         </div>
 
-        {error && <div className={styles.error}>{error}</div>}
+        {unlockForm.error && <div className={styles.error}>{unlockForm.error}</div>}
 
         <div className={styles.stepActions}>
-          <Button onClick={handleUnlock} disabled={loading || !password}>
-            {loading ? t('common.loading') : t('common.unlock')}
+          <Button onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
+            {unlockForm.loading ? t('common.loading') : t('common.unlock')}
           </Button>
         </div>
       </div>

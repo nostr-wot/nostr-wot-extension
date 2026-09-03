@@ -4,6 +4,7 @@ import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import styles from './WizardOverlay.module.css';
+import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
 
 interface SubAccountStepProps {
   onNext: (account: any) => void;
@@ -16,7 +17,23 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [needsUnlock, setNeedsUnlock] = useState(false);
-  const [password, setPassword] = useState('');
+  // Through the shared hook, which carries the escalating brute-force lockout.
+  // This form called vault_unlock directly, so the add-account path was an
+  // unthrottled password oracle while every other unlock in the product was
+  // throttled.
+  const {
+    password,
+    setPassword,
+    error: unlockError,
+    loading: unlocking,
+    unlock,
+  } = useVaultUnlock({
+    onSuccess: () => { void generate(); },
+    messages: {
+      wrongPassword: t('key.wrongPassword'),
+      unlockFailed: t('key.failedUnlock'),
+    },
+  });
 
   const generate = async () => {
     setLoading(true);
@@ -39,23 +56,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
   useEffect(() => { generate(); }, []);
 
-  const handleUnlock = async () => {
-    if (!password) return;
-    setError('');
-    setSaving(true);
-    try {
-      const ok = await rpc<boolean>('vault_unlock', { password });
-      if (ok) {
-        setPassword('');
-        await generate();
-      } else {
-        setError(t('key.wrongPassword'));
-      }
-    } catch (e: any) {
-      setError(e.message || t('key.failedUnlock'));
-    }
-    setSaving(false);
-  };
+
 
   const handleContinue = async () => {
     if (!account) return;
@@ -92,17 +93,17 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
             showToggle
             placeholder={t('unlock.enterPassword')}
             value={password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
-            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleUnlock()}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlock()}
             autoFocus
           />
         </div>
 
-        {error && <div className={styles.error}>{error}</div>}
+        {unlockError && <div className={styles.error}>{unlockError}</div>}
 
         <div className={styles.stepActions}>
-          <Button onClick={handleUnlock} disabled={saving || !password}>
-            {saving ? t('common.loading') : t('common.unlock')}
+          <Button onClick={unlock} disabled={unlocking || !password}>
+            {unlocking ? t('common.loading') : t('common.unlock')}
           </Button>
         </div>
       </div>

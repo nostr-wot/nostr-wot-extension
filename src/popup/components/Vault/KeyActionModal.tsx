@@ -8,6 +8,7 @@ import Modal from '@components/Modal/Modal';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
 import useCopy from '@shared/hooks/useCopy.ts';
 import useTimedReveal from '@shared/hooks/useTimedReveal.ts';
+import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
@@ -75,14 +76,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   useEffect(() => {
     (async () => {
       try {
-        const locked = await rpc<boolean>('vault_isLocked');
-        if (!locked) { setNeedsUnlock(false); return; }
-        // In never-lock mode (autoLockMs === 0), auto-unlock with empty password
-        const autoLockMs = await rpc<number>('vault_getAutoLock');
-        if (autoLockMs === 0) {
-          const ok = await rpc<boolean>('vault_unlock', { password: '' });
-          if (ok) { setNeedsUnlock(false); vault.checkState?.(); return; }
-        }
+        if (await isVaultOpen(rpc)) { setNeedsUnlock(false); vault.checkState?.(); return; }
         setNeedsUnlock(true);
       } catch { /* ignore */ }
     })();

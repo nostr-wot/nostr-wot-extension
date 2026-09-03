@@ -3,6 +3,7 @@ import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
 import styles from '../PromptApp.module.css';
+import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 
 interface UnlockSectionProps {
   onUnlocked: () => void;
@@ -14,15 +15,11 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
 
   const isLockedOut = lockedUntil > Date.now();
 
-  // Auto-unlock for "Never" mode vaults (encrypted with empty password)
+  // A never-lock vault is stored under the empty password, so it can just be
+  // opened. Shared, because the mode check in front of it is load-bearing —
+  // see src/shared/vaultAutoUnlock.ts.
   useEffect(() => {
-    rpc<number>('vault_getAutoLock').then((ms) => {
-      if (ms === 0) {
-        rpc<boolean>('vault_unlock', { password: '' }).then((ok) => {
-          if (ok) onUnlocked?.();
-        }).catch(() => {});
-      }
-    }).catch(() => {});
+    isVaultOpen(rpc).then((open) => { if (open) onUnlocked?.(); }).catch(() => {});
   }, [onUnlocked]);
 
   useEffect(() => {
