@@ -1,0 +1,11 @@
+.message {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-body);
+}
+
+.error {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--error);
+}
