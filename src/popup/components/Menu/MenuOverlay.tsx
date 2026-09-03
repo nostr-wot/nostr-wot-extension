@@ -4,11 +4,11 @@ import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap, IconIn
 import { version as appVersion } from '../../../../package.json';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Modal from '@components/Modal/Modal';
-import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
 import Button from '@components/Button/Button';
 import MenuSection from './MenuSection';
+import LanguagePicker, { type Language } from './LanguagePicker';
 import PqcSection, { type PqcSectionHandle } from '../Settings/PqcSection';
-import PermissionsSection from '../Settings/PermissionsSection';
+import PermissionsSection, { type PermissionsSectionHandle } from '../Settings/PermissionsSection';
 import SecuritySection from '../Settings/SecuritySection';
 import NetworkSection from '../Settings/NetworkSection';
 import WalletSection from '../Wallet/WalletSection';
@@ -32,21 +32,13 @@ interface MenuItem {
   icon: ReactNode;
 }
 
-interface Language {
-  code: string;
-  flag: string;
-  native: string;
-  prompt: string;
-}
-
 export default function MenuOverlay({ visible, onClose, initialSection }: MenuOverlayProps) {
   const [navStack, setNavStack] = useState<string[]>([]);
   const [keyAction, setKeyAction] = useState<string | null>(null); // 'nsec' | 'ncryptsec' | 'changePassword'
   const [langModalOpen, setLangModalOpen] = useState<boolean>(false);
-  const [langSelected, setLangSelected] = useState<Language | null>(null);
   const [permDetailDomain, setPermDetailDomain] = useState<string | null>(null);
   const pqcSectionRef = useRef<PqcSectionHandle>(null);
-  const permsSectionRef = useRef<any>(null);
+  const permsSectionRef = useRef<PermissionsSectionHandle>(null);
   const vault = useVault();
   const { isReadOnly, isNip46, active } = useAccount();
   const { shouldRender, animating } = useAnimatedVisible(visible);
@@ -122,19 +114,10 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     pushSection(id);
   };
 
-  const openLangPicker = () => {
-    const current = getLanguage();
-    const idx = languages.findIndex((l: Language) => l.code === current);
-    setLangSelected(languages[idx >= 0 ? idx : 0]);
-    setLangModalOpen(true);
-  };
+  const openLangPicker = () => setLangModalOpen(true);
 
-  const handleLangConfirm = async () => {
-    if (langSelected) {
-      await setLanguage(langSelected.code);
-    }
-    setLangModalOpen(false);
-  };
+
+
 
   const currentLang = languages.find((l: Language) => l.code === getLanguage()) || languages[0];
 
@@ -262,28 +245,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         </div>
       </div>
 
-      {langModalOpen && (
-        <Modal
-          title={langSelected?.prompt || languages[0].prompt}
-          onClose={() => setLangModalOpen(false)}
-          zIndex={720}
-          footer={<Button onClick={handleLangConfirm}>{t('common.confirm')}</Button>}
-        >
-          <div className={styles.langModalWheel}>
-            <ScrollWheelPicker
-              items={languages}
-              selectedIndex={langSelected ? languages.findIndex((l: Language) => l.code === langSelected.code) : 0}
-              onChange={(i: number) => setLangSelected(languages[i])}
-              renderItem={(lang: Language, _i: number, isActive: boolean) => (
-                <div className={`${styles.langWheelItem} ${isActive ? styles.langWheelItemActive : ''}`}>
-                  <span className={styles.langWheelFlag}>{lang.flag}</span>
-                  <span className={styles.langWheelName}>{lang.native}</span>
-                </div>
-              )}
-            />
-          </div>
-        </Modal>
-      )}
+      {langModalOpen && <LanguagePicker onClose={() => setLangModalOpen(false)} />}
 
       {keyAction && (
         <KeyActionModal

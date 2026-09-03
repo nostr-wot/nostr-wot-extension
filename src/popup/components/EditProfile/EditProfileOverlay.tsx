@@ -11,6 +11,7 @@ import {
 import { useAccount } from '@popup/context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Avatar from '@components/Avatar/Avatar';
+import ProfilePreviewCard from './ProfilePreviewCard';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import Spinner from '@components/Spinner/Spinner';
@@ -244,46 +245,14 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   );
 
   const renderPreview = () => (
-    <div className={styles.body}>
-      <div className={styles.previewCard}>
-        <div className={styles.previewHeader}>
-          <Avatar
-            src={previewMeta?.picture}
-            fallback={initial}
-            imgClassName={styles.previewAvatar}
-            fallbackClassName={styles.previewAvatarPlaceholder}
-          />
-          <span className={styles.previewName}>{previewMeta?.name || previewMeta?.display_name || '\u2014'}</span>
-        </div>
-        {previewMeta?.about && <div className={styles.previewAbout}>{previewMeta.about}</div>}
-        {previewMeta?.nip05 && (
-          <dl className={styles.previewField}>
-            <dt>NIP-05</dt><dd>{previewMeta.nip05}</dd>
-          </dl>
-        )}
-        {previewMeta?.lud16 && (
-          <dl className={styles.previewField}>
-            <dt>Lightning</dt><dd>{previewMeta.lud16}</dd>
-          </dl>
-        )}
-        {previewMeta?.website && (
-          <dl className={styles.previewField}>
-            <dt>Website</dt><dd>{previewMeta.website}</dd>
-          </dl>
-        )}
-      </div>
-
-      <div className={styles.previewHint}>{t('profileEdit.previewHint')}</div>
-
-      {error && <div className={styles.errorText}>{error}</div>}
-
-      <div className={styles.actions}>
-        <Button variant="secondary" onClick={() => { setStep(STEPS.FORM); setError(''); }}>
-          {t('common.back')}
-        </Button>
-        <Button onClick={handleConfirmPublish}>{t('profileEdit.confirmPublish')}</Button>
-      </div>
-    </div>
+    <ProfilePreviewCard
+      meta={previewMeta}
+      displayPicture={displayPicture}
+      initial={initial}
+      error={error}
+      onBack={() => { setStep(STEPS.FORM); setError(''); }}
+      onConfirm={handleConfirmPublish}
+    />
   );
 
   const renderPublishing = () => (
