@@ -6,7 +6,39 @@
 import browser from '../browser.ts';
 import * as vault from '../vault.ts';
 import { randomHex } from '../crypto/utils.ts';
+import { verifyEvent } from '../crypto/nip01.ts';
+import { cachedRelayRead, MUTE_LIST_CACHE } from './relayCache.ts';
+import type { SignedEvent } from '../types.ts';
+
 import { config, DEFAULT_RELAYS, profileCache, PROFILE_CACHE_TTL, type HandlerFn, type ProfileCacheEntry } from './state.ts';
+
+/**
+ * Accept a relay's EVENT only if it is really the event we asked for.
+ *
+ * A relay is an untrusted party. Matching on `pubkey` and `kind` alone checks
+ * only what the relay *claims* — those fields are just JSON until the signature
+ * over them is verified, so any relay could serve a document attributed to
+ * anyone, with a `created_at` high enough to win.
+ *
+ * That matters here beyond display, because both readers below feed a
+ * read-modify-write of a REPLACEABLE event: `fetchKind0Read` is what
+ * `getProfileForMerge` hands to the caller that republishes the profile, and
+ * `fetchMuteList` supplies the `rawContent` that `publishMuteList` writes back
+ * verbatim as the user's NIP-44-encrypted private mutes. An unverified event
+ * accepted here is therefore not merely displayed — it is re-signed by the user
+ * and published as their own.
+ */
+async function acceptedEvent(
+    raw: unknown,
+    pubkey: string,
+    kind: number,
+): Promise<SignedEvent | null> {
+    const ev = raw as SignedEvent | undefined;
+    if (!ev || ev.pubkey !== pubkey || ev.kind !== kind) return null;
+    if (!ev.id || !ev.sig) return null;
+    if (!(await verifyEvent(ev))) return null;
+    return ev;
+}
 
 /** Public entries of a NIP-51 mute list, grouped by tag type, plus the raw
  *  (still-encrypted) private `.content` so callers can round-trip it verbatim. */
@@ -88,13 +120,25 @@ export function fetchKind0Read(pubkey: string, relayUrls: string[]): Promise<Pro
         let bestCreatedAt = 0;
         let remaining = relayUrls.length;
         let resolved = false;
-        let answered = false;
+        // Signature checks are async, so a relay's last EVENT can still be in
+        // flight when its EOSE arrives. Resolving then would silently drop a
+        // verified answer; `done()` waits for the count to drain.
+        let verifying = 0;
+        let closing = false;
+        // Per-socket honesty. A relay that served an event failing verification
+        // does not get to vouch for emptiness with its EOSE: "nobody answered"
+        // and "the only answer was a forgery" must not collapse into the
+        // `reachable: true, metadata: null` that means "safe to overwrite".
+        const sockets: { eose: boolean; valid: boolean; invalid: boolean }[] = [];
+        const anyHonestAnswer = () => sockets.some((s) => (s.eose || s.valid) && !s.invalid);
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ metadata: best, reachable: answered }); }
+            closing = true;
+            if (verifying > 0) return;
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ metadata: best, reachable: anyHonestAnswer() }); }
         };
 
-        const timer = setTimeout(done, 5000);
+        const timer = setTimeout(() => { verifying = 0; done(); }, 5000);
 
         const checkRemaining = () => { if (--remaining <= 0) done(); };
 
@@ -102,6 +146,8 @@ export function fetchKind0Read(pubkey: string, relayUrls: string[]): Promise<Pro
             try {
                 const ws = new WebSocket(url);
                 const subId = 'p' + randomHex(6);
+                const st = { eose: false, valid: false, invalid: false };
+                sockets.push(st);
                 let closed = false;
 
                 const closeWs = () => {
@@ -116,17 +162,27 @@ export function fetchKind0Read(pubkey: string, relayUrls: string[]): Promise<Pro
                     try {
                         const msg = JSON.parse(e.data);
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
-                            const event = msg[2];
-                            if (event.pubkey !== pubkey || event.kind !== 0) return;
-                            answered = true;
-                            if (event.created_at > bestCreatedAt) {
-                                bestCreatedAt = event.created_at;
-                                best = JSON.parse(event.content);
-                            }
+                            verifying++;
+                            void (async () => {
+                                try {
+                                    const event = await acceptedEvent(msg[2], pubkey, 0);
+                                    if (!event) { st.invalid = true; return; }
+                                    st.valid = true;
+                                    if (event.created_at > bestCreatedAt) {
+                                        bestCreatedAt = event.created_at;
+                                        best = JSON.parse(event.content);
+                                    }
+                                } catch { /* unparseable content — not an answer */ }
+                                finally {
+                                    verifying--;
+                                    if (closing) done();
+                                }
+                            })();
                         } else if (msg[0] === 'EOSE') {
                             // EOSE is an answer: this relay has told us what it holds,
-                            // including when that is nothing.
-                            answered = true;
+                            // including when that is nothing — unless it also sent us
+                            // something that did not verify.
+                            st.eose = true;
                             closeWs();
                         }
                     } catch { /* ignore parse errors */ }
@@ -162,18 +218,28 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
         const best: GroupedMuteList = { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
         let remaining = relayUrls.length;
         let resolved = false;
-        let answered = false;
+        let verifying = 0;
+        let closing = false;
+        // See fetchKind0Read: a relay that served an unverifiable event cannot
+        // then vouch for emptiness. Here the stake is `rawContent`, which
+        // publishMuteList writes back as the user's private mutes.
+        const sockets: { eose: boolean; valid: boolean; invalid: boolean }[] = [];
+        const anyHonestAnswer = () => sockets.some((s) => (s.eose || s.valid) && !s.invalid);
 
         const done = () => {
-            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ ...best, reachable: answered }); }
+            closing = true;
+            if (verifying > 0) return;
+            if (!resolved) { resolved = true; clearTimeout(timer); resolve({ ...best, reachable: anyHonestAnswer() }); }
         };
-        const timer = setTimeout(done, 8000);
+        const timer = setTimeout(() => { verifying = 0; done(); }, 8000);
         const checkRemaining = () => { if (--remaining <= 0) done(); };
 
         for (const url of relayUrls) {
             try {
                 const ws = new WebSocket(url);
                 const subId = 'm' + randomHex(6);
+                const st = { eose: false, valid: false, invalid: false };
+                sockets.push(st);
                 let closed = false;
                 const closeWs = () => {
                     if (!closed) { closed = true; try { ws.close(); } catch { /* ignored */ } checkRemaining(); }
@@ -187,26 +253,35 @@ export function fetchMuteList(pubkey: string, relayUrls: string[]): Promise<Grou
                     try {
                         const msg = JSON.parse(e.data);
                         if (msg[0] === 'EVENT' && msg[1] === subId) {
-                            const event = msg[2];
-                            if (event.pubkey === pubkey && event.kind === 10000 && event.created_at > best.createdAt) {
-                                answered = true;
-                                best.createdAt = event.created_at;
-                                best.rawContent = typeof event.content === 'string' ? event.content : '';
-                                best.people = [];
-                                best.hashtags = [];
-                                best.words = [];
-                                best.events = [];
-                                for (const tag of (event.tags || [])) {
-                                    if (!Array.isArray(tag) || !tag[1]) continue;
-                                    if (tag[0] === 'p') best.people.push(tag[1]);
-                                    else if (tag[0] === 't') best.hashtags.push(tag[1]);
-                                    else if (tag[0] === 'word') best.words.push(tag[1]);
-                                    else if (tag[0] === 'e') best.events.push(tag[1]);
+                            verifying++;
+                            void (async () => {
+                                try {
+                                    const event = await acceptedEvent(msg[2], pubkey, 10000);
+                                    if (!event) { st.invalid = true; return; }
+                                    st.valid = true;
+                                    if (event.created_at <= best.createdAt) return;
+                                    best.createdAt = event.created_at;
+                                    best.rawContent = typeof event.content === 'string' ? event.content : '';
+                                    best.people = [];
+                                    best.hashtags = [];
+                                    best.words = [];
+                                    best.events = [];
+                                    for (const tag of (event.tags || [])) {
+                                        if (!Array.isArray(tag) || !tag[1]) continue;
+                                        if (tag[0] === 'p') best.people.push(tag[1]);
+                                        else if (tag[0] === 't') best.hashtags.push(tag[1]);
+                                        else if (tag[0] === 'word') best.words.push(tag[1]);
+                                        else if (tag[0] === 'e') best.events.push(tag[1]);
+                                    }
+                                } finally {
+                                    verifying--;
+                                    if (closing) done();
                                 }
-                            }
+                            })();
                         } else if (msg[0] === 'EOSE') {
-                            // An answer, including when it means "I hold no list".
-                            answered = true;
+                            // An answer, including when it means "I hold no list" —
+                            // unless this relay also sent something unverifiable.
+                            st.eose = true;
                             closeWs();
                         }
                     } catch { /* ignored */ }
@@ -275,7 +350,13 @@ export const handlers = new Map<string, HandlerFn>([
             // No account is a definite answer, not a failed read.
             return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0, reachable: true };
         }
-        const relays = await getUserRelays();
-        return await fetchMuteList(myPubkey, relays);
+        // Cached-first so the home card does not wait on a relay; refreshed
+        // behind, and an unreachable read never replaces a real one. The
+        // `reachable: false` shape doubles as the cache's unreachable marker.
+        return await cachedRelayRead(MUTE_LIST_CACHE, myPubkey, async () => {
+            const relays = await getUserRelays();
+            const list = await fetchMuteList(myPubkey, relays);
+            return { ...list, unreachable: !list.reachable };
+        });
     }],
 ]);
