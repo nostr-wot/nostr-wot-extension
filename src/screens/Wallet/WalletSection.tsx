@@ -7,6 +7,7 @@ import Wallet from './Wallet';
 import { useWallet } from '@context/WalletContext';
 
 import Spinner from '@components/Spinner/Spinner';
+import Container from '@components/Container/Container';
 
 /**
  * Wallet section for the settings menu.
@@ -28,9 +29,9 @@ export default function WalletSection() {
 
   if (wallet.configType === null) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <Container variant="row" className="justify-center py-12">
         <Spinner />
-      </div>
+      </Container>
     );
   }
 

@@ -8,6 +8,7 @@ import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useBrowserStorage from '@hooks/useBrowserStorage.ts';
+import Text from '@components/Text/Text';
 
 export default function GlobeButton() {
   const [domain, setDomain] = useState<string | null>(null);
@@ -112,13 +113,13 @@ export default function GlobeButton() {
             <img src={iconUrl} alt={domain!} className="w-16 h-16 rounded-sm object-contain mb-3" />
           )}
           <div className="text-md font-semibold text-heading mb-1 break-all">{domain || '—'}</div>
-          <div className="text-xs text-secondary mb-5">
+          <Text variant="secondary" as="div" className="text-xs mb-5">
             {connected === null
               ? t('common.loading')
               : connected
                 ? t('globe.connected')
                 : t('globe.notConnected')}
-          </div>
+          </Text>
           {connected && domain && (
             <Button
               variant="danger"

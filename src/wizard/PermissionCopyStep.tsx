@@ -4,6 +4,9 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
+import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface EnrichedAccount {
   id: string;
@@ -85,9 +88,9 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
   const options = accounts.map((a) => ({ value: a.id, label: a.displayName }));
 
   return (
-    <div className="flex flex-col flex-1">
-      <div className="text-3xl font-bold text-heading mb-3">{t('wizard.copyPermissions')}</div>
-      <p className="text-md text-secondary leading-normal mb-8">{t('wizard.copyPermissionsDesc')}</p>
+    <Container className="flex-1">
+      <Heading className="mb-3">{t('wizard.copyPermissions')}</Heading>
+      <Text variant="secondary" className="mb-8">{t('wizard.copyPermissionsDesc')}</Text>
 
       {accounts.length > 0 && (
         <div className="mt-2">
@@ -99,7 +102,7 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
         </div>
       )}
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" variant="secondary" onClick={handleFresh} disabled={copying}>
           {t('wizard.startFresh')}
         </Button>
@@ -108,7 +111,7 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
             {copying ? t('common.loading') : t('wizard.copyFrom')}
           </Button>
         )}
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

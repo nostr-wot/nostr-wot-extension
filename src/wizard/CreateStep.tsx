@@ -12,6 +12,8 @@ import EncryptedBackupModal from './EncryptedBackupModal';
 import SeedWord from '@components/SeedWord/SeedWord';
 import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -69,19 +71,19 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1">
+      <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.generatingIdentity')}</Heading>
-        <p className="text-md text-secondary leading-normal mb-8">{t('wizard.creatingKeypair')}</p>
-      </div>
+        <Text variant="secondary" className="mb-8">{t('wizard.creatingKeypair')}</Text>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col flex-1">
+      <Container className="flex-1">
         <Heading className="mb-3">{t('common.error')}</Heading>
         <FormError>{error}</FormError>
-      </div>
+      </Container>
     );
   }
 
@@ -98,11 +100,11 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.recoveryTitle')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.recoveryDesc', { count: words.length })}
-      </p>
+      </Text>
 
       <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(217,119,6,0.06)] rounded-panel text-sm text-warning leading-normal mb-6">
         <IconWarning className="shrink-0 mt-px" />
@@ -140,7 +142,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
+      <Container gap={3}>
         <ActionTile
           icon={<IconDownload />}
           title={t('wizard.downloadPlainText')}
@@ -156,13 +158,13 @@ export default function CreateStep({ onNext }: CreateStepProps) {
           onClick={() => setEncModalOpen(true)}
           disabled={!revealed}
         />
-      </div>
+      </Container>
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" onClick={handleNext} disabled={!backedUp}>
           {t('wizard.iWrittenItDown')}
         </Button>
-      </div>
+      </Container>
 
       {encModalOpen && (
         <EncryptedBackupModal
@@ -173,6 +175,6 @@ export default function CreateStep({ onNext }: CreateStepProps) {
           onSuccess={() => setBackedUp(true)}
         />
       )}
-    </div>
+    </Container>
   );
 }

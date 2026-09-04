@@ -22,6 +22,8 @@ import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@lib/browser.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 
 
@@ -134,7 +136,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   // keep showing while that happens behind it — reverting to "Loading…" on a
   // refresh nobody asked for would be a regression from what this looked like
   // before it shared its data with the home-screen card.
-  if (!status) return <>{how}<p className="text-sm leading-loose text-secondary my-4 mb-6">{t('common.loading')}</p></>;
+  if (!status) return <>{how}<Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('common.loading')}</Text></>;
 
   const imported = status.source === 'imported';
 
@@ -144,7 +146,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     return (
       <>
       {how}
-      <div className="flex flex-col gap-2">
+      <Container gap={2}>
         <div className="flex items-start gap-5 py-6 px-6 rounded-panel mb-6 bg-warning-tint text-warning-strong">
           <IconWarning size={18} />
           <div>
@@ -159,7 +161,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
         {/* Only accounts that hold a local signing key can use an imported key — a
             read-only or remote-signer account would store secrets nothing can use. */}
         {status.canImport && <PqcImportPanel />}
-      </div>
+      </Container>
       </>
     );
   }
@@ -173,7 +175,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
       {/* What this does and does not protect, first. It is the frame for every
           decision below it, and it was sitting at the very bottom where it read
           as a footnote to a screen the user had already acted on. */}
-      <p className="mt-7 text-xs leading-loose text-muted">{t('pqc.limits')}</p>
+      <Text variant="hint" as="p" className="mt-7">{t('pqc.limits')}</Text>
 
       {/* One line each instead of two paragraphs, and one component for both so
           the pair cannot drift apart — the state and its caveat read as one
@@ -211,18 +213,18 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
               Saying "not published yet" would be a guess, and the guess costs a
               needless republish of an attestation that may already be correct. */}
           {existing?.unreachable && (
-            <div className="flex items-center gap-3 my-5 text-sm text-warning">
+            <Container variant="row" gap={3} className="my-5 text-sm text-warning">
               <IconWarning size={16} />
               <span>{t('pqc.checkFailed')}</span>
               <LinkButton tone="brand" className={`text-muted hover:text-brand inline-flex items-center gap-2.5 mt-5`} onClick={refresh}>{t('common.retry')}</LinkButton>
-            </div>
+            </Container>
           )}
           {/* Only while it is still an instruction. Telling someone to publish,
               directly above a line saying they already have, was the panel
               arguing with itself. */}
-          {!existing?.unreachable && <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.publishDesc')}</p>}
+          {!existing?.unreachable && <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.publishDesc')}</Text>}
           {existing?.published && !existing.current && (
-            <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.staleAttestation')}</p>
+            <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.staleAttestation')}</Text>
           )}
           <Button onClick={handlePublish} disabled={publishing}>
             {publishing ? t('pqc.publishing') : t('pqc.publish')}
@@ -232,7 +234,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
       <FormError>{publishError}</FormError>
 
-      <div className="flex flex-wrap gap-4 mt-7">
+      <Container variant="row" gap={4} className="flex-wrap mt-7">
         <Button variant="secondary" onClick={() => setKeysOpen(true)}>{t('pqc.showKeys')}</Button>
         {/* Importing the wrong key file must not be a permanent state. */}
         <Button variant="secondary" onClick={() => setExportOpen(true)}>{t('pqc.exportKeys')}</Button>
@@ -241,7 +243,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
             {t('pqc.importRemove')}
           </Button>
         )}
-      </div>
+      </Container>
 
       {keysOpen && status.keys && (
         <Modal
@@ -259,7 +261,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
           {status.attestation && (
             <>
-              <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.attestationLabel')}</p>
+              <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.attestationLabel')}</Text>
               <pre className="mt-3 p-4 rounded-sm bg-card border border-card-border font-mono text-2xs leading-normal text-body whitespace-pre-wrap break-all max-h-110 overflow-y-auto">{JSON.stringify(status.attestation, null, 2)}</pre>
               {/* For anyone who would rather publish it themselves. */}
               <LinkButton tone="brand" className={`text-muted hover:text-brand inline-flex items-center gap-2.5 mt-5`} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>

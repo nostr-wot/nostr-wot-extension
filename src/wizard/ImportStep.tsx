@@ -7,6 +7,8 @@ import Button from '@components/Button/Button';
 import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 type ImportType = 'ncryptsec' | 'nsec' | 'mnemonic' | null;
 
@@ -105,11 +107,11 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
   };
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.importTitle')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.importDesc')}
-      </p>
+      </Text>
 
       <div className="mb-6">
         <SectionLabel>{t('wizard.importLabel')}</SectionLabel>
@@ -156,21 +158,21 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
 
       {pubkey && (
         <div className="py-5 px-7 bg-card border border-card-border rounded-panel mt-4">
-          <div className="flex items-center gap-4 py-2">
+          <Container variant="row" gap={4} className="py-2">
             <label className="text-xs font-semibold text-muted min-w-[50px]">{t('wizard.pubkey')}</label>
             <span className="text-xs font-mono text-heading overflow-hidden text-ellipsis whitespace-nowrap">{pubkey.slice(0, 16)}...{pubkey.slice(-8)}</span>
-          </div>
+          </Container>
         </div>
       )}
 
       {upgradeNotice && <div className="py-4 px-6 bg-[rgba(37,99,235,0.06)] rounded-md text-xs text-info mt-4">{upgradeNotice}</div>}
       <FormError>{error}</FormError>
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" onClick={handleContinue} disabled={!input.trim() || loading}>
           {loading ? t('wizard.importing') : importType === 'ncryptsec' ? t('wizard.decryptContinue') : t('common.continue')}
         </Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

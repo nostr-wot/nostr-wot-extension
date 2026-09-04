@@ -2,6 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconChevronLeft, IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
+import Container from '@components/Container/Container';
 import LangStep from './LangStep';
 import MethodStep from './MethodStep';
 import ImportStep from './ImportStep';
@@ -127,7 +128,7 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
   return (
     <>
       {!active.noHeader && (
-        <div className="flex items-center justify-between px-8 py-6 border-b border-card-border">
+        <Container variant="row" className="justify-between px-8 py-6 border-b border-card-border">
           {showBack ? (
             // Same tone/size split as OverlayPanel's header nav (back is
             // brand-coloured, close is neutral) — this header hand-rolled its
@@ -146,15 +147,15 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
           ) : (
             <div className="w-[36px]" />
           )}
-        </div>
+        </Container>
       )}
       {/* bodyClassName REPLACES the default padding rather than joining it —
           onboarding needs different padding, and two padding utilities on the
           same element would leave the winner up to Tailwind's generation
           order instead of the caller's intent. */}
-      <div className={`flex-1 overflow-y-auto flex flex-col ${bodyClassName || 'pt-10 px-8 pb-0'}`}>
+      <Container className={`flex-1 overflow-y-auto ${bodyClassName || 'pt-10 px-8 pb-0'}`}>
         {active.content}
-      </div>
+      </Container>
     </>
   );
 }

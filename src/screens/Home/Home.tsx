@@ -24,6 +24,8 @@ import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { IconGlobe, IconZap, IconChevronRight } from '@assets';
 import type { PendingRequest } from '@lib/types.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface HomeProps {
   menuOpen?: boolean;
@@ -119,7 +121,7 @@ export default function Home({ menuOpen }: HomeProps) {
 
   if (siteState === 'empty') {
     return (
-      <div className="flex-1 flex flex-col justify-center">
+      <Container className="flex-1 justify-center">
         <Card className="mb-0">
           <EmptyState
             icon={
@@ -129,13 +131,13 @@ export default function Home({ menuOpen }: HomeProps) {
             hint={t('home.siteControlsHint')}
           />
         </Card>
-      </div>
+      </Container>
     );
   }
 
   if (siteState === null) {
     return (
-      <div className="flex-1 flex flex-col justify-center">
+      <Container className="flex-1 justify-center">
         <Card className="mb-0">
           <EmptyState
             icon={
@@ -144,13 +146,13 @@ export default function Home({ menuOpen }: HomeProps) {
             text={t('common.loading')}
           />
         </Card>
-      </div>
+      </Container>
     );
   }
 
   if (siteState === 'notConnected') {
     return (
-      <div className="flex-1 flex flex-col justify-center">
+      <Container className="flex-1 justify-center">
         <Card className="mb-0">
           <EmptyState
             icon={
@@ -162,14 +164,14 @@ export default function Home({ menuOpen }: HomeProps) {
             {connectFailed && (
               <div className="py-3 px-6 text-sm text-error text-center" role="alert">{t('home.actionFailed')}</div>
             )}
-            <div className="flex gap-4 justify-center">
+            <Container variant="row" gap={4} className="justify-center">
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
               <Button small variant="secondary" onClick={() => handleDismiss(false)}>{t('home.notNow')}</Button>
               <Button small variant="secondary" onClick={() => handleDismiss(true)}>{t('home.never')}</Button>
-            </div>
+            </Container>
           </EmptyState>
         </Card>
-      </div>
+      </Container>
     );
   }
 
@@ -177,39 +179,39 @@ export default function Home({ menuOpen }: HomeProps) {
     <>
       {pendingCount > 0 && (
         <Card className="flex items-center py-5 px-7 bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)] cursor-default">
-          <div className="flex items-center gap-4">
+          <Container variant="row" gap={4}>
             <span className="bg-warning-bright text-on-brand text-xs font-semibold min-w-10 h-10 rounded-panel flex items-center justify-center px-3">{pendingCount}</span>
-            <span className="text-md text-body">{t('unlock.pendingCount', { count: pendingCount })}</span>
-          </div>
+            <Text as="span">{t('unlock.pendingCount', { count: pendingCount })}</Text>
+          </Container>
         </Card>
       )}
       {/* Wallet — on top: balance card when a wallet exists, else the setup prompt */}
       {walletState && typeof walletState === 'object' && (
         <Card className="flex items-center justify-between gap-5 py-6 px-7 cursor-pointer transition-colors hover:bg-brand-tint-hover" onClick={navigate.openWallet}>
-          <div className="flex items-center gap-5 min-w-0">
+          <Container variant="row" gap={5} className="min-w-0">
             <IconZap size={14} className="text-brand shrink-0" />
-            <div className="flex flex-col gap-px">
+            <Container gap="px">
               <strong className="text-xl font-bold text-heading">{formatSats(walletState.balance)}</strong>
-              <span className="text-xs text-muted uppercase tracking-[0.3px] font-semibold">{t('wallet.balance')}</span>
-            </div>
-          </div>
+              <Text variant="muted" as="span" className="uppercase tracking-[0.3px] font-semibold">{t('wallet.balance')}</Text>
+            </Container>
+          </Container>
           <IconChevronRight size={16} />
         </Card>
       )}
 
       {showWalletBanner && (
         <Card className="flex items-center justify-between gap-5 py-6 px-7">
-          <div className="flex items-start gap-5 flex-1 min-w-0">
+          <Container variant="row" gap={5} className="items-start flex-1 min-w-0">
             <IconZap size={14} className="text-brand shrink-0 mt-1" />
-            <div className="flex flex-col gap-1">
+            <Container gap={1}>
               <strong className="text-md font-semibold text-heading">{t('wallet.setupBanner')}</strong>
-              <span className="text-xs text-secondary leading-normal">{t('wallet.setupBannerHint')}</span>
-            </div>
-          </div>
-          <div className="flex flex-col items-center gap-2 shrink-0">
+              <Text variant="secondary" as="span" className="text-xs">{t('wallet.setupBannerHint')}</Text>
+            </Container>
+          </Container>
+          <Container gap={2} className="items-center shrink-0">
             <Button small onClick={navigate.openWallet}>{t('home.setupProfileButton')}</Button>
             <LinkButton onClick={handleDismissWallet}>{t('home.skip')}</LinkButton>
-          </div>
+          </Container>
         </Card>
       )}
 

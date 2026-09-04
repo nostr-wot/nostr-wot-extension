@@ -19,6 +19,8 @@ import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import { IconCamera, IconChevronDown } from '@assets';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 const STEPS = { FORM: 0, UPLOADING: 1, PREVIEW: 2, PUBLISHING: 3, DONE: 4 } as const;
 type StepValue = typeof STEPS[keyof typeof STEPS];
@@ -150,8 +152,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   };
 
   const renderForm = () => (
-    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
-      <div className="flex flex-col items-center gap-3 mb-2">
+    <Container gap={7} className="flex-1 overflow-y-auto">
+      <Container gap={3} className="items-center mb-2">
         <button
           type="button"
           className="relative w-40 h-40 p-0 font-[inherit] rounded-full cursor-pointer overflow-hidden bg-brand-light flex items-center justify-center border-2 border-card-border transition-colors duration-slow hover:border-brand"
@@ -166,9 +168,9 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
             <IconCamera size={14} />
           </div>
         </button>
-        <span className="text-xs text-muted">
+        <Text variant="muted" as="span">
           {displayPicture ? t('profileEdit.changeImage') : t('profileEdit.uploadImage')}
-        </span>
+        </Text>
         <input
           ref={fileRef}
           type="file"
@@ -176,9 +178,9 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
           className="hidden"
           onChange={handleFilePick}
         />
-      </div>
+      </Container>
 
-      <div className="flex flex-col gap-6">
+      <Container gap={6}>
         <Input
           label={t('profileEdit.displayName')}
           placeholder={t('profileEdit.namePlaceholder')}
@@ -201,7 +203,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
         </LinkButton>
 
         {advancedOpen && (
-          <div className="flex flex-col gap-6">
+          <Container gap={6}>
             <Input
               label={t('profileEdit.nip05')}
               placeholder={t('profileEdit.nip05Placeholder')}
@@ -226,26 +228,26 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
               value={banner}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setBanner(e.target.value)}
             />
-          </div>
+          </Container>
         )}
-      </div>
+      </Container>
 
       <FormError>{error}</FormError>
 
-      <div className="flex gap-4 mt-2">
+      <Container variant="row" gap={4} className="mt-2">
         <Button className="flex-1" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
         <Button className="flex-1" onClick={handlePublish} disabled={!hasChanges}>{t('profileEdit.publish')}</Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 
   const renderUploading = () => (
-    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
-      <div className="flex flex-col items-center justify-center gap-5 py-12">
+    <Container gap={7} className="flex-1 overflow-y-auto">
+      <Container gap={5} className="items-center justify-center py-12">
         <Spinner size={28} />
-        <span className="text-md text-body font-semibold">{t('profileEdit.uploading')}</span>
-      </div>
-    </div>
+        <Text as="span" className="font-semibold">{t('profileEdit.uploading')}</Text>
+      </Container>
+    </Container>
   );
 
   const renderPreview = () => (
@@ -260,20 +262,20 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   );
 
   const renderPublishing = () => (
-    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
-      <div className="flex flex-col items-center justify-center gap-5 py-12">
+    <Container gap={7} className="flex-1 overflow-y-auto">
+      <Container gap={5} className="items-center justify-center py-12">
         <Spinner size={28} />
-        <span className="text-md text-body font-semibold">{t('common.publishing')}</span>
-      </div>
-    </div>
+        <Text as="span" className="font-semibold">{t('common.publishing')}</Text>
+      </Container>
+    </Container>
   );
 
   const renderDone = () => (
-    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
-      <div className="flex flex-col items-center justify-center gap-5 py-12">
+    <Container gap={7} className="flex-1 overflow-y-auto">
+      <Container gap={5} className="items-center justify-center py-12">
         <span className="text-lg font-bold text-success">{t('profileEdit.published')}</span>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 
   const stepContent: Record<StepValue, () => React.ReactNode> = {

@@ -24,6 +24,8 @@ import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import Chip from '@components/Chip/Chip';
 import ListRow from '@components/ListRow/ListRow';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 
 /**
@@ -154,22 +156,22 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const accountOptions = (accounts || []).map((a: any) => ({ value: a.id, label: getAccountLabel(a) }));
 
   const accountScopeBlock = hasMultipleAccounts && (
-    <div className="flex flex-col gap-3 pb-5 mb-3 border-b border-card-border">
+    <Container gap={3} className="pb-5 mb-3 border-b border-card-border">
       <Card className="p-0 overflow-hidden mb-0">
-        <div className="flex items-center justify-between py-5.5 px-7">
-          <div className="flex items-center gap-4">
+        <Container variant="row" className="justify-between py-5.5 px-7">
+          <Container variant="row" gap={4}>
             <IconUsers size={15} className="text-brand shrink-0" />
             <div>
               <span className="text-md font-medium text-body">{t('perms.allAccounts')}</span>
-              <div className="text-xs text-muted mt-px leading-normal">
+              <Text variant="muted" as="div" className="mt-px">
                 {allAccountsMode ? t('perms.allAccountsOnHint') : t('perms.allAccountsOffHint')}
-              </div>
+              </Text>
             </div>
-          </div>
+          </Container>
           <Toggle checked={allAccountsMode} onChange={(val: boolean) => {
             permissions.setUseGlobalDefaults(val);
           }} />
-        </div>
+        </Container>
       </Card>
 
       {!allAccountsMode && (
@@ -185,19 +187,19 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
       )}
 
       {!allAccountsMode && isSelectedReadOnly && (
-        <div className="flex flex-col gap-1 py-5 px-6 rounded-md bg-card border border-card-active mb-4">
+        <Container variant="box" gap={1} className="rounded-md border-card-active mb-4">
           <span className="text-sm font-semibold text-brand">{t('perms.readOnlyTitle')}</span>
           <span className="text-xs text-muted leading-normal">{t('perms.readOnlyHint')}</span>
-        </div>
+        </Container>
       )}
 
       {!allAccountsMode && isSelectedNip46 && (
-        <div className="flex flex-col gap-1 py-5 px-6 rounded-md bg-card border border-card-active mb-4">
+        <Container variant="box" gap={1} className="rounded-md border-card-active mb-4">
           <span className="text-sm font-semibold text-brand">{t('perms.managedBySigner')}</span>
           <span className="text-xs text-muted leading-normal">{t('perms.managedBySignerHint')}</span>
-        </div>
+        </Container>
       )}
-    </div>
+    </Container>
   );
 
   // ── Add Rule modal state ──
@@ -220,7 +222,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     const allKeys = filterKeysForAccount(Object.keys(domainPerms));
 
     return (
-      <div className="flex-1 min-h-0 py-2 flex flex-col gap-4">
+      <Container gap={4} className="flex-1 min-h-0 py-2">
         {allKeys.length === 0 ? (
           <EmptyState
             icon={<IconShield size={24} />}
@@ -231,7 +233,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
             {allKeys.map((key) => {
               const current = domainPerms[key] || 'ask';
               return (
-                <div key={key} className="flex items-center justify-between py-5 border-b border-card last:border-b-0">
+                <Container key={key} variant="row" className="justify-between py-5 border-b border-card last:border-b-0">
                   <span className="text-md font-medium text-body">
                     {formatPermissionLabel(key)}
                   </span>
@@ -266,18 +268,18 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                       </div>
                     )}
                   </div>
-                </div>
+                </Container>
               );
             })}
           </Card>
         )}
 
-        <div className="flex justify-between mt-4">
+        <Container variant="row" className="justify-between mt-4">
           <Button small onClick={() => setAddRuleOpen(true)}>
             <IconPlus size={12} /> {t('perms.addRule')}
           </Button>
           <Button variant="danger" small onClick={handleRevoke}>{t('perms.revokeAll')}</Button>
-        </div>
+        </Container>
 
         {/* Add Rule modal */}
         {addRuleOpen && (
@@ -287,13 +289,13 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
             onClose={() => setAddRuleOpen(false)}
           />
         )}
-      </div>
+      </Container>
     );
   }
 
   // List view
   return (
-    <div className="flex-1 min-h-0 py-2 flex flex-col gap-4">
+    <Container gap={4} className="flex-1 min-h-0 py-2">
       {accountScopeBlock}
 
       <div className="relative mb-2">
@@ -314,7 +316,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           hint={t('perms.permsHint')}
         />
       ) : (
-        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
+        <Container className="flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {domains.map((domain: string) => {
             const bucketPerms = permissions.getForBucket(domain, effectiveAccountId);
             return (
@@ -327,11 +329,11 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
               />
             );
           })}
-        </div>
+        </Container>
       )}
 
       <DeclinedSites />
-    </div>
+    </Container>
   );
 });
 

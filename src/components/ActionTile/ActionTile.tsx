@@ -1,4 +1,6 @@
 import React from 'react';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 // font-[inherit]: preflight is off, so the <button> otherwise keeps the UA's
 // own font and its label would not match the rest of the tile.
@@ -25,10 +27,10 @@ export default function ActionTile({ icon, title, description, onClick, disabled
   return (
     <button type="button" className={TILE} onClick={onClick} disabled={disabled}>
       {icon}
-      <div className="flex flex-col">
+      <Container>
         <strong className="text-md font-semibold text-heading">{title}</strong>
-        <span className="text-xs text-muted">{description}</span>
-      </div>
+        <Text variant="muted" as="span">{description}</Text>
+      </Container>
     </button>
   );
 }

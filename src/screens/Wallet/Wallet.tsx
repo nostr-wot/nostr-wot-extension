@@ -17,6 +17,8 @@ import { useWallet } from '@context/WalletContext';
 
 import IconButton from '@components/IconButton/IconButton';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface WalletProps {
   providerType: string;
@@ -90,7 +92,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   };
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto py-2 flex flex-col gap-4">
+    <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
       {/* Balance */}
       <Card className="py-8 px-6 relative flex flex-col items-center gap-2">
         <IconButton className="p-2 rounded-sm hover:text-brand absolute top-4 right-4" onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
@@ -98,31 +100,31 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         </IconButton>
         <span className="text-xs font-semibold text-muted uppercase tracking-[0.5px]">{t('wallet.balance')}</span>
         {balanceLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <Container variant="row" className="justify-center py-12">
             <Spinner />
-          </div>
+          </Container>
         ) : balanceError ? (
-          <div className="flex flex-col items-center gap-4 py-2">
+          <Container gap={4} className="items-center py-2">
             <FormError>{balanceError}</FormError>
             <Button small variant="secondary" onClick={refreshBalance}>
               {t('common.retry')}
             </Button>
-          </div>
+          </Container>
         ) : (
           <div>
             <span className="text-[24px] font-bold text-heading">
               {Math.round(balance ?? 0).toLocaleString()}
             </span>
-            <span className="text-sm font-medium text-secondary ml-2">sats</span>
+            <Text variant="secondary" as="span" className="text-sm font-medium ml-2">sats</Text>
           </div>
         )}
       </Card>
 
       {/* Action buttons */}
-      <div className="flex gap-4">
+      <Container variant="row" gap={4}>
         <Button className="flex-1" onClick={() => setShowDeposit(true)}>{t('wallet.deposit')}</Button>
         <Button className="flex-1" variant="secondary" onClick={() => setShowSend(true)}>{t('wallet.send')}</Button>
-      </div>
+      </Container>
 
       {showDeposit && (
         <DepositDialog
@@ -169,6 +171,6 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
           onDisconnected={onDisconnected}
         />
       )}
-    </div>
+    </Container>
   );
 }

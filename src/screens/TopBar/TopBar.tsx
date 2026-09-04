@@ -5,6 +5,7 @@ import AccountBar from './AccountBar';
 import AccountDropdown from './AccountDropdown';
 import GlobeButton from './GlobeButton';
 import IconButton from '@components/IconButton/IconButton';
+import Container from '@components/Container/Container';
 
 interface TopBarProps {
   onMenuOpen: () => void;
@@ -16,7 +17,7 @@ export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile }: TopB
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
 
   return (
-    <div className="relative z-topbar flex items-center gap-4 mb-6 shrink-0">
+    <Container variant="row" gap={4} className="relative z-topbar mb-6 shrink-0">
       <div className="relative flex-1 min-w-0">
         <AccountBar
           dropdownOpen={dropdownOpen}
@@ -30,6 +31,6 @@ export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile }: TopB
       <IconButton tone="brand" onClick={onMenuOpen} title={t('topbar.settings')} aria-label={t('topbar.settings')}>
         <IconSettings />
       </IconButton>
-    </div>
+    </Container>
   );
 }

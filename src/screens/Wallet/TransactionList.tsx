@@ -9,6 +9,8 @@ import { formatTxDate } from '@utils/format/time.ts';
 import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@domain/wallet/txFilter.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -40,7 +42,7 @@ export default function TransactionList({
 
   return (
     <Card>
-      <div className="flex items-center gap-3 mb-4">
+      <Container variant="row" gap={3} className="mb-4">
         <div className="flex-1 min-w-0">
           <Input
             type="text"
@@ -70,25 +72,25 @@ export default function TransactionList({
             </span>
           )}
         </button>
-      </div>
+      </Container>
 
       {loading && visible.length === 0 ? (
-        <div className="flex items-center justify-center py-12">
+        <Container variant="row" className="justify-center py-12">
           <Spinner />
-        </div>
+        </Container>
       ) : !loading && visible.length === 0 ? (
-        <div className="py-6 text-center text-xs text-muted">{t('wallet.noTransactions')}</div>
+        <Text variant="muted" as="div" className="text-center py-6">{t('wallet.noTransactions')}</Text>
       ) : (
-        <div className="flex flex-col gap-px">
+        <Container gap="px">
           {visible.map((tx) => (
-            <div key={tx.paymentHash} className="flex items-center gap-4 py-4 border-b border-card-border">
+            <Container key={tx.paymentHash} variant="row" gap={4} className="py-4 border-b border-card-border">
               <span className="text-lg shrink-0">{tx.amount >= 0 ? '↓' : '↑'}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm text-body overflow-hidden text-ellipsis whitespace-nowrap">
+                <Text variant="body" as="div" className="text-sm overflow-hidden text-ellipsis whitespace-nowrap">
                   {isPlaceholderMemo(tx.memo)
                     ? (tx.amount >= 0 ? t('wallet.txReceived') : t('wallet.txSent'))
                     : tx.memo}
-                </div>
+                </Text>
                 <LinkButton className="text-xs text-secondary hover:text-brand" onClick={onOpenFilters}>
                   {formatTxDate(tx.createdAt)}
                 </LinkButton>
@@ -96,9 +98,9 @@ export default function TransactionList({
               <span className={`text-md font-semibold text-right whitespace-nowrap ${tx.amount >= 0 ? 'text-success' : 'text-secondary'}`}>
                 {tx.amount >= 0 ? '+' : ''}{Math.round(tx.amount).toLocaleString()}
               </span>
-            </div>
+            </Container>
           ))}
-        </div>
+        </Container>
       )}
 
       {/* Paging fetches by filter, not by search, so offering "show more" while

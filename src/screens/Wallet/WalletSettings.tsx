@@ -9,6 +9,8 @@ import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import useCopy from '@hooks/useCopy.ts';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 const PROVIDER_LABELS: Record<string, string> = {
   nwc: 'Nostr Wallet Connect',
@@ -189,30 +191,30 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
     <>
       <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500}>
         <Card className="py-5 px-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col gap-1">
+          <Container variant="row" gap={4} className="justify-between">
+            <Container gap={1}>
               <span className="text-md font-semibold text-heading">{providerLabel}</span>
               <span className="text-xs text-success font-medium">{t('wallet.connected')}</span>
-            </div>
+            </Container>
             <Button small variant="danger" onClick={handleDisconnect} disabled={disconnecting}>
               {disconnecting ? t('common.loading') : t('common.disconnect')}
             </Button>
-          </div>
+          </Container>
           {nwcUri && (
-            <div className="flex items-center justify-between gap-4">
+            <Container variant="row" gap={4} className="justify-between">
               <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" title={nwcUri}>{t('wallet.nwcUri')}</span>
               <Button small variant="secondary" onClick={() => nwcUri && nwcCopy.copy(nwcUri)}>
                 {nwcCopy.copied ? t('wallet.nwcCopied') : t('wallet.copyNwc')}
               </Button>
-            </div>
+            </Container>
           )}
         </Card>
 
         <Card>
           <SectionLabel>{t('wallet.autoApprove')}</SectionLabel>
           <SectionHint>{t('wallet.autoApproveHint')}</SectionHint>
-          <div className="flex items-center justify-between gap-4 py-5">
-            <span className="text-sm text-body flex-1">{t('wallet.maxSats')}</span>
+          <Container variant="row" gap={4} className="justify-between py-5">
+            <Text variant="body" as="span" className="text-sm flex-1">{t('wallet.maxSats')}</Text>
             <Input
               type="number"
               value={thresholdDraft}
@@ -221,7 +223,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
               small
               className="w-[80px]"
             />
-          </div>
+          </Container>
         </Card>
 
         {providerType === 'lnbits' && (
@@ -229,9 +231,9 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
             <SectionLabel>{t('wallet.lightningAddress')}</SectionLabel>
             <SectionHint>{t('wallet.lightningAddressHint')}</SectionHint>
             {lnAddress ? (
-              <div className="flex flex-col gap-4 py-4">
+              <Container gap={4} className="py-4">
                 <span className="text-lg font-semibold text-heading break-all">{lnAddress}</span>
-                <div className="flex gap-3">
+                <Container variant="row" gap={3}>
                   <Button small variant="secondary" onClick={() => lnAddress && addressCopy.copy(lnAddress)}>
                     {addressCopy.copied ? t('common.copied') : t('common.copy')}
                   </Button>
@@ -241,10 +243,10 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                   <Button small variant="danger" onClick={() => setConfirmRelease(true)} disabled={releaseLoading}>
                     {t('wallet.releaseAddress')}
                   </Button>
-                </div>
-              </div>
+                </Container>
+              </Container>
             ) : (
-              <div className="flex items-center gap-2 py-4 flex-wrap">
+              <Container variant="row" gap={2} className="py-4 flex-wrap">
                 <Input
                   type="text"
                   placeholder={t('wallet.usernamePlaceholder')}
@@ -256,7 +258,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                 <Button small onClick={handleClaimUsername} disabled={claimLoading || !usernameDraft.trim()}>
                   {claimLoading ? t('common.loading') : t('wallet.claimUsername')}
                 </Button>
-              </div>
+              </Container>
             )}
             <FormError>{claimError}</FormError>
           </Card>

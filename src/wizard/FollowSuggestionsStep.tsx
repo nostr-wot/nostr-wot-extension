@@ -7,6 +7,8 @@ import Avatar from '@components/Avatar/Avatar';
 import { truncateNpub, getInitial as getInitialChar } from '@utils/format/text.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 /* ------------------------------------------------------------------ */
 /*  Curated account list — npubs only                                  */
@@ -147,11 +149,11 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
   const getInitial = (hex: string) => getInitialChar(getName(hex));
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.followTitle')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">{t('wizard.followDesc')}</p>
+      <Text variant="secondary" className="mb-8">{t('wizard.followDesc')}</Text>
 
-      <div className="flex flex-col gap-3 max-h-[340px] overflow-y-auto pr-1">
+      <Container gap={3} className="max-h-[340px] overflow-y-auto pr-1">
         {hexKeys.map(({ npub, hex }) => {
           const isSelected = selected.has(hex);
           const avatar = getAvatar(hex);
@@ -174,10 +176,10 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
                 imgClassName="w-9 h-9 rounded-full object-cover shrink-0"
                 fallbackClassName="w-9 h-9 rounded-full bg-brand-light text-brand flex items-center justify-center text-lg font-bold shrink-0"
               />
-              <div className="flex flex-col gap-1 overflow-hidden flex-1 min-w-0">
+              <Container gap={1} className="overflow-hidden flex-1 min-w-0">
                 <span className="text-md font-semibold text-heading overflow-hidden text-ellipsis whitespace-nowrap">{getName(hex)}</span>
                 <span className="text-xs text-muted overflow-hidden text-ellipsis whitespace-nowrap">{getSubtitle(hex)}</span>
-              </div>
+              </Container>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all text-on-brand ${isSelected ? 'border-brand bg-brand' : 'border-card-border'}`}>
                 {isSelected && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -188,13 +190,13 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
             </button>
           );
         })}
-      </div>
+      </Container>
 
-      <div className="text-sm text-secondary text-center mt-3">
+      <Text as="div" variant="secondary" className="text-sm text-center mt-3">
         {t('wizard.followSelected', { count: selected.size })}
-      </div>
+      </Text>
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         {/* Skip is NEVER disabled: a still-loading (or hung) relay query must
             not trap the user on this step. */}
         <Button className="flex-1" variant="secondary" onClick={onNext}>{t('wizard.skipForNow')}</Button>
@@ -205,7 +207,7 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
         >
           {publishing ? t('wizard.followPublishing') : t('wizard.followSuggestions')}
         </Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

@@ -7,6 +7,8 @@ import { usePqc } from '@context/PqcContext';
 import styles from './PqcSection.module.css';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 const KEYGEN_SOURCE_URL =
   'https://github.com/nostr-wot/nostr-wot-extension/blob/main/scripts/pqc-keygen.mjs';
@@ -47,9 +49,9 @@ export default function PqcImportPanel() {
   };
 
   return (
-    <div className="flex flex-col gap-4 mt-6 pt-6 border-t border-card-border">
+    <Container gap={4} className="mt-6 pt-6 border-t border-card-border">
       <strong className="text-md text-heading">{t('pqc.importTitle')}</strong>
-      <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.importDesc')}</p>
+      <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.importDesc')}</Text>
 
       <SectionLabel className="mb-6 mt-4 font-normal leading-loose" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</SectionLabel>
       <textarea
@@ -62,7 +64,7 @@ export default function PqcImportPanel() {
         disabled={busy}
       />
 
-      <div className="flex items-center gap-5 flex-wrap">
+      <Container variant="row" gap={5} className="flex-wrap">
         <Button onClick={() => submit(text)} disabled={busy || !text.trim()}>
           {busy ? t('pqc.importing') : t('pqc.importSubmit')}
         </Button>
@@ -70,7 +72,7 @@ export default function PqcImportPanel() {
           {t('pqc.importChooseFile')}
           <input type="file" accept="application/json,.json,.txt,text/plain" onChange={onFile} disabled={busy} hidden />
         </label>
-      </div>
+      </Container>
 
       <FormError>{error}</FormError>
 
@@ -92,7 +94,7 @@ export default function PqcImportPanel() {
           {t('pqc.importViewSource')}
         </a>
       </details>
-    </div>
+    </Container>
   );
 }
 

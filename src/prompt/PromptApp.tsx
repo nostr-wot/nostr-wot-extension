@@ -10,6 +10,7 @@ import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './DecisionRow';
 import UnlockSection from './UnlockSection';
 import type { PromptDecision } from '@domain/permissions/prompt.ts';
+import Container from '@components/Container/Container';
 
 interface PendingPrompt {
   pubkey?: string;
@@ -65,16 +66,26 @@ export default function PromptApp() {
     setVaultLocked(false);
   };
 
-  const container = 'min-h-screen flex flex-col p-8 gap-6 font-sans';
-
-  if (loading) return <div className={container}><div className="text-center py-10 text-muted">{t('common.loading')}</div></div>;
-  if (error) return <div className={container}><div className="text-center py-10 text-error">{error}</div></div>;
+  if (loading) {
+    return (
+      <Container gap={6} className="min-h-screen p-8 font-sans">
+        <div className="text-center py-10 text-muted">{t('common.loading')}</div>
+      </Container>
+    );
+  }
+  if (error) {
+    return (
+      <Container gap={6} className="min-h-screen p-8 font-sans">
+        <div className="text-center py-10 text-error">{error}</div>
+      </Container>
+    );
+  }
   if (!prompt) return null;
 
   const needsPermission = prompt.needsPermission !== false;
 
   return (
-    <div className={container}>
+    <Container gap={6} className="min-h-screen p-8 font-sans">
       <div className="text-center">
         <div className="inline-flex items-center gap-4 py-3 px-7 bg-card border border-brand-light rounded-md">
           <span className="text-sm font-mono text-muted">
@@ -124,7 +135,7 @@ export default function PromptApp() {
           onDecision={handleDecision}
         />
       ) : (
-        <div className="flex gap-3 items-center flex-wrap">
+        <Container variant="row" gap={3} className="flex-wrap">
           <Button
             variant="secondary"
             disabled={buttonsDisabled}
@@ -138,8 +149,8 @@ export default function PromptApp() {
           >
             {vaultLocked ? t('prompt.unlockFirst') : t('common.continue')}
           </Button>
-        </div>
+        </Container>
       )}
-    </div>
+    </Container>
   );
 }

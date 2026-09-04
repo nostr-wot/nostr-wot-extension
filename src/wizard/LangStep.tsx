@@ -8,6 +8,7 @@ import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
 import type { Language } from '@domain/i18n/language.ts';
+import Container from '@components/Container/Container';
 
 const ITEM_H = 36;
 const PAUSE = 2.5;
@@ -61,12 +62,12 @@ export default function LangStep({ onSelect }: LangStepProps) {
     const lang = languages[0];
     return (
       <TopoBg className="flex flex-col flex-1 text-center">
-        <div className="flex-1 flex flex-col items-center justify-center gap-5">
+        <Container gap={5} className="flex-1 items-center justify-center">
           <AnimatedWotLogo size={112} />
           <span className="text-[26px] font-heavy text-heading tracking-[-0.3px]">Nostr WoT</span>
-        </div>
+        </Container>
         <div className="h-px bg-card-border mx-12" />
-        <div className="pt-10 px-8 pb-4 flex flex-col items-center gap-6">
+        <Container gap={6} className="pt-10 px-8 pb-4 items-center">
           <Card variant="flat" className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-[rgba(255,255,255,0.5)] cursor-pointer transition-colors hover:border-brand">
             <span className="flex-1 text-lg font-semibold text-heading">{lang.flag} {lang.native}</span>
           </Card>
@@ -76,7 +77,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
           >
             {t('common.continue')}
           </Button>
-        </div>
+        </Container>
       </TopoBg>
     );
   }
@@ -84,12 +85,12 @@ export default function LangStep({ onSelect }: LangStepProps) {
   return (
     <TopoBg className="flex flex-col flex-1 text-center">
       {anim && <style>{anim.css}</style>}
-      <div className="flex-1 flex flex-col items-center justify-center gap-5">
+      <Container gap={5} className="flex-1 items-center justify-center">
         <AnimatedWotLogo size={112} />
         <span className="text-[26px] font-heavy text-heading tracking-[-0.3px]">Nostr WoT</span>
-      </div>
+      </Container>
       <div className="h-px bg-card-border mx-12" />
-      <div className="pt-10 px-8 pb-4 flex flex-col items-center gap-6">
+      <Container gap={6} className="pt-10 px-8 pb-4 items-center">
         {/* Dropdown trigger -- cycles prompt translations or shows selection.
             Card gives it native button semantics (keyboard activation, focus)
             for free, dropping the hand-rolled role/tabIndex/onKeyDown trio. */}
@@ -128,7 +129,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
         <Button className="w-full max-w-[260px]" onClick={handleConfirm}>
           {t('common.continue')}
         </Button>
-      </div>
+      </Container>
 
       {/* Full-screen language modal with scroll wheel picker */}
       {modalOpen && (

@@ -8,6 +8,8 @@ import Button from '@components/Button/Button';
 import useWizardFlow from '@hooks/useWizardFlow.ts';
 import WizardSteps from '@wizard/WizardSteps';
 import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 export default function OnboardingApp() {
   const flow = useWizardFlow({ initialStep: 'welcome' });
@@ -19,14 +21,14 @@ export default function OnboardingApp() {
       <div className="min-h-screen bg-surface">
         <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
           <TopoBg />
-          <div className="relative z-[1] flex flex-col items-center text-center gap-6 max-w-[400px] p-12">
+          <Container gap={6} className="relative z-[1] items-center text-center max-w-[400px] p-12">
             <PulseLogo />
             <Heading level={1} className="m-0">{t('onboarding.title')}</Heading>
-            <p className="text-xl text-secondary leading-loose m-0">{t('onboarding.subtitle')}</p>
+            <Text variant="secondary" className="text-xl leading-loose m-0">{t('onboarding.subtitle')}</Text>
             <Button className="mt-8 py-7 px-20 rounded-lg text-2xl" onClick={() => flow.send('NEXT')}>
               {t('wizard.getStarted')}
             </Button>
-          </div>
+          </Container>
         </div>
       </div>
     );

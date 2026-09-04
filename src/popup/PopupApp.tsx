@@ -21,6 +21,7 @@ import WizardOverlay from '@wizard/WizardOverlay';
 import EditProfileOverlay from '@screens/EditProfile/EditProfileOverlay';
 import PermissionsSection from '@screens/Settings/PermissionsSection';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
+import Container from '@components/Container/Container';
 import UnlockModal from '@screens/Vault/UnlockModal';
 import { t } from '@lib/i18n.js';
 import type { PendingRequest } from '@domain/permissions/approval.ts';
@@ -125,11 +126,11 @@ function PopupInner() {
           onEditProfile={() => setActiveOverlay('editProfile')}
         />
 
-        <div className="[&>*]:shrink-0 flex-1 overflow-y-auto min-h-0 flex flex-col gap-2">
+        <Container gap={2} className="[&>*]:shrink-0 flex-1 overflow-y-auto min-h-0">
           <NavigationProvider value={navigation}>
             <Home menuOpen={activeOverlay === 'menu'} />
           </NavigationProvider>
-        </div>
+        </Container>
 
         <ApprovalOverlay
           onRequestUnlock={handleRequestUnlock}

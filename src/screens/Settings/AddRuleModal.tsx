@@ -7,6 +7,7 @@ import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Chip from '@components/Chip/Chip';
+import Container from '@components/Container/Container';
 
 
 interface AddRuleModalProps {
@@ -46,7 +47,7 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
           </>
         )}
       >
-          <div className="flex flex-col gap-3">
+          <Container gap={3}>
             <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('perms.permission')}</span>
             {!useCustom ? (
               <Dropdown
@@ -56,7 +57,7 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
                 small
               />
             ) : (
-              <div className="flex items-center gap-1">
+              <Container variant="row" gap={1}>
                 <span className="text-sm font-semibold text-secondary whitespace-nowrap">signEvent:</span>
                 <input
                   type="number"
@@ -65,23 +66,23 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
                   value={customKind}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomKind(e.target.value)}
                 />
-              </div>
+              </Container>
             )}
             <LinkButton tone="brand" onClick={() => setUseCustom(!useCustom)}>
               {useCustom ? t('perms.usePreset') : t('perms.customKind')}
             </LinkButton>
-          </div>
+          </Container>
 
-          <div className="flex flex-col gap-3">
+          <Container gap={3}>
             <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('perms.decision')}</span>
-            <div className="flex gap-2">
+            <Container variant="row" gap={2}>
               {DECISIONS.map((d) => (
                 <Chip key={d} tone={d} selected={decision === d} onClick={() => setDecision(d)}>
                   {t(`perms.${d}`)}
                 </Chip>
               ))}
-            </div>
-          </div>
+            </Container>
+          </Container>
 
       </Modal>
   );

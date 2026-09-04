@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import { IconPlus, IconKey, IconEye, IconLink } from '@assets';
 import Card from '@components/Card/Card';
 import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   create: <IconPlus />,
@@ -39,17 +40,17 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
   ];
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.chooseSetup')}</Heading>
-      <div className="flex flex-col gap-4 mt-auto pb-12">
+      <Container gap={4} className="mt-auto pb-12">
         {METHODS.map((m, i) => (
           <React.Fragment key={m.id}>
             {i === 1 && (
-              <div className="flex items-center gap-6 py-2">
+              <Container variant="row" gap={6} className="py-2">
                 <div className="flex-1 h-px bg-card-border" />
                 <span className="text-xs font-semibold text-muted uppercase">{t('common.or')}</span>
                 <div className="flex-1 h-px bg-card-border" />
-              </div>
+              </Container>
             )}
             <Card
               as="button"
@@ -65,7 +66,7 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
             </Card>
           </React.Fragment>
         ))}
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

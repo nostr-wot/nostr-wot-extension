@@ -11,6 +11,8 @@ import EmptyState from '@components/EmptyState/EmptyState';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import type { MyMuteList } from '@domain/mutes/muteList.ts';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface FiltersOverlayProps {
   visible: boolean;
@@ -177,7 +179,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
 
   return (
     <OverlayPanel title={t('mutes.title')} onBack={onClose}>
-      <div className="flex-1 overflow-y-auto flex flex-col gap-8">
+      <Container className="flex-1 overflow-y-auto gap-8">
         {loading ? (
           <EmptyState text={t('common.loading')} />
         ) : readFailed ? (
@@ -226,7 +228,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
               onRemove={(v) => update({ hashtags: cur.hashtags.filter((h) => h !== v) })}
             />
 
-            <div className="flex flex-col gap-3">
+            <Container gap={3}>
               <SectionLabel>{t('mutes.importTitle')}</SectionLabel>
               <InputRow
                 value={importValue}
@@ -239,16 +241,16 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
                 mono
               />
               {SUGGESTED_LISTS.length > 0 && (
-                <div className="flex flex-wrap gap-3">
+                <Container variant="row" gap={3} className="flex-wrap">
                   {SUGGESTED_LISTS.map((s) => (
                     <Button key={s.pubkey} small variant="secondary" disabled={importing} onClick={() => handleSuggested(s.pubkey)}>
                       {s.name}
                     </Button>
                   ))}
-                </div>
+                </Container>
               )}
-              <div className="text-xs text-muted leading-tight">{t('mutes.importHint')}</div>
-            </div>
+              <Text variant="muted" as="div" className="leading-tight">{t('mutes.importHint')}</Text>
+            </Container>
 
             <PublishRow
               publishing={publishing}
@@ -265,7 +267,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
             />
           </>
         )}
-      </div>
+      </Container>
     </OverlayPanel>
   );
 }

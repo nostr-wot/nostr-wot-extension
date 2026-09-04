@@ -4,6 +4,7 @@ import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import type { TxFilters } from '@domain/wallet/txFilter.ts';
+import Container from '@components/Container/Container';
 
 interface TxFilterDialogProps {
   /** What is applied right now — the drafts start here. */
@@ -43,7 +44,7 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
         </>
       )}
     >
-      <div className="flex flex-col gap-3">
+      <Container gap={3}>
         <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('wallet.filterDirection')}</span>
         <ChipGroup
           options={[
@@ -54,10 +55,10 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
           value={direction}
           onChange={(v) => setDirection(v as TxFilters['direction'])}
         />
-      </div>
-      <div className="flex flex-col gap-3">
+      </Container>
+      <Container gap={3}>
         <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('wallet.filterDateRange')}</span>
-        <div className="flex items-center gap-2">
+        <Container variant="row" gap={2}>
           <input
             type="date"
             className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-card text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
@@ -71,8 +72,8 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
             value={dateTo}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value)}
           />
-        </div>
-      </div>
+        </Container>
+      </Container>
     </Modal>
   );
 }
