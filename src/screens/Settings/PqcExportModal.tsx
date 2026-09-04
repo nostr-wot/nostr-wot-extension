@@ -11,6 +11,8 @@ import { downloadFile } from '@utils/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 /**
  * Save the post-quantum key file, plain or encrypted.
@@ -59,7 +61,7 @@ const handleExport = async (encrypted: boolean) => {
         onClose={onClose}
         zIndex={720}
       >
-        <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.exportDesc')}</p>
+        <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.exportDesc')}</Text>
         <StatusNotice
           tone="warn"
           icon={<IconWarning size={18} />}
@@ -68,18 +70,18 @@ const handleExport = async (encrypted: boolean) => {
         />
 
         <SectionLabel className="mb-6 mt-4 font-normal leading-loose">{t('key.encryptionPassword')}</SectionLabel>
-        <div className="flex flex-col gap-4 mb-4">
+        <Container gap={4} className="mb-4">
           <PasswordPairFields
             pair={exportPair}
             confirmPlaceholder={t('key.confirmPassword')}
             onSubmit={() => handleExport(true)}
             disabled={exportBusy}
           />
-        </div>
+        </Container>
 
         <FormError>{exportError}</FormError>
 
-        <div className="flex flex-wrap gap-4 mt-7">
+        <Container variant="row" gap={4} className="flex-wrap mt-7">
           <Button onClick={() => handleExport(true)} disabled={exportBusy || !exportPair.ready}>
             {exportBusy ? t('common.loading') : t('key.downloadEncrypted')}
           </Button>
@@ -89,7 +91,7 @@ const handleExport = async (encrypted: boolean) => {
           <Button variant="secondary" onClick={() => handleExport(false)} disabled={exportBusy}>
             {t('key.downloadPlain')}
           </Button>
-        </div>
+        </Container>
       </Modal>
   );
 }

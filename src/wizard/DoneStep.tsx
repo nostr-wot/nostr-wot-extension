@@ -3,6 +3,8 @@ import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface DoneAccount {
   name?: string;
@@ -17,11 +19,11 @@ interface DoneStepProps {
 
 export default function DoneStep({ account, onDone }: DoneStepProps) {
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.yourAllSet')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.identityReady')}
-      </p>
+      </Text>
 
       {account && (
         <Card variant="flat">
@@ -35,9 +37,9 @@ export default function DoneStep({ account, onDone }: DoneStepProps) {
         </Card>
       )}
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" onClick={onDone}>{t('wizard.getStarted')}</Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

@@ -6,6 +6,8 @@ import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import LinkButton from '@components/LinkButton/LinkButton';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 /**
  * Sites the user declined to connect, and how long that lasts.
@@ -55,7 +57,7 @@ export default function DeclinedSites() {
   return (
     <div className="mt-11">
       <SectionLabel>{t('perm.declinedTitle')}</SectionLabel>
-      <p className="mt-3 mb-5 text-xs leading-loose text-muted">{t('perm.declinedDesc')}</p>
+      <Text variant="hint" className="mt-3 mb-5">{t('perm.declinedDesc')}</Text>
 
       <label className="flex items-center justify-between gap-5 mb-6 text-sm text-body">
         <span>{t('perm.dismissDurationLabel')}</span>
@@ -69,25 +71,25 @@ export default function DeclinedSites() {
       </label>
 
       {declined.length === 0 ? (
-        <p className="mt-3 mb-5 text-xs leading-loose text-muted">{t('perm.declinedNone')}</p>
+        <Text variant="hint" as="p" className="mt-3 mb-5">{t('perm.declinedNone')}</Text>
       ) : (
-        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
+        <Container className="flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {declined.map(({ domain, until }) => (
-            <div key={domain} className="flex items-center gap-5 py-5 px-6 border-t border-card-border first:border-t-0">
+            <Container key={domain} variant="row" gap={5} className="py-5 px-6 border-t border-card-border first:border-t-0">
               {/* These three were `styles.permInfo/permDomain/permSummary`,
                   which stopped existing when the permissions rows became
                   ListRow — leaving this list with no layout at all and nothing
                   to say so. */}
               <div className="flex-1 min-w-0">
                 <div className="text-md font-medium text-heading truncate">{domain}</div>
-                <div className="text-xs text-muted">{describe(until)}</div>
+                <Text variant="muted" as="div">{describe(until)}</Text>
               </div>
               <LinkButton tone="brand" className={`text-sm shrink-0 underline underline-offset-2 hover:opacity-85`} onClick={() => undo(domain)}>
                 {t('perm.declinedRemove')}
               </LinkButton>
-            </div>
+            </Container>
           ))}
-        </div>
+        </Container>
       )}
     </div>
   );

@@ -18,6 +18,8 @@ import PasswordPairFields from '@components/PasswordPairFields/PasswordPairField
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface KeyActionModalProps {
   action: string;
@@ -167,7 +169,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     >
       <>
         {needsUnlock ? (
-          <div className="flex flex-col gap-5">
+          <Container gap={5}>
             <SectionLabel inline>{t('key.unlockToContinue')}</SectionLabel>
             <Input
               type="password"
@@ -178,23 +180,23 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleUnlock()}
             />
             <FormError>{unlockError}</FormError>
-            <div className="flex gap-4 justify-end mt-2">
+            <Container variant="row" gap={4} className="justify-end mt-2">
               <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
               <Button small onClick={handleUnlock}>{t('common.unlock')}</Button>
-            </div>
-          </div>
+            </Container>
+          </Container>
         ) : action === 'nsec' ? (
-          <div className="flex flex-col gap-5">
+          <Container gap={5}>
             {!nsec.revealed ? (
               <>
                 <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal">
                   <IconWarning className="shrink-0 mt-px" />
                   <span>{t('key.nsecWarning')}</span>
                 </div>
-                <div className="flex gap-4 justify-end mt-2">
+                <Container variant="row" gap={4} className="justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button variant="danger" small onClick={revealNsec}>{t('key.revealKey')}</Button>
-                </div>
+                </Container>
               </>
             ) : (
               <>
@@ -209,30 +211,30 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 >
                   {nsec.value}
                 </button>
-                <div className="text-xs text-muted text-center">{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
-                <div className="flex gap-4 justify-end mt-2">
+                <Text variant="muted" as="div" className="text-center">{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</Text>
+                <Container variant="row" gap={4} className="justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
                   <Button small onClick={() => nsecCopy.copy(nsec.value)}>
                     {nsecCopy.copied ? t('common.copied') : t('common.copy')}
                   </Button>
-                </div>
+                </Container>
               </>
             )}
-          </div>
+          </Container>
         ) : action === 'ncryptsec' ? (
           <EncryptedBackupForm rpcMethod="vault_exportNcryptsec" onClose={handleClose} />
         ) : action === 'seed' ? (
-          <div className="flex flex-col gap-5">
+          <Container gap={5}>
             {!seed.revealed ? (
               <>
                 <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal">
                   <IconWarning className="shrink-0 mt-px" />
                   <span>{t('key.seedWarning')}</span>
                 </div>
-                <div className="flex gap-4 justify-end mt-2">
+                <Container variant="row" gap={4} className="justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button variant="danger" small onClick={revealSeed}>{t('key.revealKey')}</Button>
-                </div>
+                </Container>
               </>
             ) : (
               <>
@@ -243,7 +245,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                     ))}
                   </div>
                 </button>
-                <div className="text-xs text-muted text-center">{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
+                <Text variant="muted" as="div" className="text-center">{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</Text>
                 {seedEncMode ? (
                   <>
                     <PasswordPairFields
@@ -254,28 +256,28 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                       disabled={seedEncrypting}
                     />
                     <FormError>{seedEncError}</FormError>
-                    <div className="flex gap-4 justify-end mt-2">
+                    <Container variant="row" gap={4} className="justify-end mt-2">
                       <Button variant="secondary" small onClick={() => { setSeedEncMode(false); seedEncPair.reset(); setSeedEncError(''); }}>{t('common.cancel')}</Button>
                       <Button small onClick={downloadSeedEncrypted} disabled={seedEncrypting || !seedEncPair.ready}>
                         {seedEncrypting ? t('key.seedEncrypting') : t('common.download')}
                       </Button>
-                    </div>
+                    </Container>
                   </>
                 ) : (
-                  <div className="flex flex-wrap gap-3 justify-end mt-2">
+                  <Container variant="row" gap={3} className="flex-wrap justify-end mt-2">
                     <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
                     <Button variant="secondary" small onClick={() => seedCopy.copy(seed.value.join(' '))}>
                       {seedCopy.copied ? t('common.copied') : t('common.copy')}
                     </Button>
                     <Button variant="secondary" small onClick={downloadSeedPlain}>{t('key.downloadPlain')}</Button>
                     <Button small onClick={() => setSeedEncMode(true)}>{t('key.downloadEncrypted')}</Button>
-                  </div>
+                  </Container>
                 )}
               </>
             )}
-          </div>
+          </Container>
         ) : action === 'changePassword' ? (
-          <div className="flex flex-col gap-5">
+          <Container gap={5}>
             {cpSuccess ? (
               <div className="text-lg font-medium text-success text-center py-8">{t('key.passwordChanged')}</div>
             ) : (
@@ -294,13 +296,13 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                   onSubmit={handleChangePassword}
                 />
                 <FormError>{cpError}</FormError>
-                <div className="flex gap-4 justify-end mt-2">
+                <Container variant="row" gap={4} className="justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button small onClick={handleChangePassword} disabled={!cpPair.ready}>{t('common.save')}</Button>
-                </div>
+                </Container>
               </>
             )}
-          </div>
+          </Container>
         ) : null}
       </>
     </Modal>

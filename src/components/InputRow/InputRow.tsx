@@ -1,6 +1,7 @@
 import React from 'react';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
+import Container from '@components/Container/Container';
 
 interface InputRowProps {
   value: string;
@@ -27,7 +28,7 @@ export default function InputRow({
 }: InputRowProps) {
   return (
     <div className={className}>
-      <div className="flex items-center gap-4">
+      <Container variant="row" gap={4}>
         <Input
           placeholder={placeholder}
           value={value}
@@ -36,7 +37,7 @@ export default function InputRow({
           mono={mono}
         />
         <Button small onClick={onSubmit} disabled={disabled}>{buttonLabel}</Button>
-      </div>
+      </Container>
       {error && <div className="text-error text-xs mt-2">{error}</div>}
     </div>
   );

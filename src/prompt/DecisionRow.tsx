@@ -2,6 +2,7 @@ import React, { useState, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Select from '@components/Select/Select';
 import type { PromptDecision } from '@domain/permissions/prompt.ts';
+import Container from '@components/Container/Container';
 
 interface DecisionRowProps {
   disabled: boolean;
@@ -21,7 +22,7 @@ export default function DecisionRow({ disabled, onDecision }: DecisionRowProps) 
   const [duration, setDuration] = useState<string>('3600000'); // 1 hour default
 
   return (
-    <div className="flex gap-3 items-center flex-wrap">
+    <Container variant="row" gap={3} className="flex-wrap">
       <button
         className={`${DECISION_BTN} rounded-md bg-[rgba(220,38,38,0.1)] border-[rgba(220,38,38,0.15)] text-error`}
         disabled={disabled}
@@ -68,6 +69,6 @@ export default function DecisionRow({ disabled, onDecision }: DecisionRowProps) 
       >
         {t('prompt.always')}
       </button>
-    </div>
+    </Container>
   );
 }

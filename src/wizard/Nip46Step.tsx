@@ -10,6 +10,8 @@ import Tabs from '@components/Tabs/Tabs';
 import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 function isValidBunkerUrl(url: string): boolean {
   if (!url.startsWith('bunker://')) return false;
@@ -138,9 +140,9 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.nip46Title')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">{t('wizard.nip46Desc')}</p>
+      <Text variant="secondary" className="mb-8">{t('wizard.nip46Desc')}</Text>
 
       <Tabs
         variant="segmented"
@@ -155,7 +157,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
 
       {/* QR tab */}
       {tab === 'qr' && (
-        <div className="flex flex-col items-center gap-6">
+        <Container gap={6} className="items-center">
           {(qrState === 'waiting' || qrState === 'generating') && (
             <>
               <div className="flex items-center justify-center p-8 bg-elevated border border-card-border rounded-[14px] shadow-[0_2px_12px_var(--card-bg)]">
@@ -167,7 +169,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
                   </div>
                 )}
               </div>
-              <p className="text-xs text-muted text-center leading-normal max-w-[240px]">{t('wizard.nip46QrHint')}</p>
+              <Text variant="muted" className="text-center max-w-[240px]">{t('wizard.nip46QrHint')}</Text>
               {nostrconnectUri && (
                 <button
                   className="inline-flex items-center gap-2 py-[5px] px-6 border border-card-border bg-card rounded-sm text-xs font-medium font-[inherit] text-secondary cursor-pointer transition-all hover:border-brand hover:text-brand"
@@ -176,28 +178,28 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
                   {uriCopy.copied ? t('wizard.nip46UriCopied') : t('wizard.nip46CopyUri')}
                 </button>
               )}
-              <div className="flex items-center gap-4 text-sm text-secondary py-2">
+              <Container variant="row" gap={4} className="text-sm text-secondary py-2">
                 <Spinner size={14} border={2} />
                 <span>{t('wizard.nip46Waiting')}</span>
-              </div>
+              </Container>
             </>
           )}
 
           {qrState === 'connected' && (
-            <div className="flex items-center gap-4 text-sm text-secondary py-2">
+            <Container variant="row" gap={4} className="text-sm text-secondary py-2">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="8" fill="#16a34a"/>
                 <path d="M5 8l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <span>{t('wizard.nip46Connected')}</span>
-            </div>
+            </Container>
           )}
 
           {qrState === 'expired' && (
-            <div className="flex flex-col items-center gap-6 py-10">
-              <p className="text-md text-muted">{t('wizard.nip46Expired')}</p>
+            <Container gap={6} className="items-center py-10">
+              <Text variant="muted" className="text-md">{t('wizard.nip46Expired')}</Text>
               <Button onClick={handleRetry}>{t('wizard.nip46Retry')}</Button>
-            </div>
+            </Container>
           )}
 
           {qrState === 'error' && (
@@ -206,7 +208,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
               <Button onClick={handleRetry}>{t('wizard.nip46Retry')}</Button>
             </div>
           )}
-        </div>
+        </Container>
       )}
 
       {/* Bunker URL tab */}
@@ -220,20 +222,20 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
               value={input}
               onChange={(e: ChangeEvent<HTMLInputElement>) => { setInput(e.target.value); setError(''); }}
             />
-            <div className="text-xs text-muted mt-2">
+            <Text variant="muted" className="mt-2">
               {t('wizard.bunkerHint')}
-            </div>
+            </Text>
           </div>
 
           <FormError>{error}</FormError>
 
-          <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+          <Container variant="row" gap={4} stickyFooter>
             <Button className="flex-1" onClick={handleBunkerContinue} disabled={!input.trim() || loading}>
               {loading ? t('wizard.connecting') : t('common.connect')}
             </Button>
-          </div>
+          </Container>
         </div>
       )}
-    </div>
+    </Container>
   );
 }

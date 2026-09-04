@@ -5,6 +5,8 @@ import Card from '@components/Card/Card';
 import ListRow from '@components/ListRow/ListRow';
 import { IconUser, IconChevronRight } from '@assets';
 import { useNavigate } from '@context/NavigationContext';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface SiteControlsProps {
   identityEnabled: boolean;
@@ -24,18 +26,18 @@ export default function SiteControls({
   const navigate = useNavigate();
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="flex items-center justify-between py-[11px] px-7">
-        <div className="flex items-center gap-4">
+      <Container variant="row" className="justify-between py-[11px] px-7">
+        <Container variant="row" gap={4}>
           <IconUser size={15} className="text-brand shrink-0" />
-          <span className="text-md font-medium text-body">{t('home.allowIdentity')}</span>
-        </div>
+          <Text as="span" className="font-medium">{t('home.allowIdentity')}</Text>
+        </Container>
         <Toggle checked={identityEnabled} onChange={onIdentityToggle} />
-      </div>
+      </Container>
 
       {isNip46 ? (
-        <div className="py-5 px-7 text-sm font-medium text-muted italic">
+        <Text variant="muted" as="div" className="py-5 px-7 text-sm font-medium italic">
           <span>{t('perms.managedBySigner')}</span>
-        </div>
+        </Text>
       ) : (
         <ListRow
           title={t('home.managePermissions')}

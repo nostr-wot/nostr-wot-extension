@@ -5,6 +5,8 @@ import Card from '@components/Card/Card';
 import SeedWord from '@components/SeedWord/SeedWord';
 import Chip from '@components/Chip/Chip';
 import Heading from '@components/Heading/Heading';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 // Decoy words from BIP-39 for verification
 const DECOYS = ['abandon', 'ability', 'achieve', 'acquire', 'adapt', 'adjust', 'admit', 'afford'];
@@ -93,11 +95,11 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.verifyTitle')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.verifyDesc')}
-      </p>
+      </Text>
 
       <Card
         variant="flat"
@@ -140,10 +142,10 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
       )}
 
       {verified && (
-        <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Container variant="row" gap={4} stickyFooter>
           <Button className="flex-1" onClick={onVerified}>{t('common.continue')}</Button>
-        </div>
+        </Container>
       )}
-    </div>
+    </Container>
   );
 }

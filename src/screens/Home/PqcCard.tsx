@@ -5,6 +5,8 @@ import { IconKey, IconShield, IconWarning } from '@assets';
 import { useNavigate } from '@context/NavigationContext';
 import Card from '@components/Card/Card';
 import { usePqc } from '@context/PqcContext';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 /**
  * Post-quantum status on the dashboard.
@@ -71,10 +73,10 @@ export default function PqcCard() {
       onClick={navigate.openPqc}
     >
       <div className={`flex items-center justify-center w-16 h-16 shrink-0 rounded-md bg-card-active ${iconTone}`}>{icon}</div>
-      <div className="flex flex-col">
+      <Container>
         <strong className="block text-md font-semibold text-heading">{title}</strong>
-        <span className="text-xs leading-normal text-secondary">{desc}</span>
-      </div>
+        <Text variant="secondary" as="span" className="text-xs">{desc}</Text>
+      </Container>
     </Card>
   );
 }

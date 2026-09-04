@@ -11,6 +11,8 @@ import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useCopy from '@hooks/useCopy.ts';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface AccountDropdownProps {
   onClose: () => void;
@@ -117,7 +119,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     imgClassName="w-full h-full object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col">
+                <Container className="flex-1 min-w-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="text-md font-semibold text-heading whitespace-nowrap overflow-hidden text-ellipsis">{name}</span>
                     {(account.readOnly || account.type === 'npub') && (
@@ -127,10 +129,10 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     )}
                   </div>
                   <span className="text-xs text-muted whitespace-nowrap overflow-hidden text-ellipsis">{cached?.nip05 || truncateNpub(account.pubkey)}</span>
-                </div>
+                </Container>
                 {isActive && <span className="text-body font-bold text-lg shrink-0">&#10003;</span>}
               </button>
-              <div className="flex items-center gap-1 shrink-0">
+              <Container variant="row" gap={1} className="shrink-0">
                 {!account.readOnly && account.type !== 'npub' && (
                   <IconButton
                     size={22}
@@ -204,7 +206,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                 >
                   <IconClose size={14} />
                 </IconButton>
-              </div>
+              </Container>
             </div>
           );
         })}
@@ -215,9 +217,9 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
           <div className="text-md font-semibold text-heading mb-3">
             {t('account.removeTitle', { name: profileCache[confirmAccount.pubkey]?.name || confirmAccount.name || '' })}
           </div>
-          <div className="text-sm text-secondary leading-normal mb-2">
+          <Text variant="secondary" as="div" className="text-sm mb-2">
             {t('account.removeWarning')}
-          </div>
+          </Text>
           {isWriteAccount && (
             <div className="flex items-start gap-3 text-xs text-warning bg-[rgba(217,119,6,0.06)] py-4 px-5 rounded-md leading-normal mb-5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-px">
@@ -228,12 +230,12 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
               <span>{t('account.removeKeyWarning')}</span>
             </div>
           )}
-          <div className="flex gap-4 justify-end">
+          <Container variant="row" gap={4} className="justify-end">
             <Button variant="secondary" small onClick={() => setConfirmId(null)}>{t('common.cancel')}</Button>
             <Button variant="danger" small onClick={handleRemove} disabled={removing}>
               {removing ? t('common.removing') : t('common.remove')}
             </Button>
-          </div>
+          </Container>
         </div>
       )}
 

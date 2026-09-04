@@ -8,6 +8,8 @@ import QrCode from '@components/QrCode/QrCode';
 import useCopy from '@hooks/useCopy.ts';
 import { formatSats } from '@utils/format/number.ts';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface Invoice {
   bolt11: string;
@@ -118,15 +120,15 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         </>
       )}
     >
-      <div className="text-sm text-secondary">{t('wallet.depositDesc')}</div>
+      <Text variant="secondary" as="div" className="text-sm">{t('wallet.depositDesc')}</Text>
       {paid ? (
-        <div className="flex flex-col gap-4 text-center">
+        <Container gap={4} className="text-center">
           <div className="text-[48px] leading-none text-success">{'✓'}</div>
           <div className="text-lg font-semibold text-success">{t('wallet.paymentReceived')}</div>
           <div className="text-2xl text-success">{`+${formatSats(paid.amount)}`}</div>
-        </div>
+        </Container>
       ) : !invoice ? (
-        <div className="flex flex-col gap-5">
+        <Container gap={5}>
           <Input
             type="number"
             placeholder={t('wallet.amountSats')}
@@ -135,7 +137,7 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
             small
           />
           <FormError>{error}</FormError>
-        </div>
+        </Container>
       ) : (
         <>
           <QrCode value={invoice.bolt11} size={200} className="rounded-md overflow-hidden" />

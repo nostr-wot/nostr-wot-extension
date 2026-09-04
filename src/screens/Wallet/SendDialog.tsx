@@ -11,6 +11,8 @@ import { describeInvoiceExpiry } from '@domain/wallet/invoiceExpiry.ts';
 import { PAYMENT_IN_FLIGHT } from '@lib/wallet/types.ts';
 import FormError from '@components/FormError/FormError';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 /** What `wallet_resolveLightningAddress` hands back for the confirmation card. */
 interface ResolvedAddress {
@@ -207,8 +209,8 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
           </>
         )}
       >
-        <div className="text-sm text-secondary">{t('wallet.sendDesc')}</div>
-          <div className="flex flex-col gap-5">
+        <Text variant="secondary" as="div" className="text-sm">{t('wallet.sendDesc')}</Text>
+          <Container gap={5}>
             <Input
               type="text"
               placeholder={t('wallet.pasteInvoiceOrAddress')}
@@ -220,12 +222,12 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
             {/* Lightning Address preview + amount */}
             {sendIsAddress && !sendSuccess && (
               resolveLoading ? (
-                <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
+                <Container variant="box">
                   <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.resolvingAddress')}</span>
-                </div>
+                </Container>
               ) : sendAddress ? (
                 <>
-                  <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
+                  <Container variant="box">
                     <FieldDisplay caps className="py-0" label={t('wallet.payTo')} value={sendAddress.address} />
                     {sendAddress.description && (
                       <FieldDisplay caps className="py-0" label={t('wallet.invoiceDescription')} value={sendAddress.description} />
@@ -239,7 +241,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
                         max: sendAddress.maxSats.toLocaleString(),
                       })}
                     />
-                  </div>
+                  </Container>
                   <Input
                     type="number"
                     placeholder={t('wallet.amountSats')}
@@ -258,23 +260,23 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
                     />
                   )}
                   {sendAmount !== '' && sendTarget.kind === 'none' && sendTarget.reason === 'amount' && (
-                    <div className="text-xs text-muted text-center py-3">
+                    <Text variant="muted" as="div" className="text-center py-3">
                       {t('wallet.amountOutOfRange', {
                         min: sendAddress.minSats.toLocaleString(),
                         max: sendAddress.maxSats.toLocaleString(),
                       })}
-                    </div>
+                    </Text>
                   )}
                 </>
               ) : resolveError ? (
-                <div className="text-xs text-muted text-center py-3">{resolveError}</div>
+                <Text variant="muted" as="div" className="text-center py-3">{resolveError}</Text>
               ) : null
             )}
 
             {/* Invoice preview */}
             {sendInput.trim() && !sendIsAddress && !sendSuccess && (
               decodedInvoice ? (
-                <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
+                <Container variant="box">
                   <FieldDisplay
                     caps
                     className="py-0"
@@ -296,15 +298,15 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
                     label={t('wallet.invoiceExpiry')}
                     value={invoiceExpiryLabel(decodedInvoice)}
                   />
-                </div>
+                </Container>
               ) : (
-                <div className="text-xs text-muted text-center py-3">{t('wallet.decodeFailed')}</div>
+                <Text variant="muted" as="div" className="text-center py-3">{t('wallet.decodeFailed')}</Text>
               )
             )}
 
             <FormError>{sendError}</FormError>
             {sendSuccess && <div className="text-sm text-success">{sendSuccess}</div>}
-          </div>
+          </Container>
       </Modal>
   );
 }

@@ -9,17 +9,15 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { IconWarning } from '@assets';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 const CLS = {
-  section: 'flex flex-col gap-5',
-  explain: 'text-sm leading-normal text-secondary',
   // rgba(220,38,38,0.06) is a one-off, not --error-tint (0.08) — kept exact
   // rather than snapped to the nearest existing tint.
   warning: 'flex items-start gap-4 px-6 py-5 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal',
   keyDisplay: 'p-6 bg-card border border-card-border rounded-panel font-mono-alt text-xs text-heading ' +
     'break-all leading-loose cursor-pointer transition-[filter] duration-slow',
-  hint: 'text-xs text-muted text-center',
-  actions: 'flex gap-4 justify-end mt-2',
 };
 
 /**
@@ -82,30 +80,30 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
 
   if (value) {
     return (
-      <div className={CLS.section}>
+      <Container gap={5}>
         <div className={CLS.keyDisplay}>{value}</div>
-        <div className={CLS.hint}>{t('key.storeHint')}</div>
+        <Text variant="muted" as="div" className="text-center">{t('key.storeHint')}</Text>
         {/* Download first: the file is the artefact worth keeping, and ncryptsec
             is the interchange format other clients import. Copying is offered
             too, but selecting the string by hand should never have been the
             only way to get it out. */}
-        <div className={CLS.actions}>
+        <Container variant="row" gap={4} className="justify-end mt-2">
           <Button small onClick={download}>{t('key.downloadBackupFile')}</Button>
           <Button variant="secondary" small onClick={handleCopy}>
             {copy.copied ? t('common.copied') : t('common.copy')}
           </Button>
-        </div>
-        <div className={CLS.actions}>
+        </Container>
+        <Container variant="row" gap={4} className="justify-end mt-2">
           <Button variant="secondary" small onClick={onClose}>{t('common.close')}</Button>
-        </div>
-      </div>
+        </Container>
+      </Container>
     );
   }
 
   return (
-    <div className={CLS.section}>
-      <p className={CLS.explain}>{t('key.ncryptsecExplain')}</p>
-      <p className={CLS.explain}>{t('key.ncryptsecExplainMore')}</p>
+    <Container gap={5}>
+      <Text variant="secondary" as="p" className="text-sm">{t('key.ncryptsecExplain')}</Text>
+      <Text variant="secondary" as="p" className="text-sm">{t('key.ncryptsecExplainMore')}</Text>
       {/* The password is the only thing standing between this file and the key,
           and there is nobody to ask if it is forgotten. Said before the fields,
           not after the export. */}
@@ -124,12 +122,12 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
       />
 
       <FormError>{error}</FormError>
-      <div className={CLS.actions}>
+      <Container variant="row" gap={4} className="justify-end mt-2">
         <Button variant="secondary" small onClick={onClose}>{t('common.cancel')}</Button>
         <Button small onClick={generate} disabled={generating || !pair.ready}>
           {generating ? t('key.generating') : t('key.generate')}
         </Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

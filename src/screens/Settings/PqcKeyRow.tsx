@@ -3,13 +3,14 @@ import { t } from '@lib/i18n.js';
 import { IconCopy } from '@assets';
 import useCopy from '@hooks/useCopy.ts';
 import { truncateMiddle } from '@utils/format/text.ts';
+import Container from '@components/Container/Container';
 
 /** Label, shortened value, copy. Shortened in the MIDDLE so both ends stay
  *  checkable and the row stays one line. */
 export default function KeyRow({ label, value }: { label: string; value: string }) {
   const { copy, copied, failed } = useCopy();
   return (
-    <div className="flex items-baseline justify-between gap-5 py-4 border-t border-card-border text-sm">
+    <Container variant="row" gap={5} className="items-baseline justify-between py-4 border-t border-card-border text-sm">
       <span className="text-muted shrink-0">{label}</span>
       <code className="font-code text-xs text-heading break-all" title={value}>{truncateMiddle(value, 12, 10)}</code>
       {/* Not IconButton (icon-only, fixed square) or LinkButton (chromeless
@@ -25,6 +26,6 @@ export default function KeyRow({ label, value }: { label: string; value: string 
         <IconCopy size={12} />
         {copied ? t('common.copied') : failed ? t('common.error') : ''}
       </button>
-    </div>
+    </Container>
   );
 }

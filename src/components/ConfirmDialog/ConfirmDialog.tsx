@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import Modal from '@components/Modal/Modal';
 import Button from '@components/Button/Button';
 import FormError from '@components/FormError/FormError';
+import Text from '@components/Text/Text';
 
 interface ConfirmDialogProps {
   title: string;
@@ -70,7 +71,7 @@ export default function ConfirmDialog({
         </>
       }
     >
-      <div className="text-md leading-loose text-body">{message}</div>
+      <Text variant="body" as="div" className="leading-loose">{message}</Text>
       <FormError>{error}</FormError>
     </Modal>
   );

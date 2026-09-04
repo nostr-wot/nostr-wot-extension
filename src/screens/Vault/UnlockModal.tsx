@@ -11,6 +11,8 @@ import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface WaiterInfo {
   id: string;
@@ -123,7 +125,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           animating ? 'animate-modal-fade-out' : '',
         ].join(' ')}
       >
-        <div className="flex flex-col items-center gap-4 mb-8">
+        <Container gap={4} className="items-center mb-8">
           <Avatar
             src={avatarUrl}
             fallback={initial}
@@ -131,8 +133,8 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
             fallbackClassName="size-24 rounded-full bg-[rgba(99,102,241,0.2)] flex items-center justify-center text-3xl font-semibold text-secondary"
           />
           <div className="text-lg font-semibold text-heading">{displayName}</div>
-        </div>
-        <div className="text-sm text-secondary text-center mb-8">{message || t('unlock.vaultLocked')}</div>
+        </Container>
+        <Text variant="secondary" as="div" className="text-sm text-center mb-8">{message || t('unlock.vaultLocked')}</Text>
         <input
           ref={inputRef}
           type="password"
@@ -146,10 +148,10 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
         />
         <FormError>{error}</FormError>
         {unlockWaiters && unlockWaiters.length > 0 && (
-          <div className="w-full mt-4 flex flex-col gap-2">
-            <div className="text-xs text-muted uppercase tracking-[0.5px] mb-1">{t('unlock.pendingEvents')}</div>
+          <Container gap={2} className="w-full mt-4">
+            <Text variant="muted" as="div" className="uppercase tracking-[0.5px] mb-1">{t('unlock.pendingEvents')}</Text>
             {unlockWaiters.map((w) => (
-              <div key={w.id} className="flex items-center gap-3 py-2 px-4 bg-brand-tint-hover rounded-sm text-sm">
+              <Container key={w.id} variant="row" gap={3} className="py-2 px-4 bg-brand-tint-hover rounded-sm text-sm">
                 <span className="font-medium text-heading">{getEventLabel(w.type)}</span>
                 <span className="text-muted flex-1 text-right overflow-hidden text-ellipsis">{w.origin}</span>
                 <IconButton
@@ -160,11 +162,11 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
                 >
                   <IconClose size={12} />
                 </IconButton>
-              </div>
+              </Container>
             ))}
-          </div>
+          </Container>
         )}
-        <div className="flex gap-4 mt-4">
+        <Container variant="row" gap={4} className="mt-4">
           {onCancel && (
             <Button
               variant="secondary"
@@ -178,7 +180,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           <Button className="flex-1" small onClick={unlock} disabled={busy}>
             {loading ? t('common.loading') : t('common.unlock')}
           </Button>
-        </div>
+        </Container>
         {fullScreen && !confirmReset && (
           <LinkButton className="block w-full mt-6 text-center hover:text-error" onClick={() => setConfirmReset(true)}>
             {t('unlock.forgotPassword')}
@@ -187,14 +189,14 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
         {fullScreen && confirmReset && (
           <div className="mt-6 p-6 bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] rounded-md">
             <p className="text-xs text-error mb-5 leading-normal">{t('unlock.resetWarning')}</p>
-            <div className="flex gap-4">
+            <Container variant="row" gap={4}>
               <Button variant="secondary" small className="flex-1" onClick={() => setConfirmReset(false)}>
                 {t('common.cancel')}
               </Button>
               <Button variant="danger" small className="flex-1" onClick={handleDestroyVault}>
                 {t('unlock.resetVault')}
               </Button>
-            </div>
+            </Container>
           </div>
         )}
       </div>

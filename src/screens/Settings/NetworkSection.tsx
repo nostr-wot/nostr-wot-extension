@@ -9,6 +9,7 @@ import EditableList from '@components/EditableList/EditableList';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { useRelays, type RelayFlags } from '@context/RelaysContext';
+import Container from '@components/Container/Container';
 
 export default function NetworkSection() {
   const { relays, relayFlags, loaded, saveRelays } = useRelays();
@@ -103,7 +104,7 @@ export default function NetworkSection() {
   };
 
   return (
-    <div className="flex-1 min-h-0 py-2 flex flex-col gap-4">
+    <Container gap={4} className="flex-1 min-h-0 py-2">
       <SectionLabel>{t('network.identityRelays')}</SectionLabel>
       <EditableList
         items={relays}
@@ -121,7 +122,7 @@ export default function NetworkSection() {
           // Chip's xs/sp-2/sp-5) — the one caller SeedWord's `compact` prop
           // solved for. A single relay row is not a second caller yet.
           return (
-            <div className="flex gap-2">
+            <Container variant="row" gap={2}>
               <button
                 className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
                   flags.read ? 'bg-brand-light text-brand border-[rgb(99_102_241_/_0.2)]' : 'border-card-border bg-transparent text-muted'
@@ -134,7 +135,7 @@ export default function NetworkSection() {
                 }`}
                 onClick={() => toggleRelayFlag(url, 'write')}
               >W</button>
-            </div>
+            </Container>
           );
         }}
         placeholder={t('network.relayPlaceholder')}
@@ -162,6 +163,6 @@ export default function NetworkSection() {
         }}
         onPublish={publishRelayList}
       />
-    </div>
+    </Container>
   );
 }

@@ -9,6 +9,7 @@ import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel
 
 import Tabs from '@components/Tabs/Tabs';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
 
 interface WalletSetupProps {
   onConnected: () => void;
@@ -71,7 +72,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
     lnbitsReady;
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto py-2 flex flex-col gap-4">
+    <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
       <Card>
         <SectionLabel>{t('wallet.connectWallet')}</SectionLabel>
         <SectionHint>{t('wallet.connectHint')}</SectionHint>
@@ -87,7 +88,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
           onChange={(next) => { setTab(next); setError(''); }}
         />
 
-        <div className="flex flex-col gap-5">
+        <Container gap={5}>
           {tab === 'quick' ? (
             <>
               <SectionHint>{t('wallet.quickSetupHint')}</SectionHint>
@@ -137,13 +138,13 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
 
           <FormError>{error}</FormError>
 
-          <div className="flex gap-4 justify-end mt-2">
+          <Container variant="row" gap={4} className="justify-end mt-2">
             <Button small onClick={handleConnect} disabled={loading || !canConnect}>
               {loading ? t('common.loading') : tab === 'quick' ? t('wallet.createWallet') : t('common.connect')}
             </Button>
-          </div>
-        </div>
+          </Container>
+        </Container>
       </Card>
-    </div>
+    </Container>
   );
 }

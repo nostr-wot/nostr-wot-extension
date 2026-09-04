@@ -6,6 +6,8 @@ import Button from '@components/Button/Button';
 import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface NpubStepProps {
   onNext: (account: any) => void;
@@ -37,11 +39,11 @@ export default function NpubStep({ onNext }: NpubStepProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.npubTitle')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.npubDesc')}
-      </p>
+      </Text>
 
       <div className="mb-6">
         <SectionLabel>{t('wizard.npubLabel')}</SectionLabel>
@@ -55,11 +57,11 @@ export default function NpubStep({ onNext }: NpubStepProps) {
 
       <FormError>{error}</FormError>
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" onClick={handleContinue} disabled={!input.trim() || loading}>
           {loading ? t('wizard.validating') : t('common.continue')}
         </Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

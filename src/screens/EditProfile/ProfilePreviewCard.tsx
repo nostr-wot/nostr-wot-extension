@@ -5,6 +5,8 @@ import Button from '@components/Button/Button';
 import { type ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import Card from '@components/Card/Card';
 import FormError from '@components/FormError/FormError';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface ProfilePreviewCardProps {
   meta: ProfileMetadata | null;
@@ -20,9 +22,9 @@ export default function ProfilePreviewCard({
   meta, displayPicture, initial, error, onBack, onConfirm,
 }: ProfilePreviewCardProps) {
   return (
-  <div className="flex-1 overflow-y-auto flex flex-col gap-7">
+  <Container gap={7} className="flex-1 overflow-y-auto">
     <Card variant="flat" className="flex flex-col gap-4 mb-0">
-      <div className="flex items-center gap-5">
+      <Container variant="row" gap={5}>
         <Avatar
           src={meta?.picture}
           fallback={initial}
@@ -30,35 +32,35 @@ export default function ProfilePreviewCard({
           fallbackClassName="size-20 rounded-full bg-brand-light flex items-center justify-center text-2xl font-bold text-brand"
         />
         <span className="text-lg font-bold text-heading">{meta?.name || meta?.display_name || '\u2014'}</span>
-      </div>
-      {meta?.about && <div className="text-sm text-body leading-normal">{meta.about}</div>}
+      </Container>
+      {meta?.about && <Text variant="body" as="div" className="text-sm">{meta.about}</Text>}
       {meta?.nip05 && (
-        <dl className="flex gap-3 text-xs">
+        <Container as="dl" variant="row" gap={3} className="text-xs">
           <dt className="text-muted min-w-[60px] font-semibold">NIP-05</dt><dd className="text-body break-all">{meta.nip05}</dd>
-        </dl>
+        </Container>
       )}
       {meta?.lud16 && (
-        <dl className="flex gap-3 text-xs">
+        <Container as="dl" variant="row" gap={3} className="text-xs">
           <dt className="text-muted min-w-[60px] font-semibold">Lightning</dt><dd className="text-body break-all">{meta.lud16}</dd>
-        </dl>
+        </Container>
       )}
       {meta?.website && (
-        <dl className="flex gap-3 text-xs">
+        <Container as="dl" variant="row" gap={3} className="text-xs">
           <dt className="text-muted min-w-[60px] font-semibold">Website</dt><dd className="text-body break-all">{meta.website}</dd>
-        </dl>
+        </Container>
       )}
     </Card>
 
-    <div className="text-xs text-muted text-center">{t('profileEdit.previewHint')}</div>
+    <Text variant="muted" as="div" className="text-center">{t('profileEdit.previewHint')}</Text>
 
     <FormError>{error}</FormError>
 
-    <div className="flex gap-4 mt-2">
+    <Container variant="row" gap={4} className="mt-2">
       <Button className="flex-1" variant="secondary" onClick={onBack}>
         {t('common.back')}
       </Button>
       <Button className="flex-1" onClick={onConfirm}>{t('profileEdit.confirmPublish')}</Button>
-    </div>
-  </div>
+    </Container>
+  </Container>
   );
 }

@@ -13,6 +13,8 @@ import { isVaultOpen } from '@domain/vault/vaultAutoUnlock.ts';
 import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface PasswordStepProps {
   account: any;
@@ -122,9 +124,9 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
 
     return (
-      <div className="flex flex-col flex-1">
+      <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.addToVault')}</Heading>
-        <p className="text-md text-secondary leading-normal mb-8">{t('unlock.vaultLocked')}</p>
+        <Text variant="secondary" className="mb-8">{t('unlock.vaultLocked')}</Text>
 
         <div className="mb-6">
           <SectionLabel>{t('wizard.password')}</SectionLabel>
@@ -141,22 +143,22 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
         <FormError>{unlockForm.error}</FormError>
 
-        <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Container variant="row" gap={4} stickyFooter>
           <Button className="flex-1" onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
             {unlockForm.loading ? t('common.loading') : t('common.unlock')}
           </Button>
-        </div>
-      </div>
+        </Container>
+      </Container>
     );
   }
 
   // No vault -- full password setup
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.protectYourKeys')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.protectYourKeysDesc')}
-      </p>
+      </Text>
 
       <div className="mb-6">
         <SectionLabel>{t('wizard.autoLockTimer')}</SectionLabel>
@@ -179,7 +181,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
       )}
 
       {!isNever && (
-        <div className="flex flex-col gap-5 mb-6">
+        <Container gap={5} className="mb-6">
           <SectionLabel className="mb-0">{t('wizard.password')}</SectionLabel>
           <PasswordPairFields
             pair={pair}
@@ -187,16 +189,16 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
             confirmPlaceholder={t('wizard.reEnterPw')}
             onSubmit={handleContinue}
           />
-        </div>
+        </Container>
       )}
 
       <FormError>{error}</FormError>
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" onClick={handleContinue} disabled={loading || (!isNever && !pair.ready)}>
           {loading ? t('wizard.creatingVault') : t('common.continue')}
         </Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { t } from '@lib/i18n.js';
 import { cn } from '@utils/cn.ts';
+import Container from '@components/Container/Container';
 
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   type?: 'text' | 'password' | 'number';
@@ -59,10 +60,10 @@ export default function Input({
   if (!label && !error) return input;
 
   return (
-    <div className="flex flex-col gap-2">
+    <Container gap={2}>
       {label && <label className="text-sm font-semibold text-secondary">{label}</label>}
       {input}
       {error && <div className="text-xs text-error">{error}</div>}
-    </div>
+    </Container>
   );
 }

@@ -8,6 +8,8 @@ import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface SubAccountStepProps {
   onNext: (account: any) => void;
@@ -76,18 +78,18 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col flex-1">
+      <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.generatingIdentity')}</Heading>
-        <p className="text-md text-secondary leading-normal mb-8">{t('wizard.creatingKeypair')}</p>
-      </div>
+        <Text variant="secondary" className="mb-8">{t('wizard.creatingKeypair')}</Text>
+      </Container>
     );
   }
 
   if (needsUnlock) {
     return (
-      <div className="flex flex-col flex-1">
+      <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.subAccountTitle')}</Heading>
-        <p className="text-md text-secondary leading-normal mb-8">{t('unlock.vaultLocked')}</p>
+        <Text variant="secondary" className="mb-8">{t('unlock.vaultLocked')}</Text>
 
         <div className="mb-6">
           <SectionLabel>{t('wizard.password')}</SectionLabel>
@@ -104,32 +106,32 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
         <FormError>{unlockError}</FormError>
 
-        <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Container variant="row" gap={4} stickyFooter>
           <Button className="flex-1" onClick={unlock} disabled={unlocking || !password}>
             {unlocking ? t('common.loading') : t('common.unlock')}
           </Button>
-        </div>
-      </div>
+        </Container>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col flex-1">
+      <Container className="flex-1">
         <Heading className="mb-3">{t('common.error')}</Heading>
         <FormError>{error}</FormError>
-      </div>
+      </Container>
     );
   }
 
   return (
-    <div className="flex flex-col flex-1">
+    <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.subAccountTitle')}</Heading>
-      <p className="text-md text-secondary leading-normal mb-8">
+      <Text variant="secondary" className="mb-8">
         {t('wizard.subAccountDesc')}
-      </p>
+      </Text>
 
-      <div className="bg-surface border border-card-border rounded-panel py-6 px-7 flex flex-col gap-4 mb-6">
+      <Container gap={4} className="bg-surface border border-card-border rounded-panel py-6 px-7 mb-6">
         <FieldDisplay className="py-0" label={t('wizard.typeLabel')} value={t('wizard.subAccountType')} />
         <FieldDisplay
           className="py-0"
@@ -145,17 +147,17 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
             value={`${account.pubkey.slice(0, 12)}...${account.pubkey.slice(-8)}`}
           />
         )}
-      </div>
+      </Container>
 
-      <p className="text-sm text-muted leading-normal mb-4">
+      <Text variant="muted" className="text-sm mb-4">
         {t('wizard.subAccountHint')}
-      </p>
+      </Text>
 
-      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+      <Container variant="row" gap={4} stickyFooter>
         <Button className="flex-1" onClick={handleContinue} disabled={saving}>
           {saving ? t('wizard.addingAccount') : t('common.continue')}
         </Button>
-      </div>
-    </div>
+      </Container>
+    </Container>
   );
 }
