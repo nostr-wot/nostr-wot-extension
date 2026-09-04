@@ -1,5 +1,12 @@
 import React from 'react';
-import styles from './Chip.module.css';
+
+/**
+ * A small selectable pill.
+ *
+ * `aria-pressed` rather than plain button semantics: a chip is a toggle showing
+ * its own state, and without it a screen reader reads only the label and gives
+ * no way to tell which one is active.
+ */
 
 interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   selected?: boolean;
@@ -20,22 +27,31 @@ interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
 }
 
-/**
- * A small selectable pill.
- *
- * `aria-pressed` rather than plain button semantics: a chip is a toggle showing
- * its own state, and without it a screen reader reads only the label and gives
- * no way to tell which one is active.
- */
+// `font-[inherit]` is not decoration: preflight is off, so a <button> still
+// gets the UA's own font family and would otherwise not match its own label.
+const BASE =
+  'px-5 py-2 border rounded-sm bg-transparent font-[inherit] text-xs font-semibold ' +
+  'cursor-pointer transition-all disabled:opacity-50 disabled:cursor-default';
+
+const UNSELECTED = 'border-card-border text-secondary hover:bg-card';
+
+/** Toned selections, where the colour carries the meaning rather than just
+ *  marking which one is on: allow is not merely "selected", it is allow. */
+const TONES: Record<string, string> = {
+  neutral: 'border-brand bg-brand-tint-active text-brand',
+  allow: 'border-success-tint bg-success-tint text-success',
+  deny: 'border-error-tint bg-error-tint text-error',
+  ask: 'border-warning-tint bg-warning-tint text-warning',
+};
+
 export default function Chip({
   selected = false, tone = 'neutral', toggle = true, className = '', children, ...rest
 }: ChipProps) {
-  const toneClass = selected ? (tone === 'neutral' ? styles.selected : styles[tone]) : '';
   return (
     <button
       type="button"
       aria-pressed={toggle ? selected : undefined}
-      className={`${styles.chip} ${toneClass} ${className}`}
+      className={`${BASE} ${selected ? TONES[tone] : UNSELECTED} ${className}`}
       {...rest}
     >
       {children}

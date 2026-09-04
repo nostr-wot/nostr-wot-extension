@@ -29,7 +29,7 @@ export interface UseAsyncResourceOptions<T> {
    * effect can re-run while an earlier pass is still in flight (an account
    * switch mid-read, or a background cache refresh), and the slower of two
    * overlapping runs must not win by finishing last
-   * (docs/component-standards.md §9).
+   * (docs/component-standards.md §10).
    *
    * A failed read is unknown, not a negative answer (§9 again): if `load`
    * throws, this hook's `error` is set but `data` is left exactly where the

@@ -9,7 +9,7 @@ import type { Account } from '@models/account.ts';
  * Which site the popup is looking at, and whether this identity is enabled there.
  *
  * Lived inside Home.tsx. The run-versioning and the `active?.id` keying are
- * the load-bearing parts — see docs/component-standards.md §9.
+ * the load-bearing parts — see docs/component-standards.md §10.
  */
 export default function useSiteState(active: Account | null) {
   const [domain, setDomain] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export default function useSiteState(active: Account | null) {
   //
   // storage.onChanged rather than a runtime message: runtime messages are not
   // delivered back to the document that sent them, so the popup cannot notify
-  // itself this way. See docs/component-standards.md §9.
+  // itself this way. See docs/component-standards.md §10.
   useEffect(() => {
     const onChanged = (changes: Record<string, unknown>, area: string) => {
       if (area !== 'local') return;

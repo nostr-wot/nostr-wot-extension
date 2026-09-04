@@ -10,7 +10,7 @@ import browser from '@shared/browser.ts';
  * that write and corrects itself.
  *
  * `storage.onChanged` rather than a runtime message, per
- * docs/component-standards.md §9 — a background broadcast only reaches a popup
+ * docs/component-standards.md §10 — a background broadcast only reaches a popup
  * that was already open, and a popup cannot notify itself. Storage changes
  * reach every context.
  */

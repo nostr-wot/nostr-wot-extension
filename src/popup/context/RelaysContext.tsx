@@ -43,7 +43,7 @@ interface RelaysProviderProps {
  * used to hand-roll their own `storage.sync.get(['relays'])` plus an
  * `onChanged` listener. `relays` lives in the **sync** area, unlike almost
  * everything else the popup listens for — a listener that only checks `local`
- * never sees an edit (docs/component-standards.md §9).
+ * never sees an edit (docs/component-standards.md §10).
  */
 export function RelaysProvider({ children }: RelaysProviderProps) {
   const { data, refresh: reload, patch } = useAsyncResource<RelaysData>(

@@ -252,7 +252,38 @@ need no i18n. Keep new decision logic on the i18n-free side of that line.
 
 ---
 
-## 7. Import Aliases
+## 7. Tailwind
+
+Tailwind v4 is wired to the tokens in `src/styles/theme.css` rather than to its own defaults, in `src/styles/tailwind.css`. A utility and a stylesheet reaching for the same idea therefore get the same value: `p-6` **is** `--sp-6`, `bg-card` **is** `var(--card-bg)`.
+
+**No new values in `tailwind.css`.** It maps existing tokens into Tailwind's namespaces and nothing else. A utility that needs a value theme.css does not have means the value goes in theme.css first. A palette split across two files is exactly what `tests/theme-tokens.test.ts` was written to prevent.
+
+### What is mapped
+
+The spacing scale needed no mapping: it was already exactly `n x 2px`, so one multiplier reproduces it and Tailwind fills in the steps the hand-written scale never named (there was no `--sp-9`). Type, weight, leading, radius and shadow are mapped by name, with **Tailwind's own scales cleared first** — its `text-xs` is 12px and ours is 11px, and leaving both in place means one class name means two things depending on whether the author knew this file existed. `--radius-panel` keeps its own name because collapsing 10px into `lg` (12px) would be a design change disguised as a rename.
+
+### Preflight is off, and that changes how you write utilities
+
+Preflight is Tailwind's global reset — every margin and padding zeroed, headings unsized, lists unmarked. The stylesheets here were written against browser defaults, so switching it on changes the spacing of every paragraph and heading at once: a change no test in this repo can see. It stays off until the CSS no longer leans on those defaults, and it goes on as its own change, verified by loading the extension and looking at it.
+
+Two consequences when migrating, both of which produce a silently wrong result rather than an error:
+
+- **A `<button>` or `<input>` keeps the UA's font.** `font-[inherit]` is required wherever the old rule said `font-family: inherit`, or the control will not match its own label.
+- **A colour utility does not create a border.** `border-card-border` sets `border-color` only. The old `border: 1px solid var(--card-border)` needs `border border-card-border` — the bare `border` is what supplies the width, and the style comes from an `@property` whose initial value is `solid`.
+
+### What stays in a stylesheet
+
+Utilities do not replace CSS; they replace the parts of it that were repeating a token. Keep a `.module.css` for anything that is genuinely CSS: custom `@keyframes`, selectors utilities cannot express (`.row + .row`, `:has()`, deep descendant rules), and any class accessed dynamically (``styles[`tone${x}`]``), which no scanner can see. Delete the module only once it is actually empty.
+
+Values that are computed at runtime stay inline styles. `Spinner`'s diameter is a caller-supplied number, and a utility class cannot be generated from a value that does not exist until render.
+
+### Verifying a migration
+
+The build passing proves nothing about appearance. For each component, read the **generated** CSS and check the utilities you used resolve to the declarations the old rule had — `grep` the built stylesheet in `dist/assets/`. Cascade order matters too: `border-t-brand` only wins over `border-card-border` because Tailwind emits it later, and that is worth confirming rather than assuming.
+
+---
+
+## 8. Import Aliases
 
 Configured in `vite.config.ts`:
 
@@ -269,7 +300,7 @@ Always use aliases instead of relative paths when crossing module boundaries.
 
 ---
 
-## 8. RPC Convention
+## 9. RPC Convention
 
 **Never** use raw `browser.runtime.sendMessage` in UI code. Use the typed RPC layer:
 
@@ -283,7 +314,7 @@ This ensures consistent error handling, type narrowing, and makes it easy to fin
 
 ---
 
-## 9. Effects in a Popup
+## 10. Effects in a Popup
 
 The popup is a window that is destroyed on focus loss, talking to a service worker that is torn down after ~30s idle. Effects written for a long-lived web page misbehave here in ways that are easy to ship and hard to see. Four rules, each of which exists because breaking it produced a real bug.
 

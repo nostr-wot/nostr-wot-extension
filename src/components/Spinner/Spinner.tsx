@@ -1,5 +1,15 @@
 import React from 'react';
-import styles from './Spinner.module.css';
+
+/**
+ * An indeterminate loading ring.
+ *
+ * There were four of these, differing only in width, border thickness and
+ * duration — none of which was a decision anyone made twice on purpose.
+ *
+ * Size and thickness stay inline styles rather than utilities: they are
+ * caller-supplied numbers, and a utility class cannot be generated from a value
+ * that is only known at runtime.
+ */
 
 interface SpinnerProps {
   /** Diameter in px. */
@@ -9,12 +19,18 @@ interface SpinnerProps {
   className?: string;
 }
 
-/** An indeterminate loading ring. */
 export default function Spinner({ size = 20, border, className = '' }: SpinnerProps) {
-  const style = {
-    '--spinner-size': `${size}px`,
-    '--spinner-border': `${border ?? Math.max(2, Math.round(size / 10))}px`,
-  } as React.CSSProperties;
-
-  return <div className={`${styles.spinner} ${className}`} style={style} role="status" aria-live="polite" />;
+  return (
+    <div
+      className={`rounded-full border-card-border border-t-brand animate-spin [animation-duration:0.7s] ${className}`}
+      style={{
+        width: size,
+        height: size,
+        borderWidth: border ?? Math.max(2, Math.round(size / 10)),
+        borderStyle: 'solid',
+      }}
+      role="status"
+      aria-live="polite"
+    />
+  );
 }

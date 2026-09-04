@@ -1,7 +1,7 @@
 /**
  * Serve the last known answer now; ask the relays behind.
  *
- * `docs/component-standards.md` §9: "No mount effect may open a socket. Relay
+ * `docs/component-standards.md` §10: "No mount effect may open a socket. Relay
  * and NWC round trips on popup open put the slowest relay on the path to first
  * paint. Ask the background for a cached answer and let it refresh behind."
  *

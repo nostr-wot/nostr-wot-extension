@@ -139,6 +139,12 @@
   --radius-xl: var(--radius-xl);
   --radius-full: var(--radius-full);
 
+  /* `transition-all` already defaults to 150ms, which is exactly --transition.
+     Binding it explicitly means changing the token moves both. */
+  --default-transition-duration: var(--transition);
+  --duration-fast: var(--transition-fast);
+  --duration-slow: var(--transition-slow);
+
   --shadow-*: initial;
   --shadow-card: var(--shadow-card);
   --shadow-card-hover: var(--shadow-card-hover);

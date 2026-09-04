@@ -15,7 +15,7 @@ export interface StorageWatchMatcher {
  * `storage.onChanged`, not `runtime.sendMessage`: a popup cannot notify
  * itself of its own write (a runtime message never reaches the tab that sent
  * it), but a storage change reaches every context including the writer
- * (docs/component-standards.md §9). Filtering by area is not optional — most
+ * (docs/component-standards.md §10). Filtering by area is not optional — most
  * keys are `local`, but `relays` lives in `sync`, and a listener that only
  * checks one area silently misses writes to the other. `RelaysContext`
  * watches both at once, which is why this takes a list of matchers rather
