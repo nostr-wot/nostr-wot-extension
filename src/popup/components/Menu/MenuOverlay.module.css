@@ -168,22 +168,3 @@
   color: var(--text-muted);
 }
 
-/* The post-quantum panel's "How it works" button. It had no rule at all: the
-   class was referenced, nothing defined it, so even once OverlayPanel started
-   rendering the button it would have been an unstyled default. Matches
-   OverlayPanel's .closeBtn so the two sit together as a pair.
-
-   Note: OverlayPanel's centered header is `justify-content: space-between` with
-   a 36px placeholder balancing the back button, so a right side holding both
-   this and the close button shifts the title slightly left on this one panel. */
-.headerHelp {
-  background: transparent;
-  border: none;
-  padding: var(--sp-4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  transition: all var(--transition);
-}

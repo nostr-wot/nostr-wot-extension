@@ -48,6 +48,30 @@ There is no test harness that renders React here — `tests/` is `node:test` ove
 
 When a component holds a rule that would be embarrassing to get wrong, that rule wants its own module and its own test file — and the test file wants registering in `tests/run.sh` **and** `.github/workflows/tests.yml`, or it never runs.
 
+### Say what it is
+
+A file's name should survive someone opening it. Four did not: `FiltersModal` and
+`ActivityModal` rendered `OverlayPanel`, `HomeTab` was the only screen and there were
+no tabs, and `Profile/Mutes/RelaysCard` each rendered a `NavRow` inside one shared
+`Card`. They are `FiltersOverlay`, `ActivityOverlay`, `Home` and `*Row` now.
+
+The vocabulary the code is reaching for: **Overlay** = full-height `OverlayPanel` ·
+**Modal**/**Dialog** = centered, via `Modal` · **Panel** = a sub-view of a section ·
+**Section** = a destination `MenuOverlay` pushes · **Card** = a boxed container ·
+**Row** = a tappable list row · **Step** = one wizard screen.
+
+### Where a feature lives
+
+`src/wizard/` is a peer of `popup/`, `prompt/` and `onboarding/`, not a folder inside
+one of them, because two entries use it — onboarding used to reach into
+`../popup/components/Wizard`, which was the only cross-entry import in the tree.
+A feature more than one entry renders belongs beside them, not inside whichever one
+happened to build it first.
+
+`MenuOverlay` importing the sections it pushes is not a boundary violation — that is a
+router importing its routes. Note that `PermissionsSection` has two hosts (the menu
+and `PopupApp` directly), so it is not purely a menu section.
+
 ### One shape, one definition
 
 `PendingRequest` had five definitions: the canonical one in `lib/types.ts` and four narrower restatements across ApprovalOverlay, ApprovalCard, EventDetailModal and PopupApp. They had already drifted into a type error that one of the copies documented in a comment rather than fixing. Import the canonical type; if it does not fit, widen it there.
@@ -118,6 +142,9 @@ All shared hooks live in `src/shared/hooks/`, one hook per file.
 | `useVaultUnlock({ onSuccess })` | Password state, unlock RPC, error handling, input ref, brute-force lockout (escalating: 1/5/15/30 min after every 5 failures) |
 | `useAnimatedVisible(visible)` | Manages mount/unmount transitions for overlays |
 | `useCopy(resetAfterMs?)` | `{ copy, copied, failed }` — clipboard write that reports its outcome |
+| `useOutsideClick(ref, onOutside, enabled?)` | Dismiss an anchored surface on outside **mousedown** |
+| `useTimedReveal(empty, ttlMs)` | Show a secret blurred, and take it off screen after `ttlMs` |
+| `useRelayCache(name, onRefreshed)` | Re-read when the background refreshes a cached relay answer |
 | `useWizardFlow()` | State machine hook for onboarding wizard |
 
 There is no `useBrowserStorage`. This table used to claim one; two components had each hand-rolled its exact body instead of finding it, because it was never written.
@@ -144,7 +171,10 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `txFilter.ts` | `matchesTxFilter`, `matchesTxSearch`, `filterTransactions`, `dateRangeToTs`, `countActiveFilters`, `isPlaceholderMemo` |
 | `invoiceExpiry.ts` | `describeInvoiceExpiry` — takes `now`, so it is testable |
 | `pqcState.ts` | `derivePqcCardState`, `isAlreadyPublished`, `PqcStatus`, `PqcPublished` |
-| `permissionRules.ts` | `countDecisions`, `filterKeysForAccountKind`, `availablePermKeys`, `buildRuleKey` |
+| `permissionRules.ts` | `countDecisions`, `filterKeysForAccountKind`, `availablePermKeys`, `buildRuleKey`, `DECISIONS` |
+| `passwordPair.ts` | `validatePasswordPair` — the "new password, twice" rule |
+| `vaultAutoUnlock.ts` | `isVaultOpen` — never-lock auto-unlock, behind its mode check |
+| `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups`, `TYPE_METHODS` |
 
 `permissionRules.ts` is split from `permissions.ts` on purpose: that module imports
 `t()`, which drags in the browser layer and makes it unloadable under plain

@@ -43,7 +43,12 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - `theme.css` gained spacing, type, weight, line-height, radius, motion, shadow, brand-tint, status and z-index scales, all derived from values already in use. Roughly 1,950 token references; colour literals 279 → 106; `var()` fallbacks 18 → 0.
 - Dead CSS removed, `PqcSection` no longer imports a sibling section's stylesheet, and `SiteControls`, `PqcCard` and `ApprovalCard` have their own modules.
 - `src/shared/animations.css` deleted — every module already defined the keyframes it used, so the shared file was loaded by the popup and referenced by nothing.
-- Tests 606 → 1175.
+- `ApprovalOverlay` 408 → 217, `PqcSection` 553 → 324, `PermissionsSection` 484 → 319, `MenuOverlay` 296 → 258, `KeyActionModal` 23 `useState` → 17. Extracted alongside them: `useApprovalQueue`, `LanguagePicker`, `DeclinedSites`, `AddRuleModal`, `ProfilePreviewCard`, `PqcExportModal`, `PqcImportPanel`, `PqcHowItWorks`, `PqcKeyRow`.
+- **Two security-adjacent fixes in the wizard.** Both `PasswordStep` and `SubAccountStep` called `vault_unlock` directly, so the add-account path was an unthrottled password oracle while every other unlock carried the escalating lockout. Worse, `PasswordStep` offered the empty password to *any* locked vault rather than only never-lock ones — and the background charges failed unlocks to a persisted guard, so an abandoned wizard re-running that probe on each popup open could lock a user out of their own vault in five opens without them typing anything.
+- Shared what was duplicated: `useOutsideClick` (4 copies), `useTimedReveal` (2, both guarding secret material), `Spinner` (4 CSS definitions and 4 keyframes), `IconButton` (17 rule blocks), `validatePasswordPair` (8 hand-written copies), `asGroup` (which collapsed four single-request approval handlers that were repeating the group handlers' `permKey || type` fallback by hand).
+- Renamed four files that said one thing and rendered another: `FiltersModal`/`ActivityModal` → `*Overlay` (they render `OverlayPanel`), `HomeTab` → `Home` (there are no tabs), `Profile/Mutes/RelaysCard` → `*Row` (they render `NavRow`).
+- `src/wizard/` is now a peer of the three entry points. `onboarding` had been importing it from `../popup/components/Wizard` — the only cross-entry reach-in in the tree, and there are none left.
+- Tests 606 → 1206.
 
 ## 0.6.0
 
