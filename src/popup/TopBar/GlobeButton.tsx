@@ -5,6 +5,7 @@ import { getFaviconUrl } from '@shared/clientIcons.ts';
 import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
 import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
+import IconButton from '@components/IconButton/IconButton';
 import styles from './TopBar.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useBrowserStorage from '@hooks/useBrowserStorage.ts';
@@ -89,9 +90,11 @@ export default function GlobeButton() {
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      <button
+      <IconButton
+        tone="brand"
         className={styles.globeBtn}
         title={t('topbar.siteConnection')}
+        aria-label={t('topbar.siteConnection')}
         onClick={() => setOpen((v) => !v)}
       >
         <IconGlobe size={16} />
@@ -100,7 +103,7 @@ export default function GlobeButton() {
         {connected !== null && (
           <span className={`${styles.globeDot} ${connected ? styles.globeConnected : styles.globeDisconnected}`} />
         )}
-      </button>
+      </IconButton>
 
       {open && (
         <div className={styles.globePopover}>

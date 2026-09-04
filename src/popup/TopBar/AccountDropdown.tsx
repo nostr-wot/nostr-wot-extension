@@ -8,6 +8,7 @@ import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { IconClose, IconCopy, IconPencil } from '@assets';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
+import IconButton from '@components/IconButton/IconButton';
 import styles from './TopBar.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useCopy from '@hooks/useCopy.ts';
@@ -130,9 +131,11 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
               </button>
               <div className={styles.dropdownActions}>
                 {!account.readOnly && account.type !== 'npub' && (
-                  <button
+                  <IconButton
+                    size={22}
                     className={styles.dropdownEditBtn}
                     title={t('settings.editProfile')}
+                    aria-label={t('settings.editProfile')}
                     onClick={(e: MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       switchAccount(account.id);
@@ -141,15 +144,17 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     }}
                   >
                     <IconPencil size={13} />
-                  </button>
+                  </IconButton>
                 )}
                 <div className={styles.copyWrap}>
                   {copiedId === account.pubkey ? (
                     <span className={styles.copiedLabel}>{t('common.copied')}</span>
                   ) : (
-                    <button
+                    <IconButton
+                      size={22}
                       className={styles.dropdownCopyBtn}
                       title={t('common.copy')}
+                      aria-label={t('common.copy')}
                       onClick={(e: MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         if (copyMenuId === account.id) {
@@ -163,7 +168,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                       }}
                     >
                       <IconCopy size={13} />
-                    </button>
+                    </IconButton>
                   )}
                   {copyMenuId === account.id && copyMenuPos && (
                     <div className={styles.copyMenu} style={{ top: copyMenuPos.top, right: copyMenuPos.right }}>
@@ -182,16 +187,19 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     </div>
                   )}
                 </div>
-                <button
+                <IconButton
+                  tone="danger"
+                  size={22}
                   className={styles.dropdownRemoveBtn}
                   title={t('account.remove')}
+                  aria-label={t('account.remove')}
                   onClick={(e: MouseEvent<HTMLButtonElement>) => {
                     e.stopPropagation();
                     setConfirmId(account.id);
                   }}
                 >
                   <IconClose size={14} />
-                </button>
+                </IconButton>
               </div>
             </div>
           );
