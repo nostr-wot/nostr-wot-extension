@@ -75,9 +75,13 @@ export default function DeclinedSites() {
         <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {declined.map(({ domain, until }) => (
             <div key={domain} className="flex items-center gap-5 py-5 px-6 border-t border-card-border first:border-t-0">
-              <div className={styles.permInfo}>
-                <div className={styles.permDomain}>{domain}</div>
-                <div className={styles.permSummary}>{describe(until)}</div>
+              {/* These three were `styles.permInfo/permDomain/permSummary`,
+                  which stopped existing when the permissions rows became
+                  ListRow — leaving this list with no layout at all and nothing
+                  to say so. */}
+              <div className="flex-1 min-w-0">
+                <div className="text-md font-medium text-heading truncate">{domain}</div>
+                <div className="text-xs text-muted">{describe(until)}</div>
               </div>
               <LinkButton tone="brand" className={`${styles.declinedRemove} shrink-0 underline underline-offset-2 hover:opacity-85`} onClick={() => undo(domain)}>
                 {t('perm.declinedRemove')}

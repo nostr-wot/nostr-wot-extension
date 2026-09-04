@@ -54,6 +54,49 @@ function classesInSelectors(css: string): Set<string> {
   return out;
 }
 
+describe('CSS module references', () => {
+  it('every styles.x names a class the stylesheet defines', () => {
+    // The inverse of the check below, and the direction that actually loses
+    // styling: `styles.permInfo` for a class that no longer exists is
+    // `undefined`, so the element renders with no class at all. It is not a
+    // type error — a CSS Module is typed as an index signature — and it is not
+    // a build error. The permissions rows moving to ListRow took three classes
+    // with them, and the declined-sites list below them quietly lost its
+    // layout.
+    const missing: string[] = [];
+
+    for (const code of CODE.filter((f) => f.endsWith('.tsx'))) {
+      // Comments mention class names while explaining why they are gone; a
+      // scan that reads them reports the explanation as the bug.
+      const src = readFileSync(code, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\/\/.*$/gm, '');
+      const imported = /import\s+(\w+)\s+from\s+'([^']*\.module\.css)'/.exec(src);
+      if (!imported) continue;
+
+      const cssPath = join(dirname(code), imported[2]);
+      if (!STYLESHEETS.includes(cssPath)) continue;
+      const defined = new Set(
+        [...readFileSync(cssPath, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .matchAll(/\.([a-zA-Z][\w-]*)/g)].map((m) => m[1]),
+      );
+
+      for (const m of src.matchAll(new RegExp(`${imported[1]}\\.([a-zA-Z][\\w-]*)`, 'g'))) {
+        if (!defined.has(m[1])) {
+          missing.push(`${relative(ROOT, code)}  styles.${m[1]}  (not in ${basename(cssPath)})`);
+        }
+      }
+    }
+
+    assert.deepEqual(
+      [...new Set(missing)].sort(),
+      [],
+      `these render as className={undefined} — the class was renamed or removed:\n  ${[...new Set(missing)].sort().join('\n  ')}`,
+    );
+  });
+});
+
 describe('CSS module selectors', () => {
   it('names only classes the code puts on an element', () => {
     const orphans: string[] = [];
