@@ -10,6 +10,7 @@ import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import styles from './TopBar.module.css';
 import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
+import useCopy from '@shared/hooks/useCopy.ts';
 
 interface AccountDropdownProps {
   onClose: () => void;
@@ -33,13 +34,25 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
 
   useOutsideClick(ref, onClose);
 
+  /**
+   * The tick is per row, so this keeps its own `copiedId` rather than useCopy's
+   * single boolean — but the write goes through useCopy, which catches. It was
+   * an un-awaited-in-effect `writeText` with no error path, so a clipboard the
+   * browser refused still showed "Copied", and the reset timer was never
+   * cleared on unmount.
+   */
+  const { copy } = useCopy();
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copiedTimer.current) clearTimeout(copiedTimer.current); }, []);
+
   const handleCopy = async (pubkey: string, format: 'npub' | 'hex') => {
     const text = format === 'npub' ? npubEncode(pubkey) : pubkey;
-    await navigator.clipboard.writeText(text);
     setCopyMenuId(null);
     setCopyMenuPos(null);
+    if (!(await copy(text))) return;
     setCopiedId(pubkey);
-    setTimeout(() => setCopiedId(null), 1500);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopiedId(null), 1500);
   };
 
   const confirmAccount = confirmId ? (accounts || []).find((a) => a.id === confirmId) : null;
