@@ -13,6 +13,7 @@ import { IconSettings } from '@assets/index';
 import { type Transaction } from '@lib/wallet/types.ts';
 import { type TxFilters } from '@shared/txFilter.ts';
 import { accumulateTransactions } from '@shared/txPager.ts';
+import { useWallet } from '../../context/WalletContext';
 
 import styles from './Wallet.module.css';
 import IconButton from '@components/IconButton/IconButton';
@@ -23,9 +24,10 @@ interface WalletProps {
 }
 
 export default function Wallet({ providerType, onDisconnected }: WalletProps) {
-  const [balance, setBalance] = useState<number | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState<boolean>(true);
-  const [balanceError, setBalanceError] = useState<string>('');
+  // Balance and its refresh live in WalletContext now — this used to fetch it
+  // again on its own mount, on top of the config check WalletSection already
+  // did.
+  const { balance, balanceLoading, balanceError, refreshBalance } = useWallet();
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
   const [showDeposit, setShowDeposit] = useState<boolean>(false);
@@ -41,18 +43,6 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [txDateFrom, setTxDateFrom] = useState<string>('');
   const [txDateTo, setTxDateTo] = useState<string>('');
   const [txFilterOpen, setTxFilterOpen] = useState<boolean>(false);
-
-  const fetchBalance = useCallback(async () => {
-    setBalanceLoading(true);
-    setBalanceError('');
-    try {
-      const result = await rpc<{ balance: number }>('wallet_getBalance');
-      setBalance(result?.balance ?? 0);
-    } catch (e: unknown) {
-      setBalanceError((e as Error).message);
-    }
-    setBalanceLoading(false);
-  }, []);
 
   // Pages the API, accumulating until enough matches exist or the data runs
   // out. The pure half — what to fetch and when to stop — lives in
@@ -79,10 +69,12 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
 
   // The threshold, NWC URI and Lightning Address moved into WalletSettings —
   // three RPCs on every wallet open for a panel most sessions never touch.
+  // Balance is not fetched here: WalletContext already fetches it the moment
+  // `configType` becomes a provider string, which happens before this
+  // component ever mounts.
   useEffect(() => {
-    fetchBalance();
     fetchFiltered(0, [], { direction: 'all', dateFrom: '', dateTo: '' });
-  }, [fetchBalance, fetchFiltered]);
+  }, [fetchFiltered]);
 
   const handleShowMore = () => {
     fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
@@ -112,7 +104,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         ) : balanceError ? (
           <div className={styles.balanceErrorWrap}>
             <div className={styles.error}>{balanceError}</div>
-            <Button small variant="secondary" onClick={fetchBalance}>
+            <Button small variant="secondary" onClick={refreshBalance}>
               {t('common.retry')}
             </Button>
           </div>
@@ -136,7 +128,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         <DepositDialog
           onClose={() => setShowDeposit(false)}
           onPaid={() => {
-            fetchBalance();
+            refreshBalance();
             fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
           }}
         />
@@ -146,7 +138,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         <SendDialog
           onClose={() => setShowSend(false)}
           onSent={() => {
-            fetchBalance();
+            refreshBalance();
             fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
           }}
         />
@@ -173,7 +165,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       {showSettings && (
         <WalletSettings
           providerType={providerType}
-          onClose={() => { setShowSettings(false); fetchBalance(); }}
+          onClose={() => { setShowSettings(false); refreshBalance(); }}
           onDisconnected={onDisconnected}
         />
       )}

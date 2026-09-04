@@ -3,6 +3,7 @@ import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import { type PqcPanelStatus as PqcStatus } from '@shared/pqcState.ts';
+import { usePqc } from '../../context/PqcContext';
 import styles from './PqcSection.module.css';
 
 const KEYGEN_SOURCE_URL =
@@ -10,7 +11,8 @@ const KEYGEN_SOURCE_URL =
 const KEYGEN_COMMAND = 'npm run pqc:keygen -- --independent --keyfile keys.json';
 
 /** Import independently generated post-quantum keys from a key file. */
-export default function PqcImportPanel({ onImported }: { onImported: (s: PqcStatus) => void }) {
+export default function PqcImportPanel() {
+  const { applyStatus } = usePqc();
   const [text, setText] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -19,7 +21,10 @@ export default function PqcImportPanel({ onImported }: { onImported: (s: PqcStat
     setError('');
     setBusy(true);
     try {
-      onImported(await rpc<PqcStatus>('pqc_importKeys', { keyfile }));
+      // Optimistic: `pqc_importKeys` already returns the new status, so
+      // updating the shared context with it directly saves the round trip a
+      // `refresh()` would otherwise repeat.
+      applyStatus(await rpc<PqcStatus>('pqc_importKeys', { keyfile }));
       setText('');
     } catch (e: any) {
       setError(e?.message || t('common.error'));
