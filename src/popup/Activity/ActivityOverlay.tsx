@@ -277,7 +277,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
         )}
         {page.hasMore && (
           <div className={styles.showMore}>
-            <Button small variant="secondary" onClick={page.loadMore}>{t('wallet.showMore')}</Button>
+            <Button small variant="secondary" onClick={page.loadMore}>{t('common.showMore')}</Button>
           </div>
         )}
       </div>

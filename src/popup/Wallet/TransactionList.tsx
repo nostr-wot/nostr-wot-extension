@@ -99,7 +99,7 @@ export default function TransactionList({
       {hasMore && !loading && !search.trim() && visible.length > 0 && (
         <div className={styles.showMore}>
           <Button small variant="secondary" onClick={onLoadMore} disabled={loading}>
-            {loading ? t('common.loading') : t('wallet.showMore')}
+            {loading ? t('common.loading') : t('common.showMore')}
           </Button>
         </div>
       )}
