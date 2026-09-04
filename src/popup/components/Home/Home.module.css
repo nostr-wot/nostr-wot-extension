@@ -64,20 +64,6 @@
   flex-shrink: 0;
 }
 
-.profileDismiss {
-  background: none;
-  border: none;
-  padding: var(--sp-1) var(--sp-3);
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.profileDismiss:hover {
-  color: var(--text-secondary);
-}
-
 /* Pending requests card */
 .pendingCard {
   display: flex;
@@ -183,5 +169,4 @@
   color: var(--error);
   text-align: center;
 }
-
 

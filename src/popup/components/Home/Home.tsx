@@ -23,6 +23,7 @@ import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { IconGlobe, IconZap, IconChevronRight } from '@assets';
 import styles from './Home.module.css';
 import type { PendingRequest } from '@lib/types.ts';
+import LinkButton from '@components/LinkButton/LinkButton';
 
 interface HomeProps {
   menuOpen?: boolean;
@@ -207,7 +208,7 @@ export default function Home({ menuOpen }: HomeProps) {
           </div>
           <div className={styles.profileSuggestionActions}>
             <Button small onClick={navigate.openWallet}>{t('home.setupProfileButton')}</Button>
-            <button className={styles.profileDismiss} onClick={handleDismissWallet}>{t('home.skip')}</button>
+            <LinkButton onClick={handleDismissWallet}>{t('home.skip')}</LinkButton>
           </div>
         </Card>
       )}

@@ -21,6 +21,7 @@ import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@shared/browser.ts';
 import styles from './PqcSection.module.css';
+import LinkButton from '@components/LinkButton/LinkButton';
 
 
 
@@ -213,7 +214,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
             <div className={styles.pqcNoticeInline}>
               <IconWarning size={16} />
               <span>{t('pqc.checkFailed')}</span>
-              <button className={styles.pqcCopyLink} onClick={refresh}>{t('common.retry')}</button>
+              <LinkButton tone="brand" className={styles.pqcCopyLink} onClick={refresh}>{t('common.retry')}</LinkButton>
             </div>
           )}
           {/* Only while it is still an instruction. Telling someone to publish,
@@ -261,10 +262,10 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
               <p className={styles.desc}>{t('pqc.attestationLabel')}</p>
               <pre className={styles.pqcJson}>{JSON.stringify(status.attestation, null, 2)}</pre>
               {/* For anyone who would rather publish it themselves. */}
-              <button className={styles.pqcCopyLink} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
+              <LinkButton tone="brand" className={styles.pqcCopyLink} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
                 <IconCopy size={12} />
                 {attestationCopy.copied ? t('common.copied') : t('pqc.copyAttestation')}
-              </button>
+              </LinkButton>
             </>
           )}
         </Modal>
