@@ -2,13 +2,25 @@ import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
-import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type GroupedActivity } from '@domain/activity/activity.ts';
-import { truncateNpub } from '@utils/format/text.ts';
+import {
+  filterActivityEntries,
+  countActivityFilters,
+  activityDomains,
+  activityAccountOptions,
+  availableTypeKeys,
+  buildDayGroups,
+  groupActivityEntries,
+  type GroupedActivity,
+} from '@domain/activity/activity.ts';
+import { classifyDay } from '@utils/format/time.ts';
 import Button from '@components/Button/Button';
+import LinkButton from '@components/LinkButton/LinkButton';
 import Dropdown from '@components/Dropdown/Dropdown';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import Input from '@components/Input/Input';
 import StatusDot from '@components/StatusDot/StatusDot';
+import Card from '@components/Card/Card';
+import ListRow from '@components/ListRow/ListRow';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import { IconTuner } from '@assets';
 import { useAccount } from '@context/AccountContext';
@@ -21,6 +33,23 @@ import type { DropdownOption } from '@components/Dropdown/dropdownOption.ts';
 /** Rendered rows per page. Grown by the "show more" button, reset whenever
  *  the filters narrowing `rawLog` change (see the effect below). */
 const PAGE_SIZE = 40;
+
+/** Translation keys for `availableTypeKeys`' chip keys. A key lookup rather
+ *  than the translated text itself, so it can live at module scope without
+ *  freezing in whatever language was active on first import — `t()` still
+ *  runs at render time, in `typeOptions` below. Kept out of the domain module
+ *  because that layer stays i18n-free (see docs/component-standards.md §6,
+ *  `permissionRules.ts`). */
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  signEvent: 'approval.signEvent',
+  getPublicKey: 'perm.readProfile',
+  encrypt: 'activity.sendMessage',
+  decrypt: 'activity.readMessage',
+  nip04Encrypt: 'activity.sendNip04',
+  nip44Encrypt: 'activity.sendNip44',
+  nip04Decrypt: 'activity.readNip04',
+  nip44Decrypt: 'activity.readNip44',
+};
 
 interface ActivityOverlayProps {
   visible: boolean;
@@ -73,57 +102,29 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   }, [rawLog]);
 
   // Build account dropdown options from log data
-  const accountOptions = useMemo((): DropdownOption[] => {
-    const pubkeys = [...new Set(rawLog.map((e) => e.pubkey).filter(Boolean))] as string[];
-    const opts: DropdownOption[] = [{ value: '', label: t('activity.allAccounts') }];
-    for (const pk of pubkeys) {
-      const profile = profileCache?.[pk];
-      const acct = (accounts || []).find((a) => a.pubkey === pk);
-      const label = profile?.name || acct?.name || truncateNpub(pk);
-      opts.push({ value: pk, label });
-    }
-    return opts;
-  }, [rawLog, accounts, profileCache]);
+  const accountOptions = useMemo((): DropdownOption[] => [
+    { value: '', label: t('activity.allAccounts') },
+    ...activityAccountOptions(rawLog, accounts || [], profileCache || {})
+      .map((o) => ({ value: o.pubkey, label: o.label })),
+  ], [rawLog, accounts, profileCache]);
 
-  // Compute which methods are present in the filtered log
-  const availableMethods = useMemo((): Set<string> => {
-    let base = rawLog;
-    if (filter) base = base.filter((e) => e.domain === filter);
-    if (accountFilter) base = base.filter((e) => e.pubkey === accountFilter);
-    return new Set(base.map((e) => e.method).filter(Boolean) as string[]);
-  }, [rawLog, filter, accountFilter]);
+  // Which type-filter chips to offer — only the ones with a matching entry
+  // for the currently selected domain/account.
+  const typeKeys = useMemo(
+    () => availableTypeKeys(rawLog, { domain: filter, account: accountFilter }, advancedTypes),
+    [rawLog, filter, accountFilter, advancedTypes],
+  );
 
-  // Build type options dynamically — only show types present in data
-  const typeOptions = useMemo((): DropdownOption[] => {
-    const opts: DropdownOption[] = [{ value: '', label: t('activity.allOps') }];
-    const has = (m: string) => availableMethods.has(m);
-
-    if (has('signEvent'))    opts.push({ value: 'signEvent', label: t('approval.signEvent') });
-    if (has('getPublicKey')) opts.push({ value: 'getPublicKey', label: t('perm.readProfile') });
-
-    if (advancedTypes) {
-      if (has('nip04Encrypt')) opts.push({ value: 'nip04Encrypt', label: t('activity.sendNip04') });
-      if (has('nip44Encrypt')) opts.push({ value: 'nip44Encrypt', label: t('activity.sendNip44') });
-      if (has('nip04Decrypt')) opts.push({ value: 'nip04Decrypt', label: t('activity.readNip04') });
-      if (has('nip44Decrypt')) opts.push({ value: 'nip44Decrypt', label: t('activity.readNip44') });
-    } else {
-      if (has('nip04Encrypt') || has('nip44Encrypt')) opts.push({ value: 'encrypt', label: t('activity.sendMessage') });
-      if (has('nip04Decrypt') || has('nip44Decrypt')) opts.push({ value: 'decrypt', label: t('activity.readMessage') });
-    }
-
-    return opts;
-  }, [availableMethods, advancedTypes]);
-
-  // Derive domains from raw log
-  const domains = useMemo((): string[] => {
-    return activityDomains(rawLog);
-  }, [rawLog]);
+  const typeOptions = useMemo((): DropdownOption[] => [
+    { value: '', label: t('activity.allOps') },
+    ...typeKeys.map((key) => ({ value: key, label: t(TYPE_LABEL_KEYS[key]) })),
+  ], [typeKeys]);
 
   // Domain dropdown options
   const domainOptions = useMemo((): DropdownOption[] => [
     { value: '', label: t('activity.allSites') },
-    ...domains.map((d) => ({ value: d, label: d })),
-  ], [domains]);
+    ...activityDomains(rawLog).map((d) => ({ value: d, label: d })),
+  ], [rawLog]);
 
   // Filtered + grouped entries
   const entries = useMemo((): GroupedActivity[] => {
@@ -178,30 +179,14 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
 
   if (!shouldRender) return null;
 
-  // Group entries by day for display
-  interface DayGroupItem {
-    type: 'header' | 'entry';
-    label?: string;
-    idx?: number;
-    [key: string]: any;
-  }
-
-  const dayGroups: DayGroupItem[] = [];
-  let currentDay: string | null = null;
-  let entryIdx = 0;
-  for (const entry of page.visible) {
-    if (entry.day !== currentDay) {
-      currentDay = entry.day!;
-      const today = new Date().toDateString();
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      let dayLabel = entry.day!;
-      if (entry.day === today) dayLabel = t('activity.today');
-      else if (entry.day === yesterday) dayLabel = t('activity.yesterday');
-      dayGroups.push({ type: 'header', label: dayLabel });
-    }
-    dayGroups.push({ type: 'entry', idx: entryIdx, ...entry });
-    entryIdx++;
-  }
+  // Insert a day header before each day boundary in the currently rendered page.
+  const dayItems = buildDayGroups(page.visible);
+  const dayLabel = (day: string) => {
+    const kind = classifyDay(day);
+    if (kind === 'today') return t('activity.today');
+    if (kind === 'yesterday') return t('activity.yesterday');
+    return day;
+  };
 
   const showDomain = !filter;
 
@@ -226,8 +211,14 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
             />
           )}
         </div>
-        <button
-          className={`relative flex items-center justify-center w-16 h-16 rounded-md border border-card-active bg-brand-tint-hover text-secondary cursor-pointer transition-colors shrink-0 hover:bg-brand-tint-active hover:text-heading ${activeFilterCount > 0 ? 'bg-brand-light text-brand border-brand' : ''}`}
+        <Card
+          as="button"
+          variant="flat"
+          className={`relative flex items-center justify-center w-16 h-16 p-0 mb-0 rounded-md shrink-0 transition-colors ${
+            activeFilterCount > 0
+              ? 'border-brand bg-brand-light text-brand'
+              : 'border-card-active bg-brand-tint-hover text-secondary hover:bg-brand-tint-active hover:text-heading'
+          }`}
           onClick={() => setFiltersOpen(true)}
           title={t('activity.filters')}
         >
@@ -237,7 +228,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
               {activeFilterCount}
             </span>
           )}
-        </button>
+        </Card>
         {rawLog.length > 0 && (
           <Button variant="danger" small onClick={handleClear}>{t('activity.clearAll')}</Button>
         )}
@@ -251,30 +242,34 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
             <div role="alert">{t('activity.loadFailed')}</div>
             <Button small onClick={loadActivity}>{t('common.retry')}</Button>
           </div>
-        ) : dayGroups.length === 0 ? (
+        ) : dayItems.length === 0 ? (
           <div className="text-muted text-md text-center py-14">
             {t('activity.noActivity')}
           </div>
         ) : (
-          dayGroups.map((item, i) =>
+          dayItems.map((item, i) =>
             item.type === 'header' ? (
-              <div key={`h-${i}`} className="text-xs font-bold text-secondary pt-4 pb-2 uppercase tracking-[0.5px]">{item.label}</div>
+              <div key={`h-${i}`} className="text-xs font-bold text-secondary pt-4 pb-2 uppercase tracking-[0.5px]">{dayLabel(item.day)}</div>
             ) : (
-              <button
+              <ListRow
                 key={`e-${i}`}
-                className="flex items-center gap-4 py-3 text-sm border-b border-brand-tint-hover w-full bg-transparent border-l-0 border-r-0 border-t-0 cursor-pointer text-left transition-colors duration-fast rounded-xs text-inherit hover:bg-brand-tint-hover"
-                onClick={() => setSelectedGroup(item as any)}
-              >
-                <StatusDot status={item.decision} />
-                <span className="text-muted text-xs whitespace-nowrap shrink-0 min-w-18">{item.timeKey}</span>
-                {showDomain && item.domain && (
-                  <span className="text-secondary font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">{item.domain}</span>
-                )}
-                <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{formatPermissionLabel(item.methodKey, item.entries?.[0]?.event)}</span>
-                {item.count > 1 && (
-                  <span className="text-muted text-xs shrink-0">&times;{item.count}</span>
-                )}
-              </button>
+                variant="grouped"
+                leading={<StatusDot status={item.entry.decision} />}
+                leadingChip={false}
+                title={
+                  <span className="flex items-center gap-4 min-w-0 w-full text-sm font-normal">
+                    <span className="text-muted text-xs whitespace-nowrap shrink-0 min-w-18">{item.entry.timeKey}</span>
+                    {showDomain && item.entry.domain && (
+                      <span className="text-secondary font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">{item.entry.domain}</span>
+                    )}
+                    <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                      {formatPermissionLabel(item.entry.methodKey, item.entry.entries?.[0]?.event ?? undefined)}
+                    </span>
+                  </span>
+                }
+                trailing={item.entry.count > 1 ? <span className="text-muted text-xs shrink-0">&times;{item.entry.count}</span> : null}
+                onClick={() => setSelectedGroup(item.entry)}
+              />
             )
           )
         )}
@@ -307,12 +302,9 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
               value={typeFilter}
               onChange={setTypeFilter}
             />
-            <button
-              className="self-start bg-transparent border-none p-0 text-xs font-medium text-brand cursor-pointer transition-colors hover:text-brand-hover"
-              onClick={handleToggleAdvanced}
-            >
+            <LinkButton tone="brand" onClick={handleToggleAdvanced}>
               {advancedTypes ? t('activity.hideProtocols') : t('activity.showProtocols')}
-            </button>
+            </LinkButton>
           </div>
 
           {/* `.filterPanel:last-of-type` used to drop this border when this

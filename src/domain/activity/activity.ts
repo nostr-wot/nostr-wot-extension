@@ -1,4 +1,7 @@
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
+import type { Account } from '@domain/accounts/account.ts';
+import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
+import { truncateNpub } from '@utils/format/text.ts';
 
 /**
  * One entry in the activity log: something a site asked this extension to do.
@@ -94,6 +97,32 @@ export const TYPE_METHODS: Record<string, string[]> = {
   nip44Decrypt: ['nip44Decrypt'],
 };
 
+/** Display order for the type-filter chips in simple mode. */
+const SIMPLE_TYPE_ORDER = ['signEvent', 'getPublicKey', 'encrypt', 'decrypt'];
+/** Display order in advanced mode — one chip per wire method instead of the
+ *  collapsed encrypt/decrypt pair. */
+const ADVANCED_TYPE_ORDER = ['signEvent', 'getPublicKey', 'nip04Encrypt', 'nip44Encrypt', 'nip04Decrypt', 'nip44Decrypt'];
+
+/**
+ * Which type-filter keys to offer, scoped to the selected domain/account and
+ * ordered for display — only keys with at least one matching entry appear, so
+ * the filter panel never offers a chip that would empty the list.
+ *
+ * This was inline in the overlay as two separate `useMemo`s (the set of
+ * present methods, then which chips that unlocks); collapsed into one
+ * function because neither half means anything on its own.
+ */
+export function availableTypeKeys(
+  entries: ActivityEntry[],
+  filters: { domain?: string | null; account?: string | null },
+  advanced: boolean,
+): string[] {
+  const scoped = filterActivityEntries(entries, { domain: filters.domain, account: filters.account });
+  const present = new Set(scoped.map((e) => e.method).filter(Boolean) as string[]);
+  const order = advanced ? ADVANCED_TYPE_ORDER : SIMPLE_TYPE_ORDER;
+  return order.filter((key) => TYPE_METHODS[key].some((m) => present.has(m)));
+}
+
 export interface ActivityFilters {
   /** Restrict to one account's pubkey. */
   account?: string | null;
@@ -146,6 +175,32 @@ export function filterActivityEntries(
 /** How many filters are actually narrowing anything — drives the badge. */
 export function countActivityFilters(filters: ActivityFilters): number {
   return (filters.type ? 1 : 0) + (filters.pubkeyQuery ? 1 : 0);
+}
+
+export interface ActivityAccountOption {
+  pubkey: string;
+  label: string;
+}
+
+/**
+ * The accounts that actually appear in the log, each labelled with whatever a
+ * user would recognize them by: a resolved profile name first, then the
+ * account's own nickname, then a truncated npub — in that order because a
+ * profile can go stale (a relay round trip that never lands) but a nickname
+ * is what the user typed themselves, and an npub is always available.
+ */
+export function activityAccountOptions(
+  entries: ActivityEntry[],
+  accounts: Account[],
+  profileCache: Record<string, ProfileMetadata | undefined>,
+): ActivityAccountOption[] {
+  const pubkeys = [...new Set(entries.map((e) => e.pubkey).filter(Boolean))] as string[];
+  return pubkeys.map((pubkey) => {
+    const profile = profileCache[pubkey];
+    const account = accounts.find((a) => a.pubkey === pubkey);
+    const label = profile?.name || account?.name || truncateNpub(pubkey);
+    return { pubkey, label };
+  });
 }
 
 /** The distinct sites present in a log, for the domain picker. */
