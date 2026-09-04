@@ -11,7 +11,8 @@ import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import { IconSettings } from '@assets/index';
 import { type Transaction } from '@lib/wallet/types.ts';
-import { matchesTxFilter, dateRangeToTs, type TxFilters } from '@shared/txFilter.ts';
+import { type TxFilters } from '@shared/txFilter.ts';
+import { accumulateTransactions } from '@shared/txPager.ts';
 
 import styles from './Wallet.module.css';
 import IconButton from '@components/IconButton/IconButton';
@@ -53,9 +54,9 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setBalanceLoading(false);
   }, []);
 
-  // Fetches raw pages from the API, accumulating until we have at least
-  // `target` results that pass the given filters, or we exhaust the data.
-  // For date-from filters, stops early once transactions are older than the boundary.
+  // Pages the API, accumulating until enough matches exist or the data runs
+  // out. The pure half — what to fetch and when to stop — lives in
+  // txPager.ts, tested there; this is just wiring it to component state.
   const fetchFiltered = useCallback(async (
     startOffset: number,
     existing: Transaction[],
@@ -63,37 +64,14 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     target = 10,
   ) => {
     setTxLoading(true);
-    const BATCH = 50;
-    const MAX_FETCHED = 500;
-    const accumulated = [...existing];
-    let offset = startOffset;
-    let hasMore = true;
-    // Same conversion the renderer uses — this was a third hand-written copy.
-    const { fromTs, toTs } = dateRangeToTs(filters);
-
-    try {
-      while (hasMore && offset - startOffset < MAX_FETCHED) {
-        const page = await rpc<Transaction[]>('wallet_getTransactions', { limit: BATCH, offset });
-        if (page.length < BATCH) hasMore = false;
-        offset += page.length;
-
-        for (const tx of page) {
-          // API returns newest-first; if we've passed the from-date, no more matches possible
-          if (fromTs && tx.createdAt < fromTs) { hasMore = false; break; }
-          accumulated.push(tx);
-        }
-
-        // Count how many match all filters so far. Same predicate the render
-        // path uses, so the two cannot disagree about when there is enough.
-        const matchCount = accumulated.filter(
-          (tx) => matchesTxFilter(tx, filters, { fromTs, toTs }),
-        ).length;
-
-        if (matchCount >= target) break;
-      }
-    } catch { /* non-critical */ }
-
-    setTransactions(accumulated);
+    const { transactions, offset, hasMore } = await accumulateTransactions({
+      fetchPage: (limit, pageOffset) => rpc<Transaction[]>('wallet_getTransactions', { limit, offset: pageOffset }),
+      startOffset,
+      existing,
+      filters,
+      target,
+    });
+    setTransactions(transactions);
     setTxOffset(offset);
     setTxHasMore(hasMore);
     setTxLoading(false);
