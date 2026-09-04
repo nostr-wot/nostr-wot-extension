@@ -190,18 +190,18 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
     <>
       <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500}>
         <Card className={styles.providerCard}>
-          <div className={styles.providerRow}>
-            <div className={styles.providerInfo}>
-              <span className={styles.providerLabel}>{providerLabel}</span>
-              <span className={styles.providerStatus}>{t('wallet.connected')}</span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-md font-semibold text-heading">{providerLabel}</span>
+              <span className="text-xs text-success font-medium">{t('wallet.connected')}</span>
             </div>
             <Button small variant="danger" onClick={handleDisconnect} disabled={disconnecting}>
               {disconnecting ? t('common.loading') : t('common.disconnect')}
             </Button>
           </div>
           {nwcUri && (
-            <div className={styles.nwcRow}>
-              <span className={styles.nwcUri} title={nwcUri}>{t('wallet.nwcUri')}</span>
+            <div className="flex items-center justify-between gap-4">
+              <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" title={nwcUri}>{t('wallet.nwcUri')}</span>
               <Button small variant="secondary" onClick={() => nwcUri && nwcCopy.copy(nwcUri)}>
                 {nwcCopy.copied ? t('wallet.nwcCopied') : t('wallet.copyNwc')}
               </Button>
@@ -212,8 +212,8 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
         <Card>
           <SectionLabel>{t('wallet.autoApprove')}</SectionLabel>
           <SectionHint>{t('wallet.autoApproveHint')}</SectionHint>
-          <div className={styles.thresholdRow}>
-            <span className={styles.thresholdLabel}>{t('wallet.maxSats')}</span>
+          <div className="flex items-center justify-between gap-4 py-5">
+            <span className="text-sm text-body flex-1">{t('wallet.maxSats')}</span>
             <Input
               type="number"
               value={thresholdDraft}
@@ -230,9 +230,9 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
             <SectionLabel>{t('wallet.lightningAddress')}</SectionLabel>
             <SectionHint>{t('wallet.lightningAddressHint')}</SectionHint>
             {lnAddress ? (
-              <div className={styles.lnAddressRow}>
-                <span className={styles.lnAddressValue}>{lnAddress}</span>
-                <div className={styles.lnAddressActions}>
+              <div className="flex flex-col gap-4 py-4">
+                <span className="text-lg font-semibold text-heading break-all">{lnAddress}</span>
+                <div className="flex gap-3">
                   <Button small variant="secondary" onClick={() => lnAddress && addressCopy.copy(lnAddress)}>
                     {addressCopy.copied ? t('common.copied') : t('common.copy')}
                   </Button>
@@ -245,7 +245,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                 </div>
               </div>
             ) : (
-              <div className={styles.lnAddressClaimRow}>
+              <div className="flex items-center gap-2 py-4 flex-wrap">
                 <Input
                   type="text"
                   placeholder={t('wallet.usernamePlaceholder')}
@@ -253,7 +253,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setUsernameDraft(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
                   small
                 />
-                <span className={styles.lnAddressDomain}>@zaps.nostr-wot.com</span>
+                <span className="text-md text-muted whitespace-nowrap">@zaps.nostr-wot.com</span>
                 <Button small onClick={handleClaimUsername} disabled={claimLoading || !usernameDraft.trim()}>
                   {claimLoading ? t('common.loading') : t('wallet.claimUsername')}
                 </Button>

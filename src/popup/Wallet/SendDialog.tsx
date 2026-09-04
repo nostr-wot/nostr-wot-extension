@@ -9,7 +9,6 @@ import { isLightningAddress } from '@lib/wallet/lnurl.ts';
 import { resolveSendTarget } from '@shared/sendTarget.ts';
 import { describeInvoiceExpiry } from '@shared/invoiceExpiry.ts';
 import { PAYMENT_IN_FLIGHT } from '@lib/wallet/types.ts';
-import styles from './Wallet.module.css';
 import FormError from '@components/FormError/FormError';
 
 /** What `wallet_resolveLightningAddress` hands back for the confirmation card. */
@@ -207,8 +206,8 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
           </>
         )}
       >
-        <div className={styles.overlayDesc}>{t('wallet.sendDesc')}</div>
-          <div className={styles.form}>
+        <div className="text-sm text-secondary">{t('wallet.sendDesc')}</div>
+          <div className="flex flex-col gap-5">
             <Input
               type="text"
               placeholder={t('wallet.pasteInvoiceOrAddress')}
@@ -220,27 +219,27 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
             {/* Lightning Address preview + amount */}
             {sendIsAddress && !sendSuccess && (
               resolveLoading ? (
-                <div className={styles.invoicePreview}>
-                  <div className={styles.invoiceRow}>
-                    <span className={styles.invoiceLabel}>{t('wallet.resolvingAddress')}</span>
+                <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
+                  <div className="flex justify-between items-baseline gap-4">
+                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.resolvingAddress')}</span>
                   </div>
                 </div>
               ) : sendAddress ? (
                 <>
-                  <div className={styles.invoicePreview}>
-                    <div className={styles.invoiceRow}>
-                      <span className={styles.invoiceLabel}>{t('wallet.payTo')}</span>
-                      <span className={styles.invoiceValue}>{sendAddress.address}</span>
+                  <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
+                    <div className="flex justify-between items-baseline gap-4">
+                      <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.payTo')}</span>
+                      <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">{sendAddress.address}</span>
                     </div>
                     {sendAddress.description && (
-                      <div className={styles.invoiceRow}>
-                        <span className={styles.invoiceLabel}>{t('wallet.invoiceDescription')}</span>
-                        <span className={styles.invoiceValue}>{sendAddress.description}</span>
+                      <div className="flex justify-between items-baseline gap-4">
+                        <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceDescription')}</span>
+                        <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">{sendAddress.description}</span>
                       </div>
                     )}
-                    <div className={styles.invoiceRow}>
-                      <span className={styles.invoiceLabel}>{t('wallet.addressRange')}</span>
-                      <span className={styles.invoiceValue}>
+                    <div className="flex justify-between items-baseline gap-4">
+                      <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.addressRange')}</span>
+                      <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">
                         {t('wallet.addressRangeValue', {
                           min: sendAddress.minSats.toLocaleString(),
                           max: sendAddress.maxSats.toLocaleString(),
@@ -266,7 +265,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
                     />
                   )}
                   {sendAmount !== '' && sendTarget.kind === 'none' && sendTarget.reason === 'amount' && (
-                    <div className={styles.invoiceError}>
+                    <div className="text-xs text-muted text-center py-3">
                       {t('wallet.amountOutOfRange', {
                         min: sendAddress.minSats.toLocaleString(),
                         max: sendAddress.maxSats.toLocaleString(),
@@ -275,42 +274,42 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
                   )}
                 </>
               ) : resolveError ? (
-                <div className={styles.invoiceError}>{resolveError}</div>
+                <div className="text-xs text-muted text-center py-3">{resolveError}</div>
               ) : null
             )}
 
             {/* Invoice preview */}
             {sendInput.trim() && !sendIsAddress && !sendSuccess && (
               decodedInvoice ? (
-                <div className={styles.invoicePreview}>
-                  <div className={styles.invoiceRow}>
-                    <span className={styles.invoiceLabel}>{t('wallet.invoiceAmount')}</span>
-                    <span className={`${styles.invoiceValue} ${styles.invoiceAmountValue}`}>
+                <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
+                  <div className="flex justify-between items-baseline gap-4">
+                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceAmount')}</span>
+                    <span className="text-xl font-bold text-heading text-right overflow-hidden text-ellipsis whitespace-nowrap">
                       {decodedInvoice.amountSats !== null
                         ? `${Math.round(decodedInvoice.amountSats).toLocaleString()} sats`
                         : '—'}
                     </span>
                   </div>
-                  <div className={styles.invoiceRow}>
-                    <span className={styles.invoiceLabel}>{t('wallet.invoiceDescription')}</span>
-                    <span className={styles.invoiceValue}>
+                  <div className="flex justify-between items-baseline gap-4">
+                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceDescription')}</span>
+                    <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">
                       {decodedInvoice.description || t('wallet.invoiceNone')}
                     </span>
                   </div>
-                  <div className={styles.invoiceRow}>
-                    <span className={styles.invoiceLabel}>{t('wallet.invoiceExpiry')}</span>
-                    <span className={styles.invoiceValue}>
+                  <div className="flex justify-between items-baseline gap-4">
+                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceExpiry')}</span>
+                    <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">
                       {invoiceExpiryLabel(decodedInvoice)}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className={styles.invoiceError}>{t('wallet.decodeFailed')}</div>
+                <div className="text-xs text-muted text-center py-3">{t('wallet.decodeFailed')}</div>
               )
             )}
 
             <FormError>{sendError}</FormError>
-            {sendSuccess && <div className={styles.success}>{sendSuccess}</div>}
+            {sendSuccess && <div className="text-sm text-success">{sendSuccess}</div>}
           </div>
       </Modal>
   );

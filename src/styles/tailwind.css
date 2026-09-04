@@ -112,6 +112,8 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  /* Distinct from --font-mono; see theme.css for why. Gives `font-code`. */
+  --font-code: var(--font-mono-alt);
 
   --font-weight-*: initial;
   --font-weight-normal: 400;

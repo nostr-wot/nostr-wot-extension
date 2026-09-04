@@ -2,7 +2,6 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
-import styles from './PqcSection.module.css';
 
 const GUIDE_URL = 'https://nostr-wot.com/guides/turn-on-post-quantum-keys';
 
@@ -15,13 +14,18 @@ export default function HowItWorks({ onClose }: { onClose: () => void }) {
       zIndex={720}
       footer={<Button onClick={onClose}>{t('common.gotIt')}</Button>}
     >
-      <ol className={styles.pqcSteps}>
-        <li>{t('pqc.howStep1')}</li>
-        <li>{t('pqc.howStep2')}</li>
-        <li>{t('pqc.howStep3')}</li>
+      <ol className="mb-4 pl-9">
+        <li className="mb-3 text-xs leading-loose text-body">{t('pqc.howStep1')}</li>
+        <li className="mb-3 text-xs leading-loose text-body">{t('pqc.howStep2')}</li>
+        <li className="mb-3 text-xs leading-loose text-body">{t('pqc.howStep3')}</li>
       </ol>
-      <p className={styles.pqcHowLimit}>{t('pqc.howLimit')}</p>
-      <a className={styles.pqcCopyLink} href={GUIDE_URL} target="_blank" rel="noreferrer noopener">
+      <p className="mb-4 text-xs leading-loose text-muted">{t('pqc.howLimit')}</p>
+      <a
+        className="inline-flex items-center gap-2.5 mt-5 text-xs text-muted cursor-pointer hover:text-brand"
+        href={GUIDE_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+      >
         {t('pqc.guideLink')}
       </a>
     </Modal>

@@ -9,7 +9,6 @@ import EditableList from '@components/EditableList/EditableList';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { useRelays, type RelayFlags } from '@popup/context/RelaysContext';
-import styles from './Settings.module.css';
 
 export default function NetworkSection() {
   const { relays, relayFlags, loaded, saveRelays } = useRelays();
@@ -104,11 +103,15 @@ export default function NetworkSection() {
   };
 
   return (
-    <div className={styles.section}>
+    <div className="flex-1 min-h-0 py-2 flex flex-col gap-4">
       <SectionLabel>{t('network.identityRelays')}</SectionLabel>
       <EditableList
         items={relays}
-        classNames={{ list: styles.relayList, row: styles.relayRow, item: styles.relayUrl }}
+        classNames={{
+          list: 'flex flex-col gap-2',
+          row: 'flex items-center gap-4 py-4 px-6 border border-card-border bg-card rounded-panel',
+          item: 'flex-1 text-sm font-medium text-heading min-w-0 overflow-hidden text-ellipsis whitespace-nowrap',
+        }}
         renderItem={(url) => url.replace(/^wss:\/\/|^https:\/\//, '')}
         leading={(url) => <StatusDot status={relayHealth[url]} />}
         trailing={(url) => {
@@ -118,13 +121,17 @@ export default function NetworkSection() {
           // Chip's xs/sp-2/sp-5) — the one caller SeedWord's `compact` prop
           // solved for. A single relay row is not a second caller yet.
           return (
-            <div className={styles.relayChips}>
+            <div className="flex gap-2">
               <button
-                className={`${styles.relayChip} ${flags.read ? styles.relayChipActive : ''}`}
+                className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
+                  flags.read ? 'bg-brand-light text-brand border-[rgba(99,102,241,0.2)]' : 'border-card-border bg-transparent text-muted'
+                }`}
                 onClick={() => toggleRelayFlag(url, 'read')}
               >R</button>
               <button
-                className={`${styles.relayChip} ${flags.write ? styles.relayChipActive : ''}`}
+                className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
+                  flags.write ? 'bg-brand-light text-brand border-[rgba(99,102,241,0.2)]' : 'border-card-border bg-transparent text-muted'
+                }`}
                 onClick={() => toggleRelayFlag(url, 'write')}
               >W</button>
             </div>

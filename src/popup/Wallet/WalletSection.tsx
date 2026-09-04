@@ -6,7 +6,6 @@ import WalletSetup from './WalletSetup';
 import Wallet from './Wallet';
 import { useWallet } from '@popup/context/WalletContext';
 
-import styles from './Wallet.module.css';
 import Spinner from '@components/Spinner/Spinner';
 
 /**
@@ -29,7 +28,7 @@ export default function WalletSection() {
 
   if (wallet.configType === null) {
     return (
-      <div className={styles.loading}>
+      <div className="flex items-center justify-center py-12">
         <Spinner />
       </div>
     );

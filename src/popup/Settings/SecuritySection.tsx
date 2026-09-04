@@ -13,7 +13,6 @@ import PasswordPairFields from '@components/PasswordPairFields/PasswordPairField
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@popup/context/VaultContext';
 
-import styles from './SecuritySection.module.css';
 import FormError from '@components/FormError/FormError';
 
 interface SecuritySectionProps {
@@ -107,7 +106,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
   const showCurrentPassword = pendingMs !== null && !isNever && pendingMs === 0;
 
   return (
-    <div className={styles.section}>
+    <div className="flex-1 py-2 flex flex-col gap-4">
       {vault.exists && (
         <Card>
           <SectionLabel>{t('security.autoLock')}</SectionLabel>
@@ -119,8 +118,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
           />
 
           {showSetPassword && (
-            <div className={styles.passwordSection}>
-              <p className={styles.passwordHint}>{t('security.setPasswordHint')}</p>
+            <div className="flex flex-col gap-5 mt-6 pt-6 border-t border-brand-tint-active">
+              <p className="text-sm text-secondary leading-normal m-0">{t('security.setPasswordHint')}</p>
               <PasswordPairFields
                 pair={pair}
                 passwordPlaceholder={t('wizard.minEightChars')}
@@ -129,7 +128,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
                 disabled={loading}
               />
               <FormError>{error}</FormError>
-              <div className={styles.confirmActions}>
+              <div className="flex gap-4 justify-end">
                 <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
                 <Button small onClick={handleConfirm} disabled={loading || !pair.ready}>
                   {loading ? t('common.saving') : t('common.confirm')}
@@ -139,16 +138,16 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
           )}
 
           {showCurrentPassword && (
-            <div className={styles.passwordSection}>
-              <div className={styles.warningBox}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex flex-col gap-5 mt-6 pt-6 border-t border-brand-tint-active">
+              <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(217,119,6,0.06)] rounded-panel text-sm text-warning leading-normal">
+                <svg className="shrink-0 mt-px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                   <line x1="12" y1="9" x2="12" y2="13" />
                   <line x1="12" y1="17" x2="12.01" y2="17" />
                 </svg>
                 <span>{t('security.neverLockWarning')}</span>
               </div>
-              <p className={styles.passwordHint}>{t('security.confirmPasswordHint')}</p>
+              <p className="text-sm text-secondary leading-normal m-0">{t('security.confirmPasswordHint')}</p>
               <Input
                 type="password"
                 showToggle
@@ -158,7 +157,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleConfirm()}
               />
               <FormError>{error}</FormError>
-              <div className={styles.confirmActions}>
+              <div className="flex gap-4 justify-end">
                 <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
                 <Button small onClick={handleConfirm} disabled={loading}>
                   {loading ? t('common.saving') : t('common.confirm')}

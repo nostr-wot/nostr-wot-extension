@@ -91,19 +91,19 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   };
 
   return (
-    <div className={styles.section}>
+    <div className="flex-1 min-h-0 overflow-y-auto py-2 flex flex-col gap-4">
       {/* Balance */}
-      <Card className={styles.balanceCard}>
-        <IconButton className={styles.settingsBtn} onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
+      <Card className={`${styles.balanceCard} relative flex flex-col items-center gap-2`}>
+        <IconButton className={`${styles.settingsBtn} absolute top-4 right-4`} onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
           <IconSettings size={16} />
         </IconButton>
-        <span className={styles.balanceLabel}>{t('wallet.balance')}</span>
+        <span className="text-xs font-semibold text-muted uppercase tracking-[0.5px]">{t('wallet.balance')}</span>
         {balanceLoading ? (
-          <div className={styles.loading}>
+          <div className="flex items-center justify-center py-12">
             <Spinner />
           </div>
         ) : balanceError ? (
-          <div className={styles.balanceErrorWrap}>
+          <div className="flex flex-col items-center gap-4 py-2">
             <FormError>{balanceError}</FormError>
             <Button small variant="secondary" onClick={refreshBalance}>
               {t('common.retry')}
@@ -111,18 +111,18 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
           </div>
         ) : (
           <div>
-            <span className={styles.balanceValue}>
+            <span className="text-[24px] font-bold text-heading">
               {Math.round(balance ?? 0).toLocaleString()}
             </span>
-            <span className={styles.balanceUnit}>sats</span>
+            <span className="text-sm font-medium text-secondary ml-2">sats</span>
           </div>
         )}
       </Card>
 
       {/* Action buttons */}
-      <div className={styles.actionRow}>
-        <Button onClick={() => setShowDeposit(true)}>{t('wallet.deposit')}</Button>
-        <Button variant="secondary" onClick={() => setShowSend(true)}>{t('wallet.send')}</Button>
+      <div className="flex gap-4">
+        <Button className="flex-1" onClick={() => setShowDeposit(true)}>{t('wallet.deposit')}</Button>
+        <Button className="flex-1" variant="secondary" onClick={() => setShowSend(true)}>{t('wallet.send')}</Button>
       </div>
 
       {showDeposit && (

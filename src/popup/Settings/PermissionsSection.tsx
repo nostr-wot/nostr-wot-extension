@@ -27,6 +27,21 @@ import Chip from '@components/Chip/Chip';
 import ListRow from '@components/ListRow/ListRow';
 
 
+/**
+ * Decision -> dot colour, as an explicit map rather than `styles[`permDot${...}`]`.
+ *
+ * The dynamic lookup was invisible to `tests/css-selectors.test.ts` (it
+ * skips any stylesheet a component indexes into with a computed key) and it
+ * is the only reason Settings.module.css was exempt from that test. Naming
+ * the three cases here removes the dynamic access, so the rest of this
+ * file's CSS module usage is checked like every other component's.
+ */
+const DECISION_DOT_TONE: Record<string, string> = {
+  allow: 'bg-success',
+  deny: 'bg-error',
+  ask: 'bg-warning',
+};
+
 const COMMON_PERM_KEYS = [
   'getPublicKey',
   'signEvent:0',
@@ -140,14 +155,14 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const accountOptions = (accounts || []).map((a: any) => ({ value: a.id, label: getAccountLabel(a) }));
 
   const accountScopeBlock = hasMultipleAccounts && (
-    <div className={styles.accountScope}>
+    <div className="flex flex-col gap-3 pb-5 mb-3 border-b border-card-border">
       <Card className={styles.accountScopeCard}>
-        <div className={styles.controlRow}>
-          <div className={styles.controlInfo}>
-            <IconUsers size={15} className={styles.controlIcon} />
+        <div className="flex items-center justify-between py-5.5 px-7">
+          <div className="flex items-center gap-4">
+            <IconUsers size={15} className="text-brand shrink-0" />
             <div>
-              <span className={styles.controlLabel}>{t('perms.allAccounts')}</span>
-              <div className={styles.controlHint}>
+              <span className="text-md font-medium text-body">{t('perms.allAccounts')}</span>
+              <div className="text-xs text-muted mt-px leading-normal">
                 {allAccountsMode ? t('perms.allAccountsOnHint') : t('perms.allAccountsOffHint')}
               </div>
             </div>
@@ -160,7 +175,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
       {!allAccountsMode && (
         <>
-          <span className={styles.fieldLabel}>{t('perms.accountLabel')}</span>
+          <span className="text-xs font-semibold text-secondary mb-1">{t('perms.accountLabel')}</span>
           <Dropdown
             options={accountOptions}
             value={selectedAccountId || ''}
@@ -171,16 +186,16 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
       )}
 
       {!allAccountsMode && isSelectedReadOnly && (
-        <div className={styles.nip46Banner}>
-          <span className={styles.nip46BannerTitle}>{t('perms.readOnlyTitle')}</span>
-          <span className={styles.nip46BannerHint}>{t('perms.readOnlyHint')}</span>
+        <div className="flex flex-col gap-1 py-5 px-6 rounded-md bg-card border border-card-active mb-4">
+          <span className="text-sm font-semibold text-brand">{t('perms.readOnlyTitle')}</span>
+          <span className="text-xs text-muted leading-normal">{t('perms.readOnlyHint')}</span>
         </div>
       )}
 
       {!allAccountsMode && isSelectedNip46 && (
-        <div className={styles.nip46Banner}>
-          <span className={styles.nip46BannerTitle}>{t('perms.managedBySigner')}</span>
-          <span className={styles.nip46BannerHint}>{t('perms.managedBySignerHint')}</span>
+        <div className="flex flex-col gap-1 py-5 px-6 rounded-md bg-card border border-card-active mb-4">
+          <span className="text-sm font-semibold text-brand">{t('perms.managedBySigner')}</span>
+          <span className="text-xs text-muted leading-normal">{t('perms.managedBySignerHint')}</span>
         </div>
       )}
     </div>
@@ -206,7 +221,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     const allKeys = filterKeysForAccount(Object.keys(domainPerms));
 
     return (
-      <div className={styles.section}>
+      <div className="flex-1 min-h-0 py-2 flex flex-col gap-4">
         {allKeys.length === 0 ? (
           <EmptyState
             icon={<IconShield size={24} />}
@@ -217,11 +232,11 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
             {allKeys.map((key) => {
               const current = domainPerms[key] || 'ask';
               return (
-                <div key={key} className={styles.permDetailRow}>
-                  <span className={styles.permMethodName}>
+                <div key={key} className="flex items-center justify-between py-5 border-b border-card last:border-b-0">
+                  <span className="text-md font-medium text-body">
                     {formatLabel(key)}
                   </span>
-                  <div className={styles.permDecisionWrap} ref={openDropdownKey === key ? dropdownRef : undefined}>
+                  <div className="relative shrink-0" ref={openDropdownKey === key ? dropdownRef : undefined}>
                     {/* Always toned: this chip is not a selection among
                         options, it is the decision currently in force, and its
                         colour is how that reads at a glance. */}
@@ -238,14 +253,14 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                       // compact popover anchored to it. Not ListRow either —
                       // a full title/subtitle/chevron row would dwarf this
                       // 100px-wide menu of status-dot + label options.
-                      <div className={styles.permDecisionDropdown}>
+                      <div className="absolute right-0 top-[calc(100%+4px)] z-raised bg-elevated border border-card-border rounded-md shadow-[0_4px_16px_rgba(0,0,0,0.12)] min-w-50 overflow-hidden">
                         {DECISIONS.map((d) => (
                           <button
                             key={d}
-                            className={`${styles.permDecisionOption} ${d === current ? styles.permDecisionActive : ''}`}
+                            className={`flex items-center gap-3 w-full py-3.5 px-6 border-none bg-transparent text-sm font-medium text-body cursor-pointer font-[inherit] text-left transition-colors hover:bg-brand-tint-hover ${d === current ? 'font-bold' : ''}`}
                             onClick={() => { handleChip(key, d); setOpenDropdownKey(null); }}
                           >
-                            <span className={`${styles.permDecisionDot} ${styles[`permDot${d.charAt(0).toUpperCase() + d.slice(1)}`]}`} />
+                            <span className={`w-[7px] h-[7px] rounded-full shrink-0 ${DECISION_DOT_TONE[d]}`} />
                             {t(`perms.${d}`)}
                           </button>
                         ))}
@@ -258,7 +273,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           </Card>
         )}
 
-        <div className={styles.permDetailActions}>
+        <div className="flex justify-between mt-4">
           <Button small onClick={() => setAddRuleOpen(true)}>
             <IconPlus size={12} /> {t('perms.addRule')}
           </Button>
@@ -279,13 +294,13 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   // List view
   return (
-    <div className={styles.section}>
+    <div className="flex-1 min-h-0 py-2 flex flex-col gap-4">
       {accountScopeBlock}
 
-      <div className={styles.searchWrap}>
-        <IconSearch className={styles.searchIcon} />
+      <div className="relative mb-2">
+        <IconSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
         <input
-          className={styles.searchInput}
+          className="w-full py-5 pr-5 pl-[34px] border border-card-border rounded-panel text-md bg-card text-heading outline-none transition-colors focus:border-brand"
           type="text"
           placeholder={t('perms.searchSites')}
           value={query}
@@ -300,7 +315,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           hint={t('perms.permsHint')}
         />
       ) : (
-        <div className={styles.permsList}>
+        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {domains.map((domain: string) => {
             const bucketPerms = permissions.getForBucket(domain, effectiveAccountId);
             return (

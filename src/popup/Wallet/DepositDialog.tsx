@@ -7,7 +7,6 @@ import Modal from '@components/Modal/Modal';
 import QrCode from '@components/QrCode/QrCode';
 import useCopy from '@hooks/useCopy.ts';
 import { formatSats } from '@shared/format/number.ts';
-import styles from './Wallet.module.css';
 import FormError from '@components/FormError/FormError';
 
 interface Invoice {
@@ -119,15 +118,15 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         </>
       )}
     >
-      <div className={styles.overlayDesc}>{t('wallet.depositDesc')}</div>
+      <div className="text-sm text-secondary">{t('wallet.depositDesc')}</div>
       {paid ? (
-        <div className={styles.depositPaid}>
-          <div className={styles.depositPaidMark}>{'✓'}</div>
-          <div className={styles.depositPaidTitle}>{t('wallet.paymentReceived')}</div>
-          <div className={styles.depositPaidAmount}>{`+${formatSats(paid.amount)}`}</div>
+        <div className="flex flex-col gap-4 text-center">
+          <div className="text-[48px] leading-none text-success">{'✓'}</div>
+          <div className="text-lg font-semibold text-success">{t('wallet.paymentReceived')}</div>
+          <div className="text-2xl text-success">{`+${formatSats(paid.amount)}`}</div>
         </div>
       ) : !invoice ? (
-        <div className={styles.form}>
+        <div className="flex flex-col gap-5">
           <Input
             type="number"
             placeholder={t('wallet.amountSats')}
@@ -139,12 +138,12 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         </div>
       ) : (
         <>
-          <QrCode value={invoice.bolt11} size={200} className={styles.qrCode} />
+          <QrCode value={invoice.bolt11} size={200} className="rounded-md overflow-hidden" />
           {/* The only way to copy the invoice, so it has to be reachable
               without a mouse. It was a div with an onClick. */}
           <button
             type="button"
-            className={styles.qrBolt11}
+            className="w-full border-none bg-card font-mono text-2xs text-muted break-all text-center max-h-30 overflow-y-auto py-3 px-4 rounded-sm cursor-pointer"
             onClick={() => bolt11Copy.copy(invoice.bolt11)}
             aria-label={t('common.copy')}
           >

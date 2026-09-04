@@ -46,14 +46,14 @@ export default function PqcImportPanel() {
   };
 
   return (
-    <div className={styles.pqcImport}>
-      <strong>{t('pqc.importTitle')}</strong>
-      <p className={styles.desc}>{t('pqc.importDesc')}</p>
+    <div className="flex flex-col gap-4 mt-6 pt-6 border-t border-card-border">
+      <strong className="text-md text-heading">{t('pqc.importTitle')}</strong>
+      <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.importDesc')}</p>
 
-      <label className={styles.desc} htmlFor="pqc-keyfile">{t('pqc.importPaste')}</label>
+      <label className="text-sm leading-loose text-secondary my-4 mb-6" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</label>
       <textarea
         id="pqc-keyfile"
-        className={styles.pqcTextarea}
+        className="w-full min-h-44 py-4 px-5 border border-card-border rounded-sm bg-input text-body font-code text-xs leading-normal resize-y"
         value={text}
         spellCheck={false}
         placeholder={t('pqc.importPastePlaceholder')}
@@ -61,11 +61,11 @@ export default function PqcImportPanel() {
         disabled={busy}
       />
 
-      <div className={styles.pqcImportActions}>
+      <div className="flex items-center gap-5 flex-wrap">
         <Button onClick={() => submit(text)} disabled={busy || !text.trim()}>
           {busy ? t('pqc.importing') : t('pqc.importSubmit')}
         </Button>
-        <label className={styles.pqcFileLabel}>
+        <label className="text-sm text-brand cursor-pointer underline underline-offset-2 hover:opacity-85">
           {t('pqc.importChooseFile')}
           <input type="file" accept="application/json,.json,.txt,text/plain" onChange={onFile} disabled={busy} hidden />
         </label>
@@ -75,11 +75,11 @@ export default function PqcImportPanel() {
 
       {/* The one-off part, folded away: you generate the file once, then come back here to
           paste it. Keeping it expanded pushed the paste box and buttons off-screen. */}
-      <details className={styles.pqcGenerate}>
+      <details className={`${styles.pqcGenerate} mt-6 text-xs`}>
         <summary>{t('pqc.importCommand')}</summary>
-        <code className={styles.pqcCommand}>{KEYGEN_COMMAND}</code>
+        <code className="block py-4 px-5 border border-card-border rounded-sm bg-sunken font-code text-xs text-heading break-all select-all">{KEYGEN_COMMAND}</code>
         <a
-          className={styles.pqcCopyLink}
+          className="inline-flex items-center gap-2.5 mt-5 text-xs text-muted cursor-pointer hover:text-brand"
           href={KEYGEN_SOURCE_URL}
           target="_blank"
           rel="noreferrer noopener"
