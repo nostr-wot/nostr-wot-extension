@@ -10,6 +10,7 @@ import { useVault } from '@popup/context/VaultContext';
 import useSiteState, { type Account } from './useSiteState.ts';
 import useWalletBanner from './useWalletBanner.ts';
 import usePendingCount from './usePendingCount.ts';
+import { useNavigate } from './NavigationContext';
 import SiteControls from './SiteControls';
 import ProfileRow from './ProfileRow';
 import MutesRow from './MutesRow';
@@ -24,19 +25,13 @@ import styles from './Home.module.css';
 import type { PendingRequest } from '@lib/types.ts';
 
 interface HomeProps {
-  onViewAllActivity: (domain: string | null) => void;
-  onManagePermissions: (domain: string) => void;
-  onManageFilters: () => void;
-  onEditProfile: () => void;
-  onOpenRelays: () => void;
-  onOpenPqc: () => void;
-  onOpenWallet: () => void;
   menuOpen?: boolean;
 }
 
-export default function Home({ onViewAllActivity, onManagePermissions, onManageFilters, onEditProfile, onOpenRelays, onOpenPqc, onOpenWallet, menuOpen }: HomeProps) {
+export default function Home({ menuOpen }: HomeProps) {
   const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
+  const navigate = useNavigate();
 
   const pendingCount = usePendingCount();
   const { domain, siteState, identityEnabled, setIdentityEnabled, loadHomeState } = useSiteState(active);
@@ -189,7 +184,7 @@ export default function Home({ onViewAllActivity, onManagePermissions, onManageF
       )}
       {/* Wallet — on top: balance card when a wallet exists, else the setup prompt */}
       {walletState && typeof walletState === 'object' && (
-        <Card className={styles.walletCard} onClick={onOpenWallet}>
+        <Card className={styles.walletCard} onClick={navigate.openWallet}>
           <div className={styles.walletCardInfo}>
             <IconZap size={14} className={styles.walletCardIcon} />
             <div className={styles.walletCardText}>
@@ -211,7 +206,7 @@ export default function Home({ onViewAllActivity, onManagePermissions, onManageF
             </div>
           </div>
           <div className={styles.profileSuggestionActions}>
-            <Button small onClick={onOpenWallet}>{t('home.setupProfileButton')}</Button>
+            <Button small onClick={navigate.openWallet}>{t('home.setupProfileButton')}</Button>
             <button className={styles.profileDismiss} onClick={handleDismissWallet}>{t('home.skip')}</button>
           </div>
         </Card>
@@ -237,8 +232,7 @@ export default function Home({ onViewAllActivity, onManagePermissions, onManageF
             identityEnabled={identityEnabled}
             isNip46={isNip46}
             onIdentityToggle={handleIdentityToggle}
-            onManagePermissions={() => onManagePermissions(domain!)}
-            onRecentActivity={() => onViewAllActivity(domain)}
+            domain={domain}
           />
         </>
       )}
@@ -249,12 +243,12 @@ export default function Home({ onViewAllActivity, onManagePermissions, onManageF
         <div className={styles.accountSection}>
           <SectionLabel>{t('home.account')}</SectionLabel>
           <Card className={styles.accountCard}>
-            {canEditProfile && <ProfileRow onEdit={onEditProfile} />}
-            <MutesRow onOpen={onManageFilters} />
-            <RelaysRow onOpen={onOpenRelays} />
+            {canEditProfile && <ProfileRow />}
+            <MutesRow />
+            <RelaysRow />
             {/* Last in the list: the everyday rows people came for come first, and
                 post-quantum setup is a once-per-identity errand. */}
-            <PqcCard onOpen={onOpenPqc} />
+            <PqcCard />
           </Card>
         </div>
       )}

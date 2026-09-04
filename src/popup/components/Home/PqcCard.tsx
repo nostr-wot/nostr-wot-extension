@@ -10,6 +10,7 @@ import {
 } from '@shared/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
+import { useNavigate } from './NavigationContext';
 import styles from './PqcCard.module.css';
 
 /**
@@ -26,11 +27,8 @@ import styles from './PqcCard.module.css';
  * card reports.
  */
 
-interface PqcCardProps {
-  onOpen: () => void;
-}
-
-export default function PqcCard({ onOpen }: PqcCardProps) {
+export default function PqcCard() {
+  const navigate = useNavigate();
   const [state, setState] = useState<PqcCardState | null>(null);
 
   // Run-versioned rather than a per-call `cancelled` flag: this now re-runs
@@ -95,7 +93,7 @@ export default function PqcCard({ onOpen }: PqcCardProps) {
   const { icon, title, desc, className } = COPY[state];
 
   return (
-    <button className={`${styles.pqcCard} ${className}`.trim()} onClick={onOpen}>
+    <button className={`${styles.pqcCard} ${className}`.trim()} onClick={navigate.openPqc}>
       <div className={styles.pqcIcon}>{icon}</div>
       <div className={styles.pqcText}>
         <strong>{title}</strong>

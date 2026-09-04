@@ -2,19 +2,21 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import NavRow from '@components/NavRow/NavRow';
 import { IconUser } from '@assets';
+import { useNavigate } from './NavigationContext';
 
 /**
  * "Edit profile" row in the Account group — opens EditProfileOverlay to edit the
  * user's kind:0 metadata. Avatar + name are already shown in the top bar, so the
  * subtitle just names what this edits.
  */
-export default function ProfileRow({ onEdit }: { onEdit: () => void }) {
+export default function ProfileRow() {
+  const navigate = useNavigate();
   return (
     <NavRow
       icon={<IconUser size={16} />}
       title={t('home.editProfile')}
       subtitle={t('home.profileSummary')}
-      onClick={onEdit}
+      onClick={navigate.editProfile}
     />
   );
 }

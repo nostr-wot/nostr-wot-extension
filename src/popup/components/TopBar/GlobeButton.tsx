@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import browser from '@shared/browser.ts';
 import { rpc, rpcNotify } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { getFaviconUrl } from '@shared/clientIcons.ts';
@@ -8,10 +7,10 @@ import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
 import styles from './TopBar.module.css';
 import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
+import useBrowserStorage from '@shared/hooks/useBrowserStorage.ts';
 
 export default function GlobeButton() {
   const [domain, setDomain] = useState<string | null>(null);
-  const [connected, setConnected] = useState<boolean | null>(null); // null = loading
   const [open, setOpen] = useState<boolean>(false);
   const [disconnecting, setDisconnecting] = useState<boolean>(false);
   const [connecting, setConnecting] = useState<boolean>(false);
@@ -37,31 +36,15 @@ export default function GlobeButton() {
   // can connect or disconnect it from the home card without this button
   // unmounting, and it used to keep showing whatever was true when it mounted.
   // The allowlist is the single source of truth (not permissions.contains() —
-  // granting <all_urls> would make that read "connected" everywhere), and
-  // storage.onChanged is how an open popup hears about a write.
-  useEffect(() => {
-    if (!domain) return;
-    let cancelled = false;
-
-    const read = async () => {
-      const allowed = await rpc<string[]>('getAllowedDomains').catch(() => null);
-      if (cancelled) return;
-      // A read that failed is "unknown", not "not connected". Painting a
-      // definite answer from a transport failure invites the user to reconnect
-      // a site that was connected all along.
-      setConnected(allowed ? allowed.includes(domain) : null);
-    };
-    read();
-
-    const onChanged = (changes: Record<string, unknown>, area: string) => {
-      if (area === 'local' && changes.allowedDomains) read();
-    };
-    browser.storage.onChanged.addListener(onChanged);
-    return () => {
-      cancelled = true;
-      browser.storage.onChanged.removeListener(onChanged);
-    };
-  }, [domain]);
+  // granting <all_urls> would make that read "connected" everywhere), read
+  // directly rather than through an RPC: this used to ask the background for
+  // `getAllowedDomains` and treat a failure as "unknown" rather than "not
+  // connected", because that call could stall for seconds behind a sleeping
+  // service worker's wake retries. A same-process `storage.local` read has no
+  // such stall, so the value can come straight from useBrowserStorage, which
+  // already re-reads on the write this button's own connect/disconnect makes.
+  const allowedDomains = useBrowserStorage<string[]>('allowedDomains', [], 'local');
+  const connected = domain ? allowedDomains.includes(domain) : null;
 
   useOutsideClick(ref, () => setOpen(false), open);
 
@@ -76,7 +59,9 @@ export default function GlobeButton() {
     setConnecting(true);
     try {
       await rpc('connectDomain', { domain });
-      setConnected(true);
+      // `allowedDomains` already reflects this write by the time `rpc()`
+      // resolves — `connectDomain` awaits the storage.local.set before
+      // returning — so `connected` above updates on its own; nothing to set here.
       setOpen(false);
       rpcNotify('configUpdated');
     } catch {
@@ -91,7 +76,6 @@ export default function GlobeButton() {
     setDisconnecting(true);
     try {
       await rpc('removeAllowedDomain', { domain });
-      setConnected(false);
       setOpen(false);
       rpcNotify('configUpdated');
     } catch {

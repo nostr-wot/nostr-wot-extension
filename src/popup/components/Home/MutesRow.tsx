@@ -5,6 +5,7 @@ import useRelayCache from '@shared/hooks/useRelayCache.ts';
 import { MUTE_LIST_CACHE } from '@shared/relayCacheNames.ts';
 import NavRow from '@components/NavRow/NavRow';
 import { IconShield } from '@assets';
+import { useNavigate } from './NavigationContext';
 
 interface MyMuteList {
   people: string[];
@@ -17,7 +18,8 @@ interface MyMuteList {
  * quick count of muted people + words + hashtags and opens the Mutes manager.
  * The info tooltip explains what the published mute list is.
  */
-export default function MutesRow({ onOpen }: { onOpen: () => void }) {
+export default function MutesRow() {
+  const navigate = useNavigate();
   const { data, reload } = useRpc<MyMuteList>('getMyMuteList', {}, {
     defaultValue: { people: [], words: [], hashtags: [] },
   });
@@ -33,7 +35,7 @@ export default function MutesRow({ onOpen }: { onOpen: () => void }) {
       title={t('mutes.cardTitle')}
       info={t('mutes.cardInfo')}
       subtitle={t('mutes.cardSummary', { count })}
-      onClick={onOpen}
+      onClick={navigate.manageFilters}
     />
   );
 }
