@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import { IconWarning } from '@assets';
 import { KIND_LABELS } from '@shared/constants.ts';
 import { formatLabel } from '@shared/permissions.ts';
+import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import ProfilePreview from './kinds/ProfilePreview';
 import NotePreview from './kinds/NotePreview';
@@ -15,15 +16,8 @@ import AppSpecificPreview from './kinds/AppSpecificPreview';
 import GenericPreview from './kinds/GenericPreview';
 import styles from './EventPreview.module.css';
 
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
-
 /** Maps event kind to component. Entries here skip the generic fallback. */
-const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEvent }>> = {
+const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisplay }>> = {
   0: ProfilePreview,
   1: NotePreview,
   3: ContactListPreview,
@@ -43,7 +37,7 @@ interface EventPreviewProps {
    *  `PendingRequest.event` is a `Partial<UnsignedEvent>`. An event with no
    *  `kind` already falls through to the unknown-event branch below, so this
    *  only makes the signature admit what callers were always passing. */
-  event: Partial<NostrEvent> | null;
+  event: Partial<NostrEventDisplay> | null;
   theirPubkey?: string | null;
   className?: string;
 }
@@ -103,9 +97,9 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
           which a snapshot without a kind never does — so by here the event is
           the full one a signEvent request carries. */}
       {KindComponent ? (
-        <KindComponent event={event as NostrEvent} />
+        <KindComponent event={event as NostrEventDisplay} />
       ) : KIND_LABELS[kind] ? (
-        <GenericPreview event={event as NostrEvent} />
+        <GenericPreview event={event as NostrEventDisplay} />
       ) : (
         <div className={styles.unknownWarning}>
           <IconWarning size={14} />

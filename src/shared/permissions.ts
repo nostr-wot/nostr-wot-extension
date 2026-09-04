@@ -1,10 +1,6 @@
 import { t } from '@lib/i18n.js';
 import { KIND_LABELS } from '@shared/constants.ts';
-
-interface NostrEvent {
-  tags?: string[][];
-  [key: string]: unknown;
-}
+import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 
 /**
  * Human-readable labels for permission keys.
@@ -54,7 +50,7 @@ const PLATFORM_ACTIONS: Record<string, Record<string, string>> = {
  * @param event - Nostr event object with tags
  * @returns Human-readable label or null
  */
-function getPlatformLabel(event: NostrEvent): string | null {
+function getPlatformLabel(event: Partial<NostrEventDisplay>): string | null {
   if (!event?.tags) return null;
   const dTag = event.tags.find((tag) => tag[0] === 'd');
   if (!dTag || !dTag[1]) return null;
@@ -89,7 +85,12 @@ function getPlatformLabel(event: NostrEvent): string | null {
  * @param event - Optional Nostr event for platform-specific detection (kind 30078)
  * @returns Human-readable translated label
  */
-export function formatLabel(key: string, event?: NostrEvent): string {
+/**
+ * @param event only its `tags` are read, and callers pass a queued snapshot —
+ *   `PendingRequest.event` is a `Partial<UnsignedEvent>` — so this takes a
+ *   partial. Demanding a complete event made every approval call site an error.
+ */
+export function formatLabel(key: string, event?: Partial<NostrEventDisplay>): string {
   // Platform-specific: kind 30078 with event data
   if (key === 'signEvent:30078' && event) {
     const label = getPlatformLabel(event);

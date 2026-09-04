@@ -2,22 +2,16 @@ import React, { useMemo } from 'react';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
 import { formatTime } from '@shared/format/time.ts';
+import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
 import StatusDot from '@components/StatusDot/StatusDot';
 import Button from '@components/Button/Button';
 import styles from './EventDetailModal.module.css';
 
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
-
 interface ActivityEntry {
   method: string;
-  event?: NostrEvent | null;
+  event?: NostrEventDisplay | null;
   theirPubkey?: string | null;
   decision?: string;
   timestamp?: number;
@@ -35,10 +29,12 @@ interface ActivityGroup {
  *  type error. */
 interface ApprovalRequest {
   type: string;
+  /** Nullable: the canonical PendingRequest has it as `string | null`, and
+   *  narrowing it here made every call site a type error. */
   permKey?: string | null;
   /** Partial on purpose: a queued request carries a snapshot, and for the
    *  non-signing methods there is no event on it at all. */
-  event?: Partial<NostrEvent> | null;
+  event?: Partial<NostrEventDisplay> | null;
   origin?: string;
   theirPubkey?: string | null;
   pubkey?: string;
