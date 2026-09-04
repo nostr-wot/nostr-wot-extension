@@ -12,6 +12,9 @@ import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import { usePermissions } from '@context/PermissionsContext';
 import { useAccount } from '@context/AccountContext';
 import Button from '@components/Button/Button';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
+import FormError from '@components/FormError/FormError';
 
 interface ApprovalOverlayProps {
   onRequestUnlock?: () => void;
@@ -104,11 +107,13 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   return (
     <>
       <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)]`} />
-      <div className={`animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-[rgba(255,255,255,0.96)] backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] flex flex-col p-8`}>
-        <div className="flex items-center gap-4 mb-6 flex-wrap">
+      <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-[rgba(255,255,255,0.96)] backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
+        <Container variant="row" gap={4} className="mb-6 flex-wrap">
+          {/* Not `Text`: `font-bold` + `text-heading` at `text-lg` is not one
+              of the four variants. */}
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
-          <div className="ml-auto flex items-center gap-3">
+          <Container variant="row" gap={3} className="ml-auto">
             {allRequests.length > 1 && (
               <Button small outline onClick={() => setExpanded(!expanded)}>
                 {expanded ? t('approval.grouped') : t('approval.expanded')}
@@ -119,17 +124,15 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
                 {t('approval.rejectAll')}
               </Button>
             )}
-          </div>
-        </div>
-        {actionError && (
-          <div className="py-3 px-6 text-sm text-error text-center" role="alert">{actionError}</div>
-        )}
+          </Container>
+        </Container>
+        <FormError className="py-3 px-6 text-center">{actionError}</FormError>
         {groups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
-          <div className="pt-2 px-6 pb-4 text-xs text-muted text-center">
+          <Text variant="muted" as="div" className="pt-2 px-6 pb-4 text-center">
             {t('approval.appliesToAllAccounts')}
-          </div>
+          </Text>
         )}
-        <div className="flex-1 overflow-y-auto flex flex-col gap-4">
+        <Container gap={4} className="flex-1 overflow-y-auto">
           {expanded ? (
             allRequests.map((req) => (
               <ApprovalCard
@@ -163,8 +166,8 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
               onClick={() => setSelectedNip46(group)}
             />
           ))}
-        </div>
-      </div>
+        </Container>
+      </Container>
 
       {selectedGroup && (
         <EventDetailModal

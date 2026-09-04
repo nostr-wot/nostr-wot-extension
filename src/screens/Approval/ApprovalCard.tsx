@@ -5,6 +5,8 @@ import type { ApprovalGroup } from '@domain/permissions/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;
@@ -29,16 +31,19 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
       }`}
       onClick={onClick}
     >
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
+      <Container gap={1} className="flex-1 min-w-0">
+        {/* Not `Text`: `font-semibold` + `text-heading` is not one of the four
+            variants (semibold sits between `body`'s normal weight and
+            `Heading`'s bold). */}
         <div className="text-md font-semibold text-heading">{domain}</div>
-        <div className="text-sm text-body flex items-center gap-3">
+        <Container variant="row" gap={3} className="text-sm text-body">
           {isNip46 && <IconSync size={12} className="animate-spin [animation-duration:1.5s] shrink-0" />}
           {isNip46 ? t('approval.awaitingSigner') : label}
-        </div>
+        </Container>
         {!isNip46 && group.requests.length > 1 && (
-          <div className="text-xs text-muted">{t('approval.requests', { count: group.requests.length })}</div>
+          <Text variant="muted" as="div">{t('approval.requests', { count: group.requests.length })}</Text>
         )}
-      </div>
+      </Container>
       {isNip46 && onCancel ? (
         // The shared Button, secondary/outline — not danger. The label is
         // "Cancel" (t('approval.cancelNip46')), not a destructive action, so
