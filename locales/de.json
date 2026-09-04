@@ -819,5 +819,10 @@
   "pqc.howStep3": "Unterstützende Apps verschlüsseln an diesen Schlüssel, kombiniert mit der heutigen Verschlüsselung — das Ergebnis ist nie schwächer als jetzt.",
   "pqc.howLimit": "Das schützt ab sofort gesendete Nachrichten dauerhaft, auch gegen jemanden, der sie heute speichert, um sie später zu lesen. An der Signatur deiner Events ändert sich nichts.",
   "pqc.guideLink": "Die Schritt-für-Schritt-Anleitung lesen",
-  "common.gotIt": "Verstanden"
+  "common.gotIt": "Verstanden",
+  "key.ncryptsecExplainMore": "Die Sicherung ist eine NIP-49-Datei: dein privater Schlüssel, verschlüsselt mit dem von dir gewählten Passwort. Jeder Nostr-Client mit ncryptsec-Unterstützung kann sie wiederherstellen — wer die Datei ohne das Passwort erhält, nicht.",
+  "key.ncryptsecNoRecovery": "Dieses Passwort kann nicht wiederhergestellt werden — weder von uns noch von einem anderen Client. Geht es verloren, ist die Sicherung unlesbar.",
+  "key.reqMinChars": "Mindestens 8 Zeichen",
+  "key.reqMatch": "Beide Passwörter stimmen überein",
+  "key.downloadBackupFile": ".ncryptsec herunterladen"
 }

@@ -819,5 +819,10 @@
   "pqc.howStep3": "Le app compatibili cifrano verso quella chiave, insieme alla cifratura attuale: il risultato non è mai più debole di oggi.",
   "pqc.howLimit": "Protegge per sempre i messaggi che riceverai d'ora in poi, anche da chi li archivia oggi per leggerli in futuro. Non cambia il modo in cui i tuoi eventi vengono firmati.",
   "pqc.guideLink": "Leggi la guida passo passo",
-  "common.gotIt": "Ho capito"
+  "common.gotIt": "Ho capito",
+  "key.ncryptsecExplainMore": "Il backup è un file NIP-49: la tua chiave privata cifrata con la password che scegli. Qualsiasi client Nostr compatibile con ncryptsec può ripristinarla, mentre chi ottiene il file senza la password non può.",
+  "key.ncryptsecNoRecovery": "Nulla può recuperare questa password — né noi né un altro client. Se la perdi, il backup è illeggibile.",
+  "key.reqMinChars": "Almeno 8 caratteri",
+  "key.reqMatch": "Le due password coincidono",
+  "key.downloadBackupFile": "Scarica .ncryptsec"
 }

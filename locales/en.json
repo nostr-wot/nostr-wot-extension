@@ -819,5 +819,10 @@
   "pqc.howStep3": "Apps that support it encrypt to that key, combined with today's encryption — so the result is never weaker than what you have now.",
   "pqc.howLimit": "This protects messages sent to you from now on, permanently, including against someone storing them today to read later. It does not change how your events are signed.",
   "pqc.guideLink": "Read the step-by-step guide",
-  "common.gotIt": "Got it"
+  "common.gotIt": "Got it",
+  "key.ncryptsecExplainMore": "The backup is a NIP-49 file: your private key encrypted with the password you choose. Any Nostr client that supports ncryptsec can restore from it — and anyone who gets the file without the password cannot.",
+  "key.ncryptsecNoRecovery": "Nothing can recover this password — not us, not another client. If you lose it, the backup is unreadable.",
+  "key.reqMinChars": "At least 8 characters",
+  "key.reqMatch": "Both passwords match",
+  "key.downloadBackupFile": "Download .ncryptsec"
 }

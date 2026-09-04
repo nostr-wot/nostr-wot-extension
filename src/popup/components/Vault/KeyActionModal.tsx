@@ -13,7 +13,7 @@ import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
 import styles from './KeyActionModal.module.css';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
+import { validatePasswordPair, MIN_PASSWORD_LENGTH } from '@shared/passwordPair.ts';
 
 interface KeyActionModalProps {
   action: string;
@@ -111,6 +111,16 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   };
 
   // --- ncryptsec ---
+  // Derived, not stored: the button's guard and the checklist must agree, and
+  // two pieces of state for one question is how they stop agreeing.
+  const ncLongEnough = ncPassword.length >= MIN_PASSWORD_LENGTH;
+  const ncMatches = ncPassword.length > 0 && ncPassword === ncConfirm;
+  const ncReady = ncLongEnough && ncMatches;
+
+  const downloadNcryptsec = () => {
+    downloadFile(ncValue, `nostr-key-${Date.now()}.ncryptsec`);
+  };
+
   const generateNcryptsec = async () => {
     setNcError('');
     const ncProblem = validatePasswordPair(ncPassword, ncConfirm);
@@ -250,6 +260,13 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
           <div className={styles.section}>
             {!ncValue ? (
               <>
+                <p className={styles.explain}>{t('key.ncryptsecExplain')}</p>
+                <p className={styles.explain}>{t('key.ncryptsecExplainMore')}</p>
+                <div className={styles.warning}>
+                  <IconWarning />
+                  <span>{t('key.ncryptsecNoRecovery')}</span>
+                </div>
+
                 <label>{t('key.encryptionPassword')}</label>
                 <Input
                   type="password"
@@ -263,12 +280,25 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                   placeholder={t('key.confirmPassword')}
                   value={ncConfirm}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setNcConfirm(e.target.value)}
-                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && generateNcryptsec()}
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && ncReady && generateNcryptsec()}
                 />
+
+                {/* Say what is still missing rather than only refusing on submit.
+                    The button below is disabled until both are met, so without
+                    this the user is left guessing which one it is waiting on. */}
+                <ul className={styles.requirements}>
+                  <li className={ncLongEnough ? styles.requirementMet : ''}>
+                    {ncLongEnough ? '\u2713' : '\u25cb'} {t('key.reqMinChars')}
+                  </li>
+                  <li className={ncMatches ? styles.requirementMet : ''}>
+                    {ncMatches ? '\u2713' : '\u25cb'} {t('key.reqMatch')}
+                  </li>
+                </ul>
+
                 {ncError && <div className={styles.error}>{ncError}</div>}
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
-                  <Button small onClick={generateNcryptsec} disabled={ncGenerating}>
+                  <Button small onClick={generateNcryptsec} disabled={ncGenerating || !ncReady}>
                     {ncGenerating ? t('key.generating') : t('key.generate')}
                   </Button>
                 </div>
@@ -276,11 +306,19 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
             ) : (
               <>
                 <div className={styles.keyDisplay}>{ncValue}</div>
+                <div className={styles.hint}>{t('key.storeHint')}</div>
+                {/* Download first: the file is the artefact worth keeping, and
+                    ncryptsec is the interchange format other clients import.
+                    Copying is offered too, but selecting the string by hand
+                    should never have been the way to get it out. */}
                 <div className={styles.actions}>
-                  <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                  <Button small onClick={() => ncCopy.copy(ncValue)}>
+                  <Button small onClick={downloadNcryptsec}>{t('key.downloadBackupFile')}</Button>
+                  <Button variant="secondary" small onClick={() => ncCopy.copy(ncValue)}>
                     {ncCopy.copied ? t('common.copied') : t('common.copy')}
                   </Button>
+                </div>
+                <div className={styles.actions}>
+                  <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
                 </div>
               </>
             )}

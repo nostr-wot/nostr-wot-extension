@@ -819,5 +819,10 @@
   "pqc.howStep3": "Les applications compatibles chiffrent vers cette clé, combinée au chiffrement actuel — le résultat n'est jamais plus faible qu'aujourd'hui.",
   "pqc.howLimit": "Cela protège définitivement les messages qu'on vous enverra désormais, y compris contre quelqu'un qui les stockerait aujourd'hui pour les lire plus tard. Cela ne change pas la signature de vos événements.",
   "pqc.guideLink": "Lire le guide pas à pas",
-  "common.gotIt": "Compris"
+  "common.gotIt": "Compris",
+  "key.ncryptsecExplainMore": "La sauvegarde est un fichier NIP-49 : votre clé privée chiffrée avec le mot de passe que vous choisissez. Tout client Nostr compatible ncryptsec peut la restaurer ; quiconque obtient le fichier sans le mot de passe ne le peut pas.",
+  "key.ncryptsecNoRecovery": "Rien ne permet de récupérer ce mot de passe — ni nous, ni un autre client. Si vous le perdez, la sauvegarde est illisible.",
+  "key.reqMinChars": "Au moins 8 caractères",
+  "key.reqMatch": "Les deux mots de passe correspondent",
+  "key.downloadBackupFile": "Télécharger .ncryptsec"
 }

@@ -819,5 +819,10 @@
   "pqc.howStep3": "Las apps compatibles cifran hacia esa clave, combinada con el cifrado actual, así que el resultado nunca es más débil que ahora.",
   "pqc.howLimit": "Esto protege para siempre los mensajes que te envíen a partir de ahora, incluso frente a quien los guarde hoy para leerlos más adelante. No cambia cómo se firman tus eventos.",
   "pqc.guideLink": "Leer la guía paso a paso",
-  "common.gotIt": "Entendido"
+  "common.gotIt": "Entendido",
+  "key.ncryptsecExplainMore": "La copia es un archivo NIP-49: tu clave privada cifrada con la contraseña que elijas. Cualquier cliente Nostr compatible con ncryptsec puede restaurarla, y quien obtenga el archivo sin la contraseña no.",
+  "key.ncryptsecNoRecovery": "Nada puede recuperar esta contraseña: ni nosotros ni otro cliente. Si la pierdes, la copia queda ilegible.",
+  "key.reqMinChars": "Al menos 8 caracteres",
+  "key.reqMatch": "Las dos contraseñas coinciden",
+  "key.downloadBackupFile": "Descargar .ncryptsec"
 }
