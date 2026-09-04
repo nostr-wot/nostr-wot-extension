@@ -6,6 +6,7 @@ import useCopy from '@shared/hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets';
 import Button from '@components/Button/Button';
+import ActionTile from '@components/ActionTile/ActionTile';
 import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
 
@@ -134,21 +135,21 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       </div>
 
       <div className={styles.backupActions}>
-        <button className={styles.backupBtn} onClick={handleDownloadPlain} disabled={!revealed}>
-          <IconDownload />
-          <div className={styles.backupBtnText}>
-            <strong>{t('wizard.downloadPlainText')}</strong>
-            <span>{t('wizard.saveAsTxt')}</span>
-          </div>
-        </button>
+        <ActionTile
+          icon={<IconDownload />}
+          title={t('wizard.downloadPlainText')}
+          description={t('wizard.saveAsTxt')}
+          onClick={handleDownloadPlain}
+          disabled={!revealed}
+        />
 
-        <button className={styles.backupBtn} onClick={() => setEncModalOpen(true)} disabled={!revealed}>
-          <IconLock />
-          <div className={styles.backupBtnText}>
-            <strong>{t('wizard.downloadEncrypted')}</strong>
-            <span>{t('wizard.passwordProtectedFile')}</span>
-          </div>
-        </button>
+        <ActionTile
+          icon={<IconLock />}
+          title={t('wizard.downloadEncrypted')}
+          description={t('wizard.passwordProtectedFile')}
+          onClick={() => setEncModalOpen(true)}
+          disabled={!revealed}
+        />
       </div>
 
       <div className={styles.stepActions}>

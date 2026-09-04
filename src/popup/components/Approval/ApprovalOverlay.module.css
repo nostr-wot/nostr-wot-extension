@@ -63,7 +63,7 @@
   padding: 3px var(--sp-4);
   font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
-  color: var(--danger));
+  color: var(--danger);
   cursor: pointer;
   font-family: inherit;
   transition: all var(--transition);

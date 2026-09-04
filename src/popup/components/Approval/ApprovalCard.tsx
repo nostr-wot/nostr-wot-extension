@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
 import type { ApprovalGroup } from '@shared/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
+import Card from '@components/Card/Card';
 import styles from './ApprovalCard.module.css';
 
 interface ApprovalCardProps {
@@ -18,7 +19,9 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
   const isNip46 = group.nip46InFlight;
 
   return (
-    <button
+    <Card
+      as="button"
+      variant="flat"
       className={`${styles.card} ${isNip46 ? styles.cardNip46 : ''}`}
       onClick={onClick}
     >
@@ -41,6 +44,6 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
           &times;
         </button>
       ) : !isNip46 ? <IconChevronRight size={16} className={styles.cardChevron} /> : null}
-    </button>
+    </Card>
   );
 }

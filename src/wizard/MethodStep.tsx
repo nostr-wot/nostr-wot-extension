@@ -1,6 +1,7 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconPlus, IconKey, IconEye, IconLink } from '@assets';
+import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -50,7 +51,9 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
                 <div className={styles.methodDividerLine} />
               </div>
             )}
-            <button
+            <Card
+              as="button"
+              variant="raised"
               className={`${styles.methodCard} ${m.primary ? styles.methodPrimary : ''}`}
               onClick={() => onSelect(m.id)}
             >
@@ -59,7 +62,7 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
                 <strong>{m.label}</strong>
                 <span>{m.desc}</span>
               </div>
-            </button>
+            </Card>
           </React.Fragment>
         ))}
       </div>
