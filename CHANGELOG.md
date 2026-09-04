@@ -71,6 +71,19 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - The wizard marked a seed **backed up when the export was generated**, not when it was received. A file the user never got is not a backup; it now marks on download or on a clipboard write the browser actually accepted.
 - Marking the backup taken no longer closes the dialog. With both a download and a copy on offer, dismissing on the first made the second unreachable.
 
+### Fixed — five forms that refused only once pressed
+
+- **"Choose a new password, twice" was written out at six sites** — every encrypted export, the vault's change-password form and vault creation. `passwordPair.ts` already shared the *rule*; what stayed duplicated was the *form*, and only one of the six showed a live checklist of what the password still needed or disabled its button until it was met. The other five refused on submit and left the user to guess which requirement had failed. All six are `PasswordPairFields` now, and all six wait. A third field that is not part of the pair — the change-password screens' *current* password — deliberately stays outside the component.
+
+### Changed — folders that mean what they say
+
+- `createRequiredContext` was in `src/popup/context/` but is not a context; it is the factory that makes one. It could not move to `src/shared/` either, because that is React-free on purpose — `lib/bg/` and `lib/wallet/` import from it, and anything React there would pull React into the service worker's import graph. `src/utils/` now holds React-side helpers that are neither a component nor a hook, and `src/styles/` holds `theme.css`, which had been the only non-TypeScript file in a folder of logic modules.
+- The rest of the tree was audited against the same question rather than only the part that was pointed at: every file in `src/hooks/` is a hook, every file in `src/models/` is types with no runtime code, and every folder in `src/components/` holds a component of its own name.
+
+### Fixed — inventories that were read as the list
+
+- Three hand-maintained lists were checked by nothing and had each gone stale: the component inventory in `docs/component-standards.md` (which claimed in its own text to be generated from the folder, and was not), the test table in `docs/testing.md` (25 files behind), and the import aliases (documented in two places and configured in two more, which must agree — an alias in `tsconfig.json` but not `vite.config.ts` passes typecheck and fails the build). All three are now asserted by `tests/test-registration.test.ts`, each verified by breaking it on purpose.
+
 ### Fixed — errors nobody heard
 
 - **Twenty-six form-error lines, one of which announced itself.** Each screen had its own `.error` rule — the same two declarations at two different font sizes, some with a top margin compensating for a parent without a gap — and only `ConfirmDialog` carried `role="alert"`. Everywhere else, an error raised by a failed submit was never read out: a screen-reader user pressed the button and heard nothing, with the only evidence on screen. They are one `FormError` now, and the fix that was already understood in one place is carried everywhere.
