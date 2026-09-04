@@ -140,6 +140,23 @@
   margin-bottom: var(--sp-3);
 }
 
+/* PasswordStep's "new password, twice": one label over both PasswordPairFields
+   fields, not a `.formGroup` per field — the confirm field has no label of its
+   own, same as every other migrated site. */
+.passwordFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  margin-bottom: var(--sp-6);
+}
+
+.passwordFields label {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
 .hint {
   font-size: var(--fs-xs);
   color: var(--text-muted);

@@ -1,11 +1,11 @@
-import { useState, ChangeEvent, KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
-import { MIN_PASSWORD_LENGTH } from '@shared/passwordPair.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
+import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
 import { IconWarning } from '@assets';
 import styles from './EncryptedBackupForm.module.css';
 
@@ -35,25 +35,18 @@ interface EncryptedBackupFormProps {
 }
 
 export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: EncryptedBackupFormProps) {
-  const [password, setPassword] = useState<string>('');
-  const [confirm, setConfirm] = useState<string>('');
+  const pair = usePasswordPair();
   const [value, setValue] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [generating, setGenerating] = useState<boolean>(false);
   const copy = useCopy();
 
-  // Derived, not stored: the button's guard and the checklist below must agree,
-  // and two pieces of state for one question is how they stop agreeing.
-  const longEnough = password.length >= MIN_PASSWORD_LENGTH;
-  const matches = password.length > 0 && password === confirm;
-  const ready = longEnough && matches;
-
   const generate = async () => {
-    if (!ready) return;
+    if (!pair.ready) return;
     setError('');
     setGenerating(true);
     try {
-      const result = await rpc<string>(rpcMethod, { password });
+      const result = await rpc<string>(rpcMethod, { password: pair.password });
       if (result) setValue(result);
       else setError(t('key.failedExport'));
     } catch {
@@ -109,37 +102,18 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
       </div>
 
       <label>{t('key.encryptionPassword')}</label>
-      <Input
-        type="password"
-        showToggle
-        placeholder={t('key.passwordMinChars')}
-        value={password}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+      <PasswordPairFields
+        pair={pair}
+        passwordPlaceholder={t('key.passwordMinChars')}
+        confirmPlaceholder={t('key.confirmPassword')}
+        onSubmit={generate}
+        disabled={generating}
       />
-      <Input
-        type="password"
-        placeholder={t('key.confirmPassword')}
-        value={confirm}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => setConfirm(e.target.value)}
-        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && ready && generate()}
-      />
-
-      {/* Say what is still missing rather than only refusing on submit. The
-          button is disabled until both are met, so without this the user is
-          left guessing which one it is waiting on. */}
-      <ul className={styles.requirements}>
-        <li className={longEnough ? styles.requirementMet : ''}>
-          {longEnough ? '✓' : '○'} {t('key.reqMinChars')}
-        </li>
-        <li className={matches ? styles.requirementMet : ''}>
-          {matches ? '✓' : '○'} {t('key.reqMatch')}
-        </li>
-      </ul>
 
       {error && <div className={styles.error}>{error}</div>}
       <div className={styles.actions}>
         <Button variant="secondary" small onClick={onClose}>{t('common.cancel')}</Button>
-        <Button small onClick={generate} disabled={generating || !ready}>
+        <Button small onClick={generate} disabled={generating || !pair.ready}>
           {generating ? t('key.generating') : t('key.generate')}
         </Button>
       </div>

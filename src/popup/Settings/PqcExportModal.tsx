@@ -5,10 +5,11 @@ import { IconWarning } from '@assets';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
+import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import styles from './PqcSection.module.css';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 /**
  * Save the post-quantum key file, plain or encrypted.
@@ -17,8 +18,7 @@ import { validatePasswordPair } from '@shared/passwordPair.ts';
  * always. Mounted only while open, so closing it is the reset.
  */
 export default function PqcExportModal({ onClose }: { onClose: () => void }) {
-  const [exportPw, setExportPw] = useState<string>('');
-  const [exportConfirmPw, setExportConfirmPw] = useState<string>('');
+  const exportPair = usePasswordPair();
   const [exportBusy, setExportBusy] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string>('');
 
@@ -35,18 +35,12 @@ export default function PqcExportModal({ onClose }: { onClose: () => void }) {
  */
 const handleExport = async (encrypted: boolean) => {
   setExportError('');
-  if (encrypted) {
-    const problem = validatePasswordPair(exportPw, exportConfirmPw);
-    if (problem) {
-      setExportError(t(problem === 'tooShort' ? 'key.passwordMin8' : 'key.passwordsNoMatch'));
-      return;
-    }
-  }
+  if (encrypted && !exportPair.ready) return;
   setExportBusy(true);
   try {
     const res = await rpc<{ keyfile: string; filename: string }>('pqc_exportKeys');
     if (encrypted) {
-      downloadFile(await encryptBackup(res.keyfile, exportPw), res.filename.replace(/\.json$/, '-encrypted.json'));
+      downloadFile(await encryptBackup(res.keyfile, exportPair.password), res.filename.replace(/\.json$/, '-encrypted.json'));
     } else {
       downloadFile(res.keyfile, res.filename);
     }
@@ -72,30 +66,20 @@ const handleExport = async (encrypted: boolean) => {
           info={t('pqc.exportWarn')}
         />
 
-        <label className={styles.desc} htmlFor="pqc-export-pw">{t('key.encryptionPassword')}</label>
-        <input
-          id="pqc-export-pw"
-          type="password"
-          className={styles.pqcInput}
-          value={exportPw}
-          autoComplete="new-password"
-          onChange={(e) => setExportPw(e.target.value)}
-          disabled={exportBusy}
-        />
-        <input
-          type="password"
-          className={styles.pqcInput}
-          placeholder={t('key.confirmPassword')}
-          value={exportConfirmPw}
-          autoComplete="new-password"
-          onChange={(e) => setExportConfirmPw(e.target.value)}
-          disabled={exportBusy}
-        />
+        <label className={styles.desc}>{t('key.encryptionPassword')}</label>
+        <div className={styles.passwordFields}>
+          <PasswordPairFields
+            pair={exportPair}
+            confirmPlaceholder={t('key.confirmPassword')}
+            onSubmit={() => handleExport(true)}
+            disabled={exportBusy}
+          />
+        </div>
 
         {exportError && <div className={styles.error}>{exportError}</div>}
 
         <div className={styles.pqcActions}>
-          <Button onClick={() => handleExport(true)} disabled={exportBusy}>
+          <Button onClick={() => handleExport(true)} disabled={exportBusy || !exportPair.ready}>
             {exportBusy ? t('common.loading') : t('key.downloadEncrypted')}
           </Button>
           {/* Plain stays available — the generator writes plaintext key files

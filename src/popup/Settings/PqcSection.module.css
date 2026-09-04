@@ -277,16 +277,16 @@
   color: var(--text-body);
 }
 
-.pqcInput {
-  width: 100%;
+/* The two raw <input>s this replaced (`.pqcInput`) each carried their own
+   margin-bottom; PasswordPairFields owns its own internal spacing instead, so
+   this wrapper supplies the same rhythm from the outside. */
+.passwordFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
   margin-bottom: var(--sp-4);
-  padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-page-solid);
-  color: var(--text-body);
-  font-size: var(--fs-md);
 }
+
 /* Duplicated rather than shared: the only rule both sections needed. */
 .error {
   font-size: var(--fs-sm);
