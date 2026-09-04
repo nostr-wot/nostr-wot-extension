@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
@@ -8,7 +8,7 @@ import StatusDot from '@components/StatusDot/StatusDot';
 import EditableList from '@components/EditableList/EditableList';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import { useRelays, type RelayFlags } from '@context/RelaysContext';
+import { useRelays } from '@context/RelaysContext';
 import Container from '@components/Container/Container';
 
 export default function NetworkSection() {
@@ -33,7 +33,7 @@ export default function NetworkSection() {
   useEffect(() => {
     if (!loaded || initedRef.current) return;
     initedRef.current = true;
-    (async () => {
+    void (async () => {
       const localData: any = await browser.storage.local.get(['lastRelayPublish', 'lastPublishedRelays']);
       const relayStr = relays.join(',');
 
@@ -44,7 +44,7 @@ export default function NetworkSection() {
         setPublishUnsaved(true);
       }
 
-      for (const url of relays) checkRelay(url);
+      for (const url of relays) void checkRelay(url);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
@@ -67,21 +67,21 @@ export default function NetworkSection() {
     const updated = [...relays, url];
     setNewRelay('');
     setRelayError('');
-    saveRelays(updated, relayFlags);
-    checkRelay(url);
+    void saveRelays(updated, relayFlags);
+    void checkRelay(url);
   };
 
   const removeRelay = (url: string) => {
     const updated = relays.filter((r) => r !== url);
     const newFlags = { ...relayFlags };
     delete newFlags[url];
-    saveRelays(updated, newFlags);
+    void saveRelays(updated, newFlags);
   };
 
   const toggleRelayFlag = (url: string, flag: 'read' | 'write') => {
     const current = relayFlags[url] || { read: true, write: true };
     const newFlags = { ...relayFlags, [url]: { ...current, [flag]: !current[flag] } };
-    saveRelays(relays, newFlags);
+    void saveRelays(relays, newFlags);
   };
 
   const publishRelayList = async () => {

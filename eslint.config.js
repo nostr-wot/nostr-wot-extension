@@ -12,7 +12,16 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'safari-build/**', 'safari-xcode/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'safari-build/**',
+      'safari-xcode/**',
+      // Agent worktrees are whole copies of this repo. Without this the linter
+      // walks into them and reports every file two or three times over,
+      // against whatever state that branch happens to be in.
+      '.claude/**',
+    ],
   },
 
   js.configs.recommended,
