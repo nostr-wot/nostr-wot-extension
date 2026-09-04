@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import browser from '@shared/browser.ts';
 import { rpcNotify } from '@shared/rpc.ts';
 import '@shared/theme.css';
@@ -10,6 +10,7 @@ import TopoBg from '@components/TopoBg/TopoBg';
 import Splash from '@components/Splash/Splash';
 import TopBar from './components/TopBar/TopBar';
 import Home from './components/Home/Home';
+import { NavigationProvider, type HomeNavigation } from './components/Home/NavigationContext';
 import MenuOverlay from './components/Menu/MenuOverlay';
 import FiltersOverlay from './components/Filters/FiltersOverlay';
 import ActivityOverlay from './components/Activity/ActivityOverlay';
@@ -90,6 +91,22 @@ function PopupInner() {
     rpcNotify('configUpdated');
   };
 
+  // Stable identity, same reason as `handleRequestUnlock` above: the setters
+  // this closes over are themselves stable, so an empty dep array is honest,
+  // and it keeps every row under Home from re-rendering on every PopupInner
+  // render (the splash timer, the screenshot capture, ...) just because a new
+  // navigation object was handed down.
+  const navigation = useMemo<HomeNavigation>(() => ({
+    viewAllActivity: (d) => { setActivityDomain(d || null); setActiveOverlay('activity'); },
+    managePermissions: (domain) => { setPermsDomain(domain); setActiveOverlay('permissions'); },
+    manageFilters: () => setActiveOverlay('filters'),
+    editProfile: () => setActiveOverlay('editProfile'),
+    openRelays: () => { setMenuSection('network'); setActiveOverlay('menu'); },
+    openPqc: () => { setMenuSection('pqc'); setActiveOverlay('menu'); },
+    openWallet: () => { setMenuSection('wallet'); setActiveOverlay('menu'); },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), []);
+
   return (
     <>
       {screenshot && (
@@ -107,16 +124,9 @@ function PopupInner() {
         />
 
         <div className={styles.scrollArea}>
-          <Home
-            onViewAllActivity={(d: string | null) => { setActivityDomain(d || null); setActiveOverlay('activity'); }}
-            onManagePermissions={(domain: string) => { setPermsDomain(domain); setActiveOverlay('permissions'); }}
-            onManageFilters={() => setActiveOverlay('filters')}
-            onEditProfile={() => setActiveOverlay('editProfile')}
-            onOpenRelays={() => { setMenuSection('network'); setActiveOverlay('menu'); }}
-            onOpenPqc={() => { setMenuSection('pqc'); setActiveOverlay('menu'); }}
-            onOpenWallet={() => { setMenuSection('wallet'); setActiveOverlay('menu'); }}
-            menuOpen={activeOverlay === 'menu'}
-          />
+          <NavigationProvider value={navigation}>
+            <Home menuOpen={activeOverlay === 'menu'} />
+          </NavigationProvider>
         </div>
 
         <ApprovalOverlay

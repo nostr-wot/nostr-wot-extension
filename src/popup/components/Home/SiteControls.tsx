@@ -3,23 +3,25 @@ import { t } from '@lib/i18n.js';
 import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';
 import { IconUser, IconChevronRight } from '@assets';
+import { useNavigate } from './NavigationContext';
 import styles from './SiteControls.module.css';
 
 interface SiteControlsProps {
   identityEnabled: boolean;
   isNip46?: boolean;
   onIdentityToggle: (checked: boolean) => void;
-  onManagePermissions: () => void;
-  onRecentActivity: () => void;
+  // The site these rows act on — not itself a destination, so it is a plain
+  // prop rather than something NavigationContext should know about.
+  domain: string | null;
 }
 
 export default function SiteControls({
   identityEnabled,
   isNip46,
   onIdentityToggle,
-  onManagePermissions,
-  onRecentActivity,
+  domain,
 }: SiteControlsProps) {
+  const navigate = useNavigate();
   return (
     <Card className={styles.siteControls}>
       <div className={styles.controlRow}>
@@ -35,13 +37,13 @@ export default function SiteControls({
           <span>{t('perms.managedBySigner')}</span>
         </div>
       ) : (
-        <button className={styles.controlLink} onClick={onManagePermissions}>
+        <button className={styles.controlLink} onClick={() => navigate.managePermissions(domain!)}>
           <span>{t('home.managePermissions')}</span>
           <IconChevronRight size={14} />
         </button>
       )}
 
-      <button className={styles.controlLink} onClick={onRecentActivity}>
+      <button className={styles.controlLink} onClick={() => navigate.viewAllActivity(domain)}>
         <span>{t('home.recentActivity')}</span>
         <IconChevronRight size={14} />
       </button>
