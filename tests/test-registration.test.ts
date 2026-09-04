@@ -17,7 +17,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -95,6 +95,28 @@ describe('test registration', () => {
       components.length,
       'the count in §1 disagrees with src/components/',
     );
+  });
+
+  it('every import alias is documented, and resolves', () => {
+    // Two hand-maintained lists (a prose one in §2, a table in §7) plus two
+    // config files that must agree. An alias missing from the docs is an alias
+    // nobody uses, which is how a second import path for the same folder gets
+    // invented.
+    const doc = readFileSync(join(ROOT, 'docs/component-standards.md'), 'utf8');
+    const tsconfig = readFileSync(join(ROOT, 'tsconfig.json'), 'utf8');
+    const vite = readFileSync(join(ROOT, 'vite.config.ts'), 'utf8');
+    const aliases = [...tsconfig.matchAll(/"(@[a-z]+)\/\*":\s*\["\.\/(src\/[a-z]+)\/\*"\]/g)]
+      .map((m) => ({ alias: m[1], dir: m[2] }));
+    assert.ok(aliases.length > 5, `only parsed ${aliases.length} aliases from tsconfig`);
+
+    const undocumented = aliases.filter((a) => !doc.includes(`\`${a.alias}\``)).map((a) => a.alias);
+    assert.deepEqual(undocumented, [], `aliases missing from docs/component-standards.md: ${undocumented.join(', ')}`);
+
+    const missingFromVite = aliases.filter((a) => !vite.includes(`'${a.alias}'`)).map((a) => a.alias);
+    assert.deepEqual(missingFromVite, [], `in tsconfig but not vite.config.ts — typecheck passes, build fails: ${missingFromVite.join(', ')}`);
+
+    const missingDir = aliases.filter((a) => !existsSync(join(ROOT, a.dir))).map((a) => a.dir);
+    assert.deepEqual(missingDir, [], `alias points at a directory that does not exist: ${missingDir.join(', ')}`);
   });
 
   it('every test file appears in the testing doc', () => {

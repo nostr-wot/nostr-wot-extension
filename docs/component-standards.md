@@ -98,8 +98,10 @@ had to reach for it. **Types live in `models/`** so a shape has one definition; 
 module that owns the behaviour re-exports its own shape, so no call site learns a
 second import path for the same idea.
 
-Aliases: `@components`, `@hooks`, `@models`, `@shared`, `@lib`, `@assets`, `@popup`,
-`@wizard`. Use them rather than climbing out of a folder with `../../`.
+Aliases: `@components`, `@hooks`, `@models`, `@shared`, `@utils`, `@styles`, `@lib`,
+`@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with
+`../../`. Each one answers a question about the thing you are writing, so if two of them
+seem to fit, the file is probably doing two jobs — see §7 for what each one means.
 
 ### Where a feature lives
 
