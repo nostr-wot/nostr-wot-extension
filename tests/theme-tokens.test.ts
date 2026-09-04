@@ -138,6 +138,43 @@ describe('tailwind token mapping', () => {
     return m && defs.has(m[1]) ? resolve(defs.get(m[1])!, defs, depth + 1) : value.trim();
   }
 
+  it('every mapping uses a namespace Tailwind actually reads', () => {
+    // The second silent failure of this shape. `--duration-fast` looked
+    // obviously right and generated nothing at all: Tailwind reads
+    // `--transition-duration-*` for the `duration-*` utility, so the mapping
+    // compiled, raised no error, and simply produced no class. A namespace
+    // Tailwind does not know is not a warning — it is an inert declaration.
+    const NAMESPACES = [
+      'color', 'font', 'text', 'font-weight', 'tracking', 'leading', 'breakpoint',
+      'container', 'radius', 'shadow', 'inset-shadow', 'drop-shadow', 'blur',
+      'perspective', 'aspect', 'ease', 'animate', 'transition-duration',
+      'transition-timing-function', 'z-index',
+    ];
+    // Single-value settings rather than namespaces.
+    const SINGLES = ['--spacing', '--default-transition-duration', '--default-font-family'];
+
+    const src = readFileSync(join(ROOT, 'src', 'styles', 'tailwind.css'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    const theme = /@theme[^{]*\{([\s\S]*)\}/.exec(src);
+    assert.ok(theme, 'no @theme block found — has the file moved?');
+
+    const unknown: string[] = [];
+    for (const m of theme![1].matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)) {
+      const name = m[1];
+      if (SINGLES.includes(name)) continue;
+      // `--text-*: initial` and friends clear a namespace; same rules apply.
+      const bare = name.replace(/-\*$/, '');
+      if (!NAMESPACES.some((ns) => bare === `--${ns}` || bare.startsWith(`--${ns}-`))) {
+        unknown.push(name);
+      }
+    }
+    assert.deepEqual(
+      unknown,
+      [],
+      `these map into a namespace Tailwind does not read, so they generate no utility:\n  ${unknown.join('\n  ')}`,
+    );
+  });
+
   it('every token mapped into --color-* is actually a colour', () => {
     // A Tailwind colour utility only ever emits `background-color` (or
     // `color`, or `border-color`). Mapping a gradient — --bg-page is a
