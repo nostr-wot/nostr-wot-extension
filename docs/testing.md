@@ -100,6 +100,7 @@ sequence.
 | `tests/i18n-keys.test.ts` | Every string the UI asks for exists, in every locale, with the same placeholders |
 | `tests/theme-tokens.test.ts` | Every `var(--x)` resolves, and no declaration is malformed by a stray bracket — both fail silently in CSS |
 | `tests/paged-list.test.ts` | `paginate` — the client-side "load more" window shared by the contexts |
+| `tests/tailwind-classes.test.ts` | Every static Tailwind utility the source names generates a rule — a misspelled utility is silent, and the compiler never sees these strings |
 | `tests/css-selectors.test.ts` | No stylesheet selector names a class nothing puts on an element — the rule that survives an extraction and applies to nothing |
 | `tests/test-registration.test.ts` | Every test file is actually run, locally and in CI |
 | `tests/wallet/types.test.ts` | WalletConfig type guards |
