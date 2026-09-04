@@ -39,9 +39,17 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** Tailwind escapes `:`, `[`, `]`, `/`, `.` and friends in its selectors. */
+/**
+ * Tailwind escapes CSS-special characters in its selectors, and the exact set
+ * is not worth reproducing: an incomplete list makes the test report a class
+ * that is present, which is the failure mode that gets a test switched off.
+ * `z-[calc(var(--z-sheet)+1)]` did exactly that — the `+` was not in the list.
+ *
+ * So compare against the stylesheet with every backslash stripped, and look
+ * for the class verbatim.
+ */
 function selectorFor(cls: string): string {
-  return `.${cls.replace(/([:[\]./%(),#!])/g, '\\$1')}`;
+  return `.${cls}`;
 }
 
 interface Candidate { cls: string; file: string; }
@@ -135,7 +143,11 @@ function candidates(): Candidate[] {
 
 describe('tailwind utilities', () => {
   const built = existsSync(DIST)
-    ? readdirSync(DIST).filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(DIST, f), 'utf8')).join('\n')
+    ? readdirSync(DIST)
+        .filter((f) => f.endsWith('.css'))
+        .map((f) => readFileSync(join(DIST, f), 'utf8'))
+        .join('\n')
+        .replace(/\\/g, '')
     : '';
 
   it('has a build to check against', () => {
