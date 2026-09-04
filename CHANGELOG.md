@@ -57,6 +57,14 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - `Tabs` keeps two variants because the product has two tab designs — the wallet uses outlined segments, the NIP-46 step a track with a moving thumb. Converging them is a design decision, not a refactor, and is still worth making.
 - Raw `<button>` outside `src/components/` is down to 24, and each remaining one is a documented mismatch rather than an omission — a semantic-scope colour set no variant covers, a control joined to an adjacent `Select`, a bordered-at-rest chip against `IconButton`'s chromeless contract.
 
+### Changed — the contexts share their machinery
+
+- Seven contexts each hand-wrote the same read: `data`/`loading`/`error`, a run-version ref so a slow refresh cannot win by finishing last, a `storage.onChanged` subscription filtered by area, and the `createContext` + `useContext`-or-throw boilerplate. That is now `useAsyncResource`, `useStorageWatch` and `createRequiredContext` — three composable pieces rather than one factory, because the contexts' mutations and failure semantics differ too much for a single shape to hold them without flattening what each one knows.
+- **"A failed read means unknown" is structural now.** A thrown load sets `error` and leaves `data` alone, so a relay that could not be reached can no longer collapse into "nothing is published" — the direction that overwrites a profile or a mute list. `VaultContext` overrides it deliberately: a vault it cannot read is treated as *locked*, because there the safe direction is the negative one.
+- Related fields live in one object updated by one `patch()`, so a consumer cannot see a fresh `status` beside a stale `published`.
+- **Activity has a context**, with the pagination. The log is fetched only while its overlay is open, and the render window resets on a filter change rather than on the entries' identity — a background refresh under the same filters must not yank the list out from under someone scrolled down. The wallet keeps its own pager: it pages a remote API with no server-side filter, while the activity RPC already returns the whole log, so one has more to *fetch* and the other only more to *render*.
+- The hooks documentation named a `src/shared/hooks/` directory that has never existed, which is how `useBrowserStorage` came to be hand-rolled twice by components that could not find it.
+
 ### Fixed — one dialog was more careful than the other
 
 - **Exporting an encrypted backup had two implementations.** The vault's key dialog explained the format, warned that nothing can recover the password, showed a live checklist of what the password still needed, kept the button disabled until it was met, and offered both a download and a copy. The wizard's had two bare password fields, a button that objected only once pressed, and download as the only way out — and that is the one a new user meets. Both now render one `EncryptedBackupForm`.
