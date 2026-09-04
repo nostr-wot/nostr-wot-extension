@@ -2,22 +2,16 @@ import React, { useMemo } from 'react';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
 import { formatTime } from '@shared/format/time.ts';
+import type { NostrEventDisplay } from '@shared/nostrEvent.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
 import StatusDot from '@components/StatusDot/StatusDot';
 import Button from '@components/Button/Button';
 import styles from './EventDetailModal.module.css';
 
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
-
 interface ActivityEntry {
   method: string;
-  event?: NostrEvent | null;
+  event?: NostrEventDisplay | null;
   theirPubkey?: string | null;
   decision?: string;
   timestamp?: number;
@@ -32,7 +26,7 @@ interface ActivityGroup {
 interface ApprovalRequest {
   type: string;
   permKey?: string;
-  event?: NostrEvent | null;
+  event?: NostrEventDisplay | null;
   origin?: string;
   theirPubkey?: string | null;
   pubkey?: string;

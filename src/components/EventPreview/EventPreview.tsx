@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import { IconWarning } from '@assets';
 import { KIND_LABELS } from '@shared/constants.ts';
 import { formatLabel } from '@shared/permissions.ts';
+import type { NostrEventDisplay } from '@shared/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import ProfilePreview from './kinds/ProfilePreview';
 import NotePreview from './kinds/NotePreview';
@@ -15,15 +16,8 @@ import AppSpecificPreview from './kinds/AppSpecificPreview';
 import GenericPreview from './kinds/GenericPreview';
 import styles from './EventPreview.module.css';
 
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
-
 /** Maps event kind to component. Entries here skip the generic fallback. */
-const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEvent }>> = {
+const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisplay }>> = {
   0: ProfilePreview,
   1: NotePreview,
   3: ContactListPreview,
@@ -39,7 +33,7 @@ const ENCRYPT_TYPES = new Set(['nip04Encrypt', 'nip04Decrypt', 'nip44Encrypt', '
 
 interface EventPreviewProps {
   type: string | null;
-  event: NostrEvent | null;
+  event: NostrEventDisplay | null;
   theirPubkey?: string | null;
   className?: string;
 }

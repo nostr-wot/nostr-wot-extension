@@ -1,17 +1,11 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
+import type { NostrEventDisplay } from '@shared/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import styles from '../EventPreview.module.css';
 
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
-
 interface AppSpecificPreviewProps {
-  event: NostrEvent;
+  event: NostrEventDisplay;
 }
 
 export default function AppSpecificPreview({ event }: AppSpecificPreviewProps) {

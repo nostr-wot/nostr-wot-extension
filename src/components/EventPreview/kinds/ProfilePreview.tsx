@@ -1,15 +1,9 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import { safeImageUrl } from '@shared/safeUrl.js';
+import type { NostrEventDisplay } from '@shared/nostrEvent.ts';
 import Avatar from '@components/Avatar/Avatar';
 import styles from '../EventPreview.module.css';
-
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
 
 interface ProfileMeta {
   name?: string;
@@ -23,7 +17,7 @@ interface ProfileMeta {
 }
 
 interface ProfilePreviewProps {
-  event: NostrEvent;
+  event: NostrEventDisplay;
 }
 
 export default function ProfilePreview({ event }: ProfilePreviewProps) {

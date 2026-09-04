@@ -1,16 +1,10 @@
 import React from 'react';
 import { KIND_LABELS } from '@shared/constants.ts';
+import type { NostrEventDisplay } from '@shared/nostrEvent.ts';
 import styles from '../EventPreview.module.css';
 
-interface NostrEvent {
-  kind: number;
-  content: string;
-  tags?: string[][];
-  [key: string]: unknown;
-}
-
 interface GenericPreviewProps {
-  event: NostrEvent;
+  event: NostrEventDisplay;
 }
 
 export default function GenericPreview({ event }: GenericPreviewProps) {
