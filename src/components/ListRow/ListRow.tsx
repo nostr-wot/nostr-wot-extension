@@ -44,6 +44,22 @@ interface ListRowProps {
   className?: string;
 }
 
+const ROW_BASE = 'flex items-center gap-6 w-full font-[inherit] text-left cursor-pointer';
+
+/**
+ * `grouped` keeps the `styles.grouped` marker class even though every other
+ * declaration here is a utility: `.grouped + .grouped` is an adjacent-sibling
+ * selector, which no Tailwind utility can express, so the hairline between
+ * stacked rows stays in ListRow.module.css and needs the class present to
+ * match against.
+ */
+const VARIANT: Record<NonNullable<ListRowProps['variant']>, string> = {
+  grouped: `${styles.grouped} py-5 px-6 bg-transparent border-none transition-colors hover:bg-brand-tint-hover active:bg-card-active`,
+  standalone:
+    'py-8 px-7 border border-card-border bg-glass-heavy rounded-lg shadow-card ' +
+    'transition-all hover:bg-elevated hover:translate-x-2 hover:shadow-card-hover',
+};
+
 export default function ListRow({
   variant = 'grouped',
   leading,
@@ -59,27 +75,37 @@ export default function ListRow({
   // not each have to remember which token the chip's contents use.
   const leadingEl = React.isValidElement(leading)
     ? React.cloneElement(leading as React.ReactElement<{ className?: string }>, {
-        className: styles.leadingIcon,
+        className: 'text-brand',
       })
     : leading;
 
   return (
     <button
       type="button"
-      className={`${styles.row} ${styles[variant]} ${className}`}
+      className={`${ROW_BASE} ${VARIANT[variant]} ${className}`}
       onClick={onClick}
     >
       {leading != null && (
-        <span className={leadingChip ? styles.leadingChip : styles.leadingBare}>{leadingEl}</span>
+        <span
+          className={
+            leadingChip
+              ? 'flex items-center justify-center w-[30px] h-[30px] rounded-md bg-brand-light text-brand text-md font-bold shrink-0'
+              : 'flex items-center shrink-0'
+          }
+        >
+          {leadingEl}
+        </span>
       )}
-      <span className={styles.text}>
-        <span className={styles.title}>
+      <span className="flex flex-col gap-1 min-w-0 flex-1">
+        <span className="inline-flex items-center gap-2 text-md font-semibold text-heading min-w-0">
           {title}
           {info && <InfoTooltip text={info} />}
         </span>
-        {subtitle != null && <span className={styles.subtitle}>{subtitle}</span>}
+        {subtitle != null && (
+          <span className="text-xs text-muted overflow-hidden text-ellipsis whitespace-nowrap">{subtitle}</span>
+        )}
       </span>
-      {trailing != null && <span className={styles.trailing}>{trailing}</span>}
+      {trailing != null && <span className="flex items-center text-muted shrink-0">{trailing}</span>}
     </button>
   );
 }

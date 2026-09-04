@@ -92,10 +92,12 @@
   --color-error: var(--error);
   --color-error-bright: var(--error-bright);
   --color-error-tint: var(--error-tint);
+  --color-error-tint-hover: var(--error-tint-hover);
   --color-warning: var(--warning);
   --color-warning-strong: var(--warning-strong);
   --color-warning-bright: var(--warning-bright);
   --color-warning-tint: var(--warning-tint);
+  --color-warning-tint-heavy: var(--warning-tint-heavy);
   --color-info: var(--info);
   --color-info-tint: var(--info-tint);
 
@@ -146,14 +148,18 @@
   /* `transition-all` already defaults to 150ms, which is exactly --transition.
      Binding it explicitly means changing the token moves both. */
   --default-transition-duration: var(--transition);
-  --duration-fast: var(--transition-fast);
-  --duration-slow: var(--transition-slow);
+  --transition-duration-fast: var(--transition-fast);
+  --transition-duration-slow: var(--transition-slow);
 
   --shadow-*: initial;
   --shadow-card: var(--shadow-card);
   --shadow-card-hover: var(--shadow-card-hover);
   --shadow-pop: var(--shadow-pop);
   --shadow-modal: var(--shadow-modal);
+  /* Input and Select both ring the field on focus with this; mapped here
+     rather than left as an arbitrary `shadow-[var(--focus-ring)]` at each of
+     the (growing) call sites. */
+  --shadow-focus: var(--focus-ring);
 
   /* The stacking ladder, kept as utilities so a new surface picks a rung
      rather than inventing a number. The ordering is load-bearing: the unlock

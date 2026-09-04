@@ -4,6 +4,19 @@ import styles from './StatusNotice.module.css';
 
 type Tone = 'ok' | 'warn';
 
+/**
+ * `ok`'s tint is a one-off literal (`rgba(22, 163, 74, 0.08)`) that appears
+ * nowhere else, so it stays an arbitrary value rather than snapping to
+ * `--success-tint` (a different green, a different alpha) and quietly
+ * changing what this renders. `warn` uses `--warning-tint-heavy`, the
+ * genuinely-shared `rgba(217, 119, 6, 0.1)` also used by EventPreview and
+ * PromptApp (see theme.css).
+ */
+const TONE: Record<Tone, string> = {
+  ok: 'bg-[rgba(22,163,74,0.08)] text-success-strong',
+  warn: 'bg-warning-tint-heavy text-warning-strong',
+};
+
 interface StatusNoticeProps {
   tone: Tone;
   icon: React.ReactNode;
@@ -28,9 +41,9 @@ interface StatusNoticeProps {
  */
 export default function StatusNotice({ tone, icon, label, info, children }: StatusNoticeProps) {
   return (
-    <div className={`${styles.notice} ${styles[tone]}`}>
-      <span className={styles.icon}>{icon}</span>
-      <strong className={styles.label}>{label}</strong>
+    <div className={`${styles.notice} flex items-center gap-4 py-5 px-6 rounded-panel text-md ${TONE[tone]}`}>
+      <span className="flex items-center shrink-0">{icon}</span>
+      <strong className="font-semibold leading-[1.35]">{label}</strong>
       {info && <InfoTooltip text={info} />}
       {children}
     </div>

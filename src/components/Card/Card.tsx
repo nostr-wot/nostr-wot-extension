@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './Card.module.css';
 
 interface CardProps extends React.HTMLAttributes<HTMLElement> {
   /**
@@ -20,11 +19,21 @@ interface CardProps extends React.HTMLAttributes<HTMLElement> {
   children?: React.ReactNode;
 }
 
+const BASE = 'border border-card-border rounded-lg p-7 mb-6';
+
+/** Three variants because three genuinely exist in the product, not because a
+ *  prop seemed nice — see docs/component-standards.md §1. */
+const VARIANT: Record<NonNullable<CardProps['variant']>, string> = {
+  raised: 'bg-glass backdrop-blur-[8px] shadow-card',
+  flat: 'bg-card',
+  elevated: 'bg-elevated shadow-card',
+};
+
 export default function Card({ variant = 'raised', as = 'div', className = '', children, ...rest }: CardProps) {
   const Tag = as;
   return (
     <Tag
-      className={`${styles.card} ${styles[variant]} ${className}`}
+      className={`${BASE} ${VARIANT[variant]} ${className}`}
       {...(as === 'button' ? { type: 'button' as const } : {})}
       {...rest}
     >

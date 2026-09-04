@@ -2,7 +2,6 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import Modal from '@components/Modal/Modal';
 import Button from '@components/Button/Button';
-import styles from './ConfirmDialog.module.css';
 import FormError from '@components/FormError/FormError';
 
 interface ConfirmDialogProps {
@@ -71,7 +70,7 @@ export default function ConfirmDialog({
         </>
       }
     >
-      <div className={styles.message}>{message}</div>
+      <div className="text-md leading-loose text-body">{message}</div>
       <FormError>{error}</FormError>
     </Modal>
   );

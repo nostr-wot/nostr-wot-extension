@@ -1,7 +1,6 @@
 import React from 'react';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
-import styles from './InputRow.module.css';
 
 interface InputRowProps {
   value: string;
@@ -28,7 +27,7 @@ export default function InputRow({
 }: InputRowProps) {
   return (
     <div className={className}>
-      <div className={styles.row}>
+      <div className="flex items-center gap-4">
         <Input
           placeholder={placeholder}
           value={value}
@@ -38,7 +37,7 @@ export default function InputRow({
         />
         <Button small onClick={onSubmit} disabled={disabled}>{buttonLabel}</Button>
       </div>
-      {error && <div className={styles.error}>{error}</div>}
+      {error && <div className="text-error text-xs mt-2">{error}</div>}
     </div>
   );
 }

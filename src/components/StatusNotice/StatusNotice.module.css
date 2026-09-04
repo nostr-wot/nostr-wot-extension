@@ -1,36 +1,8 @@
-.notice {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-  padding: var(--sp-5) var(--sp-6);
-  border-radius: var(--radius-panel);
-  font-size: var(--fs-md);
-}
-
-/* The pair stacks, so the gap between them is set here rather than by whichever
-   screen happens to use them — that is what drifted when they were separate. */
+/* Everything else migrated to Tailwind utilities in StatusNotice.tsx (see
+   docs/component-standards.md §7). `.notice` stays as a bare marker class:
+   `.notice + .notice` is an adjacent-sibling selector, which no utility can
+   express, so the stacking gap between a status and its caveat still needs a
+   real class to select on. */
 .notice + .notice {
   margin-top: var(--sp-4);
-}
-
-.icon {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.label {
-  font-weight: var(--fw-semibold);
-  line-height: 1.35;
-}
-
-.ok {
-  background: rgba(22, 163, 74, 0.08);
-  color: var(--success-strong);
-}
-
-.warn {
-  background: rgba(217, 119, 6, 0.1);
-  /* Darker than --warning (var(--warning)), which is under 4.5:1 on this tint. */
-  color: var(--warning-strong);
 }

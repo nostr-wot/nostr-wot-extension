@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './FieldDisplay.module.css';
 
 interface FieldDisplayProps {
   label: string;
@@ -9,11 +8,14 @@ interface FieldDisplayProps {
 }
 
 export default function FieldDisplay({ label, value, mono = false, className = '' }: FieldDisplayProps) {
-  const rootCls = [styles.field, className].filter(Boolean).join(' ');
-  const valCls = [styles.value, mono && styles.mono].filter(Boolean).join(' ');
+  const rootCls = ['flex justify-between items-baseline py-3 text-md gap-6', className].filter(Boolean).join(' ');
+  const valCls = [
+    'text-heading text-right break-all min-w-0',
+    mono && 'font-mono text-xs',
+  ].filter(Boolean).join(' ');
   return (
     <div className={rootCls}>
-      <span className={styles.label}>{label}</span>
+      <span className="text-secondary font-medium whitespace-nowrap shrink-0">{label}</span>
       <span className={valCls}>{value}</span>
     </div>
   );
