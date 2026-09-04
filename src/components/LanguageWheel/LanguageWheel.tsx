@@ -1,12 +1,6 @@
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
+import type { Language } from '@models/language.ts';
 import styles from './LanguageWheel.module.css';
-
-export interface Language {
-  code: string;
-  flag: string;
-  native: string;
-  prompt: string;
-}
 
 interface LanguageWheelProps {
   languages: Language[];

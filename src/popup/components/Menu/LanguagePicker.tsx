@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
-import LanguageWheel, { type Language } from '@wizard/LanguageWheel';
+import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
+import type { Language } from '@models/language.ts';
 
-export type { Language };
 
 /**
  * Pick the interface language.

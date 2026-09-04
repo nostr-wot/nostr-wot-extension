@@ -3,8 +3,9 @@ import { getSupportedLanguages, setLanguage, getLanguage, t } from '@lib/i18n.js
 import TopoBg from '@components/TopoBg/TopoBg';
 import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
 import Button from '@components/Button/Button';
-import LanguageWheel, { type Language } from './LanguageWheel';
+import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
 import styles from './WizardOverlay.module.css';
+import type { Language } from '@models/language.ts';
 
 const ITEM_H = 36;
 const PAUSE = 2.5;
