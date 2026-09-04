@@ -36,6 +36,10 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
         )}
       </div>
       {isNip46 && onCancel ? (
+        // Not IconButton: its tone="danger" only colours :hover, staying
+        // chromeless at rest by design. This has to read as cancellable
+        // without a hover — an async NIP-46 wait with no other visible
+        // control — so it keeps its own always-visible border and glyph.
         <button
           className={styles.cancelBtn}
           onClick={(e) => { e.stopPropagation(); onCancel(); }}

@@ -13,6 +13,10 @@ export default function KeyRow({ label, value }: { label: string; value: string 
     <div className={styles.pqcKeyRow}>
       <span>{label}</span>
       <code title={value}>{truncateMiddle(value, 12, 10)}</code>
+      {/* Not IconButton (icon-only, fixed square) or LinkButton (chromeless
+          text, no hover surface): this pairs an icon with a conditional
+          "Copied"/"Error" label inside a padded hover-background pill, a
+          combination neither primitive's contract covers. */}
       <button
         className={styles.pqcKeyCopy}
         onClick={() => copy(value)}

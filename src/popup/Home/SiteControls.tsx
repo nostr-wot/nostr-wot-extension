@@ -2,6 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';
+import ListRow from '@components/ListRow/ListRow';
 import { IconUser, IconChevronRight } from '@assets';
 import { useNavigate } from './NavigationContext';
 import styles from './SiteControls.module.css';
@@ -37,16 +38,18 @@ export default function SiteControls({
           <span>{t('perms.managedBySigner')}</span>
         </div>
       ) : (
-        <button className={styles.controlLink} onClick={() => navigate.managePermissions(domain!)}>
-          <span>{t('home.managePermissions')}</span>
-          <IconChevronRight size={14} />
-        </button>
+        <ListRow
+          title={t('home.managePermissions')}
+          trailing={<IconChevronRight size={14} />}
+          onClick={() => navigate.managePermissions(domain!)}
+        />
       )}
 
-      <button className={styles.controlLink} onClick={() => navigate.viewAllActivity(domain)}>
-        <span>{t('home.recentActivity')}</span>
-        <IconChevronRight size={14} />
-      </button>
+      <ListRow
+        title={t('home.recentActivity')}
+        trailing={<IconChevronRight size={14} />}
+        onClick={() => navigate.viewAllActivity(domain)}
+      />
     </Card>
   );
 }

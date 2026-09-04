@@ -233,6 +233,11 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                       {t(`perms.${current}`)}
                     </Chip>
                     {openDropdownKey === key && (
+                      // Not <Dropdown>: Dropdown owns its own trigger button;
+                      // here the trigger is already the Chip above, opening a
+                      // compact popover anchored to it. Not ListRow either —
+                      // a full title/subtitle/chevron row would dwarf this
+                      // 100px-wide menu of status-dot + label options.
                       <div className={styles.permDecisionDropdown}>
                         {DECISIONS.map((d) => (
                           <button

@@ -14,6 +14,7 @@ import Avatar from '@components/Avatar/Avatar';
 import ProfilePreviewCard from './ProfilePreviewCard';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
+import LinkButton from '@components/LinkButton/LinkButton';
 import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import { IconCamera, IconChevronDown } from '@assets';
@@ -151,7 +152,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const renderForm = () => (
     <div className={styles.body}>
       <div className={styles.avatarPicker}>
-        <div className={styles.avatarCircle} onClick={() => fileRef.current?.click()}>
+        <button type="button" className={styles.avatarCircle} onClick={() => fileRef.current?.click()}>
           {displayPicture ? (
             <img src={displayPicture} alt="" className={styles.avatarImg} />
           ) : (
@@ -160,7 +161,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
           <div className={styles.cameraOverlay}>
             <IconCamera size={14} />
           </div>
-        </div>
+        </button>
         <span className={styles.avatarHint}>
           {displayPicture ? t('profileEdit.changeImage') : t('profileEdit.uploadImage')}
         </span>
@@ -187,14 +188,14 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
           onChange={(e: ChangeEvent<HTMLInputElement>) => setAbout(e.target.value)}
         />
 
-        <button
+        <LinkButton
           className={styles.advancedToggle}
           data-open={advancedOpen}
           onClick={() => setAdvancedOpen(!advancedOpen)}
         >
           <IconChevronDown size={14} />
           {t('profileEdit.advanced')}
-        </button>
+        </LinkButton>
 
         {advancedOpen && (
           <div className={styles.advancedFields}>

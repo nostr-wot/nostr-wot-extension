@@ -113,6 +113,10 @@ export default function NetworkSection() {
         leading={(url) => <StatusDot status={relayHealth[url]} />}
         trailing={(url) => {
           const flags = relayFlags[url] || { read: true, write: true };
+          // Not <Chip>: these badges sit inside an already-compact relay row and
+          // need a tighter scale than Chip owns (2xs font, sp-1/sp-4 padding vs
+          // Chip's xs/sp-2/sp-5) — the one caller SeedWord's `compact` prop
+          // solved for. A single relay row is not a second caller yet.
           return (
             <div className={styles.relayChips}>
               <button

@@ -19,6 +19,8 @@
   position: relative;
   width: 80px;
   height: 80px;
+  padding: 0;
+  font: inherit;
   border-radius: var(--radius-full);
   cursor: pointer;
   overflow: hidden;
@@ -76,14 +78,11 @@
   gap: var(--sp-6);
 }
 
-/* Advanced toggle */
+/* Advanced toggle. Layout only — LinkButton supplies the surface. */
 .advancedToggle {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  background: none;
-  border: none;
-  cursor: pointer;
   font-size: var(--fs-sm);
   font-weight: var(--fw-semibold);
   color: var(--text-secondary);

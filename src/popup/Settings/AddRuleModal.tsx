@@ -5,6 +5,7 @@ import { buildRuleKey, DECISIONS } from '@shared/permissionRules.ts';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';
+import LinkButton from '@components/LinkButton/LinkButton';
 import styles from './Settings.module.css';
 import Chip from '@components/Chip/Chip';
 
@@ -67,12 +68,9 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
                 />
               </div>
             )}
-            <button
-              className={styles.permToggleCustom}
-              onClick={() => setUseCustom(!useCustom)}
-            >
+            <LinkButton tone="brand" onClick={() => setUseCustom(!useCustom)}>
               {useCustom ? t('perms.usePreset') : t('perms.customKind')}
-            </button>
+            </LinkButton>
           </div>
 
           <div className={styles.permModalSection}>

@@ -38,21 +38,12 @@
   margin: 0;
 }
 
+/* Layout only — Button supplies the surface, colour and hover. */
 .onboarding-start-btn {
   margin-top: var(--sp-8);
   padding: var(--sp-7) 40px;
-  border: none;
   border-radius: var(--radius-lg);
-  background: var(--brand);
-  color: var(--text-on-brand);
   font-size: var(--fs-2xl);
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-  transition: background var(--transition);
-}
-
-.onboarding-start-btn:hover {
-  background: var(--brand-hover);
 }
 
 .onboarding-step-container {

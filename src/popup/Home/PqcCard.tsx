@@ -3,6 +3,7 @@ import { derivePqcCardState, type PqcCardState } from '@shared/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
 import { useNavigate } from './NavigationContext';
+import Card from '@components/Card/Card';
 import styles from './PqcCard.module.css';
 import { usePqc } from '@popup/context/PqcContext';
 
@@ -60,12 +61,12 @@ export default function PqcCard() {
   const { icon, title, desc, className } = COPY[state];
 
   return (
-    <button className={`${styles.pqcCard} ${className}`.trim()} onClick={navigate.openPqc}>
+    <Card as="button" variant="flat" className={`${styles.pqcCard} ${className}`.trim()} onClick={navigate.openPqc}>
       <div className={styles.pqcIcon}>{icon}</div>
       <div className={styles.pqcText}>
         <strong>{title}</strong>
         <span>{desc}</span>
       </div>
-    </button>
+    </Card>
   );
 }

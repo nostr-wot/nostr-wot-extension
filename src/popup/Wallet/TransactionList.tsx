@@ -51,6 +51,10 @@ export default function TransactionList({
             small
           />
         </div>
+        {/* Not IconButton: that component is chromeless at rest by design, but
+            this control always shows a border so it reads as a filter toggle
+            rather than a hover-only affordance, and it carries an
+            active/applied state IconButton's fixed `tone` does not model. */}
         <button
           className={`${styles.txFilterBtn} ${filterCount > 0 ? styles.txFilterBtnActive : ''}`}
           onClick={onOpenFilters}
