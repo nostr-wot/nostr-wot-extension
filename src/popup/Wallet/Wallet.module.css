@@ -10,38 +10,6 @@
   gap: var(--sp-4);
 }
 
-/* ── Setup tabs ── */
-
-.tabs {
-  display: flex;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-2);
-}
-
-.tab {
-  flex: 1;
-  padding: var(--sp-4) var(--sp-6);
-  border: 1.5px solid var(--card-border);
-  background: transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition);
-  font-family: inherit;
-}
-
-.tab:hover {
-  background: var(--card-bg);
-}
-
-.tabActive {
-  border-color: var(--brand);
-  background: var(--brand-tint-active);
-  color: var(--brand);
-}
-
 /* ── Setup form ── */
 
 .form {

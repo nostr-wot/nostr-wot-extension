@@ -6,8 +6,7 @@
  */
 
 /* ── Post-quantum section ── */
-.pqcNotice,
-.pqcNoticeOk {
+.pqcNotice {
   display: flex;
   align-items: flex-start;
   gap: var(--sp-5);
@@ -21,15 +20,13 @@
   color: var(--warning-strong);
 }
 
-.pqcNotice strong,
-.pqcNoticeOk strong {
+.pqcNotice strong {
   display: block;
   font-size: var(--fs-md);
   margin-bottom: var(--sp-1);
 }
 
-.pqcNotice p,
-.pqcNoticeOk p {
+.pqcNotice p {
   margin: 0;
   font-size: var(--fs-sm);
   line-height: 1.45;
