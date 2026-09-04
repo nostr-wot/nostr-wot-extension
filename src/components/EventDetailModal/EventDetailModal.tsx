@@ -8,8 +8,6 @@ import EventPreview from '@components/EventPreview/EventPreview';
 import StatusDot from '@components/StatusDot/StatusDot';
 import Button from '@components/Button/Button';
 import type { ActivityEntry } from '@models/activity.ts';
-import styles from './EventDetailModal.module.css';
-import { cn } from '@utils/cn.ts';
 
 const CLS = {
   // The modal fills the fixed-height popup, so the event body must scroll
@@ -23,7 +21,10 @@ const CLS = {
   methodBadge: 'inline-flex self-start text-xs font-semibold px-5 py-[3px] rounded-panel bg-brand-light text-brand-hover',
   description: 'text-md text-body mt-2 leading-[1.45]',
   countNote: 'text-sm text-muted text-center pt-2',
-  entryBlock: 'flex flex-col gap-3',
+  // [&+&]: the border between consecutive entry blocks, without one trailing
+  // the last or leading the first — no descendant/adjacent CSS selector can
+  // be reached from a plain className, but Tailwind's arbitrary variant can.
+  entryBlock: 'flex flex-col gap-3 [&+&]:pt-5 [&+&]:border-t [&+&]:border-t-card',
   entryHeader: 'flex items-center gap-3',
   entryTime: 'text-xs text-muted font-mono',
   // flex-shrink-0: never scroll away with the body -- the user must always
@@ -187,7 +188,7 @@ export default function EventDetailModal({
             </>
           ) : (
             uniqueEntries.map((entry, i) => (
-              <div key={i} className={cn(CLS.entryBlock, styles.entryBlock)}>
+              <div key={i} className={CLS.entryBlock}>
                 <div className={CLS.entryHeader}>
                   <StatusDot status={entry.decision || ''} />
                   <span className={CLS.entryTime}>{formatTime(entry.timestamp ?? 0)}</span>

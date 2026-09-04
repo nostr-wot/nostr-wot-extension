@@ -1,7 +1,0 @@
-/* The one rule utilities cannot express: a border between consecutive entry
-   blocks without one trailing the last (or leading the first). Everything
-   else in this stylesheet moved to Tailwind utilities in the component. */
-.entryBlock + .entryBlock {
-  padding-top: var(--sp-5);
-  border-top: 1px solid var(--card-bg);
-}

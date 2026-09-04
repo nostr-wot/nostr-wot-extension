@@ -2,19 +2,26 @@ import React, { useEffect, useRef } from 'react';
 import { t } from '@lib/i18n.js';
 import { IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
-import styles from './Modal.module.css';
 import { cn } from '@utils/cn.ts';
 
 // rgba(0,0,0,0.45) is a one-off, distinct from both --scrim (0.4) and
 // --scrim-heavy (0.6) — kept exact rather than snapped to a neighbour.
-const BACKDROP = 'absolute inset-0 flex items-center justify-center p-8 bg-[rgba(0,0,0,0.45)]';
+// z-[var(--modal-z)]: this reads the *live* --modal-z custom property the
+// caller sets inline via the zIndex prop (see `style` below), not a fixed
+// rung — the unlock prompt's consent ordering depends on this staying dynamic
+// rather than snapping to the static z-modal token.
+const BACKDROP =
+  'absolute inset-0 flex items-center justify-center p-8 bg-[rgba(0,0,0,0.45)] z-[var(--modal-z)] ' +
+  'animate-backdrop-in';
 // [background:var(--bg-page)]: --bg-page is a gradient, and the bg-page
 // *utility* only ever sets background-color — a gradient there is an invalid
 // declaration and silently drops. The arbitrary property keeps the full
 // `background` shorthand the gradient needs.
+// max-w-[var(--modal-max-width)]: same live-custom-property mechanism as the
+// backdrop's z-index — the maxWidth prop sets --modal-max-width inline.
 const CARD =
-  'flex flex-col w-full max-h-full border border-card-border rounded-xl [background:var(--bg-page)] ' +
-  'shadow-modal outline-none';
+  'flex flex-col w-full max-h-full max-w-[var(--modal-max-width)] border border-card-border rounded-xl ' +
+  '[background:var(--bg-page)] shadow-modal outline-none animate-card-in';
 const FOOTER_ROW = 'flex gap-4 [&>*]:flex-1';
 const HEADER = 'flex items-center justify-between gap-4 px-7 py-6 border-b border-card-border';
 const TITLE = 'text-lg font-bold text-heading';
@@ -92,7 +99,7 @@ export default function Modal({
 
   return (
     <div
-      className={cn(styles.backdrop, BACKDROP)}
+      className={BACKDROP}
       style={style}
       onMouseDown={(e) => {
         // mousedown, not click: a drag that starts inside the card and ends on the
@@ -101,7 +108,7 @@ export default function Modal({
       }}
     >
       <div
-        className={cn(styles.card, CARD)}
+        className={CARD}
         role="dialog"
         aria-modal="true"
         aria-label={title}

@@ -1,8 +1,0 @@
-/* Everything else migrated to Tailwind utilities in StatusNotice.tsx (see
-   docs/component-standards.md §7). `.notice` stays as a bare marker class:
-   `.notice + .notice` is an adjacent-sibling selector, which no utility can
-   express, so the stacking gap between a status and its caveat still needs a
-   real class to select on. */
-.notice + .notice {
-  margin-top: var(--sp-4);
-}
