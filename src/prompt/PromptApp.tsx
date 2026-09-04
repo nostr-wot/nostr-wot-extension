@@ -4,7 +4,7 @@ import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
 import { formatSats } from '@shared/format/number.ts';
-import '@styles/theme.css';
+import '@styles/tailwind.css';
 import Button from '@components/Button/Button';
 import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './DecisionRow';

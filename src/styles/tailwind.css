@@ -1,0 +1,159 @@
+/*
+ * Tailwind, wired to the design tokens that already exist.
+ *
+ * theme.css stays the single source of truth for every value. This file only
+ * tells Tailwind which of its utility namespaces each existing token belongs
+ * to, using `@theme inline` so the generated utilities emit `var(--brand)`
+ * rather than a copy of its value. That matters: the tokens are redefined under
+ * a dark-mode media query and by the theme toggle, and a utility holding a
+ * baked-in colour would ignore both.
+ *
+ * The rule this file exists to enforce: **no new values here.** If a utility
+ * needs a value theme.css does not have, the value goes in theme.css and gets
+ * mapped here. The token test (tests/theme-tokens.test.ts) already fails a
+ * `var()` that resolves to nothing, and a palette split across two files is the
+ * thing that test was written to prevent.
+ */
+
+/*
+ * Tailwind's theme and utilities, but NOT its preflight — deliberately, and
+ * this is the one line in the file worth arguing about.
+ *
+ * Preflight is a global reset: `* { margin: 0; padding: 0; border: 0 }`,
+ * headings losing their size, lists losing their markers, `html` forced to
+ * line-height 1.5. The 58 stylesheets in this extension were written against
+ * browser defaults, so turning it on changes the spacing of every paragraph,
+ * heading and list in the product at once — a change no test here can see and
+ * no typecheck can catch, since it is entirely a matter of what the popup
+ * looks like.
+ *
+ * So it stays off while components migrate. Turning it on is its own change,
+ * made when the CSS no longer depends on those defaults, and it has to be
+ * verified by loading the extension and looking at it.
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './theme.css';
+
+/* Scan the source tree explicitly rather than relying on auto-detection: the
+   build has three entry points and a service worker bundled separately by
+   esbuild, and a missed directory shows up as a silently unstyled screen. */
+@source '../../src';
+
+@theme inline {
+  /* ── Spacing ──────────────────────────────────────────────────────────
+     The existing scale is exactly n x 2px (--sp-1: 2px … --sp-14: 28px), so
+     Tailwind's dynamic spacing reproduces it from a single multiplier and
+     `p-6` is `var(--sp-6)` by construction. It also fills in the steps the
+     hand-written scale never named (there was no --sp-9 or --sp-11), which is
+     a gain rather than a licence: reach for the even step first. */
+  --spacing: 2px;
+
+  /* ── Colour ───────────────────────────────────────────────────────────
+     Renamed into Tailwind's `--color-*` namespace, which is what makes
+     `bg-card` / `text-muted` / `border-divider` exist. The names are the ones
+     the codebase already uses; only the prefix is new. */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-light: var(--brand-light);
+  --color-brand-tint-hover: var(--brand-tint-hover);
+  --color-brand-tint-active: var(--brand-tint-active);
+  --color-on-brand: var(--text-on-brand);
+
+  --color-heading: var(--text-heading);
+  --color-body: var(--text-body);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+
+  --color-page: var(--bg-page);
+  --color-page-solid: var(--bg-page-solid);
+  --color-surface: var(--bg-surface);
+  --color-sunken: var(--bg-sunken);
+  --color-elevated: var(--bg-elevated);
+  --color-card: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-card-active: var(--card-active);
+  --color-input: var(--input-bg);
+  --color-divider: var(--divider);
+  --color-glass: var(--surface-glass);
+  --color-glass-heavy: var(--surface-glass-heavy);
+  --color-scrim: var(--scrim);
+  --color-scrim-heavy: var(--scrim-heavy);
+
+  --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
+  --color-success-bright: var(--success-bright);
+  --color-success-tint: var(--success-tint);
+  --color-error: var(--error);
+  --color-error-bright: var(--error-bright);
+  --color-error-tint: var(--error-tint);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-bright: var(--warning-bright);
+  --color-warning-tint: var(--warning-tint);
+  --color-info: var(--info);
+  --color-info-tint: var(--info-tint);
+
+  /* ── Type ─────────────────────────────────────────────────────────────
+     Tailwind's own scale is cleared first. Its `text-xs` is 12px and ours is
+     11px; leaving both in place means the same class name means two different
+     things depending on whether the author knew about this file. */
+  --text-*: initial;
+  --text-2xs: var(--fs-2xs);
+  --text-xs: var(--fs-xs);
+  --text-sm: var(--fs-sm);
+  --text-md: var(--fs-md);
+  --text-lg: var(--fs-lg);
+  --text-xl: var(--fs-xl);
+  --text-2xl: var(--fs-2xl);
+  --text-3xl: var(--fs-3xl);
+  --text-display: var(--fs-display);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: var(--fw-medium);
+  --font-weight-semibold: var(--fw-semibold);
+  --font-weight-bold: var(--fw-bold);
+  --font-weight-heavy: var(--fw-heavy);
+
+  --leading-*: initial;
+  --leading-none: var(--lh-none);
+  --leading-tight: var(--lh-tight);
+  --leading-normal: var(--lh-normal);
+  --leading-loose: var(--lh-loose);
+
+  /* ── Shape and depth ──────────────────────────────────────────────────
+     `--radius-panel` has no Tailwind equivalent and keeps its own name: it is
+     the 10px used by panels, list rows and boxed groups, and collapsing it
+     into `lg` (12px) would be a design change disguised as a rename. */
+  --radius-*: initial;
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-panel: var(--radius-panel);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  --shadow-*: initial;
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-modal: var(--shadow-modal);
+
+  /* The stacking ladder, kept as utilities so a new surface picks a rung
+     rather than inventing a number. The ordering is load-bearing: the unlock
+     prompt must outrank every task surface, which is a consent property and
+     not a cosmetic one. */
+  --z-index-raised: var(--z-raised);
+  --z-index-topbar: var(--z-topbar);
+  --z-index-panel: var(--z-panel);
+  --z-index-sheet: var(--z-sheet);
+  --z-index-modal: var(--modal-z);
+  --z-index-lock: var(--z-lock);
+  --z-index-splash: var(--z-splash);
+}
