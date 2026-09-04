@@ -4,7 +4,6 @@ import { t } from '@lib/i18n.js';
 import { IconInfo } from '@assets';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
-import styles from './WizardOverlay.module.css';
 import FormError from '@components/FormError/FormError';
 
 type ImportType = 'ncryptsec' | 'nsec' | 'mnemonic' | null;
@@ -104,14 +103,14 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
   };
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.importTitle')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.importTitle')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.importDesc')}
       </p>
 
-      <div className={styles.formGroup}>
-        <label>{t('wizard.importLabel')}</label>
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.importLabel')}</label>
         <Input
           type="password"
           showToggle
@@ -120,13 +119,13 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
           value={input}
           onChange={handleInputChange}
         />
-        {typeHint && <div className={styles.importTypeHint}>{typeHint}</div>}
+        {typeHint && <div className="text-xs font-medium text-brand mt-2">{typeHint}</div>}
       </div>
 
       {importType === 'ncryptsec' && (
         <>
-          <div className={styles.formGroup}>
-            <label>{t('wizard.decryptionPassword')}</label>
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.decryptionPassword')}</label>
             <Input
               type="password"
               showToggle
@@ -135,8 +134,8 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
               onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
             />
           </div>
-          <div className={styles.formGroup}>
-            <label>{t('wizard.accountName')}</label>
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.accountName')}</label>
             <Input
               placeholder={t('wizard.accountNamePlaceholder')}
               value={name}
@@ -147,26 +146,26 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
       )}
 
       {importType === 'mnemonic' && (
-        <div className={styles.seedLegend}>
-          <IconInfo size={14} />
+        <div className="flex items-start gap-4 py-4 px-6 bg-card rounded-md text-xs leading-normal text-secondary mb-4">
+          <IconInfo size={14} className="shrink-0 text-brand mt-px" />
           <span>{hasSeed ? t('wizard.seedDerivedLegend') : t('wizard.seedMainLegend')}</span>
         </div>
       )}
 
       {pubkey && (
-        <div className={styles.derivedInfo}>
-          <div className={styles.derivedField}>
-            <label>{t('wizard.pubkey')}</label>
-            <span>{pubkey.slice(0, 16)}...{pubkey.slice(-8)}</span>
+        <div className="py-5 px-7 bg-card border border-card-border rounded-panel mt-4">
+          <div className="flex items-center gap-4 py-2">
+            <label className="text-xs font-semibold text-muted min-w-[50px]">{t('wizard.pubkey')}</label>
+            <span className="text-xs font-mono text-heading overflow-hidden text-ellipsis whitespace-nowrap">{pubkey.slice(0, 16)}...{pubkey.slice(-8)}</span>
           </div>
         </div>
       )}
 
-      {upgradeNotice && <div className={styles.upgradeNotice}>{upgradeNotice}</div>}
+      {upgradeNotice && <div className="py-4 px-6 bg-[rgba(37,99,235,0.06)] rounded-md text-xs text-info mt-4">{upgradeNotice}</div>}
       <FormError>{error}</FormError>
 
-      <div className={styles.stepActions}>
-        <Button onClick={handleContinue} disabled={!input.trim() || loading}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Button className="flex-1" onClick={handleContinue} disabled={!input.trim() || loading}>
           {loading ? t('wizard.importing') : importType === 'ncryptsec' ? t('wizard.decryptContinue') : t('common.continue')}
         </Button>
       </div>

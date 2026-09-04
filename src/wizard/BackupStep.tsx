@@ -5,7 +5,6 @@ import { t } from '@lib/i18n.js';
 import { IconCopy, IconDownload, IconLock, IconWarning } from '@assets';
 import Button from '@components/Button/Button';
 import ActionTile from '@components/ActionTile/ActionTile';
-import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
 
 interface BackupStepProps {
@@ -29,13 +28,13 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
   };
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.backUpKeys')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.backUpKeys')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.chooseBackup')}
       </p>
 
-      <div className={styles.backupActions}>
+      <div className="flex flex-col gap-3">
         <ActionTile
           icon={<IconCopy />}
           title={seedCopy.copied ? t('common.copied') : t('wizard.copySeed')}
@@ -59,10 +58,10 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
       </div>
 
       {safetyShown && (
-        <div className={styles.safetyDrawer}>
-          <IconWarning size={20} className={styles.safetyIcon} />
-          <h3>{t('wizard.keepSafe')}</h3>
-          <p>
+        <div className="py-7 px-7 bg-[rgba(217,119,6,0.06)] border border-[rgba(217,119,6,0.15)] rounded-lg mt-6">
+          <IconWarning size={20} className="text-warning mb-3" />
+          <h3 className="text-md font-bold text-heading mb-2">{t('wizard.keepSafe')}</h3>
+          <p className="text-sm text-secondary leading-normal mb-5">
             {t('wizard.keepSafeDesc')}
           </p>
           <Button small onClick={onNext}>{t('wizard.gotItVerify')}</Button>

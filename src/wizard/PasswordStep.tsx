@@ -8,7 +8,6 @@ import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
-import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 import FormError from '@components/FormError/FormError';
@@ -121,12 +120,12 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
 
     return (
-      <div className={styles.step}>
-        <h2 className={styles.stepTitle}>{t('wizard.addToVault')}</h2>
-        <p className={styles.stepDesc}>{t('unlock.vaultLocked')}</p>
+      <div className="flex flex-col flex-1">
+        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.addToVault')}</h2>
+        <p className="text-md text-secondary leading-normal mb-8">{t('unlock.vaultLocked')}</p>
 
-        <div className={styles.formGroup}>
-          <label>{t('wizard.password')}</label>
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.password')}</label>
           <Input
             type="password"
             showToggle
@@ -140,8 +139,8 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
         <FormError>{unlockForm.error}</FormError>
 
-        <div className={styles.stepActions}>
-          <Button onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
+        <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+          <Button className="flex-1" onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
             {unlockForm.loading ? t('common.loading') : t('common.unlock')}
           </Button>
         </div>
@@ -151,14 +150,14 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
   // No vault -- full password setup
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.protectYourKeys')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.protectYourKeys')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.protectYourKeysDesc')}
       </p>
 
-      <div className={styles.formGroup}>
-        <label>{t('wizard.autoLockTimer')}</label>
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.autoLockTimer')}</label>
         <ChipGroup
           options={AUTO_LOCK_OPTIONS.map((opt: any) => ({ value: opt.ms, label: t(opt.labelKey) }))}
           value={autoLockMs}
@@ -167,7 +166,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
       </div>
 
       {isNever && (
-        <div className={styles.warningBox}>
+        <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(217,119,6,0.06)] rounded-panel text-sm text-warning leading-normal mb-6">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             <line x1="12" y1="9" x2="12" y2="13" />
@@ -178,8 +177,8 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
       )}
 
       {!isNever && (
-        <div className={styles.passwordFields}>
-          <label>{t('wizard.password')}</label>
+        <div className="flex flex-col gap-5 mb-6">
+          <label className="block text-sm font-semibold text-secondary">{t('wizard.password')}</label>
           <PasswordPairFields
             pair={pair}
             passwordPlaceholder={t('wizard.minEightChars')}
@@ -191,8 +190,8 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
       <FormError>{error}</FormError>
 
-      <div className={styles.stepActions}>
-        <Button onClick={handleContinue} disabled={loading || (!isNever && !pair.ready)}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Button className="flex-1" onClick={handleContinue} disabled={loading || (!isNever && !pair.ready)}>
           {loading ? t('wizard.creatingVault') : t('common.continue')}
         </Button>
       </div>

@@ -3,7 +3,6 @@ import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
-import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import FormError from '@components/FormError/FormError';
 
@@ -74,21 +73,21 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
   if (loading) {
     return (
-      <div className={styles.step}>
-        <h2 className={styles.stepTitle}>{t('wizard.generatingIdentity')}</h2>
-        <p className={styles.stepDesc}>{t('wizard.creatingKeypair')}</p>
+      <div className="flex flex-col flex-1">
+        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.generatingIdentity')}</h2>
+        <p className="text-md text-secondary leading-normal mb-8">{t('wizard.creatingKeypair')}</p>
       </div>
     );
   }
 
   if (needsUnlock) {
     return (
-      <div className={styles.step}>
-        <h2 className={styles.stepTitle}>{t('wizard.subAccountTitle')}</h2>
-        <p className={styles.stepDesc}>{t('unlock.vaultLocked')}</p>
+      <div className="flex flex-col flex-1">
+        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.subAccountTitle')}</h2>
+        <p className="text-md text-secondary leading-normal mb-8">{t('unlock.vaultLocked')}</p>
 
-        <div className={styles.formGroup}>
-          <label>{t('wizard.password')}</label>
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.password')}</label>
           <Input
             type="password"
             showToggle
@@ -102,8 +101,8 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
         <FormError>{unlockError}</FormError>
 
-        <div className={styles.stepActions}>
-          <Button onClick={unlock} disabled={unlocking || !password}>
+        <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+          <Button className="flex-1" onClick={unlock} disabled={unlocking || !password}>
             {unlocking ? t('common.loading') : t('common.unlock')}
           </Button>
         </div>
@@ -113,43 +112,43 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
   if (error) {
     return (
-      <div className={styles.step}>
-        <h2 className={styles.stepTitle}>{t('common.error')}</h2>
+      <div className="flex flex-col flex-1">
+        <h2 className="text-3xl font-bold text-heading mb-3">{t('common.error')}</h2>
         <FormError>{error}</FormError>
       </div>
     );
   }
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.subAccountTitle')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.subAccountTitle')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.subAccountDesc')}
       </p>
 
-      <div className={styles.infoBox}>
-        <div className={styles.infoRow}>
-          <span className={styles.infoLabel}>{t('wizard.typeLabel')}</span>
+      <div className="bg-surface border border-card-border rounded-panel py-6 px-7 flex flex-col gap-4 mb-6">
+        <div className="flex justify-between items-center text-md text-heading">
+          <span className="font-semibold text-secondary">{t('wizard.typeLabel')}</span>
           <span>{t('wizard.subAccountType')}</span>
         </div>
-        <div className={styles.infoRow}>
-          <span className={styles.infoLabel}>{t('wizard.derivationPath')}</span>
-          <span className={styles.mono}>m/44'/1237'/0'/0/{derivationIndex}</span>
+        <div className="flex justify-between items-center text-md text-heading">
+          <span className="font-semibold text-secondary">{t('wizard.derivationPath')}</span>
+          <span className="font-mono text-sm">m/44'/1237'/0'/0/{derivationIndex}</span>
         </div>
         {account?.pubkey && (
-          <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>{t('wizard.publicKeyLabel')}</span>
-            <span className={styles.mono}>{account.pubkey.slice(0, 12)}...{account.pubkey.slice(-8)}</span>
+          <div className="flex justify-between items-center text-md text-heading">
+            <span className="font-semibold text-secondary">{t('wizard.publicKeyLabel')}</span>
+            <span className="font-mono text-sm">{account.pubkey.slice(0, 12)}...{account.pubkey.slice(-8)}</span>
           </div>
         )}
       </div>
 
-      <p className={styles.hintText}>
+      <p className="text-sm text-muted leading-normal mb-4">
         {t('wizard.subAccountHint')}
       </p>
 
-      <div className={styles.stepActions}>
-        <Button onClick={handleContinue} disabled={saving}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Button className="flex-1" onClick={handleContinue} disabled={saving}>
           {saving ? t('wizard.addingAccount') : t('common.continue')}
         </Button>
       </div>

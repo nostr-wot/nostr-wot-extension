@@ -8,7 +8,6 @@ import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets'
 import Button from '@components/Button/Button';
 import ActionTile from '@components/ActionTile/ActionTile';
 import Card from '@components/Card/Card';
-import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
 import SeedWord from '@components/SeedWord/SeedWord';
 import FormError from '@components/FormError/FormError';
@@ -69,17 +68,17 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   if (loading) {
     return (
-      <div className={styles.step}>
-        <h2 className={styles.stepTitle}>{t('wizard.generatingIdentity')}</h2>
-        <p className={styles.stepDesc}>{t('wizard.creatingKeypair')}</p>
+      <div className="flex flex-col flex-1">
+        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.generatingIdentity')}</h2>
+        <p className="text-md text-secondary leading-normal mb-8">{t('wizard.creatingKeypair')}</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={styles.step}>
-        <h2 className={styles.stepTitle}>{t('common.error')}</h2>
+      <div className="flex flex-col flex-1">
+        <h2 className="text-3xl font-bold text-heading mb-3">{t('common.error')}</h2>
         <FormError>{error}</FormError>
       </div>
     );
@@ -98,26 +97,32 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   };
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.recoveryTitle')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.recoveryTitle')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.recoveryDesc', { count: words.length })}
       </p>
 
-      <div className={styles.warningBox}>
-        <IconWarning />
+      <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(217,119,6,0.06)] rounded-panel text-sm text-warning leading-normal mb-6">
+        <IconWarning className="shrink-0 mt-px" />
         <span>{t('wizard.recoveryWarning')}</span>
       </div>
 
-      <div className={styles.mnemonicWrapper}>
-        <Card variant="flat" className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''} ${!revealed ? styles.mnemonicBlurred : ''}`}>
+      <div className="relative mb-6">
+        <Card
+          variant="flat"
+          className={`grid gap-1 pt-5 px-7 pb-16 mb-0 transition-[filter] duration-300 ${words.length > 12 ? 'grid-cols-4 gap-y-2 gap-x-1' : 'grid-cols-3'} ${!revealed ? 'blur-[6px] select-none pointer-events-none' : ''}`}
+        >
           {words.map((word, i) => (
             <SeedWord key={i} index={i + 1} word={word} compact={words.length > 12} />
           ))}
         </Card>
 
         {!revealed && (
-          <button className={styles.revealBtn} onClick={() => setRevealed(true)}>
+          <button
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 py-5 px-9 bg-[rgba(99,102,241,0.95)] text-on-brand border-0 rounded-panel text-md font-semibold cursor-pointer z-2 shadow-[0_2px_12px_rgba(99,102,241,0.3)] transition-all hover:bg-[rgba(99,102,241,1)] hover:scale-[1.03]"
+            onClick={() => setRevealed(true)}
+          >
             <IconEye size={20} />
             <span>{t('wizard.revealWords')}</span>
           </button>
@@ -125,7 +130,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
         {revealed && (
           <button
-            className={`${styles.copyBtn} ${seedCopy.copied ? styles.copyBtnDone : ''}`}
+            className={`absolute bottom-4 right-4 flex items-center justify-center w-14 h-14 border border-card-border bg-card rounded-sm cursor-pointer text-muted transition-all z-2 hover:text-brand hover:border-brand ${seedCopy.copied ? 'text-success border-success' : ''}`}
             onClick={handleCopy}
             title={t('common.copy')}
           >
@@ -134,7 +139,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         )}
       </div>
 
-      <div className={styles.backupActions}>
+      <div className="flex flex-col gap-3">
         <ActionTile
           icon={<IconDownload />}
           title={t('wizard.downloadPlainText')}
@@ -152,8 +157,8 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         />
       </div>
 
-      <div className={styles.stepActions}>
-        <Button onClick={handleNext} disabled={!backedUp}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Button className="flex-1" onClick={handleNext} disabled={!backedUp}>
           {t('wizard.iWrittenItDown')}
         </Button>
       </div>

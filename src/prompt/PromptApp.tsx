@@ -9,7 +9,6 @@ import Button from '@components/Button/Button';
 import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './DecisionRow';
 import UnlockSection from './UnlockSection';
-import styles from './PromptApp.module.css';
 import type { PromptDecision } from '@models/prompt.ts';
 
 interface PendingPrompt {
@@ -66,41 +65,43 @@ export default function PromptApp() {
     setVaultLocked(false);
   };
 
-  if (loading) return <div className={styles.container}><div className={styles.loading}>{t('common.loading')}</div></div>;
-  if (error) return <div className={styles.container}><div className={styles.error}>{error}</div></div>;
+  const container = 'min-h-screen flex flex-col p-8 gap-6 font-sans';
+
+  if (loading) return <div className={container}><div className="text-center py-10 text-muted">{t('common.loading')}</div></div>;
+  if (error) return <div className={container}><div className="text-center py-10 text-error">{error}</div></div>;
   if (!prompt) return null;
 
   const needsPermission = prompt.needsPermission !== false;
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.accountBar}>
-          <span className={styles.accountPubkey}>
+    <div className={container}>
+      <div className="text-center">
+        <div className="inline-flex items-center gap-4 py-3 px-7 bg-card border border-brand-light rounded-md">
+          <span className="text-sm font-mono text-muted">
             {prompt.pubkey?.slice(0, 8)}...{prompt.pubkey?.slice(-8)}
           </span>
         </div>
       </div>
 
-      <div className={styles.originBar}>
-        <span className={styles.originLabel}>{t('prompt.from')}</span>
-        <span className={styles.originDomain}>{prompt.origin}</span>
+      <div className="flex items-center justify-between py-5 px-7 bg-brand-tint-hover border border-brand-tint-active rounded-md">
+        <span className="text-sm uppercase tracking-[0.5px] text-muted">{t('prompt.from')}</span>
+        <span className="text-lg font-semibold text-heading">{prompt.origin}</span>
       </div>
 
       {prompt.type?.startsWith('webln_') ? (
         <>
-          <div className={styles.requestType}>
+          <div className="text-center text-3xl font-bold text-brand">
             {prompt.type === 'webln_sendPayment' ? 'Lightning Payment' : 'Lightning Request'}
           </div>
           {prompt.walletAmount !== undefined && prompt.walletAmount > 0 && (
-            <div className={styles.paymentAmount}>
+            <div className="text-center text-display font-heavy text-heading py-6">
               {formatSats(prompt.walletAmount)}
             </div>
           )}
         </>
       ) : (
         <>
-          <div className={styles.requestType}>
+          <div className="text-center text-3xl font-bold text-brand">
             {formatLabel(prompt.type || '')}
           </div>
 
@@ -108,7 +109,7 @@ export default function PromptApp() {
             type={prompt.type || null}
             event={prompt.event}
             theirPubkey={prompt.theirPubkey}
-            className={styles.eventPreview}
+            className="flex-1"
           />
         </>
       )}
@@ -123,7 +124,7 @@ export default function PromptApp() {
           onDecision={handleDecision}
         />
       ) : (
-        <div className={styles.decisionRow}>
+        <div className="flex gap-3 items-center flex-wrap">
           <Button
             variant="secondary"
             disabled={buttonsDisabled}

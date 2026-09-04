@@ -61,18 +61,18 @@ export default function LangStep({ onSelect }: LangStepProps) {
   if (languages.length === 1) {
     const lang = languages[0];
     return (
-      <TopoBg className={styles.langScreen}>
-        <div className={styles.langHero}>
+      <TopoBg className="flex flex-col flex-1 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center gap-5">
           <AnimatedWotLogo size={112} />
-          <span className={styles.langAppName}>Nostr WoT</span>
+          <span className="text-[26px] font-heavy text-heading tracking-[-0.3px]">Nostr WoT</span>
         </div>
-        <div className={styles.langDivider} />
-        <div className={styles.langPicker}>
-          <Card variant="flat" className={styles.langTrigger}>
-            <span className={styles.langTriggerSelected}>{lang.flag} {lang.native}</span>
+        <div className="h-px bg-card-border mx-12" />
+        <div className="pt-10 px-8 pb-4 flex flex-col items-center gap-6">
+          <Card variant="flat" className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-[rgba(255,255,255,0.5)] cursor-pointer transition-colors hover:border-brand">
+            <span className="flex-1 text-lg font-semibold text-heading">{lang.flag} {lang.native}</span>
           </Card>
           <Button
-            className={styles.langConfirm}
+            className="w-full max-w-[260px]"
             onClick={() => { setLanguage(lang.code); onSelect(lang.code); }}
           >
             {t('common.continue')}
@@ -83,45 +83,50 @@ export default function LangStep({ onSelect }: LangStepProps) {
   }
 
   return (
-    <TopoBg className={styles.langScreen}>
+    <TopoBg className="flex flex-col flex-1 text-center">
       {anim && <style>{anim.css}</style>}
-      <div className={styles.langHero}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-5">
         <AnimatedWotLogo size={112} />
-        <span className={styles.langAppName}>Nostr WoT</span>
+        <span className="text-[26px] font-heavy text-heading tracking-[-0.3px]">Nostr WoT</span>
       </div>
-      <div className={styles.langDivider} />
-      <div className={styles.langPicker}>
+      <div className="h-px bg-card-border mx-12" />
+      <div className="pt-10 px-8 pb-4 flex flex-col items-center gap-6">
         {/* Dropdown trigger -- cycles prompt translations or shows selection.
             Card gives it native button semantics (keyboard activation, focus)
             for free, dropping the hand-rolled role/tabIndex/onKeyDown trio. */}
-        <Card as="button" variant="flat" className={styles.langTrigger} onClick={() => setModalOpen(true)}>
+        <Card
+          as="button"
+          variant="flat"
+          className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-[rgba(255,255,255,0.5)] cursor-pointer transition-colors hover:border-brand"
+          onClick={() => setModalOpen(true)}
+        >
           {selected ? (
-            <span className={styles.langTriggerSelected}>
+            <span className="flex-1 text-lg font-semibold text-heading">
               {selected.flag} {selected.native}
             </span>
           ) : (
-            <div className={styles.langTriggerScroll}>
+            <div className="flex-1 overflow-hidden h-9">
               <div
-                className={styles.langTriggerTrack}
+                className="flex flex-col"
                 style={{ animation: `langPromptScroll ${anim!.duration}s linear infinite` }}
               >
                 {languages.map((lang) => (
-                  <div key={lang.code} className={styles.langTriggerItem}>
+                  <div key={lang.code} className="h-9 flex items-center text-lg font-normal text-muted shrink-0 whitespace-nowrap">
                     {lang.prompt}
                   </div>
                 ))}
                 {/* Duplicate first for seamless loop */}
-                <div className={styles.langTriggerItem}>
+                <div className="h-9 flex items-center text-lg font-normal text-muted shrink-0 whitespace-nowrap">
                   {languages[0].prompt}
                 </div>
               </div>
             </div>
           )}
-          <svg className={styles.langTriggerChevron} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg className="shrink-0 text-muted" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </Card>
-        <Button className={styles.langConfirm} onClick={handleConfirm}>
+        <Button className="w-full max-w-[260px]" onClick={handleConfirm}>
           {t('common.continue')}
         </Button>
       </div>
@@ -129,8 +134,8 @@ export default function LangStep({ onSelect }: LangStepProps) {
       {/* Full-screen language modal with scroll wheel picker */}
       {modalOpen && (
         <div className={styles.langModal}>
-          <div className={styles.langModalHeader}>
-            <span className={styles.langModalTitle}>
+          <div className="flex items-center justify-between py-7 px-8 border-b border-card-border">
+            <span className="text-xl font-bold text-heading">
               {selected?.prompt || languages[0].prompt}
             </span>
             <IconButton size={32} onClick={() => setModalOpen(false)} aria-label={t('common.close')}>
@@ -140,8 +145,8 @@ export default function LangStep({ onSelect }: LangStepProps) {
 
           <LanguageWheel languages={languages} selected={selected} onChange={setSelected} />
 
-          <div className={styles.langModalBottom}>
-            <Button className={styles.langConfirm} onClick={handleConfirm}>
+          <div className="p-8">
+            <Button className="w-full" onClick={handleConfirm}>
               {t('common.continue')}
             </Button>
           </div>

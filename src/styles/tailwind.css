@@ -66,7 +66,11 @@
   --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
 
-  --color-page: var(--bg-page);
+  /* --bg-page is deliberately NOT mapped. It is a linear-gradient, and a
+     Tailwind colour utility only ever emits `background-color`, which is
+     invalid for a gradient — the declaration is dropped and the page renders
+     with no background at all, silently. Write `[background:var(--bg-page)]`
+     instead. --bg-page-solid is the flat colour for surfaces that need one. */
   --color-page-solid: var(--bg-page-solid);
   --color-surface: var(--bg-surface);
   --color-sunken: var(--bg-sunken);
