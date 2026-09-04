@@ -5,7 +5,6 @@ import Card from '@components/Card/Card';
 import ListRow from '@components/ListRow/ListRow';
 import { IconUser, IconChevronRight } from '@assets';
 import { useNavigate } from './NavigationContext';
-import styles from './SiteControls.module.css';
 
 interface SiteControlsProps {
   identityEnabled: boolean;
@@ -24,17 +23,17 @@ export default function SiteControls({
 }: SiteControlsProps) {
   const navigate = useNavigate();
   return (
-    <Card className={styles.siteControls}>
-      <div className={styles.controlRow}>
-        <div className={styles.controlInfo}>
-          <IconUser size={15} className={styles.controlIcon} />
-          <span className={styles.controlLabel}>{t('home.allowIdentity')}</span>
+    <Card className="p-0 overflow-hidden">
+      <div className="flex items-center justify-between py-[11px] px-7">
+        <div className="flex items-center gap-4">
+          <IconUser size={15} className="text-brand shrink-0" />
+          <span className="text-md font-medium text-body">{t('home.allowIdentity')}</span>
         </div>
         <Toggle checked={identityEnabled} onChange={onIdentityToggle} />
       </div>
 
       {isNip46 ? (
-        <div className={styles.managedBySigner}>
+        <div className="py-5 px-7 text-sm font-medium text-muted italic">
           <span>{t('perms.managedBySigner')}</span>
         </div>
       ) : (

@@ -114,11 +114,11 @@ function PopupInner() {
     <>
       {screenshot && (
         <div
-          className={styles.backdrop}
+          className="fixed inset-0 w-full h-full z-0 bg-cover bg-center blur-[18px] brightness-95 scale-110"
           style={{ backgroundImage: `url(${screenshot})` }}
         />
       )}
-      <TopoBg className={styles.card}>
+      <TopoBg className="relative z-1 bg-[rgba(255,255,255,0.92)] border border-[rgba(99,102,241,0.15)] rounded-xl h-[calc(600px-16px)] p-8 flex flex-col overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
         <Splash visible={splashVisible} />
         <TopBar
           onMenuOpen={() => setActiveOverlay('menu')}
@@ -126,7 +126,7 @@ function PopupInner() {
           onEditProfile={() => setActiveOverlay('editProfile')}
         />
 
-        <div className={styles.scrollArea}>
+        <div className={`${styles.scrollArea} flex-1 overflow-y-auto min-h-0 flex flex-col gap-2`}>
           <NavigationProvider value={navigation}>
             <Home menuOpen={activeOverlay === 'menu'} />
           </NavigationProvider>

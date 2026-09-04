@@ -22,17 +22,21 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
     <Card
       as="button"
       variant="flat"
-      className={`${styles.card} ${isNip46 ? styles.cardNip46 : ''}`}
+      className={`w-full py-6 px-7 mb-0 flex items-center gap-5 text-left font-[inherit] transition-colors ${
+        isNip46
+          ? 'cursor-default opacity-75 border-dashed hover:bg-card hover:border-card-border'
+          : 'cursor-pointer hover:bg-card-active hover:border-brand-light'
+      }`}
       onClick={onClick}
     >
-      <div className={styles.cardLeft}>
-        <div className={styles.cardOrigin}>{domain}</div>
-        <div className={styles.cardMethod}>
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <div className="text-md font-semibold text-heading">{domain}</div>
+        <div className="text-sm text-body flex items-center gap-3">
           {isNip46 && <IconSync size={12} className={styles.spinnerIcon} />}
           {isNip46 ? t('approval.awaitingSigner') : label}
         </div>
         {!isNip46 && group.requests.length > 1 && (
-          <div className={styles.cardCount}>{t('approval.requests', { count: group.requests.length })}</div>
+          <div className="text-xs text-muted">{t('approval.requests', { count: group.requests.length })}</div>
         )}
       </div>
       {isNip46 && onCancel ? (
@@ -41,13 +45,13 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
         // without a hover — an async NIP-46 wait with no other visible
         // control — so it keeps its own always-visible border and glyph.
         <button
-          className={styles.cancelBtn}
+          className="shrink-0 w-12 h-12 p-0 flex items-center justify-center border border-[rgba(239,68,68,0.3)] rounded-sm bg-transparent text-error text-2xl leading-none cursor-pointer font-[inherit] transition-all hover:bg-[rgba(239,68,68,0.08)] hover:border-[rgba(239,68,68,0.5)]"
           onClick={(e) => { e.stopPropagation(); onCancel(); }}
           title={t('approval.cancelNip46')}
         >
           &times;
         </button>
-      ) : !isNip46 ? <IconChevronRight size={16} className={styles.cardChevron} /> : null}
+      ) : !isNip46 ? <IconChevronRight size={16} className="shrink-0 text-muted" /> : null}
     </Card>
   );
 }

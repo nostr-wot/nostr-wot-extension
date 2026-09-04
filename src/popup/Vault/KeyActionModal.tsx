@@ -12,7 +12,6 @@ import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
-import styles from './KeyActionModal.module.css';
 import SeedWord from '@components/SeedWord/SeedWord';
 import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
@@ -167,8 +166,8 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     >
       <>
         {needsUnlock ? (
-          <div className={styles.section}>
-            <label>{t('key.unlockToContinue')}</label>
+          <div className="flex flex-col gap-5">
+            <label className="text-sm font-semibold text-secondary">{t('key.unlockToContinue')}</label>
             <Input
               type="password"
               showToggle
@@ -178,20 +177,20 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleUnlock()}
             />
             <FormError>{unlockError}</FormError>
-            <div className={styles.actions}>
+            <div className="flex gap-4 justify-end mt-2">
               <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
               <Button small onClick={handleUnlock}>{t('common.unlock')}</Button>
             </div>
           </div>
         ) : action === 'nsec' ? (
-          <div className={styles.section}>
+          <div className="flex flex-col gap-5">
             {!nsec.revealed ? (
               <>
-                <div className={styles.warning}>
-                  <IconWarning />
+                <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal">
+                  <IconWarning className="shrink-0 mt-px" />
                   <span>{t('key.nsecWarning')}</span>
                 </div>
-                <div className={styles.actions}>
+                <div className="flex gap-4 justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button variant="danger" small onClick={revealNsec}>{t('key.revealKey')}</Button>
                 </div>
@@ -203,14 +202,14 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                     aria-pressed reports whether it is currently revealed. */}
                 <button
                   type="button"
-                  className={`${styles.keyDisplay} ${nsec.blurred ? styles.blurred : ''}`}
+                  className={`w-full text-left cursor-pointer py-6 bg-card border border-card-border rounded-panel font-[SF_Mono,Cascadia_Code,Fira_Code,monospace] text-xs text-heading break-all leading-loose transition-[filter] duration-slow ${nsec.blurred ? 'blur-[6px] select-none' : ''}`}
                   onClick={nsec.toggleBlur}
                   aria-pressed={!nsec.blurred}
                 >
                   {nsec.value}
                 </button>
-                <div className={styles.hint}>{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
-                <div className={styles.actions}>
+                <div className="text-xs text-muted text-center">{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
+                <div className="flex gap-4 justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
                   <Button small onClick={() => nsecCopy.copy(nsec.value)}>
                     {nsecCopy.copied ? t('common.copied') : t('common.copy')}
@@ -222,28 +221,28 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
         ) : action === 'ncryptsec' ? (
           <EncryptedBackupForm rpcMethod="vault_exportNcryptsec" onClose={handleClose} />
         ) : action === 'seed' ? (
-          <div className={styles.section}>
+          <div className="flex flex-col gap-5">
             {!seed.revealed ? (
               <>
-                <div className={styles.warning}>
-                  <IconWarning />
+                <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal">
+                  <IconWarning className="shrink-0 mt-px" />
                   <span>{t('key.seedWarning')}</span>
                 </div>
-                <div className={styles.actions}>
+                <div className="flex gap-4 justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button variant="danger" small onClick={revealSeed}>{t('key.revealKey')}</Button>
                 </div>
               </>
             ) : (
               <>
-                <button type="button" className={styles.seedGridWrap} onClick={seed.toggleBlur} aria-pressed={!seed.blurred}>
-                  <div className={`${styles.seedGrid} ${seed.blurred ? styles.blurred : ''}`}>
+                <button type="button" className="w-full border-none bg-transparent font-[inherit] text-left cursor-pointer rounded-panel" onClick={seed.toggleBlur} aria-pressed={!seed.blurred}>
+                  <div className={`grid grid-cols-3 gap-1 py-5 px-6 bg-card border border-card-border rounded-panel transition-[filter] duration-slow ${seed.blurred ? 'blur-[6px] select-none' : ''}`}>
                     {seed.value.map((word, i) => (
                       <SeedWord key={i} index={i + 1} word={word} />
                     ))}
                   </div>
                 </button>
-                <div className={styles.hint}>{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
+                <div className="text-xs text-muted text-center">{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
                 {seedEncMode ? (
                   <>
                     <PasswordPairFields
@@ -254,7 +253,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                       disabled={seedEncrypting}
                     />
                     <FormError>{seedEncError}</FormError>
-                    <div className={styles.actions}>
+                    <div className="flex gap-4 justify-end mt-2">
                       <Button variant="secondary" small onClick={() => { setSeedEncMode(false); seedEncPair.reset(); setSeedEncError(''); }}>{t('common.cancel')}</Button>
                       <Button small onClick={downloadSeedEncrypted} disabled={seedEncrypting || !seedEncPair.ready}>
                         {seedEncrypting ? t('key.seedEncrypting') : t('common.download')}
@@ -262,7 +261,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                     </div>
                   </>
                 ) : (
-                  <div className={styles.seedActions}>
+                  <div className="flex flex-wrap gap-3 justify-end mt-2">
                     <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
                     <Button variant="secondary" small onClick={() => seedCopy.copy(seed.value.join(' '))}>
                       {seedCopy.copied ? t('common.copied') : t('common.copy')}
@@ -275,9 +274,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
             )}
           </div>
         ) : action === 'changePassword' ? (
-          <div className={styles.section}>
+          <div className="flex flex-col gap-5">
             {cpSuccess ? (
-              <div className={styles.success}>{t('key.passwordChanged')}</div>
+              <div className="text-lg font-medium text-success text-center py-8">{t('key.passwordChanged')}</div>
             ) : (
               <>
                 <Input
@@ -294,7 +293,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                   onSubmit={handleChangePassword}
                 />
                 <FormError>{cpError}</FormError>
-                <div className={styles.actions}>
+                <div className="flex gap-4 justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button small onClick={handleChangePassword} disabled={!cpPair.ready}>{t('common.save')}</Button>
                 </div>

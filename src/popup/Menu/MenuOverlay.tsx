@@ -206,10 +206,10 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         </IconButton>
       ) : undefined}
     >
-      <div className={styles.menuContent}>
+      <div className="flex flex-col flex-1 min-h-0">
         <div key={currentSection || '_root'} className={styles.sectionContent}>
           {!currentSection ? (
-            <div className={styles.items}>
+            <div className="flex flex-col gap-2 flex-1 py-2 px-1">
               {menuItems.map((item) => {
                 // NOTE: there is no 'nip46' item to filter. The row was removed
                 // without being re-homed, and this line outlived it — it cost one
@@ -239,20 +239,23 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
           )}
         </div>
 
-        <div className={styles.menuFooter}>
+        <div className="mt-auto flex flex-col items-center pt-6 shrink-0">
           {!currentSection && (
-            <button className={styles.langRow} onClick={openLangPicker}>
-              <span className={styles.langFlag}>{currentLang.flag}</span>
-              <span className={styles.langLabel}>{currentLang.native}</span>
-              <svg className={styles.langChevron} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <button
+              className="inline-flex items-center gap-4 py-4 px-6 mb-6 border border-card-border bg-[rgba(255,255,255,0.6)] rounded-[20px] cursor-pointer transition-all font-[inherit] hover:bg-[rgba(255,255,255,0.9)] hover:border-brand"
+              onClick={openLangPicker}
+            >
+              <span className="text-2xl leading-none">{currentLang.flag}</span>
+              <span className="text-md font-medium text-heading whitespace-nowrap">{currentLang.native}</span>
+              <svg className="shrink-0 text-muted" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
           )}
-          <div className={styles.aboutFooter}>
-            <img src="/icons/icon-base.svg" className={styles.aboutLogo} alt="" />
-            <span className={styles.aboutName}>Nostr WoT Extension</span>
-            <span className={styles.aboutVersion}>v{appVersion}</span>
+          <div className="flex items-center justify-center gap-4 py-4 opacity-50">
+            <img src="/icons/icon-base.svg" className="w-8 h-8" alt="" />
+            <span className="text-xs font-semibold text-secondary">Nostr WoT Extension</span>
+            <span className="text-xs text-muted">v{appVersion}</span>
           </div>
         </div>
       </div>

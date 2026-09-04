@@ -90,8 +90,8 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
   };
 
   return (
-    <div className={styles.dropdown} ref={ref}>
-      <div className={styles.accountList}>
+    <div className={`${styles.dropdown} absolute top-full inset-x-0 mt-2 bg-elevated rounded-lg shadow-pop border border-card-border z-topbar`} ref={ref}>
+      <div className="max-h-120 overflow-y-auto">
         {(accounts || []).map((account) => {
           const cached = profileCache[account.pubkey];
           const name = cached?.name || account.name;
@@ -100,10 +100,10 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
           return (
             <div
               key={account.id}
-              className={`${styles.dropdownItem} ${isActive ? styles.dropdownItemActive : ''}`}
+              className={`group flex items-center gap-5 py-5 px-7 cursor-pointer transition-colors duration-fast bg-transparent border-none w-full text-left hover:bg-card ${isActive ? 'bg-card' : ''}`}
             >
               <button
-                className={styles.accountBarToggle}
+                className="flex items-center gap-5 flex-1 cursor-pointer min-w-0 bg-transparent border-none p-0 text-left"
                 onClick={() => {
                   setCopyMenuId(null);
                   setCopyMenuPos(null);
@@ -111,29 +111,31 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                   onClose();
                 }}
               >
-                <div className={styles.dropdownAvatar}>
+                <div className="w-16 h-16 rounded-full bg-[rgba(99,102,241,0.15)] text-brand-hover font-bold text-md flex items-center justify-center shrink-0 overflow-hidden">
                   <Avatar
                     src={cached?.picture}
                     fallback={getInitial(name)}
-                    imgClassName={styles.avatar}
+                    imgClassName="w-full h-full object-cover"
                   />
                 </div>
-                <div className={styles.dropdownInfo}>
-                  <div className={styles.dropdownNameRow}>
-                    <span className={styles.dropdownName}>{name}</span>
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-md font-semibold text-heading whitespace-nowrap overflow-hidden text-ellipsis">{name}</span>
                     {(account.readOnly || account.type === 'npub') && (
-                      <span className={styles.dropdownReadOnly}>{t('account.readOnly')}</span>
+                      <span className="text-[8px] font-semibold uppercase tracking-[0.4px] text-muted bg-brand-tint-active py-px px-2 rounded-[3px] shrink-0 leading-normal">
+                        {t('account.readOnly')}
+                      </span>
                     )}
                   </div>
-                  <span className={styles.dropdownSub}>{cached?.nip05 || truncateNpub(account.pubkey)}</span>
+                  <span className="text-xs text-muted whitespace-nowrap overflow-hidden text-ellipsis">{cached?.nip05 || truncateNpub(account.pubkey)}</span>
                 </div>
-                {isActive && <span className={styles.dropdownCheck}>&#10003;</span>}
+                {isActive && <span className="text-body font-bold text-lg shrink-0">&#10003;</span>}
               </button>
-              <div className={styles.dropdownActions}>
+              <div className="flex items-center gap-1 shrink-0">
                 {!account.readOnly && account.type !== 'npub' && (
                   <IconButton
                     size={22}
-                    className={styles.dropdownEditBtn}
+                    className={`${styles.dropdownEditBtn} opacity-0 group-hover:opacity-100`}
                     title={t('settings.editProfile')}
                     aria-label={t('settings.editProfile')}
                     onClick={(e: MouseEvent<HTMLButtonElement>) => {
@@ -146,13 +148,13 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     <IconPencil size={13} />
                   </IconButton>
                 )}
-                <div className={styles.copyWrap}>
+                <div className="relative">
                   {copiedId === account.pubkey ? (
-                    <span className={styles.copiedLabel}>{t('common.copied')}</span>
+                    <span className="text-2xs font-semibold text-success py-1 px-2 whitespace-nowrap">{t('common.copied')}</span>
                   ) : (
                     <IconButton
                       size={22}
-                      className={styles.dropdownCopyBtn}
+                      className={`${styles.dropdownCopyBtn} opacity-0 group-hover:opacity-100`}
                       title={t('common.copy')}
                       aria-label={t('common.copy')}
                       onClick={(e: MouseEvent<HTMLButtonElement>) => {
@@ -171,15 +173,18 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     </IconButton>
                   )}
                   {copyMenuId === account.id && copyMenuPos && (
-                    <div className={styles.copyMenu} style={{ top: copyMenuPos.top, right: copyMenuPos.right }}>
+                    <div
+                      className="fixed bg-card border border-card-border rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.1)] z-[calc(var(--z-topbar)+2)] overflow-hidden min-w-32"
+                      style={{ top: copyMenuPos.top, right: copyMenuPos.right }}
+                    >
                       <button
-                        className={styles.copyMenuItem}
+                        className="block w-full py-3 px-6 bg-transparent border-none text-sm font-medium text-heading cursor-pointer text-left font-mono transition-colors duration-fast hover:bg-card"
                         onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); handleCopy(account.pubkey, 'npub'); }}
                       >
                         npub
                       </button>
                       <button
-                        className={styles.copyMenuItem}
+                        className="block w-full py-3 px-6 bg-transparent border-none border-t border-card-border text-sm font-medium text-heading cursor-pointer text-left font-mono transition-colors duration-fast hover:bg-card"
                         onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); handleCopy(account.pubkey, 'hex'); }}
                       >
                         hex
@@ -190,7 +195,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                 <IconButton
                   tone="danger"
                   size={22}
-                  className={styles.dropdownRemoveBtn}
+                  className="opacity-0 group-hover:opacity-100"
                   title={t('account.remove')}
                   aria-label={t('account.remove')}
                   onClick={(e: MouseEvent<HTMLButtonElement>) => {
@@ -207,16 +212,16 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
       </div>
 
       {confirmAccount && (
-        <div className={styles.removeConfirm}>
-          <div className={styles.removeConfirmTitle}>
+        <div className="py-7 px-7 border-t border-card-border">
+          <div className="text-md font-semibold text-heading mb-3">
             {t('account.removeTitle', { name: profileCache[confirmAccount.pubkey]?.name || confirmAccount.name || '' })}
           </div>
-          <div className={styles.removeConfirmWarning}>
+          <div className="text-sm text-secondary leading-normal mb-2">
             {t('account.removeWarning')}
           </div>
           {isWriteAccount && (
-            <div className={styles.removeConfirmKeyWarning}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex items-start gap-3 text-xs text-warning bg-[rgba(217,119,6,0.06)] py-4 px-5 rounded-md leading-normal mb-5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-px">
                 <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
@@ -224,7 +229,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
               <span>{t('account.removeKeyWarning')}</span>
             </div>
           )}
-          <div className={styles.removeConfirmActions}>
+          <div className="flex gap-4 justify-end">
             <Button variant="secondary" small onClick={() => setConfirmId(null)}>{t('common.cancel')}</Button>
             <Button variant="danger" small onClick={handleRemove} disabled={removing}>
               {removing ? t('common.removing') : t('common.remove')}
@@ -233,7 +238,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
         </div>
       )}
 
-      <button className={styles.dropdownAdd} onClick={onAddAccount}>
+      <button className="block w-full py-5 px-7 border-none border-t border-card-border bg-transparent text-secondary text-md font-semibold cursor-pointer text-left transition-colors duration-fast hover:bg-brand-tint-hover" onClick={onAddAccount}>
         + {t('account.addAccount')}
       </button>
     </div>

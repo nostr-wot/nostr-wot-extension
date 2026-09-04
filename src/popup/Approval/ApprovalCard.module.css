@@ -1,92 +1,12 @@
-/* One row in the approval sheet. Split out of ApprovalOverlay.module.css. */
-
-/* Surface (border, background, radius) comes from <Card variant="flat"
-   as="button">; only the interactive row layout and hover stay here. */
-.card {
-  width: 100%;
-  padding: var(--sp-6) var(--sp-7);
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-5);
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition);
-  text-align: left;
-  font-family: inherit;
-}
-
-.card:hover {
-  background: var(--card-active);
-  border-color: var(--brand-light);
-}
-
-.cardLeft {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.cardOrigin {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  color: var(--text-heading);
-}
-
-.cardMethod {
-  font-size: var(--fs-sm);
-  color: var(--text-body);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-
-.cardCount {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
-.cardChevron {
-  flex-shrink: 0;
-  color: var(--text-muted);
-}
-
-.cardNip46 {
-  cursor: default;
-  opacity: 0.75;
-  border-style: dashed;
-}
-
-.cardNip46:hover {
-  background: var(--card-bg);
-  border-color: var(--card-border);
-}
-
-.cancelBtn {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--danger);
-  font-size: var(--fs-2xl);
-  line-height: var(--lh-none);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all var(--transition);
-  padding: 0;
-}
-
-.cancelBtn:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
+/* `.spinnerIcon`'s `animation: spin ...` has no local `@keyframes spin` in
+   this file. The compiled output shows it resolving to a keyframe scoped to
+   *this file's own* hash regardless — so it references a keyframe that does
+   not exist here and has never actually spun. That is a pre-existing latent
+   bug (see the matching note in ApprovalOverlay.module.css, which owns an
+   unrelated, also-unused `@keyframes spin`), not something this migration
+   should silently fix: swapping in Tailwind's `animate-spin` would make the
+   icon spin for the first time, which is a behaviour change rather than a
+   like-for-like port. Kept as-is; worth a follow-up ticket. */
 .spinnerIcon {
   animation: spin 1.5s linear infinite;
   flex-shrink: 0;
