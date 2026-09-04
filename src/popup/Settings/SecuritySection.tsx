@@ -7,7 +7,7 @@ import Card from '@components/Card/Card';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
-import NavItem from '@components/NavItem/NavItem';
+import ListRow from '@components/ListRow/ListRow';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import { useVault } from '@popup/context/VaultContext';
 
@@ -178,12 +178,14 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
       )}
 
       {vault.exists && !vault.locked && !isNever && (
-        <NavItem
-          icon={
+        <ListRow
+          variant="standalone"
+          leadingChip={false}
+          leading={
             <IconLock />
           }
-          label={t('security.changePassword')}
-          desc={t('security.changePasswordDesc')}
+          title={t('security.changePassword')}
+          subtitle={t('security.changePasswordDesc')}
           onClick={onChangePassword}
         />
       )}

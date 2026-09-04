@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import NavRow from '@components/NavRow/NavRow';
+import ListRow from '@components/ListRow/ListRow';
 import { IconUser } from '@assets';
 import { useNavigate } from './NavigationContext';
 
@@ -12,8 +12,8 @@ import { useNavigate } from './NavigationContext';
 export default function ProfileRow() {
   const navigate = useNavigate();
   return (
-    <NavRow
-      icon={<IconUser size={16} />}
+    <ListRow
+      leading={<IconUser size={16} />}
       title={t('home.editProfile')}
       subtitle={t('home.profileSummary')}
       onClick={navigate.editProfile}

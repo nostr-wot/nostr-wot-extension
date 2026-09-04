@@ -12,11 +12,6 @@
   gap: var(--sp-4);
 }
 
-.chevron {
-  color: var(--brand);
-  flex-shrink: 0;
-}
-
 /* Search bar */
 .searchWrap {
   position: relative;
@@ -54,71 +49,15 @@
   flex-direction: column;
   flex: 1;
   overflow-y: auto;
-  border-radius: var(--radius-panel);
-  box-shadow: 0 2px 12px var(--brand-tint-active);
-}
-
-.permRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-5);
-  padding: var(--sp-5) var(--sp-6);
+  /* The border and background moved here from the rows. Each row used to draw
+     its own box and pull up by -1px to collapse the doubled edge, with
+     first/last/only-child rules re-rounding the corners; the container owning
+     one border and clipping to its own radius says the same thing once. */
   border: 1px solid var(--card-border);
   background: var(--surface-glass);
-  cursor: pointer;
-  transition: background var(--transition);
-  margin-top: -1px;
-}
-
-.permRow:first-child {
-  border-radius: 10px 10px 0 0;
-  margin-top: 0;
-}
-
-.permRow:last-child {
-  border-radius: 0 0 10px 10px;
-}
-
-.permRow:only-child {
   border-radius: var(--radius-panel);
-}
-
-.permRow:hover {
-  background: var(--card-active);
-  z-index: 1;
-}
-
-.permFaviconFallback {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-xs);
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--brand-light);
-  color: var(--brand);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-bold);
-}
-
-.permInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.permDomain {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-medium);
-  color: var(--text-heading);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.permSummary {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
+  overflow-x: hidden;
+  box-shadow: 0 2px 12px var(--brand-tint-active);
 }
 
 /* Permission detail chips */

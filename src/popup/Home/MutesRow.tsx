@@ -3,7 +3,7 @@ import { t } from '@lib/i18n.js';
 import useRpc from '@hooks/useRpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';
 import { MUTE_LIST_CACHE } from '@shared/relayCacheNames.ts';
-import NavRow from '@components/NavRow/NavRow';
+import ListRow from '@components/ListRow/ListRow';
 import { IconShield } from '@assets';
 import { useNavigate } from './NavigationContext';
 import type { MyMuteList } from '@models/muteList.ts';
@@ -28,8 +28,8 @@ export default function MutesRow() {
     (data?.people?.length || 0) + (data?.words?.length || 0) + (data?.hashtags?.length || 0);
 
   return (
-    <NavRow
-      icon={<IconShield size={16} />}
+    <ListRow
+      leading={<IconShield size={16} />}
       title={t('mutes.cardTitle')}
       info={t('mutes.cardInfo')}
       subtitle={t('mutes.cardSummary', { count })}

@@ -9,7 +9,7 @@ import {
   buildRuleKey,
   DECISIONS,
 } from '@shared/permissionRules.ts';
-import { IconSearch, IconShield, IconChevronRight, IconUsers, IconPlus } from '@assets';
+import { IconSearch, IconShield, IconUsers, IconPlus } from '@assets';
 import { useAccount } from '@popup/context/AccountContext';
 import { usePermissions } from '@popup/context/PermissionsContext';
 import Card from '@components/Card/Card';
@@ -24,6 +24,7 @@ import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Settings.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import Chip from '@components/Chip/Chip';
+import ListRow from '@components/ListRow/ListRow';
 
 
 const COMMON_PERM_KEYS = [
@@ -298,16 +299,13 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           {domains.map((domain: string) => {
             const bucketPerms = permissions.getForBucket(domain, effectiveAccountId);
             return (
-              <button key={domain} className={styles.permRow} onClick={() => openDetail(domain)}>
-                <div className={styles.permFaviconFallback}>
-                  {domain.charAt(0).toUpperCase()}
-                </div>
-                <div className={styles.permInfo}>
-                  <div className={styles.permDomain}>{domain}</div>
-                  <div className={styles.permSummary}>{getPermSummary(bucketPerms)}</div>
-                </div>
-                <IconChevronRight className={styles.chevron} />
-              </button>
+              <ListRow
+                key={domain}
+                leading={domain.charAt(0).toUpperCase()}
+                title={domain}
+                subtitle={getPermSummary(bucketPerms)}
+                onClick={() => openDetail(domain)}
+              />
             );
           })}
         </div>

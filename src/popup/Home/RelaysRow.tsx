@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import NavRow from '@components/NavRow/NavRow';
+import ListRow from '@components/ListRow/ListRow';
 import { IconGlobe } from '@assets';
 import { useNavigate } from './NavigationContext';
 import { useRelays } from '@popup/context/RelaysContext';
@@ -21,8 +21,8 @@ export default function RelaysRow() {
   const count = relays.length;
 
   return (
-    <NavRow
-      icon={<IconGlobe size={16} />}
+    <ListRow
+      leading={<IconGlobe size={16} />}
       title={t('network.relays')}
       info={t('network.relaysInfo')}
       subtitle={t('network.relaysSummary', { count })}

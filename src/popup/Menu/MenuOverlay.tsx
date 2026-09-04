@@ -14,7 +14,7 @@ import SecuritySection from '../Settings/SecuritySection';
 import NetworkSection from '../Settings/NetworkSection';
 import WalletSection from '../Wallet/WalletSection';
 import KeyActionModal from '../Vault/KeyActionModal';
-import NavItem from '@components/NavItem/NavItem';
+import ListRow from '@components/ListRow/ListRow';
 import { useVault } from '@popup/context/VaultContext';
 import { useAccount } from '@popup/context/AccountContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
@@ -133,32 +133,40 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
             />
             {!isReadOnly && active?.type !== 'nip46' && (
               <>
-                <NavItem
-                  icon={<IconKey />}
-                  label={t('key.exportNsec')}
-                  desc={t('key.exportNsecDesc')}
+                <ListRow
+                  variant="standalone"
+                  leadingChip={false}
+                  leading={<IconKey />}
+                  title={t('key.exportNsec')}
+                  subtitle={t('key.exportNsecDesc')}
                   onClick={() => setKeyAction('nsec')}
                 />
-                <NavItem
-                  icon={<IconLock />}
-                  label={t('key.exportNcryptsec')}
-                  desc={t('key.exportNcryptsecDesc')}
+                <ListRow
+                  variant="standalone"
+                  leadingChip={false}
+                  leading={<IconLock />}
+                  title={t('key.exportNcryptsec')}
+                  subtitle={t('key.exportNcryptsecDesc')}
                   onClick={() => setKeyAction('ncryptsec')}
                 />
                 {vault.isGenerated && (
-                  <NavItem
-                    icon={<IconDownload />}
-                    label={t('key.exportSeed')}
-                    desc={t('key.exportSeedDesc')}
+                  <ListRow
+                    variant="standalone"
+                    leadingChip={false}
+                    leading={<IconDownload />}
+                    title={t('key.exportSeed')}
+                    subtitle={t('key.exportSeedDesc')}
                     onClick={() => setKeyAction('seed')}
                   />
                 )}
               </>
             )}
-            <NavItem
-              icon={<IconKey />}
-              label={t('pqc.menuLabel')}
-              desc={t('pqc.menuDesc')}
+            <ListRow
+              variant="standalone"
+              leadingChip={false}
+              leading={<IconKey />}
+              title={t('pqc.menuLabel')}
+              subtitle={t('pqc.menuDesc')}
               onClick={() => pushSection('pqc')}
             />
           </MenuSection>
@@ -214,11 +222,13 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
                 // docs/ui-ux-audit.md §3 move 4.
                 if (item.id === 'wallet' && (isReadOnly || isNip46 || vault.locked)) return null;
                 return (
-                  <NavItem
+                  <ListRow
+                    variant="standalone"
+                    leadingChip={false}
                     key={item.id}
-                    icon={item.icon}
-                    label={item.label}
-                    desc={item.desc}
+                    leading={item.icon}
+                    title={item.label}
+                    subtitle={item.desc}
                     onClick={() => handleMenuItem(item.id)}
                   />
                 );

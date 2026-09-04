@@ -93,9 +93,15 @@ describe('theme tokens', () => {
     const broken: string[] = [];
     for (const f of FILES) {
       const src = readFileSync(f, 'utf8');
-      src.split('\n').forEach((line, i) => {
-        const code = line.replace(/\/\*.*?\*\//g, '');
-        if (/var\(\s*--[a-zA-Z0-9-]+\s*\)\s*\)/.test(code)) {
+      // Blank out comments across the whole file rather than per line, so a
+      // comment that spans lines cannot leave its tail looking like code. A
+      // single-line pass flagged prose that merely quoted `var(--card-bg))`
+      // while explaining this very bug, and the fix taken at the time was to
+      // reword the comment — which is the test dictating how code may be
+      // described. Same-width blanks keep the line numbers honest.
+      const code = src.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' '));
+      code.split('\n').forEach((line, i) => {
+        if (/var\(\s*--[a-zA-Z0-9-]+\s*\)\s*\)/.test(line)) {
           broken.push(`${f.slice(ROOT.length + 1)}:${i + 1}  ${line.trim()}`);
         }
       });
