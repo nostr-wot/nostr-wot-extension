@@ -286,9 +286,3 @@
   gap: var(--sp-4);
   margin-bottom: var(--sp-4);
 }
-
-/* Duplicated rather than shared: the only rule both sections needed. */
-.error {
-  font-size: var(--fs-sm);
-  color: var(--error);
-}

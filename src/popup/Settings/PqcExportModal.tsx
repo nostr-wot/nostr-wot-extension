@@ -10,6 +10,7 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import styles from './PqcSection.module.css';
+import FormError from '@components/FormError/FormError';
 
 /**
  * Save the post-quantum key file, plain or encrypted.
@@ -76,7 +77,7 @@ const handleExport = async (encrypted: boolean) => {
           />
         </div>
 
-        {exportError && <div className={styles.error}>{exportError}</div>}
+        <FormError>{exportError}</FormError>
 
         <div className={styles.pqcActions}>
           <Button onClick={() => handleExport(true)} disabled={exportBusy || !exportPair.ready}>

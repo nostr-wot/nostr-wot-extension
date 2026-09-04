@@ -170,12 +170,6 @@
   margin-top: var(--sp-2);
 }
 
-.error {
-  font-size: var(--fs-sm);
-  color: var(--error);
-  margin-top: var(--sp-2);
-}
-
 .derivedInfo {
   padding: var(--sp-5) var(--sp-7);
   background: var(--card-bg);

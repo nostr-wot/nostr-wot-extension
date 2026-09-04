@@ -14,6 +14,7 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@popup/context/VaultContext';
 
 import styles from './SecuritySection.module.css';
+import FormError from '@components/FormError/FormError';
 
 interface SecuritySectionProps {
   onChangePassword: () => void;
@@ -127,7 +128,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
                 onSubmit={handleConfirm}
                 disabled={loading}
               />
-              {error && <div className={styles.error}>{error}</div>}
+              <FormError>{error}</FormError>
               <div className={styles.confirmActions}>
                 <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
                 <Button small onClick={handleConfirm} disabled={loading || !pair.ready}>
@@ -156,7 +157,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
                 onChange={(e: ChangeEvent<HTMLInputElement>) => { setCurrentPassword(e.target.value); setError(''); }}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleConfirm()}
               />
-              {error && <div className={styles.error}>{error}</div>}
+              <FormError>{error}</FormError>
               <div className={styles.confirmActions}>
                 <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
                 <Button small onClick={handleConfirm} disabled={loading}>

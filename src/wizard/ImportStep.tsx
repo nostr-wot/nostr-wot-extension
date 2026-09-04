@@ -5,6 +5,7 @@ import { IconInfo } from '@assets';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import styles from './WizardOverlay.module.css';
+import FormError from '@components/FormError/FormError';
 
 type ImportType = 'ncryptsec' | 'nsec' | 'mnemonic' | null;
 
@@ -162,7 +163,7 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
       )}
 
       {upgradeNotice && <div className={styles.upgradeNotice}>{upgradeNotice}</div>}
-      {error && <div className={styles.error}>{error}</div>}
+      <FormError>{error}</FormError>
 
       <div className={styles.stepActions}>
         <Button onClick={handleContinue} disabled={!input.trim() || loading}>

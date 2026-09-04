@@ -8,6 +8,7 @@ import PasswordPairFields from '@components/PasswordPairFields/PasswordPairField
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { IconWarning } from '@assets';
 import styles from './EncryptedBackupForm.module.css';
+import FormError from '@components/FormError/FormError';
 
 /**
  * Export the key as an `ncryptsec`: pick a password, then take the result away.
@@ -110,7 +111,7 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
         disabled={generating}
       />
 
-      {error && <div className={styles.error}>{error}</div>}
+      <FormError>{error}</FormError>
       <div className={styles.actions}>
         <Button variant="secondary" small onClick={onClose}>{t('common.cancel')}</Button>
         <Button small onClick={generate} disabled={generating || !pair.ready}>

@@ -51,8 +51,3 @@
   justify-content: flex-end;
   margin-top: var(--sp-2);
 }
-
-.error {
-  font-size: var(--fs-sm);
-  color: var(--error);
-}

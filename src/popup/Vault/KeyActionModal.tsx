@@ -17,6 +17,7 @@ import SeedWord from '@components/SeedWord/SeedWord';
 import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
+import FormError from '@components/FormError/FormError';
 
 interface KeyActionModalProps {
   action: string;
@@ -176,7 +177,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
               onChange={(e: ChangeEvent<HTMLInputElement>) => setUnlockPw(e.target.value)}
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleUnlock()}
             />
-            {unlockError && <div className={styles.error}>{unlockError}</div>}
+            <FormError>{unlockError}</FormError>
             <div className={styles.actions}>
               <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
               <Button small onClick={handleUnlock}>{t('common.unlock')}</Button>
@@ -252,7 +253,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                       onSubmit={downloadSeedEncrypted}
                       disabled={seedEncrypting}
                     />
-                    {seedEncError && <div className={styles.error}>{seedEncError}</div>}
+                    <FormError>{seedEncError}</FormError>
                     <div className={styles.actions}>
                       <Button variant="secondary" small onClick={() => { setSeedEncMode(false); seedEncPair.reset(); setSeedEncError(''); }}>{t('common.cancel')}</Button>
                       <Button small onClick={downloadSeedEncrypted} disabled={seedEncrypting || !seedEncPair.ready}>
@@ -292,7 +293,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                   confirmPlaceholder={t('key.confirmNewPw')}
                   onSubmit={handleChangePassword}
                 />
-                {cpError && <div className={styles.error}>{cpError}</div>}
+                <FormError>{cpError}</FormError>
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button small onClick={handleChangePassword} disabled={!cpPair.ready}>{t('common.save')}</Button>

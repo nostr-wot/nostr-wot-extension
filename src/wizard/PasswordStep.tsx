@@ -11,6 +11,7 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
+import FormError from '@components/FormError/FormError';
 
 interface PasswordStepProps {
   account: any;
@@ -137,7 +138,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
           />
         </div>
 
-        {unlockForm.error && <div className={styles.error}>{unlockForm.error}</div>}
+        <FormError>{unlockForm.error}</FormError>
 
         <div className={styles.stepActions}>
           <Button onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
@@ -188,7 +189,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
         </div>
       )}
 
-      {error && <div className={styles.error}>{error}</div>}
+      <FormError>{error}</FormError>
 
       <div className={styles.stepActions}>
         <Button onClick={handleContinue} disabled={loading || (!isNever && !pair.ready)}>
