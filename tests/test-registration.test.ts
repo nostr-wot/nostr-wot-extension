@@ -133,4 +133,45 @@ describe('test registration', () => {
       `test files missing from docs/testing.md — add a line saying what each one pins:\n  ${missing.join('\n  ')}`,
     );
   });
+
+  it('every file path a doc names actually exists', () => {
+    // A doc that names a real-looking path for a file that was renamed or
+    // deleted reads as authoritative right up until someone tries to open it.
+    // `lib/storage.ts`, `lib/relayUtils.ts` and `lib/nip46.ts` sat wrong in six
+    // files for years — three docs describing them as backing CURRENT behaviour
+    // that had actually moved to nostr-tools or been deleted outright with the
+    // Web-of-Trust subsystem. This is the mechanical check that would have
+    // caught it: every backtick-quoted `src/…`/`tests/…`/`scripts/…` path with
+    // a recognizable extension must resolve to a real file.
+    const DOC_FILES = [
+      ...readdirSync(join(ROOT, 'docs')).filter((f) => f.endsWith('.md')).map((f) => `docs/${f}`),
+      'README.md',
+      'CLAUDE.md',
+    ];
+    // Paths a doc mentions deliberately, as something that used to exist and
+    // no longer does — the prose says so at the point of use. Adding to this
+    // list should be rare and should mean "I read the sentence and it really
+    // is describing a deletion," not "the check was inconvenient."
+    const ALLOWED_HISTORICAL = new Set([
+      'src/shared/browser.ts',
+      'src/shared/animations.css',
+    ]);
+    const PATH_RE = /`((?:src|tests|scripts)\/[A-Za-z0-9_./-]+\.(?:ts|tsx|css|md|json))`/g;
+    const missing: string[] = [];
+    for (const doc of DOC_FILES) {
+      const full = join(ROOT, doc);
+      if (!existsSync(full)) continue;
+      const text = readFileSync(full, 'utf8');
+      for (const m of text.matchAll(PATH_RE)) {
+        const p = m[1];
+        if (ALLOWED_HISTORICAL.has(p)) continue;
+        if (!existsSync(join(ROOT, p))) missing.push(`${doc}: ${p}`);
+      }
+    }
+    assert.deepEqual(
+      missing,
+      [],
+      `docs name a file that does not exist — renamed, moved, or deleted without the doc catching up:\n  ${missing.join('\n  ')}`,
+    );
+  });
 });

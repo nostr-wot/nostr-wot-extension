@@ -178,7 +178,7 @@ explanation rather than silently downgraded.
 fixed array in `inject.ts`. Deriving it from the account would leak which kind of account
 the user holds to any page that reads `window.nostr`, before any consent, and it would
 change under a caller when the user switched accounts. So a request that correctly
-detected `pq` can still be refused, and `activePqKeys` in `lib/signer.ts` names which of
+detected `pq` can still be refused, and `activePqKeys` in `src/lib/signer.ts` names which of
 the four reasons it hit so the client can tell the user what to change. Those messages
 reach the page, but only after the user has approved the call.
 

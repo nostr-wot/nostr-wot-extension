@@ -1,4 +1,4 @@
-# NIP-07 Signer -- `lib/signer.ts`
+# NIP-07 Signer -- `src/lib/signer.ts`
 
 ## 1. Signing Flow
 
@@ -53,7 +53,7 @@ The interaction between permissions and vault state:
 
 † **Connected sites never prompt for `getPublicKey`.** Connecting a site *is* the consent to share the identity pubkey: the "Connect this site" flow adds the origin to `allowedDomains` and clears `identityDisabled` for it, `background.ts` refuses every NIP-07 method from an origin that is not on that list, and `broadcastAccountChanged` already pushes the active pubkey to every connected tab unprompted. So with `ask`, `handleGetPublicKey` returns the pubkey directly when the origin is in `allowedDomains`, and only QUEUES a prompt for an origin that is not (which the NIP-07 path cannot reach — it is a guard for any other caller).
 
-Both opt-outs still win over this: an explicit `deny` is rejected before the connected check, and `lib/bg/nip07-handlers.ts` rejects the call earlier still when identity is disabled for the site. Disconnecting the site restores prompting.
+Both opt-outs still win over this: an explicit `deny` is rejected before the connected check, and `src/lib/bg/nip07-handlers.ts` rejects the call earlier still when identity is disabled for the site. Disconnecting the site restores prompting.
 
 Prompting a connected site was the cause of the "popup opens by itself" bug: approving that prompt persisted nothing but the 60-second in-memory cooldown below, so the prompt — and the popup it auto-opens — returned on every service-worker restart, account switch, or page load a minute later.
 
@@ -78,9 +78,9 @@ Prompting a connected site was the cause of the "popup opens by itself" bug: app
 
 EVERY code path that changes the active account calls `signer.onActiveAccountChanged(previousAccountId, newAccountId)`:
 
-- `switchAccount` and `vault_setActiveAccount` (`lib/bg/vault-handlers.ts`)
+- `switchAccount` and `vault_setActiveAccount` (`src/lib/bg/vault-handlers.ts`)
 - `vault_removeAccount` when the removed account was active
-- `onboarding_createVault`, `onboarding_addToVault`, and `onboarding_saveReadOnly` (`lib/bg/onboarding-handlers.ts`)
+- `onboarding_createVault`, `onboarding_addToVault`, and `onboarding_saveReadOnly` (`src/lib/bg/onboarding-handlers.ts`)
 
 `onActiveAccountChanged`:
 1. Clears the per-origin `getPublicKey` auto-approve cooldown (a site must never silently receive the new account's pubkey off a cooldown earned by the old one)
@@ -90,7 +90,7 @@ This prevents signing with the wrong key — or leaking the new account's identi
 
 ---
 
-## 5. Permission Cascade -- `lib/permissions.ts`
+## 5. Permission Cascade -- `src/lib/permissions.ts`
 
 Permissions are stored in `browser.storage.local` under key `signerPermissions` as a nested object with account-aware buckets:
 
@@ -131,18 +131,18 @@ Permissions are stored in `browser.storage.local` under key `signerPermissions` 
 
 ## 6. NIP-46 Remote Signing
 
-For accounts of type `nip46`, signing requests are routed to a `Nip46Client` instance (`lib/nip46.ts`) instead of the local vault:
+For accounts of type `nip46`, signing requests are routed to a `BunkerSigner` instance (from `nostr-tools/nip46`, wrapped by `getNip46Client()` in `src/lib/signer.ts`) instead of the local vault:
 
 - **Local `deny` still applies**: `permissions.check()` runs for every account type. An explicit per-origin `deny` throws `Permission denied` BEFORE the request is forwarded to the remote signer. Only the local `ask` prompt is skipped for NIP-46 accounts (the bunker runs its own approval for `ask`/`allow`).
-- Client instances are cached per account ID in `_nip46Clients: Map<accountId, Nip46Client>`.
-- Ephemeral keypair generated for relay communication.
+- Signer instances are cached per account ID in `_nip46Clients: Map<accountId, BunkerSigner>`.
+- An ephemeral keypair is generated for relay communication on first use and persisted to the account's `nip46Config` (`vault.updateAccountNip46Keys`) so reconnecting after a service-worker restart reuses the same identity rather than minting a new one.
 - Supports `signEvent`, `nip04Encrypt/Decrypt`, `nip44Encrypt/Decrypt` via the remote signer protocol. **Post-quantum is the exception**: NIP-46 defines no post-quantum operations, and a `nip44Encrypt` sent to a bunker comes back as classic ciphertext. A post-quantum request is therefore refused before delegation rather than answered classically — see §8.
 - NIP-46 in-flight requests are tracked in `signerPending` but do NOT show badges (no user action needed).
 - `nostrconnect://` flow validates a shared secret before accepting the remote signer (see [Security](security.md#7-nip-46-connect-secret)).
 
 ### 6.1 `nostrconnect://` QR onboarding — persisted, resumable sessions
 
-The QR onboarding flow (`lib/bg/onboarding-handlers.ts`) lets the user scan a `nostrconnect://` URI with their wallet app. The live `BunkerSigner` (with its relay subscription + `AbortController` + ephemeral secret) lives in the in-memory `_nostrConnectSessions` Map. In MV3 that Map is lost whenever the service worker suspends — which happens routinely while the user switches to their wallet to scan. To survive suspension, a **serializable mirror** of every session is persisted to `browser.storage.session`:
+The QR onboarding flow (`src/lib/bg/onboarding-handlers.ts`) lets the user scan a `nostrconnect://` URI with their wallet app. The live `BunkerSigner` (with its relay subscription + `AbortController` + ephemeral secret) lives in the in-memory `_nostrConnectSessions` Map. In MV3 that Map is lost whenever the service worker suspends — which happens routinely while the user switches to their wallet to scan. To survive suspension, a **serializable mirror** of every session is persisted to `browser.storage.session`:
 
 ```
 PersistedNcSession {

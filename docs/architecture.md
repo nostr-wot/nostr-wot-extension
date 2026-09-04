@@ -15,28 +15,28 @@ The extension targets Chrome and Firefox, using a service worker on Chrome and a
 
 **Build system**: Vite + `@crxjs/vite-plugin`. All source is TypeScript (`.ts`/`.tsx`), compiled to JavaScript at build time. React JSX is used for popup, onboarding, and prompt UIs.
 
-**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@domain`, `@services`, `@context`, `@hooks`, `@models`, `@utils`, `@styles`, `@lib`.
+**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@screens`, `@wizard`, `@popup`, `@domain`, `@services`, `@context`, `@hooks`, `@utils`, `@styles`, `@lib`. `@models` and `@shared` no longer exist — `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/` by what a thing is (see [Component Standards §2](component-standards.md)).
 
-Cross-browser compatibility is handled by a thin shim at `lib/browser.ts`:
+Cross-browser compatibility is handled by a thin shim at `src/lib/browser.ts`:
 
 ```ts
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 export default browserAPI;
 ```
 
-Firefox natively supports the `browser.*` API; Chrome uses the `chrome.*` API. All other modules import from `lib/browser.ts` to stay portable.
+Firefox natively supports the `browser.*` API; Chrome uses the `chrome.*` API. All other modules import from `src/lib/browser.ts` (aliased `@lib/browser.ts`) to stay portable.
 
 ---
 
 ## 2. Extension Architecture
 
-### 2.1 Background Script -- `background.ts` + `lib/bg/`
+### 2.1 Background Script -- `background.ts` + `src/lib/bg/`
 
 The central coordinator. Runs as a **service worker** on Chrome and a **persistent background script** on Firefox (both declared in `manifest.json` via `"service_worker"` and `"scripts"` fields respectively, with `"type": "module"`).
 
-`background.ts` is a thin orchestrator (~300 lines) that assembles handler modules, sets up listeners, and dispatches requests. Business logic lives in `lib/bg/` handler modules, each exporting a `Map<string, HandlerFn>` plus individual functions for direct testing.
+`background.ts` is a thin orchestrator (~300 lines) that assembles handler modules, sets up listeners, and dispatches requests. Business logic lives in `src/lib/bg/` handler modules, each exporting a `Map<string, HandlerFn>` plus individual functions for direct testing.
 
-#### Handler Modules -- `lib/bg/`
+#### Handler Modules -- `src/lib/bg/`
 
 | Module | Responsibility |
 |--------|---------------|
@@ -49,14 +49,16 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 | `profile-handlers.ts` | Profile metadata (kind:0) fetch/cache, NIP-51 mute-list (kind:10000) fetch (`getMyMuteList` / `fetchMuteList`) |
 | `publish-handlers.ts` | Event signing/broadcasting, relay-list (kind:10002) and mute-list (kind:10000) publishing, NIP-46 session info, relay health checks |
 | `activity-handlers.ts` | Activity log read/clear with in-memory write buffering |
+| `pqc-handlers.ts` | Post-quantum key status/import/removal (`pqc_getStatus`, `pqc_importKeys`, `pqc_removeImportedKeys`) |
+| `relayCache.ts` | Background-side cache backing the popup's cached-first relay reads |
 | `misc-handlers.ts` | Re-export facade aggregating the handler maps above |
 
 **Dispatch pattern:** Each handler module exports `handlers: Map<string, HandlerFn>`. `background.ts` merges all maps into a single `allHandlers` map. `handleRequest()` does pre-checks (NIP-07 validation, domain gating, read-only guard, npub normalization) then delegates to `allHandlers.get(method)`.
 
-**Dependency rules:** Handler modules import from `state.ts` and `lib/*`, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `activity-handlers`). No circular dependency chains exist.
+**Dependency rules:** Handler modules import from `state.ts` and `src/lib/*`, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `activity-handlers`). No circular dependency chains exist.
 
 Responsibilities of `background.ts`:
-- Handler map assembly from all `lib/bg/*-handlers.ts` modules
+- Handler map assembly from all `src/lib/bg/*-handlers.ts` modules
 - `loadConfig()` -- initializes `state.config` (myPubkey, relays) and ensures an active account exists in `browser.storage.local`
 - Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `signer.cleanupStale()`. The auto-unlock is registered through `vault.beginStartupUnlock()` so request paths can await it instead of mistaking the cold-start window for a locked vault (see [Security](security.md))
 - `browser.runtime.onMessage` listener (privilege gate, origin derivation, dispatch to `handleRequest()`)
@@ -93,26 +95,26 @@ Fires `CustomEvent('webln-ready')` and `CustomEvent('nostr-wot-ready')` on `wind
 
 ### 2.4 Popup -- `src/popup/`
 
-Extension popup UI opened when clicking the toolbar icon. React-based with CSS modules.
+Extension popup UI opened when clicking the toolbar icon. React-based, styled with Tailwind (see [Component Standards §7](component-standards.md)). The entry document itself is thin; the screens it renders live in sibling top-level folders, not nested inside it.
 
 | File | Purpose |
 |------|---------|
 | `src/popup/index.html` | Entry point |
 | `src/popup/main.tsx` | React app mount |
-| `src/popup/PopupApp.tsx` | Root component with tab navigation, overlays, context providers |
-| `src/popup/components/` | Feature components: Home, Settings, Approval, Vault, Wizard, Wallet, etc. |
-| `src/popup/components/Wallet/` | Wallet management UI: setup (NWC/LNbits), status, balance, auto-approve threshold |
-| `src/popup/context/` | React contexts: AccountContext, VaultContext, PermissionsContext |
+| `src/popup/PopupApp.tsx` | Root component: the `OverlayType` state machine, splash/unlock gating, wires the context providers and hands navigation to `NavigationProvider` |
+| `src/screens/` | One folder per screen (`Home`, `Menu`, `TopBar`, `Vault`, `Activity`, `Approval`, `EditProfile`, `Settings`, `Wallet`, `Filters`) — all popup-only, so not split by entry point |
+| `src/context/` | The eight React contexts (`AccountContext`, `VaultContext`, `PermissionsContext`, `WalletContext`, `RelaysContext`, `PqcContext`, `NavigationContext`, `ActivityContext`) |
+| `src/wizard/` | The account-creation wizard's steps and overlay — a peer of `popup/`, `prompt/` and `onboarding/` because both the popup and the onboarding document render it |
 
 ### 2.5 Onboarding -- `src/onboarding/`
 
-First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker).
+First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker) by rendering the same `src/wizard/` steps the popup uses.
 
 | File | Purpose |
 |------|---------|
 | `src/onboarding/index.html` | Entry point |
 | `src/onboarding/main.tsx` | React app mount |
-| `src/onboarding/OnboardingApp.tsx` | Multi-step wizard with state machine |
+| `src/onboarding/OnboardingApp.tsx` | Hosts `useWizardFlow()` (`@hooks`) and `WizardSteps` (`@wizard`) |
 
 ### 2.6 Prompt -- `src/prompt/`
 
@@ -123,20 +125,24 @@ Signing request approval popup. The signer queues pending requests in `browser.s
 | `src/prompt/index.html` | Entry point |
 | `src/prompt/main.tsx` | React app mount |
 | `src/prompt/PromptApp.tsx` | Reads pending requests, sends decisions via RPC |
+| `src/prompt/DecisionRow.tsx`, `src/prompt/UnlockSection.tsx` | The row and the vault-locked sub-view `PromptApp` composes |
 
 ---
 
-### 2.7 Wallet Provider Layer -- `lib/wallet/`
+### 2.7 Wallet Provider Layer -- `src/lib/wallet/`
 
 Abstracts Lightning wallet backends behind a common `WalletProvider` interface. Each provider implements `getInfo()`, `getBalance()`, `payInvoice(bolt11)`, `makeInvoice(amount, memo)`, `connect()`, `disconnect()`, and `isConnected()`.
 
 | File | Purpose |
 |------|---------|
-| `lib/wallet/types.ts` | `WalletConfig` (discriminated union: `nwc` or `lnbits`), `WalletProvider` interface, `SafeWalletInfo` |
-| `lib/wallet/nwc.ts` | NWC (Nostr Wallet Connect / NIP-47) provider — communicates over Nostr relays |
-| `lib/wallet/lnbits.ts` | LNbits provider — communicates over HTTPS REST API |
-| `lib/wallet/lnbits-provision.ts` | Auto-provisioning: creates a new LNbits wallet via `POST /api/provision` on a proxy server |
-| `lib/wallet/index.ts` | Factory + per-account provider cache (`getWalletProvider`, `setWalletProvider`, `clearWalletProviders`) |
+| `src/lib/wallet/types.ts` | `WalletConfig` (discriminated union: `nwc` or `lnbits`), `WalletProvider` interface, `SafeWalletInfo` |
+| `src/lib/wallet/nwc.ts` | NWC (Nostr Wallet Connect / NIP-47) provider — communicates over Nostr relays |
+| `src/lib/wallet/lnbits.ts` | LNbits provider — communicates over HTTPS REST API |
+| `src/lib/wallet/lnbits-provision.ts` | Auto-provisioning: creates a new LNbits wallet via `POST /api/provision` on a proxy server |
+| `src/lib/wallet/lnurl.ts` | LNURL-pay / Lightning Address resolution (LUD-16, LUD-06) |
+| `src/lib/wallet/bolt11.ts` | BOLT11 invoice decoder |
+| `src/lib/wallet/payment-intents.ts` | At-most-once payment intent tracking across popup teardown |
+| `src/lib/wallet/index.ts` | Factory + per-account provider cache (`getWalletProvider`, `setWalletProvider`, `clearWalletProviders`) |
 
 Provider instances are cached per account ID in a `Map<string, WalletProvider>`. The cache is cleared on vault lock via `clearWalletProviders()`. LNbits providers are created directly by the factory; NWC providers require crypto dependencies injected at runtime and must be created externally via `createNwcProvider()` then registered with `setWalletProvider()`.
 
@@ -149,8 +155,7 @@ From `manifest.json` (MV3):
 ```json
 {
     "manifest_version": 3,
-    "permissions": ["storage", "scripting", "activeTab"],
-    "optional_permissions": ["notifications"],
+    "permissions": ["storage", "activeTab", "alarms"],
     "background": {
         "scripts": ["background.ts"],
         "service_worker": "background.ts",
@@ -161,31 +166,38 @@ From `manifest.json` (MV3):
         { "matches": ["<all_urls>"], "js": ["inject.ts"], "run_at": "document_start", "world": "MAIN" }
     ],
     "web_accessible_resources": [{
-        "resources": ["icons/icon-base.svg", "locales/*.json"],
+        "resources": ["icons/icon-base.svg", "locales/en.json", "..."],
         "matches": ["<all_urls>"]
     }]
 }
 ```
 
-Firefox-specific settings:
+There is no `optional_permissions` key. `host_permissions` is empty and stays that way (see [Deployment](deployment.md) on why). `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
+
+Firefox-specific settings (`browser_specific_settings`):
 ```json
 {
     "gecko": {
         "id": "nostr-wot@dandelionlabs.io",
-        "strict_min_version": "140.0"
+        "strict_min_version": "140.0",
+        "data_collection_permissions": {
+            "required": ["financialAndPaymentInfo", "personallyIdentifyingInfo"]
+        }
     }
 }
 ```
 
+`data_collection_permissions` switches on Firefox's built-in data-consent install screen for the two categories the wallet and the profile/relay-list publishing actually transmit — see [Deployment](deployment.md) for the rejection that made this required and why the other categories are deliberately not declared.
+
 ### Permission Model
 
-- **Required**: `storage` (browser.storage), `scripting` (inject content/page scripts), `activeTab` (current tab access).
-- **Optional**: `notifications` (not currently used), `<all_urls>` (auto-injection on all sites).
-- **Per-domain**: Users can allow a specific domain via `enableForCurrentDomain()`, which adds the domain to an `allowedDomains` list in `browser.storage.local`.
+- **Required**: `storage` (browser.storage), `activeTab` (current tab access), `alarms` (the vault's MV3 service-worker keep-alive, see [Security](security.md)).
+- **None requested at runtime**: there is no `optional_permissions` key and no runtime `permissions.request()` call. Up to 0.5.0, connecting a site additionally requested `*://<site>/*`; that request is gone (see [Security — Connecting a site](security.md#connecting-a-site)) because identity release is decided by the allowlist below, not by `permissions.contains`.
+- **Per-domain**: The "Connect this site" card calls the `connectDomain` RPC (`addAllowedDomain` underneath), the only writer of the `allowedDomains` list in `browser.storage.local`.
 
 ---
 
-## 4. Type System -- `lib/types.ts`
+## 4. Type System -- `src/lib/types.ts`
 
 Central type definitions shared across all modules:
 

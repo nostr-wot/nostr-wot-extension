@@ -41,13 +41,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | [NIP proposals](../nips/README.md) | Draft specs for the post-quantum work: key derivation, `kind:10203` attestation, the NIP-44 envelope, the NIP-07 capability marker |
 | [Component Standards](component-standards.md) | Shared components, hooks, utilities, CSS patterns, import aliases |
 | [Testing](testing.md) | Test runner, test files, communication test suite, infrastructure |
-
-### Design records
-
-| Document | Description |
-|----------|-------------|
-| [Specs](superpowers/specs/) | Point-in-time design documents, agreed before implementation and marked with their outcome |
-| [Code Review](code-review.md) | March 2026 audit snapshot — historical, see its own note for what has since changed |
+| [Deployment](deployment.md) | Store-by-store release notes: build requirements, data-consent declarations, past rejections and their fixes |
 
 ---
 
@@ -63,17 +57,19 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `background.ts` -- service worker / background script (central coordinator)
 - `content.ts` -- content script (ISOLATED world, message bridge)
 - `inject.ts` -- page script (MAIN world, exposes `window.nostr`)
-- `lib/vault.ts` -- encrypted key vault
-- `lib/signer.ts` -- NIP-07 signing coordinator
-- `lib/permissions.ts` -- per-domain/per-account permission cascade
-- `lib/wallet/` -- wallet providers (NWC, LNbits), auto-provisioning, BOLT11 decoder
-- `lib/types.ts` -- shared TypeScript interfaces
+- `src/lib/vault.ts` -- encrypted key vault
+- `src/lib/signer.ts` -- NIP-07 signing coordinator
+- `src/lib/permissions.ts` -- per-domain/per-account permission cascade
+- `src/lib/wallet/` -- wallet providers (NWC, LNbits), auto-provisioning, BOLT11 decoder
+- `src/lib/types.ts` -- shared TypeScript interfaces
 
 **Path aliases** (configured in `vite.config.ts`):
 - `@components` -> `src/components` — shared UI
+- `@screens` -> `src/screens` — one folder per popup screen
 - `@domain` -> `src/domain` — feature logic, one folder per module, pure and tested
 - `@services` -> `src/services` — the things that talk to something (`rpc`, `blossom`)
-- `@context` -> `src/context` — the React contexts
-- `@hooks` -> `src/hooks`, `@models` -> `src/models`, `@utils` -> `src/utils` (no domain knowledge), `@styles` -> `src/styles`
-- `@lib` -> `lib` — the extension core, imported by the service worker, so never React
+- `@context` -> `src/context` — the eight React contexts
+- `@hooks` -> `src/hooks`, `@utils` -> `src/utils` (no domain knowledge), `@styles` -> `src/styles`
+- `@lib` -> `src/lib` — the extension core, imported by the service worker, so never React
 - `@assets` -> `src/assets`
+- `@popup` -> `src/popup`, `@wizard` -> `src/wizard` — `@models` and `@shared` no longer exist; `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/`
