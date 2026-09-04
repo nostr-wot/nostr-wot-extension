@@ -1,7 +1,6 @@
 import React from 'react';
 import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
 import { IconChevronRight } from '@assets';
-import styles from './ListRow.module.css';
 import { cn } from '@utils/cn.ts';
 
 /**
@@ -48,14 +47,20 @@ interface ListRowProps {
 const ROW_BASE = 'flex items-center gap-6 w-full font-[inherit] text-left cursor-pointer';
 
 /**
- * `grouped` keeps the `styles.grouped` marker class even though every other
- * declaration here is a utility: `.grouped + .grouped` is an adjacent-sibling
- * selector, which no Tailwind utility can express, so the hairline between
- * stacked rows stays in ListRow.module.css and needs the class present to
- * match against.
+ * `grouped`'s hairline between stacked rows is an adjacent-sibling selector.
+ * Tailwind's arbitrary variant expresses the selector directly, but a pair of
+ * border-top width/color utilities would not work here: both read the
+ * top-side style off the shared `--tw-border-style` custom property, and the
+ * `border-none` on this same row (stripping the button's UA border) sets
+ * that property to `none` for the whole element -- the hairline would
+ * compile but never actually render. The one arbitrary *property* below
+ * writes a literal `border-top` declaration, sidestepping that variable
+ * entirely, same as the plain CSS it replaces.
  */
 const VARIANT: Record<NonNullable<ListRowProps['variant']>, string> = {
-  grouped: `${styles.grouped} py-5 px-6 bg-transparent border-none transition-colors hover:bg-brand-tint-hover active:bg-card-active`,
+  grouped:
+    'py-5 px-6 bg-transparent border-none [&+&]:[border-top:1px_solid_var(--brand-tint-active)] ' +
+    'transition-colors hover:bg-brand-tint-hover active:bg-card-active',
   standalone:
     'py-8 px-7 border border-card-border bg-glass-heavy rounded-lg shadow-card ' +
     'transition-all hover:bg-elevated hover:translate-x-2 hover:shadow-card-hover',

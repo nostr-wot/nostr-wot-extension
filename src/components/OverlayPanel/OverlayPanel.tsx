@@ -2,10 +2,17 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconChevronLeft, IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
-import styles from './OverlayPanel.module.css';
 import { cn } from '@utils/cn.ts';
 
-const OVERLAY_BASE = 'absolute inset-0 bg-elevated flex flex-col p-8';
+// z-[var(--overlay-z)]: reads the live --overlay-z custom property the
+// zIndex prop overrides inline (see `overlayStyle` below) — the z-panel
+// *named* utility would resolve --z-panel directly and bypass that override.
+const OVERLAY_BASE = 'absolute inset-0 z-[var(--overlay-z)] bg-elevated flex flex-col p-8';
+// Chosen as an either/or below, never both at once — two `animate-*`
+// utilities on the same element are one `animation` property, and whichever
+// is later in the *generated* stylesheet wins regardless of prop state.
+const OVERLAY_ENTER = 'animate-overlay-slide-in';
+const OVERLAY_EXIT = 'animate-overlay-slide-out';
 const HEADER_BASE = 'flex items-center justify-between mb-8 pb-5 border-b border-card-border';
 const HEADER_NO_PADDING = 'px-8 py-6 mb-0';
 const TITLE_BASE = 'text-3xl font-bold text-heading';
@@ -45,7 +52,7 @@ export default function OverlayPanel({
 
   return (
     <div
-      className={cn(styles.overlay, OVERLAY_BASE, noPadding ? 'p-0' : '', animating ? styles.exiting : '', className)}
+      className={cn(OVERLAY_BASE, animating ? OVERLAY_EXIT : OVERLAY_ENTER, noPadding ? 'p-0' : '', className)}
       style={overlayStyle}
     >
       {showHeader && (

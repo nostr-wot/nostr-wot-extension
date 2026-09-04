@@ -1,8 +1,10 @@
 /* The pulse rings themselves stay here: pseudo-elements with a radial
-   gradient and a staggered @keyframes animation-delay, neither of which
-   Tailwind has a utility for. .wrap's own layout (position/flex) moved to
-   utilities on the component -- this class now exists only to give the
-   pseudo-elements a selector to attach to. */
+   gradient and a staggered animation-delay, neither of which Tailwind has a
+   utility for. .wrap's own layout (position/flex) moved to utilities on the
+   component -- this class now exists only to give the pseudo-elements a
+   selector to attach to. `logo-pulse` is the keyframes name registered once
+   in src/styles/animations.css; `@theme` emits it as a real top-level
+   `@keyframes`, so referencing it here by name does not duplicate it. */
 .wrap::before,
 .wrap::after {
   content: '';
@@ -15,25 +17,11 @@
   margin-left: -30px;
   border-radius: var(--radius-full);
   background: radial-gradient(circle, var(--brand-light) 0%, rgba(99, 102, 241, 0) 70%);
-  animation: logoPulse 5s ease-out infinite;
+  animation: logo-pulse 5s ease-out infinite;
   pointer-events: none;
   z-index: -1;
 }
 
 .wrap::after {
   animation-delay: 2.5s;
-}
-
-@keyframes logoPulse {
-  0% {
-    transform: scale(0.4);
-    opacity: 0.8;
-  }
-  50% {
-    opacity: 0.3;
-  }
-  100% {
-    transform: scale(8);
-    opacity: 0;
-  }
 }
