@@ -1,6 +1,13 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import styles from './ScrollWheelPicker.module.css';
 
+const WHEEL_BASE = 'relative w-full overflow-hidden select-none touch-none cursor-grab active:cursor-grabbing';
+// z-[1] is local stacking against this wheel's own rows, not a rung of the
+// shared ladder -- it never needs a named token. 0.5px / rgba(99,102,241,0.18)
+// are one-offs specific to this hairline band.
+const BAND = 'absolute left-0 right-0 pointer-events-none z-[1] border-y-[0.5px] border-[rgba(99,102,241,0.18)]';
+const ITEM_BASE = 'absolute left-0 right-0 top-1/2 flex items-center justify-center cursor-pointer';
+
 const RADIUS = 150;
 const DECEL = 0.95;
 const MIN_VEL = 0.3;
@@ -172,7 +179,7 @@ export default function ScrollWheelPicker<T>({
   return (
     <div
       ref={ref}
-      className={styles.wheel}
+      className={`${styles.wheel} ${WHEEL_BASE}`}
       style={{ height }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -184,7 +191,7 @@ export default function ScrollWheelPicker<T>({
       role="listbox"
     >
       <div
-        className={styles.band}
+        className={BAND}
         style={{ height: itemHeight, top: '50%', marginTop: -itemHeight / 2 }}
       />
       {items.map((item, i) => {
@@ -195,7 +202,7 @@ export default function ScrollWheelPicker<T>({
         return (
           <div
             key={i}
-            className={styles.item}
+            className={`${styles.item} ${ITEM_BASE}`}
             style={{
               height: itemHeight,
               marginTop: -itemHeight / 2,

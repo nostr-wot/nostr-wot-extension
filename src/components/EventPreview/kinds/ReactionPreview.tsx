@@ -1,7 +1,7 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
-import styles from '../EventPreview.module.css';
+import { EP } from '../eventPreviewClasses.ts';
 
 interface ReactionPreviewProps {
   event: NostrEventDisplay;
@@ -16,11 +16,11 @@ export default function ReactionPreview({ event }: ReactionPreviewProps) {
 
   return (
     <>
-      <h3 className={styles.sectionTitle}>
+      <h3 className={EP.sectionTitle}>
         {isLike ? t('event.like') : isDislike ? t('event.dislike') : t('event.reaction')}
       </h3>
-      {isCustomEmoji && <div className={styles.reactionEmoji}>{content}</div>}
-      {target && <div className={styles.eventNote}>{t('event.reactingToNote')}</div>}
+      {isCustomEmoji && <div className={EP.reactionEmoji}>{content}</div>}
+      {target && <div className={EP.eventNote}>{t('event.reactingToNote')}</div>}
     </>
   );
 }

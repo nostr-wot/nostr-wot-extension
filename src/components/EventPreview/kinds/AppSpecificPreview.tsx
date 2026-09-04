@@ -2,7 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
-import styles from '../EventPreview.module.css';
+import { EP } from '../eventPreviewClasses.ts';
 
 interface AppSpecificPreviewProps {
   event: NostrEventDisplay;
@@ -14,7 +14,7 @@ export default function AppSpecificPreview({ event }: AppSpecificPreviewProps) {
   const action = dTag?.[2];
   return (
     <>
-      <h3 className={styles.sectionTitle}>{t('event.kind')} 30078</h3>
+      <h3 className={EP.sectionTitle}>{t('event.kind')} 30078</h3>
       <FieldDisplay label="App" value={app} />
       {action && <FieldDisplay label="Action" value={action.replace(/_/g, ' ')} />}
     </>

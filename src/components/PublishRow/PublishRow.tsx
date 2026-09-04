@@ -1,7 +1,18 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
-import styles from './PublishRow.module.css';
+
+const ROW = 'flex items-center justify-between gap-4 py-4 mt-2';
+const INFO = 'text-xs text-muted';
+const TONE: Record<string, string> = {
+  unsaved: 'text-warning font-medium',
+  success: 'text-success font-medium',
+  error: 'text-error font-medium',
+};
+// Same shape as Spinner (border ring + animate-spin), inlined rather than
+// reused: this one is fixed at 14px with no caller-configurable size.
+const SPINNER = 'w-[14px] h-[14px] rounded-full border-2 border-card-border border-t-brand animate-spin ' +
+  '[animation-duration:0.7s] shrink-0';
 
 interface PublishRowLabels {
   idle: string;
@@ -27,12 +38,8 @@ interface PublishRowProps {
  * on last-published time / never-published state).
  */
 export default function PublishRow({ publishing, status, dirty, labels, onPublish }: PublishRowProps) {
-  const infoClass = [
-    styles.publishInfo,
-    dirty ? styles.publishUnsaved : '',
-    status === 'success' ? styles.publishSuccess : '',
-    status === 'error' ? styles.publishError : '',
-  ].filter(Boolean).join(' ');
+  const tone = status === 'success' ? TONE.success : status === 'error' ? TONE.error : dirty ? TONE.unsaved : '';
+  const infoClass = `${INFO} ${tone}`;
 
   const statusText = publishing
     ? labels.publishing
@@ -45,9 +52,9 @@ export default function PublishRow({ publishing, status, dirty, labels, onPublis
           : labels.idle;
 
   return (
-    <div className={styles.publishRow}>
+    <div className={ROW}>
       <span className={infoClass}>{statusText}</span>
-      {publishing && <div className={styles.publishSpinner} />}
+      {publishing && <div className={SPINNER} />}
       <Button small variant="secondary" onClick={onPublish} disabled={publishing}>{t('common.publish')}</Button>
     </div>
   );

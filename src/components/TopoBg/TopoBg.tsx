@@ -8,7 +8,7 @@ interface TopoBgProps {
 
 export default function TopoBg({ className = '', children }: TopoBgProps) {
   return (
-    <div className={`${styles.topoBg} ${className}`}>
+    <div className={`${styles.topoBg} relative overflow-hidden ${className}`}>
       {children}
     </div>
   );

@@ -1,10 +1,10 @@
+/* What stays: the 3D-wheel illusion itself. `perspective` is what gives the
+   rotateX'd rows their curve, and the mask-image is the fade top/bottom that
+   sells the wheel rather than a flat list -- both are long, one-off values
+   with no Tailwind utility, per the docs' guidance to leave 3D transforms
+   and their supporting properties in CSS. Layout/cursor/touch chrome around
+   them moved to utilities on the component. */
 .wheel {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  user-select: none;
-  touch-action: none;
-  cursor: grab;
   perspective: 900px;
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -26,29 +26,7 @@
   );
 }
 
-.wheel:active {
-  cursor: grabbing;
-}
-
-.band {
-  position: absolute;
-  left: 0;
-  right: 0;
-  pointer-events: none;
-  z-index: 1;
-  border-top: 0.5px solid rgba(99, 102, 241, 0.18);
-  border-bottom: 0.5px solid rgba(99, 102, 241, 0.18);
-}
-
 .item {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;

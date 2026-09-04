@@ -3,7 +3,14 @@ import { t } from '@lib/i18n.js';
 import InputRow from '@components/InputRow/InputRow';
 import RemoveButton from '@components/RemoveButton/RemoveButton';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import styles from './EditableList.module.css';
+
+const CLS = {
+  group: 'flex flex-col gap-3',
+  list: 'flex flex-col gap-2',
+  row: 'flex items-center gap-4 px-6 py-4 border border-card-border bg-card rounded-panel',
+  item: 'flex-1 text-sm text-heading overflow-hidden text-ellipsis whitespace-nowrap min-w-0',
+  hint: 'text-xs text-muted leading-tight',
+};
 
 interface EditableListClassNames {
   group?: string;
@@ -98,11 +105,11 @@ export default function EditableList({
 
   const body = (
     <>
-      <div className={classNames.list || styles.list}>
+      <div className={classNames.list || CLS.list}>
         {items.map((item) => (
-          <div key={item} className={classNames.row || styles.row}>
+          <div key={item} className={classNames.row || CLS.row}>
             {leading?.(item)}
-            <span className={classNames.item || styles.item} title={item}>
+            <span className={classNames.item || CLS.item} title={item}>
               {renderItem ? renderItem(item) : item}
             </span>
             {trailing?.(item)}
@@ -122,13 +129,13 @@ export default function EditableList({
         error={controlled ? error : internalError}
         mono={mono}
       />
-      {hint && items.length === 0 && <div className={classNames.hint || styles.hint}>{hint}</div>}
+      {hint && items.length === 0 && <div className={classNames.hint || CLS.hint}>{hint}</div>}
     </>
   );
 
   if (label) {
     return (
-      <div className={classNames.group || styles.group}>
+      <div className={classNames.group || CLS.group}>
         <SectionLabel>{label}</SectionLabel>
         {body}
       </div>

@@ -1,5 +1,12 @@
 import React from 'react';
-import styles from './SeedWord.module.css';
+
+const SEED_WORD = 'flex items-center gap-3 px-4 py-2 text-sm font-medium text-heading';
+// A 24-word phrase does not fit the popup at the default size.
+const COMPACT = 'gap-2 px-[5px] py-2 text-xs';
+// Only when it renders as a button — resets the chrome the UA adds.
+const CLICKABLE = 'border-none bg-none font-[inherit] cursor-pointer';
+const INDEX = 'min-w-[16px] text-2xs font-semibold text-muted [font-variant-numeric:tabular-nums]';
+const INDEX_COMPACT = 'min-w-[13px] text-[9px]';
 
 interface SeedWordProps {
   /** 1-based position in the phrase. */
@@ -23,15 +30,16 @@ interface SeedWordProps {
 
 /** One numbered word of a recovery phrase. */
 export default function SeedWord({ index, word, onClick, compact = false, className = '' }: SeedWordProps) {
-  const cls = `${styles.seedWord} ${compact ? styles.compact : ''} ${className}`;
+  const cls = `${SEED_WORD} ${compact ? COMPACT : ''} ${className}`;
+  const indexCls = `${INDEX} ${compact ? INDEX_COMPACT : ''}`;
   const body = (
     <>
-      <span className={styles.index}>{index}</span>
+      <span className={indexCls}>{index}</span>
       {word}
     </>
   );
   return onClick ? (
-    <button type="button" className={`${cls} ${styles.clickable}`} onClick={onClick}>
+    <button type="button" className={`${cls} ${CLICKABLE}`} onClick={onClick}>
       {body}
     </button>
   ) : (

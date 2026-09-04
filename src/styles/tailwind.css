@@ -116,6 +116,7 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  --font-mono-alt: var(--font-mono-alt);
 
   --font-weight-*: initial;
   --font-weight-normal: 400;

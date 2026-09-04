@@ -1,12 +1,12 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import styles from '../EventPreview.module.css';
+import { EP } from '../eventPreviewClasses.ts';
 
 export default function SealedPreview() {
   return (
     <>
-      <h3 className={styles.sectionTitle}>{t('event.sealedMessage')}</h3>
-      <div className={styles.eventNote}>{t('event.sealedDesc')}</div>
+      <h3 className={EP.sectionTitle}>{t('event.sealedMessage')}</h3>
+      <div className={EP.eventNote}>{t('event.sealedDesc')}</div>
     </>
   );
 }

@@ -4,6 +4,22 @@ import { IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
 import styles from './Modal.module.css';
 
+// rgba(0,0,0,0.45) is a one-off, distinct from both --scrim (0.4) and
+// --scrim-heavy (0.6) — kept exact rather than snapped to a neighbour.
+const BACKDROP = 'absolute inset-0 flex items-center justify-center p-8 bg-[rgba(0,0,0,0.45)]';
+// [background:var(--bg-page)]: --bg-page is a gradient, and the bg-page
+// *utility* only ever sets background-color — a gradient there is an invalid
+// declaration and silently drops. The arbitrary property keeps the full
+// `background` shorthand the gradient needs.
+const CARD =
+  'flex flex-col w-full max-h-full border border-card-border rounded-xl [background:var(--bg-page)] ' +
+  'shadow-modal outline-none';
+const FOOTER_ROW = 'flex gap-4 [&>*]:flex-1';
+const HEADER = 'flex items-center justify-between gap-4 px-7 py-6 border-b border-card-border';
+const TITLE = 'text-lg font-bold text-heading';
+const BODY = 'flex-1 min-h-0 overflow-y-auto p-7';
+const FOOTER_SHELL = 'shrink-0 px-7 py-6 border-t border-card-border';
+
 /**
  * A dialog: a card floating over a dimmed backdrop.
  *
@@ -75,7 +91,7 @@ export default function Modal({
 
   return (
     <div
-      className={styles.backdrop}
+      className={`${styles.backdrop} ${BACKDROP}`}
       style={style}
       onMouseDown={(e) => {
         // mousedown, not click: a drag that starts inside the card and ends on the
@@ -84,7 +100,7 @@ export default function Modal({
       }}
     >
       <div
-        className={styles.card}
+        className={`${styles.card} ${CARD}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -92,16 +108,20 @@ export default function Modal({
         ref={cardRef}
       >
         {title && (
-          <div className={styles.header}>
-            <span className={styles.title}>{title}</span>
+          <div className={HEADER}>
+            <span className={TITLE}>{title}</span>
             <IconButton onClick={onClose} aria-label={t('common.close')}>
               <IconClose size={16} />
             </IconButton>
           </div>
         )}
-        <div className={styles.body}>{children}</div>
+        <div className={BODY}>{children}</div>
+        {/* footerRow: equal side-by-side actions. Otherwise, a single action
+            fills the footer -- computed here rather than via the old
+            `.footer:not(.footerRow) > *` selector, since the component
+            already knows which case it is in. */}
         {footer && (
-          <div className={`${styles.footer} ${footerRow ? styles.footerRow : ''}`}>{footer}</div>
+          <div className={`${FOOTER_SHELL} ${footerRow ? FOOTER_ROW : '[&>*]:w-full'}`}>{footer}</div>
         )}
       </div>
     </div>

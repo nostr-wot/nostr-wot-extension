@@ -14,7 +14,7 @@ import ReactionPreview from './kinds/ReactionPreview';
 import SealedPreview from './kinds/SealedPreview';
 import AppSpecificPreview from './kinds/AppSpecificPreview';
 import GenericPreview from './kinds/GenericPreview';
-import styles from './EventPreview.module.css';
+import { EP } from './eventPreviewClasses.ts';
 
 /** Maps event kind to component. Entries here skip the generic fallback. */
 const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisplay }>> = {
@@ -49,15 +49,15 @@ interface EventPreviewProps {
  */
 export default function EventPreview({ type, event, theirPubkey, className = '' }: EventPreviewProps) {
   const [showRaw, setShowRaw] = useState<boolean>(false);
-  const rootCls = [styles.eventPreview, className].filter(Boolean).join(' ');
+  const rootCls = [EP.root, className].filter(Boolean).join(' ');
 
   // Encryption / decryption
   if (ENCRYPT_TYPES.has(type!)) {
     return (
       <div className={rootCls}>
-        <h3 className={styles.sectionTitle}>{formatLabel(type || '')}</h3>
+        <h3 className={EP.sectionTitle}>{formatLabel(type || '')}</h3>
         {theirPubkey && <FieldDisplay label={t('event.recipient')} value={theirPubkey} mono />}
-        <div className={styles.eventNote}>{t('event.encryptedDesc')}</div>
+        <div className={EP.eventNote}>{t('event.encryptedDesc')}</div>
       </div>
     );
   }
@@ -66,8 +66,8 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
   if (type === 'getPublicKey') {
     return (
       <div className={rootCls}>
-        <h3 className={styles.sectionTitle}>{formatLabel(type || '')}</h3>
-        <div className={styles.eventNote}>{t('activity.detail.readKeyDesc')}</div>
+        <h3 className={EP.sectionTitle}>{formatLabel(type || '')}</h3>
+        <div className={EP.eventNote}>{t('activity.detail.readKeyDesc')}</div>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
   if (!event) {
     return (
       <div className={rootCls}>
-        <div className={styles.eventNote}>{t('event.noEventData')}</div>
+        <div className={EP.eventNote}>{t('event.noEventData')}</div>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
       ) : KIND_LABELS[kind] ? (
         <GenericPreview event={event as NostrEventDisplay} />
       ) : (
-        <div className={styles.unknownWarning}>
+        <div className={EP.unknownWarning}>
           <IconWarning size={14} />
           <span>{t('event.unknownKind')}</span>
         </div>
@@ -111,25 +111,25 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
           the FULL payload being signed, not just the kind-specific summary. */}
       {event.tags && event.tags.length > 0 && (
         <>
-          <h3 className={`${styles.sectionTitle} ${styles.tagsTitle}`}>
+          <h3 className={`${EP.sectionTitle} ${EP.tagsTitle}`}>
             {t('event.tags', { count: event.tags.length })}
           </h3>
-          <div className={styles.tagsList}>
+          <div className={EP.tagsList}>
             {event.tags.map((tag, i) => (
-              <div key={i} className={styles.tagRow}>{JSON.stringify(tag)}</div>
+              <div key={i} className={EP.tagRow}>{JSON.stringify(tag)}</div>
             ))}
           </div>
         </>
       )}
 
       <button
-        className={styles.expandToggle}
+        className={EP.expandToggle}
         onClick={() => setShowRaw(!showRaw)}
       >
         {showRaw ? t('approval.detail.hideDetails') : t('approval.detail.moreDetails')}
       </button>
       {showRaw && (
-        <pre className={styles.jsonPreview}>{JSON.stringify(event, null, 2)}</pre>
+        <pre className={EP.jsonPreview}>{JSON.stringify(event, null, 2)}</pre>
       )}
     </div>
   );
