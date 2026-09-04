@@ -3,9 +3,15 @@
 // Firefox natively supports the browser.* API, Chrome needs the chrome.* API
 // Safari lacks storage.session — polyfill it with storage.local using a prefix
 
-declare const browser: typeof chrome;
-
-const browserAPI: typeof chrome = typeof browser !== 'undefined' ? browser : chrome;
+// Read off globalThis rather than naming `browser`/`chrome` as bare
+// identifiers. A bare name that is not defined is a ReferenceError, thrown at
+// module load, before this module does anything at all — so any context
+// without the extension globals (a plain `node --test`, a restricted frame)
+// could not import it even to reach a function that never touches the API.
+// That fragility is why two hand-rolled copies of this shim existed elsewhere,
+// each with its own idea of how to dodge it.
+const globals = globalThis as Record<string, unknown>;
+const browserAPI = (globals.browser ?? globals.chrome) as typeof chrome;
 
 // Safari doesn't support storage.session — shim it onto storage.local with a key prefix.
 //

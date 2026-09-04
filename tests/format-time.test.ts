@@ -14,14 +14,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-// `time.ts` also exports functions that call into `@lib/i18n.js`, which reads
-// the extension's `chrome` global at module load — undefined under plain
-// `node --test`, so importing it statically crashes the whole file before a
-// single test runs. A dynamic import lets this stand-in go first; a static
-// `import` is hoisted ahead of any same-file statement and would already have
-// thrown by the time one ran.
-(globalThis as { chrome?: unknown }).chrome = {};
-const { classifyDay } = await import('../src/utils/format/time.ts');
+import { classifyDay } from '../src/utils/format/time.ts';
 
 const NOW = new Date('2026-03-15T12:00:00Z');
 

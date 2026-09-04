@@ -2,8 +2,11 @@
 // Flat key-value JSON locale files, {param} interpolation
 
 import type { SupportedLanguage } from './types.ts';
-
-const browser: typeof chrome = typeof (globalThis as Record<string, unknown>).browser !== 'undefined' ? (globalThis as unknown as { browser: typeof chrome }).browser : chrome;
+// The real shim, not a third copy of it. Two others existed: this one and the
+// one in src/shared/, which silently omitted the Safari storage.session
+// polyfill. Both read a bare `chrome` at module load, so importing this module
+// anywhere without the extension globals threw before it did anything.
+import browser from './browser.ts';
 
 const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'en', name: 'English', native: 'English', flag: '\u{1F1FA}\u{1F1F8}', prompt: 'Select your language' },
