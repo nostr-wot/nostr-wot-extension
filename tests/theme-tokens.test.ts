@@ -128,6 +128,38 @@ describe('theme tokens', () => {
   });
 });
 
+describe('tailwind token mapping', () => {
+  const TAILWIND = join(ROOT, 'src', 'styles', 'tailwind.css');
+
+  /** Follow a `var(--x)` chain down to the literal it ends at. */
+  function resolve(value: string, defs: Map<string, string>, depth = 0): string {
+    if (depth > 5) return value;
+    const m = /^var\((--[a-zA-Z0-9-]+)\)$/.exec(value.trim());
+    return m && defs.has(m[1]) ? resolve(defs.get(m[1])!, defs, depth + 1) : value.trim();
+  }
+
+  it('every token mapped into --color-* is actually a colour', () => {
+    // A Tailwind colour utility only ever emits `background-color` (or
+    // `color`, or `border-color`). Mapping a gradient — --bg-page is a
+    // linear-gradient — produces `background-color: linear-gradient(...)`,
+    // which is invalid and dropped: the surface renders with no background at
+    // all, with nothing in the build or the typecheck to say so. Use
+    // `[background:var(--bg-page)]` for those.
+    const theme = readFileSync(THEME, 'utf8');
+    const defs = new Map<string, string>();
+    for (const m of theme.matchAll(/^\s*(--[a-zA-Z0-9-]+):\s*([^;]+);/gm)) defs.set(m[1], m[2]);
+
+    const bad: string[] = [];
+    for (const m of readFileSync(TAILWIND, 'utf8').matchAll(/(--color-[a-z-]+):\s*var\((--[a-zA-Z0-9-]+)\);/g)) {
+      const literal = resolve(`var(${m[2]})`, defs);
+      if (!/^(#|rgba?\(|hsla?\(|transparent|currentColor)/.test(literal)) {
+        bad.push(`${m[1]} <- ${m[2]} = ${literal}`);
+      }
+    }
+    assert.deepEqual(bad, [], `mapped as a colour but is not one:\n  ${bad.join('\n  ')}`);
+  });
+});
+
 describe('theme contrast', () => {
   /** Relative luminance per WCAG 2.x. */
   function luminance(r: number, g: number, b: number): number {
