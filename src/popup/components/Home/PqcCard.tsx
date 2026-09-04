@@ -1,17 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { rpc } from '@shared/rpc.ts';
-import useRelayCache from '@shared/hooks/useRelayCache.ts';
-import { PQC_PUBLISHED_CACHE } from '@shared/relayCacheNames.ts';
-import {
-  derivePqcCardState,
-  type PqcStatus,
-  type PqcPublished,
-  type PqcCardState,
-} from '@shared/pqcState.ts';
+import React from 'react';
+import { derivePqcCardState, type PqcCardState } from '@shared/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
 import { useNavigate } from './NavigationContext';
 import styles from './PqcCard.module.css';
+import { usePqc } from '@popup/context/PqcContext';
 
 /**
  * Post-quantum status on the dashboard.
@@ -29,37 +22,11 @@ import styles from './PqcCard.module.css';
 
 export default function PqcCard() {
   const navigate = useNavigate();
-  const [state, setState] = useState<PqcCardState | null>(null);
-
-  // Run-versioned rather than a per-call `cancelled` flag: this now re-runs
-  // whenever the background refreshes the cache, so two passes can overlap and
-  // the slower one must not win by finishing last (docs §9).
-  const runRef = useRef(0);
-  const load = useCallback(async () => {
-    const run = ++runRef.current;
-    const current = () => run === runRef.current;
-    try {
-      const status = await rpc<PqcStatus>('pqc_getStatus');
-      if (!current() || !status) return;
-
-      // Whether the feature is ON depends on the attestation being out there
-      // and matching — asked of the relays, so it stays right when it was
-      // published from another device. Only worth asking if keys exist.
-      const published = status.canDerive
-        ? await rpc<PqcPublished>('pqc_checkPublished').catch(() => null)
-        : null;
-      if (!current()) return;
-
-      setState(derivePqcCardState(status, published));
-    } catch {
-      // Vault locked, or no active account. Nothing to report either way.
-    }
-  }, []);
-
-  useEffect(() => { void load(); }, [load]);
-  // The published check is served from the background's cache so this paints
-  // without a relay round trip; this picks up the refreshed answer.
-  useRelayCache(PQC_PUBLISHED_CACHE, load);
+  // Both reads come from PqcContext, which owns the fetch and the relay-cache
+  // subscription for every post-quantum surface. This card and PqcSection used
+  // to ask the same two questions independently on every popup open.
+  const { status, published } = usePqc();
+  const state = derivePqcCardState(status, published);
 
   if (!state) return null;
 
