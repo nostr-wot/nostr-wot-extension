@@ -9,6 +9,7 @@ import styles from './WizardOverlay.module.css';
 import nip46Styles from './Nip46Step.module.css';
 import Spinner from '@components/Spinner/Spinner';
 import Tabs from '@components/Tabs/Tabs';
+import FormError from '@components/FormError/FormError';
 
 function isValidBunkerUrl(url: string): boolean {
   if (!url.startsWith('bunker://')) return false;
@@ -221,7 +222,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
             </div>
           </div>
 
-          {error && <div className={styles.error}>{error}</div>}
+          <FormError>{error}</FormError>
 
           <div className={styles.stepActions}>
             <Button onClick={handleBunkerContinue} disabled={!input.trim() || loading}>

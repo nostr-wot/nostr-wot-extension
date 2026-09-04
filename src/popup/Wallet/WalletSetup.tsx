@@ -9,6 +9,7 @@ import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel
 
 import styles from './Wallet.module.css';
 import Tabs from '@components/Tabs/Tabs';
+import FormError from '@components/FormError/FormError';
 
 interface WalletSetupProps {
   onConnected: () => void;
@@ -135,7 +136,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
             </>
           )}
 
-          {error && <div className={styles.error}>{error}</div>}
+          <FormError>{error}</FormError>
 
           <div className={styles.formActions}>
             <Button small onClick={handleConnect} disabled={loading || !canConnect}>

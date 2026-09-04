@@ -5,6 +5,7 @@ import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
+import FormError from '@components/FormError/FormError';
 
 interface SubAccountStepProps {
   onNext: (account: any) => void;
@@ -99,7 +100,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
           />
         </div>
 
-        {unlockError && <div className={styles.error}>{unlockError}</div>}
+        <FormError>{unlockError}</FormError>
 
         <div className={styles.stepActions}>
           <Button onClick={unlock} disabled={unlocking || !password}>
@@ -114,7 +115,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
     return (
       <div className={styles.step}>
         <h2 className={styles.stepTitle}>{t('common.error')}</h2>
-        <div className={styles.error}>{error}</div>
+        <FormError>{error}</FormError>
       </div>
     );
   }

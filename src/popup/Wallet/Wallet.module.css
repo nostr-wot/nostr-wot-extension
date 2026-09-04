@@ -191,13 +191,6 @@
   cursor: pointer;
 }
 
-/* ── Error/status ── */
-
-.error {
-  font-size: var(--fs-sm);
-  color: var(--error);
-}
-
 .success {
   font-size: var(--fs-sm);
   color: var(--success);

@@ -17,6 +17,7 @@ import { useWallet } from '@popup/context/WalletContext';
 
 import styles from './Wallet.module.css';
 import IconButton from '@components/IconButton/IconButton';
+import FormError from '@components/FormError/FormError';
 
 interface WalletProps {
   providerType: string;
@@ -103,7 +104,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
           </div>
         ) : balanceError ? (
           <div className={styles.balanceErrorWrap}>
-            <div className={styles.error}>{balanceError}</div>
+            <FormError>{balanceError}</FormError>
             <Button small variant="secondary" onClick={refreshBalance}>
               {t('common.retry')}
             </Button>

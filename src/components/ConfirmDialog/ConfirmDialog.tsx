@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import Modal from '@components/Modal/Modal';
 import Button from '@components/Button/Button';
 import styles from './ConfirmDialog.module.css';
+import FormError from '@components/FormError/FormError';
 
 interface ConfirmDialogProps {
   title: string;
@@ -71,7 +72,7 @@ export default function ConfirmDialog({
       }
     >
       <div className={styles.message}>{message}</div>
-      {error && <div className={styles.error} role="alert">{error}</div>}
+      <FormError>{error}</FormError>
     </Modal>
   );
 }

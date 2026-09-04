@@ -5,6 +5,7 @@ import Button from '@components/Button/Button';
 import { type ProfileMetadata } from '@shared/profileMetadata.ts';
 import styles from './EditProfileOverlay.module.css';
 import Card from '@components/Card/Card';
+import FormError from '@components/FormError/FormError';
 
 interface ProfilePreviewCardProps {
   meta: ProfileMetadata | null;
@@ -51,7 +52,7 @@ export default function ProfilePreviewCard({
 
     <div className={styles.previewHint}>{t('profileEdit.previewHint')}</div>
 
-    {error && <div className={styles.errorText}>{error}</div>}
+    <FormError>{error}</FormError>
 
     <div className={styles.actions}>
       <Button variant="secondary" onClick={onBack}>

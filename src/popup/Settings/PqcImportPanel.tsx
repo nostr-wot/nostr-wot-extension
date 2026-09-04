@@ -5,6 +5,7 @@ import Button from '@components/Button/Button';
 import { type PqcPanelStatus as PqcStatus } from '@shared/pqcState.ts';
 import { usePqc } from '@popup/context/PqcContext';
 import styles from './PqcSection.module.css';
+import FormError from '@components/FormError/FormError';
 
 const KEYGEN_SOURCE_URL =
   'https://github.com/nostr-wot/nostr-wot-extension/blob/main/scripts/pqc-keygen.mjs';
@@ -70,7 +71,7 @@ export default function PqcImportPanel() {
         </label>
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      <FormError>{error}</FormError>
 
       {/* The one-off part, folded away: you generate the file once, then come back here to
           paste it. Keeping it expanded pushed the paste box and buttons off-screen. */}

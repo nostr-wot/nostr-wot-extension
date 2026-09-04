@@ -197,11 +197,6 @@
   color: var(--success);
 }
 
-.errorText {
-  font-size: var(--fs-sm);
-  color: var(--error);
-}
-
 /* Actions */
 .actions {
   display: flex;

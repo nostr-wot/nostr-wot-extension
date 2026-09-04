@@ -10,6 +10,7 @@ import { resolveSendTarget } from '@shared/sendTarget.ts';
 import { describeInvoiceExpiry } from '@shared/invoiceExpiry.ts';
 import { PAYMENT_IN_FLIGHT } from '@lib/wallet/types.ts';
 import styles from './Wallet.module.css';
+import FormError from '@components/FormError/FormError';
 
 /** What `wallet_resolveLightningAddress` hands back for the confirmation card. */
 interface ResolvedAddress {
@@ -308,7 +309,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
               )
             )}
 
-            {sendError && <div className={styles.error}>{sendError}</div>}
+            <FormError>{sendError}</FormError>
             {sendSuccess && <div className={styles.success}>{sendSuccess}</div>}
           </div>
       </Modal>

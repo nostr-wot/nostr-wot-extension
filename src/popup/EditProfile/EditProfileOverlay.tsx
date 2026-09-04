@@ -19,6 +19,7 @@ import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import { IconCamera, IconChevronDown } from '@assets';
 import styles from './EditProfileOverlay.module.css';
+import FormError from '@components/FormError/FormError';
 
 const STEPS = { FORM: 0, UPLOADING: 1, PREVIEW: 2, PUBLISHING: 3, DONE: 4 } as const;
 type StepValue = typeof STEPS[keyof typeof STEPS];
@@ -227,7 +228,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
         )}
       </div>
 
-      {error && <div className={styles.errorText}>{error}</div>}
+      <FormError>{error}</FormError>
 
       <div className={styles.actions}>
         <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>

@@ -9,6 +9,7 @@ import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import useCopy from '@hooks/useCopy.ts';
 import styles from './Wallet.module.css';
+import FormError from '@components/FormError/FormError';
 
 const PROVIDER_LABELS: Record<string, string> = {
   nwc: 'Nostr Wallet Connect',
@@ -258,7 +259,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                 </Button>
               </div>
             )}
-            {claimError && <div className={styles.error}>{claimError}</div>}
+            <FormError>{claimError}</FormError>
           </Card>
         )}
       </OverlayPanel>

@@ -4,6 +4,7 @@ import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import styles from './WizardOverlay.module.css';
+import FormError from '@components/FormError/FormError';
 
 interface NpubStepProps {
   onNext: (account: any) => void;
@@ -51,7 +52,7 @@ export default function NpubStep({ onNext }: NpubStepProps) {
         />
       </div>
 
-      {error && <div className={styles.error}>{error}</div>}
+      <FormError>{error}</FormError>
 
       <div className={styles.stepActions}>
         <Button onClick={handleContinue} disabled={!input.trim() || loading}>

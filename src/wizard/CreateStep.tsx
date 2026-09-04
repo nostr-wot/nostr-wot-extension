@@ -11,6 +11,7 @@ import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
 import SeedWord from '@components/SeedWord/SeedWord';
+import FormError from '@components/FormError/FormError';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -79,7 +80,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     return (
       <div className={styles.step}>
         <h2 className={styles.stepTitle}>{t('common.error')}</h2>
-        <div className={styles.error}>{error}</div>
+        <FormError>{error}</FormError>
       </div>
     );
   }

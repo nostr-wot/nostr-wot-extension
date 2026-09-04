@@ -11,6 +11,7 @@ import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
 import styles from './UnlockModal.module.css';
 import LinkButton from '@components/LinkButton/LinkButton';
+import FormError from '@components/FormError/FormError';
 
 interface WaiterInfo {
   id: string;
@@ -130,7 +131,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           autoComplete="off"
           disabled={busy}
         />
-        {error && <div className={styles.error}>{error}</div>}
+        <FormError>{error}</FormError>
         {unlockWaiters && unlockWaiters.length > 0 && (
           <div className={styles.waitingEvents}>
             <div className={styles.waitingLabel}>{t('unlock.pendingEvents')}</div>

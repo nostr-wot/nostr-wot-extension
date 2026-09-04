@@ -103,12 +103,6 @@
   border-color: rgba(99, 102, 241, 0.5);
 }
 
-.error {
-  color: var(--error);
-  font-size: var(--fs-xs);
-  margin-top: var(--sp-2);
-}
-
 .waitingEvents {
   width: 100%;
   margin-top: var(--sp-4);

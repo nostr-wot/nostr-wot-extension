@@ -8,6 +8,7 @@ import QrCode from '@components/QrCode/QrCode';
 import useCopy from '@hooks/useCopy.ts';
 import { formatSats } from '@shared/format/number.ts';
 import styles from './Wallet.module.css';
+import FormError from '@components/FormError/FormError';
 
 interface Invoice {
   bolt11: string;
@@ -134,7 +135,7 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
             onChange={(e: ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
             small
           />
-          {error && <div className={styles.error}>{error}</div>}
+          <FormError>{error}</FormError>
         </div>
       ) : (
         <>

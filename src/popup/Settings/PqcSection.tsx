@@ -22,6 +22,7 @@ import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@shared/browser.ts';
 import styles from './PqcSection.module.css';
 import LinkButton from '@components/LinkButton/LinkButton';
+import FormError from '@components/FormError/FormError';
 
 
 
@@ -127,7 +128,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
   const how = howOpen ? <HowItWorks onClose={closeHow} /> : null;
 
-  if (error) return <>{how}<div className={styles.error}>{error}</div></>;
+  if (error) return <>{how}<FormError>{error}</FormError></>;
   // Gated on `status` alone, not a `loading` flag: PqcContext's `loading` also
   // flips true on a passive background refresh (the relay-cache push, or an
   // account switch), and this panel already has a perfectly good status to
@@ -230,7 +231,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
         </>
       )}
 
-      {publishError && <div className={styles.error}>{publishError}</div>}
+      <FormError>{publishError}</FormError>
 
       <div className={styles.pqcActions}>
         <Button variant="secondary" onClick={() => setKeysOpen(true)}>{t('pqc.showKeys')}</Button>

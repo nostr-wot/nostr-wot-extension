@@ -3,9 +3,3 @@
   line-height: var(--lh-loose);
   color: var(--text-body);
 }
-
-.error {
-  margin-top: var(--sp-5);
-  font-size: var(--fs-sm);
-  color: var(--error);
-}
