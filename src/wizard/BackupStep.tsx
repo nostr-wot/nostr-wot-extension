@@ -1,14 +1,11 @@
-import { useState, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { useState } from 'react';
 import { downloadFile } from '@shared/downloadFile.ts';
 import useCopy from '@shared/hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconCopy, IconDownload, IconLock, IconWarning } from '@assets';
 import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import Modal from '@components/Modal/Modal';
 import styles from './WizardOverlay.module.css';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
+import EncryptedBackupModal from './EncryptedBackupModal';
 
 interface BackupStepProps {
   mnemonic: string | null;
@@ -19,9 +16,6 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
   const [safetyShown, setSafetyShown] = useState<boolean>(false);
   const seedCopy = useCopy();
   const [encModalOpen, setEncModalOpen] = useState<boolean>(false);
-  const [encPw, setEncPw] = useState<string>('');
-  const [encConfirm, setEncConfirm] = useState<string>('');
-  const [encError, setEncError] = useState<string>('');
 
   const handleCopy = async () => {
     // Only counts as seen if the clipboard actually took it.
@@ -31,25 +25,6 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
   const handleDownloadPlain = () => {
     downloadFile(mnemonic!, `nostr-seed-${Date.now()}.txt`);
     setSafetyShown(true);
-  };
-
-  const handleDownloadEncrypted = async () => {
-    setEncError('');
-    const problem = validatePasswordPair(encPw, encConfirm);
-    if (problem) {
-      setEncError(t(problem === 'tooShort' ? 'wizard.minChars' : 'key.passwordsNoMatch'));
-      return;
-    }
-    try {
-      const ncryptsec = await rpc<string>('vault_exportNcryptsec', { password: encPw });
-      if (ncryptsec) {
-        downloadFile(ncryptsec, `nostr-backup-${Date.now()}.ncryptsec`);
-        setEncModalOpen(false);
-        setSafetyShown(true);
-      }
-    } catch {
-      setEncError(t('wizard.failedGenerateBackup'));
-    }
   };
 
   return (
@@ -97,37 +72,11 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
       )}
 
       {encModalOpen && (
-        <Modal
-          title={t('wizard.encryptBackup')}
+        <EncryptedBackupModal
+          rpcMethod="vault_exportNcryptsec"
           onClose={() => setEncModalOpen(false)}
-          footerRow
-          footer={(
-            <>
-              <Button variant="secondary" small onClick={() => setEncModalOpen(false)}>{t('common.cancel')}</Button>
-              <Button small onClick={handleDownloadEncrypted}>{t('common.download')}</Button>
-            </>
-          )}
-        >
-          <p>{t('wizard.encryptBackupDesc')}</p>
-          <div className={styles.formGroup}>
-            <Input
-              type="password"
-              showToggle
-              placeholder={t('key.passwordMinChars')}
-              value={encPw}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEncPw(e.target.value)}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <Input
-              type="password"
-              placeholder={t('key.confirmPassword')}
-              value={encConfirm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEncConfirm(e.target.value)}
-            />
-          </div>
-          {encError && <div className={styles.error}>{encError}</div>}
-        </Modal>
+          onSuccess={() => { setEncModalOpen(false); setSafetyShown(true); }}
+        />
       )}
     </div>
   );

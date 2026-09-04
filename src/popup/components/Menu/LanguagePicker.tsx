@@ -2,23 +2,18 @@ import React, { useState } from 'react';
 import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
-import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
-import styles from './MenuOverlay.module.css';
+import LanguageWheel, { type Language } from '@wizard/LanguageWheel';
 
-export interface Language {
-  code: string;
-  flag: string;
-  native: string;
-  prompt: string;
-}
+export type { Language };
 
 /**
  * Pick the interface language.
  *
  * Its own component because it is a self-contained dialog with two pieces of
- * state that the menu was carrying for it, and because the wizard has a second
- * copy of this feature — a full-bleed panel rather than a dialog — that should
- * eventually meet it here.
+ * state that the menu was carrying for it. The wizard has a second surface for
+ * this feature — a full-bleed first-run panel rather than a dialog, needed
+ * because it runs before there is any popup chrome to hang a dialog on — so
+ * only the inner wheel (`LanguageWheel`) is shared between the two.
  */
 export default function LanguagePicker({ onClose }: { onClose: () => void }) {
   const languages: Language[] = getSupportedLanguages();
@@ -39,19 +34,7 @@ export default function LanguagePicker({ onClose }: { onClose: () => void }) {
         zIndex={720}
         footer={<Button onClick={confirm}>{t('common.confirm')}</Button>}
       >
-        <div className={styles.langModalWheel}>
-          <ScrollWheelPicker
-            items={languages}
-            selectedIndex={selected ? languages.findIndex((l: Language) => l.code === selected.code) : 0}
-            onChange={(i: number) => setSelected(languages[i])}
-            renderItem={(lang: Language, _i: number, isActive: boolean) => (
-              <div className={`${styles.langWheelItem} ${isActive ? styles.langWheelItemActive : ''}`}>
-                <span className={styles.langWheelFlag}>{lang.flag}</span>
-                <span className={styles.langWheelName}>{lang.native}</span>
-              </div>
-            )}
-          />
-        </div>
+        <LanguageWheel languages={languages} selected={selected} onChange={setSelected} />
       </Modal>
   );
 }
