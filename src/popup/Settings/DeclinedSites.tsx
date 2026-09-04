@@ -54,14 +54,14 @@ export default function DeclinedSites() {
   ];
 
   return (
-    <div className={styles.declinedBlock}>
+    <div className="mt-11">
       <SectionLabel>{t('perm.declinedTitle')}</SectionLabel>
-      <p className={styles.declinedDesc}>{t('perm.declinedDesc')}</p>
+      <p className="mt-3 mb-5 text-xs leading-loose text-muted">{t('perm.declinedDesc')}</p>
 
-      <label className={styles.declinedDurationRow}>
+      <label className="flex items-center justify-between gap-5 mb-6 text-sm text-body">
         <span>{t('perm.dismissDurationLabel')}</span>
         <select
-          className={styles.declinedSelect}
+          className="shrink-0 py-2.5 px-4 border border-card-border rounded-sm bg-input text-body text-sm"
           value={duration}
           onChange={(e) => changeDuration(Number(e.target.value))}
         >
@@ -70,16 +70,16 @@ export default function DeclinedSites() {
       </label>
 
       {declined.length === 0 ? (
-        <p className={styles.declinedDesc}>{t('perm.declinedNone')}</p>
+        <p className="mt-3 mb-5 text-xs leading-loose text-muted">{t('perm.declinedNone')}</p>
       ) : (
-        <div className={styles.permsList}>
+        <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {declined.map(({ domain, until }) => (
-            <div key={domain} className={styles.declinedRow}>
+            <div key={domain} className="flex items-center gap-5 py-5 px-6 border-t border-card-border first:border-t-0">
               <div className={styles.permInfo}>
                 <div className={styles.permDomain}>{domain}</div>
                 <div className={styles.permSummary}>{describe(until)}</div>
               </div>
-              <LinkButton tone="brand" className={styles.declinedRemove} onClick={() => undo(domain)}>
+              <LinkButton tone="brand" className={`${styles.declinedRemove} shrink-0 underline underline-offset-2 hover:opacity-85`} onClick={() => undo(domain)}>
                 {t('perm.declinedRemove')}
               </LinkButton>
             </div>

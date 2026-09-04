@@ -4,7 +4,6 @@ import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import type { TxFilters } from '@shared/txFilter.ts';
-import styles from './Wallet.module.css';
 
 interface TxFilterDialogProps {
   /** What is applied right now — the drafts start here. */
@@ -44,8 +43,8 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
         </>
       )}
     >
-      <div className={styles.txFilterSection}>
-        <span className={styles.txFilterLabel}>{t('wallet.filterDirection')}</span>
+      <div className="flex flex-col gap-3">
+        <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('wallet.filterDirection')}</span>
         <ChipGroup
           options={[
             { value: 'all', label: t('wallet.filterAll') },
@@ -56,19 +55,19 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
           onChange={(v) => setDirection(v as TxFilters['direction'])}
         />
       </div>
-      <div className={styles.txFilterSection}>
-        <span className={styles.txFilterLabel}>{t('wallet.filterDateRange')}</span>
-        <div className={styles.txDateRow}>
+      <div className="flex flex-col gap-3">
+        <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('wallet.filterDateRange')}</span>
+        <div className="flex items-center gap-2">
           <input
             type="date"
-            className={styles.txDateInput}
+            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-card text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
             value={dateFrom}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value)}
           />
-          <span className={styles.txDateSep}>—</span>
+          <span className="text-xs text-muted shrink-0">—</span>
           <input
             type="date"
-            className={styles.txDateInput}
+            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-card text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
             value={dateTo}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value)}
           />

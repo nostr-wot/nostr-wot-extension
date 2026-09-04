@@ -1,195 +1,26 @@
 /* Post-quantum panel styles.
  *
- * These lived in SecuritySection.module.css — PqcSection imported a sibling
- * section's stylesheet for 19 rules that sibling never used, so renaming a class
- * in either file could break the other silently.
+ * Most of this file migrated to Tailwind utilities directly on the elements
+ * (see docs/component-standards.md §7). What is left is genuinely CSS:
+ *
+ *  - `.pqcCopyLink` overrides color on a LinkButton (tone="brand"). LinkButton's
+ *    own CSS Module is unlayered, and Tailwind's utilities live in
+ *    `@layer utilities` — an unlayered rule always wins that cascade regardless
+ *    of specificity, so a utility class could not actually override it. The raw
+ *    `<a>` callers (PqcHowItWorks, PqcImportPanel) have no such competing CSS
+ *    and are plain utilities at the call site instead.
+ *  - `.pqcGenerate` is a `<details>`/`<summary>` disclosure: the marker-hiding
+ *    pseudo-element, the `[open]` attribute selector and the child combinators
+ *    are exactly what utilities cannot express.
  */
 
-/* ── Post-quantum section ── */
-.pqcNotice {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-5);
-  padding: var(--sp-6);
-  border-radius: var(--radius-panel);
-  margin-bottom: var(--sp-6);
-}
-
-.pqcNotice {
-  background: rgba(217, 119, 6, 0.08);
-  color: var(--warning-strong);
-}
-
-.pqcNotice strong {
-  display: block;
-  font-size: var(--fs-md);
-  margin-bottom: var(--sp-1);
-}
-
-.pqcNotice p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.45;
-  opacity: 0.9;
-}
-
-.pqcBlocked {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
-.pqcKeyRow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-5);
-  padding: var(--sp-4) 0;
-  border-top: 1px solid var(--card-border);
-  font-size: var(--fs-sm);
-}
-
-.pqcKeyRow span {
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.pqcKeyRow code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--fs-xs);
-  color: var(--text-heading);
-  word-break: break-all;
-}
-
-.pqcLimits {
-  margin-top: var(--sp-7);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-loose);
-  color: var(--text-muted);
-}
-
-.desc {
-  font-size: var(--fs-sm);
-  line-height: var(--lh-loose);
-  color: var(--text-secondary);
-  margin: var(--sp-4) 0 var(--sp-6);
-}
-
-.pqcPublished {
-  margin: 0 0 var(--sp-4);
-  font-size: var(--fs-sm);
-  color: var(--success);
-}
-
+/* Overrides LinkButton's own (tone="brand") color and :hover color. */
 .pqcCopyLink {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: var(--sp-5);
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: var(--fs-xs);
   color: var(--text-muted);
-  cursor: pointer;
 }
 
 .pqcCopyLink:hover {
   color: var(--brand);
-}
-
-/* ── Post-quantum key import ── */
-
-.pqcImport {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  margin-top: var(--sp-6);
-  padding-top: var(--sp-6);
-  border-top: 1px solid var(--card-border);
-}
-
-.pqcImport > strong {
-  font-size: var(--fs-md);
-  color: var(--text-heading);
-}
-
-.pqcCommand {
-  display: block;
-  padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-sunken);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--fs-xs);
-  color: var(--text-heading);
-  word-break: break-all;
-  user-select: all;
-}
-
-.pqcTextarea {
-  width: 100%;
-  min-height: 88px;
-  padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-sm);
-  background: var(--input-bg);
-  color: var(--text-body);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: var(--fs-xs);
-  line-height: 1.45;
-  resize: vertical;
-}
-
-.pqcTextarea:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.pqcImportActions {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-5);
-  flex-wrap: wrap;
-}
-
-/* The file input itself is hidden; the label is the control. */
-.pqcFileLabel {
-  font-size: var(--fs-sm);
-  color: var(--accent);
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.pqcFileLabel:hover {
-  opacity: 0.85;
-}
-
-.pqcSteps {
-  margin: 0 0 var(--sp-4);
-  padding-left: 18px;
-}
-
-.pqcSteps li {
-  margin-bottom: var(--sp-3);
-  font-size: var(--fs-xs);
-  line-height: 1.55;
-  color: var(--text-body);
-}
-
-.pqcHowLimit {
-  margin: 0 0 var(--sp-4);
-  font-size: var(--fs-xs);
-  line-height: var(--lh-loose);
-  color: var(--text-muted);
-}
-
-/* The generator instructions, folded away. Generating a key file is a one-off; the paste
-   box is what someone returning to this screen needs to reach without scrolling. */
-.pqcGenerate {
-  margin-top: var(--sp-6);
-  font-size: var(--fs-xs);
 }
 
 .pqcGenerate > summary {
@@ -216,73 +47,4 @@
 
 .pqcGenerate > * {
   margin-top: var(--sp-4);
-}
-
-/* PQC panel: the one-line notice rows and the keys dialog.
-   The prose that used to sit in these rows now lives in InfoTooltip bubbles —
-   this panel has more to say than fits above the fold, and the explanations are
-   reference material rather than something to re-read on every visit. */
-.pqcNoticeInline {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  margin: var(--sp-5) 0;
-  font-size: var(--fs-sm);
-  color: var(--warning);
-}
-
-.pqcActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-4);
-  margin-top: var(--sp-7);
-}
-
-/* Full keys and the attestation, so they wrap instead of overflowing the 380px
-   popup. `break-all` because these are unbroken base64 with no spaces to wrap at. */
-.pqcJson {
-  margin-top: var(--sp-3);
-  padding: var(--sp-4);
-  border-radius: var(--radius-sm);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  line-height: 1.45;
-  color: var(--text-body);
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-/* Key rows in the keys dialog: label, shortened value, copy. The value is
-   shortened in the MIDDLE, so it needs no wrapping and the row stays one line. */
-.pqcKeyCopy {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  padding: var(--sp-2);
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: var(--fs-xs);
-  border-radius: var(--radius-sm);
-}
-
-.pqcKeyCopy:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
-}
-
-/* The two raw <input>s this replaced (`.pqcInput`) each carried their own
-   margin-bottom; PasswordPairFields owns its own internal spacing instead, so
-   this wrapper supplies the same rhythm from the outside. */
-.passwordFields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-4);
 }

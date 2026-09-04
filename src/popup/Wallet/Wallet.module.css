@@ -1,31 +1,18 @@
-/* Wallet UI styles */
+/* Wallet UI styles.
+ *
+ * Most of this file migrated to Tailwind utilities directly on the elements
+ * (see docs/component-standards.md §7). What is left here overrides a
+ * property a shared component (Card, IconButton, Input, LinkButton) already
+ * sets in its own CSS Module — that CSS is unlayered, and Tailwind's
+ * utilities live in `@layer utilities`, so an unlayered rule always wins the
+ * cascade regardless of specificity or source order. A utility class trying
+ * to override one of these would silently lose.
+ */
 
-.section {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--sp-2) 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
-
-/* ── Setup form ── */
-
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-5);
-}
-
-.formActions {
-  display: flex;
-  gap: var(--sp-4);
-  justify-content: flex-end;
-  margin-top: var(--sp-2);
-}
-
-/* Layout only — LinkButton supplies the surface. */
+/* Layout only — LinkButton supplies the surface. Padding overrides
+   LinkButton's own `padding: 0`, and the hover color overrides its own
+   `:hover` rule — both unlayered, so both must stay here rather than become
+   utilities that would lose the cascade. */
 .advancedToggle {
   padding: var(--sp-2) 0;
 }
@@ -34,221 +21,37 @@
   color: var(--text-secondary);
 }
 
-/* ── Provider header ── */
-
+/* Overrides Card's own `padding: var(--sp-7)`. */
 .providerCard {
   padding: var(--sp-5) var(--sp-6);
 }
 
-.providerRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-}
-
-.providerInfo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-
-.providerLabel {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  color: var(--text-heading);
-}
-
-.providerStatus {
-  font-size: var(--fs-xs);
-  color: var(--success);
-  font-weight: var(--fw-medium);
-}
-
-/* ── NWC URI row ── */
-
-.nwcRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-}
-
-.nwcUri {
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-/* ── Status display ── */
-
+/* Overrides Card's own `padding: var(--sp-7)`; the rest of this card's
+   layout (position, flex, gap) is plain utilities on the element. */
 .balanceCard {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-2);
   padding: var(--sp-8) var(--sp-6);
 }
 
+/* Overrides IconButton's own `padding: 0` / `border-radius: var(--radius-md)`,
+   and the hover color overrides its `:hover` rule. Position (absolute,
+   top-4, right-4) has no equivalent in IconButton's CSS, so it is a utility
+   on the element instead. */
 .settingsBtn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
   padding: var(--sp-2);
   border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  transition: all var(--transition);
 }
 
 .settingsBtn:hover {
-  background: var(--card-bg);
   color: var(--brand);
 }
 
-.balanceLabel {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.balanceValue {
-  font-size: 24px;
-  font-weight: var(--fw-bold);
-  color: var(--text-heading);
-}
-
-.balanceUnit {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-secondary);
-  margin-left: var(--sp-2);
-}
-
-.balanceErrorWrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-4);
-  padding: var(--sp-2) 0;
-}
-
-/* ── Threshold row ── */
-
-.thresholdRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  padding: var(--sp-5) 0;
-}
-
-.thresholdLabel {
-  font-size: var(--fs-sm);
-  color: var(--text-body);
-  flex: 1;
-}
-
+/* Overrides Input's own `width: 100%`. */
 .thresholdInput {
   width: 80px;
 }
 
-.qrCode {
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.qrBolt11 {
-  /* A <button> now, for the keyboard — reset the chrome the UA adds. */
-  width: 100%;
-  border: none;
-  background: none;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: var(--fs-2xs);
-  color: var(--text-muted);
-  word-break: break-all;
-  text-align: center;
-  max-height: 60px;
-  overflow-y: auto;
-  padding: var(--sp-3) var(--sp-4);
-  background: var(--card-bg);
-  border-radius: var(--radius-sm);
-  width: 100%;
-  cursor: pointer;
-}
-
-.success {
-  font-size: var(--fs-sm);
-  color: var(--success);
-}
-
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-12) 0;
-}
-
-/* ── Action buttons row ── */
-
-.actionRow {
-  display: flex;
-  gap: var(--sp-4);
-}
-
-.actionRow > * {
-  flex: 1;
-}
-
-/* ── Transaction list ── */
-
-.txList {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.txRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-  padding: var(--sp-4) 0;
-  border-bottom: 1px solid var(--card-border);
-}
-
-.txIcon {
-  font-size: var(--fs-lg);
-  flex-shrink: 0;
-}
-
-.txDetails {
-  flex: 1;
-  min-width: 0;
-}
-
-.txMemo {
-  font-size: var(--fs-sm);
-  color: var(--text-body);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Layout only — LinkButton supplies the surface. */
+/* Layout only — LinkButton supplies the surface; color and its hover
+   override LinkButton's own (muted/body) with this row's own (secondary/brand). */
 .txDateBtn {
   font-size: var(--fs-xs);
   color: var(--text-secondary);
@@ -256,253 +59,4 @@
 
 .txDateBtn:hover {
   color: var(--brand);
-}
-
-.txAmount {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  text-align: right;
-  white-space: nowrap;
-}
-
-.txIncoming {
-  color: var(--success);
-}
-
-.txOutgoing {
-  color: var(--text-secondary);
-}
-
-/* ── Transaction toolbar ── */
-
-.txToolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-4);
-}
-
-.txSearchWrap {
-  flex: 1;
-  min-width: 0;
-}
-
-.txFilterBtn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--card-border);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all var(--transition);
-}
-
-.txFilterBtn:hover {
-  background: var(--brand-tint-hover);
-  color: var(--text-heading);
-}
-
-.txFilterBtnActive {
-  border-color: var(--brand);
-  background: var(--brand-tint-active);
-  color: var(--brand);
-}
-
-.txFilterBadge {
-  position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
-  background: var(--brand);
-  color: var(--text-on-brand);
-  font-size: 9px;
-  font-weight: var(--fw-bold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: var(--lh-none);
-}
-
-.txFilterSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-
-.txFilterLabel {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-
-.txDateRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-.txDateInput {
-  flex: 1;
-  min-width: 0;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
-  font-size: var(--fs-xs);
-  font-family: inherit;
-  color: var(--text-body);
-  outline: none;
-  transition: border-color var(--transition);
-}
-
-.txDateInput:focus {
-  border-color: var(--brand);
-}
-
-.txDateSep {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.showMore {
-  text-align: center;
-  padding: var(--sp-4) 0;
-}
-
-/* ── Modal/overlay description ── */
-
-.overlayDesc {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-}
-
-/* ── Invoice preview ── */
-
-.invoicePreview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  padding: var(--sp-5) var(--sp-6);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-panel);
-}
-
-.invoiceRow {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--sp-4);
-}
-
-.invoiceLabel {
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  flex-shrink: 0;
-}
-
-.invoiceValue {
-  font-size: var(--fs-md);
-  color: var(--text-body);
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.invoiceAmountValue {
-  font-size: var(--fs-xl);
-  font-weight: var(--fw-bold);
-  color: var(--text-heading);
-}
-
-.invoiceError {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  text-align: center;
-  padding: var(--sp-3) 0;
-}
-
-/* ── Lightning Address ── */
-
-.lnAddressRow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  padding: var(--sp-4) 0;
-}
-
-.lnAddressValue {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  color: var(--text-heading);
-  word-break: break-all;
-}
-
-.lnAddressActions {
-  display: flex;
-  gap: var(--sp-3);
-}
-
-.lnAddressClaimRow {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-4) 0;
-  flex-wrap: wrap;
-}
-
-.lnAddressDomain {
-  font-size: var(--fs-md);
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-/* ── Deposit: payment received ──
-   Was three inline style objects on the elements themselves. */
-.depositPaid {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  text-align: center;
-}
-
-.depositPaidMark {
-  font-size: 48px;
-  line-height: var(--lh-none);
-  color: var(--success);
-}
-
-.depositPaidTitle {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  color: var(--success);
-}
-
-.depositPaidAmount {
-  font-size: var(--fs-2xl);
-  color: var(--success);
-}
-
-/* Empty transaction list. Was an inline style object on the row. */
-.txEmpty {
-  padding: var(--sp-6) 0;
-  text-align: center;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
 }

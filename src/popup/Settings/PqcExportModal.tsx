@@ -9,7 +9,6 @@ import PasswordPairFields from '@components/PasswordPairFields/PasswordPairField
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
-import styles from './PqcSection.module.css';
 import FormError from '@components/FormError/FormError';
 
 /**
@@ -59,7 +58,7 @@ const handleExport = async (encrypted: boolean) => {
         onClose={onClose}
         zIndex={720}
       >
-        <p className={styles.desc}>{t('pqc.exportDesc')}</p>
+        <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.exportDesc')}</p>
         <StatusNotice
           tone="warn"
           icon={<IconWarning size={18} />}
@@ -67,8 +66,8 @@ const handleExport = async (encrypted: boolean) => {
           info={t('pqc.exportWarn')}
         />
 
-        <label className={styles.desc}>{t('key.encryptionPassword')}</label>
-        <div className={styles.passwordFields}>
+        <label className="text-sm leading-loose text-secondary my-4 mb-6">{t('key.encryptionPassword')}</label>
+        <div className="flex flex-col gap-4 mb-4">
           <PasswordPairFields
             pair={exportPair}
             confirmPlaceholder={t('key.confirmPassword')}
@@ -79,7 +78,7 @@ const handleExport = async (encrypted: boolean) => {
 
         <FormError>{exportError}</FormError>
 
-        <div className={styles.pqcActions}>
+        <div className="flex flex-wrap gap-4 mt-7">
           <Button onClick={() => handleExport(true)} disabled={exportBusy || !exportPair.ready}>
             {exportBusy ? t('common.loading') : t('key.downloadEncrypted')}
           </Button>

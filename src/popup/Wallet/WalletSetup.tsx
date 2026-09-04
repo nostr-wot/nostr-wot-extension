@@ -72,7 +72,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
     lnbitsReady;
 
   return (
-    <div className={styles.section}>
+    <div className="flex-1 min-h-0 overflow-y-auto py-2 flex flex-col gap-4">
       <Card>
         <SectionLabel>{t('wallet.connectWallet')}</SectionLabel>
         <SectionHint>{t('wallet.connectHint')}</SectionHint>
@@ -88,7 +88,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
           onChange={(next) => { setTab(next); setError(''); }}
         />
 
-        <div className={styles.form}>
+        <div className="flex flex-col gap-5">
           {tab === 'quick' ? (
             <>
               <SectionHint>{t('wallet.quickSetupHint')}</SectionHint>
@@ -138,7 +138,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
 
           <FormError>{error}</FormError>
 
-          <div className={styles.formActions}>
+          <div className="flex gap-4 justify-end mt-2">
             <Button small onClick={handleConnect} disabled={loading || !canConnect}>
               {loading ? t('common.loading') : tab === 'quick' ? t('wallet.createWallet') : t('common.connect')}
             </Button>

@@ -118,7 +118,10 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
+  /* Two further monospace stacks, each already in use before the migration.
+     See theme.css for why they are not one token. */
   --font-mono-alt: var(--font-mono-alt);
+  --font-code: var(--font-mono-system);
 
   --font-weight-*: initial;
   --font-weight-normal: 400;

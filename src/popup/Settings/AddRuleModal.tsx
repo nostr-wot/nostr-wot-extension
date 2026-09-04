@@ -6,7 +6,6 @@ import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';
 import LinkButton from '@components/LinkButton/LinkButton';
-import styles from './Settings.module.css';
 import Chip from '@components/Chip/Chip';
 
 
@@ -47,8 +46,8 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
           </>
         )}
       >
-          <div className={styles.permModalSection}>
-            <span className={styles.permModalLabel}>{t('perms.permission')}</span>
+          <div className="flex flex-col gap-3">
+            <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('perms.permission')}</span>
             {!useCustom ? (
               <Dropdown
                 options={availableKeys.map(k => ({ value: k, label: formatLabel(k) }))}
@@ -57,11 +56,11 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
                 small
               />
             ) : (
-              <div className={styles.permCustomKindRow}>
-                <span className={styles.permCustomKindPrefix}>signEvent:</span>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold text-secondary whitespace-nowrap">signEvent:</span>
                 <input
                   type="number"
-                  className={styles.permCustomKindInput}
+                  className="flex-1 min-w-0 py-2.5 px-4 border border-card-border rounded-md bg-card text-sm font-[inherit] text-body outline-none transition-colors focus:border-brand"
                   placeholder="e.g. 30023"
                   value={customKind}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomKind(e.target.value)}
@@ -73,9 +72,9 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
             </LinkButton>
           </div>
 
-          <div className={styles.permModalSection}>
-            <span className={styles.permModalLabel}>{t('perms.decision')}</span>
-            <div className={styles.chipGroup}>
+          <div className="flex flex-col gap-3">
+            <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('perms.decision')}</span>
+            <div className="flex gap-2">
               {DECISIONS.map((d) => (
                 <Chip key={d} tone={d} selected={decision === d} onClick={() => setDecision(d)}>
                   {t(`perms.${d}`)}
