@@ -84,6 +84,25 @@ describe('theme tokens', () => {
     );
   });
 
+  it('no declaration is malformed by a stray bracket', () => {
+    // `color: var(--danger));` parses as garbage and the browser drops the
+    // whole declaration — silently, with the var() itself perfectly valid, so
+    // the resolution check above sails past it. Six of these were live at once:
+    // one rule had both its declarations dropped and therefore did nothing at
+    // all, while looking entirely reasonable in the file.
+    const broken: string[] = [];
+    for (const f of FILES) {
+      const src = readFileSync(f, 'utf8');
+      src.split('\n').forEach((line, i) => {
+        const code = line.replace(/\/\*.*?\*\//g, '');
+        if (/var\(\s*--[a-zA-Z0-9-]+\s*\)\s*\)/.test(code)) {
+          broken.push(`${f.slice(ROOT.length + 1)}:${i + 1}  ${line.trim()}`);
+        }
+      });
+    }
+    assert.deepEqual(broken, [], `unbalanced brackets around var():\n  ${broken.join('\n  ')}`);
+  });
+
   it('theme.css is where the palette lives', () => {
     // Not a style rule for its own sake: tokens defined inside a component's
     // module are scoped to that component, so a second component reaching for

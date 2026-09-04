@@ -125,7 +125,7 @@
 
 .errorText {
   font-size: var(--fs-md);
-  color: var(--danger));
+  color: var(--danger);
   text-align: center;
   line-height: var(--lh-normal);
   max-width: 240px;

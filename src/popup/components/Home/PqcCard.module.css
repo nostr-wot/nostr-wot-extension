@@ -57,9 +57,9 @@
 }
 
 .pqcCardWarn {
-  border-color: var(--warning));
+  border-color: var(--warning);
 }
 
 .pqcCardWarn .pqcIcon {
-  color: var(--warning));
+  color: var(--warning);
 }

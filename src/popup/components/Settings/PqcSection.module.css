@@ -122,7 +122,7 @@
   padding: var(--sp-4) var(--sp-5);
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
-  background: var(--bg-sunken));
+  background: var(--bg-sunken);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: var(--fs-xs);
   color: var(--text-heading);
