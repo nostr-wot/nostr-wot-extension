@@ -144,12 +144,12 @@ Read existing code and documentation before modifying anything.
 
 | Changing | Read first |
 |----------|-----------|
-| `lib/`, `background.ts`, `content.ts`, `inject.ts` | `docs/architecture.md`, `docs/message-flow.md` |
-| `lib/crypto/`, `lib/vault.ts`, `lib/signer.ts` | `docs/security.md` |
+| `src/lib/`, `background.ts`, `content.ts`, `inject.ts` | `docs/architecture.md`, `docs/message-flow.md` |
+| `src/lib/crypto/`, `src/lib/vault.ts`, `src/lib/signer.ts` | `docs/security.md` |
 | Message handling, new RPC methods | `docs/message-flow.md` |
-| `src/components/`, `src/popup/` | `docs/component-standards.md` |
+| `src/components/`, `src/screens/`, `src/domain/` | `docs/component-standards.md` |
 | Test files or test infrastructure | `docs/testing.md` |
-| `lib/wallet/`, `lib/bg/wallet-handlers.ts` | `docs/wallet.md`, `docs/security.md` |
+| `src/lib/wallet/`, `src/lib/bg/wallet-handlers.ts` | `docs/wallet.md`, `docs/security.md` |
 
 ## After Writing Code
 
