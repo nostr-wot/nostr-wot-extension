@@ -1,6 +1,7 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconChevronLeft, IconClose } from '@assets';
+import IconButton from '@components/IconButton/IconButton';
 import LangStep from './LangStep';
 import MethodStep from './MethodStep';
 import ImportStep from './ImportStep';
@@ -129,17 +130,20 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
       {!active.noHeader && (
         <div className={styles.header}>
           {showBack ? (
-            <button className={styles.backBtn} onClick={handleBack!}>
+            // Same tone/size split as OverlayPanel's header nav (back is
+            // brand-coloured, close is neutral) — this header hand-rolled its
+            // own copy of that pair instead of reusing it.
+            <IconButton tone="brand" size={36} onClick={handleBack!} aria-label={t('common.back')}>
               <IconChevronLeft />
-            </button>
+            </IconButton>
           ) : (
             <div className={styles.placeholder} />
           )}
           <span className={styles.title}>{active.title}</span>
           {onClose ? (
-            <button className={styles.closeBtn} onClick={onClose}>
+            <IconButton size={36} onClick={onClose} aria-label={t('common.close')}>
               <IconClose />
-            </button>
+            </IconButton>
           ) : (
             <div className={styles.placeholder} />
           )}

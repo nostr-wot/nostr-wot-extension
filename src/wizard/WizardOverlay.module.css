@@ -224,14 +224,16 @@
   margin-bottom: var(--sp-6);
 }
 
+/* Surface (background, border, radius) comes from <Card variant="flat">; this
+   keeps only the grid layout, the asymmetric bottom padding that clears the
+   reveal/copy button overlay, the blur transition, and the margin reset —
+   Card's own bottom margin would double up with .mnemonicWrapper's. */
 .mnemonicDisplay {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-1);
   padding: var(--sp-5) var(--sp-7) 32px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  margin-bottom: 0;
   transition: filter 0.3s;
 }
 
@@ -512,7 +514,10 @@
   max-width: 260px;
 }
 
-/* Dropdown trigger — cycles prompt text or shows selection */
+/* Dropdown trigger — cycles prompt text or shows selection. Border and radius
+   come from <Card variant="flat">; the translucent background is unique to
+   this trigger (none of Card's three surfaces are this see-through), so it
+   stays here along with the fixed height and hover motion. */
 .langTrigger {
   display: flex;
   align-items: center;
@@ -521,8 +526,7 @@
   max-width: 260px;
   padding: 0 var(--sp-7);
   height: 44px;
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
+  margin-bottom: 0;
   background: rgba(255, 255, 255, 0.5);
   cursor: pointer;
   transition: border-color var(--transition);
@@ -588,25 +592,6 @@
 .langModalTitle {
   font-size: var(--fs-xl);
   font-weight: var(--fw-bold);
-  color: var(--text-heading);
-}
-
-.langModalClose {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.langModalClose:hover {
-  background: var(--card-bg);
   color: var(--text-heading);
 }
 
