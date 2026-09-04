@@ -34,7 +34,7 @@ jobs:
       # Mirrors the browser-mocked group in tests/run.sh. It had drifted: several suites
       # that run locally were never gated here, including the post-quantum handlers.
       - name: Run module tests
-        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/wallet/payment-intents.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts tests/profile-read.test.ts tests/relay-cache.test.ts tests/activity.test.ts tests/vault-auto-unlock.test.ts tests/password-pair.test.ts tests/vault-lock-race.test.ts
+        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/wallet/payment-intents.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts tests/profile-read.test.ts tests/relay-cache.test.ts tests/activity.test.ts tests/vault-auto-unlock.test.ts tests/password-pair.test.ts tests/password-pair-fields.test.ts tests/vault-lock-race.test.ts
         timeout-minutes: 5
 
       - name: Run remaining unit tests

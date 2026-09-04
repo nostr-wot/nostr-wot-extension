@@ -95,6 +95,7 @@ sequence.
 | `tests/send-target.test.ts` | The Send box pays what the field says, or nothing — the debounce window between edit and resolve |
 | `tests/active-tab-domain.test.ts` | Naming the current site without permission to read its URL |
 | `tests/password-pair.test.ts` | The "new password, twice" rule, which had eight hand-written copies |
+| `tests/password-pair-fields.test.ts` | `PasswordPairFields`'s live checklist — both requirements at once, not just the first `validatePasswordPair` reports |
 | `tests/crypto/key-backup.test.ts` | A backup file has to be readable again — the encryption that was inline in the seed-export modal |
 | `tests/i18n-keys.test.ts` | Every string the UI asks for exists, in every locale, with the same placeholders |
 | `tests/theme-tokens.test.ts` | Every `var(--x)` resolves, and no declaration is malformed by a stray bracket — both fail silently in CSS |

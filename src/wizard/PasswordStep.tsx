@@ -6,10 +6,11 @@ import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
+import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
 import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 interface PasswordStepProps {
   account: any;
@@ -18,8 +19,7 @@ interface PasswordStepProps {
 }
 
 export default function PasswordStep({ account, upgradeId, onNext }: PasswordStepProps) {
-  const [password, setPassword] = useState<string>('');
-  const [confirm, setConfirm] = useState<string>('');
+  const pair = usePasswordPair();
   const [autoLockMs, setAutoLockMs] = useState<number>(900000); // 15 min default
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -82,13 +82,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
   const handleContinue = async () => {
     // Only validate password when creating a new vault
-    if (!vaultExists && !isNever) {
-      const problem = validatePasswordPair(password, confirm);
-      if (problem) {
-        setError(t(problem === 'tooShort' ? 'wizard.passwordMin8' : 'wizard.passwordsNoMatch'));
-        return;
-      }
-    }
+    if (!vaultExists && !isNever && !pair.ready) return;
     if (!account) { setError(t('wizard.noAccountData')); return; }
 
     setLoading(true);
@@ -104,7 +98,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
       } else {
         // Create new vault
         await rpc('onboarding_createVault', {
-          password: isNever ? '' : password,
+          password: isNever ? '' : pair.password,
           account,
           autoLockMinutes: autoLockMs / 60000,
           upgradeFromReadOnly: upgradeId || null,
@@ -183,35 +177,21 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
       )}
 
       {!isNever && (
-        <>
-          <div className={styles.formGroup}>
-            <label>{t('wizard.password')}</label>
-            <Input
-              type="password"
-              showToggle
-              placeholder={t('wizard.minEightChars')}
-              value={password}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>{t('wizard.confirmPw')}</label>
-            <Input
-              type="password"
-              placeholder={t('wizard.reEnterPw')}
-              value={confirm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => { setConfirm(e.target.value); setError(''); }}
-              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleContinue()}
-            />
-          </div>
-        </>
+        <div className={styles.passwordFields}>
+          <label>{t('wizard.password')}</label>
+          <PasswordPairFields
+            pair={pair}
+            passwordPlaceholder={t('wizard.minEightChars')}
+            confirmPlaceholder={t('wizard.reEnterPw')}
+            onSubmit={handleContinue}
+          />
+        </div>
       )}
 
       {error && <div className={styles.error}>{error}</div>}
 
       <div className={styles.stepActions}>
-        <Button onClick={handleContinue} disabled={loading}>
+        <Button onClick={handleContinue} disabled={loading || (!isNever && !pair.ready)}>
           {loading ? t('wizard.creatingVault') : t('common.continue')}
         </Button>
       </div>

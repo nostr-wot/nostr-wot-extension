@@ -9,10 +9,11 @@ import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import ListRow from '@components/ListRow/ListRow';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
+import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
 import { useVault } from '@popup/context/VaultContext';
 
 import styles from './SecuritySection.module.css';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
 
 interface SecuritySectionProps {
   onChangePassword: () => void;
@@ -21,8 +22,11 @@ interface SecuritySectionProps {
 export default function SecuritySection({ onChangePassword }: SecuritySectionProps) {
   const [autoLockMs, setAutoLockMs] = useState<number>(900000);
   const [pendingMs, setPendingMs] = useState<number | null>(null);
-  const [password, setPassword] = useState<string>('');
-  const [confirm, setConfirm] = useState<string>('');
+  // The pair for "turning auto-lock on" (never → timed). Disabling it
+  // (timed → never) asks for the *current* password instead, a single field
+  // that is not part of any pair — kept separate on purpose.
+  const pair = usePasswordPair();
+  const [currentPassword, setCurrentPassword] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const vault = useVault();
@@ -44,8 +48,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
   const handleChipSelect = (ms: number) => {
     setError('');
-    setPassword('');
-    setConfirm('');
+    pair.reset();
+    setCurrentPassword('');
 
     if (needsPassword(ms)) {
       // Show password fields, don't apply yet
@@ -63,14 +67,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
     const switchingToTimed = autoLockMs === 0 && pendingMs !== 0;
     const switchingToNever = autoLockMs !== 0 && pendingMs === 0;
 
-    if (switchingToTimed) {
-      const problem = validatePasswordPair(password, confirm);
-      if (problem) {
-        setError(t(problem === 'tooShort' ? 'wizard.passwordMin8' : 'wizard.passwordsNoMatch'));
-        return;
-      }
-    }
-    if (switchingToNever && !password) {
+    if (switchingToTimed && !pair.ready) return;
+    if (switchingToNever && !currentPassword) {
       setError(t('security.enterCurrentPassword')); return;
     }
 
@@ -79,13 +77,13 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
     try {
       const params: Record<string, any> = { ms: pendingMs };
-      if (switchingToTimed) params.password = password;
-      if (switchingToNever) params.currentPassword = password;
+      if (switchingToTimed) params.password = pair.password;
+      if (switchingToNever) params.currentPassword = currentPassword;
       await rpc('vault_setAutoLock', params);
       setAutoLockMs(pendingMs);
       setPendingMs(null);
-      setPassword('');
-      setConfirm('');
+      pair.reset();
+      setCurrentPassword('');
       vault.checkState?.();
     } catch (e: any) {
       setError(e.message || t('common.error'));
@@ -95,8 +93,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
   const handleCancel = () => {
     setPendingMs(null);
-    setPassword('');
-    setConfirm('');
+    pair.reset();
+    setCurrentPassword('');
     setError('');
   };
 
@@ -122,24 +120,17 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
           {showSetPassword && (
             <div className={styles.passwordSection}>
               <p className={styles.passwordHint}>{t('security.setPasswordHint')}</p>
-              <Input
-                type="password"
-                showToggle
-                placeholder={t('wizard.minEightChars')}
-                value={password}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
-              />
-              <Input
-                type="password"
-                placeholder={t('wizard.reEnterPw')}
-                value={confirm}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => { setConfirm(e.target.value); setError(''); }}
-                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleConfirm()}
+              <PasswordPairFields
+                pair={pair}
+                passwordPlaceholder={t('wizard.minEightChars')}
+                confirmPlaceholder={t('wizard.reEnterPw')}
+                onSubmit={handleConfirm}
+                disabled={loading}
               />
               {error && <div className={styles.error}>{error}</div>}
               <div className={styles.confirmActions}>
                 <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
-                <Button small onClick={handleConfirm} disabled={loading}>
+                <Button small onClick={handleConfirm} disabled={loading || !pair.ready}>
                   {loading ? t('common.saving') : t('common.confirm')}
                 </Button>
               </div>
@@ -161,8 +152,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
                 type="password"
                 showToggle
                 placeholder={t('security.currentPassword')}
-                value={password}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
+                value={currentPassword}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => { setCurrentPassword(e.target.value); setError(''); }}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleConfirm()}
               />
               {error && <div className={styles.error}>{error}</div>}

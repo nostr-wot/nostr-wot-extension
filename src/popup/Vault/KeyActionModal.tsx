@@ -13,9 +13,10 @@ import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
 import styles from './KeyActionModal.module.css';
-import { validatePasswordPair, MIN_PASSWORD_LENGTH } from '@shared/passwordPair.ts';
 import SeedWord from '@components/SeedWord/SeedWord';
 import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
+import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
 
 interface KeyActionModalProps {
   action: string;
@@ -41,15 +42,13 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   // seed state
   const seed = useTimedReveal<string[]>([], 60_000);
   const [seedEncMode, setSeedEncMode] = useState<boolean>(false);
-  const [seedEncPw, setSeedEncPw] = useState<string>('');
-  const [seedEncConfirm, setSeedEncConfirm] = useState<string>('');
+  const seedEncPair = usePasswordPair();
   const [seedEncError, setSeedEncError] = useState<string>('');
   const [seedEncrypting, setSeedEncrypting] = useState<boolean>(false);
 
-  // change password state
+  // change password state — cpCurrent is not part of the pair, and stays its own field
   const [cpCurrent, setCpCurrent] = useState<string>('');
-  const [cpNew, setCpNew] = useState<string>('');
-  const [cpConfirm, setCpConfirm] = useState<string>('');
+  const cpPair = usePasswordPair();
   const [cpError, setCpError] = useState<string>('');
   const [cpSuccess, setCpSuccess] = useState<boolean>(false);
 
@@ -93,8 +92,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     nsec.clear();
     seed.clear();
     setSeedEncMode(false);
-    setSeedEncPw('');
-    setSeedEncConfirm('');
+    seedEncPair.reset();
     setSeedEncError('');
     onClose();
   };
@@ -121,21 +119,16 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
 
   const downloadSeedEncrypted = async () => {
     setSeedEncError('');
-    const seedProblem = validatePasswordPair(seedEncPw, seedEncConfirm);
-    if (seedProblem) {
-      setSeedEncError(t(seedProblem === 'tooShort' ? 'key.passwordMin8' : 'key.passwordsNoMatch'));
-      return;
-    }
+    if (!seedEncPair.ready) return;
     setSeedEncrypting(true);
     try {
       // One implementation, in lib/crypto/keyBackup.ts, where a round-trip test
       // proves the file can be read back. This was inline here — so nothing ever
       // verified that the last copy of someone's seed phrase was decryptable.
-      const payload = await encryptBackup(seed.value.join(' '), seedEncPw);
+      const payload = await encryptBackup(seed.value.join(' '), seedEncPair.password);
       downloadFile(payload, 'nostr-seed-phrase-encrypted.json');
       setSeedEncMode(false);
-      setSeedEncPw('');
-      setSeedEncConfirm('');
+      seedEncPair.reset();
     } catch {
       setSeedEncError(t('key.failedExport'));
     }
@@ -146,13 +139,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   const handleChangePassword = async () => {
     setCpError('');
     if (!cpCurrent) { setCpError(t('key.enterCurrentPassword')); return; }
-    const cpProblem = validatePasswordPair(cpNew, cpConfirm);
-    if (cpProblem) {
-      setCpError(t(cpProblem === 'tooShort' ? 'key.newPasswordMin8' : 'key.passwordsNoMatch'));
-      return;
-    }
+    if (!cpPair.ready) return;
     try {
-      const result = await rpc<{ success?: boolean; error?: string }>('vault_changePassword', { currentPassword: cpCurrent, newPassword: cpNew });
+      const result = await rpc<{ success?: boolean; error?: string }>('vault_changePassword', { currentPassword: cpCurrent, newPassword: cpPair.password });
       if (result?.success) {
         setCpSuccess(true);
         setTimeout(handleClose, 1500);
@@ -256,24 +245,17 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 <div className={styles.hint}>{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
                 {seedEncMode ? (
                   <>
-                    <Input
-                      type="password"
-                      showToggle
-                      placeholder={t('key.seedDownloadPassword')}
-                      value={seedEncPw}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setSeedEncPw(e.target.value)}
-                    />
-                    <Input
-                      type="password"
-                      placeholder={t('key.seedDownloadConfirm')}
-                      value={seedEncConfirm}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setSeedEncConfirm(e.target.value)}
-                      onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && downloadSeedEncrypted()}
+                    <PasswordPairFields
+                      pair={seedEncPair}
+                      passwordPlaceholder={t('key.seedDownloadPassword')}
+                      confirmPlaceholder={t('key.seedDownloadConfirm')}
+                      onSubmit={downloadSeedEncrypted}
+                      disabled={seedEncrypting}
                     />
                     {seedEncError && <div className={styles.error}>{seedEncError}</div>}
                     <div className={styles.actions}>
-                      <Button variant="secondary" small onClick={() => { setSeedEncMode(false); setSeedEncPw(''); setSeedEncConfirm(''); setSeedEncError(''); }}>{t('common.cancel')}</Button>
-                      <Button small onClick={downloadSeedEncrypted} disabled={seedEncrypting}>
+                      <Button variant="secondary" small onClick={() => { setSeedEncMode(false); seedEncPair.reset(); setSeedEncError(''); }}>{t('common.cancel')}</Button>
+                      <Button small onClick={downloadSeedEncrypted} disabled={seedEncrypting || !seedEncPair.ready}>
                         {seedEncrypting ? t('key.seedEncrypting') : t('common.download')}
                       </Button>
                     </div>
@@ -304,24 +286,16 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                   value={cpCurrent}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCpCurrent(e.target.value)}
                 />
-                <Input
-                  type="password"
-                  showToggle
-                  placeholder={t('key.newPwMinChars')}
-                  value={cpNew}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCpNew(e.target.value)}
-                />
-                <Input
-                  type="password"
-                  placeholder={t('key.confirmNewPw')}
-                  value={cpConfirm}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCpConfirm(e.target.value)}
-                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleChangePassword()}
+                <PasswordPairFields
+                  pair={cpPair}
+                  passwordPlaceholder={t('key.newPwMinChars')}
+                  confirmPlaceholder={t('key.confirmNewPw')}
+                  onSubmit={handleChangePassword}
                 />
                 {cpError && <div className={styles.error}>{cpError}</div>}
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
-                  <Button small onClick={handleChangePassword}>{t('common.save')}</Button>
+                  <Button small onClick={handleChangePassword} disabled={!cpPair.ready}>{t('common.save')}</Button>
                 </div>
               </>
             )}
