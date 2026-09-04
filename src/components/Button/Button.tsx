@@ -5,6 +5,14 @@ type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  /**
+   * Transparent with a border in the variant's colour, rather than filled.
+   *
+   * A modifier rather than a fourth variant because it combines: the approval
+   * sheet has a neutral outline toggle and a danger outline "reject all" side
+   * by side, and as variants those would be two more names for one idea.
+   */
+  outline?: boolean;
   small?: boolean;
   className?: string;
   children?: React.ReactNode;
@@ -12,6 +20,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export default function Button({
   variant = 'primary',
+  outline = false,
   small = false,
   className = '',
   children,
@@ -20,6 +29,7 @@ export default function Button({
   const cls = [
     styles.btn,
     styles[variant],
+    outline && styles.outline,
     small && styles.small,
     className,
   ].filter(Boolean).join(' ');

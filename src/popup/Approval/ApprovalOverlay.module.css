@@ -38,42 +38,6 @@
   gap: var(--sp-3);
 }
 
-.toggleBtn {
-  background: none;
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  padding: 3px var(--sp-4);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all var(--transition);
-}
-
-.toggleBtn:hover {
-  border-color: var(--brand-light);
-  color: var(--brand);
-}
-
-.rejectAllBtn {
-  background: none;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: var(--radius-md);
-  padding: 3px var(--sp-4);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  color: var(--danger);
-  cursor: pointer;
-  font-family: inherit;
-  transition: all var(--transition);
-}
-
-.rejectAllBtn:hover {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.5);
-}
-
 .title {
   font-size: var(--fs-lg);
   font-weight: var(--fw-bold);
@@ -119,5 +83,4 @@
 @keyframes scrimFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sheetSlideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
 

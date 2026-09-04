@@ -6,6 +6,7 @@ import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Settings.module.css';
+import LinkButton from '@components/LinkButton/LinkButton';
 
 /**
  * Sites the user declined to connect, and how long that lasts.
@@ -78,9 +79,9 @@ export default function DeclinedSites() {
                 <div className={styles.permDomain}>{domain}</div>
                 <div className={styles.permSummary}>{describe(until)}</div>
               </div>
-              <button className={styles.declinedRemove} onClick={() => undo(domain)}>
+              <LinkButton tone="brand" className={styles.declinedRemove} onClick={() => undo(domain)}>
                 {t('perm.declinedRemove')}
-              </button>
+              </LinkButton>
             </div>
           ))}
         </div>

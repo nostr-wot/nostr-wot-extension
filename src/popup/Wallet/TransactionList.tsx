@@ -9,6 +9,7 @@ import { formatTxDate } from '@shared/format/time.ts';
 import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@shared/txFilter.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 import styles from './Wallet.module.css';
+import LinkButton from '@components/LinkButton/LinkButton';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -77,9 +78,9 @@ export default function TransactionList({
                     ? (tx.amount >= 0 ? t('wallet.txReceived') : t('wallet.txSent'))
                     : tx.memo}
                 </div>
-                <button className={styles.txDateBtn} onClick={onOpenFilters}>
+                <LinkButton className={styles.txDateBtn} onClick={onOpenFilters}>
                   {formatTxDate(tx.createdAt)}
-                </button>
+                </LinkButton>
               </div>
               <span className={`${styles.txAmount} ${tx.amount >= 0 ? styles.txIncoming : styles.txOutgoing}`}>
                 {tx.amount >= 0 ? '+' : ''}{Math.round(tx.amount).toLocaleString()}

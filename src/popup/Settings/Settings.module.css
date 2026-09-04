@@ -479,14 +479,11 @@
   border-top: none;
 }
 
+/* Layout only — LinkButton supplies the surface; the underline is what marks
+   this one as an undo rather than a plain action. */
 .declinedRemove {
   flex-shrink: 0;
-  background: none;
-  border: none;
-  padding: var(--sp-2) var(--sp-3);
   font-size: var(--fs-sm);
-  color: var(--accent);
-  cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
 }

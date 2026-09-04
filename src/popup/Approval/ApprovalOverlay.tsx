@@ -21,6 +21,7 @@ import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import { usePermissions } from '@popup/context/PermissionsContext';
 import { useAccount } from '@popup/context/AccountContext';
 import styles from './ApprovalOverlay.module.css';
+import Button from '@components/Button/Button';
 
 interface ApprovalOverlayProps {
   onRequestUnlock?: () => void;
@@ -119,14 +120,14 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           <span className={styles.count}>{totalCount}</span>
           <div className={styles.headerActions}>
             {allRequests.length > 1 && (
-              <button className={styles.toggleBtn} onClick={() => setExpanded(!expanded)}>
+              <Button small outline onClick={() => setExpanded(!expanded)}>
                 {expanded ? t('approval.grouped') : t('approval.expanded')}
-              </button>
+              </Button>
             )}
             {groups.length > 0 && (
-              <button className={styles.rejectAllBtn} onClick={handleRejectAll}>
+              <Button small outline variant="danger" onClick={handleRejectAll}>
                 {t('approval.rejectAll')}
-              </button>
+              </Button>
             )}
           </div>
         </div>

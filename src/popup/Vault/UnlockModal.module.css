@@ -160,15 +160,11 @@
   flex: 1;
 }
 
+/* Layout only — LinkButton supplies the surface. */
 .resetLink {
   display: block;
   width: 100%;
   margin-top: var(--sp-6);
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: var(--fs-xs);
-  cursor: pointer;
   text-align: center;
 }
 

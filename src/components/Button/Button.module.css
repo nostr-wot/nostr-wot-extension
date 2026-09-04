@@ -59,3 +59,28 @@
   font-size: var(--fs-xs);
   padding: var(--sp-3) var(--sp-6);
 }
+
+/* Outline: transparent, bordered in the variant's own colour. Combines with the
+   variant rather than replacing it, so a neutral and a danger outline can sit
+   side by side without inventing two more variant names. */
+.outline {
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid var(--card-border);
+  color: var(--text-secondary);
+}
+
+.outline:hover {
+  background: var(--card-bg);
+  color: var(--text-heading);
+}
+
+.outline.danger {
+  border-color: var(--error-tint);
+  color: var(--error);
+}
+
+.outline.danger:hover {
+  background: var(--error-tint);
+  color: var(--error);
+}

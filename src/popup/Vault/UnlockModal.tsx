@@ -10,6 +10,7 @@ import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
 import styles from './UnlockModal.module.css';
+import LinkButton from '@components/LinkButton/LinkButton';
 
 interface WaiterInfo {
   id: string;
@@ -164,9 +165,9 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           </Button>
         </div>
         {fullScreen && !confirmReset && (
-          <button className={styles.resetLink} onClick={() => setConfirmReset(true)}>
+          <LinkButton className={styles.resetLink} onClick={() => setConfirmReset(true)}>
             {t('unlock.forgotPassword')}
-          </button>
+          </LinkButton>
         )}
         {fullScreen && confirmReset && (
           <div className={styles.resetConfirm}>
