@@ -7,15 +7,8 @@ import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
 import StatusDot from '@components/StatusDot/StatusDot';
 import Button from '@components/Button/Button';
+import type { ActivityEntry } from '@models/activity.ts';
 import styles from './EventDetailModal.module.css';
-
-interface ActivityEntry {
-  method: string;
-  event?: NostrEventDisplay | null;
-  theirPubkey?: string | null;
-  decision?: string;
-  timestamp?: number;
-}
 
 interface ActivityGroup {
   methodKey?: string;

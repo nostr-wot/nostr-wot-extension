@@ -1,3 +1,6 @@
+export type { ProfileMetadata } from '@models/profile.ts';
+import type { ProfileMetadata } from '@models/profile.ts';
+
 /**
  * Building the kind:0 content the user is about to publish.
  *
@@ -9,17 +12,6 @@
  * of a published profile, and there was no test on it.
  */
 
-export interface ProfileMetadata {
-  name?: string;
-  display_name?: string;
-  about?: string;
-  picture?: string;
-  nip05?: string;
-  lud16?: string;
-  website?: string;
-  banner?: string;
-  [key: string]: unknown;
-}
 
 /** The fields the edit form owns. Anything else on the existing event is passed through. */
 export interface ProfileFields {

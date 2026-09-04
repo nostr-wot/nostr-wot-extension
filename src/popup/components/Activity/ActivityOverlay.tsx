@@ -15,6 +15,7 @@ import { useAccount } from '@popup/context/AccountContext';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import styles from './ActivityOverlay.module.css';
+import type { DropdownOption } from '@models/dropdown.ts';
 
 
 interface ActivityOverlayProps {
@@ -22,11 +23,6 @@ interface ActivityOverlayProps {
   initialDomain: string | null;
   initialPubkey: string;
   onClose: () => void;
-}
-
-interface DropdownOption {
-  value: string;
-  label: string;
 }
 
 export default function ActivityOverlay({ visible, initialDomain, initialPubkey, onClose }: ActivityOverlayProps) {

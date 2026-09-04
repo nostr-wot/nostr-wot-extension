@@ -4,17 +4,8 @@ import { safeImageUrl } from '@shared/safeUrl.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import Avatar from '@components/Avatar/Avatar';
 import styles from '../EventPreview.module.css';
+import type { ProfileMetadata } from '@models/profile.ts';
 
-interface ProfileMeta {
-  name?: string;
-  display_name?: string;
-  picture?: string;
-  banner?: string;
-  about?: string;
-  nip05?: string;
-  lud16?: string;
-  website?: string;
-}
 
 interface ProfilePreviewProps {
   event: NostrEventDisplay;
@@ -22,7 +13,7 @@ interface ProfilePreviewProps {
 
 export default function ProfilePreview({ event }: ProfilePreviewProps) {
   try {
-    const meta: ProfileMeta = JSON.parse(event.content);
+    const meta: ProfileMetadata = JSON.parse(event.content);
     const displayName = meta.name || meta.display_name || '';
     const initial = displayName ? displayName[0].toUpperCase() : '?';
     // Banner comes from untrusted event content — only render http(s) URLs.

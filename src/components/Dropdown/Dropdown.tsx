@@ -3,11 +3,7 @@ import { IconChevronDown } from '@assets';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import styles from './Dropdown.module.css';
 import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
-
-interface DropdownOption {
-  value: string;
-  label: string;
-}
+import type { DropdownOption } from '@models/dropdown.ts';
 
 interface DropdownProps {
   options: DropdownOption[];

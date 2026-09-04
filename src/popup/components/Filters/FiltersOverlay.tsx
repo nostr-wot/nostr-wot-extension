@@ -11,6 +11,7 @@ import EmptyState from '@components/EmptyState/EmptyState';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Filters.module.css';
+import type { MyMuteList } from '@models/muteList.ts';
 
 interface FiltersOverlayProps {
   visible: boolean;
@@ -18,15 +19,6 @@ interface FiltersOverlayProps {
 }
 
 /** Server-returned grouped public mute list + preserved raw private content. */
-interface MyMuteList {
-  people: string[];
-  hashtags: string[];
-  words: string[];
-  events: string[];
-  rawContent: string;
-  createdAt: number;
-}
-
 /**
  * Suggested public mute lists to one-tap import.
  *

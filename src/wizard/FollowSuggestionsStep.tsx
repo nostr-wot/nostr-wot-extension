@@ -6,6 +6,7 @@ import Button from '@components/Button/Button';
 import Avatar from '@components/Avatar/Avatar';
 import { truncateNpub, getInitial as getInitialChar } from '@shared/format/text.ts';
 import styles from './WizardOverlay.module.css';
+import type { ProfileMetadata } from '@models/profile.ts';
 
 /* ------------------------------------------------------------------ */
 /*  Curated account list — npubs only                                  */
@@ -70,13 +71,8 @@ function selectAccounts(): string[] {
 /*  Profile metadata types                                             */
 /* ------------------------------------------------------------------ */
 
-interface ProfileMeta {
-  display_name?: string;
-  name?: string;
-  picture?: string;
-  nip05?: string;
-  _ts?: number;
-}
+/** A cached profile: the published metadata plus when this device fetched it. */
+type ProfileMeta = ProfileMetadata & { _ts?: number };
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */

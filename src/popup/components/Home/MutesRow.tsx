@@ -6,12 +6,7 @@ import { MUTE_LIST_CACHE } from '@shared/relayCacheNames.ts';
 import NavRow from '@components/NavRow/NavRow';
 import { IconShield } from '@assets';
 import { useNavigate } from './NavigationContext';
-
-interface MyMuteList {
-  people: string[];
-  words: string[];
-  hashtags: string[];
-}
+import type { MyMuteList } from '@models/muteList.ts';
 
 /**
  * Home-screen module for the user's own NIP-51 mute list (kind:10000). Shows a
@@ -20,7 +15,10 @@ interface MyMuteList {
  */
 export default function MutesRow() {
   const navigate = useNavigate();
-  const { data, reload } = useRpc<MyMuteList>('getMyMuteList', {}, {
+  // Only the three counts, not the whole list: this row renders a number, and
+  // asking for `MyMuteList` would oblige it to carry `rawContent` — the
+  // encrypted private half — for no reason.
+  const { data, reload } = useRpc<Pick<MyMuteList, 'people' | 'words' | 'hashtags'>>('getMyMuteList', {}, {
     defaultValue: { people: [], words: [], hashtags: [] },
   });
   // The first read comes from the background's cache so this paints without

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import browser from '@shared/browser.ts';
 import { useWallet } from '@popup/context/WalletContext';
-import type { Account } from './useSiteState.ts';
+import type { Account } from '@models/account.ts';
 
 /**
  * Whether to offer the wallet on the home screen, and whether the user has

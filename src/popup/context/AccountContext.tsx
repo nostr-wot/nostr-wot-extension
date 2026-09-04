@@ -4,14 +4,7 @@ import { t } from '@lib/i18n.js';
 import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { rpc } from '@shared/rpc.ts';
 import type { ProfileMetadata } from '@shared/profileMetadata.ts';
-
-interface Account {
-  id: string;
-  pubkey: string;
-  name?: string;
-  readOnly?: boolean;
-  type?: string;
-}
+import type { Account } from '@models/account.ts';
 
 interface ProfileCache {
   [pubkey: string]: ProfileMetadata;

@@ -1,13 +1,5 @@
-export interface ActivityEntry {
-  method: string;
-  kind?: number | null;
-  decision: string;
-  timestamp: number;
-  domain?: string;
-  pubkey?: string;
-  theirPubkey?: string;
-  event?: any;
-}
+export type { ActivityEntry } from '@models/activity.ts';
+import type { ActivityEntry } from '@models/activity.ts';
 
 export interface GroupedActivity {
   methodKey: string;

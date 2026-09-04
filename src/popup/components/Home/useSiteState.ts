@@ -3,14 +3,7 @@ import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
 import { resolveSiteState } from '@shared/siteState.ts';
-
-export interface Account {
-  id: string;
-  pubkey: string;
-  name?: string;
-  readOnly?: boolean;
-  type?: string;
-}
+import type { Account } from '@models/account.ts';
 
 /**
  * Which site the popup is looking at, and whether this identity is enabled there.

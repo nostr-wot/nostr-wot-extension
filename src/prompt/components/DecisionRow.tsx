@@ -2,12 +2,7 @@ import React, { useState, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Select from '@components/Select/Select';
 import styles from '../PromptApp.module.css';
-
-interface PromptDecision {
-  allow: boolean;
-  remember: boolean;
-  duration?: number;
-}
+import type { PromptDecision } from '@models/prompt.ts';
 
 interface DecisionRowProps {
   disabled: boolean;

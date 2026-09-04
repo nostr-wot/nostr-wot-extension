@@ -9,12 +9,7 @@ import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './components/DecisionRow';
 import UnlockSection from './components/UnlockSection';
 import styles from './PromptApp.module.css';
-
-interface PromptDecision {
-  allow: boolean;
-  remember: boolean;
-  duration?: number;
-}
+import type { PromptDecision } from '@models/prompt.ts';
 
 interface PendingPrompt {
   pubkey?: string;
