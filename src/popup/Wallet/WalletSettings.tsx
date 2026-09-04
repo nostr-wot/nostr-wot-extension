@@ -8,7 +8,6 @@ import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import useCopy from '@hooks/useCopy.ts';
-import styles from './Wallet.module.css';
 import FormError from '@components/FormError/FormError';
 
 const PROVIDER_LABELS: Record<string, string> = {
@@ -189,7 +188,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
   return (
     <>
       <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500}>
-        <Card className={styles.providerCard}>
+        <Card className="py-5 px-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
               <span className="text-md font-semibold text-heading">{providerLabel}</span>
@@ -220,7 +219,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
               onChange={(e: ChangeEvent<HTMLInputElement>) => setThresholdDraft(e.target.value)}
               onBlur={handleThresholdBlur}
               small
-              className={styles.thresholdInput}
+              className="w-[80px]"
             />
           </div>
         </Card>

@@ -7,7 +7,6 @@ import Button from '@components/Button/Button';
 import LinkButton from '@components/LinkButton/LinkButton';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 
-import styles from './Wallet.module.css';
 import Tabs from '@components/Tabs/Tabs';
 import FormError from '@components/FormError/FormError';
 
@@ -93,7 +92,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
             <>
               <SectionHint>{t('wallet.quickSetupHint')}</SectionHint>
               <LinkButton
-                className={styles.advancedToggle}
+                className="py-2 px-0 hover:text-secondary"
                 onClick={() => setShowAdvanced(!showAdvanced)}
               >
                 {t('wallet.advancedSettings')} {showAdvanced ? '\u25B2' : '\u25BC'}
