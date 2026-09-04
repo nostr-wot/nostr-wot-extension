@@ -4,6 +4,7 @@ import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import { type ProfileMetadata } from '@shared/profileMetadata.ts';
 import styles from './EditProfileOverlay.module.css';
+import Card from '@components/Card/Card';
 
 interface ProfilePreviewCardProps {
   meta: ProfileMetadata | null;
@@ -20,7 +21,7 @@ export default function ProfilePreviewCard({
 }: ProfilePreviewCardProps) {
   return (
   <div className={styles.body}>
-    <div className={styles.previewCard}>
+    <Card variant="flat" className={styles.previewCard}>
       <div className={styles.previewHeader}>
         <Avatar
           src={meta?.picture}
@@ -46,7 +47,7 @@ export default function ProfilePreviewCard({
           <dt>Website</dt><dd>{meta.website}</dd>
         </dl>
       )}
-    </div>
+    </Card>
 
     <div className={styles.previewHint}>{t('profileEdit.previewHint')}</div>
 

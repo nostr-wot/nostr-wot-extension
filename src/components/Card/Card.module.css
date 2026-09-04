@@ -1,9 +1,31 @@
+/* Three variants because three genuinely exist in the product, not because a
+   prop seemed nice. Hand-rolled copies of all three were scattered across the
+   feature stylesheets — `methodCard` in the wizard was byte-for-byte `raised`.
+   Anything that is a boxed surface should be this component with the variant
+   that matches, so the set stays countable. */
 .card {
-  background: var(--surface-glass);
-  backdrop-filter: blur(8px);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
   padding: var(--sp-7);
   margin-bottom: var(--sp-6);
-  border: 1px solid var(--card-border);
+}
+
+/* Frosted, lifted. The default, and what most content sits on. */
+.raised {
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-card);
+}
+
+/* Tinted and flush — grouped rows, previews, anything nested inside a raised
+   surface where a second shadow would read as clutter. */
+.flat {
+  background: var(--card-bg);
+}
+
+/* Opaque. For a surface that must not let anything show through, such as one
+   floating over the page backdrop. */
+.elevated {
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-card);
 }
