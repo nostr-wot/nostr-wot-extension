@@ -19,6 +19,7 @@
       "@components/*": ["./src/components/*"],
       "@popup/*": ["./src/popup/*"],
       "@wizard/*": ["./src/wizard/*"],
+      "@models/*": ["./src/models/*"],
       "@lib/*": ["./lib/*"]
     }
   },
