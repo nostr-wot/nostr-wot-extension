@@ -2,10 +2,10 @@ import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
   createFromMnemonic, createFromMnemonicAtIndex, generateNewAccount, importNsec, importNpub, connectNip46, importFromMnemonicDerived
-} from '../lib/accounts.ts';
-import { nsecEncode, npubEncode } from '../lib/crypto/bech32.ts';
-import { bytesToHex, hexToBytes } from '../lib/crypto/utils.ts';
-import { getPublicKey } from '../lib/crypto/secp256k1.ts';
+} from '../src/lib/accounts.ts';
+import { nsecEncode, npubEncode } from '../src/lib/crypto/bech32.ts';
+import { bytesToHex, hexToBytes } from '../src/lib/crypto/utils.ts';
+import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';
 
 const VALID_MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';

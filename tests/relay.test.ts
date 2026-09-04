@@ -7,11 +7,11 @@ import {
   readLocalCache,
   writeLocalCache,
   liveQuery,
-} from '../lib/relay.ts';
-import { signEvent } from '../lib/crypto/nip01.ts';
-import { bytesToHex } from '../lib/crypto/utils.ts';
+} from '../src/lib/relay.ts';
+import { signEvent } from '../src/lib/crypto/nip01.ts';
+import { bytesToHex } from '../src/lib/crypto/utils.ts';
 import mock, { resetMockStorage } from './helpers/browser-mock.ts';
-import type { SignedEvent, UnsignedEvent, LiveEvent } from '../lib/types.ts';
+import type { SignedEvent, UnsignedEvent, LiveEvent } from '../src/lib/types.ts';
 
 // ── Helpers ──
 

@@ -19,11 +19,11 @@ import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
-import * as vault from '../lib/vault.ts';
-import * as permissions from '../lib/permissions.ts';
-import * as signer from '../lib/signer.ts';
-import { arrayToBase64 } from '../lib/crypto/utils.ts';
-import type { VaultPayload } from '../lib/types.ts';
+import * as vault from '../src/lib/vault.ts';
+import * as permissions from '../src/lib/permissions.ts';
+import * as signer from '../src/lib/signer.ts';
+import { arrayToBase64 } from '../src/lib/crypto/utils.ts';
+import type { VaultPayload } from '../src/lib/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';

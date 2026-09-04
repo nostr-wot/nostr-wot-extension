@@ -10,7 +10,7 @@ import { strict as assert } from 'node:assert';
 // Import the browser mock before any lib/ module so the loader-hook redirect
 // resolves to the already-loaded mock module (same pattern as other bg tests).
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import { handlers, isPrivateHost } from '../lib/bg/publish-handlers.ts';
+import { handlers, isPrivateHost } from '../src/lib/bg/publish-handlers.ts';
 
 const checkRelayHealth = handlers.get('checkRelayHealth')!;
 

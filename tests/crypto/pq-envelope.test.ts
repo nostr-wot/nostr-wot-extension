@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { randomBytes } from '@noble/hashes/utils.js';
-import { derivePqKeys, pqEncrypt, pqDecrypt, isPqEnvelope } from '../../lib/crypto/pq.ts';
-import { arrayToBase64, base64ToArray } from '../../lib/crypto/utils.ts';
+import { derivePqKeys, pqEncrypt, pqDecrypt, isPqEnvelope } from '../../src/lib/crypto/pq.ts';
+import { arrayToBase64, base64ToArray } from '../../src/lib/crypto/utils.ts';
 
 const ALICE = 'aa'.repeat(32);
 const BOB = 'bb'.repeat(32);

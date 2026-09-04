@@ -15,8 +15,8 @@ import assert from 'node:assert/strict';
 import {
   provisionLnbitsWallet, claimLightningAddress, getLightningAddress,
   releaseLightningAddress, DEFAULT_LNBITS_URL,
-} from '../../lib/wallet/lnbits-provision.ts';
-import type { SignedEvent } from '../../lib/types.ts';
+} from '../../src/lib/wallet/lnbits-provision.ts';
+import type { SignedEvent } from '../../src/lib/types.ts';
 
 const FAKE_CHALLENGE = 'a1b2c3d4e5f6';
 

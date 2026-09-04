@@ -2,12 +2,12 @@ import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
-import * as vault from '../lib/vault.ts';
-import * as permissions from '../lib/permissions.ts';
-import * as signer from '../lib/signer.ts';
-import * as onboarding from '../lib/bg/onboarding-handlers.ts';
-import { addAllowedDomain, removeAllowedDomain } from '../lib/bg/domain-handlers.ts';
-import type { VaultPayload } from '../lib/types.ts';
+import * as vault from '../src/lib/vault.ts';
+import * as permissions from '../src/lib/permissions.ts';
+import * as signer from '../src/lib/signer.ts';
+import * as onboarding from '../src/lib/bg/onboarding-handlers.ts';
+import { addAllowedDomain, removeAllowedDomain } from '../src/lib/bg/domain-handlers.ts';
+import type { VaultPayload } from '../src/lib/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';
@@ -419,9 +419,9 @@ describe('signer -- nip44Decrypt approval flow', () => {
     await permissions.save('test.com', 'nip44Decrypt', null, 'allow');
 
     // First encrypt something so we have valid ciphertext
-    const { nip44Encrypt } = await import('../lib/crypto/nip44.ts');
-    const { hexToBytes } = await import('../lib/crypto/utils.ts');
-    const { getPublicKey } = await import('../lib/crypto/secp256k1.ts');
+    const { nip44Encrypt } = await import('../src/lib/crypto/nip44.ts');
+    const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+    const { getPublicKey } = await import('../src/lib/crypto/secp256k1.ts');
 
     const privkey: Uint8Array = hexToBytes(TEST_PRIVKEY_HEX);
     const theirPubkeyBytes: Uint8Array = getPublicKey(hexToBytes(THEIR_PUBKEY_HEX.replace(/a0/g, '01')));
@@ -439,9 +439,9 @@ describe('signer -- nip44Decrypt approval flow', () => {
     await setupVault();
 
     // Encrypt test messages
-    const { nip44Encrypt } = await import('../lib/crypto/nip44.ts');
-    const { hexToBytes } = await import('../lib/crypto/utils.ts');
-    const { getPublicKey } = await import('../lib/crypto/secp256k1.ts');
+    const { nip44Encrypt } = await import('../src/lib/crypto/nip44.ts');
+    const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+    const { getPublicKey } = await import('../src/lib/crypto/secp256k1.ts');
 
     const privkey: Uint8Array = hexToBytes(TEST_PRIVKEY_HEX);
     const theirPrivkey: Uint8Array = hexToBytes(THEIR_PUBKEY_HEX.replace(/a0/g, '01'));
@@ -478,9 +478,9 @@ describe('signer -- nip44Decrypt approval flow', () => {
   it('batch approve with "remember" saves permission and decrypts all', async () => {
     await setupVault();
 
-    const { nip44Encrypt } = await import('../lib/crypto/nip44.ts');
-    const { hexToBytes } = await import('../lib/crypto/utils.ts');
-    const { getPublicKey } = await import('../lib/crypto/secp256k1.ts');
+    const { nip44Encrypt } = await import('../src/lib/crypto/nip44.ts');
+    const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+    const { getPublicKey } = await import('../src/lib/crypto/secp256k1.ts');
 
     const privkey: Uint8Array = hexToBytes(TEST_PRIVKEY_HEX);
     const theirPrivkey: Uint8Array = hexToBytes(THEIR_PUBKEY_HEX.replace(/a0/g, '01'));
@@ -1067,7 +1067,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
   });
 
   it('vault_setActiveAccount handler rejects pending prompts for the previous account', async () => {
-    const vaultHandlers = await import('../lib/bg/vault-handlers.ts');
+    const vaultHandlers = await import('../src/lib/bg/vault-handlers.ts');
     const setActive = vaultHandlers.handlers.get('vault_setActiveAccount')!;
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');

@@ -65,6 +65,12 @@ function bundleServiceWorker(): Plugin {
 }
 
 export default defineConfig({
+  // icons/ and locales/ moved under src/. They must still land at the ROOT of
+  // dist, because manifest.json names them as `icons/...` and `locales/...`
+  // and i18n fetches `runtime.getURL('locales/<lang>.json')` at runtime — a
+  // path that is baked into the shipped extension and into
+  // web_accessible_resources.
+  publicDir: 'src/public',
   plugins: [
     react(),
     // Before crx(): the CRX plugin rewrites asset references for the extension's
@@ -93,15 +99,15 @@ export default defineConfig({
       '@assets': resolve(__dirname, 'src/assets'),
       '@components': resolve(__dirname, 'src/components'),
       '@popup': resolve(__dirname, 'src/popup'),
+      '@screens': resolve(__dirname, 'src/screens'),
       '@wizard': resolve(__dirname, 'src/wizard'),
-      '@models': resolve(__dirname, 'src/models'),
       '@hooks': resolve(__dirname, 'src/hooks'),
       '@utils': resolve(__dirname, 'src/utils'),
       '@domain': resolve(__dirname, 'src/domain'),
       '@services': resolve(__dirname, 'src/services'),
       '@context': resolve(__dirname, 'src/context'),
       '@styles': resolve(__dirname, 'src/styles'),
-      '@lib': resolve(__dirname, 'lib'),
+      '@lib': resolve(__dirname, 'src/lib'),
     },
   },
 });

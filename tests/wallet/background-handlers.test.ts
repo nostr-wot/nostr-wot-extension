@@ -18,19 +18,19 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetMockStorage } from '../helpers/browser-mock.ts';
-import * as vault from '../../lib/vault.ts';
-import * as permissions from '../../lib/permissions.ts';
+import * as vault from '../../src/lib/vault.ts';
+import * as permissions from '../../src/lib/permissions.ts';
 import {
   getWalletProvider, setWalletProvider, removeWalletProvider,
   clearWalletProviders,
-} from '../../lib/wallet/index.ts';
-import type { WalletProvider, WalletProviderInfo, WalletConfig } from '../../lib/wallet/types.ts';
-import type { VaultPayload } from '../../lib/types.ts';
-import { npubEncode } from '../../lib/crypto/bech32.ts';
+} from '../../src/lib/wallet/index.ts';
+import type { WalletProvider, WalletProviderInfo, WalletConfig } from '../../src/lib/wallet/types.ts';
+import type { VaultPayload } from '../../src/lib/types.ts';
+import { npubEncode } from '../../src/lib/crypto/bech32.ts';
 import {
   addWeblnAllowedDomain, isWeblnAllowed,
-} from '../../lib/bg/domain-handlers.ts';
-import { fetchPayParams, requestInvoice } from '../../lib/wallet/lnurl.ts';
+} from '../../src/lib/bg/domain-handlers.ts';
+import { fetchPayParams, requestInvoice } from '../../src/lib/wallet/lnurl.ts';
 
 // ── Test Constants ──
 
@@ -385,7 +385,7 @@ async function handleWalletProvision(params: {
   const acct = vault.getActiveAccountWithWallet();
   if (!acct) throw new Error('No active account');
 
-  const { provisionLnbitsWallet, DEFAULT_LNBITS_URL } = await import('../../lib/wallet/lnbits-provision.ts');
+  const { provisionLnbitsWallet, DEFAULT_LNBITS_URL } = await import('../../src/lib/wallet/lnbits-provision.ts');
   const url = params.instanceUrl?.trim() || DEFAULT_LNBITS_URL;
   const npub = npubEncode(acct.pubkey);
   const walletName = `WoT:${npub.slice(0, 16)}`;

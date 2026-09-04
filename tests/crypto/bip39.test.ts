@@ -1,9 +1,9 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { bytesToHex, hexToBytes } from '../../lib/crypto/utils.ts';
+import { bytesToHex, hexToBytes } from '../../src/lib/crypto/utils.ts';
 import {
   generateMnemonic, validateMnemonic, mnemonicToSeed, entropyToMnemonic
-} from '../../lib/crypto/bip39.ts';
+} from '../../src/lib/crypto/bip39.ts';
 
 describe('generateMnemonic', () => {
   // The default must match the extension's own policy: every identity it mints is

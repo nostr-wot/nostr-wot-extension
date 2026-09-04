@@ -10,7 +10,7 @@ import EditableList from '@components/EditableList/EditableList';
 import EmptyState from '@components/EmptyState/EmptyState';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import type { MyMuteList } from '@models/muteList.ts';
+import type { MyMuteList } from '@domain/mutes/muteList.ts';
 
 interface FiltersOverlayProps {
   visible: boolean;

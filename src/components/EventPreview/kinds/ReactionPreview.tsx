@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import type { NostrEventDisplay } from '@models/nostrEvent.ts';
+import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import { EP } from '../eventPreviewClasses.ts';
 
 interface ReactionPreviewProps {

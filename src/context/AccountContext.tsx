@@ -7,7 +7,7 @@ import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
-import type { Account } from '@models/account.ts';
+import type { Account } from '@domain/accounts/account.ts';
 
 interface ProfileCache {
   [pubkey: string]: ProfileMetadata;

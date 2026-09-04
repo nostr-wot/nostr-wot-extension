@@ -16,7 +16,7 @@ import { ActivityProvider, useActivity } from '@context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import usePagedList from '@hooks/usePagedList.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
-import type { DropdownOption } from '@models/dropdown.ts';
+import type { DropdownOption } from '@components/Dropdown/dropdownOption.ts';
 
 /** Rendered rows per page. Grown by the "show more" button, reset whenever
  *  the filters narrowing `rawLog` change (see the effect below). */

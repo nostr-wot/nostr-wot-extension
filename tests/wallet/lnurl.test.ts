@@ -15,7 +15,7 @@ import {
   parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl,
   assertPublicHttpsUrl, fetchPayParams, requestInvoice,
   type LnurlPayParams,
-} from '../../lib/wallet/lnurl.ts';
+} from '../../src/lib/wallet/lnurl.ts';
 
 // lnbc2500u = 250,000 sats
 const INVOICE_250K =

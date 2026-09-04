@@ -4,9 +4,9 @@ import { extract as hkdfExtract, expand as hkdfExpand } from '@noble/hashes/hkdf
 import { hmac } from '@noble/hashes/hmac.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { chacha20 } from '@noble/ciphers/chacha.js';
-import { hexToBytes, bytesToHex, concatBytes } from '../../lib/crypto/utils.ts';
-import { getPublicKey, ecdh } from '../../lib/crypto/secp256k1.ts';
-import { nip44Encrypt, nip44Decrypt } from '../../lib/crypto/nip44.ts';
+import { hexToBytes, bytesToHex, concatBytes } from '../../src/lib/crypto/utils.ts';
+import { getPublicKey, ecdh } from '../../src/lib/crypto/secp256k1.ts';
+import { nip44Encrypt, nip44Decrypt } from '../../src/lib/crypto/nip44.ts';
 
 const ALICE_PRIVKEY: Uint8Array = hexToBytes('0000000000000000000000000000000000000000000000000000000000000001');
 const BOB_PRIVKEY: Uint8Array = hexToBytes('0000000000000000000000000000000000000000000000000000000000000002');

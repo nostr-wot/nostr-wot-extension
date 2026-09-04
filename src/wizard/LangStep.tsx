@@ -7,7 +7,7 @@ import Card from '@components/Card/Card';
 import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
-import type { Language } from '@models/language.ts';
+import type { Language } from '@domain/i18n/language.ts';
 
 const ITEM_H = 36;
 const PAUSE = 2.5;

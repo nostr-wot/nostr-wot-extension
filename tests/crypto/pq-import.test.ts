@@ -10,8 +10,8 @@
 
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { derivePqKeys, parsePqKeyfile, PQ_PROFILE, ALG_KEM, ALG_DSA } from '../../lib/crypto/pq.ts';
-import { arrayToBase64 } from '../../lib/crypto/utils.ts';
+import { derivePqKeys, parsePqKeyfile, PQ_PROFILE, ALG_KEM, ALG_DSA } from '../../src/lib/crypto/pq.ts';
+import { arrayToBase64 } from '../../src/lib/crypto/utils.ts';
 
 const seedA = new Uint8Array(64).fill(7);
 const seedB = new Uint8Array(64).fill(9);

@@ -4,11 +4,11 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import {
   derivePqKeys, kemInfo, dsaInfo, popMessage, signPop, verifyPop,
   encapsulate, decapsulate, KEM_PUBLIC_KEY_BYTES, DSA_PUBLIC_KEY_BYTES,
-} from '../../lib/crypto/pq.ts';
-import { mnemonicToSeed } from '../../lib/crypto/bip39.ts';
-import { derivePath, NIP06_PATH } from '../../lib/crypto/bip32.ts';
-import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
-import { bytesToHex } from '../../lib/crypto/utils.ts';
+} from '../../src/lib/crypto/pq.ts';
+import { mnemonicToSeed } from '../../src/lib/crypto/bip39.ts';
+import { derivePath, NIP06_PATH } from '../../src/lib/crypto/bip32.ts';
+import { getPublicKey } from '../../src/lib/crypto/secp256k1.ts';
+import { bytesToHex } from '../../src/lib/crypto/utils.ts';
 
 // The 24-word test mnemonic published in NIP-06.
 const NIP06_MNEMONIC =

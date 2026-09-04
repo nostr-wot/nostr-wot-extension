@@ -1,10 +1,10 @@
 
-import browser from './lib/browser.ts';
-import * as vault from './lib/vault.ts';
-import * as signer from './lib/signer.ts';
-import * as signerPermissions from './lib/permissions.ts';
-import { openPopupForActiveTab } from './lib/openPopupForActiveTab.ts';
-import { randomHex } from './lib/crypto/utils.ts';
+import browser from './src/lib/browser.ts';
+import * as vault from './src/lib/vault.ts';
+import * as signer from './src/lib/signer.ts';
+import * as signerPermissions from './src/lib/permissions.ts';
+import { openPopupForActiveTab } from './src/lib/openPopupForActiveTab.ts';
+import { randomHex } from './src/lib/crypto/utils.ts';
 
 // ── State & handler modules ──
 
@@ -15,8 +15,8 @@ import {
     buildPrivilegedMethods, setPrivilegedMethods,
     PRIVILEGED_METHODS,
     type HandlerFn,
-} from './lib/bg/state.ts';
-import { handlers as miscHandlers, logActivity } from './lib/bg/misc-handlers.ts';
+} from './src/lib/bg/state.ts';
+import { handlers as miscHandlers, logActivity } from './src/lib/bg/misc-handlers.ts';
 import {
     handlers as domainHandlers,
     isDomainAllowed, isDomainDismissed,
@@ -25,12 +25,12 @@ import {
     isWeblnAllowed,
     waitForConnectDecision,
     isActiveAccountReadOnly,
-} from './lib/bg/domain-handlers.ts';
-import { handlers as vaultHandlers } from './lib/bg/vault-handlers.ts';
-import { handlers as walletHandlers } from './lib/bg/wallet-handlers.ts';
-import { handlers as nip07Handlers, validateNip07Params } from './lib/bg/nip07-handlers.ts';
-import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './lib/bg/onboarding-handlers.ts';
-import { handlers as pqcHandlers } from './lib/bg/pqc-handlers.ts';
+} from './src/lib/bg/domain-handlers.ts';
+import { handlers as vaultHandlers } from './src/lib/bg/vault-handlers.ts';
+import { handlers as walletHandlers } from './src/lib/bg/wallet-handlers.ts';
+import { handlers as nip07Handlers, validateNip07Params } from './src/lib/bg/nip07-handlers.ts';
+import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './src/lib/bg/onboarding-handlers.ts';
+import { handlers as pqcHandlers } from './src/lib/bg/pqc-handlers.ts';
 
 // ── Assemble handler map ──
 

@@ -22,7 +22,7 @@ import {
   cacheKey,
   PQC_PUBLISHED_CACHE,
   MUTE_LIST_CACHE,
-} from '../lib/bg/relayCache.ts';
+} from '../src/lib/bg/relayCache.ts';
 import * as popupNames from '../src/services/relayCacheNames.ts';
 
 const PUBKEY = 'a'.repeat(64);

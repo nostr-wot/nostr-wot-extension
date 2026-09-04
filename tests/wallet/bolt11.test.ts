@@ -5,7 +5,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { decodeBolt11 } from '../../lib/wallet/bolt11.ts';
+import { decodeBolt11 } from '../../src/lib/wallet/bolt11.ts';
 
 // ── Known BOLT11 test vectors from BOLT-11 spec ──
 // https://github.com/lightning/bolts/blob/master/11-payment-encoding.md#examples

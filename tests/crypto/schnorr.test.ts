@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { hexToBytes, bytesToHex } from '../../lib/crypto/utils.ts';
-import { schnorrSign, schnorrVerify } from '../../lib/crypto/schnorr.ts';
+import { hexToBytes, bytesToHex } from '../../src/lib/crypto/utils.ts';
+import { schnorrSign, schnorrVerify } from '../../src/lib/crypto/schnorr.ts';
 
 interface TestVector {
   index: number;

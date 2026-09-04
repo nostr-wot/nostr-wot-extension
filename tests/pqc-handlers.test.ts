@@ -1,9 +1,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
-import * as vault from '../lib/vault.ts';
-import { handlers, PQC_KIND } from '../lib/bg/pqc-handlers.ts';
-import { createFromMnemonic, importNsec, importNpub } from '../lib/accounts.ts';
-import { verifyPop, popMessage } from '../lib/crypto/pq.ts';
+import * as vault from '../src/lib/vault.ts';
+import { handlers, PQC_KIND } from '../src/lib/bg/pqc-handlers.ts';
+import { createFromMnemonic, importNsec, importNpub } from '../src/lib/accounts.ts';
+import { verifyPop, popMessage } from '../src/lib/crypto/pq.ts';
 import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
 
 const PASSWORD = 'test-password-1234';
@@ -106,8 +106,8 @@ describe('pqc_getStatus', () => {
 
 // ── Importing keys for an account that cannot derive ──
 
-import { derivePqKeys, PQ_PROFILE, ALG_KEM, ALG_DSA } from '../lib/crypto/pq.ts';
-import { arrayToBase64 } from '../lib/crypto/utils.ts';
+import { derivePqKeys, PQ_PROFILE, ALG_KEM, ALG_DSA } from '../src/lib/crypto/pq.ts';
+import { arrayToBase64 } from '../src/lib/crypto/utils.ts';
 
 const importKeys = (keyfile: string) => handlers.get('pqc_importKeys')!({ keyfile }) as Promise<any>;
 const removeKeys = () => handlers.get('pqc_removeImportedKeys')!({}) as Promise<any>;
@@ -248,12 +248,12 @@ describe('pqc_removeImportedKeys', () => {
 
 // ── The point of the feature: imported keys must actually decrypt ──
 
-import * as signer from '../lib/signer.ts';
-import * as permissions from '../lib/permissions.ts';
-import { pqEncrypt, KEM_PUBLIC_KEY_BYTES } from '../lib/crypto/pq.ts';
-import { getConversationKey } from '../lib/crypto/nip44.ts';
-import { getPublicKey } from '../lib/crypto/secp256k1.ts';
-import { hexToBytes, bytesToHex, base64ToArray } from '../lib/crypto/utils.ts';
+import * as signer from '../src/lib/signer.ts';
+import * as permissions from '../src/lib/permissions.ts';
+import { pqEncrypt, KEM_PUBLIC_KEY_BYTES } from '../src/lib/crypto/pq.ts';
+import { getConversationKey } from '../src/lib/crypto/nip44.ts';
+import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';
+import { hexToBytes, bytesToHex, base64ToArray } from '../src/lib/crypto/utils.ts';
 
 describe('imported keys decrypt a post-quantum message', () => {
   beforeEach(async () => {

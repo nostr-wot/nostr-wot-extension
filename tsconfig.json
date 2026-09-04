@@ -17,19 +17,19 @@
       "@assets/*": ["./src/assets/*"],
       "@components/*": ["./src/components/*"],
       "@popup/*": ["./src/popup/*"],
+      "@screens/*": ["./src/screens/*"],
       "@wizard/*": ["./src/wizard/*"],
-      "@models/*": ["./src/models/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils/*": ["./src/utils/*"],
       "@domain/*": ["./src/domain/*"],
       "@services/*": ["./src/services/*"],
       "@context/*": ["./src/context/*"],
       "@styles/*": ["./src/styles/*"],
-      "@lib/*": ["./lib/*"]
+      "@lib/*": ["./src/lib/*"]
     }
   },
   "include": [
-    "lib/**/*.ts",
+    "src/**/*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "background.ts",

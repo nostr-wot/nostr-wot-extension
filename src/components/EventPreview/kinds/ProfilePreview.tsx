@@ -1,10 +1,10 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import { safeImageUrl } from '@utils/safeUrl.ts';
-import type { NostrEventDisplay } from '@models/nostrEvent.ts';
+import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import Avatar from '@components/Avatar/Avatar';
 import { EP } from '../eventPreviewClasses.ts';
-import type { ProfileMetadata } from '@models/profile.ts';
+import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 
 
 interface ProfilePreviewProps {

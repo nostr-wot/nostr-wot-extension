@@ -6,7 +6,7 @@ import { MUTE_LIST_CACHE } from '@services/relayCacheNames.ts';
 import ListRow from '@components/ListRow/ListRow';
 import { IconShield } from '@assets';
 import { useNavigate } from '@context/NavigationContext';
-import type { MyMuteList } from '@models/muteList.ts';
+import type { MyMuteList } from '@domain/mutes/muteList.ts';
 
 /**
  * Home-screen module for the user's own NIP-51 mute list (kind:10000). Shows a

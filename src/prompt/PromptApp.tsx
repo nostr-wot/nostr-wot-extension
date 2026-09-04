@@ -9,7 +9,7 @@ import Button from '@components/Button/Button';
 import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './DecisionRow';
 import UnlockSection from './UnlockSection';
-import type { PromptDecision } from '@models/prompt.ts';
+import type { PromptDecision } from '@domain/permissions/prompt.ts';
 
 interface PendingPrompt {
   pubkey?: string;

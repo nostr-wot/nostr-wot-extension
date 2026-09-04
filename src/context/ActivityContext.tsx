@@ -2,7 +2,7 @@ import React, { type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
-import type { ActivityEntry } from '@models/activity.ts';
+import type { ActivityEntry } from '@domain/activity/activity.ts';
 
 interface ActivityData {
   log: ActivityEntry[];

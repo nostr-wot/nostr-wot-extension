@@ -3,7 +3,7 @@ import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
-import type { Language } from '@models/language.ts';
+import type { Language } from '@domain/i18n/language.ts';
 
 
 /**

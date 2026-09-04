@@ -1,5 +1,5 @@
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
-import type { Language } from '@models/language.ts';
+import type { Language } from '@domain/i18n/language.ts';
 import { cn } from '@utils/cn.ts';
 
 const WRAP = 'flex-1 flex items-center justify-center px-8';

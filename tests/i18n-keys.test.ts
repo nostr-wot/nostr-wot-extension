@@ -25,7 +25,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
 const LOCALES = ['en', 'es', 'pt', 'fr', 'de', 'it'] as const;
-const SOURCE_DIRS = ['src', 'lib'];
+// lib/ moved under src/, so one root covers everything now.
+const SOURCE_DIRS = ['src'];
 const SOURCE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
 /** Directories whose strings are not part of the shipped popup surface. */
@@ -50,7 +51,7 @@ function read(file: string): string {
 const SOURCES = new Map(FILES.map((f) => [f, read(f)]));
 
 function readLocale(loc: string): Record<string, string> {
-  return JSON.parse(readFileSync(join(ROOT, 'locales', `${loc}.json`), 'utf8'));
+  return JSON.parse(readFileSync(join(ROOT, 'src', 'public', 'locales', `${loc}.json`), 'utf8'));
 }
 
 const CATALOGUES = Object.fromEntries(LOCALES.map((l) => [l, readLocale(l)])) as
@@ -81,10 +82,10 @@ function constArrayMembers(file: string, name: string): string[] {
  */
 function dynamicKeys(): string[] {
   const keys: string[] = [];
-  for (const type of unionMembers('lib/types.ts', 'AccountType')) {
+  for (const type of unionMembers('src/lib/types.ts', 'AccountType')) {
     keys.push(`wizard.type.${type}`);
   }
-  for (const reason of unionMembers('lib/bg/pqc-handlers.ts', 'PqcBlockReason')) {
+  for (const reason of unionMembers('src/lib/bg/pqc-handlers.ts', 'PqcBlockReason')) {
     keys.push(`pqc.reason.${reason}`);
   }
   for (const decision of constArrayMembers('src/domain/permissions/permissionRules.ts', 'DECISIONS')) {

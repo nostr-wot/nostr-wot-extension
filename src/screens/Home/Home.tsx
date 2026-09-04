@@ -8,7 +8,7 @@ import { t } from '@lib/i18n.js';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
 import useSiteState from '@hooks/useSiteState.ts';
-import type { Account } from '@models/account.ts';
+import type { Account } from '@domain/accounts/account.ts';
 import useWalletBanner from '@hooks/useWalletBanner.ts';
 import usePendingCount from '@hooks/usePendingCount.ts';
 import { useNavigate } from '@context/NavigationContext';

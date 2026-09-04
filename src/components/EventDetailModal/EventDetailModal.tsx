@@ -2,12 +2,12 @@ import React, { useMemo } from 'react';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import { formatTime } from '@utils/format/time.ts';
-import type { NostrEventDisplay } from '@models/nostrEvent.ts';
+import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
 import StatusDot from '@components/StatusDot/StatusDot';
 import Button from '@components/Button/Button';
-import type { ActivityEntry } from '@models/activity.ts';
+import type { ActivityEntry } from '@domain/activity/activity.ts';
 
 const CLS = {
   // The modal fills the fixed-height popup, so the event body must scroll

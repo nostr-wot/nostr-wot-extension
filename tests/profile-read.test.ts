@@ -20,8 +20,8 @@ import assert from 'node:assert/strict';
 // lib/browser.ts to this file with a short-circuited file:// URL, which skips
 // tsx's resolver. Importing it here normally is what gets the .ts registered.
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import { fetchKind0Read, fetchMuteList } from '../lib/bg/profile-handlers.ts';
-import { signEvent } from '../lib/crypto/nip01.ts';
+import { fetchKind0Read, fetchMuteList } from '../src/lib/bg/profile-handlers.ts';
+import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { schnorr } from '@noble/curves/secp256k1.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 

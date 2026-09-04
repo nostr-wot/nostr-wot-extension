@@ -1,8 +1,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetMockStorage } from '../helpers/browser-mock.ts';
-import * as signer from '../../lib/signer.ts';
-import * as vault from '../../lib/vault.ts';
+import * as signer from '../../src/lib/signer.ts';
+import * as vault from '../../src/lib/vault.ts';
 
 /** Wait for queueRequest to flush its storage write */
 const tick = () => new Promise<void>(r => setTimeout(r, 100));

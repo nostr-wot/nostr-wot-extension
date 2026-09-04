@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import type { WalletConfig, WalletProviderInfo, WalletProvider, SafeWalletInfo } from '../../lib/wallet/types.ts';
+import type { WalletConfig, WalletProviderInfo, WalletProvider, SafeWalletInfo } from '../../src/lib/wallet/types.ts';
 
 describe('WalletConfig', () => {
   it('accepts NWC config with required fields', () => {

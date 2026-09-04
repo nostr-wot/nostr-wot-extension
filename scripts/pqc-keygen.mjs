@@ -26,16 +26,16 @@ import { stdin, stdout, argv, exit } from 'node:process';
 import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
-import { generateMnemonic, mnemonicToSeed, validateMnemonic } from '../lib/crypto/bip39.js';
-import { derivePath } from '../lib/crypto/bip32.js';
-import { getPublicKey } from '../lib/crypto/secp256k1.js';
-import { signEvent } from '../lib/crypto/nip01.js';
-import { bytesToHex } from '../lib/crypto/utils.js';
-import { npubEncode } from '../lib/crypto/bech32.js';
+import { generateMnemonic, mnemonicToSeed, validateMnemonic } from '../src/lib/crypto/bip39.js';
+import { derivePath } from '../src/lib/crypto/bip32.js';
+import { getPublicKey } from '../src/lib/crypto/secp256k1.js';
+import { signEvent } from '../src/lib/crypto/nip01.js';
+import { bytesToHex } from '../src/lib/crypto/utils.js';
+import { npubEncode } from '../src/lib/crypto/bech32.js';
 import {
   derivePqKeys, popMessage, signPop,
   ALG_KEM, ALG_DSA, PQ_PROFILE,
-} from '../lib/crypto/pq.js';
+} from '../src/lib/crypto/pq.js';
 
 const PQC_KIND = 10203;
 const b64 = (u8) => Buffer.from(u8).toString('base64');

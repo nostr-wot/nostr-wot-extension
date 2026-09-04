@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { useWallet } from '@context/WalletContext';
-import type { Account } from '@models/account.ts';
+import type { Account } from '@domain/accounts/account.ts';
 
 /**
  * Whether to offer the wallet on the home screen, and whether the user has

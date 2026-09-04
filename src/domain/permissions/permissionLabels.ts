@@ -1,6 +1,6 @@
 import { t } from '@lib/i18n.js';
 import { KIND_LABELS } from '@domain/nostr/kindLabels.ts';
-import type { NostrEventDisplay } from '@models/nostrEvent.ts';
+import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 
 /**
  * Human-readable labels for permission keys.

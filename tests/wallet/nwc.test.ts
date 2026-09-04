@@ -1,8 +1,8 @@
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { NwcProvider } from '../../lib/wallet/nwc.ts';
-import type { NwcCryptoDeps } from '../../lib/wallet/nwc.ts';
-import type { UnsignedEvent, SignedEvent } from '../../lib/types.ts';
+import { NwcProvider } from '../../src/lib/wallet/nwc.ts';
+import type { NwcCryptoDeps } from '../../src/lib/wallet/nwc.ts';
+import type { UnsignedEvent, SignedEvent } from '../../src/lib/types.ts';
 
 // ── Test constants ──
 

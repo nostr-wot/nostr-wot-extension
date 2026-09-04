@@ -104,7 +104,7 @@ had to reach for it. **Types live in `models/`** so a shape has one definition; 
 module that owns the behaviour re-exports its own shape, so no call site learns a
 second import path for the same idea.
 
-Aliases: `@components`, `@hooks`, `@models`, `@domain`, `@services`, `@context`,
+Aliases: `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`,
 `@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with
 `../../`. Each one answers a question about the thing you are writing, so if two of them
 seem to fit, the file is probably doing two jobs — see §7 for what each one means.
@@ -329,7 +329,8 @@ Configured in `vite.config.ts`:
 
 | Alias | Path |
 |-------|------|
-| `@components` | `src/components` |
+| `@components` | `src/components` — shared UI |
+| `@screens` | `src/screens` — a screen per folder. Not split by entry point: every one of them is popup-only, and the prompt and onboarding documents are a single screen each, so the split would make two folders holding one thing |
 | `@domain` | `src/domain` — feature logic, one folder per module (`wallet/`, `permissions/`, `vault/`, `site/`, `profile/`, `pqc/`, `activity/`, `wizard/`, `relays/`, `nostr/`). Pure decisions, no React, no I/O |
 | `@services` | `src/services` — the things that talk to something: `rpc`, `blossom`, the relay-cache key names |
 | `@context` | `src/context` — the React contexts, all eight |

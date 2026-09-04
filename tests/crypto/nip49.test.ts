@@ -1,8 +1,8 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
-import { hexToBytes } from '../../lib/crypto/utils.ts';
-import { bech32Encode, bech32Decode, convertBits } from '../../lib/crypto/bech32.ts';
+import { ncryptsecEncode, ncryptsecDecode } from '../../src/lib/crypto/nip49.ts';
+import { hexToBytes } from '../../src/lib/crypto/utils.ts';
+import { bech32Encode, bech32Decode, convertBits } from '../../src/lib/crypto/bech32.ts';
 
 const TEST_PRIVKEY_HEX = '3501454135014541350145413501453fefb02227e449e57cf4d3a3ce05378683';
 

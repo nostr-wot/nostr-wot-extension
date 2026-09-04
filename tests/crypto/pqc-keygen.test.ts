@@ -56,10 +56,10 @@ describe('pqc-keygen CLI', () => {
     const { stdout } = await keygen(NIP06_MNEMONIC);
     const event = JSON.parse(stdout.slice(stdout.lastIndexOf('{"kind"')).trim());
 
-    const { verifyEvent } = await import('../../lib/crypto/nip01.ts');
+    const { verifyEvent } = await import('../../src/lib/crypto/nip01.ts');
     assert.ok(await verifyEvent(event), 'schnorr signature must verify');
 
-    const { verifyPop, popMessage } = await import('../../lib/crypto/pq.ts');
+    const { verifyPop, popMessage } = await import('../../src/lib/crypto/pq.ts');
     const alg = (n: string) =>
       event.tags.find((t: string[]) => t[0] === 'alg' && t[1] === n)![2];
     const pop = event.tags.find((t: string[]) => t[0] === 'pop')![2];

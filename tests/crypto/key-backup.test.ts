@@ -12,7 +12,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { encryptBackup, decryptBackup } from '../../lib/crypto/keyBackup.ts';
+import { encryptBackup, decryptBackup } from '../../src/lib/crypto/keyBackup.ts';
 
 const SEED = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 const PASSWORD = 'correct horse battery staple';

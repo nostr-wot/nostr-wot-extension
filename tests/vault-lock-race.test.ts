@@ -20,9 +20,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import * as vault from '../lib/vault.ts';
-import { handlers as vaultHandlers } from '../lib/bg/vault-handlers.ts';
-import type { VaultPayload } from '../lib/types.ts';
+import * as vault from '../src/lib/vault.ts';
+import { handlers as vaultHandlers } from '../src/lib/bg/vault-handlers.ts';
+import type { VaultPayload } from '../src/lib/types.ts';
 
 const PASSWORD = 'testpassword123';
 

@@ -3,7 +3,7 @@ import { t } from '@lib/i18n.js';
 import { IconWarning } from '@assets';
 import { KIND_LABELS } from '@domain/nostr/kindLabels.ts';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
-import type { NostrEventDisplay } from '@models/nostrEvent.ts';
+import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import ProfilePreview from './kinds/ProfilePreview';
 import NotePreview from './kinds/NotePreview';

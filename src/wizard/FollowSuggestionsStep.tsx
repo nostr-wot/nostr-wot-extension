@@ -5,7 +5,7 @@ import { npubDecode } from '@lib/crypto/bech32.ts';
 import Button from '@components/Button/Button';
 import Avatar from '@components/Avatar/Avatar';
 import { truncateNpub, getInitial as getInitialChar } from '@utils/format/text.ts';
-import type { ProfileMetadata } from '@models/profile.ts';
+import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import Heading from '@components/Heading/Heading';
 
 /* ------------------------------------------------------------------ */

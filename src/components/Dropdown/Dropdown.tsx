@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IconChevronDown } from '@assets';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
-import type { DropdownOption } from '@models/dropdown.ts';
+import type { DropdownOption } from '@components/Dropdown/dropdownOption.ts';
 import { cn } from '@utils/cn.ts';
 
 const TRIGGER_BASE =

@@ -14,7 +14,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
-import { runPaymentOnce } from '../../lib/wallet/payment-intents.ts';
+import { runPaymentOnce } from '../../src/lib/wallet/payment-intents.ts';
 
 beforeEach(() => {
   resetMockStorage();

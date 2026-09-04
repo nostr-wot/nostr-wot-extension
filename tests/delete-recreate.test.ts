@@ -16,10 +16,10 @@ import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
-import * as vault from '../lib/vault.ts';
-import { handlers as vaultHandlers } from '../lib/bg/vault-handlers.ts';
-import * as onboarding from '../lib/bg/onboarding-handlers.ts';
-import type { Account } from '../lib/types.ts';
+import * as vault from '../src/lib/vault.ts';
+import { handlers as vaultHandlers } from '../src/lib/bg/vault-handlers.ts';
+import * as onboarding from '../src/lib/bg/onboarding-handlers.ts';
+import type { Account } from '../src/lib/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
 const HANDLER_TIMEOUT_MS = 5000;

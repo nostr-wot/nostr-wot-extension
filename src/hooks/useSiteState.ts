@@ -3,7 +3,7 @@ import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import { resolveSiteState } from '@domain/site/siteState.ts';
-import type { Account } from '@models/account.ts';
+import type { Account } from '@domain/accounts/account.ts';
 
 /**
  * Which site the popup is looking at, and whether this identity is enabled there.
