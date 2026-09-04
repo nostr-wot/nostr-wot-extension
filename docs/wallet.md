@@ -36,7 +36,7 @@ This mirrors the NIP-07 signer flow: inject.ts exposes the API, content.ts bridg
 ## 3. File Structure
 
 ```
-lib/wallet/
+src/lib/wallet/
   types.ts              # WalletConfig, WalletProvider, Transaction, SafeWalletInfo
   index.ts              # Factory + per-account provider cache
   nwc.ts                # NWC (NIP-47) provider
@@ -44,22 +44,23 @@ lib/wallet/
   lnbits-provision.ts   # Auto-provisioning via challenge-response
   bolt11.ts             # BOLT11 invoice decoder
   lnurl.ts              # LNURL-pay / Lightning Address resolution (LUD-16, LUD-06)
+  payment-intents.ts    # At-most-once payment tracking across popup teardown
 
-src/popup/components/
-  Wallet/
-    Wallet.tsx           # Composition: balance card, action row, which dialog is open
-    WalletSetup.tsx      # Setup flow (Quick Setup / NWC / LNbits tabs)
-    WalletSection.tsx    # Menu entry point; decides setup vs connected
-    DepositDialog.tsx    # Create an invoice, show the QR, poll for payment
-    SendDialog.tsx       # Pay an invoice or a Lightning Address
-    TransactionList.tsx  # Search, filter button, rows, "show more"
-    TxFilterDialog.tsx   # Direction + date-range form
-    WalletSettings.tsx   # Connection, auto-approve threshold, Lightning Address
+src/screens/Wallet/
+  Wallet.tsx           # Composition: balance card, action row, which dialog is open
+  WalletSetup.tsx      # Setup flow (Quick Setup / NWC / LNbits tabs)
+  WalletSection.tsx    # Menu entry point; decides setup vs connected
+  DepositDialog.tsx    # Create an invoice, show the QR, poll for payment
+  SendDialog.tsx       # Pay an invoice or a Lightning Address
+  TransactionList.tsx  # Search, filter button, rows, "show more"
+  TxFilterDialog.tsx   # Direction + date-range form
+  WalletSettings.tsx   # Connection, auto-approve threshold, Lightning Address
 
 src/domain/wallet/        # the decision logic, unit-tested without a browser
   txFilter.ts             # what matches the filter bar; the memo placeholder rule
   invoiceExpiry.ts        # how long an invoice has left
   sendTarget.ts           # the single answer to "what would Pay send?"
+  txPager.ts              # the render-window growth behind the transaction list
 
 tests/wallet/
   nwc.test.ts            # NWC provider tests
@@ -146,7 +147,7 @@ User clicks "Create Wallet"
 
 ### File
 
-`lib/wallet/lnbits-provision.ts` — `provisionLnbitsWallet(instanceUrl, walletName, signFn)`
+`src/lib/wallet/lnbits-provision.ts` — `provisionLnbitsWallet(instanceUrl, walletName, signFn)`
 
 ### 5.2 Lightning Address Claiming
 
@@ -170,7 +171,7 @@ Server endpoints:
 
 Username validation: `^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$` (3-30 chars). Reserved names blocked.
 
-Client functions in `lib/wallet/lnbits-provision.ts`:
+Client functions in `src/lib/wallet/lnbits-provision.ts`:
 - `claimLightningAddress(instanceUrl, username, signFn)`
 - `getLightningAddress(instanceUrl, pubkey)`
 - `releaseLightningAddress(instanceUrl, signFn)`
@@ -207,9 +208,7 @@ User pastes name@domain
   → provider.payInvoice(bolt11)
 ```
 
-Both hops are attacker-influenced — the user pastes the address, the *server*
-picks the callback — so `lib/wallet/lnurl.ts` constrains every one of them
-(see [Security §17](security.md#17-lnurl-pay-hardening-libwalletlnurlts)):
+Both hops are attacker-influenced — the user pastes the address, the *server* picks the callback — so `src/lib/wallet/lnurl.ts` constrains every one of them (see [Security §17](security.md#17-lnurl-pay-hardening-srclibwalletlnurlts)):
 
 | Guard | Why |
 |-------|-----|
@@ -256,7 +255,7 @@ that *threw* clears its record, because `rpc()` does not retry application
 errors and the user is the one deciding whether to try again.
 
 **Claiming an intent is serialized** through the same `AsyncLock` that
-`lib/signer.ts` and `lib/permissions.ts` use for their session-storage maps.
+`src/lib/signer.ts` and `src/lib/permissions.ts` use for their session-storage maps.
 Read-modify-write on one key is not atomic, and the guard cannot itself be racy:
 two claims that both read before either writes each store back a map missing the
 other's record, and once an in-flight marker is gone a retry finds nothing and
@@ -269,18 +268,12 @@ written to stop. Intent ids are per-click UUIDs, so a stranded marker blocks
 nothing — the long bound exists only so the leak cannot grow without limit.
 
 Errors that cross back to the popup are **stable codes**, not sentences
-(`PAYMENT_IN_FLIGHT`, in `lib/wallet/types.ts` — the one wallet module that
+(`PAYMENT_IN_FLIGHT`, in `src/lib/wallet/types.ts` — the one wallet module that
 imports nothing, so the popup can recognise it without pulling the background's
 storage shim into its bundle). A sentence thrown in the background is an English
 sentence in all six locales.
 
-Two limits worth stating. The residual risk is the one every Lightning wallet
-has: a payment that failed after the sats left cannot be told apart from one that
-never left. And this covers the *machine* retry only — a popup destroyed by the
-user switching to a wallet app takes its `intentId` with it, so clicking Pay
-again after reopening is a new intent and a second payment. Closing that needs a
-background in-flight record keyed by payment hash and surfaced when the wallet
-mounts; see `docs/frontend-remediation-round-2.md` R3.
+Two limits worth stating. The residual risk is the one every Lightning wallet has: a payment that failed after the sats left cannot be told apart from one that never left. And this covers the *machine* retry only — a popup destroyed by the user switching to a wallet app takes its `intentId` with it, so clicking Pay again after reopening is a new intent and a second payment. Closing that gap would need a background in-flight record keyed by payment hash and surfaced when the wallet mounts; nothing currently implements that.
 
 ---
 
@@ -338,7 +331,7 @@ WebLN access is a **separate consent** from the NIP-07 connect. A site that is
 merely NIP-07-connected (e.g. via `getPublicKey`) cannot see the wallet at all.
 
 - Stored in `browser.storage.local` at key `weblnAllowedDomains` (list of
-  origins), managed by `lib/bg/domain-handlers.ts`
+  origins), managed by `src/lib/bg/domain-handlers.ts`
   (`getWeblnAllowedDomains` / `addWeblnAllowedDomain` / `isWeblnAllowed` /
   `removeWeblnAllowedDomain`).
 - Recorded by the `webln_enable` handler after the user approves the
@@ -420,7 +413,7 @@ Extends the existing signer prompt system:
 
 ## 9. BOLT11 Invoice Decoder
 
-`lib/wallet/bolt11.ts` provides lightweight BOLT11 invoice decoding using the existing bech32 infrastructure:
+`src/lib/wallet/bolt11.ts` provides lightweight BOLT11 invoice decoding using the existing bech32 infrastructure:
 
 ```typescript
 interface DecodedInvoice {
@@ -449,7 +442,7 @@ type WalletConfig =
   | { type: 'lnbits'; instanceUrl: string; adminKey: string; walletId?: string; nwcUri?: string };
 ```
 
-See [Storage](storage.md#9-wallet-storage) and [Security](security.md#8-wallet-security) for details.
+See [Storage](storage.md#wallet-storage) and [Security](security.md#8b-wallet-credential-storage) for details.
 
 ---
 

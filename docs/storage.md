@@ -25,7 +25,7 @@ Persisted state lives in three places:
 
 ### `storage.session` is not ephemeral on Safari
 
-Safari has no `storage.session`, so `lib/browser.ts` shims it onto `storage.local` behind a `__session__` prefix — which means anything written there is **on disk** and survives a browser restart. Two consequences the code has to handle rather than assume away:
+Safari has no `storage.session`, so `src/lib/browser.ts` shims it onto `storage.local` behind a `__session__` prefix — which means anything written there is **on disk** and survives a browser restart. Two consequences the code has to handle rather than assume away:
 
 - Pending-onboarding secrets (`privkey`, `mnemonic`, `nip46Config.localPrivkey`) are XOR-split across `_pendingOnboardingSecrets` + `_pendingOnboardingSecretsPad`, never written in the clear, and the account stored beside them has all three fields nulled.
 - The 5-minute TTL is enforced on read, and `background.ts` additionally sweeps an expired record at startup (`cleanupExpiredPendingOnboarding`) so an abandoned onboarding is not left at rest indefinitely waiting for a read that may never come. A record still inside its TTL is left alone, since on Chrome the service worker restarts constantly during a live onboarding.
@@ -39,13 +39,13 @@ Safari has no `storage.session`, so `lib/browser.ts` shims it onto `storage.loca
 Wallet credentials are stored as `walletConfig` inside the `Account` object, which is encrypted inside the vault (`keyVault` in `browser.storage.local`). This means wallet configs are protected by the same AES-256-GCM + PBKDF2 encryption as private keys and mnemonics.
 
 ```ts
-// Part of Account in lib/types.ts
+// Part of Account in src/lib/types.ts
 walletConfig?: WalletConfig;
 
 // WalletConfig is a discriminated union:
 type WalletConfig =
   | { type: 'nwc'; connectionString: string; relay?: string }
-  | { type: 'lnbits'; instanceUrl: string; adminKey: string; walletId?: string };
+  | { type: 'lnbits'; instanceUrl: string; adminKey: string; walletId?: string; nwcUri?: string };
 ```
 
 ### Auto-Approve Threshold (`browser.storage.local`)

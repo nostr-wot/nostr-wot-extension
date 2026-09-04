@@ -89,36 +89,31 @@ The vocabulary the code is reaching for: **Overlay** = full-height `OverlayPanel
 ```
 src/
   assets/      icons
-  components/  shared UI primitives
+  components/  shared UI primitives, one folder per component
+  screens/     one folder per popup screen
+  context/     the eight React contexts
+  domain/      feature logic, one folder per module, pure and tested
+  services/    the things that talk to something (rpc, blossom)
+  utils/       no domain knowledge
   hooks/       every hook, feature or generic
-  models/      every shared type
-  shared/      pure logic and utilities, unit-tested
+  lib/         the extension core: background handlers, crypto, the vault, the cross-browser shim
   popup/  prompt/  onboarding/  wizard/   the four documents' screens
 ```
 
-Three rules behind that shape. **No module nests its own `components/`** — inside
-`src/popup/` the folders are the screens, and a second level named after a file type
-said nothing. **Hooks live together**, not beside the one screen that happens to use
-them first, because that is how `useSiteState` ended up somewhere `useWalletBanner`
-had to reach for it. **Types live in `models/`** so a shape has one definition; the
-module that owns the behaviour re-exports its own shape, so no call site learns a
-second import path for the same idea.
+Three rules behind that shape. **No module nests its own `components/`** — inside `src/popup/` the folders are the screens, and a second level named after a file type said nothing. **Hooks live together**, not beside the one screen that happens to use them first, because that is how `useSiteState` ended up somewhere `useWalletBanner` had to reach for it. **A type lives with the logic that owns it**, not in a shared types folder — `domain/activity/activity.ts` defines `ActivityEntry` beside the filters that read it, `domain/profile/profileMetadata.ts` defines `ProfileMetadata` beside the merge that maintains it — so a shape has one definition and no call site learns a second import path for the same idea. A purely-UI type goes where it is used instead: `DropdownOption` beside `Dropdown`, `IconProps` beside the icons. A `models/` folder used to hold every shared type and competed with `domain/` for the same job — `domain/activity/activity.ts` opened by importing `ActivityEntry` from `models` and re-exporting it, so a reader visited two files to learn one thing. It is gone.
 
-Aliases: `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`,
-`@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with
-`../../`. Each one answers a question about the thing you are writing, so if two of them
-seem to fit, the file is probably doing two jobs — see §7 for what each one means.
+Aliases: `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
 
-### `src/domain`, `src/services`, `src/utils` — and the root `lib/`
+### `src/domain`, `src/services`, `src/utils` — and `src/lib`
 
 `src/shared/` was twenty-six files in one flat folder, and the name had stopped meaning anything: a Lightning invoice's expiry rule sat beside a clipboard helper beside the RPC transport. It is now split by what a thing *is*.
 
 - **`src/utils`** — no domain knowledge at all. Formatting, `downloadFile`, `paginate`, URL predicates. You could paste any of it into another product.
 - **`src/domain`** — the decisions this product makes, one folder per module. Pure functions over plain data: no React, no `browser.*`, no network. That is what makes them testable, and every one of them has a test.
 - **`src/services`** — the things that talk to something. `rpc` to the background, `blossom` to a media host.
-- **`lib/` (repo root)** — the extension core: background handlers, crypto, the vault, the cross-browser shim. Imported by the service worker, so **nothing here may import React**, and nothing in `src/` should reimplement it.
+- **`src/lib`** — the extension core: background handlers, crypto, the vault, the cross-browser shim. Imported by the service worker, so **nothing here may import React**, and nothing else in `src/` should reimplement it. It held the same job at the repo root as plain `lib/` until everything the extension is built from — `lib/`, `icons/`, `locales/` — moved under `src/`, so "where does code live" has one answer; `icons/` and `locales/` land in `src/public/` instead, since Vite's `publicDir` is what puts them back at the root of `dist/` where `manifest.json` and the runtime `getURL()` calls expect them.
 
-That last rule was already being broken. `src/shared/browser.ts` was a six-line copy of `lib/browser.ts` that omitted its Safari `storage.session` polyfill, and twenty-one UI files imported the copy — seven of which call `storage.session` directly. It is deleted; everything uses `@lib/browser.ts`.
+That last rule was already being broken once. `src/shared/browser.ts` was a six-line copy of `src/lib/browser.ts` that omitted its Safari `storage.session` polyfill, and twenty-one UI files imported the copy — seven of which call `storage.session` directly. It is deleted; everything uses `@lib/browser.ts`.
 
 ### Where a feature lives
 
@@ -134,7 +129,7 @@ and `PopupApp` directly), so it is not purely a menu section.
 
 ### One shape, one definition
 
-`PendingRequest` had five definitions: the canonical one in `lib/types.ts` and four narrower restatements across ApprovalOverlay, ApprovalCard, EventDetailModal and PopupApp. They had already drifted into a type error that one of the copies documented in a comment rather than fixing. Import the canonical type; if it does not fit, widen it there.
+`PendingRequest` had five definitions: the canonical one in `src/lib/types.ts` and four narrower restatements across ApprovalOverlay, ApprovalCard, EventDetailModal and PopupApp. They had already drifted into a type error that one of the copies documented in a comment rather than fixing. Import the canonical type; if it does not fit, widen it there.
 
 ---
 
@@ -247,20 +242,16 @@ Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain 
 | `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups`, `TYPE_METHODS` |
 | `pagedList.ts` | `paginate` — the render window behind `usePagedList`. Distinct from `txPager.ts`, which pages a *remote* API: the activity RPC already returns the whole log, so there is nothing left to fetch, only a prefix to grow |
 
-`permissionRules.ts` is split from `permissions.ts` on purpose: that module imports
-`t()`, which drags in the browser layer and makes it unloadable under plain
-`node --test`. The rules that *decide* something are the ones worth testing, and they
-need no i18n. Keep new decision logic on the i18n-free side of that line.
-| `format/` | `truncateNpub`, `getInitial`, `formatTimeAgo`, `formatBytes`, `toPercent`, `toFraction` |
-| `permissions.ts` | `formatPermMethod` |
+`permissionRules.ts` is split from `permissions.ts` (the `@lib` runtime permission cascade — `check`, `save`, `clear`, the migrations) on purpose: that module imports `t()`, which drags in the browser layer and makes it unloadable under plain `node --test`. The rules that *decide* something are the ones worth testing, and they need no i18n. Keep new decision logic on the i18n-free side of that line.
+| `format/` | `truncateNpub`, `getInitial`, `truncate`, `truncateMiddle`, `formatTimeAgo`, `formatBytes`, `toPercent`, `toFraction` |
+| `permissionLabels.ts` | `formatPermissionLabel` — the wire method / permission key to its display string |
 | `url.ts` | `getDomainFromUrl` |
 | `activeTabDomain.ts` | `resolveActiveTabDomain` — which site the popup is looking at |
-| `siteState.ts` | `resolveSiteState` — connected / notConnected / empty / error |
+| `siteState.ts` | `resolveSiteState` — connected / notConnected / error |
 | `sendTarget.ts` | `resolveSendTarget`, `canSend` — what the wallet's Send box may pay |
-| `activity.ts` | `groupActivityEntries` |
-| `constants.ts` | `AUTO_LOCK_OPTIONS`, `DEFAULT_RELAYS`, `KIND_LABELS`, etc. |
-| `browser.ts` | Browser detection and API utilities for UI code |
-| `clientIcons.ts` | Known Nostr client icon mappings |
+| `defaultRelays.ts` | `DEFAULT_RELAYS` |
+| `kindLabels.ts` | `KIND_LABELS` |
+| `autoLock.ts` | `AUTO_LOCK_OPTIONS` |
 | `blossom.ts` | Blossom media upload utilities |
 | `wizardMachine.ts` | Onboarding wizard state machine |
 
@@ -336,8 +327,10 @@ Configured in `vite.config.ts`:
 | `@context` | `src/context` — the React contexts, all eight |
 | `@utils` | `src/utils` — React-side helpers that are neither a component nor a hook (`createRequiredContext`) |
 | `@styles` | `src/styles` — global stylesheets (`theme.css`) |
-| `@lib` | `lib` |
+| `@lib` | `src/lib` — the extension core: background handlers, crypto, the vault, the cross-browser shim. Imported by the service worker, so never React |
 | `@assets` | `src/assets` |
+| `@popup` | `src/popup` — the popup entry document |
+| `@wizard` | `src/wizard` — the account-creation wizard, a peer of `popup/`, `prompt/` and `onboarding/` since more than one of them renders it |
 
 Always use aliases instead of relative paths when crossing module boundaries.
 

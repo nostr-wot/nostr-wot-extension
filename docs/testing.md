@@ -1,6 +1,6 @@
 # Test Suite
 
-Tests use **Node.js built-in test runner** (`node:test`, Node 20+) with the `tsx` loader for TypeScript. No build step required for testing.
+Tests use **Node.js built-in test runner** (`node:test`, Node 22+) with the `tsx` loader for TypeScript. No build step required for testing.
 
 ## 1. Running Tests
 
@@ -130,5 +130,5 @@ The most comprehensive test file, with 117 tests across 22 suites covering 6 lay
 |------|---------|
 | `tests/helpers/browser-mock.ts` | In-memory mock for `browser.storage.{local,sync,session}`, `browser.runtime`, `browser.action`, `browser.tabs` |
 | `tests/helpers/register-mocks.ts` | Registers the browser mock via Node.js module loader hooks |
-| `tests/helpers/loader-hooks.ts` | Custom loader that intercepts `lib/browser.ts` imports and redirects to the mock |
+| `tests/helpers/loader-hooks.ts` | Custom loader that intercepts `src/lib/browser.ts` imports and redirects to the mock |
 | `tests/run.sh` | Shell script to run all test groups in sequence |

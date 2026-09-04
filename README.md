@@ -136,7 +136,7 @@ more useful now than after another client ships.
 
 This extension creates the seed phrase your entire identity rests on, so the path from randomness to words should be short enough to read in full and check yourself. It is:
 
-1. `generateNewAccount()` calls `generateMnemonic(256)` ([`lib/accounts.ts`](lib/accounts.ts)) — always 256 bits, always 24 words.
+1. `generateNewAccount()` calls `generateMnemonic(256)` ([`src/lib/accounts.ts`](src/lib/accounts.ts)) — always 256 bits, always 24 words.
 2. `@scure/bip39` implements that as `entropyToMnemonic(randomBytes(32), wordlist)` — 32 raw bytes, no stretching, no mixing, no intermediate PRNG.
 3. `randomBytes` (`@noble/hashes`) is a direct call to `globalThis.crypto.getRandomValues`, and **throws** if WebCrypto is missing. There is no fallback path, weak or otherwise.
 4. Bytes become words through the standard BIP-39 checksum and base-2048 encoding — deterministic and bias-free. The bundled English wordlist is byte-identical to the official BIP-39 list (2048 words, SHA-256 `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`), verified both in `node_modules` and in the built `dist/` bundle.
@@ -148,7 +148,7 @@ Two things we cannot verify from this repository, and therefore do not claim: th
 
 ## Cryptographic Dependencies
 
-Every cryptographic operation resolves to one of seven packages from the [noble/scure](https://paulmillr.com/noble/) family, plus `nostr-tools` for NIP-46 protocol plumbing. Nothing is vendored, forked, or patched — every file in `lib/crypto/` is a thin wrapper over an imported implementation, so what ships is what was published upstream.
+Every cryptographic operation resolves to one of seven packages from the [noble/scure](https://paulmillr.com/noble/) family, plus `nostr-tools` for NIP-46 protocol plumbing. Nothing is vendored, forked, or patched — every file in `src/lib/crypto/` is a thin wrapper over an imported implementation, so what ships is what was published upstream.
 
 `package.json` uses caret ranges; the exact versions below are held by the committed `package-lock.json` (lockfileVersion 3, a sha512 integrity hash on every entry, everything resolved from registry.npmjs.org), and CI installs with `npm ci`, which fails on any lockfile mismatch. **That lockfile is the pin — build with `npm ci`, not `npm install`.** No runtime dependency runs an install-time script.
 

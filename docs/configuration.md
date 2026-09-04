@@ -2,7 +2,7 @@
 
 ## 1. Runtime Config
 
-The background keeps a small mutable config object (`config` in `lib/bg/state.ts`):
+The background keeps a small mutable config object (`config` in `src/lib/bg/state.ts`):
 
 ```ts
 export interface ExtConfig {
@@ -16,10 +16,10 @@ export const config: ExtConfig = {
 };
 ```
 
-`DEFAULT_RELAYS` (in `lib/bg/state.ts`):
+`DEFAULT_RELAYS` (in `src/lib/bg/state.ts`):
 
 ```js
-['wss://relay.damus.io', 'wss://nos.lol', 'wss://nostr-01.yakihonne.com']
+['wss://nos.lol', 'wss://relay.damus.io', 'wss://nostr-01.yakihonne.com']
 ```
 
 `myPubkey` is initialized from the active account when the vault is loaded. The
@@ -36,10 +36,7 @@ relay list yet.
 
 ## 2. Relay List (NIP-65)
 
-The user's read/write relay list is edited in the popup (Relays card) and
-published as a replaceable `kind:10002` event via `publishRelayList`
-(`lib/bg/publish-handlers.ts`). Relay URLs are normalized with
-`normalizeRelayUrl` (`lib/relayUtils.ts`) before use.
+The user's read/write relay list is edited in the popup (Relays card) and published as a replaceable `kind:10002` event via `publishRelayList` (`src/lib/bg/publish-handlers.ts`). The handler reads the CSV stored under `browser.storage.sync.relays`, trims each entry, and drops empty ones — there is no further normalization (no lowercasing, no trailing-slash stripping). A `normalizeRelayUrl` helper (`lib/relayUtils.ts`) existed for this once, but it was part of the NIP-65 relay-discovery/outbox engine removed with the Web-of-Trust trust-graph subsystem (see the note above); nothing calls it today.
 
 ---
 
