@@ -2,7 +2,7 @@ import React from 'react';
 import { derivePqcCardState, type PqcCardState } from '@shared/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
-import { useNavigate } from './NavigationContext';
+import { useNavigate } from '@popup/context/NavigationContext';
 import Card from '@components/Card/Card';
 import { usePqc } from '@popup/context/PqcContext';
 

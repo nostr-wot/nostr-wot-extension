@@ -13,7 +13,7 @@ import TopoBg from '@components/TopoBg/TopoBg';
 import Splash from '@components/Splash/Splash';
 import TopBar from './TopBar/TopBar';
 import Home from './Home/Home';
-import { NavigationProvider, type HomeNavigation } from './Home/NavigationContext';
+import { NavigationProvider, type HomeNavigation } from '@popup/context/NavigationContext';
 import MenuOverlay from './Menu/MenuOverlay';
 import FiltersOverlay from './Filters/FiltersOverlay';
 import ActivityOverlay from './Activity/ActivityOverlay';

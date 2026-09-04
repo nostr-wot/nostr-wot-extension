@@ -35,6 +35,7 @@
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import './theme.css';
+@import './animations.css';
 
 /* Scan the source tree explicitly rather than relying on auto-detection: the
    build has three entry points and a service worker bundled separately by

@@ -5,7 +5,7 @@ import useRelayCache from '@hooks/useRelayCache.ts';
 import { MUTE_LIST_CACHE } from '@shared/relayCacheNames.ts';
 import ListRow from '@components/ListRow/ListRow';
 import { IconShield } from '@assets';
-import { useNavigate } from './NavigationContext';
+import { useNavigate } from '@popup/context/NavigationContext';
 import type { MyMuteList } from '@models/muteList.ts';
 
 /**

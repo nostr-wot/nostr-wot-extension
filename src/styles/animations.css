@@ -1,0 +1,137 @@
+/*
+ * Every animation in the product, once.
+ *
+ * These were nineteen `@keyframes` blocks spread across fourteen CSS Modules,
+ * and Vite scopes a keyframe name to the file that declares it — so the same
+ * fade was written out in Modal and again in UnlockModal, the same dropdown
+ * entrance in Dropdown and again in TopBar, and a component referencing a
+ * keyframe it did not itself define simply never animated. Two of those were
+ * live: ApprovalCard's spinner and Nip46Step's.
+ *
+ * Registering them in `@theme` makes each one a real utility — `animate-card-in`
+ * — which means the name is checked. A misspelled one now produces no class,
+ * and tests/tailwind-classes.test.ts fails on it.
+ *
+ * There was a shared animations.css here before, deleted because every module
+ * defined its own keyframes and so nothing referenced it. This is the opposite
+ * arrangement: nothing defines its own, and everything references this.
+ */
+
+@theme {
+  --animate-backdrop-in: backdrop-in var(--transition-slow) ease-out;
+  --animate-backdrop-out: backdrop-out var(--transition-slow) ease-in forwards;
+  --animate-card-in: card-in 0.18s ease-out;
+  --animate-dropdown-in: dropdown-in var(--transition) ease-out;
+  --animate-dropdown-out: dropdown-out var(--transition) ease-in forwards;
+  --animate-lang-modal-in: lang-modal-in 0.25s ease-out;
+  --animate-logo-pulse: logo-pulse 5s ease-out infinite;
+  --animate-modal-fade-in: modal-fade-in var(--transition-slow) ease-out;
+  --animate-modal-fade-out: modal-fade-out var(--transition-slow) ease-in forwards;
+  --animate-overlay-slide-in: overlay-slide-in var(--transition-slow) ease-out;
+  --animate-overlay-slide-out: overlay-slide-out var(--transition-slow) ease-in forwards;
+  --animate-dot-pulse: dot-pulse 1.5s ease-in-out infinite;
+  --animate-scrim-fade-in: scrim-fade-in var(--transition-slow) ease-out;
+  --animate-section-slide-in: section-slide-in var(--transition-slow) ease-out backwards;
+  --animate-shake: shake 0.3s;
+  --animate-sheet-slide-in: sheet-slide-in 0.25s ease-out;
+  --animate-topo-float: topo-float 18s ease-in-out infinite;
+  --animate-topo-float-2: topo-float-2 14s ease-in-out infinite;
+
+  @keyframes backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes backdrop-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes dropdown-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes dropdown-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  }
+
+  @keyframes lang-modal-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes logo-pulse {
+    0% { transform: scale(0.4); opacity: 0.8; }
+    50% { opacity: 0.3; }
+    100% { transform: scale(8); opacity: 0; }
+  }
+
+  @keyframes modal-fade-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes modal-fade-out {
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0; transform: scale(0.95); }
+  }
+
+  @keyframes overlay-slide-in {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes overlay-slide-out {
+    from { transform: translateX(0); }
+    to { transform: translateX(100%); }
+  }
+
+  @keyframes dot-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @keyframes scrim-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes section-slide-in {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  @keyframes sheet-slide-in {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  @keyframes topo-float {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    20% { transform: translate(20px, -25px) rotate(1.5deg) scale(1.02); }
+    40% { transform: translate(-15px, 20px) rotate(-1deg) scale(0.98); }
+    60% { transform: translate(25px, 10px) rotate(0.8deg) scale(1.01); }
+    80% { transform: translate(-10px, -15px) rotate(-0.5deg) scale(0.99); }
+  }
+
+  @keyframes topo-float-2 {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    25% { transform: translate(-25px, 15px) rotate(-1.5deg) scale(1.03); }
+    50% { transform: translate(18px, -22px) rotate(1.2deg) scale(0.97); }
+    75% { transform: translate(-12px, 20px) rotate(-0.8deg) scale(1.01); }
+  }
+
+}

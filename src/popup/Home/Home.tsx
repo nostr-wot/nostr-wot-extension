@@ -11,7 +11,7 @@ import useSiteState from '@hooks/useSiteState.ts';
 import type { Account } from '@models/account.ts';
 import useWalletBanner from '@hooks/useWalletBanner.ts';
 import usePendingCount from '@hooks/usePendingCount.ts';
-import { useNavigate } from './NavigationContext';
+import { useNavigate } from '@popup/context/NavigationContext';
 import SiteControls from './SiteControls';
 import ProfileRow from './ProfileRow';
 import MutesRow from './MutesRow';

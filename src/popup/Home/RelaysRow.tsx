@@ -2,7 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import ListRow from '@components/ListRow/ListRow';
 import { IconGlobe } from '@assets';
-import { useNavigate } from './NavigationContext';
+import { useNavigate } from '@popup/context/NavigationContext';
 import { useRelays } from '@popup/context/RelaysContext';
 
 /**
