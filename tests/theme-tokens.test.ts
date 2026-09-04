@@ -65,8 +65,13 @@ const REFS = references();
 
 describe('theme tokens', () => {
   it('finds tokens to check', () => {
-    // Guards the scan itself — a regex matching nothing would make the rest vacuous.
-    assert.ok(FILES.length > 20, `only found ${FILES.length} stylesheets`);
+    // Guards the scan itself — a regex matching nothing would make the rest
+    // vacuous. The stylesheet count is deliberately loose now: the Tailwind
+    // migration took the tree from 58 modules to a handful, so a threshold
+    // tuned to the old number fails for the right reason at the wrong time.
+    // The var() and definition counts below are what actually prove the scan
+    // is reading something, since those live in theme.css and tailwind.css.
+    assert.ok(FILES.length > 3, `only found ${FILES.length} stylesheets`);
     assert.ok(REFS.length > 50, `only found ${REFS.length} var() references`);
     assert.ok(DEFINED.size > 15, `only found ${DEFINED.size} definitions`);
   });

@@ -3,25 +3,11 @@
  * Most of this file migrated to Tailwind utilities directly on the elements
  * (see docs/component-standards.md §7). What is left is genuinely CSS:
  *
- *  - `.pqcCopyLink` overrides color on a LinkButton (tone="brand"). LinkButton's
- *    own CSS Module is unlayered, and Tailwind's utilities live in
- *    `@layer utilities` — an unlayered rule always wins that cascade regardless
- *    of specificity, so a utility class could not actually override it. The raw
- *    `<a>` callers (PqcHowItWorks, PqcImportPanel) have no such competing CSS
- *    and are plain utilities at the call site instead.
  *  - `.pqcGenerate` is a `<details>`/`<summary>` disclosure: the marker-hiding
  *    pseudo-element, the `[open]` attribute selector and the child combinators
  *    are exactly what utilities cannot express.
  */
 
-/* Overrides LinkButton's own (tone="brand") color and :hover color. */
-.pqcCopyLink {
-  color: var(--text-muted);
-}
-
-.pqcCopyLink:hover {
-  color: var(--brand);
-}
 
 .pqcGenerate > summary {
   cursor: pointer;

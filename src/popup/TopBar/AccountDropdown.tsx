@@ -9,7 +9,6 @@ import { IconClose, IconCopy, IconPencil } from '@assets';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
-import styles from './TopBar.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useCopy from '@hooks/useCopy.ts';
 
@@ -90,7 +89,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
   };
 
   return (
-    <div className={`${styles.dropdown} absolute top-full inset-x-0 mt-2 bg-elevated rounded-lg shadow-pop border border-card-border z-topbar`} ref={ref}>
+    <div className={`animate-dropdown-in absolute top-full inset-x-0 mt-2 bg-elevated rounded-lg shadow-pop border border-card-border z-topbar`} ref={ref}>
       <div className="max-h-120 overflow-y-auto">
         {(accounts || []).map((account) => {
           const cached = profileCache[account.pubkey];
@@ -135,7 +134,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                 {!account.readOnly && account.type !== 'npub' && (
                   <IconButton
                     size={22}
-                    className={`${styles.dropdownEditBtn} opacity-0 group-hover:opacity-100`}
+                    className="opacity-0 group-hover:opacity-100 hover:text-brand hover:bg-brand-tint-active"
                     title={t('settings.editProfile')}
                     aria-label={t('settings.editProfile')}
                     onClick={(e: MouseEvent<HTMLButtonElement>) => {
@@ -154,7 +153,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                   ) : (
                     <IconButton
                       size={22}
-                      className={`${styles.dropdownCopyBtn} opacity-0 group-hover:opacity-100`}
+                      className="opacity-0 group-hover:opacity-100 hover:text-brand hover:bg-brand-tint-active"
                       title={t('common.copy')}
                       aria-label={t('common.copy')}
                       onClick={(e: MouseEvent<HTMLButtonElement>) => {

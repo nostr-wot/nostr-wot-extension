@@ -18,7 +18,6 @@ import ListRow from '@components/ListRow/ListRow';
 import { useVault } from '@popup/context/VaultContext';
 import { useAccount } from '@popup/context/AccountContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
-import styles from './MenuOverlay.module.css';
 import IconButton from '@components/IconButton/IconButton';
 
 interface MenuOverlayProps {
@@ -207,7 +206,13 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       ) : undefined}
     >
       <div className="flex flex-col flex-1 min-h-0">
-        <div key={currentSection || '_root'} className={styles.sectionContent}>
+                {/* `backwards`, carried by the registered animation, is load-bearing.
+            `both` would keep the final transform: translateX(0) permanently, and
+            a non-none transform makes the element a containing block for fixed
+            descendants — which is how five dialogs once ended up escaping to
+            #root portals to get away from it. The padding/negative-margin pair
+            buys back the room card shadows need inside a one-axis scroller. */}
+        <div key={currentSection || '_root'} className="animate-section-slide-in overflow-y-auto px-2 -mx-2">
           {!currentSection ? (
             <div className="flex flex-col gap-2 flex-1 py-2 px-1">
               {menuItems.map((item) => {

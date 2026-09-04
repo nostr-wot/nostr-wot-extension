@@ -4,7 +4,6 @@ import { formatLabel } from '@shared/permissions.ts';
 import type { ApprovalGroup } from '@shared/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
 import Card from '@components/Card/Card';
-import styles from './ApprovalCard.module.css';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;
@@ -32,7 +31,7 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="text-md font-semibold text-heading">{domain}</div>
         <div className="text-sm text-body flex items-center gap-3">
-          {isNip46 && <IconSync size={12} className={styles.spinnerIcon} />}
+          {isNip46 && <IconSync size={12} className="animate-spin [animation-duration:1.5s] shrink-0" />}
           {isNip46 ? t('approval.awaitingSigner') : label}
         </div>
         {!isNip46 && group.requests.length > 1 && (

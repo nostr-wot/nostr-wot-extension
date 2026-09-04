@@ -21,7 +21,6 @@ import Modal from '@components/Modal/Modal';
 import Toggle from '@components/Toggle/Toggle';
 import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import styles from './Settings.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import Chip from '@components/Chip/Chip';
 import ListRow from '@components/ListRow/ListRow';
@@ -156,7 +155,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   const accountScopeBlock = hasMultipleAccounts && (
     <div className="flex flex-col gap-3 pb-5 mb-3 border-b border-card-border">
-      <Card className={styles.accountScopeCard}>
+      <Card className="p-0 overflow-hidden mb-0">
         <div className="flex items-center justify-between py-5.5 px-7">
           <div className="flex items-center gap-4">
             <IconUsers size={15} className="text-brand shrink-0" />

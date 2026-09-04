@@ -20,7 +20,6 @@ import useApprovalQueue from '@hooks/useApprovalQueue.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import { usePermissions } from '@popup/context/PermissionsContext';
 import { useAccount } from '@popup/context/AccountContext';
-import styles from './ApprovalOverlay.module.css';
 import Button from '@components/Button/Button';
 
 interface ApprovalOverlayProps {
@@ -113,8 +112,8 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
   return (
     <>
-      <div className={`${styles.scrim} absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)]`} />
-      <div className={`${styles.overlay} absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-[rgba(255,255,255,0.96)] backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] flex flex-col p-8`}>
+      <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)]`} />
+      <div className={`animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-[rgba(255,255,255,0.96)] backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] flex flex-col p-8`}>
         <div className="flex items-center gap-4 mb-6 flex-wrap">
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>

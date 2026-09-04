@@ -7,7 +7,6 @@ import Card from '@components/Card/Card';
 import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
-import styles from './WizardOverlay.module.css';
 import type { Language } from '@models/language.ts';
 
 const ITEM_H = 36;
@@ -133,7 +132,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
 
       {/* Full-screen language modal with scroll wheel picker */}
       {modalOpen && (
-        <div className={styles.langModal}>
+        <div className="absolute inset-0 z-sheet flex flex-col [background:var(--bg-page)] animate-lang-modal-in">
           <div className="flex items-center justify-between py-7 px-8 border-b border-card-border">
             <span className="text-xl font-bold text-heading">
               {selected?.prompt || languages[0].prompt}

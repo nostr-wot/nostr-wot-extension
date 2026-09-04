@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
-import styles from './WizardOverlay.module.css';
 import SeedWord from '@components/SeedWord/SeedWord';
 import Chip from '@components/Chip/Chip';
 
@@ -114,7 +113,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
               index={i + 1}
               word={isBlank ? (filled || '___') : word}
               compact={words.length > 12}
-              className={`${isBlank ? 'text-brand font-bold' : ''} ${isWrong ? styles.wordWrong : ''}`}
+              className={`${isBlank ? 'text-brand font-bold' : ''} ${isWrong ? 'text-error bg-[rgb(220_38_38_/_0.06)] rounded-sm animate-shake' : ''}`}
               onClick={isClickable ? () => handleSlotClick(i) : undefined}
             />
           );

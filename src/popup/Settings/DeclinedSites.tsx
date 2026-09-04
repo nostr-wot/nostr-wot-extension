@@ -5,7 +5,6 @@ import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import styles from './Settings.module.css';
 import LinkButton from '@components/LinkButton/LinkButton';
 
 /**
@@ -83,7 +82,7 @@ export default function DeclinedSites() {
                 <div className="text-md font-medium text-heading truncate">{domain}</div>
                 <div className="text-xs text-muted">{describe(until)}</div>
               </div>
-              <LinkButton tone="brand" className={`${styles.declinedRemove} shrink-0 underline underline-offset-2 hover:opacity-85`} onClick={() => undo(domain)}>
+              <LinkButton tone="brand" className={`text-sm shrink-0 underline underline-offset-2 hover:opacity-85`} onClick={() => undo(domain)}>
                 {t('perm.declinedRemove')}
               </LinkButton>
             </div>

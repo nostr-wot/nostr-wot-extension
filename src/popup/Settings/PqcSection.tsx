@@ -20,7 +20,6 @@ import { truncateMiddle } from '@shared/format/text.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@shared/browser.ts';
-import styles from './PqcSection.module.css';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
 
@@ -215,7 +214,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
             <div className="flex items-center gap-3 my-5 text-sm text-warning">
               <IconWarning size={16} />
               <span>{t('pqc.checkFailed')}</span>
-              <LinkButton tone="brand" className={`${styles.pqcCopyLink} inline-flex items-center gap-2.5 mt-5`} onClick={refresh}>{t('common.retry')}</LinkButton>
+              <LinkButton tone="brand" className={`text-muted hover:text-brand inline-flex items-center gap-2.5 mt-5`} onClick={refresh}>{t('common.retry')}</LinkButton>
             </div>
           )}
           {/* Only while it is still an instruction. Telling someone to publish,
@@ -263,7 +262,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
               <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.attestationLabel')}</p>
               <pre className="mt-3 p-4 rounded-sm bg-card border border-card-border font-mono text-2xs leading-normal text-body whitespace-pre-wrap break-all max-h-110 overflow-y-auto">{JSON.stringify(status.attestation, null, 2)}</pre>
               {/* For anyone who would rather publish it themselves. */}
-              <LinkButton tone="brand" className={`${styles.pqcCopyLink} inline-flex items-center gap-2.5 mt-5`} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
+              <LinkButton tone="brand" className={`text-muted hover:text-brand inline-flex items-center gap-2.5 mt-5`} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
                 <IconCopy size={12} />
                 {attestationCopy.copied ? t('common.copied') : t('pqc.copyAttestation')}
               </LinkButton>

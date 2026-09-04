@@ -5,7 +5,6 @@ import { useAccount } from '@popup/context/AccountContext';
 import { useVault } from '@popup/context/VaultContext';
 import Avatar from '@components/Avatar/Avatar';
 import IconButton from '@components/IconButton/IconButton';
-import styles from './TopBar.module.css';
 
 interface AccountBarProps {
   dropdownOpen: boolean;
@@ -45,7 +44,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
 
       {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (
         <IconButton
-          className={styles.lockBtn}
+          className="text-success hover:text-success hover:bg-[rgba(5,150,105,0.1)]"
           title={t('topbar.vaultUnlocked')}
           aria-label={t('topbar.vaultUnlocked')}
           onClick={(e) => {

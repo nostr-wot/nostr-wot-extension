@@ -9,7 +9,6 @@ import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
 import { IconClose } from '@assets';
-import styles from './UnlockModal.module.css';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
 
@@ -110,18 +109,18 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
   return (
     <div
       className={[
-        styles.overlay,
+        'animate-backdrop-in',
         'absolute inset-0 z-lock bg-[rgba(0,0,0,0.3)] backdrop-blur-sm flex items-center justify-center p-12',
         fullScreen ? 'bg-scrim-heavy backdrop-blur-[20px]' : '',
-        animating ? styles.exiting : '',
+        animating ? 'animate-backdrop-out' : '',
       ].join(' ')}
     >
       <div
         className={[
-          styles.card,
+          'animate-modal-fade-in',
           'bg-elevated border border-card-border rounded-[14px] p-12 w-full max-w-[320px]',
           fullScreen ? 'bg-glass-heavy shadow-[0_8px_40px_rgba(0,0,0,0.2)]' : '',
-          animating ? styles.cardExiting : '',
+          animating ? 'animate-modal-fade-out' : '',
         ].join(' ')}
       >
         <div className="flex flex-col items-center gap-4 mb-8">
@@ -181,7 +180,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           </Button>
         </div>
         {fullScreen && !confirmReset && (
-          <LinkButton className={`${styles.resetLink} block w-full mt-6 text-center`} onClick={() => setConfirmReset(true)}>
+          <LinkButton className="block w-full mt-6 text-center hover:text-error" onClick={() => setConfirmReset(true)}>
             {t('unlock.forgotPassword')}
           </LinkButton>
         )}
