@@ -50,12 +50,23 @@ export default function Modal({
 }: ModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // `onClose` in a ref, and the effect keyed on nothing.
+  //
+  // Callers pass an inline arrow or a plain function from their body, so
+  // `onClose` is a new identity on every render. With it in the dependency
+  // array this effect re-ran on every render — including the one caused by
+  // each keystroke — and `cardRef.focus()` pulled focus off the input the user
+  // was typing into. Every password field inside a dialog dropped focus after
+  // one character.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     cardRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   const style = {
     ...(zIndex ? { '--modal-z': zIndex } : null),

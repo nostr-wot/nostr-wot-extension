@@ -1,4 +1,4 @@
-import React, { useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import React, { useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
@@ -18,9 +18,14 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
   // A never-lock vault is stored under the empty password, so it can just be
   // opened. Shared, because the mode check in front of it is load-bearing —
   // see src/shared/vaultAutoUnlock.ts.
+  // Held in a ref: `onUnlocked` is a new identity on every parent render, and
+  // keying the effect on it re-ran the whole probe each time.
+  const onUnlockedRef = useRef(onUnlocked);
+  onUnlockedRef.current = onUnlocked;
+
   useEffect(() => {
-    isVaultOpen(rpc).then((open) => { if (open) onUnlocked?.(); }).catch(() => {});
-  }, [onUnlocked]);
+    isVaultOpen(rpc).then((open) => { if (open) onUnlockedRef.current?.(); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
