@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
+import useCopy from '@shared/hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
@@ -33,7 +34,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
   const [qrState, setQrState] = useState<QrState>('idle');
   const [nostrconnectUri, setNostrconnectUri] = useState<string>('');
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [copied, setCopied] = useState<boolean>(false);
+  const uriCopy = useCopy();
   const [errorMsg, setErrorMsg] = useState<string>('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionRef = useRef<string | null>(null);
@@ -106,14 +107,6 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
     };
   }, []);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(nostrconnectUri);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {}
-  };
-
   const handleRetry = () => {
     // Explicitly tear down the failed/expired session before starting fresh.
     if (sessionRef.current) {
@@ -179,8 +172,8 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
               </div>
               <p className={nip46Styles.qrHint}>{t('wizard.nip46QrHint')}</p>
               {nostrconnectUri && (
-                <button className={nip46Styles.copyBtn} onClick={handleCopy}>
-                  {copied ? t('wizard.nip46UriCopied') : t('wizard.nip46CopyUri')}
+                <button className={nip46Styles.copyBtn} onClick={() => uriCopy.copy(nostrconnectUri)}>
+                  {uriCopy.copied ? t('wizard.nip46UriCopied') : t('wizard.nip46CopyUri')}
                 </button>
               )}
               <div className={nip46Styles.statusRow}>

@@ -2,8 +2,8 @@ import React, { useState, useMemo, KeyboardEvent } from 'react';
 import { getSupportedLanguages, setLanguage, getLanguage, t } from '@lib/i18n.js';
 import TopoBg from '@components/TopoBg/TopoBg';
 import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
-import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
 import Button from '@components/Button/Button';
+import LanguageWheel, { type Language } from './LanguageWheel';
 import styles from './WizardOverlay.module.css';
 
 const ITEM_H = 36;
@@ -14,13 +14,6 @@ const STEP = PAUSE + SLIDE;
 interface ScrollKeyframes {
   css: string;
   duration: number;
-}
-
-interface Language {
-  code: string;
-  native: string;
-  flag: string;
-  prompt: string;
 }
 
 function buildScrollKeyframes(n: number): ScrollKeyframes | null {
@@ -151,19 +144,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
             </button>
           </div>
 
-          <div className={styles.langModalWheel}>
-            <ScrollWheelPicker
-              items={languages}
-              selectedIndex={selected ? languages.findIndex((l) => l.code === selected.code) : 0}
-              onChange={(i: number) => setSelected(languages[i])}
-              renderItem={(lang: Language, _i: number, isActive: boolean) => (
-                <div className={`${styles.langWheelItem} ${isActive ? styles.langWheelItemActive : ''}`}>
-                  <span className={styles.langWheelFlag}>{lang.flag}</span>
-                  <span className={styles.langWheelName}>{lang.native}</span>
-                </div>
-              )}
-            />
-          </div>
+          <LanguageWheel languages={languages} selected={selected} onChange={setSelected} />
 
           <div className={styles.langModalBottom}>
             <Button className={styles.langConfirm} onClick={handleConfirm}>

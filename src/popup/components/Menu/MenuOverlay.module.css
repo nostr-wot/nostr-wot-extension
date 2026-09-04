@@ -111,37 +111,6 @@
   color: var(--text-muted);
 }
 
-.langModalWheel {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 var(--sp-8);
-}
-
-.langWheelItem {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-7);
-}
-
-.langWheelItemActive .langWheelName {
-  font-weight: var(--fw-semibold);
-}
-
-.langWheelFlag {
-  font-size: var(--fs-display);
-  line-height: var(--lh-none);
-}
-
-.langWheelName {
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-medium);
-  color: var(--text-heading);
-  letter-spacing: -0.2px;
-  transition: font-weight var(--transition);
-}
-
 /* About footer */
 .aboutFooter {
   display: flex;

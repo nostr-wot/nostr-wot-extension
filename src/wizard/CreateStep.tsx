@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import browser from '@shared/browser.ts';
 import { rpc } from '@shared/rpc.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
@@ -6,10 +6,8 @@ import useCopy from '@shared/hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets';
 import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import Modal from '@components/Modal/Modal';
 import styles from './WizardOverlay.module.css';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
+import EncryptedBackupModal from './EncryptedBackupModal';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -26,9 +24,6 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const [revealed, setRevealed] = useState<boolean>(false);
   const seedCopy = useCopy();
   const [encModalOpen, setEncModalOpen] = useState<boolean>(false);
-  const [encPw, setEncPw] = useState<string>('');
-  const [encConfirm, setEncConfirm] = useState<string>('');
-  const [encError, setEncError] = useState<string>('');
   const [backedUp, setBackedUp] = useState<boolean>(false);
 
   useEffect(() => {
@@ -98,25 +93,6 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     setBackedUp(true);
   };
 
-  const handleDownloadEncrypted = async () => {
-    setEncError('');
-    const problem = validatePasswordPair(encPw, encConfirm);
-    if (problem) {
-      setEncError(t(problem === 'tooShort' ? 'wizard.minChars' : 'key.passwordsNoMatch'));
-      return;
-    }
-    try {
-      const ncryptsec = await rpc<string>('onboarding_exportNcryptsec', { password: encPw });
-      if (ncryptsec) {
-        downloadFile(ncryptsec, `nostr-backup-${Date.now()}.ncryptsec`);
-        setEncModalOpen(false);
-        setBackedUp(true);
-      }
-    } catch {
-      setEncError(t('wizard.failedGenerateBackup'));
-    }
-  };
-
   return (
     <div className={styles.step}>
       <h2 className={styles.stepTitle}>{t('wizard.recoveryTitle')}</h2>
@@ -182,37 +158,11 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       </div>
 
       {encModalOpen && (
-        <Modal
-          title={t('wizard.encryptBackup')}
+        <EncryptedBackupModal
+          rpcMethod="onboarding_exportNcryptsec"
           onClose={() => setEncModalOpen(false)}
-          footerRow
-          footer={(
-            <>
-              <Button variant="secondary" small onClick={() => setEncModalOpen(false)}>{t('common.cancel')}</Button>
-              <Button small onClick={handleDownloadEncrypted}>{t('common.download')}</Button>
-            </>
-          )}
-        >
-          <p>{t('wizard.encryptBackupDesc')}</p>
-          <div className={styles.formGroup}>
-            <Input
-              type="password"
-              showToggle
-              placeholder={t('key.passwordMinChars')}
-              value={encPw}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEncPw(e.target.value)}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <Input
-              type="password"
-              placeholder={t('key.confirmPassword')}
-              value={encConfirm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setEncConfirm(e.target.value)}
-            />
-          </div>
-          {encError && <div className={styles.error}>{encError}</div>}
-        </Modal>
+          onSuccess={() => { setEncModalOpen(false); setBackedUp(true); }}
+        />
       )}
     </div>
   );

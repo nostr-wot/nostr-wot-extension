@@ -1,0 +1,30 @@
+.wheelWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-8);
+}
+
+.wheelItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-7);
+}
+
+.wheelItemActive .wheelName {
+  font-weight: var(--fw-semibold);
+}
+
+.wheelFlag {
+  font-size: var(--fs-display);
+  line-height: var(--lh-none);
+}
+
+.wheelName {
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-medium);
+  color: var(--text-heading);
+  letter-spacing: -0.2px;
+  transition: font-weight var(--transition);
+}
