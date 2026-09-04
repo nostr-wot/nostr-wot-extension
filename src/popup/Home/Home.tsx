@@ -22,7 +22,6 @@ import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { IconGlobe, IconZap, IconChevronRight } from '@assets';
-import styles from './Home.module.css';
 import type { PendingRequest } from '@lib/types.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
 
@@ -242,7 +241,7 @@ export default function Home({ menuOpen }: HomeProps) {
       {/* Account — profile, mutes, and relays that follow the identity, grouped
           into one card so they read as a single list. */}
       {active && (
-        <div className={`${styles.accountSection} mt-7`}>
+        <div className="[&_label]:ml-1 [&_label]:mb-3 mt-7">
           <SectionLabel>{t('home.account')}</SectionLabel>
           <Card className="p-0 overflow-hidden">
             {canEditProfile && <ProfileRow />}

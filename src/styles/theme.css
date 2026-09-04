@@ -263,3 +263,19 @@ label {
   color: var(--text-heading);
   margin-bottom: var(--sp-3);
 }
+
+/* Root background, from PopupApp.module.css — `html` and `body` are rendered
+   by index.html, so no component has an element to hang a utility on.
+   The opaque root is load-bearing: a transparent one under the blurred,
+   scaled backdrop layer triggers a Chrome compositing bug where the popup's
+   first frame is never painted until something forces a repaint, so the popup
+   opens blank. The backdrop still covers this, so nothing looks different. */
+html {
+  background: var(--bg-html);
+}
+
+body {
+  padding: var(--sp-4);
+  background: var(--bg-html);
+  position: relative;
+}

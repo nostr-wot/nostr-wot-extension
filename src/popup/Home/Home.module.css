@@ -1,8 +1,0 @@
-/* Everything else here migrated to Tailwind utilities. This survives because
-   the label lives inside child components (Toggle, ListRow) this file does not
-   render directly, so there is no element to hang a utility class on — only a
-   descendant selector off the scoped ancestor class reaches it. */
-.accountSection :global(label) {
-  margin-left: var(--sp-1);
-  margin-bottom: var(--sp-3);
-}

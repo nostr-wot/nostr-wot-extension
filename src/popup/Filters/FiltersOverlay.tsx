@@ -10,7 +10,6 @@ import EditableList from '@components/EditableList/EditableList';
 import EmptyState from '@components/EmptyState/EmptyState';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import styles from './Filters.module.css';
 import type { MyMuteList } from '@models/muteList.ts';
 
 interface FiltersOverlayProps {
@@ -47,11 +46,11 @@ function toHexPubkey(input: string): string | null {
 }
 
 const muteClassNames = {
-  group: styles.muteGroup,
-  list: styles.blockList,
-  row: styles.blockItem,
-  item: styles.blockPubkey,
-  hint: styles.muteGroupHint,
+  group: "flex flex-col gap-3",
+  list: "flex flex-col gap-2",
+  row: "flex items-center gap-4 py-4 px-6 border border-card-border bg-card rounded-panel",
+  item: "flex-1 text-sm text-heading truncate min-w-0",
+  hint: "text-xs text-muted leading-tight",
 };
 
 export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps) {
@@ -178,7 +177,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
 
   return (
     <OverlayPanel title={t('mutes.title')} onBack={onClose}>
-      <div className={styles.content}>
+      <div className="flex-1 overflow-y-auto flex flex-col gap-8">
         {loading ? (
           <EmptyState text={t('common.loading')} />
         ) : readFailed ? (
@@ -227,7 +226,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
               onRemove={(v) => update({ hashtags: cur.hashtags.filter((h) => h !== v) })}
             />
 
-            <div className={styles.muteGroup}>
+            <div className="flex flex-col gap-3">
               <SectionLabel>{t('mutes.importTitle')}</SectionLabel>
               <InputRow
                 value={importValue}
@@ -240,7 +239,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
                 mono
               />
               {SUGGESTED_LISTS.length > 0 && (
-                <div className={styles.suggestedRow}>
+                <div className="flex flex-wrap gap-3">
                   {SUGGESTED_LISTS.map((s) => (
                     <Button key={s.pubkey} small variant="secondary" disabled={importing} onClick={() => handleSuggested(s.pubkey)}>
                       {s.name}
@@ -248,7 +247,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
                   ))}
                 </div>
               )}
-              <div className={styles.muteGroupHint}>{t('mutes.importHint')}</div>
+              <div className="text-xs text-muted leading-tight">{t('mutes.importHint')}</div>
             </div>
 
             <PublishRow

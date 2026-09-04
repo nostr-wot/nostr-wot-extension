@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import browser from '@shared/browser.ts';
 import { rpcNotify } from '@shared/rpc.ts';
 import '@styles/tailwind.css';
-import styles from './PopupApp.module.css';
 import { AccountProvider, useAccount } from './context/AccountContext';
 import { VaultProvider, useVault } from './context/VaultContext';
 import { PermissionsProvider } from './context/PermissionsContext';
@@ -126,7 +125,7 @@ function PopupInner() {
           onEditProfile={() => setActiveOverlay('editProfile')}
         />
 
-        <div className={`${styles.scrollArea} flex-1 overflow-y-auto min-h-0 flex flex-col gap-2`}>
+        <div className="[&>*]:shrink-0 flex-1 overflow-y-auto min-h-0 flex flex-col gap-2">
           <NavigationProvider value={navigation}>
             <Home menuOpen={activeOverlay === 'menu'} />
           </NavigationProvider>
