@@ -6,13 +6,15 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each in its own folder. There are **31**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
+All shared components live in `src/components/`, each in its own folder. There are **38**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`.
 
 **Content** — `Card`, `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`.
 
-**Controls** — `Button`, `Input`, `InputRow`, `Select`, `Toggle`, `ChipGroup`, `EditableList`, `RemoveButton`, `NavRow`, `NavItem`, `ScrollWheelPicker`.
+**Controls** — `Button`, `IconButton`, `LinkButton`, `Input`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`.
+
+**Feedback** — `Spinner`.
 
 **Decoration** — `TopoBg`, `PulseLogo`, `AnimatedWotLogo`.
 
@@ -23,6 +25,14 @@ Read the component's own file for its props; duplicating them here is what rotte
 The recurring failure is not that a primitive is missing, it is that a feature hand-rolls one it already has. `Modal`'s own docstring records that it exists because the popup had grown three separate dialog implementations — and four more were written afterwards. Before adding a backdrop, a close button, a chip row, or an are-you-sure, check this list.
 
 **Every centered dialog is now a `Modal`** — the wallet's deposit, send and tx-filter, the permissions add-rule, `KeyActionModal`, and the wizard's encrypted backup all used to hand-roll a scrim, a card, a header and a close button, at five different scrim opacities, three dismissal behaviours and no Escape key between them. Migrating them deleted ~280 lines of CSS and gave each one Escape, focus-on-open, `role="dialog"`, a scrolling body with a pinned footer, and the drag-safe backdrop rule.
+
+**Every clickable list row is a `ListRow`.** `NavRow`, `NavItem` and the permissions screen's `.permRow` were three implementations of `[leading] [title / subtitle] [chevron]`, which is why the chevron was brand coloured in two of them and muted in the third, and why only one ellipsised a long subtitle. Chrome is the variant: `grouped` is a bare row for a bordered container (a `Card`, or a rounded scroll list) to own the edge, siblings separated by a hairline; `standalone` carries its own card chrome.
+
+Three row-shaped things are deliberately *not* `ListRow`, and the reasoning is worth keeping because each looks like a candidate: the menu footer's language trigger is an auto-width pill with a chevron pointing **down**, so it is a dropdown trigger; the top bar's account rows carry hover-revealed edit/copy/remove buttons, so the row is a container of controls rather than one control; and the wizard's follow suggestions are a multi-**select** list with a checkmark. That last one stays hand-rolled only until there is a second multi-select list — **a variant with a single caller is a guess about what the second caller will need**, and guessing is how `NavRow` and `NavItem` became two things.
+
+**`Tabs`, `Chip` and `SeedWord`** cover the other patterns that had been copied rather than shared. `Tabs` has two variants because the product genuinely has two tab designs — the wallet uses outlined segments, the NIP-46 step a track with a moving thumb — and picking one is a design decision rather than a refactor; converging them is still worth doing. `Chip` carries a `tone`, because on the permissions screen the colour *is* the meaning: allow is not merely "selected", it is allow. It also takes `toggle={false}` for a chip that is a one-shot action rather than a switch, which suppresses `aria-pressed` — the recovery-phrase word bank consumes a word when tapped, and announcing every available word as "not pressed" describes a toggle nobody built.
+
+**A component owns its own variants, including the tight ones.** The 24-word recovery grid used to shrink its words with a descendant selector written in the *grid's* stylesheet. That reaches a plain `div`; it does not reach a component with its own scoped class names, so extracting `SeedWord` would have silently dropped it. Hence `SeedWord`'s `compact` prop. Whenever you turn repeated markup into a component, **search the stylesheets for descendant selectors that were reaching into it** — they fail silently, with no build error and no runtime warning.
 
 `Modal` props worth knowing: `maxWidth` (px, for dialogs that would look adrift at full width), `footerRow` (equal side-by-side actions instead of one full-width button), and `dismissOnBackdrop={false}` for anything that must be *answered*. **Use that last one whenever secret material is on screen** — `KeyActionModal` shows an nsec and a seed phrase, and its old shell dismissed on `click`, so selecting the value and releasing outside the card closed the dialog and wiped it mid-read.
 
