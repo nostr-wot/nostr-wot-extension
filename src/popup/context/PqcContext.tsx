@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import useRelayCache from '@shared/hooks/useRelayCache.ts';
+import useRelayCache from '@hooks/useRelayCache.ts';
 import { PQC_PUBLISHED_CACHE } from '@shared/relayCacheNames.ts';
 import type { PqcPanelStatus, PqcPublished } from '@shared/pqcState.ts';
 import { useAccount } from './AccountContext';

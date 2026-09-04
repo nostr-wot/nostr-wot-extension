@@ -92,6 +92,7 @@ export default defineConfig({
       '@popup': resolve(__dirname, 'src/popup'),
       '@wizard': resolve(__dirname, 'src/wizard'),
       '@models': resolve(__dirname, 'src/models'),
+      '@hooks': resolve(__dirname, 'src/hooks'),
       '@lib': resolve(__dirname, 'lib'),
     },
   },

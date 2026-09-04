@@ -4,7 +4,7 @@ import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import styles from './WizardOverlay.module.css';
-import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
+import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 
 interface SubAccountStepProps {
   onNext: (account: any) => void;

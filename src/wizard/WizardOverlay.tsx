@@ -3,8 +3,8 @@ import { isLanguageChosen } from '@lib/i18n.js';
 import { rpc } from '@shared/rpc.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import TopoBg from '@components/TopoBg/TopoBg';
-import useWizardFlow from '@shared/hooks/useWizardFlow';
-import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
+import useWizardFlow from '@hooks/useWizardFlow';
+import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import WizardSteps from './WizardSteps';
 import styles from './WizardOverlay.module.css';
 

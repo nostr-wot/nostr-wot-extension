@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { downloadFile } from '@shared/downloadFile.ts';
-import useCopy from '@shared/hooks/useCopy.ts';
+import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconCopy, IconDownload, IconLock, IconWarning } from '@assets';
 import Button from '@components/Button/Button';

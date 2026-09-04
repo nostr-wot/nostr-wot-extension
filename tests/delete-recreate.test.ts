@@ -5,7 +5,7 @@
  * Reproduces the Safari-reported bug where, after deleting the last account,
  * `onboarding_generateAccount` appeared to return `undefined` to the popup
  * (`undefined is not an object (evaluating 'result.account')` in
- * src/popup/components/Wizard/CreateStep.tsx).
+ * src/wizard/CreateStep.tsx).
  *
  * Every handler call is wrapped in a timeout so a hang (handler never
  * resolving → background never calls sendResponse → popup receives

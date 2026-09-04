@@ -5,7 +5,7 @@ import '@shared/theme.css';
 import './onboarding.css';
 import TopoBg from '@components/TopoBg/TopoBg';
 import PulseLogo from '@components/PulseLogo/PulseLogo';
-import useWizardFlow from '@shared/hooks/useWizardFlow.ts';
+import useWizardFlow from '@hooks/useWizardFlow.ts';
 import WizardSteps from '@wizard/WizardSteps';
 
 export default function OnboardingApp() {

@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { IconChevronDown } from '@assets';
-import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
+import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import styles from './Dropdown.module.css';
-import useOutsideClick from '@shared/hooks/useOutsideClick.ts';
+import useOutsideClick from '@hooks/useOutsideClick.ts';
 import type { DropdownOption } from '@models/dropdown.ts';
 
 interface DropdownProps {

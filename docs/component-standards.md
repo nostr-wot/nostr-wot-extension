@@ -64,6 +64,29 @@ The vocabulary the code is reaching for: **Overlay** = full-height `OverlayPanel
 
 `PopupApp` used to hand `Home` seven navigation callbacks, which it drilled another level into the rows — a router API simulated with props, where every new destination touched three files. `NavigationProvider`/`useNavigate()` replaces it: a row asks for the destination it needs instead of being handed it. `PopupApp` still owns the `OverlayType` state machine; only the delivery changed. Data still travels as props — `SiteControls` takes a `domain`, because that is data rather than a destination.
 
+### The tree
+
+```
+src/
+  assets/      icons
+  components/  shared UI primitives
+  hooks/       every hook, feature or generic
+  models/      every shared type
+  shared/      pure logic and utilities, unit-tested
+  popup/  prompt/  onboarding/  wizard/   the four documents' screens
+```
+
+Three rules behind that shape. **No module nests its own `components/`** — inside
+`src/popup/` the folders are the screens, and a second level named after a file type
+said nothing. **Hooks live together**, not beside the one screen that happens to use
+them first, because that is how `useSiteState` ended up somewhere `useWalletBanner`
+had to reach for it. **Types live in `models/`** so a shape has one definition; the
+module that owns the behaviour re-exports its own shape, so no call site learns a
+second import path for the same idea.
+
+Aliases: `@components`, `@hooks`, `@models`, `@shared`, `@lib`, `@assets`, `@popup`,
+`@wizard`. Use them rather than climbing out of a folder with `../../`.
+
 ### Where a feature lives
 
 `src/wizard/` is a peer of `popup/`, `prompt/` and `onboarding/`, not a folder inside
