@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { rpc, rpcNotify } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { getFaviconUrl } from '@utils/faviconUrl.ts';

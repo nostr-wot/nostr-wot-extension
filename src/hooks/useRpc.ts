@@ -48,7 +48,7 @@ export default function useRpc<T = unknown>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [method, paramsKey]);
 
-  useEffect(() => { if (!lazy) call(); }, [call, lazy]);
+  useEffect(() => { if (!lazy) void call(); }, [call, lazy]);
 
   return { data, loading, error, reload: call, call };
 }

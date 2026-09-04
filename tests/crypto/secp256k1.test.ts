@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { hexToBytes, bytesToHex } from '../../src/lib/crypto/utils.ts';
 import {
-  getPublicKey, isValidPrivateKey, liftX, ecdh, N
+  getPublicKey, isValidPrivateKey, liftX, ecdh
 } from '../../src/lib/crypto/secp256k1.ts';
 
 // BIP-340 test vector 0: known privkey -> pubkey

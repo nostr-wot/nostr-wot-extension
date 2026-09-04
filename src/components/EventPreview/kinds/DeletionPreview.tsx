@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import { truncate } from '@utils/format/text.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';

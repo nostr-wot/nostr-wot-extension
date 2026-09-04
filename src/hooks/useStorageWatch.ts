@@ -44,6 +44,5 @@ export default function useStorageWatch(matchers: StorageWatchMatcher[], onChang
     };
     browser.storage.onChanged.addListener(listener);
     return () => browser.storage.onChanged.removeListener(listener);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchersKey]);
 }

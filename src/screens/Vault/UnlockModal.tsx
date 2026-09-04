@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '@context/AccountContext';
@@ -48,7 +48,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
   const [confirmReset, setConfirmReset] = useState<boolean>(false);
 
   const handleSuccess = useCallback(() => {
-    vault.checkState();
+    void vault.checkState();
     onUnlocked?.();
   }, [vault, onUnlocked]);
 
@@ -102,7 +102,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
 
   const handleDestroyVault = async () => {
     await rpc('vault_destroy');
-    vault.checkState();
+    void vault.checkState();
     window.location.reload();
   };
 

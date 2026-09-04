@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import useRpc from '@hooks/useRpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';

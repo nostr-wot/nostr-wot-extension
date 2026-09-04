@@ -10,7 +10,6 @@ import {
 } from '@domain/profile/profileMetadata.ts';
 import { useAccount } from '@context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
-import Avatar from '@components/Avatar/Avatar';
 import ProfilePreviewCard from './ProfilePreviewCard';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
@@ -253,7 +252,6 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const renderPreview = () => (
     <ProfilePreviewCard
       meta={previewMeta}
-      displayPicture={displayPicture}
       initial={initial}
       error={error}
       onBack={() => { setStep(STEPS.FORM); setError(''); }}

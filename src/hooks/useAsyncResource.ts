@@ -103,7 +103,7 @@ export default function useAsyncResource<T>(
 
   useEffect(() => {
     if (!enabled) return;
-    refresh();
+    void refresh();
     // `deps` is deliberately spread into a hook-managed array rather than
     // passed as one value: callers supply their own dependency list (an
     // account id, a config type), and this effect must re-run on each entry

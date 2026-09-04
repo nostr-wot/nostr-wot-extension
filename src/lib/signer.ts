@@ -272,7 +272,7 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
     const timer = setTimeout(() => {
       _pendingResolvers.delete(id);
       _timeoutTimers.delete(id);
-      removePendingFromStorage(id);
+      void removePendingFromStorage(id);
       reject(new Error('Request timed out'));
     }, REQUEST_TIMEOUT_MS);
     _timeoutTimers.set(id, timer);
@@ -962,7 +962,7 @@ async function getNip46Client(acct: SafeAccount): Promise<BunkerSigner> {
         return;
       }
       console.debug('[NIP-46] auth_url received, opening:', url);
-      browser.tabs.create({ url });
+      void browser.tabs.create({ url });
     }
   });
 

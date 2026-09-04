@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
@@ -67,7 +67,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
 
   useEffect(() => {
     if (tab === 'qr' && qrState === 'idle') {
-      startQrSession();
+      void startQrSession();
     }
   }, [tab, qrState, startQrSession]);
 

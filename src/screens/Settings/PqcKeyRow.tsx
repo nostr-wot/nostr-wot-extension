@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconCopy } from '@assets';
 import useCopy from '@hooks/useCopy.ts';

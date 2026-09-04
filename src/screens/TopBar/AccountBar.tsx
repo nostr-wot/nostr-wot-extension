@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconChevronDown, IconLockOpen } from '@assets';
 import { useAccount } from '@context/AccountContext';
@@ -50,7 +49,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
           aria-label={t('topbar.vaultUnlocked')}
           onClick={(e) => {
             e.stopPropagation();
-            vault.lock();
+            void vault.lock();
           }}
         >
           <IconLockOpen />

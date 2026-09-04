@@ -4,21 +4,18 @@
  */
 
 import browser from '../browser.ts';
-import { getDomainFromUrl } from '@utils/url.ts';
 import { openPopupForActiveTab } from '../openPopupForActiveTab.ts';
-import { isRestrictedUrl, type HandlerFn, type LocalAccountEntry } from './state.ts';
+import { type HandlerFn, type LocalAccountEntry } from './state.ts';
 import * as signerPermissions from '../permissions.ts';
 
 // ── Domain permission functions (with in-memory cache) ──
 
 let _cachedDomains: string[] | null = null;
 let _cachedWeblnDomains: string[] | null = null;
-let _cachedDismissedDomains: string[] | null = null;
 let _cachedAccountReadOnly: { accountId: string | undefined; readOnly: boolean } | null = null;
 
 function invalidateDomainCache(): void { _cachedDomains = null; }
 function invalidateWeblnDomainCache(): void { _cachedWeblnDomains = null; }
-function invalidateDismissedCache(): void { _cachedDismissedDomains = null; }
 function invalidateAccountCache(): void { _cachedAccountReadOnly = null; }
 
 // Invalidate caches on external storage changes
@@ -27,7 +24,6 @@ try {
         if (area === 'local') {
             if ((changes as Record<string, unknown>).allowedDomains) invalidateDomainCache();
             if ((changes as Record<string, unknown>).weblnAllowedDomains) invalidateWeblnDomainCache();
-            if ((changes as Record<string, unknown>).dismissedDomains) invalidateDismissedCache();
             if ((changes as Record<string, unknown>).accounts || (changes as Record<string, unknown>).activeAccountId) invalidateAccountCache();
         }
     });
@@ -170,7 +166,6 @@ async function getDismissals(): Promise<Record<string, Dismissal>> {
             }
         }
         await browser.storage.local.set({ dismissedDomains: migrated });
-        invalidateDismissedCache();
         return migrated;
     }
     return (raw as Record<string, Dismissal>) || {};
@@ -196,7 +191,6 @@ export async function getDismissedDomains(): Promise<Array<{ domain: string; unt
     }
     if (expired) {
         await browser.storage.local.set({ dismissedDomains: kept });
-        invalidateDismissedCache();
     }
     for (const domain of await getSessionDismissed()) live.push({ domain, until: 'session' });
     return live;
@@ -243,7 +237,6 @@ export async function addDismissedDomain(domain: string, permanent = false): Pro
     const dismissals = await getDismissals();
     dismissals[domain] = { at: now, until: permanent ? 'never' : now + duration };
     await browser.storage.local.set({ dismissedDomains: dismissals });
-    invalidateDismissedCache();
     return true;
 }
 
@@ -252,7 +245,6 @@ export async function removeDismissedDomain(domain: string): Promise<void> {
     if (dismissals[domain]) {
         delete dismissals[domain];
         await browser.storage.local.set({ dismissedDomains: dismissals });
-        invalidateDismissedCache();
     }
     const session = await getSessionDismissed();
     if (session.includes(domain)) {
@@ -332,7 +324,6 @@ const CONNECT_WAIT_TIMEOUT_MS = 120_000; // 2 minutes
 export function waitForDomainAllowed(domain: string): Promise<boolean> {
     return new Promise((resolve) => {
         let settled = false;
-        let timer: ReturnType<typeof setTimeout>;
 
         function finish(value: boolean): void {
             if (settled) return;
@@ -346,16 +337,19 @@ export function waitForDomainAllowed(domain: string): Promise<boolean> {
             if (area !== 'local') return;
             if ((changes as Record<string, unknown>).allowedDomains) {
                 // Check if the domain is now allowed
-                isDomainAllowed(domain).then((allowed) => { if (allowed) finish(true); });
+                isDomainAllowed(domain).then((allowed) => { if (allowed) finish(true); }).catch(() => {});
             }
             // "Not now" on the connect card: reject the site's request right
             // away instead of holding it open for the full 2-minute timeout.
             if ((changes as Record<string, unknown>).dismissedDomains) {
-                isDomainDismissed(domain).then((dismissed) => { if (dismissed) finish(false); });
+                isDomainDismissed(domain).then((dismissed) => { if (dismissed) finish(false); }).catch(() => {});
             }
         }
 
-        timer = setTimeout(() => finish(false), CONNECT_WAIT_TIMEOUT_MS);
+        // Declared here, not hoisted above `finish` — `finish` only ever runs
+        // after this line has executed (from the listener or the timeout
+        // itself), so the closure over `timer` is always initialized by then.
+        const timer = setTimeout(() => finish(false), CONNECT_WAIT_TIMEOUT_MS);
         browser.storage.onChanged.addListener(listener);
 
         // The listener only ever sees CHANGES, so a connect that landed between the
@@ -367,7 +361,7 @@ export function waitForDomainAllowed(domain: string): Promise<boolean> {
         // Only the allowed side is re-read. A dismissal cannot be missed the same way:
         // background.ts rejects a dismissed origin before ever opening this gate, so the
         // gate is only ever entered for an undecided domain.
-        isDomainAllowed(domain).then((allowed) => { if (allowed) finish(true); });
+        isDomainAllowed(domain).then((allowed) => { if (allowed) finish(true); }).catch(() => {});
     });
 }
 

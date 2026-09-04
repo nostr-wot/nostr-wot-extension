@@ -68,7 +68,7 @@ export const handlers = new Map<string, HandlerFn>([
                 needsPermission: true,
             });
             if (!decision.allow) {
-                logActivity({ domain: origin, method: 'enable', decision: 'rejected' });
+                void logActivity({ domain: origin, method: 'enable', decision: 'rejected' });
                 throw new Error('WebLN access denied');
             }
         }

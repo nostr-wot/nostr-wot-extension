@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, MouseEvent } from 'react';
+import { useState, useEffect, useRef, MouseEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
@@ -108,7 +108,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                 onClick={() => {
                   setCopyMenuId(null);
                   setCopyMenuPos(null);
-                  switchAccount(account.id);
+                  void switchAccount(account.id);
                   onClose();
                 }}
               >
@@ -141,7 +141,7 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     aria-label={t('settings.editProfile')}
                     onClick={(e: MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
-                      switchAccount(account.id);
+                      void switchAccount(account.id);
                       onClose();
                       onEditProfile();
                     }}
@@ -180,13 +180,13 @@ export default function AccountDropdown({ onClose, onAddAccount, onEditProfile }
                     >
                       <button
                         className="block w-full py-3 px-6 bg-transparent border-none text-sm font-medium text-heading cursor-pointer text-left font-mono transition-colors duration-fast hover:bg-card"
-                        onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); handleCopy(account.pubkey, 'npub'); }}
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); void handleCopy(account.pubkey, 'npub'); }}
                       >
                         npub
                       </button>
                       <button
                         className="block w-full py-3 px-6 bg-transparent border-none border-t border-card-border text-sm font-medium text-heading cursor-pointer text-left font-mono transition-colors duration-fast hover:bg-card"
-                        onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); handleCopy(account.pubkey, 'hex'); }}
+                        onClick={(e: MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); void handleCopy(account.pubkey, 'hex'); }}
                       >
                         hex
                       </button>

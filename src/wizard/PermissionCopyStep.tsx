@@ -30,7 +30,7 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
   const [copying, setCopying] = useState<boolean>(false);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const data: any = await browser.storage.local.get(['accounts']);
       const existing = (data.accounts || []).filter((a: any) => a.id !== account?.id);
 

@@ -34,7 +34,7 @@ export default function useWalletBanner(
       const dismissed = (data as Record<string, unknown>).walletBannerDismissed;
       const list: string[] = Array.isArray(dismissed) ? dismissed : [];
       setWalletDismissed(list.includes(active.id));
-    });
+    }).catch(() => {});
   }, [active?.id, canUseWallet]);
 
   // Re-check when the menu overlay *closes*, e.g. after wallet setup. Keyed on
@@ -46,8 +46,8 @@ export default function useWalletBanner(
     const was = prevMenuOpenRef.current;
     prevMenuOpenRef.current = menuOpen;
     if (was === true && menuOpen === false && canUseWallet) {
-      refreshConfig();
-      refreshBalance();
+      void refreshConfig();
+      void refreshBalance();
     }
   }, [menuOpen, canUseWallet, refreshConfig, refreshBalance]);
 

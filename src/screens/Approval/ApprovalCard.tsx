@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import type { ApprovalGroup } from '@domain/permissions/approval.ts';

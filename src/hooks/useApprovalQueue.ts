@@ -117,10 +117,10 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
 
     const listener = (message: any) => {
-      if (message.type === 'signerPendingUpdated') refresh();
+      if (message.type === 'signerPendingUpdated') void refresh();
     };
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
@@ -130,14 +130,14 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
   // cover: nothing about `signerPending` changed, but what the popup should show
   // for it did. Refresh on the flip without making it a dependency of `refresh`.
   useEffect(() => {
-    if (!vault.locked) refresh();
+    if (!vault.locked) void refresh();
   }, [vault.locked, refresh]);
 
   const closeAndRefresh = () => {
     setSelectedGroup(null);
     setSelectedRequest(null);
     setSelectedNip46(null);
-    refresh();
+    void refresh();
   };
 
   /**

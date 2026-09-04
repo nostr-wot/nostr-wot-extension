@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 
 interface AvatarProps {

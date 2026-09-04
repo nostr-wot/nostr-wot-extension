@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
@@ -59,7 +59,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
     setLoading(false);
   };
 
-  useEffect(() => { generate(); }, []);
+  useEffect(() => { void generate(); }, []);
 
 
 

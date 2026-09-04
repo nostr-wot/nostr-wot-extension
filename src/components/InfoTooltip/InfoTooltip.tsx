@@ -1,4 +1,3 @@
-import React from 'react';
 import { IconInfo } from '@assets';
 
 interface InfoTooltipProps {

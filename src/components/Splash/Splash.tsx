@@ -1,4 +1,3 @@
-import React from 'react';
 import TopoBg from '../TopoBg/TopoBg';
 import PulseLogo from '../PulseLogo/PulseLogo';
 import { cn } from '@utils/cn.ts';
@@ -23,10 +22,9 @@ const FADE_OUT = 'opacity-0 pointer-events-none';
 
 interface SplashProps {
   visible?: boolean;
-  onTransitionEnd?: () => void;
 }
 
-export default function Splash({ visible = true, onTransitionEnd }: SplashProps) {
+export default function Splash({ visible = true }: SplashProps) {
   return (
     <TopoBg className={cn(SPLASH_BASE, visible ? '' : FADE_OUT)}>
       <PulseLogo src="/icons/icon-base.svg" size={96} />

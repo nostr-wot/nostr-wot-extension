@@ -1,9 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import Card from '@components/Card/Card';
-import Button from '@components/Button/Button';
-import Dropdown from '@components/Dropdown/Dropdown';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Container from '@components/Container/Container';
@@ -30,7 +27,7 @@ export default function DeclinedSites() {
     setDuration(typeof ms === 'number' ? ms : 604_800_000);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const changeDuration = async (ms: number) => {
     setDuration(ms);
@@ -39,7 +36,7 @@ export default function DeclinedSites() {
 
   const undo = async (domain: string) => {
     await rpc('removeDismissedDomain', { domain });
-    load();
+    void load();
   };
 
   const describe = (until: number | 'session' | 'never'): string =>

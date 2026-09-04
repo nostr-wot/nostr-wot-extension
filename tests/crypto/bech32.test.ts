@@ -1,10 +1,9 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { hexToBytes, bytesToHex } from '../../src/lib/crypto/utils.ts';
+import { hexToBytes } from '../../src/lib/crypto/utils.ts';
 import {
   npubEncode, npubDecode, nsecEncode, nsecDecode,
-  nprofileEncode, nprofileDecode, normalizeToHex,
-  bech32Encode, bech32Decode
+  nprofileEncode, nprofileDecode, normalizeToHex
 } from '../../src/lib/crypto/bech32.ts';
 
 const TEST_PUBKEY_HEX = 'dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659';

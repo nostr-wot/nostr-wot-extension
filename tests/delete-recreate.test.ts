@@ -45,7 +45,6 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
 
 const gen = onboarding.handlers.get('onboarding_generateAccount')!;
 const createVault = onboarding.handlers.get('onboarding_createVault')!;
-const addToVault = onboarding.handlers.get('onboarding_addToVault')!;
 const removeAccount = vaultHandlers.get('vault_removeAccount')!;
 const destroyVault = vaultHandlers.get('vault_destroy')!;
 

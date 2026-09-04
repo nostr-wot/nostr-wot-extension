@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { hexToBytes, bytesToHex } from '../../src/lib/crypto/utils.ts';
-import { getPublicKey } from '../../src/lib/crypto/secp256k1.ts';
+import { hexToBytes } from '../../src/lib/crypto/utils.ts';
 import { computeEventId, signEvent, verifyEvent } from '../../src/lib/crypto/nip01.ts';
 
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';
@@ -13,11 +12,6 @@ interface UnsignedEvent {
   kind: number;
   tags: string[][];
   content: string;
-}
-
-interface SignedEvent extends UnsignedEvent {
-  id: string;
-  sig: string;
 }
 
 describe('computeEventId', () => {

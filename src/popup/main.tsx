@@ -9,4 +9,4 @@ initI18n().then(() => {
       <PopupApp />
     </React.StrictMode>
   );
-});
+}).catch(console.error);

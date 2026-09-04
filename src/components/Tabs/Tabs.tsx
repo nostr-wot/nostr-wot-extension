@@ -1,4 +1,3 @@
-import React from 'react';
 import { cn } from '@utils/cn.ts';
 
 export interface TabOption<T extends string = string> {

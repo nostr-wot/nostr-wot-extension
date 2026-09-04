@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { IconChevronDown } from '@assets';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import useOutsideClick from '@hooks/useOutsideClick.ts';

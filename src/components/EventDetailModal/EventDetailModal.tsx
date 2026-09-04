@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import { formatTime } from '@utils/format/time.ts';

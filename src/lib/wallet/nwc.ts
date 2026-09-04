@@ -226,7 +226,7 @@ export class NwcProvider implements WalletProvider {
       };
 
       ws.onmessage = (event) => {
-        this.handleMessage(event.data as string);
+        void this.handleMessage(event.data as string);
       };
 
       ws.onclose = () => {

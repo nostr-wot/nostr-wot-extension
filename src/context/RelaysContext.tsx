@@ -1,4 +1,4 @@
-import React, { useCallback, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
 import { rpcNotify } from '@services/rpc.ts';
 import { DEFAULT_RELAYS } from '@domain/relays/defaultRelays.ts';

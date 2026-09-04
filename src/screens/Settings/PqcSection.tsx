@@ -16,9 +16,6 @@ import KeyRow from './PqcKeyRow';
 import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import useCopy from '@hooks/useCopy.ts';
-import { truncateMiddle } from '@utils/format/text.ts';
-import { downloadFile } from '@utils/downloadFile.ts';
-import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import browser from '@lib/browser.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
@@ -84,7 +81,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
   // First visit only: explain before asking for a decision, then get out of the way.
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
         const data = await browser.storage.local.get(HOW_SEEN_KEY) as Record<string, boolean>;
         if (!data[HOW_SEEN_KEY]) setHowOpen(true);

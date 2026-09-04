@@ -3,7 +3,6 @@ import browser from './src/lib/browser.ts';
 import * as vault from './src/lib/vault.ts';
 import * as signer from './src/lib/signer.ts';
 import * as signerPermissions from './src/lib/permissions.ts';
-import { openPopupForActiveTab } from './src/lib/openPopupForActiveTab.ts';
 import { randomHex } from './src/lib/crypto/utils.ts';
 
 // ── State & handler modules ──
@@ -101,13 +100,13 @@ async function handleRequest(
         validateNip07Params(method, params);
         const origin = params?.origin as string;
         if (!origin) {
-            logActivity({ domain: 'unknown', method: method.replace('nip07_', ''), decision: 'blocked' });
+            void logActivity({ domain: 'unknown', method: method.replace('nip07_', ''), decision: 'blocked' });
             throw new Error('Site not connected');
         }
         if (!(await isDomainAllowed(origin))) {
             // Dismissed domains are silently rejected (user previously denied)
             if (await isDomainDismissed(origin)) {
-                logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
+                void logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
                 throw new Error('Site not connected');
             }
             // First visit: open the popup so the user sees the "Connect this site"
@@ -118,7 +117,7 @@ async function handleRequest(
             // or "Not now" (domain dismissed).
             const connected = await waitForConnectDecision(origin, requestingTabId);
             if (!connected) {
-                logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
+                void logActivity({ domain: origin, method: method.replace('nip07_', ''), decision: 'blocked' });
                 throw new Error('Site not connected');
             }
         }
@@ -134,7 +133,7 @@ async function handleRequest(
     if (method.startsWith('webln_')) {
         const origin = params?.origin as string;
         if (!origin) {
-            logActivity({ domain: 'unknown', method: method.replace('webln_', ''), decision: 'blocked' });
+            void logActivity({ domain: 'unknown', method: method.replace('webln_', ''), decision: 'blocked' });
             throw new Error('Site not connected');
         }
         if (method === 'webln_enable') {
@@ -150,24 +149,24 @@ async function handleRequest(
                     // allowlist). Background/inactive tabs get no popup and time out.
                     const connected = await waitForConnectDecision(origin, requestingTabId);
                     if (!connected) {
-                        logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
+                        void logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
                         throw new Error('WebLN access denied');
                     }
                     (params as Record<string, unknown>).shownConnectCard = true;
                 } else {
-                    logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
+                    void logActivity({ domain: origin, method: 'enable', decision: 'blocked' });
                     throw new Error('Site not connected');
                 }
             }
         } else if (!(await isWeblnAllowed(origin))) {
-            logActivity({ domain: origin, method: method.replace('webln_', ''), decision: 'blocked' });
+            void logActivity({ domain: origin, method: method.replace('webln_', ''), decision: 'blocked' });
             throw new Error('Site not connected');
         }
     }
 
     // Read-only account guard
     if (NIP07_SIGNING_METHODS.has(method) && await isActiveAccountReadOnly()) {
-        logActivity({ domain: params?.origin as string, method: method.replace('nip07_', ''), decision: 'blocked' });
+        void logActivity({ domain: params?.origin as string, method: method.replace('nip07_', ''), decision: 'blocked' });
         throw new Error('Signing not available for read-only accounts');
     }
 
@@ -293,9 +292,9 @@ if (browser.alarms?.onAlarm) {
 // ── Startup (runs AFTER listeners are registered, so messages during async
 // init don't race against listener registration) ──
 
-loadConfig();
+void loadConfig();
 
-signer.cleanupStale();
+void signer.cleanupStale();
 
 // Drop an abandoned onboarding record. Matters on Safari, where storage.session is
 // storage.local and an expired record would otherwise sit on disk indefinitely.
@@ -308,7 +307,7 @@ releaseLegacyHostGrants()
     .catch(() => {});
 
 // Permission migrations
-(async () => {
+void (async () => {
     try {
         const data = await browser.storage.local.get('_permMigrationVersion');
         if ((data as Record<string, unknown>)._permMigrationVersion !== 4) {
@@ -330,7 +329,7 @@ releaseLegacyHostGrants()
 // (PBKDF2), during which the vault reports locked. A signEvent landing in that
 // window used to queue an unlock marker and pop the popup open even though the
 // site's permission was already saved as 'allow'.
-vault.beginStartupUnlock(async () => {
+void vault.beginStartupUnlock(async () => {
     try {
         // Restore the configured auto-lock interval on cold start. _autoLockMs is
         // module-level in-memory state that otherwise reverts to the 15-min default

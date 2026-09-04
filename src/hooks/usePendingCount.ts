@@ -26,9 +26,9 @@ export default function usePendingCount(): number {
         if (run !== pendingRunRef.current) return;
       }
     }
-    checkPending();
+    void checkPending();
     const listener = (message: { type?: string }) => {
-      if (message.type === 'signerPendingUpdated') checkPending();
+      if (message.type === 'signerPendingUpdated') void checkPending();
     };
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);

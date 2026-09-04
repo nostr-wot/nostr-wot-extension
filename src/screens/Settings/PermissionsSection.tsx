@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
-import { rpc } from '@services/rpc.ts';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import {
   countDecisions,
   filterKeysForAccountKind,
   availablePermKeys,
-  buildRuleKey,
   DECISIONS,
 } from '@domain/permissions/permissionRules.ts';
 import { IconSearch, IconShield, IconUsers, IconPlus } from '@assets';
@@ -17,10 +15,8 @@ import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
 import DeclinedSites from './DeclinedSites';
 import AddRuleModal from './AddRuleModal';
-import Modal from '@components/Modal/Modal';
 import Toggle from '@components/Toggle/Toggle';
 import EmptyState from '@components/EmptyState/EmptyState';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import Chip from '@components/Chip/Chip';
 import ListRow from '@components/ListRow/ListRow';
@@ -70,7 +66,7 @@ interface PermissionsSectionProps {
 }
 
 export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(function PermissionsSection({ initialDomain, onDetailChange }, ref) {
-  const { accounts, active, activeId, profileCache } = useAccount();
+  const { accounts, activeId, profileCache } = useAccount();
   const permissions = usePermissions();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [query, setQuery] = useState<string>('');
@@ -169,7 +165,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
             </div>
           </Container>
           <Toggle checked={allAccountsMode} onChange={(val: boolean) => {
-            permissions.setUseGlobalDefaults(val);
+            void permissions.setUseGlobalDefaults(val);
           }} />
         </Container>
       </Card>
@@ -259,7 +255,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                           <button
                             key={d}
                             className={`flex items-center gap-3 w-full py-3.5 px-6 border-none bg-transparent text-sm font-medium text-body cursor-pointer font-[inherit] text-left transition-colors hover:bg-brand-tint-hover ${d === current ? 'font-bold' : ''}`}
-                            onClick={() => { handleChip(key, d); setOpenDropdownKey(null); }}
+                            onClick={() => { void handleChip(key, d); setOpenDropdownKey(null); }}
                           >
                             <span className={`w-[7px] h-[7px] rounded-full shrink-0 ${DECISION_DOT_TONE[d]}`} />
                             {t(`perms.${d}`)}

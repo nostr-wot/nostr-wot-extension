@@ -9,4 +9,4 @@ initI18n().then(() => {
       <PromptApp />
     </React.StrictMode>
   );
-});
+}).catch(console.error);

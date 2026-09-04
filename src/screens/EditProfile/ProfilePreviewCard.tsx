@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
@@ -10,7 +9,6 @@ import Text from '@components/Text/Text';
 
 interface ProfilePreviewCardProps {
   meta: ProfileMetadata | null;
-  displayPicture: string | null;
   initial: string;
   error: string;
   onBack: () => void;
@@ -19,7 +17,7 @@ interface ProfilePreviewCardProps {
 
 /** What the profile will look like once published, and the confirm step. */
 export default function ProfilePreviewCard({
-  meta, displayPicture, initial, error, onBack, onConfirm,
+  meta, initial, error, onBack, onConfirm,
 }: ProfilePreviewCardProps) {
   return (
   <Container gap={7} className="flex-1 overflow-y-auto">
