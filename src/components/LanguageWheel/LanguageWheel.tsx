@@ -1,6 +1,17 @@
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
 import type { Language } from '@models/language.ts';
-import styles from './LanguageWheel.module.css';
+
+const WRAP = 'flex-1 flex items-center justify-center px-8';
+const ITEM = 'flex items-center gap-7';
+const FLAG = 'text-display leading-none';
+// font-weight is the only thing that changes when centered — computed here
+// instead of via the old `.wheelItemActive .wheelName` descendant rule,
+// since the caller already knows isActive.
+// No duration-* utility: transition-[font-weight] alone already picks up the
+// house-default 0.15s (--transition) the same way transition-all does.
+// Weight itself is picked below rather than layered (font-medium AND
+// font-semibold both present would leave the winner to generation order).
+const NAME = 'text-3xl text-heading tracking-[-0.2px] transition-[font-weight]';
 
 interface LanguageWheelProps {
   languages: Language[];
@@ -20,15 +31,15 @@ interface LanguageWheelProps {
  */
 export default function LanguageWheel({ languages, selected, onChange }: LanguageWheelProps) {
   return (
-    <div className={styles.wheelWrap}>
+    <div className={WRAP}>
       <ScrollWheelPicker
         items={languages}
         selectedIndex={selected ? languages.findIndex((l) => l.code === selected.code) : 0}
         onChange={(i: number) => onChange(languages[i])}
         renderItem={(lang: Language, _i: number, isActive: boolean) => (
-          <div className={`${styles.wheelItem} ${isActive ? styles.wheelItemActive : ''}`}>
-            <span className={styles.wheelFlag}>{lang.flag}</span>
-            <span className={styles.wheelName}>{lang.native}</span>
+          <div className={ITEM}>
+            <span className={FLAG}>{lang.flag}</span>
+            <span className={`${NAME} ${isActive ? 'font-semibold' : 'font-medium'}`}>{lang.native}</span>
           </div>
         )}
       />

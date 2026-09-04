@@ -1,73 +1,17 @@
+/* What has to stay: the two declarations that read custom properties set
+   inline by the caller (zIndex / maxWidth props become --modal-z /
+   --modal-max-width on this element), and the two @keyframes. A Tailwind
+   utility here would still resolve to the same var() at the token layer, but
+   the instruction this migration was given is explicit that this mechanism
+   stays as plain CSS, so it is not gambled on utility-generation internals. */
 .backdrop {
-  position: absolute;
-  inset: 0;
   z-index: var(--modal-z);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-8);
-  background: rgba(0, 0, 0, 0.45);
   animation: backdropIn 0.18s ease-out;
 }
 
 .card {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  /* Callers that want a narrower card set --modal-max-width; the default is the
-     full width the backdrop's padding leaves. */
   max-width: var(--modal-max-width);
-  /* Never taller than the popup itself; the body scrolls instead. */
-  max-height: 100%;
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-xl);
-  background: var(--bg-page);
-  box-shadow: var(--shadow-modal);
   animation: cardIn 0.18s ease-out;
-  outline: none;
-}
-
-/* Actions sitting side by side rather than one full-width button. */
-.footerRow {
-  display: flex;
-  gap: var(--sp-4);
-}
-
-.footerRow > * {
-  flex: 1;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  padding: var(--sp-6) var(--sp-7);
-  border-bottom: 1px solid var(--card-border);
-}
-
-.title {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  color: var(--text-heading);
-}
-
-.body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--sp-7);
-}
-
-.footer {
-  flex-shrink: 0;
-  padding: var(--sp-6) var(--sp-7);
-  border-top: 1px solid var(--card-border);
-}
-
-/* A single action fills the footer; a row of them shares it instead. */
-.footer:not(.footerRow) > * {
-  width: 100%;
 }
 
 @keyframes backdropIn {

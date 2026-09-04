@@ -1,5 +1,9 @@
 import React from 'react';
-import styles from './FormError.module.css';
+
+// One size, chosen: text-sm. The copies were split between sm and xs with no
+// pattern, and the smaller one was being used for the message explaining why
+// a key export just failed. Spacing is the surrounding form's business.
+const ERROR = 'text-sm leading-normal text-error';
 
 /**
  * The line a form shows when it could not do what was asked.
@@ -28,7 +32,7 @@ interface FormErrorProps {
 export default function FormError({ children, className = '' }: FormErrorProps) {
   if (!children) return null;
   return (
-    <div className={`${styles.error} ${className}`} role="alert">
+    <div className={`${ERROR} ${className}`} role="alert">
       {children}
     </div>
   );

@@ -1,14 +1,8 @@
-.wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo {
-  position: relative;
-}
-
+/* The pulse rings themselves stay here: pseudo-elements with a radial
+   gradient and a staggered @keyframes animation-delay, neither of which
+   Tailwind has a utility for. .wrap's own layout (position/flex) moved to
+   utilities on the component -- this class now exists only to give the
+   pseudo-elements a selector to attach to. */
 .wrap::before,
 .wrap::after {
   content: '';

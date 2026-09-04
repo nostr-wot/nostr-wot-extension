@@ -2,7 +2,9 @@ import { ChangeEvent, KeyboardEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import type { UsePasswordPairResult } from '@hooks/usePasswordPair.ts';
-import styles from './PasswordPairFields.module.css';
+
+const REQUIREMENTS = 'flex flex-col gap-1 m-0 p-0 list-none text-xs text-muted';
+const MET = 'text-success';
 
 interface PasswordPairFieldsProps {
   pair: UsePasswordPairResult;
@@ -64,11 +66,11 @@ export default function PasswordPairFields({
         disabled={disabled}
       />
       {showChecklist && (
-        <ul className={styles.requirements}>
-          <li className={pair.longEnough ? styles.requirementMet : ''}>
+        <ul className={REQUIREMENTS}>
+          <li className={pair.longEnough ? MET : ''}>
             {pair.longEnough ? '✓' : '○'} {t('key.reqMinChars')}
           </li>
-          <li className={pair.matches ? styles.requirementMet : ''}>
+          <li className={pair.matches ? MET : ''}>
             {pair.matches ? '✓' : '○'} {t('key.reqMatch')}
           </li>
         </ul>

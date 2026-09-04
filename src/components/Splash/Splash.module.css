@@ -1,17 +1,12 @@
+/* position + inset stay plain CSS on purpose. Splash renders as TopoBg's own
+   wrapper div (this class and .topoBg both land on the same element), and
+   TopoBg's `relative` is a Tailwind utility -- layered, per tailwind.css's
+   `@layer theme, base, components, utilities`. Unlayered CSS always beats
+   layered CSS at equal specificity regardless of source order, so this
+   `position: absolute` has to stay unlayered too, or TopoBg's `relative`
+   would win and Splash would stop covering the popup. Everything else below
+   sets properties TopoBg does not touch, so those are safe as utilities. */
 .splash {
   position: absolute;
   inset: 0;
-  z-index: var(--z-splash);
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(16px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.4s ease;
-}
-
-.fadeOut {
-  opacity: 0;
-  pointer-events: none;
 }

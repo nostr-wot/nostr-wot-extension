@@ -10,6 +10,29 @@ import Button from '@components/Button/Button';
 import type { ActivityEntry } from '@models/activity.ts';
 import styles from './EventDetailModal.module.css';
 
+const CLS = {
+  // The modal fills the fixed-height popup, so the event body must scroll
+  // and the approve/deny actions must stay pinned. flex/min-h-0 all the way
+  // down is what gives .scrollArea a bounded height to actually scroll
+  // within, instead of growing to fit and being clipped dead by the card.
+  content: 'flex flex-col gap-5 flex-1 min-h-0',
+  scrollArea: 'flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain',
+  origin: 'text-xl font-bold text-heading',
+  summary: 'flex flex-col gap-2',
+  methodBadge: 'inline-flex self-start text-xs font-semibold px-5 py-[3px] rounded-panel bg-brand-light text-brand-hover',
+  description: 'text-md text-body mt-2 leading-[1.45]',
+  countNote: 'text-sm text-muted text-center pt-2',
+  entryBlock: 'flex flex-col gap-3',
+  entryHeader: 'flex items-center gap-3',
+  entryTime: 'text-xs text-muted font-mono',
+  // flex-shrink-0: never scroll away with the body -- the user must always
+  // be able to decide.
+  actions: 'flex flex-col gap-4 pt-6 border-t border-card-border mt-2 shrink-0',
+  actionsRow: 'flex gap-4 [&>*]:flex-1',
+  nip46Pending: 'flex items-center gap-5 px-7 py-6 bg-brand-light rounded-panel text-md font-medium text-brand-hover',
+  nip46Spinner: 'w-4 h-4 rounded-full border-2 border-brand-light border-t-brand animate-spin shrink-0',
+};
+
 interface ActivityGroup {
   methodKey?: string;
   domain?: string;
@@ -122,20 +145,20 @@ export default function EventDetailModal({
       onClose={onClose}
       zIndex={zIndex}
     >
-      <div className={styles.content}>
+      <div className={CLS.content}>
         {/* Scrollable event body -- the actions below stay pinned so a long
             event can never push them out of reach (see the CSS module). */}
-        <div className={styles.scrollArea}>
+        <div className={CLS.scrollArea}>
           {/* Origin / domain */}
           {origin && (
-            <div className={styles.origin}>{origin}</div>
+            <div className={CLS.origin}>{origin}</div>
           )}
 
           {/* Approval: method badge + description */}
           {isApproval && (
-            <div className={styles.summary}>
-              <div className={styles.methodBadge}>{title}</div>
-              {description && <p className={styles.description}>{description}</p>}
+            <div className={CLS.summary}>
+              <div className={CLS.methodBadge}>{title}</div>
+              {description && <p className={CLS.description}>{description}</p>}
             </div>
           )}
 
@@ -156,17 +179,17 @@ export default function EventDetailModal({
                 />
               )}
               {entries.length > 1 && (
-                <div className={styles.countNote}>
+                <div className={CLS.countNote}>
                   &times;{entries.length} {t('activity.requests', { count: entries.length })}
                 </div>
               )}
             </>
           ) : (
             uniqueEntries.map((entry, i) => (
-              <div key={i} className={styles.entryBlock}>
-                <div className={styles.entryHeader}>
+              <div key={i} className={`${CLS.entryBlock} ${styles.entryBlock}`}>
+                <div className={CLS.entryHeader}>
                   <StatusDot status={entry.decision || ''} />
-                  <span className={styles.entryTime}>{formatTime(entry.timestamp ?? 0)}</span>
+                  <span className={CLS.entryTime}>{formatTime(entry.timestamp ?? 0)}</span>
                 </div>
                 <EventPreview
                   type={entryType(entry)}
@@ -179,8 +202,8 @@ export default function EventDetailModal({
 
           {/* NIP-46 in-flight: pending message (the cancel button is pinned below) */}
           {nip46InFlight && request && (
-            <div className={styles.nip46Pending}>
-              <div className={styles.nip46Spinner} />
+            <div className={CLS.nip46Pending}>
+              <div className={CLS.nip46Spinner} />
               <span>{t('approval.pendingSignature')}</span>
             </div>
           )}
@@ -188,7 +211,7 @@ export default function EventDetailModal({
 
         {/* NIP-46 in-flight: cancel button */}
         {nip46InFlight && request && onDeny && (
-          <div className={styles.actions}>
+          <div className={CLS.actions}>
             <Button variant="danger" small onClick={onDeny}>
               {t('approval.cancelNip46')}
             </Button>
@@ -197,8 +220,8 @@ export default function EventDetailModal({
 
         {/* Approval action buttons */}
         {isApproval && (
-          <div className={styles.actions}>
-            <div className={styles.actionsRow}>
+          <div className={CLS.actions}>
+            <div className={CLS.actionsRow}>
               <Button variant="danger" small onClick={onAlwaysDeny}>
                 {t('approval.alwaysDenyLabel', { label: title })}
               </Button>
@@ -206,7 +229,7 @@ export default function EventDetailModal({
                 {t('approval.deny')}
               </Button>
             </div>
-            <div className={styles.actionsRow}>
+            <div className={CLS.actionsRow}>
               <Button variant="secondary" small onClick={onAlwaysAllow}>
                 {t('approval.alwaysAllowLabel', { label: title })}
               </Button>

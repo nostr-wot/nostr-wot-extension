@@ -1,14 +1,13 @@
+/* Only the slide keyframes and the z-index remain -- everything else is
+   Tailwind utilities on the component now. z-index reads --overlay-z, which
+   the `zIndex` prop overrides inline per instance (same mechanism as
+   Modal's --modal-z); the z-panel *utility* resolves --z-panel directly and
+   would bypass that override entirely, so this declaration has to stay
+   plain CSS rather than become a utility. The animation itself stays here
+   too (custom @keyframes have no Tailwind equivalent), same as .exiting's
+   reverse. */
 .overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-elevated);
   z-index: var(--overlay-z);
-  display: flex;
-  flex-direction: column;
-  padding: var(--sp-8);
   animation: overlaySlideIn var(--transition-slow) ease-out;
 }
 
@@ -18,48 +17,3 @@
 
 @keyframes overlaySlideIn  { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes overlaySlideOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
-
-.noPadding {
-  padding: 0;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sp-8);
-  padding-bottom: var(--sp-5);
-  border-bottom: 1px solid var(--card-border);
-}
-
-.headerNoPadding {
-  padding: var(--sp-6) var(--sp-8);
-  margin-bottom: 0;
-}
-
-.title {
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-bold);
-  color: var(--text-heading);
-}
-
-.titleSmall {
-  font-size: var(--fs-2xl);
-}
-
-.placeholder {
-  width: 36px;
-}
-
-.headerRight {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
-}
-
-.body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}

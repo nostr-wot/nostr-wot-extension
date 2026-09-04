@@ -1,8 +1,9 @@
-.topoBg {
-  position: relative;
-  overflow: hidden;
-}
-
+/* position/overflow moved to utilities on the component (relative
+   overflow-hidden); this class stays only as the attachment point for the
+   pseudo-element background art below, none of which has a Tailwind
+   equivalent: two huge data-URI SVG backgrounds, drifting @keyframes, and
+   the `> *` rule that lifts real children above them. Left entirely as CSS,
+   per the docs' guidance for decoration-heavy components. */
 .topoBg::before {
   content: '';
   position: absolute;

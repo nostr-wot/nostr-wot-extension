@@ -1,5 +1,11 @@
 import React from 'react';
-import styles from './ActionTile.module.css';
+
+// font-[inherit]: preflight is off, so the <button> otherwise keeps the UA's
+// own font and its label would not match the rest of the tile.
+const TILE =
+  'flex items-center gap-6 w-full px-7 py-6 border border-card-border rounded-panel bg-card font-[inherit] ' +
+  'cursor-pointer text-left transition-all hover:bg-card-active disabled:opacity-40 disabled:cursor-not-allowed ' +
+  '[&_svg]:text-brand [&_svg]:shrink-0';
 
 interface ActionTileProps {
   icon: React.ReactNode;
@@ -17,11 +23,11 @@ interface ActionTileProps {
  */
 export default function ActionTile({ icon, title, description, onClick, disabled }: ActionTileProps) {
   return (
-    <button type="button" className={styles.tile} onClick={onClick} disabled={disabled}>
+    <button type="button" className={TILE} onClick={onClick} disabled={disabled}>
       {icon}
-      <div className={styles.text}>
-        <strong>{title}</strong>
-        <span>{description}</span>
+      <div className="flex flex-col">
+        <strong className="text-md font-semibold text-heading">{title}</strong>
+        <span className="text-xs text-muted">{description}</span>
       </div>
     </button>
   );
