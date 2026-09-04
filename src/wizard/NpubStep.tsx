@@ -3,7 +3,6 @@ import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
-import styles from './WizardOverlay.module.css';
 import FormError from '@components/FormError/FormError';
 
 interface NpubStepProps {
@@ -36,14 +35,14 @@ export default function NpubStep({ onNext }: NpubStepProps) {
   };
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.npubTitle')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.npubTitle')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.npubDesc')}
       </p>
 
-      <div className={styles.formGroup}>
-        <label>{t('wizard.npubLabel')}</label>
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.npubLabel')}</label>
         <Input
           mono
           placeholder={t('wizard.npubPlaceholder')}
@@ -54,8 +53,8 @@ export default function NpubStep({ onNext }: NpubStepProps) {
 
       <FormError>{error}</FormError>
 
-      <div className={styles.stepActions}>
-        <Button onClick={handleContinue} disabled={!input.trim() || loading}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Button className="flex-1" onClick={handleContinue} disabled={!input.trim() || loading}>
           {loading ? t('wizard.validating') : t('common.continue')}
         </Button>
       </div>

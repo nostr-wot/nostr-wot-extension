@@ -2,7 +2,6 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconPlus, IconKey, IconEye, IconLink } from '@assets';
 import Card from '@components/Card/Card';
-import styles from './WizardOverlay.module.css';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   create: <IconPlus />,
@@ -39,28 +38,28 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
   ];
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.chooseSetup')}</h2>
-      <div className={styles.methodGrid}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.chooseSetup')}</h2>
+      <div className="flex flex-col gap-4 mt-auto pb-12">
         {METHODS.map((m, i) => (
           <React.Fragment key={m.id}>
             {i === 1 && (
-              <div className={styles.methodDivider}>
-                <div className={styles.methodDividerLine} />
-                <span className={styles.methodDividerText}>{t('common.or')}</span>
-                <div className={styles.methodDividerLine} />
+              <div className="flex items-center gap-6 py-2">
+                <div className="flex-1 h-px bg-card-border" />
+                <span className="text-xs font-semibold text-muted uppercase">{t('common.or')}</span>
+                <div className="flex-1 h-px bg-card-border" />
               </div>
             )}
             <Card
               as="button"
               variant="raised"
-              className={`${styles.methodCard} ${m.primary ? styles.methodPrimary : ''}`}
+              className={`flex items-center gap-7 w-full p-8 mb-0 cursor-pointer text-left transition-all hover:bg-glass-heavy hover:translate-x-2 ${m.primary ? 'border-brand bg-[rgba(255,255,255,0.92)] shadow-[0_4px_20px_rgba(99,102,241,0.14)]' : ''}`}
               onClick={() => onSelect(m.id)}
             >
-              <div className={styles.methodIcon}>{m.icon}</div>
-              <div className={styles.methodInfo}>
-                <strong>{m.label}</strong>
-                <span>{m.desc}</span>
+              <div className="w-18 h-18 rounded-panel bg-brand-light text-brand flex items-center justify-center shrink-0">{m.icon}</div>
+              <div className="flex flex-col">
+                <strong className="block text-lg font-semibold text-heading mb-1">{m.label}</strong>
+                <span className="text-xs text-[rgba(99,102,241,0.55)]">{m.desc}</span>
               </div>
             </Card>
           </React.Fragment>

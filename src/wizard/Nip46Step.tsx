@@ -5,8 +5,6 @@ import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import QrCode from '@components/QrCode/QrCode';
-import styles from './WizardOverlay.module.css';
-import nip46Styles from './Nip46Step.module.css';
 import Spinner from '@components/Spinner/Spinner';
 import Tabs from '@components/Tabs/Tabs';
 import FormError from '@components/FormError/FormError';
@@ -138,9 +136,9 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
   };
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.nip46Title')}</h2>
-      <p className={styles.stepDesc}>{t('wizard.nip46Desc')}</p>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.nip46Title')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">{t('wizard.nip46Desc')}</p>
 
       <Tabs
         variant="segmented"
@@ -155,33 +153,36 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
 
       {/* QR tab */}
       {tab === 'qr' && (
-        <div className={nip46Styles.qrTab}>
+        <div className="flex flex-col items-center gap-6">
           {(qrState === 'waiting' || qrState === 'generating') && (
             <>
-              <div className={nip46Styles.qrContainer}>
+              <div className="flex items-center justify-center p-8 bg-elevated border border-card-border rounded-[14px] shadow-[0_2px_12px_var(--card-bg)]">
                 {nostrconnectUri ? (
-                  <QrCode value={nostrconnectUri} size={180} className={nip46Styles.qrCode} />
+                  <QrCode value={nostrconnectUri} size={180} className="text-[#1a1a2e]" />
                 ) : (
-                  <div className={nip46Styles.qrPlaceholder}>
-                    <div className={nip46Styles.spinner} />
+                  <div className="w-[180px] h-[180px] flex items-center justify-center">
+                    <Spinner size={32} />
                   </div>
                 )}
               </div>
-              <p className={nip46Styles.qrHint}>{t('wizard.nip46QrHint')}</p>
+              <p className="text-xs text-muted text-center leading-normal max-w-[240px]">{t('wizard.nip46QrHint')}</p>
               {nostrconnectUri && (
-                <button className={nip46Styles.copyBtn} onClick={() => uriCopy.copy(nostrconnectUri)}>
+                <button
+                  className="inline-flex items-center gap-2 py-[5px] px-6 border border-card-border bg-card rounded-sm text-xs font-medium font-[inherit] text-secondary cursor-pointer transition-all hover:border-brand hover:text-brand"
+                  onClick={() => uriCopy.copy(nostrconnectUri)}
+                >
                   {uriCopy.copied ? t('wizard.nip46UriCopied') : t('wizard.nip46CopyUri')}
                 </button>
               )}
-              <div className={nip46Styles.statusRow}>
-                <div className={nip46Styles.spinnerSmall} />
+              <div className="flex items-center gap-4 text-sm text-secondary py-2">
+                <Spinner size={14} border={2} />
                 <span>{t('wizard.nip46Waiting')}</span>
               </div>
             </>
           )}
 
           {qrState === 'connected' && (
-            <div className={nip46Styles.statusRow}>
+            <div className="flex items-center gap-4 text-sm text-secondary py-2">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <circle cx="8" cy="8" r="8" fill="#16a34a"/>
                 <path d="M5 8l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -191,15 +192,15 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
           )}
 
           {qrState === 'expired' && (
-            <div className={nip46Styles.expiredState}>
-              <p className={nip46Styles.expiredText}>{t('wizard.nip46Expired')}</p>
+            <div className="flex flex-col items-center gap-6 py-10">
+              <p className="text-md text-muted">{t('wizard.nip46Expired')}</p>
               <Button onClick={handleRetry}>{t('wizard.nip46Retry')}</Button>
             </div>
           )}
 
           {qrState === 'error' && (
-            <div className={nip46Styles.errorState}>
-              <p className={nip46Styles.errorText}>{errorMsg || t('wizard.nip46Error')}</p>
+            <div className="flex flex-col items-center gap-6 py-10">
+              <p className="text-md text-error text-center leading-normal max-w-[240px] break-words">{errorMsg || t('wizard.nip46Error')}</p>
               <Button onClick={handleRetry}>{t('wizard.nip46Retry')}</Button>
             </div>
           )}
@@ -209,23 +210,23 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
       {/* Bunker URL tab */}
       {tab === 'bunker' && (
         <div>
-          <div className={styles.formGroup}>
-            <label>{t('wizard.bunkerLabel')}</label>
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.bunkerLabel')}</label>
             <Input
               mono
               placeholder={t('wizard.bunkerPlaceholder')}
               value={input}
               onChange={(e: ChangeEvent<HTMLInputElement>) => { setInput(e.target.value); setError(''); }}
             />
-            <div className={styles.hint}>
+            <div className="text-xs text-muted mt-2">
               {t('wizard.bunkerHint')}
             </div>
           </div>
 
           <FormError>{error}</FormError>
 
-          <div className={styles.stepActions}>
-            <Button onClick={handleBunkerContinue} disabled={!input.trim() || loading}>
+          <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+            <Button className="flex-1" onClick={handleBunkerContinue} disabled={!input.trim() || loading}>
               {loading ? t('wizard.connecting') : t('common.connect')}
             </Button>
           </div>

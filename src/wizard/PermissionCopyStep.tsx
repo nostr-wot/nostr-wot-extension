@@ -4,7 +4,6 @@ import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
-import styles from './WizardOverlay.module.css';
 
 interface EnrichedAccount {
   id: string;
@@ -86,12 +85,12 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
   const options = accounts.map((a) => ({ value: a.id, label: a.displayName }));
 
   return (
-    <div className={styles.step}>
-      <div className={styles.stepTitle}>{t('wizard.copyPermissions')}</div>
-      <p className={styles.stepDesc}>{t('wizard.copyPermissionsDesc')}</p>
+    <div className="flex flex-col flex-1">
+      <div className="text-3xl font-bold text-heading mb-3">{t('wizard.copyPermissions')}</div>
+      <p className="text-md text-secondary leading-normal mb-8">{t('wizard.copyPermissionsDesc')}</p>
 
       {accounts.length > 0 && (
-        <div className={styles.permCopyPicker}>
+        <div className="mt-2">
           <Dropdown
             options={options}
             value={selectedId}
@@ -100,12 +99,12 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
         </div>
       )}
 
-      <div className={styles.stepActions}>
-        <Button variant="secondary" onClick={handleFresh} disabled={copying}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+        <Button className="flex-1" variant="secondary" onClick={handleFresh} disabled={copying}>
           {t('wizard.startFresh')}
         </Button>
         {accounts.length > 0 && (
-          <Button onClick={handleCopy} disabled={copying || !selectedId}>
+          <Button className="flex-1" onClick={handleCopy} disabled={copying || !selectedId}>
             {copying ? t('common.loading') : t('wizard.copyFrom')}
           </Button>
         )}

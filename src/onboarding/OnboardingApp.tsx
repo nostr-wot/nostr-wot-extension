@@ -2,7 +2,6 @@ import React from 'react';
 import { rpcNotify } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import '@styles/tailwind.css';
-import './onboarding.css';
 import TopoBg from '@components/TopoBg/TopoBg';
 import PulseLogo from '@components/PulseLogo/PulseLogo';
 import Button from '@components/Button/Button';
@@ -16,14 +15,14 @@ export default function OnboardingApp() {
 
   if (flow.step === 'welcome') {
     return (
-      <div className="onboarding-root">
-        <div className="onboarding-welcome">
+      <div className="min-h-screen bg-surface">
+        <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
           <TopoBg />
-          <div className="onboarding-welcome-content">
+          <div className="relative z-[1] flex flex-col items-center text-center gap-6 max-w-[400px] p-12">
             <PulseLogo />
-            <h1>{t('onboarding.title')}</h1>
-            <p>{t('onboarding.subtitle')}</p>
-            <Button className="onboarding-start-btn" onClick={() => flow.send('NEXT')}>
+            <h1 className="text-display font-heavy text-heading m-0">{t('onboarding.title')}</h1>
+            <p className="text-xl text-secondary leading-loose m-0">{t('onboarding.subtitle')}</p>
+            <Button className="mt-8 py-7 px-20 rounded-lg text-2xl" onClick={() => flow.send('NEXT')}>
               {t('wizard.getStarted')}
             </Button>
           </div>
@@ -33,9 +32,9 @@ export default function OnboardingApp() {
   }
 
   return (
-    <div className="onboarding-root">
-      <div className="onboarding-step-container">
-        <WizardSteps flow={flow} onDone={handleDone} onClose={null} onLangSelect={() => flow.send('NEXT')} bodyClassName="onboarding-body" />
+    <div className="min-h-screen bg-surface">
+      <div className="max-w-[480px] mx-auto min-h-screen flex flex-col">
+        <WizardSteps flow={flow} onDone={handleDone} onClose={null} onLangSelect={() => flow.send('NEXT')} bodyClassName="py-12 px-10" />
       </div>
     </div>
   );
