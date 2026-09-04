@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './EmptyState.module.css';
 
 interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -11,10 +10,10 @@ interface EmptyStateProps {
 
 export default function EmptyState({ icon, text, hint, children, className = '' }: EmptyStateProps) {
   return (
-    <div className={`${styles.emptyState} ${className}`}>
-      {icon && <div className={styles.icon}>{icon}</div>}
-      {text && <div className={styles.text}>{text}</div>}
-      {hint && <div className={styles.hint}>{hint}</div>}
+    <div className={`flex flex-col items-center text-center px-10 py-14 gap-4 ${className}`}>
+      {icon && <div className="text-brand mb-2">{icon}</div>}
+      {text && <div className="text-lg font-medium text-body">{text}</div>}
+      {hint && <div className="text-sm text-muted leading-normal">{hint}</div>}
       {children}
     </div>
   );

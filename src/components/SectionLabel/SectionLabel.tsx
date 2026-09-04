@@ -1,5 +1,4 @@
 import React from 'react';
-import styles from './SectionLabel.module.css';
 
 interface SectionLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   children?: React.ReactNode;
@@ -8,7 +7,7 @@ interface SectionLabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> 
 
 export function SectionLabel({ children, className = '', ...rest }: SectionLabelProps) {
   return (
-    <label className={`${styles.sectionLabel} ${className}`} {...rest}>
+    <label className={`text-sm font-semibold text-secondary mb-1 ${className}`} {...rest}>
       {children}
     </label>
   );
@@ -21,7 +20,7 @@ interface SectionHintProps {
 
 export function SectionHint({ children, className = '' }: SectionHintProps) {
   return (
-    <div className={`${styles.sectionHint} ${className}`}>
+    <div className={`text-xs text-muted leading-normal mb-2 ${className}`}>
       {children}
     </div>
   );

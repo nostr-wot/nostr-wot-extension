@@ -138,9 +138,17 @@
   --success-tint: rgba(5, 150, 105, 0.1);
   --error-bright: #ef4444;
   --error-tint: rgba(220, 38, 38, 0.08);
+  /* Hover wash, weaker than --error-tint — the error equivalent of
+     --brand-tint-hover. Was rgba(220, 38, 38, 0.06) retyped by hand in
+     RemoveButton, KeyActionModal, WizardOverlay and EncryptedBackupForm. */
+  --error-tint-hover: rgba(220, 38, 38, 0.06);
   --warning-strong: #b45309;
   --warning-bright: #f59e0b;
   --warning-tint: rgba(217, 119, 6, 0.08);
+  /* A second, stronger warning wash — rgba(217, 119, 6, 0.1), not a typo of
+     --warning-tint's 0.08 — used identically by StatusNotice, EventPreview
+     and PromptApp. */
+  --warning-tint-heavy: rgba(217, 119, 6, 0.1);
   --info-tint: rgba(37, 99, 235, 0.08);
 
   /* ── Surfaces ── */

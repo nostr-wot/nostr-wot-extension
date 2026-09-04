@@ -1,5 +1,0 @@
-.chipGroup {
-  display: flex;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
