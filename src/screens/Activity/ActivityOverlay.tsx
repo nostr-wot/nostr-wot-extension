@@ -22,6 +22,8 @@ import StatusDot from '@components/StatusDot/StatusDot';
 import Card from '@components/Card/Card';
 import ListRow from '@components/ListRow/ListRow';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
+import Container from '@components/Container/Container';
+import Text from '@components/Text/Text';
 import { IconTuner } from '@assets';
 import { useAccount } from '@context/AccountContext';
 import { ActivityProvider, useActivity } from '@context/ActivityContext';
@@ -192,8 +194,8 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
 
   return (
     <OverlayPanel title={t('activity.title')} onClose={onClose} animating={animating}>
-      <div className="flex items-center gap-4 pb-4 border-b border-card-border">
-        <div className="flex gap-3 flex-1 min-w-0">
+      <Container variant="row" gap={4} className="pb-4 border-b border-card-border">
+        <Container variant="row" gap={3} className="flex-1 min-w-0">
           <Dropdown
             className="flex-1 min-w-0"
             options={domainOptions}
@@ -210,7 +212,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
               small
             />
           )}
-        </div>
+        </Container>
         <Card
           as="button"
           variant="flat"
@@ -232,23 +234,25 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
         {rawLog.length > 0 && (
           <Button variant="danger" small onClick={handleClear}>{t('activity.clearAll')}</Button>
         )}
-      </div>
+      </Container>
 
-      <div className="flex-1 overflow-y-auto">
+      <Container className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="text-muted text-md text-center py-14">{t('common.loading')}</div>
+          <Text variant="muted" as="div" className="text-md text-center py-14">{t('common.loading')}</Text>
         ) : loadFailed ? (
-          <div className="text-muted text-md text-center py-14">
+          <Text variant="muted" as="div" className="text-md text-center py-14">
             <div role="alert">{t('activity.loadFailed')}</div>
             <Button small onClick={loadActivity}>{t('common.retry')}</Button>
-          </div>
+          </Text>
         ) : dayItems.length === 0 ? (
-          <div className="text-muted text-md text-center py-14">
+          <Text variant="muted" as="div" className="text-md text-center py-14">
             {t('activity.noActivity')}
-          </div>
+          </Text>
         ) : (
           dayItems.map((item, i) =>
             item.type === 'header' ? (
+              // Not `Text`: uppercase + tracking + a bold weight is a caption
+              // style none of the four variants own.
               <div key={`h-${i}`} className="text-xs font-bold text-secondary pt-4 pb-2 uppercase tracking-[0.5px]">{dayLabel(item.day)}</div>
             ) : (
               <ListRow
@@ -257,17 +261,22 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
                 leading={<StatusDot status={item.entry.decision} />}
                 leadingChip={false}
                 title={
-                  <span className="flex items-center gap-4 min-w-0 w-full text-sm font-normal">
-                    <span className="text-muted text-xs whitespace-nowrap shrink-0 min-w-18">{item.entry.timeKey}</span>
+                  <Container as="span" variant="row" gap={4} className="min-w-0 w-full text-sm font-normal">
+                    <Text variant="muted" as="span" className="whitespace-nowrap shrink-0 min-w-18">{item.entry.timeKey}</Text>
                     {showDomain && item.entry.domain && (
+                      // Not `Text`: this inherits `text-sm` from the row above it rather than
+                      // declaring its own size, and `secondary`'s size is `text-md` — wrapping
+                      // it would visibly enlarge the domain against its siblings.
                       <span className="text-secondary font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">{item.entry.domain}</span>
                     )}
+                    {/* Same reason as the domain span above: inherits `text-sm`, and `body`'s
+                        own size is `text-md`. */}
                     <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                       {formatPermissionLabel(item.entry.methodKey, item.entry.entries?.[0]?.event ?? undefined)}
                     </span>
-                  </span>
+                  </Container>
                 }
-                trailing={item.entry.count > 1 ? <span className="text-muted text-xs shrink-0">&times;{item.entry.count}</span> : null}
+                trailing={item.entry.count > 1 ? <Text variant="muted" as="span" className="shrink-0">&times;{item.entry.count}</Text> : null}
                 onClick={() => setSelectedGroup(item.entry)}
               />
             )
@@ -278,7 +287,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
             <Button small variant="secondary" onClick={page.loadMore}>{t('common.showMore')}</Button>
           </div>
         )}
-      </div>
+      </Container>
 
       {selectedGroup && (
         <EventDetailModal
@@ -295,7 +304,10 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
           onClose={() => setFiltersOpen(false)}
           zIndex={350}
         >
-          <div className="flex flex-col gap-4 pb-6 mb-2 border-b border-card-border">
+          <Container gap={4} className="pb-6 mb-2 border-b border-card-border">
+            {/* Not `SectionLabel`/`Text`: uppercase + tracking + `text-xs` is
+                a caption style neither covers, and there is no single field
+                here for a `<label>` to point at. */}
             <span className="text-xs font-semibold text-secondary uppercase tracking-[0.5px]">{t('activity.filterByType')}</span>
             <ChipGroup
               options={typeOptions}
@@ -305,14 +317,14 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
             <LinkButton tone="brand" onClick={handleToggleAdvanced}>
               {advancedTypes ? t('activity.hideProtocols') : t('activity.showProtocols')}
             </LinkButton>
-          </div>
+          </Container>
 
           {/* `.filterPanel:last-of-type` used to drop this border when this
               was the last <div> among its siblings — true only when
               `activeFilterCount` is 0 and the actions row below does not
               render. That is state the component already computes, so the
               condition is explicit here instead of implicit in a selector. */}
-          <div className={`flex flex-col gap-4 ${activeFilterCount > 0 ? 'pb-6 mb-2 border-b border-card-border' : ''}`}>
+          <Container gap={4} className={activeFilterCount > 0 ? 'pb-6 mb-2 border-b border-card-border' : ''}>
             <span className="text-xs font-semibold text-secondary uppercase tracking-[0.5px]">{t('activity.filterByPubkey')}</span>
             <Input
               mono
@@ -320,14 +332,14 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
               value={pubkeyFilter}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setPubkeyFilter(e.target.value)}
             />
-          </div>
+          </Container>
 
           {activeFilterCount > 0 && (
-            <div className="pt-4 flex justify-end">
+            <Container variant="row" className="pt-4 justify-end">
               <Button variant="secondary" small onClick={handleClearFilters}>
                 {t('activity.clearFilters')}
               </Button>
-            </div>
+            </Container>
           )}
         </OverlayPanel>
       )}
