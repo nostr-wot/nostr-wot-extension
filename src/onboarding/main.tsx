@@ -9,4 +9,4 @@ initI18n().then(() => {
       <OnboardingApp />
     </React.StrictMode>
   );
-});
+}).catch(console.error);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
@@ -37,16 +37,18 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
    * throttled — including the one on the very next screen.
    */
   const unlockForm = useVaultUnlock({
-    onSuccess: async () => {
-      try {
-        await rpc('onboarding_addToVault', {
-          account,
-          upgradeFromReadOnly: upgradeId || null,
-        });
-        onNext(!!upgradeId);
-      } catch (e: unknown) {
-        unlockForm.setError((e as Error).message || t('key.failedUnlock'));
-      }
+    onSuccess: () => {
+      void (async () => {
+        try {
+          await rpc('onboarding_addToVault', {
+            account,
+            upgradeFromReadOnly: upgradeId || null,
+          });
+          onNext(!!upgradeId);
+        } catch (e: unknown) {
+          unlockForm.setError((e as Error).message || t('key.failedUnlock'));
+        }
+      })();
     },
     messages: {
       wrongPassword: t('key.wrongPassword'),
@@ -55,7 +57,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   });
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
         const exists = await rpc<boolean>('vault_exists');
         if (!exists) { setVaultExists(false); return; }

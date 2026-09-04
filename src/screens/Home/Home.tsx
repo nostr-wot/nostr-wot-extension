@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import { formatSats } from '@utils/format/number.ts';
-import { resolveSiteState } from '@domain/site/siteState.ts';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
 import useSiteState from '@hooks/useSiteState.ts';
-import type { Account } from '@domain/accounts/account.ts';
 import useWalletBanner from '@hooks/useWalletBanner.ts';
 import usePendingCount from '@hooks/usePendingCount.ts';
 import { useNavigate } from '@context/NavigationContext';
@@ -22,7 +19,6 @@ import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import { IconGlobe, IconZap, IconChevronRight } from '@assets';
-import type { PendingRequest } from '@lib/types.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
 
 interface HomeProps {
@@ -30,7 +26,7 @@ interface HomeProps {
 }
 
 export default function Home({ menuOpen }: HomeProps) {
-  const { active, cachedProfile, isReadOnly, isNip46 } = useAccount();
+  const { active, isReadOnly, isNip46 } = useAccount();
   const { locked } = useVault();
   const navigate = useNavigate();
 
@@ -75,7 +71,7 @@ export default function Home({ menuOpen }: HomeProps) {
       // d18d127; this one was missed.
       setConnectFailed(true);
     } finally {
-      loadHomeState();
+      void loadHomeState();
     }
   };
 

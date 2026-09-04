@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { getSupportedLanguages, setLanguage, getLanguage, t } from '@lib/i18n.js';
 import TopoBg from '@components/TopoBg/TopoBg';
 import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
@@ -72,7 +72,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
           </Card>
           <Button
             className="w-full max-w-[260px]"
-            onClick={() => { setLanguage(lang.code); onSelect(lang.code); }}
+            onClick={() => { void setLanguage(lang.code); onSelect(lang.code); }}
           >
             {t('common.continue')}
           </Button>

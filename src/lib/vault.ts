@@ -196,7 +196,9 @@ function armKeepAlive(): void {
   const alarms = (browser as typeof chrome).alarms;
   if (!alarms?.create) return;
   try {
-    alarms.create(KEEPALIVE_ALARM, { periodInMinutes: KEEPALIVE_PERIOD_MIN });
+    // The promise-based signature can reject as well as throw synchronously
+    // (e.g. missing "alarms" permission) — catch both the same "no-op" way.
+    alarms.create(KEEPALIVE_ALARM, { periodInMinutes: KEEPALIVE_PERIOD_MIN })?.catch(() => {});
   } catch { /* no-op where alarms are unavailable */ }
 }
 
@@ -205,7 +207,7 @@ function clearKeepAlive(): void {
   const alarms = (browser as typeof chrome).alarms;
   if (!alarms?.clear) return;
   try {
-    alarms.clear(KEEPALIVE_ALARM);
+    alarms.clear(KEEPALIVE_ALARM)?.catch(() => {});
   } catch { /* no-op where alarms are unavailable */ }
 }
 

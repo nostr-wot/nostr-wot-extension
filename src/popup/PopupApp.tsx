@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import browser from '@lib/browser.ts';
 import { rpcNotify } from '@services/rpc.ts';
 import '@styles/tailwind.css';
@@ -106,7 +106,6 @@ function PopupInner() {
     openRelays: () => { setMenuSection('network'); setActiveOverlay('menu'); },
     openPqc: () => { setMenuSection('pqc'); setActiveOverlay('menu'); },
     openWallet: () => { setMenuSection('wallet'); setActiveOverlay('menu'); },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), []);
 
   return (

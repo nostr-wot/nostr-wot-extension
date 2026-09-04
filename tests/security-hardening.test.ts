@@ -14,7 +14,7 @@ import { handlers as vaultHandlers } from '../src/lib/bg/vault-handlers.ts';
 import * as onboarding from '../src/lib/bg/onboarding-handlers.ts';
 import { nip04Encrypt, nip04Decrypt } from '../src/lib/crypto/nip04.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../src/lib/crypto/nip49.ts';
-import { randomBytes, hexToBytes, bytesToHex } from '../src/lib/crypto/utils.ts';
+import { randomBytes, bytesToHex } from '../src/lib/crypto/utils.ts';
 import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';
 import type { VaultPayload } from '../src/lib/types.ts';
 

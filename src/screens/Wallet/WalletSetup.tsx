@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';

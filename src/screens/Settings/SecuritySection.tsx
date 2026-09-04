@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
 import { t } from '@lib/i18n.js';
@@ -58,7 +58,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
       // Same category (timed→timed), apply directly
       setPendingMs(null);
       setAutoLockMs(ms);
-      rpc('vault_setAutoLock', { ms });
+      void rpc('vault_setAutoLock', { ms });
     }
   };
 
@@ -84,7 +84,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
       setPendingMs(null);
       pair.reset();
       setCurrentPassword('');
-      vault.checkState?.();
+      void vault.checkState?.();
     } catch (e: any) {
       setError(e.message || t('common.error'));
     }

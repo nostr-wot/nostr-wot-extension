@@ -1,4 +1,4 @@
-import React, { useCallback, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
@@ -81,13 +81,13 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
   /** Clear permissions for a domain (optionally per-account) */
   const clearPermissions = useCallback(async (domain: string, accountId?: string | null) => {
     await rpc('signer_clearPermissions', { domain, accountId });
-    reload();
+    void reload();
   }, [reload]);
 
   /** Copy permissions from one account to another */
   const copyPermissions = useCallback(async (fromAccountId: string, toAccountId: string) => {
     await rpc('signer_copyPermissions', { fromAccountId, toAccountId });
-    reload();
+    void reload();
   }, [reload]);
 
   /** Toggle the global defaults cascade */

@@ -75,15 +75,15 @@ function withIdentityGuard(
     return async (params) => {
         const origin = params.origin as string;
         if (origin && await isIdentityDisabled(origin)) {
-            logActivity({ domain: origin, method, decision: 'blocked' });
+            void logActivity({ domain: origin, method, decision: 'blocked' });
             throw new Error('Identity access disabled for this site');
         }
         try {
             const result = await fn(origin, params);
-            logActivity({ domain: origin, method, decision: 'approved', theirPubkey: params.pubkey as string });
+            void logActivity({ domain: origin, method, decision: 'approved', theirPubkey: params.pubkey as string });
             return result;
         } catch (e) {
-            logActivity({ domain: origin, method, decision: 'rejected', theirPubkey: params.pubkey as string });
+            void logActivity({ domain: origin, method, decision: 'rejected', theirPubkey: params.pubkey as string });
             throw e;
         }
     };
@@ -95,31 +95,31 @@ export const handlers = new Map<string, HandlerFn>([
     ['nip07_getPublicKey', async (params) => {
         const origin = params.origin as string;
         if (origin && await isIdentityDisabled(origin)) {
-            logActivity({ domain: origin, method: 'getPublicKey', decision: 'blocked' });
+            void logActivity({ domain: origin, method: 'getPublicKey', decision: 'blocked' });
             throw new Error('Identity access disabled for this site');
         }
         try {
             const result = await signer.handleGetPublicKey(origin);
-            logActivity({ domain: origin, method: 'getPublicKey', decision: 'approved' });
+            void logActivity({ domain: origin, method: 'getPublicKey', decision: 'approved' });
             return result;
         } catch (e) {
-            logActivity({ domain: origin, method: 'getPublicKey', decision: 'rejected' });
+            void logActivity({ domain: origin, method: 'getPublicKey', decision: 'rejected' });
             throw e;
         }
     }],
 
     ['nip07_signEvent', async (params) => {
         if (params.origin && await isIdentityDisabled(params.origin as string)) {
-            logActivity({ domain: params.origin as string, method: 'signEvent', decision: 'blocked' });
+            void logActivity({ domain: params.origin as string, method: 'signEvent', decision: 'blocked' });
             throw new Error('Identity access disabled for this site');
         }
         try {
             const result = await signer.handleSignEvent(params.event as UnsignedEvent, params.origin as string);
-            logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'approved', event: params.event as Record<string, unknown> });
+            void logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'approved', event: params.event as Record<string, unknown> });
             return result;
         } catch (e) {
             console.error('[nip07] signEvent FAILED, kind:', (params.event as Record<string, unknown>)?.kind, 'error:', (e as Error).message);
-            logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'rejected', event: params.event as Record<string, unknown> });
+            void logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'rejected', event: params.event as Record<string, unknown> });
             throw e;
         }
     }],

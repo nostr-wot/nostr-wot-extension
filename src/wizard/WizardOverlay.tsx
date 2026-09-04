@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { isLanguageChosen } from '@lib/i18n.js';
 import { rpc } from '@services/rpc.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';

@@ -1,4 +1,4 @@
-import React, { useCallback, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';

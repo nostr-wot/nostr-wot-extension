@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubDecode } from '@lib/crypto/bech32.js';
@@ -75,7 +75,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
     setDirty(false);
     setPublishResult(null);
     setReadFailed(false);
-    (async () => {
+    void (async () => {
       try {
         const data = await rpc<MyMuteList & { reachable?: boolean }>('getMyMuteList');
         if (!mounted.current) return;

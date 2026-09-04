@@ -1,4 +1,3 @@
-import React from 'react';
 
 const CYCLE = 9;
 const HOLD_END = 7.8;

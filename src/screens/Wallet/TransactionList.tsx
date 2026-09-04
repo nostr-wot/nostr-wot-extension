@@ -1,4 +1,4 @@
-import React, { useState, useMemo, ChangeEvent } from 'react';
+import { useState, useMemo, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
 import Spinner from '@components/Spinner/Spinner';

@@ -1,4 +1,3 @@
-import React from 'react';
 import styles from './PulseLogo.module.css';
 import { cn } from '@utils/cn.ts';
 

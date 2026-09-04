@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef, ReactNode } from 'react';
-import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js';
+import { useState, useEffect, useRef, ReactNode } from 'react';
+import { t, getSupportedLanguages, getLanguage } from '@lib/i18n.js';
 import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap, IconInfo } from '@assets';
 import { version as appVersion } from '../../../package.json';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
-import Modal from '@components/Modal/Modal';
-import Button from '@components/Button/Button';
 import MenuSection from './MenuSection';
 import LanguagePicker from './LanguagePicker';
 import type { Language } from '@domain/i18n/language.ts';

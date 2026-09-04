@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Select from '@components/Select/Select';
 import type { PromptDecision } from '@domain/permissions/prompt.ts';

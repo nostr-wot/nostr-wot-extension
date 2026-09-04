@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
@@ -58,7 +58,7 @@ export default function PromptApp() {
     if (vaultLocked && decision.allow) {
       return;
     }
-    sendDecision(decision);
+    void sendDecision(decision);
   };
 
   const handleUnlocked = () => {

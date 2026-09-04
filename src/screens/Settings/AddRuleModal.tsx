@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent } from 'react';
+import { useState, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import { buildRuleKey, DECISIONS } from '@domain/permissions/permissionRules.ts';
@@ -29,7 +29,7 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
   const [useCustom, setUseCustom] = useState<boolean>(false);
 
   const submit = () => {
-    onAdd(buildRuleKey(presetKey, customKind, useCustom && !!customKind.trim()), decision);
+    void onAdd(buildRuleKey(presetKey, customKind, useCustom && !!customKind.trim()), decision);
     onClose();
   };
 

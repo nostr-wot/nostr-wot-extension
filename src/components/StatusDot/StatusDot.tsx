@@ -1,4 +1,3 @@
-import React from 'react';
 import { cn } from '@utils/cn.ts';
 
 const ALIASES: Record<string, string> = { allow: 'approved', deny: 'rejected', syncing: 'checking', synced: 'reachable' };

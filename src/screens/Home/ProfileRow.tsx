@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import ListRow from '@components/ListRow/ListRow';
 import { IconUser } from '@assets';

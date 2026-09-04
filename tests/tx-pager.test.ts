@@ -153,7 +153,7 @@ describe('accumulateTransactions — error handling', () => {
     // rejection blanking a screen that was already showing data.
     const first = [tx({ memo: 'kept' }), tx({ memo: 'kept' })];
     let calls = 0;
-    const fetchPage = async (limit: number) => {
+    const fetchPage = async (_limit: number) => {
       calls++;
       if (calls === 1) return first;
       throw new Error('network down');

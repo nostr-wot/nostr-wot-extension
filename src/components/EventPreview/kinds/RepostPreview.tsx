@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import { EP } from '../eventPreviewClasses.ts';
 

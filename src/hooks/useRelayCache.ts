@@ -32,6 +32,5 @@ export default function useRelayCache(name: string, onRefreshed: () => void): vo
     };
     browser.storage.onChanged.addListener(listener);
     return () => browser.storage.onChanged.removeListener(listener);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name]);
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { useEffect, useRef, useCallback, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
 import { t } from '@lib/i18n.js';
 import { truncateNpub, getInitial } from '@utils/format/text.ts';
@@ -103,11 +103,11 @@ export function AccountProvider({ children }: AccountProviderProps) {
     // Reload active tab so injected NIP-07 content reflects the new identity
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.id) browser.tabs.reload(tabs[0].id);
+      if (tabs[0]?.id) void browser.tabs.reload(tabs[0].id);
     } catch { /* ignore — fails on chrome:// pages */ }
   }, [accounts, patchAccount]);
 
-  const reload = useCallback(() => { refresh(); }, [refresh]);
+  const reload = useCallback(() => { void refresh(); }, [refresh]);
 
   const cachedProfile = active ? profileCache[active.pubkey] : null;
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { IconWarning } from '@assets';
@@ -61,7 +61,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     error: unlockError,
     unlock: handleUnlock,
   } = useVaultUnlock({
-    onSuccess: () => { setNeedsUnlock(false); vault.checkState(); },
+    onSuccess: () => { setNeedsUnlock(false); void vault.checkState(); },
     messages: {
       wrongPassword: t('key.wrongPassword'),
       unlockFailed: t('key.failedUnlock'),
@@ -69,9 +69,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   });
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
-        if (await isVaultOpen(rpc)) { setNeedsUnlock(false); vault.checkState?.(); return; }
+        if (await isVaultOpen(rpc)) { setNeedsUnlock(false); void vault.checkState?.(); return; }
         setNeedsUnlock(true);
       } catch { /* ignore */ }
     })();

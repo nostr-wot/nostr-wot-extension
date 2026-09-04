@@ -1,4 +1,3 @@
-import React from 'react';
 import { rpcNotify } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import '@styles/tailwind.css';

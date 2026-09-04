@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';

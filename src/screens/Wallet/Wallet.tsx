@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
@@ -73,11 +73,11 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   // `configType` becomes a provider string, which happens before this
   // component ever mounts.
   useEffect(() => {
-    fetchFiltered(0, [], { direction: 'all', dateFrom: '', dateTo: '' });
+    void fetchFiltered(0, [], { direction: 'all', dateFrom: '', dateTo: '' });
   }, [fetchFiltered]);
 
   const handleShowMore = () => {
-    fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
+    void fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
   };
 
   const applyFilters = (f: TxFilters) => {
@@ -86,7 +86,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setTxDateTo(f.dateTo);
     setTxFilterOpen(false);
     // Re-fetch: start from scratch with new filters
-    fetchFiltered(0, [], f);
+    void fetchFiltered(0, [], f);
   };
 
   return (
@@ -128,8 +128,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         <DepositDialog
           onClose={() => setShowDeposit(false)}
           onPaid={() => {
-            refreshBalance();
-            fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
+            void refreshBalance();
+            void fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
           }}
         />
       )}
@@ -138,8 +138,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         <SendDialog
           onClose={() => setShowSend(false)}
           onSent={() => {
-            refreshBalance();
-            fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
+            void refreshBalance();
+            void fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
           }}
         />
       )}
@@ -165,7 +165,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       {showSettings && (
         <WalletSettings
           providerType={providerType}
-          onClose={() => { setShowSettings(false); refreshBalance(); }}
+          onClose={() => { setShowSettings(false); void refreshBalance(); }}
           onDisconnected={onDisconnected}
         />
       )}

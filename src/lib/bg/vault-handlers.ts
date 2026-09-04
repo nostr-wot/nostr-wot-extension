@@ -213,7 +213,7 @@ export const handlers = new Map<string, HandlerFn>([
         await browser.storage.local.set({ activeAccountId: switchId });
         await signer.onActiveAccountChanged(oldAccountId, switchId);
         if (switchPubkey) {
-            broadcastAccountChanged(switchPubkey);
+            void broadcastAccountChanged(switchPubkey);
         }
         return { ok: true };
     }],

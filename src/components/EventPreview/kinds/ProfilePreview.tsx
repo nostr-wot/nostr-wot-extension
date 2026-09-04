@@ -1,4 +1,3 @@
-import React from 'react';
 import { t } from '@lib/i18n.js';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';

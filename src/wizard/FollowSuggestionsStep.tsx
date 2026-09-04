@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubDecode } from '@lib/crypto/bech32.ts';
@@ -152,7 +152,7 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
       <p className="text-md text-secondary leading-normal mb-8">{t('wizard.followDesc')}</p>
 
       <div className="flex flex-col gap-3 max-h-[340px] overflow-y-auto pr-1">
-        {hexKeys.map(({ npub, hex }) => {
+        {hexKeys.map(({ hex }) => {
           const isSelected = selected.has(hex);
           const avatar = getAvatar(hex);
           return (

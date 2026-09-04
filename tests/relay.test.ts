@@ -346,10 +346,7 @@ describe('liveQuery', () => {
       },
     );
 
-    // Pull one event (will be from local cache phase — likely nothing)
-    // Then force-close the generator
-    const iter = gen[Symbol.asyncIterator]();
-    // Give time for socket to open
+    // Give time for socket to open, then force-close the generator
     await new Promise(r => setTimeout(r, 20));
     await gen.return(undefined);
 

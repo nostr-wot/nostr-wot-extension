@@ -193,7 +193,7 @@ function ensureLiveSession(persisted: PersistedNcSession): NostrConnectSession {
                 console.warn('[NIP-46] rejected non-HTTPS auth_url:', url);
                 return;
             }
-            browser.tabs.create({ url });
+            void browser.tabs.create({ url });
         } },
         abortController.signal
     );
@@ -550,7 +550,7 @@ export const handlers = new Map<string, HandlerFn>([
                     console.warn('[NIP-46] rejected non-HTTPS auth_url:', url);
                     return;
                 }
-                browser.tabs.create({ url });
+                void browser.tabs.create({ url });
             } },
             abortController.signal
         );
@@ -814,7 +814,7 @@ export const handlers = new Map<string, HandlerFn>([
         // Active-account change: same invalidation as switchAccount.
         await signer.onActiveAccountChanged(prevActiveAdd, fullAccountAdd.id);
         if (fullAccountAdd.pubkey) {
-            broadcastAccountChanged(fullAccountAdd.pubkey);
+            void broadcastAccountChanged(fullAccountAdd.pubkey);
         }
         return { ok: true };
     }],

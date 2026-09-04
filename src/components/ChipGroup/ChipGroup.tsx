@@ -1,4 +1,3 @@
-import React from 'react';
 import Chip from '@components/Chip/Chip';
 import { cn } from '@utils/cn.ts';
 

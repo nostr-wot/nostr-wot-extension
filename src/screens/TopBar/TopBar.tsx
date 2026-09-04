@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { t } from '@lib/i18n.js';
 import { IconSettings } from '@assets';
 import AccountBar from './AccountBar';

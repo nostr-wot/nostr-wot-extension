@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { bytesToHex, hexToBytes } from '../../src/lib/crypto/utils.ts';
+import { bytesToHex } from '../../src/lib/crypto/utils.ts';
 import {
   generateMnemonic, validateMnemonic, mnemonicToSeed, entropyToMnemonic
 } from '../../src/lib/crypto/bip39.ts';

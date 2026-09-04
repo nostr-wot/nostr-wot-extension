@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
@@ -80,9 +80,9 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
   }, []);
 
   useEffect(() => {
-    fetchThreshold();
-    fetchNwcUri();
-    fetchLnAddress();
+    void fetchThreshold();
+    void fetchNwcUri();
+    void fetchLnAddress();
   }, [fetchThreshold, fetchNwcUri, fetchLnAddress]);
 
   const handleDisconnect = async () => {

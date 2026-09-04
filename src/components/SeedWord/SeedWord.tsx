@@ -1,4 +1,3 @@
-import React from 'react';
 import { cn } from '@utils/cn.ts';
 
 const SEED_WORD = 'flex items-center gap-3 px-4 py-2 text-sm font-medium text-heading';

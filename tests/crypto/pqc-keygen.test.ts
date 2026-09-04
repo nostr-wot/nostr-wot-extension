@@ -1,11 +1,9 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-const run = promisify(execFile);
 const here = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(here, '../../scripts/pqc-keygen.mjs');
 

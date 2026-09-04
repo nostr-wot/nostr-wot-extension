@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
@@ -31,7 +31,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const [backedUp, setBackedUp] = useState<boolean>(false);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       try {
         // Try restoring from session storage (popup was closed and reopened)
         const saved = await browser.storage.session.get(CREATE_STORAGE_KEY);

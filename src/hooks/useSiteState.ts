@@ -78,7 +78,7 @@ export default function useSiteState(active: Account | null) {
   // loadHomeState never reads `active`; it only needed to re-run when the
   // account genuinely changes.
   useEffect(() => {
-    loadHomeState();
+    void loadHomeState();
   }, [active?.id, loadHomeState]);
 
   // The allowlist can change while this view is mounted — from the globe button
@@ -93,7 +93,7 @@ export default function useSiteState(active: Account | null) {
   useEffect(() => {
     const onChanged = (changes: Record<string, unknown>, area: string) => {
       if (area !== 'local') return;
-      if (changes.allowedDomains || changes.identityDisabledSites) loadHomeState();
+      if (changes.allowedDomains || changes.identityDisabledSites) void loadHomeState();
     };
     browser.storage.onChanged.addListener(onChanged);
     return () => browser.storage.onChanged.removeListener(onChanged);

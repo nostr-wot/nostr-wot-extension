@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
-import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type GroupedActivity } from '@domain/activity/activity.ts';
+import { filterActivityEntries, countActivityFilters, activityDomains, groupActivityEntries, type GroupedActivity } from '@domain/activity/activity.ts';
 import { truncateNpub } from '@utils/format/text.ts';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -160,7 +160,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
       typeFilter: typeFilter || undefined,
       pubkeyFilter: pubkeyFilter || undefined,
     });
-    loadActivity();
+    void loadActivity();
   };
 
   const handleClearFilters = () => {
