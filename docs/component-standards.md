@@ -279,9 +279,27 @@ Two utilities for the same property on one element are resolved by their order i
 
 `cn()` resolves the conflict before the string reaches the DOM, so the last class written wins the way everyone already expects it to. **Its configuration is load-bearing**: tailwind-merge decides what conflicts from Tailwind's *default* scales, and ours differ — `text-md` is a font size here while `text-muted` is a colour, and a merger that cannot tell them apart silently deletes one. Every scale `tailwind.css` redefines is declared in `src/utils/cn.ts`, and `tests/cn.test.ts` pins both directions: the conflicts it must resolve, and the ones it must not invent.
 
+### Animations live in `src/styles/animations.css`, never in a module
+
+Every `@keyframes` is registered in Tailwind's theme, which makes each one a utility: `animate-card-in`, `animate-dropdown-in`, `animate-section-slide-in`. **Do not write `@keyframes` in a component's stylesheet.**
+
+The reason is not tidiness. Vite scopes a keyframe name to the file that declares it, so a component that references a keyframe it does not itself define gets a name that resolves to nothing and simply never animates — silently. That was live twice: the approval card's spinner icon and the NIP-46 step's. It also meant the same fade was written out in `Modal` and again in `UnlockModal`, and the same dropdown entrance in `Dropdown` and again in `TopBar`, with no way to notice they had drifted.
+
+As a utility the name is checked: a misspelled `animate-card-in` produces no class, and `tests/tailwind-classes.test.ts` fails on it.
+
+**The shorthand carries the fill mode, and sometimes that is load-bearing.** `--animate-section-slide-in` ends in `backwards`, not `both`. `both` implies `forwards`, which would leave the element with a permanent `transform`, and a non-`none` transform makes an element a containing block for `position: fixed` descendants. Every fixed overlay inside a menu section would then be positioned against the section instead of the popup — which is exactly how five dialogs once ended up escaping to `#root` portals to get away from it.
+
+An earlier `src/shared/animations.css` was deleted because every module defined its own keyframes and nothing referenced the shared file. This is the opposite arrangement, and that is what makes it work: nothing defines its own any more.
+
 ### What stays in a stylesheet
 
-Utilities do not replace CSS; they replace the parts of it that were repeating a token. Keep a `.module.css` for anything that is genuinely CSS: custom `@keyframes`, selectors utilities cannot express (`.row + .row`, `:has()`, deep descendant rules), and any class accessed dynamically (``styles[`tone${x}`]``), which no scanner can see. Delete the module only once it is actually empty.
+Utilities do not replace CSS; they replace the parts of it that were repeating a token. Far less qualifies than it first appears, and three things that look inexpressible are not:
+
+- **Adjacent siblings and descendants** have arbitrary variants: `[&+&]:border-t`, `[&>*]:shrink-0`, `[&_label]:ml-1`. The last two replaced real `:global` descendant rules and emit exactly the selector they replaced — verified in the generated CSS, which is how you should confirm any of these.
+- **A class accessed dynamically** (``styles[`tone${x}`]``) is better as an explicit `Record<string, string>` of utility strings. That also brings the file back under `tests/css-selectors.test.ts`, which has to skip any stylesheet with a computed key.
+- **An override that has to beat a component's own class** used to need an unlayered CSS rule, because Tailwind's utilities sit in `@layer utilities` and an unlayered rule outranks a layered one whatever the specificity. `cn()` settled that — the override wins as an ordinary utility now. Several files survived a whole migration pass on this reasoning alone and were retired once `cn()` existed.
+
+What genuinely stays: 3D transforms and `perspective`, `mask-image`, data-URI background art, `::-webkit-` pseudo-elements, and `<details>`/`<summary>` disclosure. The post-quantum panel's disclosure is the clearest example — it *can* be written as six stacked arbitrary variants with escaped `content` strings, and the CSS is plainly easier to read. **A file left with two honest rules beats ten utilities nobody can parse.** Delete the module only once it is actually empty.
 
 Values that are computed at runtime stay inline styles. `Spinner`'s diameter is a caller-supplied number, and a utility class cannot be generated from a value that does not exist until render.
 
