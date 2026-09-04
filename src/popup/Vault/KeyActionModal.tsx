@@ -17,6 +17,7 @@ import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackup
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import FormError from '@components/FormError/FormError';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 interface KeyActionModalProps {
   action: string;
@@ -167,7 +168,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
       <>
         {needsUnlock ? (
           <div className="flex flex-col gap-5">
-            <label className="text-sm font-semibold text-secondary">{t('key.unlockToContinue')}</label>
+            <SectionLabel inline>{t('key.unlockToContinue')}</SectionLabel>
             <Input
               type="password"
               showToggle

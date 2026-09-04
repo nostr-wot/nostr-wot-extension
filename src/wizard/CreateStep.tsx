@@ -11,6 +11,7 @@ import Card from '@components/Card/Card';
 import EncryptedBackupModal from './EncryptedBackupModal';
 import SeedWord from '@components/SeedWord/SeedWord';
 import FormError from '@components/FormError/FormError';
+import Heading from '@components/Heading/Heading';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -69,7 +70,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   if (loading) {
     return (
       <div className="flex flex-col flex-1">
-        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.generatingIdentity')}</h2>
+        <Heading className="mb-3">{t('wizard.generatingIdentity')}</Heading>
         <p className="text-md text-secondary leading-normal mb-8">{t('wizard.creatingKeypair')}</p>
       </div>
     );
@@ -78,7 +79,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   if (error) {
     return (
       <div className="flex flex-col flex-1">
-        <h2 className="text-3xl font-bold text-heading mb-3">{t('common.error')}</h2>
+        <Heading className="mb-3">{t('common.error')}</Heading>
         <FormError>{error}</FormError>
       </div>
     );
@@ -98,7 +99,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.recoveryTitle')}</h2>
+      <Heading className="mb-3">{t('wizard.recoveryTitle')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.recoveryDesc', { count: words.length })}
       </p>

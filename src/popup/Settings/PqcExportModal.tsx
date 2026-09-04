@@ -10,6 +10,7 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import FormError from '@components/FormError/FormError';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 /**
  * Save the post-quantum key file, plain or encrypted.
@@ -66,7 +67,7 @@ const handleExport = async (encrypted: boolean) => {
           info={t('pqc.exportWarn')}
         />
 
-        <label className="text-sm leading-loose text-secondary my-4 mb-6">{t('key.encryptionPassword')}</label>
+        <SectionLabel className="mb-6 mt-4 font-normal leading-loose">{t('key.encryptionPassword')}</SectionLabel>
         <div className="flex flex-col gap-4 mb-4">
           <PasswordPairFields
             pair={exportPair}

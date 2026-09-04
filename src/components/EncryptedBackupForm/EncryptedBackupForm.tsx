@@ -8,6 +8,7 @@ import PasswordPairFields from '@components/PasswordPairFields/PasswordPairField
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { IconWarning } from '@assets';
 import FormError from '@components/FormError/FormError';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 const CLS = {
   section: 'flex flex-col gap-5',
@@ -113,7 +114,7 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
         <span>{t('key.ncryptsecNoRecovery')}</span>
       </div>
 
-      <label>{t('key.encryptionPassword')}</label>
+      <SectionLabel>{t('key.encryptionPassword')}</SectionLabel>
       <PasswordPairFields
         pair={pair}
         passwordPlaceholder={t('key.passwordMinChars')}

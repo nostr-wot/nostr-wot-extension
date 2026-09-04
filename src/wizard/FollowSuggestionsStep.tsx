@@ -6,6 +6,7 @@ import Button from '@components/Button/Button';
 import Avatar from '@components/Avatar/Avatar';
 import { truncateNpub, getInitial as getInitialChar } from '@shared/format/text.ts';
 import type { ProfileMetadata } from '@models/profile.ts';
+import Heading from '@components/Heading/Heading';
 
 /* ------------------------------------------------------------------ */
 /*  Curated account list — npubs only                                  */
@@ -147,7 +148,7 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.followTitle')}</h2>
+      <Heading className="mb-3">{t('wizard.followTitle')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">{t('wizard.followDesc')}</p>
 
       <div className="flex flex-col gap-3 max-h-[340px] overflow-y-auto pr-1">

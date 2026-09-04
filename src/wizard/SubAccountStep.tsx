@@ -5,6 +5,9 @@ import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import FormError from '@components/FormError/FormError';
+import Heading from '@components/Heading/Heading';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 
 interface SubAccountStepProps {
   onNext: (account: any) => void;
@@ -74,7 +77,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   if (loading) {
     return (
       <div className="flex flex-col flex-1">
-        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.generatingIdentity')}</h2>
+        <Heading className="mb-3">{t('wizard.generatingIdentity')}</Heading>
         <p className="text-md text-secondary leading-normal mb-8">{t('wizard.creatingKeypair')}</p>
       </div>
     );
@@ -83,11 +86,11 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   if (needsUnlock) {
     return (
       <div className="flex flex-col flex-1">
-        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.subAccountTitle')}</h2>
+        <Heading className="mb-3">{t('wizard.subAccountTitle')}</Heading>
         <p className="text-md text-secondary leading-normal mb-8">{t('unlock.vaultLocked')}</p>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.password')}</label>
+          <SectionLabel>{t('wizard.password')}</SectionLabel>
           <Input
             type="password"
             showToggle
@@ -113,7 +116,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   if (error) {
     return (
       <div className="flex flex-col flex-1">
-        <h2 className="text-3xl font-bold text-heading mb-3">{t('common.error')}</h2>
+        <Heading className="mb-3">{t('common.error')}</Heading>
         <FormError>{error}</FormError>
       </div>
     );
@@ -121,25 +124,26 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.subAccountTitle')}</h2>
+      <Heading className="mb-3">{t('wizard.subAccountTitle')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.subAccountDesc')}
       </p>
 
       <div className="bg-surface border border-card-border rounded-panel py-6 px-7 flex flex-col gap-4 mb-6">
-        <div className="flex justify-between items-center text-md text-heading">
-          <span className="font-semibold text-secondary">{t('wizard.typeLabel')}</span>
-          <span>{t('wizard.subAccountType')}</span>
-        </div>
-        <div className="flex justify-between items-center text-md text-heading">
-          <span className="font-semibold text-secondary">{t('wizard.derivationPath')}</span>
-          <span className="font-mono text-sm">m/44'/1237'/0'/0/{derivationIndex}</span>
-        </div>
+        <FieldDisplay className="py-0" label={t('wizard.typeLabel')} value={t('wizard.subAccountType')} />
+        <FieldDisplay
+          className="py-0"
+          mono
+          label={t('wizard.derivationPath')}
+          value={`m/44'/1237'/0'/0/${derivationIndex}`}
+        />
         {account?.pubkey && (
-          <div className="flex justify-between items-center text-md text-heading">
-            <span className="font-semibold text-secondary">{t('wizard.publicKeyLabel')}</span>
-            <span className="font-mono text-sm">{account.pubkey.slice(0, 12)}...{account.pubkey.slice(-8)}</span>
-          </div>
+          <FieldDisplay
+            className="py-0"
+            mono
+            label={t('wizard.publicKeyLabel')}
+            value={`${account.pubkey.slice(0, 12)}...${account.pubkey.slice(-8)}`}
+          />
         )}
       </div>
 

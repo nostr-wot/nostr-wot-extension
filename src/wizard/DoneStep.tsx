@@ -1,6 +1,8 @@
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
+import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
+import Heading from '@components/Heading/Heading';
 
 interface DoneAccount {
   name?: string;
@@ -16,27 +18,20 @@ interface DoneStepProps {
 export default function DoneStep({ account, onDone }: DoneStepProps) {
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.yourAllSet')}</h2>
+      <Heading className="mb-3">{t('wizard.yourAllSet')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.identityReady')}
       </p>
 
       {account && (
         <Card variant="flat">
-          {account.name && (
-            <div className="flex justify-between py-3 border-b border-card last:border-b-0">
-              <label className="text-sm font-semibold text-muted">{t('wizard.nameLabel')}</label>
-              <span className="text-sm font-medium text-heading">{account.name}</span>
-            </div>
-          )}
-          <div className="flex justify-between py-3 border-b border-card last:border-b-0">
-            <label className="text-sm font-semibold text-muted">{t('wizard.typeLabel')}</label>
-            <span className="text-sm font-medium text-heading">{t(`wizard.type.${account.type}`)}</span>
-          </div>
-          <div className="flex justify-between py-3 border-b border-card last:border-b-0">
-            <label className="text-sm font-semibold text-muted">{t('wizard.publicKeyLabel')}</label>
-            <span className="text-sm font-medium text-heading">{account.pubkey?.slice(0, 12)}...{account.pubkey?.slice(-12)}</span>
-          </div>
+          {account.name && <FieldDisplay divided label={t('wizard.nameLabel')} value={account.name} />}
+          <FieldDisplay divided label={t('wizard.typeLabel')} value={t(`wizard.type.${account.type}`)} />
+          <FieldDisplay
+            divided
+            label={t('wizard.publicKeyLabel')}
+            value={`${account.pubkey?.slice(0, 12)}...${account.pubkey?.slice(-12)}`}
+          />
         </Card>
       )}
 

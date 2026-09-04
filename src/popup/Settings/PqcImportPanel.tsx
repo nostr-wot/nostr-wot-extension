@@ -6,6 +6,7 @@ import { type PqcPanelStatus as PqcStatus } from '@shared/pqcState.ts';
 import { usePqc } from '@popup/context/PqcContext';
 import styles from './PqcSection.module.css';
 import FormError from '@components/FormError/FormError';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 const KEYGEN_SOURCE_URL =
   'https://github.com/nostr-wot/nostr-wot-extension/blob/main/scripts/pqc-keygen.mjs';
@@ -50,7 +51,7 @@ export default function PqcImportPanel() {
       <strong className="text-md text-heading">{t('pqc.importTitle')}</strong>
       <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.importDesc')}</p>
 
-      <label className="text-sm leading-loose text-secondary my-4 mb-6" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</label>
+      <SectionLabel className="mb-6 mt-4 font-normal leading-loose" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</SectionLabel>
       <textarea
         id="pqc-keyfile"
         className="w-full min-h-44 py-4 px-5 border border-card-border rounded-sm bg-input text-body font-code text-xs leading-normal resize-y"

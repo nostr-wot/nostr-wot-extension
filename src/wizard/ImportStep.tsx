@@ -5,6 +5,8 @@ import { IconInfo } from '@assets';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import FormError from '@components/FormError/FormError';
+import Heading from '@components/Heading/Heading';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 type ImportType = 'ncryptsec' | 'nsec' | 'mnemonic' | null;
 
@@ -104,13 +106,13 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.importTitle')}</h2>
+      <Heading className="mb-3">{t('wizard.importTitle')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.importDesc')}
       </p>
 
       <div className="mb-6">
-        <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.importLabel')}</label>
+        <SectionLabel>{t('wizard.importLabel')}</SectionLabel>
         <Input
           type="password"
           showToggle
@@ -125,7 +127,7 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
       {importType === 'ncryptsec' && (
         <>
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.decryptionPassword')}</label>
+            <SectionLabel>{t('wizard.decryptionPassword')}</SectionLabel>
             <Input
               type="password"
               showToggle
@@ -135,7 +137,7 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
             />
           </div>
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.accountName')}</label>
+            <SectionLabel>{t('wizard.accountName')}</SectionLabel>
             <Input
               placeholder={t('wizard.accountNamePlaceholder')}
               value={name}

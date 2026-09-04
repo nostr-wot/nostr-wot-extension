@@ -2,6 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconPlus, IconKey, IconEye, IconLink } from '@assets';
 import Card from '@components/Card/Card';
+import Heading from '@components/Heading/Heading';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   create: <IconPlus />,
@@ -39,7 +40,7 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.chooseSetup')}</h2>
+      <Heading className="mb-3">{t('wizard.chooseSetup')}</Heading>
       <div className="flex flex-col gap-4 mt-auto pb-12">
         {METHODS.map((m, i) => (
           <React.Fragment key={m.id}>

@@ -11,6 +11,8 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 import FormError from '@components/FormError/FormError';
+import Heading from '@components/Heading/Heading';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 interface PasswordStepProps {
   account: any;
@@ -121,11 +123,11 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
     return (
       <div className="flex flex-col flex-1">
-        <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.addToVault')}</h2>
+        <Heading className="mb-3">{t('wizard.addToVault')}</Heading>
         <p className="text-md text-secondary leading-normal mb-8">{t('unlock.vaultLocked')}</p>
 
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.password')}</label>
+          <SectionLabel>{t('wizard.password')}</SectionLabel>
           <Input
             type="password"
             showToggle
@@ -151,13 +153,13 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   // No vault -- full password setup
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.protectYourKeys')}</h2>
+      <Heading className="mb-3">{t('wizard.protectYourKeys')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.protectYourKeysDesc')}
       </p>
 
       <div className="mb-6">
-        <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.autoLockTimer')}</label>
+        <SectionLabel>{t('wizard.autoLockTimer')}</SectionLabel>
         <ChipGroup
           options={AUTO_LOCK_OPTIONS.map((opt: any) => ({ value: opt.ms, label: t(opt.labelKey) }))}
           value={autoLockMs}
@@ -178,7 +180,7 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
       {!isNever && (
         <div className="flex flex-col gap-5 mb-6">
-          <label className="block text-sm font-semibold text-secondary">{t('wizard.password')}</label>
+          <SectionLabel className="mb-0">{t('wizard.password')}</SectionLabel>
           <PasswordPairFields
             pair={pair}
             passwordPlaceholder={t('wizard.minEightChars')}

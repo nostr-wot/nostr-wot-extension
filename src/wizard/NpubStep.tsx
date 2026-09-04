@@ -4,6 +4,8 @@ import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import FormError from '@components/FormError/FormError';
+import Heading from '@components/Heading/Heading';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 interface NpubStepProps {
   onNext: (account: any) => void;
@@ -36,13 +38,13 @@ export default function NpubStep({ onNext }: NpubStepProps) {
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.npubTitle')}</h2>
+      <Heading className="mb-3">{t('wizard.npubTitle')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.npubDesc')}
       </p>
 
       <div className="mb-6">
-        <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.npubLabel')}</label>
+        <SectionLabel>{t('wizard.npubLabel')}</SectionLabel>
         <Input
           mono
           placeholder={t('wizard.npubPlaceholder')}

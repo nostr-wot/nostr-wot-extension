@@ -10,6 +10,7 @@ import { resolveSendTarget } from '@shared/sendTarget.ts';
 import { describeInvoiceExpiry } from '@shared/invoiceExpiry.ts';
 import { PAYMENT_IN_FLIGHT } from '@lib/wallet/types.ts';
 import FormError from '@components/FormError/FormError';
+import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 
 /** What `wallet_resolveLightningAddress` hands back for the confirmation card. */
 interface ResolvedAddress {
@@ -220,32 +221,24 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
             {sendIsAddress && !sendSuccess && (
               resolveLoading ? (
                 <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
-                  <div className="flex justify-between items-baseline gap-4">
-                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.resolvingAddress')}</span>
-                  </div>
+                  <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.resolvingAddress')}</span>
                 </div>
               ) : sendAddress ? (
                 <>
                   <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
-                    <div className="flex justify-between items-baseline gap-4">
-                      <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.payTo')}</span>
-                      <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">{sendAddress.address}</span>
-                    </div>
+                    <FieldDisplay caps className="py-0" label={t('wallet.payTo')} value={sendAddress.address} />
                     {sendAddress.description && (
-                      <div className="flex justify-between items-baseline gap-4">
-                        <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceDescription')}</span>
-                        <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">{sendAddress.description}</span>
-                      </div>
+                      <FieldDisplay caps className="py-0" label={t('wallet.invoiceDescription')} value={sendAddress.description} />
                     )}
-                    <div className="flex justify-between items-baseline gap-4">
-                      <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.addressRange')}</span>
-                      <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">
-                        {t('wallet.addressRangeValue', {
-                          min: sendAddress.minSats.toLocaleString(),
-                          max: sendAddress.maxSats.toLocaleString(),
-                        })}
-                      </span>
-                    </div>
+                    <FieldDisplay
+                      caps
+                      className="py-0"
+                      label={t('wallet.addressRange')}
+                      value={t('wallet.addressRangeValue', {
+                        min: sendAddress.minSats.toLocaleString(),
+                        max: sendAddress.maxSats.toLocaleString(),
+                      })}
+                    />
                   </div>
                   <Input
                     type="number"
@@ -282,26 +275,27 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
             {sendInput.trim() && !sendIsAddress && !sendSuccess && (
               decodedInvoice ? (
                 <div className="flex flex-col gap-3 py-5 px-6 bg-card border border-card-border rounded-panel">
-                  <div className="flex justify-between items-baseline gap-4">
-                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceAmount')}</span>
-                    <span className="text-xl font-bold text-heading text-right overflow-hidden text-ellipsis whitespace-nowrap">
-                      {decodedInvoice.amountSats !== null
-                        ? `${Math.round(decodedInvoice.amountSats).toLocaleString()} sats`
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-baseline gap-4">
-                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceDescription')}</span>
-                    <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">
-                      {decodedInvoice.description || t('wallet.invoiceNone')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-baseline gap-4">
-                    <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.invoiceExpiry')}</span>
-                    <span className="text-md text-body text-right overflow-hidden text-ellipsis whitespace-nowrap">
-                      {invoiceExpiryLabel(decodedInvoice)}
-                    </span>
-                  </div>
+                  <FieldDisplay
+                    caps
+                    className="py-0"
+                    valueClassName="text-xl font-bold"
+                    label={t('wallet.invoiceAmount')}
+                    value={decodedInvoice.amountSats !== null
+                      ? `${Math.round(decodedInvoice.amountSats).toLocaleString()} sats`
+                      : '—'}
+                  />
+                  <FieldDisplay
+                    caps
+                    className="py-0"
+                    label={t('wallet.invoiceDescription')}
+                    value={decodedInvoice.description || t('wallet.invoiceNone')}
+                  />
+                  <FieldDisplay
+                    caps
+                    className="py-0"
+                    label={t('wallet.invoiceExpiry')}
+                    value={invoiceExpiryLabel(decodedInvoice)}
+                  />
                 </div>
               ) : (
                 <div className="text-xs text-muted text-center py-3">{t('wallet.decodeFailed')}</div>

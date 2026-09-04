@@ -4,6 +4,7 @@ import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
 import SeedWord from '@components/SeedWord/SeedWord';
 import Chip from '@components/Chip/Chip';
+import Heading from '@components/Heading/Heading';
 
 // Decoy words from BIP-39 for verification
 const DECOYS = ['abandon', 'ability', 'achieve', 'acquire', 'adapt', 'adjust', 'admit', 'afford'];
@@ -93,7 +94,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.verifyTitle')}</h2>
+      <Heading className="mb-3">{t('wizard.verifyTitle')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.verifyDesc')}
       </p>

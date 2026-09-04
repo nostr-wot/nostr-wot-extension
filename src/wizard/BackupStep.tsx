@@ -6,6 +6,7 @@ import { IconCopy, IconDownload, IconLock, IconWarning } from '@assets';
 import Button from '@components/Button/Button';
 import ActionTile from '@components/ActionTile/ActionTile';
 import EncryptedBackupModal from './EncryptedBackupModal';
+import Heading from '@components/Heading/Heading';
 
 interface BackupStepProps {
   mnemonic: string | null;
@@ -29,7 +30,7 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.backUpKeys')}</h2>
+      <Heading className="mb-3">{t('wizard.backUpKeys')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.chooseBackup')}
       </p>
@@ -60,7 +61,7 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
       {safetyShown && (
         <div className="py-7 px-7 bg-[rgba(217,119,6,0.06)] border border-[rgba(217,119,6,0.15)] rounded-lg mt-6">
           <IconWarning size={20} className="text-warning mb-3" />
-          <h3 className="text-md font-bold text-heading mb-2">{t('wizard.keepSafe')}</h3>
+          <Heading level={5} className="mb-2">{t('wizard.keepSafe')}</Heading>
           <p className="text-sm text-secondary leading-normal mb-5">
             {t('wizard.keepSafeDesc')}
           </p>

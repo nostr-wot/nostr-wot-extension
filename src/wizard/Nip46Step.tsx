@@ -8,6 +8,8 @@ import QrCode from '@components/QrCode/QrCode';
 import Spinner from '@components/Spinner/Spinner';
 import Tabs from '@components/Tabs/Tabs';
 import FormError from '@components/FormError/FormError';
+import Heading from '@components/Heading/Heading';
+import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 
 function isValidBunkerUrl(url: string): boolean {
   if (!url.startsWith('bunker://')) return false;
@@ -137,7 +139,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
 
   return (
     <div className="flex flex-col flex-1">
-      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.nip46Title')}</h2>
+      <Heading className="mb-3">{t('wizard.nip46Title')}</Heading>
       <p className="text-md text-secondary leading-normal mb-8">{t('wizard.nip46Desc')}</p>
 
       <Tabs
@@ -211,7 +213,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
       {tab === 'bunker' && (
         <div>
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-secondary mb-3">{t('wizard.bunkerLabel')}</label>
+            <SectionLabel>{t('wizard.bunkerLabel')}</SectionLabel>
             <Input
               mono
               placeholder={t('wizard.bunkerPlaceholder')}
