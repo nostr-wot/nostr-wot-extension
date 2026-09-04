@@ -75,6 +75,31 @@ sequence.
 | `tests/wallet/background-handlers.test.ts` | Wallet background RPC handlers |
 | `tests/wallet/permissions.test.ts` | Wallet permission checks |
 | `tests/wallet/approval.test.ts` | Payment approval flow |
+| `tests/wallet/lnurl.test.ts` | LNURL-pay / Lightning Address: address parsing, the URL safety guard, pay-param fetching |
+| `tests/wallet/payment-intents.test.ts` | A payment happens at most once however many times the popup asks — `rpc()` retries three times when the port closes without a reply |
+| `tests/vault-wallet.test.ts` | Wallet config inside the vault: storage, isolation per account, survival across lock |
+| `tests/vault-lock-race.test.ts` | The popup must not be told "locked" while the unlock that will succeed is still running |
+| `tests/vault-auto-unlock.test.ts` | `isVaultOpen` — never-lock auto-unlock kept behind its mode check, so a blind probe cannot spend the user's brute-force budget |
+| `tests/profile-read.test.ts` | A kind:0 read must say whether anyone answered; merging into the result of a silent read publishes a profile with fields erased |
+| `tests/profile-metadata.test.ts` | The kind:0 read-modify-write behind Edit Profile — publishing replaces the whole event |
+| `tests/relay-cache.test.ts` | The background's cached-first relay reads; an unreachable read is never cached and never evicts a real answer |
+| `tests/activity.test.ts` | The activity log's grouping and filtering |
+| `tests/approval.test.ts` | The approval queue's decision logic — which pending requests a given site may be shown |
+| `tests/permissions-ui.test.ts` | The permission-screen decision helpers |
+| `tests/pqc-state.test.ts` | What the post-quantum surfaces say; an unreachable relay read is not "nothing is published" |
+| `tests/signer-pq-refusal.test.ts` | Accounts that cannot do post-quantum must say so — `nip44.schemes` advertises what the signer accepts |
+| `tests/inject-nip44-schemes.test.ts` | The capability marker on `window.nostr.nip44`, checked against the built bundle |
+| `tests/tx-filter.test.ts` | The wallet transaction filter |
+| `tests/tx-pager.test.ts` | The wallet's paged transaction accumulation |
+| `tests/invoice-expiry.test.ts` | Invoice expiry and the transaction-row date, both taking `now` as an argument |
+| `tests/send-target.test.ts` | The Send box pays what the field says, or nothing — the debounce window between edit and resolve |
+| `tests/active-tab-domain.test.ts` | Naming the current site without permission to read its URL |
+| `tests/password-pair.test.ts` | The "new password, twice" rule, which had eight hand-written copies |
+| `tests/crypto/key-backup.test.ts` | A backup file has to be readable again — the encryption that was inline in the seed-export modal |
+| `tests/i18n-keys.test.ts` | Every string the UI asks for exists, in every locale, with the same placeholders |
+| `tests/theme-tokens.test.ts` | Every `var(--x)` resolves, and no declaration is malformed by a stray bracket — both fail silently in CSS |
+| `tests/css-selectors.test.ts` | No stylesheet selector names a class nothing puts on an element — the rule that survives an extraction and applies to nothing |
+| `tests/test-registration.test.ts` | Every test file is actually run, locally and in CI |
 | `tests/wallet/types.test.ts` | WalletConfig type guards |
 | `tests/wallet/index.test.ts` | Provider factory and caching |
 
