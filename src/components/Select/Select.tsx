@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './Select.module.css';
+import { cn } from '@utils/cn.ts';
 
 interface SelectOption {
   value: string;
@@ -27,12 +28,10 @@ const BASE =
   'focus:outline-none focus:border-brand focus:bg-card focus:shadow-focus';
 
 export default function Select({ options, value, onChange, small = false, className = '', ...rest }: SelectProps) {
-  const cls = [
-    BASE,
+  const cls = cn(BASE,
     styles.select,
     small ? 'py-3 pl-5 pr-14 text-xs' : 'py-5 pl-6 pr-16',
-    className,
-  ].filter(Boolean).join(' ');
+    className);
   return (
     <select className={cls} value={value} onChange={onChange} {...rest}>
       {options.map((opt) => (

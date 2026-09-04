@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './StatusDot.module.css';
+import { cn } from '@utils/cn.ts';
 
 const ALIASES: Record<string, string> = { allow: 'approved', deny: 'rejected', syncing: 'checking', synced: 'reachable' };
 
@@ -17,6 +18,6 @@ const DOT = 'w-[7px] h-[7px] rounded-full shrink-0 inline-block';
 
 export default function StatusDot({ status, className = '' }: StatusDotProps) {
   const normalized = ALIASES[status] || status;
-  const cls = [DOT, styles[normalized] || '', className].filter(Boolean).join(' ');
+  const cls = cn(DOT, styles[normalized] || '', className);
   return <span className={cls} />;
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { t } from '@lib/i18n.js';
+import { cn } from '@utils/cn.ts';
 
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   type?: 'text' | 'password' | 'number';
@@ -33,13 +34,11 @@ export default function Input({
   const [visible, setVisible] = useState<boolean>(false);
   const effectiveType = type === 'password' && visible ? 'text' : type;
 
-  const cls = [
-    BASE,
+  const cls = cn(BASE,
     small ? 'py-3 px-4 text-sm' : 'py-5 px-6',
     mono && 'font-mono text-xs',
     center && 'text-center',
-    className,
-  ].filter(Boolean).join(' ');
+    className);
 
   const input = (
     <div className="relative w-full">

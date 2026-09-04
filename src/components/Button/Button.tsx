@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
@@ -60,12 +61,12 @@ export default function Button({
   children,
   ...rest
 }: ButtonProps) {
-  const cls = [
+  const cls = cn(
     BASE,
     SIZE[small ? 'small' : 'default'],
     outline ? OUTLINE[variant] : FILLED[variant],
     className,
-  ].filter(Boolean).join(' ');
+  );
 
   return (
     <button className={cls} {...rest}>
