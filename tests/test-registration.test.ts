@@ -73,6 +73,30 @@ describe('test registration', () => {
     );
   });
 
+  it('every shared component appears in the standards inventory', () => {
+    // §1 calls itself "generated from the folder, not maintained by hand,
+    // because the previous hand-maintained one had drifted badly enough to be
+    // misleading — it named a ModeCard that does not exist and omitted more
+    // components than it listed". Nothing was actually generating it. This is.
+    const doc = readFileSync(join(ROOT, 'docs/component-standards.md'), 'utf8');
+    const components = readdirSync(join(ROOT, 'src/components'), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+    assert.ok(components.length > 20, `only found ${components.length} components`);
+    const missing = components.filter((c) => !doc.includes(`\`${c}\``)).sort();
+    assert.deepEqual(
+      missing,
+      [],
+      `shared components missing from docs/component-standards.md §1:\n  ${missing.join('\n  ')}`,
+    );
+    const claimed = doc.match(/There are \*\*(\d+)\*\*/);
+    assert.equal(
+      Number(claimed?.[1]),
+      components.length,
+      'the count in §1 disagrees with src/components/',
+    );
+  });
+
   it('every test file appears in the testing doc', () => {
     // The same drift, one step further out. docs/testing.md carries a table of
     // every suite and what it pins; it had gone twenty-five files stale, which
