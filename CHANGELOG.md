@@ -57,6 +57,12 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - `Tabs` keeps two variants because the product has two tab designs — the wallet uses outlined segments, the NIP-46 step a track with a moving thumb. Converging them is a design decision, not a refactor, and is still worth making.
 - Raw `<button>` outside `src/components/` is down to 24, and each remaining one is a documented mismatch rather than an omission — a semantic-scope colour set no variant covers, a control joined to an adjacent `Select`, a bordered-at-rest chip against `IconButton`'s chromeless contract.
 
+### Fixed — one dialog was more careful than the other
+
+- **Exporting an encrypted backup had two implementations.** The vault's key dialog explained the format, warned that nothing can recover the password, showed a live checklist of what the password still needed, kept the button disabled until it was met, and offered both a download and a copy. The wizard's had two bare password fields, a button that objected only once pressed, and download as the only way out — and that is the one a new user meets. Both now render one `EncryptedBackupForm`.
+- The wizard marked a seed **backed up when the export was generated**, not when it was received. A file the user never got is not a backup; it now marks on download or on a clipboard write the browser actually accepted.
+- Marking the backup taken no longer closes the dialog. With both a download and a copy on offer, dismissing on the first made the second unreachable.
+
 ### Fixed — things that only worked with a mouse
 
 - **Revealing your own key material required a mouse.** The nsec display and the recovery-phrase grid both reveal on click and were divs with an `onClick`: no tab stop, no Enter key. Same for the deposit dialog's invoice, where clicking is the only way to copy it, the wizard's follow-suggestion rows, the verify step's placed words, and the avatar picker in Edit Profile. All are buttons now, and the two reveals report `aria-pressed`.
