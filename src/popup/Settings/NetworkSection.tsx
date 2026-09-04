@@ -124,13 +124,13 @@ export default function NetworkSection() {
             <div className="flex gap-2">
               <button
                 className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
-                  flags.read ? 'bg-brand-light text-brand border-[rgba(99,102,241,0.2)]' : 'border-card-border bg-transparent text-muted'
+                  flags.read ? 'bg-brand-light text-brand border-[rgb(99_102_241_/_0.2)]' : 'border-card-border bg-transparent text-muted'
                 }`}
                 onClick={() => toggleRelayFlag(url, 'read')}
               >R</button>
               <button
                 className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
-                  flags.write ? 'bg-brand-light text-brand border-[rgba(99,102,241,0.2)]' : 'border-card-border bg-transparent text-muted'
+                  flags.write ? 'bg-brand-light text-brand border-[rgb(99_102_241_/_0.2)]' : 'border-card-border bg-transparent text-muted'
                 }`}
                 onClick={() => toggleRelayFlag(url, 'write')}
               >W</button>

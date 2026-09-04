@@ -78,8 +78,12 @@ export default function PqcImportPanel() {
       <details className={`${styles.pqcGenerate} mt-6 text-xs`}>
         <summary>{t('pqc.importCommand')}</summary>
         <code className="block py-4 px-5 border border-card-border rounded-sm bg-sunken font-code text-xs text-heading break-all select-all">{KEYGEN_COMMAND}</code>
+        {/* No mt-5 here: this anchor is a direct child of `.pqcGenerate`,
+            whose `> *` rule already sets its margin-top (and, being an
+            unlayered CSS Module rule, would win over a layered utility
+            trying to override it anyway — see PqcSection.module.css). */}
         <a
-          className="inline-flex items-center gap-2.5 mt-5 text-xs text-muted cursor-pointer hover:text-brand"
+          className="inline-flex items-center gap-2.5 text-xs text-muted cursor-pointer hover:text-brand"
           href={KEYGEN_SOURCE_URL}
           target="_blank"
           rel="noreferrer noopener"

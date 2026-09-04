@@ -135,7 +135,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   // keep showing while that happens behind it — reverting to "Loading…" on a
   // refresh nobody asked for would be a regression from what this looked like
   // before it shared its data with the home-screen card.
-  if (!status) return <>{how}<p className={styles.desc}>{t('common.loading')}</p></>;
+  if (!status) return <>{how}<p className="text-sm leading-loose text-secondary my-4 mb-6">{t('common.loading')}</p></>;
 
   const imported = status.source === 'imported';
 
@@ -145,12 +145,12 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     return (
       <>
       {how}
-      <div className={styles.pqcBlocked}>
-        <div className={styles.pqcNotice}>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start gap-5 py-6 px-6 rounded-panel mb-6 bg-warning-tint text-warning-strong">
           <IconWarning size={18} />
           <div>
-            <strong>{t('pqc.unavailableTitle')}</strong>
-            <p>
+            <strong className="block text-md mb-1">{t('pqc.unavailableTitle')}</strong>
+            <p className="m-0 text-sm leading-normal opacity-90">
               {reason === 'short-seed'
                 ? t('pqc.reasonShortSeed', { count: status.wordCount ?? 12 })
                 : t(`pqc.reason.${reason}`)}
@@ -174,7 +174,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
       {/* What this does and does not protect, first. It is the frame for every
           decision below it, and it was sitting at the very bottom where it read
           as a footnote to a screen the user had already acted on. */}
-      <p className={styles.pqcLimits}>{t('pqc.limits')}</p>
+      <p className="mt-7 text-xs leading-loose text-muted">{t('pqc.limits')}</p>
 
       {/* One line each instead of two paragraphs, and one component for both so
           the pair cannot drift apart — the state and its caveat read as one
@@ -201,7 +201,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
       )}
 
       {alreadyPublished ? (
-        <p className={styles.pqcPublished}>
+        <p className="mb-4 text-sm text-success">
           {published
             ? t('pqc.published', { sent: published.sent, relays: published.relays })
             : t('pqc.alreadyPublished')}
@@ -212,18 +212,18 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
               Saying "not published yet" would be a guess, and the guess costs a
               needless republish of an attestation that may already be correct. */}
           {existing?.unreachable && (
-            <div className={styles.pqcNoticeInline}>
+            <div className="flex items-center gap-3 my-5 text-sm text-warning">
               <IconWarning size={16} />
               <span>{t('pqc.checkFailed')}</span>
-              <LinkButton tone="brand" className={styles.pqcCopyLink} onClick={refresh}>{t('common.retry')}</LinkButton>
+              <LinkButton tone="brand" className={`${styles.pqcCopyLink} inline-flex items-center gap-2.5 mt-5`} onClick={refresh}>{t('common.retry')}</LinkButton>
             </div>
           )}
           {/* Only while it is still an instruction. Telling someone to publish,
               directly above a line saying they already have, was the panel
               arguing with itself. */}
-          {!existing?.unreachable && <p className={styles.desc}>{t('pqc.publishDesc')}</p>}
+          {!existing?.unreachable && <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.publishDesc')}</p>}
           {existing?.published && !existing.current && (
-            <p className={styles.desc}>{t('pqc.staleAttestation')}</p>
+            <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.staleAttestation')}</p>
           )}
           <Button onClick={handlePublish} disabled={publishing}>
             {publishing ? t('pqc.publishing') : t('pqc.publish')}
@@ -233,7 +233,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
       <FormError>{publishError}</FormError>
 
-      <div className={styles.pqcActions}>
+      <div className="flex flex-wrap gap-4 mt-7">
         <Button variant="secondary" onClick={() => setKeysOpen(true)}>{t('pqc.showKeys')}</Button>
         {/* Importing the wrong key file must not be a permanent state. */}
         <Button variant="secondary" onClick={() => setExportOpen(true)}>{t('pqc.exportKeys')}</Button>
@@ -260,10 +260,10 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
 
           {status.attestation && (
             <>
-              <p className={styles.desc}>{t('pqc.attestationLabel')}</p>
-              <pre className={styles.pqcJson}>{JSON.stringify(status.attestation, null, 2)}</pre>
+              <p className="text-sm leading-loose text-secondary my-4 mb-6">{t('pqc.attestationLabel')}</p>
+              <pre className="mt-3 p-4 rounded-sm bg-card border border-card-border font-mono text-2xs leading-normal text-body whitespace-pre-wrap break-all max-h-110 overflow-y-auto">{JSON.stringify(status.attestation, null, 2)}</pre>
               {/* For anyone who would rather publish it themselves. */}
-              <LinkButton tone="brand" className={styles.pqcCopyLink} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
+              <LinkButton tone="brand" className={`${styles.pqcCopyLink} inline-flex items-center gap-2.5 mt-5`} onClick={() => status?.attestation && attestationCopy.copy(JSON.stringify(status.attestation))}>
                 <IconCopy size={12} />
                 {attestationCopy.copied ? t('common.copied') : t('pqc.copyAttestation')}
               </LinkButton>

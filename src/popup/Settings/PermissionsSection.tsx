@@ -253,7 +253,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                       // compact popover anchored to it. Not ListRow either —
                       // a full title/subtitle/chevron row would dwarf this
                       // 100px-wide menu of status-dot + label options.
-                      <div className="absolute right-0 top-[calc(100%+4px)] z-raised bg-elevated border border-card-border rounded-md shadow-[0_4px_16px_rgba(0,0,0,0.12)] min-w-50 overflow-hidden">
+                      <div className="absolute right-0 top-[calc(100%+4px)] z-raised bg-elevated border border-card-border rounded-md shadow-[0_4px_16px_rgb(0_0_0_/_0.12)] min-w-50 overflow-hidden">
                         {DECISIONS.map((d) => (
                           <button
                             key={d}
