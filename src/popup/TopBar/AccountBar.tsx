@@ -4,6 +4,7 @@ import { IconChevronDown, IconLockOpen } from '@assets';
 import { useAccount } from '@popup/context/AccountContext';
 import { useVault } from '@popup/context/VaultContext';
 import Avatar from '@components/Avatar/Avatar';
+import IconButton from '@components/IconButton/IconButton';
 import styles from './TopBar.module.css';
 
 interface AccountBarProps {
@@ -39,16 +40,17 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
       </button>
 
       {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (
-        <button
-          className={`${styles.lockBtn} ${styles.lockUnlocked}`}
+        <IconButton
+          className={styles.lockBtn}
           title={t('topbar.vaultUnlocked')}
+          aria-label={t('topbar.vaultUnlocked')}
           onClick={(e) => {
             e.stopPropagation();
             vault.lock();
           }}
         >
           <IconLockOpen />
-        </button>
+        </IconButton>
       )}
     </div>
   );

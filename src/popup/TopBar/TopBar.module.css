@@ -126,29 +126,15 @@
   transform: rotate(180deg);
 }
 
+/* Always rendered in the unlocked state (see AccountBar.tsx's guard) — it
+   reads as a status toggle, not a two-state light. IconButton supplies the
+   box and hover chrome; this only pins the colour, since its tone set
+   (muted/brand/danger) has no status green and only this one button wants it. */
 .lockBtn {
-  background: none;
-  border: none;
-  color: var(--brand);
-  cursor: pointer;
-  padding: var(--sp-3);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-
-.lockBtn:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
-}
-
-.lockUnlocked {
   color: var(--success);
 }
 
-.lockUnlocked:hover {
+.lockBtn:hover {
   background: rgba(5, 150, 105, 0.1);
   color: var(--success);
 }
@@ -271,18 +257,11 @@
   position: relative;
 }
 
+/* Hidden until the row is hovered. IconButton's own hover chrome falls back
+   to the row's already-hovered background, so it would be invisible here —
+   the brand tint below overrides it for contrast against an already-hovered row. */
 .dropdownCopyBtn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--sp-2);
-  border-radius: var(--radius-xs);
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
   opacity: 0;
-  transition: all var(--transition);
 }
 
 .dropdownItem:hover .dropdownCopyBtn {
@@ -336,18 +315,9 @@
   border-top: 1px solid var(--card-border);
 }
 
+/* Same reveal-on-hover and contrast override as .dropdownCopyBtn above. */
 .dropdownEditBtn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--sp-2);
-  border-radius: var(--radius-xs);
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
   opacity: 0;
-  transition: all var(--transition);
 }
 
 .dropdownItem:hover .dropdownEditBtn {
@@ -359,27 +329,14 @@
   background: var(--brand-tint-active);
 }
 
+/* Hidden until the row is hovered; IconButton (tone="danger") already uses
+   --error-tint for its own hover, which is the same colour this used to hard-code. */
 .dropdownRemoveBtn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--sp-2);
-  border-radius: var(--radius-xs);
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
   opacity: 0;
-  transition: all var(--transition);
 }
 
 .dropdownItem:hover .dropdownRemoveBtn {
   opacity: 1;
-}
-
-.dropdownRemoveBtn:hover {
-  color: var(--error);
-  background: rgba(220, 38, 38, 0.08);
 }
 
 /* Remove confirmation */
@@ -446,23 +403,11 @@
 }
 
 /* Globe */
+/* IconButton (tone="brand") supplies the box and hover chrome; this only
+   keeps the button positioned so the connection dot below can sit absolute
+   over its corner. */
 .globeBtn {
   position: relative;
-  background: none;
-  border: none;
-  color: var(--brand);
-  cursor: pointer;
-  padding: var(--sp-3);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-
-.globeBtn:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
 }
 
 .globeDot {

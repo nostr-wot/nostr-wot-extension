@@ -5,6 +5,7 @@ import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
 import { formatSats } from '@shared/format/number.ts';
 import '@shared/theme.css';
+import Button from '@components/Button/Button';
 import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './DecisionRow';
 import UnlockSection from './UnlockSection';
@@ -123,20 +124,19 @@ export default function PromptApp() {
         />
       ) : (
         <div className={styles.decisionRow}>
-          <button
-            className={`${styles.decisionBtn} ${styles.deny}`}
+          <Button
+            variant="secondary"
             disabled={buttonsDisabled}
             onClick={() => sendDecision({ allow: false, remember: false })}
           >
             {t('common.cancel')}
-          </button>
-          <button
-            className={`${styles.decisionBtn} ${styles.always}`}
+          </Button>
+          <Button
             disabled={buttonsDisabled || vaultLocked}
             onClick={() => sendDecision({ allow: true, remember: false })}
           >
             {vaultLocked ? t('prompt.unlockFirst') : t('common.continue')}
-          </button>
+          </Button>
         </div>
       )}
     </div>
