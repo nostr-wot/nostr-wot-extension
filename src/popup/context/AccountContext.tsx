@@ -1,13 +1,22 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { useEffect, useRef, useCallback, type ReactNode } from 'react';
 import browser from '@shared/browser.ts';
 import { t } from '@lib/i18n.js';
 import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { rpc } from '@shared/rpc.ts';
+import useAsyncResource from '@hooks/useAsyncResource.ts';
+import useStorageWatch from '@hooks/useStorageWatch.ts';
+import createRequiredContext from './createRequiredContext.ts';
 import type { ProfileMetadata } from '@shared/profileMetadata.ts';
 import type { Account } from '@models/account.ts';
 
 interface ProfileCache {
   [pubkey: string]: ProfileMetadata;
+}
+
+interface AccountData {
+  accounts: Account[] | null;
+  activeId: string | null;
+  profileCache: ProfileCache;
 }
 
 interface AccountContextValue {
@@ -26,32 +35,43 @@ interface AccountContextValue {
   initial: string;
 }
 
-const AccountContext = createContext<AccountContextValue | null>(null);
+const [AccountContext, useAccount] = createRequiredContext<AccountContextValue>('useAccount');
 
 interface AccountProviderProps {
   children: ReactNode;
 }
 
 export function AccountProvider({ children }: AccountProviderProps) {
-  const [accounts, setAccounts] = useState<Account[] | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [profileCache, setProfileCache] = useState<ProfileCache>({});
+  const { data, refresh, patch: patchAccount } = useAsyncResource<AccountData>(
+    { accounts: null, activeId: null, profileCache: {} },
+    {
+      load: async (patch) => {
+        const stored = await browser.storage.local.get(['accounts', 'activeAccountId', 'profileCache']) as Record<string, unknown>;
+        const accounts: Account[] = (stored.accounts as Account[] | undefined) || [];
+        const activeId: string = (stored.activeAccountId as string | undefined) || '';
+        patch({
+          accounts,
+          activeId: activeId || accounts[0]?.id || null,
+          profileCache: (stored.profileCache as ProfileCache | undefined) || {},
+        });
+      },
+    },
+  );
+  const { accounts, activeId, profileCache } = data;
   const fetchedRef = useRef<Set<string>>(new Set());
 
   const active = accounts?.find((a) => a.id === activeId) || accounts?.[0] || null;
 
-  const load = useCallback(async () => {
-    const data = await browser.storage.local.get(['accounts', 'activeAccountId', 'profileCache']) as Record<string, unknown>;
-    const accts: Account[] = (data.accounts as Account[] | undefined) || [];
-    const id: string = (data.activeAccountId as string | undefined) || '';
-
-    setAccounts(accts);
-    setActiveId(id || accts[0]?.id || null);
-    setProfileCache((data.profileCache as ProfileCache | undefined) || {});
-  }, []);
+  useStorageWatch(
+    [{ area: 'local', keys: ['accounts', 'activeAccountId', 'profileCache'] }],
+    refresh,
+  );
 
   // Fetch kind:0 metadata for all accounts in the background.
   // Shows cached data immediately; refreshes from relays each popup open.
+  // Bespoke to Account: it writes back to storage itself rather than through
+  // `patch`, so the update is visible to every context via the storage watch
+  // above, not just this one.
   useEffect(() => {
     if (!accounts || accounts.length === 0) return;
 
@@ -66,44 +86,28 @@ export function AccountProvider({ children }: AccountProviderProps) {
       rpc<ProfileMetadata | null>('getProfileMetadata', { pubkey: pk })
         .then(async (metadata) => {
           if (!metadata) return;
-          const data = await browser.storage.local.get('profileCache') as Record<string, unknown>;
-          const pc: ProfileCache = (data.profileCache as ProfileCache | undefined) || {};
+          const stored = await browser.storage.local.get('profileCache') as Record<string, unknown>;
+          const pc: ProfileCache = (stored.profileCache as ProfileCache | undefined) || {};
           pc[pk] = metadata;
           await browser.storage.local.set({ profileCache: pc });
-          // State update will happen via storage.onChanged listener
+          // State update will happen via the storage watch above.
         })
         .catch(() => {}); // Relay failures are fine — we keep cached data
     }
   }, [accounts]);
 
   const switchAccount = useCallback(async (accountId: string) => {
-    const account = accounts?.find((a) => a.id === accountId);
-    if (!account) return;
-    setActiveId(accountId);
+    if (!accounts?.find((a) => a.id === accountId)) return;
+    patchAccount({ activeId: accountId });
     await rpc('switchAccount', { accountId });
     // Reload active tab so injected NIP-07 content reflects the new identity
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
       if (tabs[0]?.id) browser.tabs.reload(tabs[0].id);
     } catch { /* ignore — fails on chrome:// pages */ }
-  }, [accounts]);
+  }, [accounts, patchAccount]);
 
-  const reload = useCallback(() => load(), [load]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Listen for storage changes to accounts
-  useEffect(() => {
-    function onChange(changes: Record<string, { newValue?: unknown; oldValue?: unknown }>, area: string) {
-      if (area === 'local' && (changes.accounts || changes.activeAccountId || changes.profileCache)) {
-        load();
-      }
-    }
-    browser.storage.onChanged.addListener(onChange);
-    return () => browser.storage.onChanged.removeListener(onChange);
-  }, [load]);
+  const reload = useCallback(() => { refresh(); }, [refresh]);
 
   const cachedProfile = active ? profileCache[active.pubkey] : null;
 
@@ -126,8 +130,4 @@ export function AccountProvider({ children }: AccountProviderProps) {
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
 
-export function useAccount(): AccountContextValue {
-  const ctx = useContext(AccountContext);
-  if (!ctx) throw new Error('useAccount must be used within AccountProvider');
-  return ctx;
-}
+export { useAccount };

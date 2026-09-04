@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react';
+import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatLabel } from '@shared/permissions.ts';
-import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type ActivityEntry, type GroupedActivity } from '@shared/activity.ts';
+import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type GroupedActivity } from '@shared/activity.ts';
 import { truncateNpub } from '@shared/format/text.ts';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -12,11 +12,16 @@ import StatusDot from '@components/StatusDot/StatusDot';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import { IconTuner } from '@assets';
 import { useAccount } from '@popup/context/AccountContext';
+import { ActivityProvider, useActivity } from '@popup/context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
+import usePagedList from '@hooks/usePagedList.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import styles from './ActivityOverlay.module.css';
 import type { DropdownOption } from '@models/dropdown.ts';
 
+/** Rendered rows per page. Grown by the "show more" button, reset whenever
+ *  the filters narrowing `rawLog` change (see the effect below). */
+const PAGE_SIZE = 40;
 
 interface ActivityOverlayProps {
   visible: boolean;
@@ -25,12 +30,19 @@ interface ActivityOverlayProps {
   onClose: () => void;
 }
 
-export default function ActivityOverlay({ visible, initialDomain, initialPubkey, onClose }: ActivityOverlayProps) {
-  // Plain state, not a ref plus a version counter. The counter made every memo
-  // below depend on a number while reading through a ref, so the dependency
-  // arrays said nothing about what they actually used and each needed a
-  // `void logVersion` to look honest.
-  const [rawLog, setRawLog] = useState<ActivityEntry[]>([]);
+export default function ActivityOverlay(props: ActivityOverlayProps) {
+  // The log is only worth fetching while this overlay is open — `visible`
+  // gates the context's own read (see ActivityContext), so the provider is
+  // scoped to this component rather than mounted for the whole popup like
+  // the other six contexts in `src/popup/context/`.
+  return (
+    <ActivityProvider visible={props.visible}>
+      <ActivityOverlayInner {...props} />
+    </ActivityProvider>
+  );
+}
+
+function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }: ActivityOverlayProps) {
   const [filter, setFilter] = useState<string>('');
   const [accountFilter, setAccountFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -39,6 +51,7 @@ export default function ActivityOverlay({ visible, initialDomain, initialPubkey,
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
   const [selectedGroup, setSelectedGroup] = useState<GroupedActivity | null>(null);
   const { accounts, profileCache } = useAccount();
+  const { log: rawLog, loading, loadFailed, refresh: loadActivity } = useActivity();
 
   // Sync filters when modal opens
   useEffect(() => {
@@ -53,32 +66,12 @@ export default function ActivityOverlay({ visible, initialDomain, initialPubkey,
     }
   }, [visible, initialDomain, initialPubkey]);
 
-  // Load raw log once when modal opens.
-  //
-  // This had no catch and no loading flag, so an unread log and a failed read
-  // both rendered as "No activity yet" — the first only briefly, the second
-  // permanently, and neither distinguishable from a genuinely empty log. On a
-  // surface whose job is showing what sites have done with the user's key,
-  // "nothing happened" is the one wrong answer that reassures.
-  const [loading, setLoading] = useState<boolean>(false);
-  const [loadFailed, setLoadFailed] = useState<boolean>(false);
-
-  const loadActivity = useCallback(async () => {
-    setLoading(true);
-    setLoadFailed(false);
-    try {
-      const log = await rpc<ActivityEntry[]>('getActivityLog') || [];
-      setRawLog(log);
-      setSelectedGroup(null);
-    } catch {
-      setLoadFailed(true);
-    }
-    setLoading(false);
-  }, []);
-
+  // The detail view for a group from a stale log would show the wrong
+  // decision or a payload no longer worth showing — close it whenever a
+  // (re)load actually lands a new log.
   useEffect(() => {
-    if (visible) loadActivity();
-  }, [visible, loadActivity]);
+    setSelectedGroup(null);
+  }, [rawLog]);
 
   // Build account dropdown options from log data
   const accountOptions = useMemo((): DropdownOption[] => {
@@ -144,6 +137,20 @@ export default function ActivityOverlay({ visible, initialDomain, initialPubkey,
     return groupActivityEntries(filtered, { includeDay: true, includeDomain: true });
   }, [rawLog, accountFilter, filter, typeFilter, pubkeyFilter]);
 
+  // Renders a growing prefix of `entries` rather than all of it — the log can
+  // hold up to 2000 raw entries (lib/constants.ts), and grouping does not
+  // bound how many rows that becomes.
+  const page = usePagedList(entries, PAGE_SIZE);
+
+  // Reset to one page whenever the filters actually change, not whenever
+  // `entries` changes identity — a background refresh under the same filters
+  // (a new site interaction arriving while the overlay is open) produces a
+  // new array too, and that case must not yank the window back out from under
+  // someone who has already clicked "show more".
+  useEffect(() => {
+    page.reset();
+  }, [accountFilter, filter, typeFilter, pubkeyFilter, page.reset]);
+
   // Active filter count for badge
   const activeFilterCount = countActivityFilters({ type: typeFilter, pubkeyQuery: pubkeyFilter });
 
@@ -183,7 +190,7 @@ export default function ActivityOverlay({ visible, initialDomain, initialPubkey,
   const dayGroups: DayGroupItem[] = [];
   let currentDay: string | null = null;
   let entryIdx = 0;
-  for (const entry of entries) {
+  for (const entry of page.visible) {
     if (entry.day !== currentDay) {
       currentDay = entry.day!;
       const today = new Date().toDateString();
@@ -267,6 +274,11 @@ export default function ActivityOverlay({ visible, initialDomain, initialPubkey,
               </button>
             )
           )
+        )}
+        {page.hasMore && (
+          <div className={styles.showMore}>
+            <Button small variant="secondary" onClick={page.loadMore}>{t('wallet.showMore')}</Button>
+          </div>
         )}
       </div>
 
