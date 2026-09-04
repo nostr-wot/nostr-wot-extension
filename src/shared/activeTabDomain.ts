@@ -19,10 +19,13 @@
 import browser from './browser.ts';
 import { rpc } from './rpc.ts';
 import { getDomainFromUrl } from './url.ts';
+import { POPUP_CONTEXT_KEY, type PopupContext } from '@lib/openPopupForActiveTab.ts';
 
-/** Set by the background when it opens the popup for a site. Mirrors lib/openPopupForActiveTab.ts. */
-const POPUP_CONTEXT_KEY = 'popupContext';
-interface PopupContext { origin: string; tabId: number | null; at: number }
+/* Imported rather than mirrored. Both the key and the shape were restated here
+   under a comment saying they mirrored the background's — a duplication someone
+   noticed and wrote down instead of removing. The two must agree exactly: this
+   reads the record the background writes, and a drifted key reads nothing at
+   all, silently. */
 
 // Long enough to cover opening and rendering, short enough that a context left by an
 // earlier request cannot mislabel a popup the user opens later by hand.
