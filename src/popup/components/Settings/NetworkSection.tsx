@@ -1,24 +1,18 @@
 import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
 import browser from '@shared/browser.ts';
-import { rpc, rpcNotify } from '@shared/rpc.ts';
+import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { DEFAULT_RELAYS } from '@shared/constants.ts';
 import { formatTimeAgo } from '@shared/format/time.ts';
 import { isValidWssUrl } from '@shared/url.ts';
 import StatusDot from '@components/StatusDot/StatusDot';
 import EditableList from '@components/EditableList/EditableList';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import { useRelays, type RelayFlags } from '../../context/RelaysContext';
 import styles from './Settings.module.css';
 
-interface RelayFlags {
-  read: boolean;
-  write: boolean;
-}
-
 export default function NetworkSection() {
-  const [relays, setRelays] = useState<string[]>([]);
-  const [relayFlags, setRelayFlags] = useState<Record<string, RelayFlags>>({});
+  const { relays, relayFlags, loaded, saveRelays } = useRelays();
   const [relayHealth, setRelayHealth] = useState<Record<string, string>>({});
   const [newRelay, setNewRelay] = useState<string>('');
   const [relayError, setRelayError] = useState<string>('');
@@ -31,15 +25,17 @@ export default function NetworkSection() {
   const mounted = useRef<boolean>(true);
   useEffect(() => { return () => { mounted.current = false; }; }, []);
 
+  // Runs once, the first time RelaysContext has real data — not on every
+  // `relays` identity change, since the health check and the "did the list
+  // change since the last publish" comparison are both one-shot, mount-time
+  // questions, not something to redo every time the list is edited.
+  const initedRef = useRef<boolean>(false);
   useEffect(() => {
+    if (!loaded || initedRef.current) return;
+    initedRef.current = true;
     (async () => {
-      const syncData: any = await browser.storage.sync.get(['relays']);
-      const localData: any = await browser.storage.local.get(['relayFlags', 'lastRelayPublish', 'lastPublishedRelays']);
-
-      const relayStr: string = syncData.relays || DEFAULT_RELAYS;
-      const relayList = relayStr.split(',').map((s: string) => s.trim()).filter(Boolean);
-      setRelays(relayList);
-      setRelayFlags(localData.relayFlags || {});
+      const localData: any = await browser.storage.local.get(['lastRelayPublish', 'lastPublishedRelays']);
+      const relayStr = relays.join(',');
 
       if (localData.lastRelayPublish) {
         setLastPublish(localData.lastRelayPublish);
@@ -48,9 +44,10 @@ export default function NetworkSection() {
         setPublishUnsaved(true);
       }
 
-      for (const url of relayList) checkRelay(url);
+      for (const url of relays) checkRelay(url);
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   const checkRelay = async (url: string) => {
     setRelayHealth((h) => ({ ...h, [url]: 'checking' }));
@@ -62,20 +59,12 @@ export default function NetworkSection() {
     }
   };
 
-  const saveRelays = async (list: string[], flags: Record<string, RelayFlags>) => {
-    const str = list.join(',');
-    await browser.storage.sync.set({ relays: str });
-    await browser.storage.local.set({ relayFlags: flags });
-    rpcNotify('configUpdated');
-  };
-
   const addRelay = () => {
     const url = newRelay.trim();
     if (!url) return;
     if (!isValidWssUrl(url)) { setRelayError(t('network.mustBeWss')); return; }
     if (relays.includes(url)) { setRelayError(t('network.relayAlreadyAdded')); return; }
     const updated = [...relays, url];
-    setRelays(updated);
     setNewRelay('');
     setRelayError('');
     saveRelays(updated, relayFlags);
@@ -86,15 +75,12 @@ export default function NetworkSection() {
     const updated = relays.filter((r) => r !== url);
     const newFlags = { ...relayFlags };
     delete newFlags[url];
-    setRelays(updated);
-    setRelayFlags(newFlags);
     saveRelays(updated, newFlags);
   };
 
   const toggleRelayFlag = (url: string, flag: 'read' | 'write') => {
     const current = relayFlags[url] || { read: true, write: true };
     const newFlags = { ...relayFlags, [url]: { ...current, [flag]: !current[flag] } };
-    setRelayFlags(newFlags);
     saveRelays(relays, newFlags);
   };
 

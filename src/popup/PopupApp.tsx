@@ -6,6 +6,9 @@ import styles from './PopupApp.module.css';
 import { AccountProvider, useAccount } from './context/AccountContext';
 import { VaultProvider, useVault } from './context/VaultContext';
 import { PermissionsProvider } from './context/PermissionsContext';
+import { WalletProvider } from './context/WalletContext';
+import { RelaysProvider } from './context/RelaysContext';
+import { PqcProvider } from './context/PqcContext';
 import TopoBg from '@components/TopoBg/TopoBg';
 import Splash from '@components/Splash/Splash';
 import TopBar from './components/TopBar/TopBar';
@@ -196,7 +199,15 @@ export default function PopupApp() {
     <AccountProvider>
       <VaultProvider>
         <PermissionsProvider>
-          <PopupInner />
+          {/* Wallet/Relays/Pqc nest inside AccountProvider because Wallet and
+              Pqc key their refetch on the active account (`useAccount`). */}
+          <WalletProvider>
+            <RelaysProvider>
+              <PqcProvider>
+                <PopupInner />
+              </PqcProvider>
+            </RelaysProvider>
+          </WalletProvider>
         </PermissionsProvider>
       </VaultProvider>
     </AccountProvider>

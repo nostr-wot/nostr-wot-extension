@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import {
   isAlreadyPublished,
-  type PqcPanelStatus as PqcStatus,
   type PqcBlockReason,
-  type PqcPublished,
 } from '@shared/pqcState.ts';
+import { usePqc } from '../../context/PqcContext';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconWarning, IconCopy } from '@assets';
 import Button from '@components/Button/Button';
@@ -61,14 +60,16 @@ export interface PqcSectionHandle {
 }
 
 function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
-  const [status, setStatus] = useState<PqcStatus | null>(null);
-  const [error, setError] = useState<string>('');
+  // Status and the published check both come from PqcContext now — this panel
+  // and the home-screen card used to each call `pqc_getStatus` and
+  // `pqc_checkPublished` on their own mount. The decision logic
+  // (`isAlreadyPublished`) stays here in `@shared/pqcState.ts`'s exports; the
+  // context only supplies the data.
+  const { status, published: existing, error, refresh } = usePqc();
   const attestationCopy = useCopy();
   const [publishing, setPublishing] = useState<boolean>(false);
   const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
   const [publishError, setPublishError] = useState<string>('');
-  const [existing, setExisting] = useState<PqcPublished | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
   const [removing, setRemoving] = useState<boolean>(false);
   const [howOpen, setHowOpen] = useState<boolean>(false);
   const [keysOpen, setKeysOpen] = useState<boolean>(false);
@@ -93,44 +94,6 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     browser.storage.local.set({ [HOW_SEEN_KEY]: true }).catch(() => {});
   };
 
-  /**
-   * Load everything this panel decides on, and only then render it.
-   *
-   * The publish check is a relay round trip and can take seconds. Rendering as
-   * soon as pqc_getStatus returned meant the panel drew its whole decided state
-   * against a publish answer it did not have yet — so a user whose attestation
-   * was already live got "Publish this event to your relays…" and a Publish
-   * button, which then swapped for "already published and up to date" once the
-   * relays replied. A wrong instruction is worse than a spinner.
-   *
-   * The two run in parallel rather than in sequence: both are needed before
-   * anything renders, so waiting for the first before starting the second only
-   * added its latency to the total.
-   */
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const status = await rpc<PqcStatus>('pqc_getStatus');
-      setStatus(status);
-
-      // An account that cannot derive never reaches the publish UI, so making it
-      // wait on relays it will not use would be latency for nothing.
-      if (!status.canDerive) {
-        setExisting(null);
-        return;
-      }
-
-      setExisting(await rpc<PqcPublished>('pqc_checkPublished'));
-    } catch (e: any) {
-      setError(e?.message || t('common.error'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
   const handlePublish = async () => {
     setPublishError('');
     setPublishing(true);
@@ -153,7 +116,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
       await rpc('pqc_removeImportedKeys');
       setPublished(null);
       setConfirmRemove(false);
-      await load();
+      await refresh();
     } catch (e: any) {
       setRemoveError(e?.message || t('common.error'));
     } finally {
@@ -164,8 +127,13 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   const how = howOpen ? <HowItWorks onClose={closeHow} /> : null;
 
   if (error) return <>{how}<div className={styles.error}>{error}</div></>;
-  // Nothing is drawn until every answer this panel branches on is in hand.
-  if (loading || !status) return <>{how}<p className={styles.desc}>{t('common.loading')}</p></>;
+  // Gated on `status` alone, not a `loading` flag: PqcContext's `loading` also
+  // flips true on a passive background refresh (the relay-cache push, or an
+  // account switch), and this panel already has a perfectly good status to
+  // keep showing while that happens behind it — reverting to "Loading…" on a
+  // refresh nobody asked for would be a regression from what this looked like
+  // before it shared its data with the home-screen card.
+  if (!status) return <>{how}<p className={styles.desc}>{t('common.loading')}</p></>;
 
   const imported = status.source === 'imported';
 
@@ -189,7 +157,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
         </div>
         {/* Only accounts that hold a local signing key can use an imported key — a
             read-only or remote-signer account would store secrets nothing can use. */}
-        {status.canImport && <PqcImportPanel onImported={(s) => setStatus(s)} />}
+        {status.canImport && <PqcImportPanel />}
       </div>
       </>
     );
@@ -245,7 +213,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
             <div className={styles.pqcNoticeInline}>
               <IconWarning size={16} />
               <span>{t('pqc.checkFailed')}</span>
-              <button className={styles.pqcCopyLink} onClick={load}>{t('common.retry')}</button>
+              <button className={styles.pqcCopyLink} onClick={refresh}>{t('common.retry')}</button>
             </div>
           )}
           {/* Only while it is still an instruction. Telling someone to publish,
