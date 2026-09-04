@@ -2,7 +2,6 @@ import React, { useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
-import styles from './PromptApp.module.css';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
 
 interface UnlockSectionProps {
@@ -32,11 +31,11 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
   }, []);
 
   return (
-    <div className={styles.unlockSection}>
-      <span className={styles.unlockLabel}>{t('prompt.vaultLocked')}</span>
+    <div className="p-5 bg-[rgba(217,119,6,0.1)] border border-[rgba(217,119,6,0.15)] rounded-md flex flex-col gap-3">
+      <span className="text-sm font-bold uppercase tracking-[0.5px] text-warning">{t('prompt.vaultLocked')}</span>
       <input
         ref={inputRef}
-        className={styles.unlockInput}
+        className="w-full p-5 border border-card-active rounded-sm bg-brand-tint-hover text-heading text-lg outline-none focus:border-brand focus:shadow-[var(--focus-ring)]"
         type="password"
         placeholder={t('prompt.enterVaultPassword')}
         autoComplete="off"
@@ -45,7 +44,7 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
         onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !isLockedOut && unlock()}
         disabled={loading || isLockedOut}
       />
-      {error && <span className={styles.unlockError}>{error}</span>}
+      {error && <span className="text-sm text-error">{error}</span>}
     </div>
   );
 }

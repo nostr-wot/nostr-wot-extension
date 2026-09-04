@@ -93,13 +93,16 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
   };
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.verifyTitle')}</h2>
-      <p className={styles.stepDesc}>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.verifyTitle')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">
         {t('wizard.verifyDesc')}
       </p>
 
-      <Card variant="flat" className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''}`}>
+      <Card
+        variant="flat"
+        className={`grid gap-1 pt-5 px-7 pb-16 mb-0 ${words.length > 12 ? 'grid-cols-4 gap-y-2 gap-x-1' : 'grid-cols-3'}`}
+      >
         {words.map((word, i) => {
           const isBlank = blankIndices.includes(i);
           const filled = filledSlots[i];
@@ -111,7 +114,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
               index={i + 1}
               word={isBlank ? (filled || '___') : word}
               compact={words.length > 12}
-              className={`${isBlank ? styles.blank : ''} ${isWrong ? styles.wordWrong : ''}`}
+              className={`${isBlank ? 'text-brand font-bold' : ''} ${isWrong ? styles.wordWrong : ''}`}
               onClick={isClickable ? () => handleSlotClick(i) : undefined}
             />
           );
@@ -119,7 +122,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
       </Card>
 
       {!verified && (
-        <div className={styles.wordBank}>
+        <div className="grid grid-cols-4 gap-3 mt-6">
           {/* toggle={false}: tapping a word consumes it into a slot, it is not
               a switch. aria-pressed here would announce every available word as
               "not pressed". */}
@@ -137,8 +140,8 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
       )}
 
       {verified && (
-        <div className={styles.stepActions}>
-          <Button onClick={onVerified}>{t('common.continue')}</Button>
+        <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
+          <Button className="flex-1" onClick={onVerified}>{t('common.continue')}</Button>
         </div>
       )}
     </div>
