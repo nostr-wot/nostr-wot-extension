@@ -25,7 +25,7 @@
  */
 
 import type { RequestDecision, PendingRequest, UnsignedEvent, SignedEvent, SafeAccount, AccountType } from './types.ts';
-import browser from './browser.ts';
+import browser from '@lib/browser.ts';
 import { openPopupForActiveTab } from './openPopupForActiveTab.ts';
 import { isDomainAllowed } from './bg/domain-handlers.ts';
 import * as vault from './vault.ts';

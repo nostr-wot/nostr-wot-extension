@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import { safeImageUrl } from '@shared/safeUrl.ts';
+import { safeImageUrl } from '@utils/safeUrl.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import Avatar from '@components/Avatar/Avatar';
 import { EP } from '../eventPreviewClasses.ts';

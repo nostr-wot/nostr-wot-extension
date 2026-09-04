@@ -2,10 +2,10 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import useRpc from '@hooks/useRpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';
-import { MUTE_LIST_CACHE } from '@shared/relayCacheNames.ts';
+import { MUTE_LIST_CACHE } from '@services/relayCacheNames.ts';
 import ListRow from '@components/ListRow/ListRow';
 import { IconShield } from '@assets';
-import { useNavigate } from '@popup/context/NavigationContext';
+import { useNavigate } from '@context/NavigationContext';
 import type { MyMuteList } from '@models/muteList.ts';
 
 /**

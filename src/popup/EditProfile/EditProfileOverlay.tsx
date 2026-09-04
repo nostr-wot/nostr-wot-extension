@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
-import { rpc } from '@shared/rpc.ts';
-import { uploadToBlossom } from '@shared/blossom.ts';
-import { safeImageUrl } from '@shared/safeUrl.ts';
+import { rpc } from '@services/rpc.ts';
+import { uploadToBlossom } from '@services/blossom.ts';
+import { safeImageUrl } from '@utils/safeUrl.ts';
 import {
   mergeProfileMetadata,
   profileHasChanges,
   type ProfileMetadata,
-} from '@shared/profileMetadata.ts';
-import { useAccount } from '@popup/context/AccountContext';
+} from '@domain/profile/profileMetadata.ts';
+import { useAccount } from '@context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Avatar from '@components/Avatar/Avatar';
 import ProfilePreviewCard from './ProfilePreviewCard';

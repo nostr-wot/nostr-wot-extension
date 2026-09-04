@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';

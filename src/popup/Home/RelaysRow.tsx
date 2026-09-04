@@ -2,8 +2,8 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import ListRow from '@components/ListRow/ListRow';
 import { IconGlobe } from '@assets';
-import { useNavigate } from '@popup/context/NavigationContext';
-import { useRelays } from '@popup/context/RelaysContext';
+import { useNavigate } from '@context/NavigationContext';
+import { useRelays } from '@context/RelaysContext';
 
 /**
  * Home-screen module for the user's NIP-65 relay list. Shows the relay count

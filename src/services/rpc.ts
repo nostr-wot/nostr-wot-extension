@@ -1,4 +1,4 @@
-import browser from '@shared/browser.ts';
+import browser from '@lib/browser.ts';
 
 class RpcError extends Error {
   method: string;

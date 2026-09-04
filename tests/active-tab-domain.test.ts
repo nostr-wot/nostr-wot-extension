@@ -15,7 +15,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-// activeTabDomain imports @shared/browser.ts, which prefers globalThis.browser over the
+// activeTabDomain imports @lib/browser.ts, which prefers globalThis.browser over the
 // (undefined in Node) chrome global — install the stub BEFORE importing it, as tests/rpc
 // does for the same reason.
 let tabs: unknown[] = [];
@@ -31,7 +31,7 @@ let session: Record<string, unknown> = {};
   },
 };
 
-const { resolveActiveTabDomain } = await import('../src/shared/activeTabDomain.ts');
+const { resolveActiveTabDomain } = await import('../src/domain/site/activeTabDomain.ts');
 
 function activeTab(tab: unknown) { tabs = tab ? [tab] : []; }
 function backgroundKnows(map: Record<number, string>) { origins = map; }

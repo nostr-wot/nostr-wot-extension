@@ -15,7 +15,7 @@ import {
   profileHasChanges,
   type ProfileFields,
   type ProfileMetadata,
-} from '../src/shared/profileMetadata.ts';
+} from '../src/domain/profile/profileMetadata.ts';
 
 const fields = (over: Partial<ProfileFields> = {}): ProfileFields => ({
   name: '', about: '', picture: '', nip05: '', lud16: '', website: '', banner: '',

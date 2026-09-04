@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.ts';
-import { formatSats } from '@shared/format/number.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { formatSats } from '@utils/format/number.ts';
 import '@styles/tailwind.css';
 import Button from '@components/Button/Button';
 import EventPreview from '@components/EventPreview/EventPreview';
@@ -102,7 +102,7 @@ export default function PromptApp() {
       ) : (
         <>
           <div className="text-center text-3xl font-bold text-brand">
-            {formatLabel(prompt.type || '')}
+            {formatPermissionLabel(prompt.type || '')}
           </div>
 
           <EventPreview

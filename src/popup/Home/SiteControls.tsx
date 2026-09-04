@@ -4,7 +4,7 @@ import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';
 import ListRow from '@components/ListRow/ListRow';
 import { IconUser, IconChevronRight } from '@assets';
-import { useNavigate } from '@popup/context/NavigationContext';
+import { useNavigate } from '@context/NavigationContext';
 
 interface SiteControlsProps {
   identityEnabled: boolean;

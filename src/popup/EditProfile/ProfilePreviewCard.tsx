@@ -2,7 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
-import { type ProfileMetadata } from '@shared/profileMetadata.ts';
+import { type ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import Card from '@components/Card/Card';
 import FormError from '@components/FormError/FormError';
 

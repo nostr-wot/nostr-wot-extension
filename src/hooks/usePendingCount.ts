@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
 import type { PendingRequest } from '@lib/types.ts';
 
 /**

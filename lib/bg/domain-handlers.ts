@@ -4,7 +4,7 @@
  */
 
 import browser from '../browser.ts';
-import { getDomainFromUrl } from '@shared/url.ts';
+import { getDomainFromUrl } from '@utils/url.ts';
 import { openPopupForActiveTab } from '../openPopupForActiveTab.ts';
 import { isRestrictedUrl, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import * as signerPermissions from '../permissions.ts';

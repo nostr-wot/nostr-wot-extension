@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import browser from '@shared/browser.ts';
-import { useWallet } from '@popup/context/WalletContext';
+import browser from '@lib/browser.ts';
+import { useWallet } from '@context/WalletContext';
 import type { Account } from '@models/account.ts';
 
 /**

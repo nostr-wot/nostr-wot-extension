@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { reducer, createInitialState, type WizardState, type WizardOptions } from '../src/shared/wizardMachine.ts';
+import { reducer, createInitialState, type WizardState, type WizardOptions } from '../src/domain/wizard/wizardMachine.ts';
 
 // Drive the pure wizard reducer through a sequence of {type,payload} actions.
 function run(start: WizardState, actions: Array<{ type: string; payload?: Record<string, unknown> }>, options: WizardOptions): WizardState {

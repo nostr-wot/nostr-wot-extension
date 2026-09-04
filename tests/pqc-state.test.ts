@@ -17,7 +17,7 @@ import {
   isAlreadyPublished,
   type PqcStatus,
   type PqcPublished,
-} from '../src/shared/pqcState.ts';
+} from '../src/domain/pqc/pqcState.ts';
 
 const status = (over: Partial<PqcStatus> = {}): PqcStatus => ({
   canDerive: true, canImport: false, source: 'derived', reason: null, ...over,

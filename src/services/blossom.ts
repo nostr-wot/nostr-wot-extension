@@ -1,4 +1,4 @@
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 
 const BLOSSOM_SERVER = 'https://blossom.primal.net';
 

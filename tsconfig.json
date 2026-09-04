@@ -15,13 +15,15 @@
     "paths": {
       "@assets": ["./src/assets/index.ts"],
       "@assets/*": ["./src/assets/*"],
-      "@shared/*": ["./src/shared/*"],
       "@components/*": ["./src/components/*"],
       "@popup/*": ["./src/popup/*"],
       "@wizard/*": ["./src/wizard/*"],
       "@models/*": ["./src/models/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils/*": ["./src/utils/*"],
+      "@domain/*": ["./src/domain/*"],
+      "@services/*": ["./src/services/*"],
+      "@context/*": ["./src/context/*"],
       "@styles/*": ["./src/styles/*"],
       "@lib/*": ["./lib/*"]
     }

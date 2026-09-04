@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { t } from '@lib/i18n.js';
 import { IconWarning } from '@assets';
-import { KIND_LABELS } from '@shared/constants.ts';
-import { formatLabel } from '@shared/permissions.ts';
+import { KIND_LABELS } from '@domain/nostr/kindLabels.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import ProfilePreview from './kinds/ProfilePreview';
@@ -56,7 +56,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
   if (ENCRYPT_TYPES.has(type!)) {
     return (
       <div className={rootCls}>
-        <h3 className={EP.sectionTitle}>{formatLabel(type || '')}</h3>
+        <h3 className={EP.sectionTitle}>{formatPermissionLabel(type || '')}</h3>
         {theirPubkey && <FieldDisplay label={t('event.recipient')} value={theirPubkey} mono />}
         <div className={EP.eventNote}>{t('event.encryptedDesc')}</div>
       </div>
@@ -67,7 +67,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
   if (type === 'getPublicKey') {
     return (
       <div className={rootCls}>
-        <h3 className={EP.sectionTitle}>{formatLabel(type || '')}</h3>
+        <h3 className={EP.sectionTitle}>{formatPermissionLabel(type || '')}</h3>
         <div className={EP.eventNote}>{t('activity.detail.readKeyDesc')}</div>
       </div>
     );

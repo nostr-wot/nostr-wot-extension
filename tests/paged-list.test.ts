@@ -12,7 +12,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginate } from '../src/shared/pagedList.ts';
+import { paginate } from '../src/utils/pagedList.ts';
 
 describe('paginate', () => {
   it('shows the first `count` items and reports more when the array is longer', () => {

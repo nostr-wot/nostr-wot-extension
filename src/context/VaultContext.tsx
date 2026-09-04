@@ -1,5 +1,5 @@
 import React, { useCallback, type ReactNode } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { LOCK_STATE_KEY } from '@lib/constants.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';

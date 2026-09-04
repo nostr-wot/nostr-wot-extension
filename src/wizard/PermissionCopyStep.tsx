@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';

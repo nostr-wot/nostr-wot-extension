@@ -1,4 +1,4 @@
-import browser from './browser.ts';
+import browser from '@lib/browser.ts';
 import { originMatchesActiveTab, requestIsFromActiveTab } from './originMatchesActiveTab.ts';
 
 export { originMatchesActiveTab, requestIsFromActiveTab };

@@ -1,10 +1,10 @@
 import React from 'react';
-import { derivePqcCardState, type PqcCardState } from '@shared/pqcState.ts';
+import { derivePqcCardState, type PqcCardState } from '@domain/pqc/pqcState.ts';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
-import { useNavigate } from '@popup/context/NavigationContext';
+import { useNavigate } from '@context/NavigationContext';
 import Card from '@components/Card/Card';
-import { usePqc } from '@popup/context/PqcContext';
+import { usePqc } from '@context/PqcContext';
 
 /**
  * Post-quantum status on the dashboard.

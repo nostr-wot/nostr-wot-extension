@@ -1,5 +1,5 @@
 import React, { useCallback, type ReactNode } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';

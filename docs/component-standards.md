@@ -38,7 +38,7 @@ Three row-shaped things are deliberately *not* `ListRow`, and the reasoning is w
 
 **A component can be a form rather than a screen.** `EncryptedBackupForm` exists because "export the key as an `ncryptsec`" had two implementations — the vault's key dialog, which explained the format, warned that nothing can recover the password, showed a live checklist of what the password still needed and offered both a download and a copy; and the wizard's, which had two bare password fields and a button that objected only once pressed. Same operation, same irreversible consequence, and the thinner one was what a new user met. It is deliberately **not** a `Modal`: the vault dialog is already inside one and switches between four actions, so a modal there would nest. Each caller brings the shell, the component brings the body and its own actions. Reach for this shape whenever the duplicated thing is a *flow* rather than a piece of chrome.
 
-**`PasswordPairFields` is the primitive `EncryptedBackupForm` was reaching for underneath its own checklist.** "Choose a new password, twice" was written out by hand at six sites — every encrypted export, the vault's change-password form, and vault creation — and `src/shared/passwordPair.ts` already shared the *rule*; what stayed duplicated was the *form*: two password inputs, the live checklist, and whether the submit button waits for both. Only `EncryptedBackupForm` had the checklist; the other five refused only once pressed, leaving the user to guess which requirement failed. The component is deliberately thin — two `Input`s and an optional checklist, rendered as a fragment rather than a wrapped block, because every call site already lays its own form out as a column with its own gap, and a nested one here would double it or fight it depending on the site. It takes no submit button and no label of its own; a caller renders both, same as `EncryptedBackupForm` did, because the six sites disagreed on whether a label existed at all. `usePasswordPair()` is the state half — password, confirm, and the derived `longEnough` / `matches` / `ready` a submit button waits on — split into a pure `derivePasswordPairState` (`@shared/passwordPairState.ts`) precisely so that derivation has a test, per [§2's rule](#extract-the-decision-not-just-the-markup) that only the pure half of a component buys one. A **third field that is not part of the pair** — the change-password screens' *current* password — stays outside the component entirely; swallowing it into the pair would have hidden a field this component has no business owning.
+**`PasswordPairFields` is the primitive `EncryptedBackupForm` was reaching for underneath its own checklist.** "Choose a new password, twice" was written out by hand at six sites — every encrypted export, the vault's change-password form, and vault creation — and `@domain/vault/passwordPair.ts` already shared the *rule*; what stayed duplicated was the *form*: two password inputs, the live checklist, and whether the submit button waits for both. Only `EncryptedBackupForm` had the checklist; the other five refused only once pressed, leaving the user to guess which requirement failed. The component is deliberately thin — two `Input`s and an optional checklist, rendered as a fragment rather than a wrapped block, because every call site already lays its own form out as a column with its own gap, and a nested one here would double it or fight it depending on the site. It takes no submit button and no label of its own; a caller renders both, same as `EncryptedBackupForm` did, because the six sites disagreed on whether a label existed at all. `usePasswordPair()` is the state half — password, confirm, and the derived `longEnough` / `matches` / `ready` a submit button waits on — backed by a pure `derivePasswordPairState` in the same file, precisely so that derivation has a test, per [§2's rule](#extract-the-decision-not-just-the-markup) that only the pure half of a component buys one. A **third field that is not part of the pair** — the change-password screens' *current* password — stays outside the component entirely; swallowing it into the pair would have hidden a field this component has no business owning.
 
 **`Tabs`, `Chip` and `SeedWord`** cover the other patterns that had been copied rather than shared. `Tabs` has two variants because the product genuinely has two tab designs — the wallet uses outlined segments, the NIP-46 step a track with a moving thumb — and picking one is a design decision rather than a refactor; converging them is still worth doing. `Chip` carries a `tone`, because on the permissions screen the colour *is* the meaning: allow is not merely "selected", it is allow. It also takes `toggle={false}` for a chip that is a one-shot action rather than a switch, which suppresses `aria-pressed` — the recovery-phrase word bank consumes a word when tapped, and announcing every available word as "not pressed" describes a toggle nobody built.
 
@@ -104,10 +104,21 @@ had to reach for it. **Types live in `models/`** so a shape has one definition; 
 module that owns the behaviour re-exports its own shape, so no call site learns a
 second import path for the same idea.
 
-Aliases: `@components`, `@hooks`, `@models`, `@shared`, `@utils`, `@styles`, `@lib`,
-`@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with
+Aliases: `@components`, `@hooks`, `@models`, `@domain`, `@services`, `@context`,
+`@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with
 `../../`. Each one answers a question about the thing you are writing, so if two of them
 seem to fit, the file is probably doing two jobs — see §7 for what each one means.
+
+### `src/domain`, `src/services`, `src/utils` — and the root `lib/`
+
+`src/shared/` was twenty-six files in one flat folder, and the name had stopped meaning anything: a Lightning invoice's expiry rule sat beside a clipboard helper beside the RPC transport. It is now split by what a thing *is*.
+
+- **`src/utils`** — no domain knowledge at all. Formatting, `downloadFile`, `paginate`, URL predicates. You could paste any of it into another product.
+- **`src/domain`** — the decisions this product makes, one folder per module. Pure functions over plain data: no React, no `browser.*`, no network. That is what makes them testable, and every one of them has a test.
+- **`src/services`** — the things that talk to something. `rpc` to the background, `blossom` to a media host.
+- **`lib/` (repo root)** — the extension core: background handlers, crypto, the vault, the cross-browser shim. Imported by the service worker, so **nothing here may import React**, and nothing in `src/` should reimplement it.
+
+That last rule was already being broken. `src/shared/browser.ts` was a six-line copy of `lib/browser.ts` that omitted its Safari `storage.session` polyfill, and twenty-one UI files imported the copy — seven of which call `storage.session` directly. It is deleted; everything uses `@lib/browser.ts`.
 
 ### Where a feature lives
 
@@ -141,11 +152,11 @@ and `PopupApp` directly), so it is not purely a menu section.
 
 ## 4. CSS Patterns
 
-- **CSS Modules only** — every component co-locates a `.module.css` file.
-- **camelCase class names** — e.g., `chipGroup`, `chipActive` (not `chip-group`).
-- **No global styles** in shared components. Use tokens from `src/shared/theme.css`.
-- **Avoid `!important`** — specificity via module scoping is sufficient.
-- **Keyframes stay local.** A `@keyframes` inside a `.module.css` is scoped to that module, which is what makes a shared component work in any of the three documents (popup, prompt, onboarding) without depending on load order. There used to be a `src/shared/animations.css` collecting them centrally; every module defined its own copy anyway, so the shared file was loaded by the popup and referenced by nothing. It is gone. Duplicating six lines of keyframes is the cheaper mistake.
+- **Tailwind utilities first** — see §7. Five `.module.css` files remain in the whole tree, each for something utilities genuinely cannot express.
+- **camelCase class names** in the few modules that survive — e.g. `chipGroup`, not `chip-group`.
+- **No global styles** in a shared component. Tokens come from `src/styles/theme.css`.
+- **Avoid `!important`** — and note that an unlayered CSS rule already outranks a Tailwind utility, so reaching for it usually means the override belongs in `cn()` instead.
+- **Keyframes are NOT local.** They live in `src/styles/animations.css` and are registered as `animate-*` utilities. This reverses earlier advice, and the reason is in §7: Vite scopes a keyframe name to the file that declares it, so a component referencing one it does not itself define never animates, silently — which was live twice.
 
 ### Tokens
 
@@ -220,11 +231,11 @@ All shared hooks live in `src/hooks/`, one hook per file — outside any feature
 
 ## 6. Shared Utilities
 
-All shared utilities live in `src/shared/`, one concern per file.
+Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain knowledge, `src/domain/` holds the product's decisions one folder per module, `src/services/` holds the things that talk to something. One concern per file.
 
 | File | Exports |
 |------|---------|
-| `rpc.ts` | `rpc<T>()`, `rpcNotify()`, `RpcError` |
+| `@services/rpc.ts` | `rpc<T>()`, `rpcNotify()`, `RpcError` |
 | `approval.ts` | `filterPendingForDomain`, `partitionPending`, `groupApprovals`, `groupNip46`, `liveIds`, `isRequestLive`, `isGroupLive`; re-exports the canonical `PendingRequest` |
 | `profileMetadata.ts` | `mergeProfileMetadata`, `profileHasChanges`, `ProfileMetadata` — the kind:0 read-modify-write |
 | `txFilter.ts` | `matchesTxFilter`, `matchesTxSearch`, `filterTransactions`, `dateRangeToTs`, `countActiveFilters`, `isPlaceholderMemo` |
@@ -232,7 +243,6 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `pqcState.ts` | `derivePqcCardState`, `isAlreadyPublished`, `PqcStatus`, `PqcPublished` |
 | `permissionRules.ts` | `countDecisions`, `filterKeysForAccountKind`, `availablePermKeys`, `buildRuleKey`, `DECISIONS` |
 | `passwordPair.ts` | `validatePasswordPair` — the "new password, twice" rule |
-| `passwordPairState.ts` | `derivePasswordPairState` — the same rule as the three booleans a form renders (`longEnough`, `matches`, `ready`) |
 | `vaultAutoUnlock.ts` | `isVaultOpen` — never-lock auto-unlock, behind its mode check |
 | `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups`, `TYPE_METHODS` |
 | `pagedList.ts` | `paginate` — the render window behind `usePagedList`. Distinct from `txPager.ts`, which pages a *remote* API: the activity RPC already returns the whole log, so there is nothing left to fetch, only a prefix to grow |
@@ -320,7 +330,9 @@ Configured in `vite.config.ts`:
 | Alias | Path |
 |-------|------|
 | `@components` | `src/components` |
-| `@shared` | `src/shared` — logic with **no React import**, because `lib/bg/` and `lib/wallet/` reach into it and anything React here would pull React into the service worker's import graph |
+| `@domain` | `src/domain` — feature logic, one folder per module (`wallet/`, `permissions/`, `vault/`, `site/`, `profile/`, `pqc/`, `activity/`, `wizard/`, `relays/`, `nostr/`). Pure decisions, no React, no I/O |
+| `@services` | `src/services` — the things that talk to something: `rpc`, `blossom`, the relay-cache key names |
+| `@context` | `src/context` — the React contexts, all eight |
 | `@utils` | `src/utils` — React-side helpers that are neither a component nor a hook (`createRequiredContext`) |
 | `@styles` | `src/styles` — global stylesheets (`theme.css`) |
 | `@lib` | `lib` |

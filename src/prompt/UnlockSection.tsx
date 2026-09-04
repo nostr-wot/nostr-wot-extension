@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
-import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';
+import { isVaultOpen } from '@domain/vault/vaultAutoUnlock.ts';
 
 interface UnlockSectionProps {
   onUnlocked: () => void;

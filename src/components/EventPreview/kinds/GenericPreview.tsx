@@ -1,5 +1,5 @@
 import React from 'react';
-import { KIND_LABELS } from '@shared/constants.ts';
+import { KIND_LABELS } from '@domain/nostr/kindLabels.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import { EP } from '../eventPreviewClasses.ts';
 

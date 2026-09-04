@@ -7,8 +7,14 @@ declare const browser: typeof chrome;
 
 const browserAPI: typeof chrome = typeof browser !== 'undefined' ? browser : chrome;
 
-// Safari doesn't support storage.session — shim it onto storage.local with a key prefix
-if (!browserAPI.storage.session) {
+// Safari doesn't support storage.session — shim it onto storage.local with a key prefix.
+//
+// Guarded on `storage` existing at all, not just on `session`. This module is
+// imported for its default export by UI code that may never touch storage, and
+// in any context without the storage permission — a bare test, a content script
+// in a restricted frame — reading `.session` off an undefined `storage` throws
+// at import time and takes the whole module down with it.
+if (browserAPI?.storage && !browserAPI.storage.session) {
   const PREFIX = '__session__';
   (browserAPI.storage as typeof chrome.storage).session = {
     get: (keys: string | string[] | Record<string, unknown> | null) => {

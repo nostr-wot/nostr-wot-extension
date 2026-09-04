@@ -1,9 +1,9 @@
 import React, { useCallback, type ReactNode } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
-import { PQC_PUBLISHED_CACHE } from '@shared/relayCacheNames.ts';
-import type { PqcPanelStatus, PqcPublished } from '@shared/pqcState.ts';
+import { PQC_PUBLISHED_CACHE } from '@services/relayCacheNames.ts';
+import type { PqcPanelStatus, PqcPublished } from '@domain/pqc/pqcState.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
 import { useAccount } from './AccountContext';
 
@@ -39,7 +39,7 @@ interface PqcProviderProps {
  * `PqcCard` (home) and `PqcSection` (settings) used to each call
  * `pqc_getStatus` and, when keys can be derived, `pqc_checkPublished` on their
  * own mount — two RPCs, twice, for the same account. The decision logic those
- * two answers feed stays in `@shared/pqcState.ts` (`derivePqcCardState`,
+ * two answers feed stays in `@domain/pqc/pqcState.ts` (`derivePqcCardState`,
  * `isAlreadyPublished`); this context only supplies the data.
  */
 export function PqcProvider({ children }: PqcProviderProps) {

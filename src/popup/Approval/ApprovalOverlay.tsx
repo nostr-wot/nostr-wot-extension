@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
+import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import {
   filterPendingForDomain,
   partitionPending,
@@ -14,12 +14,12 @@ import {
   isGroupLive,
   type PendingRequest,
   type ApprovalGroup,
-} from '@shared/approval.ts';
+} from '@domain/permissions/approval.ts';
 import ApprovalCard from './ApprovalCard';
 import useApprovalQueue from '@hooks/useApprovalQueue.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
-import { usePermissions } from '@popup/context/PermissionsContext';
-import { useAccount } from '@popup/context/AccountContext';
+import { usePermissions } from '@context/PermissionsContext';
+import { useAccount } from '@context/AccountContext';
 import Button from '@components/Button/Button';
 
 interface ApprovalOverlayProps {

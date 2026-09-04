@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import browser from '@shared/browser.ts';
-import { rpcNotify } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpcNotify } from '@services/rpc.ts';
 import '@styles/tailwind.css';
-import { AccountProvider, useAccount } from './context/AccountContext';
-import { VaultProvider, useVault } from './context/VaultContext';
-import { PermissionsProvider } from './context/PermissionsContext';
-import { WalletProvider } from './context/WalletContext';
-import { RelaysProvider } from './context/RelaysContext';
-import { PqcProvider } from './context/PqcContext';
+import { AccountProvider, useAccount } from '@context/AccountContext';
+import { VaultProvider, useVault } from '@context/VaultContext';
+import { PermissionsProvider } from '@context/PermissionsContext';
+import { WalletProvider } from '@context/WalletContext';
+import { RelaysProvider } from '@context/RelaysContext';
+import { PqcProvider } from '@context/PqcContext';
 import TopoBg from '@components/TopoBg/TopoBg';
 import Splash from '@components/Splash/Splash';
 import TopBar from './TopBar/TopBar';
 import Home from './Home/Home';
-import { NavigationProvider, type HomeNavigation } from '@popup/context/NavigationContext';
+import { NavigationProvider, type HomeNavigation } from '@context/NavigationContext';
 import MenuOverlay from './Menu/MenuOverlay';
 import FiltersOverlay from './Filters/FiltersOverlay';
 import ActivityOverlay from './Activity/ActivityOverlay';
@@ -23,7 +23,7 @@ import PermissionsSection from './Settings/PermissionsSection';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import UnlockModal from './Vault/UnlockModal';
 import { t } from '@lib/i18n.js';
-import type { PendingRequest } from '@shared/approval.ts';
+import type { PendingRequest } from '@domain/permissions/approval.ts';
 
 type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'permissions' | null;
 

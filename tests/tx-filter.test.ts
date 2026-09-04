@@ -22,7 +22,7 @@ import {
   EMPTY_TX_FILTERS,
   type TxFilters,
   type FilterableTx,
-} from '../src/shared/txFilter.ts';
+} from '../src/domain/wallet/txFilter.ts';
 
 const at = (iso: string) => new Date(iso).getTime() / 1000;
 const tx = (over: Partial<FilterableTx> = {}): FilterableTx => ({

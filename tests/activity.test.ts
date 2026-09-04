@@ -19,7 +19,7 @@ import {
   buildDayGroups,
   TYPE_METHODS,
   type ActivityEntry,
-} from '../src/shared/activity.ts';
+} from '../src/domain/activity/activity.ts';
 
 const entry = (over: Partial<ActivityEntry> = {}): ActivityEntry => ({
   method: 'signEvent',

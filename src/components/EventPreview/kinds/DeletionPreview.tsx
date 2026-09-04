@@ -1,6 +1,6 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import { truncate } from '@shared/format/text.ts';
+import { truncate } from '@utils/format/text.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import { EP } from '../eventPreviewClasses.ts';

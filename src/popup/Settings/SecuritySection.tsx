@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
-import { AUTO_LOCK_OPTIONS } from '@shared/constants.ts';
+import { rpc } from '@services/rpc.ts';
+import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
 import { t } from '@lib/i18n.js';
 import { IconLock } from '@assets';
 import Card from '@components/Card/Card';
@@ -11,7 +11,7 @@ import ListRow from '@components/ListRow/ListRow';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
-import { useVault } from '@popup/context/VaultContext';
+import { useVault } from '@context/VaultContext';
 
 import FormError from '@components/FormError/FormError';
 

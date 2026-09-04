@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
 import Spinner from '@components/Spinner/Spinner';
@@ -11,9 +11,9 @@ import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import { IconSettings } from '@assets/index';
 import { type Transaction } from '@lib/wallet/types.ts';
-import { type TxFilters } from '@shared/txFilter.ts';
-import { accumulateTransactions } from '@shared/txPager.ts';
-import { useWallet } from '@popup/context/WalletContext';
+import { type TxFilters } from '@domain/wallet/txFilter.ts';
+import { accumulateTransactions } from '@domain/wallet/txPager.ts';
+import { useWallet } from '@context/WalletContext';
 
 import IconButton from '@components/IconButton/IconButton';
 import FormError from '@components/FormError/FormError';

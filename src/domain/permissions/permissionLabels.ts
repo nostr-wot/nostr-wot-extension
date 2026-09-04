@@ -1,5 +1,5 @@
 import { t } from '@lib/i18n.js';
-import { KIND_LABELS } from '@shared/constants.ts';
+import { KIND_LABELS } from '@domain/nostr/kindLabels.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 
 /**
@@ -90,7 +90,7 @@ function getPlatformLabel(event: Partial<NostrEventDisplay>): string | null {
  *   `PendingRequest.event` is a `Partial<UnsignedEvent>` — so this takes a
  *   partial. Demanding a complete event made every approval call site an error.
  */
-export function formatLabel(key: string, event?: Partial<NostrEventDisplay>): string {
+export function formatPermissionLabel(key: string, event?: Partial<NostrEventDisplay>): string {
   // Platform-specific: kind 30078 with event data
   if (key === 'signEvent:30078' && event) {
     const label = getPlatformLabel(event);

@@ -1,10 +1,10 @@
 import { useReducer, useCallback, useRef, useState, useEffect } from 'react';
-import browser from '@shared/browser.ts';
+import browser from '@lib/browser.ts';
 import {
   createInitialState,
   reducer,
-} from '@shared/wizardMachine.ts';
-import type { WizardState, WizardAction, WizardOptions, WizardContext } from '@shared/wizardMachine.ts';
+} from '@domain/wizard/wizardMachine.ts';
+import type { WizardState, WizardAction, WizardOptions, WizardContext } from '@domain/wizard/wizardMachine.ts';
 
 const STORAGE_KEY = 'wizardState';
 const PERSIST_TTL_MS = 5 * 60 * 1000; // 5 minutes

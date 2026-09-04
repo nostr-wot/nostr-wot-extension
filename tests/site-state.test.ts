@@ -20,7 +20,7 @@
 
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { resolveSiteState } from '../src/shared/siteState.ts';
+import { resolveSiteState } from '../src/domain/site/siteState.ts';
 
 const DOMAIN = 'example.com';
 

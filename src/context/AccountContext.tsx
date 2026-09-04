@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useCallback, type ReactNode } from 'react';
-import browser from '@shared/browser.ts';
+import browser from '@lib/browser.ts';
 import { t } from '@lib/i18n.js';
-import { truncateNpub, getInitial } from '@shared/format/text.ts';
-import { rpc } from '@shared/rpc.ts';
+import { truncateNpub, getInitial } from '@utils/format/text.ts';
+import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
-import type { ProfileMetadata } from '@shared/profileMetadata.ts';
+import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import type { Account } from '@models/account.ts';
 
 interface ProfileCache {

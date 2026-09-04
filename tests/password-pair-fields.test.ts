@@ -15,8 +15,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { derivePasswordPairState } from '../src/shared/passwordPairState.ts';
-import { MIN_PASSWORD_LENGTH } from '../src/shared/passwordPair.ts';
+import { derivePasswordPairState } from '../src/domain/vault/passwordPair.ts';
+import { MIN_PASSWORD_LENGTH } from '../src/domain/vault/passwordPair.ts';
 
 describe('derivePasswordPairState', () => {
   it('is not ready while too short, even if the two already match', () => {

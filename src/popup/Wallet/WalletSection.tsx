@@ -4,7 +4,7 @@ import Button from '@components/Button/Button';
 import EmptyState from '@components/EmptyState/EmptyState';
 import WalletSetup from './WalletSetup';
 import Wallet from './Wallet';
-import { useWallet } from '@popup/context/WalletContext';
+import { useWallet } from '@context/WalletContext';
 
 import Spinner from '@components/Spinner/Spinner';
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import browser from '@shared/browser.ts';
+import browser from '@lib/browser.ts';
 
 /**
  * Re-read a relay-backed value when the background finishes refreshing it.

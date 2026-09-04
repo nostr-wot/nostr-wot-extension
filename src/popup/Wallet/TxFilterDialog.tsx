@@ -3,7 +3,7 @@ import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
-import type { TxFilters } from '@shared/txFilter.ts';
+import type { TxFilters } from '@domain/wallet/txFilter.ts';
 
 interface TxFilterDialogProps {
   /** What is applied right now — the drafts start here. */

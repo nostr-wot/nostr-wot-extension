@@ -1,5 +1,5 @@
 import React from 'react';
-import { rpcNotify } from '@shared/rpc.ts';
+import { rpcNotify } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import '@styles/tailwind.css';
 import TopoBg from '@components/TopoBg/TopoBg';

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { safeImageUrl } from '../src/shared/safeUrl.ts';
+import { safeImageUrl } from '../src/utils/safeUrl.ts';
 
 describe('safeImageUrl', () => {
   it('passes through https URLs', () => {

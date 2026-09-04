@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
 import { isLightningAddress } from '@lib/wallet/lnurl.ts';
-import { resolveSendTarget } from '@shared/sendTarget.ts';
-import { describeInvoiceExpiry } from '@shared/invoiceExpiry.ts';
+import { resolveSendTarget } from '@domain/wallet/sendTarget.ts';
+import { describeInvoiceExpiry } from '@domain/wallet/invoiceExpiry.ts';
 import { PAYMENT_IN_FLIGHT } from '@lib/wallet/types.ts';
 import FormError from '@components/FormError/FormError';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';

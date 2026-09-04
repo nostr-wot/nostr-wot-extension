@@ -11,7 +11,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { describeInvoiceExpiry } from '../src/shared/invoiceExpiry.ts';
+import { describeInvoiceExpiry } from '../src/domain/wallet/invoiceExpiry.ts';
 
 const T = 1_700_000_000; // invoice timestamp, epoch seconds
 const at = (secondsAfterIssue: number) => (T + secondsAfterIssue) * 1000;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
-import { downloadFile } from '@shared/downloadFile.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
+import { downloadFile } from '@utils/downloadFile.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets';

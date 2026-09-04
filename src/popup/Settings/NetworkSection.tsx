@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, ChangeEvent } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { formatTimeAgo } from '@shared/format/time.ts';
-import { isValidWssUrl } from '@shared/url.ts';
+import { formatTimeAgo } from '@utils/format/time.ts';
+import { isValidWssUrl } from '@utils/url.ts';
 import StatusDot from '@components/StatusDot/StatusDot';
 import EditableList from '@components/EditableList/EditableList';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import { useRelays, type RelayFlags } from '@popup/context/RelaysContext';
+import { useRelays, type RelayFlags } from '@context/RelaysContext';
 
 export default function NetworkSection() {
   const { relays, relayFlags, loaded, saveRelays } = useRelays();

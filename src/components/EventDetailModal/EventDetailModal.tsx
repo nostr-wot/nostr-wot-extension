@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.ts';
-import { formatTime } from '@shared/format/time.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { formatTime } from '@utils/format/time.ts';
 import type { NostrEventDisplay } from '@models/nostrEvent.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
@@ -118,7 +118,7 @@ export default function EventDetailModal({
   const theirPubkey = isApproval ? request!.theirPubkey : group?.entries?.[0]?.theirPubkey;
   const entries = group?.entries || [];
 
-  const title = formatLabel(permKey || '', event ?? undefined);
+  const title = formatPermissionLabel(permKey || '', event ?? undefined);
 
   // For activity: deduplicate entries by content
   const uniqueEntries = useMemo(() => {

@@ -15,7 +15,7 @@ The extension targets Chrome and Firefox, using a service worker on Chrome and a
 
 **Build system**: Vite + `@crxjs/vite-plugin`. All source is TypeScript (`.ts`/`.tsx`), compiled to JavaScript at build time. React JSX is used for popup, onboarding, and prompt UIs.
 
-**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@shared`, `@components`, `@lib`.
+**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@domain`, `@services`, `@context`, `@hooks`, `@models`, `@utils`, `@styles`, `@lib`.
 
 Cross-browser compatibility is handled by a thin shim at `lib/browser.ts`:
 

@@ -1,7 +1,7 @@
 import React, { useCallback, type ReactNode } from 'react';
-import browser from '@shared/browser.ts';
-import { rpcNotify } from '@shared/rpc.ts';
-import { DEFAULT_RELAYS } from '@shared/constants.ts';
+import browser from '@lib/browser.ts';
+import { rpcNotify } from '@services/rpc.ts';
+import { DEFAULT_RELAYS } from '@domain/relays/defaultRelays.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';

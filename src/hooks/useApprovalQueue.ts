@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
-import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
+import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import {
   filterPendingForDomain,
   partitionPending,
@@ -12,8 +12,8 @@ import {
   isGroupLive,
   type PendingRequest,
   type ApprovalGroup,
-} from '@shared/approval.ts';
-import { useVault } from '@popup/context/VaultContext';
+} from '@domain/permissions/approval.ts';
+import { useVault } from '@context/VaultContext';
 
 interface UseApprovalQueueOptions {
   onRequestUnlock?: () => void;

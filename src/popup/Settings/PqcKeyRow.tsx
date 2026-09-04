@@ -2,7 +2,7 @@ import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconCopy } from '@assets';
 import useCopy from '@hooks/useCopy.ts';
-import { truncateMiddle } from '@shared/format/text.ts';
+import { truncateMiddle } from '@utils/format/text.ts';
 
 /** Label, shortened value, copy. Shortened in the MIDDLE so both ends stay
  *  checkable and the row stays one line. */

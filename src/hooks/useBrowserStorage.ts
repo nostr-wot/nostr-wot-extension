@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import browser from '@shared/browser.ts';
+import browser from '@lib/browser.ts';
 
 type StorageArea = 'local' | 'sync' | 'session';
 

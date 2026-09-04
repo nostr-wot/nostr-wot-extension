@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { MIN_PASSWORD_LENGTH, PasswordPairProblem } from '@shared/passwordPair.ts';
-import { derivePasswordPairState } from '@shared/passwordPairState.ts';
+import { MIN_PASSWORD_LENGTH, PasswordPairProblem } from '@domain/vault/passwordPair.ts';
+import { derivePasswordPairState } from '@domain/vault/passwordPair.ts';
 
 export interface UsePasswordPairResult {
   password: string;

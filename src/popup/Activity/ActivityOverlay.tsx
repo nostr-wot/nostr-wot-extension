@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.ts';
-import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type GroupedActivity } from '@shared/activity.ts';
-import { truncateNpub } from '@shared/format/text.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { filterActivityEntries, countActivityFilters, activityDomains, TYPE_METHODS, groupActivityEntries, type GroupedActivity } from '@domain/activity/activity.ts';
+import { truncateNpub } from '@utils/format/text.ts';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
@@ -11,8 +11,8 @@ import Input from '@components/Input/Input';
 import StatusDot from '@components/StatusDot/StatusDot';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import { IconTuner } from '@assets';
-import { useAccount } from '@popup/context/AccountContext';
-import { ActivityProvider, useActivity } from '@popup/context/ActivityContext';
+import { useAccount } from '@context/AccountContext';
+import { ActivityProvider, useActivity } from '@context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import usePagedList from '@hooks/usePagedList.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
@@ -270,7 +270,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
                 {showDomain && item.domain && (
                   <span className="text-secondary font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">{item.domain}</span>
                 )}
-                <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{formatLabel(item.methodKey, item.entries?.[0]?.event)}</span>
+                <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{formatPermissionLabel(item.methodKey, item.entries?.[0]?.event)}</span>
                 {item.count > 1 && (
                   <span className="text-muted text-xs shrink-0">&times;{item.count}</span>
                 )}

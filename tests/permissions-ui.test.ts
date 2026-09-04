@@ -18,7 +18,7 @@ import {
   availablePermKeys,
   buildRuleKey,
   READ_ONLY_KEYS,
-} from '../src/shared/permissionRules.ts';
+} from '../src/domain/permissions/permissionRules.ts';
 
 describe('countDecisions', () => {
   it('counts allow and deny separately', () => {

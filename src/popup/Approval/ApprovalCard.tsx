@@ -1,7 +1,7 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.ts';
-import type { ApprovalGroup } from '@shared/approval.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import type { ApprovalGroup } from '@domain/permissions/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
 import Card from '@components/Card/Card';
 
@@ -14,7 +14,7 @@ interface ApprovalCardProps {
 export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardProps) {
   const domain = group.origin;
   const firstReq = group.requests[0];
-  const label = formatLabel(firstReq?.permKey || group.method, firstReq?.event);
+  const label = formatPermissionLabel(firstReq?.permKey || group.method, firstReq?.event);
   const isNip46 = group.nip46InFlight;
 
   return (

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import {
   isAlreadyPublished,
   type PqcBlockReason,
-} from '@shared/pqcState.ts';
-import { usePqc } from '@popup/context/PqcContext';
+} from '@domain/pqc/pqcState.ts';
+import { usePqc } from '@context/PqcContext';
 import { t } from '@lib/i18n.js';
 import { IconKey, IconWarning, IconCopy } from '@assets';
 import Button from '@components/Button/Button';
@@ -16,10 +16,10 @@ import KeyRow from './PqcKeyRow';
 import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import useCopy from '@hooks/useCopy.ts';
-import { truncateMiddle } from '@shared/format/text.ts';
-import { downloadFile } from '@shared/downloadFile.ts';
+import { truncateMiddle } from '@utils/format/text.ts';
+import { downloadFile } from '@utils/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
-import browser from '@shared/browser.ts';
+import browser from '@lib/browser.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
 
@@ -64,7 +64,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   // Status and the published check both come from PqcContext now — this panel
   // and the home-screen card used to each call `pqc_getStatus` and
   // `pqc_checkPublished` on their own mount. The decision logic
-  // (`isAlreadyPublished`) stays here in `@shared/pqcState.ts`'s exports; the
+  // (`isAlreadyPublished`) stays here in `@domain/pqc/pqcState.ts`'s exports; the
   // context only supplies the data.
   const { status, published: existing, error, refresh } = usePqc();
   const attestationCopy = useCopy();

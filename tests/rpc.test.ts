@@ -1,5 +1,5 @@
 /**
- * Tests for src/shared/rpc.ts — popup ↔ background transport wrapper.
+ * Tests for src/services/rpc.ts — popup ↔ background transport wrapper.
  *
  * Regression coverage for the Safari delete→recreate onboarding crash:
  * Safari expresses "background service worker not ready / no responder" by
@@ -14,7 +14,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-// rpc.ts imports @shared/browser.ts, which prefers globalThis.browser over the
+// rpc.ts imports @lib/browser.ts, which prefers globalThis.browser over the
 // (undefined in Node) chrome global — install the stub BEFORE importing rpc.
 let sendImpl: (payload: { method: string; params: unknown }) => Promise<unknown>;
 (globalThis as Record<string, unknown>).browser = {
@@ -23,7 +23,7 @@ let sendImpl: (payload: { method: string; params: unknown }) => Promise<unknown>
   },
 };
 
-const { rpc } = await import('../src/shared/rpc.ts');
+const { rpc } = await import('../src/services/rpc.ts');
 
 describe('rpc: response envelope handling', () => {
   beforeEach(() => {

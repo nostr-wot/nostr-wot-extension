@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
-import { rpc } from '@shared/rpc.ts';
-import { formatLabel } from '@shared/permissions.ts';
+import { rpc } from '@services/rpc.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import {
   countDecisions,
   filterKeysForAccountKind,
   availablePermKeys,
   buildRuleKey,
   DECISIONS,
-} from '@shared/permissionRules.ts';
+} from '@domain/permissions/permissionRules.ts';
 import { IconSearch, IconShield, IconUsers, IconPlus } from '@assets';
-import { useAccount } from '@popup/context/AccountContext';
-import { usePermissions } from '@popup/context/PermissionsContext';
+import { useAccount } from '@context/AccountContext';
+import { usePermissions } from '@context/PermissionsContext';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -233,7 +233,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
               return (
                 <div key={key} className="flex items-center justify-between py-5 border-b border-card last:border-b-0">
                   <span className="text-md font-medium text-body">
-                    {formatLabel(key)}
+                    {formatPermissionLabel(key)}
                   </span>
                   <div className="relative shrink-0" ref={openDropdownKey === key ? dropdownRef : undefined}>
                     {/* Always toned: this chip is not a selection among

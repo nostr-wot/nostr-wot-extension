@@ -56,7 +56,7 @@ src/popup/components/
     TxFilterDialog.tsx   # Direction + date-range form
     WalletSettings.tsx   # Connection, auto-approve threshold, Lightning Address
 
-src/shared/               # the decision logic, unit-tested without a browser
+src/domain/wallet/        # the decision logic, unit-tested without a browser
   txFilter.ts             # what matches the filter bar; the memo placeholder rule
   invoiceExpiry.ts        # how long an invoice has left
   sendTarget.ts           # the single answer to "what would Pay send?"

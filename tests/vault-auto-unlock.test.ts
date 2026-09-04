@@ -14,7 +14,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isVaultOpen } from '../src/shared/vaultAutoUnlock.ts';
+import { isVaultOpen } from '../src/domain/vault/vaultAutoUnlock.ts';
 
 /** Records every RPC so the tests can assert what was NOT asked. */
 function fakeRpc(answers: Record<string, unknown>) {

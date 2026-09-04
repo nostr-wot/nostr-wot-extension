@@ -5,8 +5,8 @@ import Spinner from '@components/Spinner/Spinner';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import { IconTuner } from '@assets/index';
-import { formatTxDate } from '@shared/format/time.ts';
-import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@shared/txFilter.ts';
+import { formatTxDate } from '@utils/format/time.ts';
+import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@domain/wallet/txFilter.ts';
 import type { Transaction } from '@lib/wallet/types.ts';
 import LinkButton from '@components/LinkButton/LinkButton';
 

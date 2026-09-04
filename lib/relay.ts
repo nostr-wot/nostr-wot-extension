@@ -6,7 +6,7 @@
  * @module lib/relay
  */
 
-import browser from './browser.ts';
+import browser from '@lib/browser.ts';
 import { verifyEvent } from './crypto/nip01.ts';
 import type { SignedEvent, NostrFilter, LiveEvent, LiveQueryOptions } from './types.ts';
 

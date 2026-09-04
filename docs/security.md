@@ -330,7 +330,7 @@ non-HTTPS instance URL throws instead of leaking the key in cleartext.
 
 ---
 
-## 16. Untrusted Image URLs (`src/shared/safeUrl.ts`)
+## 16. Untrusted Image URLs (`src/utils/safeUrl.ts`)
 
 Relay-supplied profile metadata (`picture`, `banner`) is sanitized with
 `safeImageUrl()` before being rendered in an `<img src>`: only absolute

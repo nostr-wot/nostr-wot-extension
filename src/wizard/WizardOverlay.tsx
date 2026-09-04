@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { isLanguageChosen } from '@lib/i18n.js';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import TopoBg from '@components/TopoBg/TopoBg';
 import useWizardFlow from '@hooks/useWizardFlow';

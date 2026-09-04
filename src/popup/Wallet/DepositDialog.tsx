@@ -1,12 +1,12 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import QrCode from '@components/QrCode/QrCode';
 import useCopy from '@hooks/useCopy.ts';
-import { formatSats } from '@shared/format/number.ts';
+import { formatSats } from '@utils/format/number.ts';
 import FormError from '@components/FormError/FormError';
 
 interface Invoice {

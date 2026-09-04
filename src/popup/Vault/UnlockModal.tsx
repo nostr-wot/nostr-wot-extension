@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { useAccount } from '@popup/context/AccountContext';
-import { useVault } from '@popup/context/VaultContext';
+import { useAccount } from '@context/AccountContext';
+import { useVault } from '@context/VaultContext';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import Avatar from '@components/Avatar/Avatar';

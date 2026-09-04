@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { rpc, rpcNotify } from '@shared/rpc.ts';
+import { rpc, rpcNotify } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { getFaviconUrl } from '@shared/clientIcons.ts';
-import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
+import { getFaviconUrl } from '@utils/faviconUrl.ts';
+import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';

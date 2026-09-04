@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { paginate } from '@shared/pagedList.ts';
+import { paginate } from '@utils/pagedList.ts';
 
 export interface PagedList<T> {
   visible: T[];

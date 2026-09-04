@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, MouseEvent } from 'react';
-import browser from '@shared/browser.ts';
-import { rpc } from '@shared/rpc.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubEncode } from '@lib/crypto/bech32.js';
-import { useAccount } from '@popup/context/AccountContext';
-import { truncateNpub, getInitial } from '@shared/format/text.ts';
+import { useAccount } from '@context/AccountContext';
+import { truncateNpub, getInitial } from '@utils/format/text.ts';
 import { IconClose, IconCopy, IconPencil } from '@assets';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';

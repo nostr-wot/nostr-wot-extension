@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { rpc } from '@shared/rpc.ts';
-import { downloadFile } from '@shared/downloadFile.ts';
+import { rpc } from '@services/rpc.ts';
+import { downloadFile } from '@utils/downloadFile.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';

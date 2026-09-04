@@ -1,8 +1,8 @@
 import React from 'react';
 import { t } from '@lib/i18n.js';
 import { IconChevronDown, IconLockOpen } from '@assets';
-import { useAccount } from '@popup/context/AccountContext';
-import { useVault } from '@popup/context/VaultContext';
+import { useAccount } from '@context/AccountContext';
+import { useVault } from '@context/VaultContext';
 import Avatar from '@components/Avatar/Avatar';
 import IconButton from '@components/IconButton/IconButton';
 

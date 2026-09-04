@@ -24,7 +24,7 @@
 
 import type { VaultPayload, Account, SafeAccount, SafeAccountWithWallet, MemoryAccount, MemoryVaultPayload } from './types.ts';
 import { hexToBytes, bytesToHex, arrayToBase64, base64ToArray } from './crypto/utils.ts';
-import browser from './browser.ts';
+import browser from '@lib/browser.ts';
 import { LOCK_STATE_KEY } from './constants.ts';
 
 const STORAGE_KEY = 'keyVault';

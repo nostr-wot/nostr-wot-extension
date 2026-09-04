@@ -15,8 +15,8 @@ import NetworkSection from '../Settings/NetworkSection';
 import WalletSection from '../Wallet/WalletSection';
 import KeyActionModal from '../Vault/KeyActionModal';
 import ListRow from '@components/ListRow/ListRow';
-import { useVault } from '@popup/context/VaultContext';
-import { useAccount } from '@popup/context/AccountContext';
+import { useVault } from '@context/VaultContext';
+import { useAccount } from '@context/AccountContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import IconButton from '@components/IconButton/IconButton';
 

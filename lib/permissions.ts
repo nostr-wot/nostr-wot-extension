@@ -29,7 +29,7 @@
  */
 
 import type { PermissionDecision, PermissionMap, PermissionBucket, DomainPermissions } from './types.ts';
-import browser from './browser.ts';
+import browser from '@lib/browser.ts';
 import { AsyncLock } from './utils/async-lock.ts';
 
 const STORAGE_KEY = 'signerPermissions';

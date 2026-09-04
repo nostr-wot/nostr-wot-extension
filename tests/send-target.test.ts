@@ -17,7 +17,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveSendTarget, canSend, type SendTargetInput } from '../src/shared/sendTarget.ts';
+import { resolveSendTarget, canSend, type SendTargetInput } from '../src/domain/wallet/sendTarget.ts';
 
 const ALICE = { address: 'alice@example.com', minSats: 1, maxSats: 100_000 };
 

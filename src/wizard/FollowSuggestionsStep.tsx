@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { npubDecode } from '@lib/crypto/bech32.ts';
 import Button from '@components/Button/Button';
 import Avatar from '@components/Avatar/Avatar';
-import { truncateNpub, getInitial as getInitialChar } from '@shared/format/text.ts';
+import { truncateNpub, getInitial as getInitialChar } from '@utils/format/text.ts';
 import type { ProfileMetadata } from '@models/profile.ts';
 import Heading from '@components/Heading/Heading';
 

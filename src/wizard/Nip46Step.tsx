@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';

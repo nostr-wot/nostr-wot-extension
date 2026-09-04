@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { rpc } from '@shared/rpc.ts';
+import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
-import { type PqcPanelStatus as PqcStatus } from '@shared/pqcState.ts';
-import { usePqc } from '@popup/context/PqcContext';
+import { type PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
+import { usePqc } from '@context/PqcContext';
 import styles from './PqcSection.module.css';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';

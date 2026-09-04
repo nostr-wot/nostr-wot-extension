@@ -1,7 +1,7 @@
 import React, { useState, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
-import { formatLabel } from '@shared/permissions.ts';
-import { buildRuleKey, DECISIONS } from '@shared/permissionRules.ts';
+import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { buildRuleKey, DECISIONS } from '@domain/permissions/permissionRules.ts';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -50,7 +50,7 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
             <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('perms.permission')}</span>
             {!useCustom ? (
               <Dropdown
-                options={availableKeys.map(k => ({ value: k, label: formatLabel(k) }))}
+                options={availableKeys.map(k => ({ value: k, label: formatPermissionLabel(k) }))}
                 value={presetKey}
                 onChange={setPresetKey}
                 small

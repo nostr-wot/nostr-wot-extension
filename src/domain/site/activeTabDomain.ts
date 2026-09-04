@@ -16,9 +16,9 @@
  * @module shared/activeTabDomain
  */
 
-import browser from './browser.ts';
-import { rpc } from './rpc.ts';
-import { getDomainFromUrl } from './url.ts';
+import browser from '@lib/browser.ts';
+import { rpc } from '@services/rpc.ts';
+import { getDomainFromUrl } from '@utils/url.ts';
 import { POPUP_CONTEXT_KEY, type PopupContext } from '@lib/openPopupForActiveTab.ts';
 
 /* Imported rather than mirrored. Both the key and the shape were restated here

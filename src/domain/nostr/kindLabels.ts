@@ -1,7 +1,4 @@
-// Order matters: reads try relays in order, so the first entry gates the wait.
-// Kept in step with DEFAULT_RELAYS in lib/bg/state.ts.
-export const DEFAULT_RELAYS = 'wss://nos.lol,wss://relay.damus.io,wss://nostr-01.yakihonne.com' as const;
-
+/** Human labels for the event kinds this UI can name. */
 export const KIND_LABELS: Record<number, string> = {
   0: 'Profile Metadata',
   1: 'Short Note',
@@ -46,15 +43,3 @@ export const KIND_LABELS: Record<number, string> = {
   30311: 'Live Event',
   30402: 'Classified Listing',
 } as const;
-
-export interface AutoLockOption {
-  ms: number;
-  labelKey: string;
-}
-
-export const AUTO_LOCK_OPTIONS: readonly AutoLockOption[] = [
-  { ms: 300000, labelKey: 'security.5min' },
-  { ms: 900000, labelKey: 'security.15min' },
-  { ms: 3600000, labelKey: 'security.1hr' },
-  { ms: 0, labelKey: 'security.never' },
-] as const;

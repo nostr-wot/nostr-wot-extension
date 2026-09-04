@@ -70,7 +70,10 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `lib/types.ts` -- shared TypeScript interfaces
 
 **Path aliases** (configured in `vite.config.ts`):
-- `@components` -> `src/components`
-- `@shared` -> `src/shared`
-- `@lib` -> `lib`
+- `@components` -> `src/components` — shared UI
+- `@domain` -> `src/domain` — feature logic, one folder per module, pure and tested
+- `@services` -> `src/services` — the things that talk to something (`rpc`, `blossom`)
+- `@context` -> `src/context` — the React contexts
+- `@hooks` -> `src/hooks`, `@models` -> `src/models`, `@utils` -> `src/utils` (no domain knowledge), `@styles` -> `src/styles`
+- `@lib` -> `lib` — the extension core, imported by the service worker, so never React
 - `@assets` -> `src/assets`

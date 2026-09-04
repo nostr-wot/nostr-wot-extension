@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { safeImageUrl } from '@shared/safeUrl.ts';
+import { safeImageUrl } from '@utils/safeUrl.ts';
 
 interface AvatarProps {
   src: string | null | undefined;

@@ -23,7 +23,7 @@ import {
   isRequestLive,
   isGroupLive,
   type PendingRequest,
-} from '../src/shared/approval.ts';
+} from '../src/domain/permissions/approval.ts';
 
 const req = (over: Partial<PendingRequest> & { id: string; origin: string }): PendingRequest => ({
   type: 'signEvent',
