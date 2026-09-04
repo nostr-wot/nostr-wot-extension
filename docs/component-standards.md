@@ -60,6 +60,10 @@ The vocabulary the code is reaching for: **Overlay** = full-height `OverlayPanel
 **Section** = a destination `MenuOverlay` pushes · **Card** = a boxed container ·
 **Row** = a tappable list row · **Step** = one wizard screen.
 
+### Navigation is a context, not seven props
+
+`PopupApp` used to hand `Home` seven navigation callbacks, which it drilled another level into the rows — a router API simulated with props, where every new destination touched three files. `NavigationProvider`/`useNavigate()` replaces it: a row asks for the destination it needs instead of being handed it. `PopupApp` still owns the `OverlayType` state machine; only the delivery changed. Data still travels as props — `SiteControls` takes a `domain`, because that is data rather than a destination.
+
 ### Where a feature lives
 
 `src/wizard/` is a peer of `popup/`, `prompt/` and `onboarding/`, not a folder inside
@@ -145,9 +149,10 @@ All shared hooks live in `src/shared/hooks/`, one hook per file.
 | `useOutsideClick(ref, onOutside, enabled?)` | Dismiss an anchored surface on outside **mousedown** |
 | `useTimedReveal(empty, ttlMs)` | Show a secret blurred, and take it off screen after `ttlMs` |
 | `useRelayCache(name, onRefreshed)` | Re-read when the background refreshes a cached relay answer |
+| `useBrowserStorage(key, default, area)` | A `browser.storage` value that follows `onChanged` in its own area |
 | `useWizardFlow()` | State machine hook for onboarding wizard |
 
-There is no `useBrowserStorage`. This table used to claim one; two components had each hand-rolled its exact body instead of finding it, because it was never written.
+`useBrowserStorage(key, default, area)` was documented here for a long time before it existed, so two components each hand-rolled its exact body rather than finding it. It is written now. **Pass the area** — most keys are `local`, but `relays` is `sync`, and a listener that ignores the area reacts to writes it should not see.
 
 **Use `useCopy` for every clipboard write.** `copied` is what you render; the promise resolves to whether the write actually landed, for the callers that must *decide* on it (the wizard only marks a seed phrase backed up if the copy succeeded). Copying a value the user cannot verify by eye — an nsec, an ncryptsec, a seed phrase — with a bare un-awaited `navigator.clipboard.writeText` makes a refused clipboard look exactly like a successful copy. That was live on all three of those values.
 
