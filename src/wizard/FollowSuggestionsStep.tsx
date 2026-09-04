@@ -5,7 +5,6 @@ import { npubDecode } from '@lib/crypto/bech32.ts';
 import Button from '@components/Button/Button';
 import Avatar from '@components/Avatar/Avatar';
 import { truncateNpub, getInitial as getInitialChar } from '@shared/format/text.ts';
-import styles from './WizardOverlay.module.css';
 import type { ProfileMetadata } from '@models/profile.ts';
 
 /* ------------------------------------------------------------------ */
@@ -147,11 +146,11 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
   const getInitial = (hex: string) => getInitialChar(getName(hex));
 
   return (
-    <div className={styles.step}>
-      <h2 className={styles.stepTitle}>{t('wizard.followTitle')}</h2>
-      <p className={styles.stepDesc}>{t('wizard.followDesc')}</p>
+    <div className="flex flex-col flex-1">
+      <h2 className="text-3xl font-bold text-heading mb-3">{t('wizard.followTitle')}</h2>
+      <p className="text-md text-secondary leading-normal mb-8">{t('wizard.followDesc')}</p>
 
-      <div className={styles.suggestionList}>
+      <div className="flex flex-col gap-3 max-h-[340px] overflow-y-auto pr-1">
         {hexKeys.map(({ npub, hex }) => {
           const isSelected = selected.has(hex);
           const avatar = getAvatar(hex);
@@ -165,20 +164,20 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
               // keyboard at all — on a step whose whole purpose is picking
               // from a list.
               aria-pressed={isSelected}
-              className={`${styles.suggestionCard} ${isSelected ? styles.suggestionCardSelected : ''}`}
+              className={`w-full font-[inherit] text-left flex items-center gap-5 py-5 px-6 border rounded-panel cursor-pointer transition-all select-none hover:bg-card-active ${isSelected ? 'border-brand bg-brand-tint-hover' : 'border-card-border bg-card'}`}
               onClick={() => toggle(hex)}
             >
               <Avatar
                 src={avatar}
                 fallback={getInitial(hex)}
-                imgClassName={styles.suggestionAvatar}
-                fallbackClassName={styles.suggestionAvatarFallback}
+                imgClassName="w-9 h-9 rounded-full object-cover shrink-0"
+                fallbackClassName="w-9 h-9 rounded-full bg-brand-light text-brand flex items-center justify-center text-lg font-bold shrink-0"
               />
-              <div className={styles.suggestionInfo}>
-                <span className={styles.suggestionName}>{getName(hex)}</span>
-                <span className={styles.suggestionNip05}>{getSubtitle(hex)}</span>
+              <div className="flex flex-col gap-1 overflow-hidden flex-1 min-w-0">
+                <span className="text-md font-semibold text-heading overflow-hidden text-ellipsis whitespace-nowrap">{getName(hex)}</span>
+                <span className="text-xs text-muted overflow-hidden text-ellipsis whitespace-nowrap">{getSubtitle(hex)}</span>
               </div>
-              <div className={`${styles.suggestionCheck} ${isSelected ? styles.suggestionCheckActive : ''}`}>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all text-on-brand ${isSelected ? 'border-brand bg-brand' : 'border-card-border'}`}>
                 {isSelected && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -190,15 +189,16 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
         })}
       </div>
 
-      <div className={styles.suggestionCount}>
+      <div className="text-sm text-secondary text-center mt-3">
         {t('wizard.followSelected', { count: selected.size })}
       </div>
 
-      <div className={styles.stepActions}>
+      <div className="flex gap-4 mt-auto py-8 sticky bottom-0 z-[1] [background:var(--bg-page)]">
         {/* Skip is NEVER disabled: a still-loading (or hung) relay query must
             not trap the user on this step. */}
-        <Button variant="secondary" onClick={onNext}>{t('wizard.skipForNow')}</Button>
+        <Button className="flex-1" variant="secondary" onClick={onNext}>{t('wizard.skipForNow')}</Button>
         <Button
+          className="flex-1"
           onClick={handleFollow}
           disabled={selected.size === 0 || publishing}
         >

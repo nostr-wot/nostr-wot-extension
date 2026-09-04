@@ -6,7 +6,6 @@ import TopoBg from '@components/TopoBg/TopoBg';
 import useWizardFlow from '@hooks/useWizardFlow';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import WizardSteps from './WizardSteps';
-import styles from './WizardOverlay.module.css';
 
 interface WizardOverlayProps {
   visible: boolean;
@@ -42,8 +41,8 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
   if (!shouldRender) return null;
 
   return (
-    <OverlayPanel showHeader={false} noPadding zIndex={500} animating={animating} className={styles.transparentOverlay}>
-      <TopoBg className={styles.topoBgFill}>
+    <OverlayPanel showHeader={false} noPadding zIndex={500} animating={animating} className="[background:var(--bg-page)] backdrop-filter-none">
+      <TopoBg className="flex flex-col flex-1 min-h-0">
         {flow.loading ? null : (
           <WizardSteps
             flow={flow}

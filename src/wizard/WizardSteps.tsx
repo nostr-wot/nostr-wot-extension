@@ -15,7 +15,6 @@ import BackupStep from './BackupStep';
 import FollowSuggestionsStep from './FollowSuggestionsStep';
 import PermissionCopyStep from './PermissionCopyStep';
 import DoneStep from './DoneStep';
-import styles from './WizardSteps.module.css';
 
 interface WizardFlow {
   step: string;
@@ -128,7 +127,7 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
   return (
     <>
       {!active.noHeader && (
-        <div className={styles.header}>
+        <div className="flex items-center justify-between px-8 py-6 border-b border-card-border">
           {showBack ? (
             // Same tone/size split as OverlayPanel's header nav (back is
             // brand-coloured, close is neutral) — this header hand-rolled its
@@ -137,19 +136,23 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
               <IconChevronLeft />
             </IconButton>
           ) : (
-            <div className={styles.placeholder} />
+            <div className="w-[36px]" />
           )}
-          <span className={styles.title}>{active.title}</span>
+          <span className="text-2xl font-bold text-heading">{active.title}</span>
           {onClose ? (
             <IconButton size={36} onClick={onClose} aria-label={t('common.close')}>
               <IconClose />
             </IconButton>
           ) : (
-            <div className={styles.placeholder} />
+            <div className="w-[36px]" />
           )}
         </div>
       )}
-      <div className={`${styles.body} ${bodyClassName || ''}`}>
+      {/* bodyClassName REPLACES the default padding rather than joining it —
+          onboarding needs different padding, and two padding utilities on the
+          same element would leave the winner up to Tailwind's generation
+          order instead of the caller's intent. */}
+      <div className={`flex-1 overflow-y-auto flex flex-col ${bodyClassName || 'pt-10 px-8 pb-0'}`}>
         {active.content}
       </div>
     </>
