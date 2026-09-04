@@ -1,4 +1,5 @@
 import React from 'react';
+import Chip from '@components/Chip/Chip';
 import styles from './ChipGroup.module.css';
 
 interface ChipOption {
@@ -17,13 +18,13 @@ export default function ChipGroup({ options, value, onChange, className = '' }: 
   return (
     <div className={`${styles.chipGroup} ${className}`}>
       {options.map((opt) => (
-        <button
+        <Chip
           key={String(opt.value)}
-          className={`${styles.chip} ${value === opt.value ? styles.chipActive : ''}`}
+          selected={value === opt.value}
           onClick={() => onChange(opt.value)}
         >
           {opt.label}
-        </button>
+        </Chip>
       ))}
     </div>
   );

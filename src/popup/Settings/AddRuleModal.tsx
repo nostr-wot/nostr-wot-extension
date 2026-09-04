@@ -6,6 +6,7 @@ import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';
 import styles from './Settings.module.css';
+import Chip from '@components/Chip/Chip';
 
 
 interface AddRuleModalProps {
@@ -26,9 +27,6 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
   const [customKind, setCustomKind] = useState<string>('');
   const [decision, setDecision] = useState<string>('allow');
   const [useCustom, setUseCustom] = useState<boolean>(false);
-
-  const chipClass = (d: string) =>
-    styles[`chip${d.charAt(0).toUpperCase() + d.slice(1)}`] || '';
 
   const submit = () => {
     onAdd(buildRuleKey(presetKey, customKind, useCustom && !!customKind.trim()), decision);
@@ -81,13 +79,9 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
             <span className={styles.permModalLabel}>{t('perms.decision')}</span>
             <div className={styles.chipGroup}>
               {DECISIONS.map((d) => (
-                <button
-                  key={d}
-                  className={`${styles.chip} ${decision === d ? chipClass(d) : ''}`}
-                  onClick={() => setDecision(d)}
-                >
+                <Chip key={d} tone={d} selected={decision === d} onClick={() => setDecision(d)}>
                   {t(`perms.${d}`)}
-                </button>
+                </Chip>
               ))}
             </div>
           </div>

@@ -103,24 +103,6 @@
   margin-top: var(--sp-2);
 }
 
-.seedWord {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px var(--sp-3);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-heading);
-}
-
-.seedWordNum {
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-muted);
-  min-width: 16px;
-}
-
-
 /* Explanatory paragraphs above the password fields. This dialog exports a
    private key under a password nothing can recover, so it is worth more than
    one line of text. */

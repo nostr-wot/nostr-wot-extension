@@ -1,0 +1,57 @@
+/* Two variants because the product genuinely has two tab designs, and choosing
+   one for both is a design decision rather than a refactor. Worth converging
+   eventually — two looks for one control is the kind of inconsistency nobody
+   decides on, it just accumulates. */
+.tabs {
+  display: flex;
+}
+
+.tab {
+  flex: 1;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  transition: all var(--transition);
+}
+
+/* Outlined segments, each its own bordered control. */
+.outlined {
+  gap: var(--sp-2);
+}
+
+.outlined .tab {
+  padding: var(--sp-4) var(--sp-6);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+}
+
+.outlined .tabActive {
+  border-color: var(--brand);
+  background: var(--brand-tint-active);
+  color: var(--brand);
+}
+
+/* A track with a thumb that moves between segments. */
+.segmented {
+  gap: var(--sp-1);
+  padding: 3px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-panel);
+}
+
+.segmented .tab {
+  padding: 7px 0;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
+.segmented .tabActive {
+  background: var(--bg-elevated);
+  color: var(--brand);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}

@@ -7,6 +7,7 @@ import Button from '@components/Button/Button';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 
 import styles from './Wallet.module.css';
+import Tabs from '@components/Tabs/Tabs';
 
 interface WalletSetupProps {
   onConnected: () => void;
@@ -74,26 +75,16 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
         <SectionLabel>{t('wallet.connectWallet')}</SectionLabel>
         <SectionHint>{t('wallet.connectHint')}</SectionHint>
 
-        <div className={styles.tabs}>
-          <button
-            className={`${styles.tab} ${tab === 'quick' ? styles.tabActive : ''}`}
-            onClick={() => { setTab('quick'); setError(''); }}
-          >
-            {t('wallet.quickSetup')}
-          </button>
-          <button
-            className={`${styles.tab} ${tab === 'nwc' ? styles.tabActive : ''}`}
-            onClick={() => { setTab('nwc'); setError(''); }}
-          >
-            NWC
-          </button>
-          <button
-            className={`${styles.tab} ${tab === 'lnbits' ? styles.tabActive : ''}`}
-            onClick={() => { setTab('lnbits'); setError(''); }}
-          >
-            LNbits
-          </button>
-        </div>
+        <Tabs
+          label={t('wallet.connectWallet')}
+          options={[
+            { value: 'quick', label: t('wallet.quickSetup') },
+            { value: 'nwc', label: 'NWC' },
+            { value: 'lnbits', label: 'LNbits' },
+          ]}
+          value={tab}
+          onChange={(next) => { setTab(next); setError(''); }}
+        />
 
         <div className={styles.form}>
           {tab === 'quick' ? (

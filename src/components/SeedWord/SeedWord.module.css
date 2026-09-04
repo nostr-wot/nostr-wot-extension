@@ -1,0 +1,21 @@
+/* One numbered word of a recovery phrase. Two copies existed, differing only by
+   a pixel of gap and padding — drift rather than a decision. */
+.seedWord {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-heading);
+}
+
+/* The position, which is part of the phrase: a recovery phrase is ordered, and
+   a word read without its index cannot be checked against a written backup. */
+.index {
+  min-width: 16px;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}

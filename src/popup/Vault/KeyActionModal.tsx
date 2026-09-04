@@ -14,6 +14,7 @@ import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import { useVault } from '@popup/context/VaultContext';
 import styles from './KeyActionModal.module.css';
 import { validatePasswordPair, MIN_PASSWORD_LENGTH } from '@shared/passwordPair.ts';
+import SeedWord from '@components/SeedWord/SeedWord';
 
 interface KeyActionModalProps {
   action: string;
@@ -341,10 +342,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
                 <div className={styles.seedGridWrap} onClick={seed.toggleBlur}>
                   <div className={`${styles.seedGrid} ${seed.blurred ? styles.blurred : ''}`}>
                     {seed.value.map((word, i) => (
-                      <span key={i} className={styles.seedWord}>
-                        <span className={styles.seedWordNum}>{i + 1}</span>
-                        {word}
-                      </span>
+                      <SeedWord key={i} index={i + 1} word={word} />
                     ))}
                   </div>
                 </div>

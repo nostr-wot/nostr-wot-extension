@@ -1,0 +1,50 @@
+/* One small pill. ChipGroup renders a row of these; the permission screen needs
+   them individually because each carries the colour of the decision it means. */
+.chip {
+  padding: var(--sp-2) var(--sp-5);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.chip:hover {
+  background: var(--card-bg);
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Selected, in the neutral (brand) sense. */
+.selected {
+  border-color: var(--brand);
+  background: var(--brand-tint-active);
+  color: var(--brand);
+}
+
+/* Toned selections, where the chip's colour carries the meaning rather than
+   just marking which one is on: allow is not merely "selected", it is allow. */
+.allow {
+  background: var(--success-tint);
+  border-color: var(--success-tint);
+  color: var(--success);
+}
+
+.deny {
+  background: var(--error-tint);
+  border-color: var(--error-tint);
+  color: var(--error);
+}
+
+.ask {
+  background: var(--warning-tint);
+  border-color: var(--warning-tint);
+  color: var(--warning);
+}

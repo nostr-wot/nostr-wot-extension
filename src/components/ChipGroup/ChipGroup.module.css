@@ -3,29 +3,3 @@
   gap: var(--sp-3);
   flex-wrap: wrap;
 }
-
-.chip {
-  padding: var(--sp-4) var(--sp-8);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  background: var(--card-bg);
-  color: var(--text-body);
-  font-size: var(--fs-md);
-  font-weight: var(--fw-medium);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.chip:hover {
-  background: var(--card-active);
-}
-
-.chipActive {
-  background: var(--brand);
-  color: var(--text-on-brand);
-  border-color: var(--brand);
-}
-
-.chipActive:hover {
-  background: var(--brand-hover);
-}

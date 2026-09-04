@@ -23,6 +23,7 @@ import EmptyState from '@components/EmptyState/EmptyState';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import styles from './Settings.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
+import Chip from '@components/Chip/Chip';
 
 
 const COMMON_PERM_KEYS = [
@@ -197,9 +198,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
 
 
-  const chipClass = (d: string) =>
-    styles[`chip${d.charAt(0).toUpperCase() + d.slice(1)}`] || '';
-
   const availableKeys = availablePermKeys(COMMON_PERM_KEYS, domainPerms);
 
   // Detail view
@@ -223,12 +221,16 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
                     {formatLabel(key)}
                   </span>
                   <div className={styles.permDecisionWrap} ref={openDropdownKey === key ? dropdownRef : undefined}>
-                    <button
-                      className={`${styles.chip} ${chipClass(current)}`}
+                    {/* Always toned: this chip is not a selection among
+                        options, it is the decision currently in force, and its
+                        colour is how that reads at a glance. */}
+                    <Chip
+                      selected
+                      tone={current as 'allow' | 'deny' | 'ask'}
                       onClick={() => setOpenDropdownKey(openDropdownKey === key ? null : key)}
                     >
                       {t(`perms.${current}`)}
-                    </button>
+                    </Chip>
                     {openDropdownKey === key && (
                       <div className={styles.permDecisionDropdown}>
                         {DECISIONS.map((d) => (

@@ -145,40 +145,6 @@
   gap: var(--sp-2);
 }
 
-.chip {
-  padding: var(--sp-2) var(--sp-5);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold);
-  border: 1px solid var(--card-border);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.chip:hover {
-  background: var(--card-bg);
-}
-
-.chipAllow {
-  background: rgba(5, 150, 105, 0.1);
-  color: var(--success);
-  border-color: rgba(5, 150, 105, 0.2);
-}
-
-.chipDeny {
-  background: rgba(220, 38, 38, 0.1);
-  color: var(--error);
-  border-color: rgba(220, 38, 38, 0.2);
-}
-
-.chipAsk {
-  background: rgba(217, 119, 6, 0.1);
-  color: var(--warning);
-  border-color: rgba(217, 119, 6, 0.2);
-}
-
 /* ── Permission detail actions ── */
 
 .permDetailActions {
