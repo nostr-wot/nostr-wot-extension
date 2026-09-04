@@ -161,7 +161,9 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         <EncryptedBackupModal
           rpcMethod="onboarding_exportNcryptsec"
           onClose={() => setEncModalOpen(false)}
-          onSuccess={() => { setEncModalOpen(false); setBackedUp(true); }}
+          // See BackupStep: marking the backup taken must not close the
+          // dialog, or downloading makes copying unreachable.
+          onSuccess={() => setBackedUp(true)}
         />
       )}
     </div>

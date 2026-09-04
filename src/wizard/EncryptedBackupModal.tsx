@@ -1,82 +1,32 @@
-import { useState, ChangeEvent } from 'react';
-import { rpc } from '@shared/rpc.ts';
-import { downloadFile } from '@shared/downloadFile.ts';
-import { validatePasswordPair } from '@shared/passwordPair.ts';
-import { t } from '@lib/i18n.js';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
-import styles from './WizardOverlay.module.css';
+import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
+import { t } from '@lib/i18n.js';
 
 interface EncryptedBackupModalProps {
   /** BackupStep exports from an already-created vault; CreateStep exports mid-onboarding,
-   *  before the vault is the current account. Same dialog, different backend call. */
+   *  before the vault is the current account. Same form, different backend call. */
   rpcMethod: 'vault_exportNcryptsec' | 'onboarding_exportNcryptsec';
   onClose: () => void;
   onSuccess: () => void;
 }
 
 /**
- * Password-protected seed export, shared by BackupStep and CreateStep.
+ * The wizard's shell around the shared encrypted-backup form.
  *
- * Its two password fields and their error lived in both steps, along with a duplicate
- * `<Modal>` and a duplicate handler differing only in the RPC name. Mounting it only
- * while open makes closing it the reset, the same way AddRuleModal resets its fields.
+ * It used to be its own implementation, and a thinner one: two bare password
+ * fields, a button that only objected once pressed, no word about the password
+ * being unrecoverable, and download as the only way to get the result out. The
+ * vault's key dialog had all of that. Nothing about onboarding makes the
+ * operation less irreversible, so it now runs the same form.
+ *
+ * `onSuccess` marks the seed backed up, and the form fires it when the backup
+ * has actually left the dialog rather than when it was generated — a file the
+ * user never received is not a backup.
  */
 export default function EncryptedBackupModal({ rpcMethod, onClose, onSuccess }: EncryptedBackupModalProps) {
-  const [encPw, setEncPw] = useState<string>('');
-  const [encConfirm, setEncConfirm] = useState<string>('');
-  const [encError, setEncError] = useState<string>('');
-
-  const handleDownloadEncrypted = async () => {
-    setEncError('');
-    const problem = validatePasswordPair(encPw, encConfirm);
-    if (problem) {
-      setEncError(t(problem === 'tooShort' ? 'wizard.minChars' : 'key.passwordsNoMatch'));
-      return;
-    }
-    try {
-      const ncryptsec = await rpc<string>(rpcMethod, { password: encPw });
-      if (ncryptsec) {
-        downloadFile(ncryptsec, `nostr-backup-${Date.now()}.ncryptsec`);
-        onSuccess();
-      }
-    } catch {
-      setEncError(t('wizard.failedGenerateBackup'));
-    }
-  };
-
   return (
-    <Modal
-      title={t('wizard.encryptBackup')}
-      onClose={onClose}
-      footerRow
-      footer={(
-        <>
-          <Button variant="secondary" small onClick={onClose}>{t('common.cancel')}</Button>
-          <Button small onClick={handleDownloadEncrypted}>{t('common.download')}</Button>
-        </>
-      )}
-    >
-      <p>{t('wizard.encryptBackupDesc')}</p>
-      <div className={styles.formGroup}>
-        <Input
-          type="password"
-          showToggle
-          placeholder={t('key.passwordMinChars')}
-          value={encPw}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setEncPw(e.target.value)}
-        />
-      </div>
-      <div className={styles.formGroup}>
-        <Input
-          type="password"
-          placeholder={t('key.confirmPassword')}
-          value={encConfirm}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setEncConfirm(e.target.value)}
-        />
-      </div>
-      {encError && <div className={styles.error}>{encError}</div>}
+    <Modal title={t('wizard.encryptBackup')} onClose={onClose}>
+      <EncryptedBackupForm rpcMethod={rpcMethod} onClose={onClose} onExported={onSuccess} />
     </Modal>
   );
 }

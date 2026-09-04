@@ -73,7 +73,10 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
         <EncryptedBackupModal
           rpcMethod="vault_exportNcryptsec"
           onClose={() => setEncModalOpen(false)}
-          onSuccess={() => { setEncModalOpen(false); setSafetyShown(true); }}
+          // Marks the backup taken without closing: the dialog offers both a
+          // download and a copy, and dismissing on the first makes the second
+          // unreachable. Closing stays the user's decision.
+          onSuccess={() => setSafetyShown(true)}
         />
       )}
     </div>

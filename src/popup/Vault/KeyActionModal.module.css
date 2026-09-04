@@ -30,11 +30,10 @@
 }
 
 .keyDisplay {
-  /* A <button> now, for the keyboard — reset the chrome the UA adds. */
+  /* Rendered as a <button> for the keyboard. Only these three of the usual
+     reset are needed — the rule sets its own background, border and monospace
+     font below, so resetting those first would be three dead declarations. */
   width: 100%;
-  border: none;
-  background: none;
-  font-family: inherit;
   text-align: left;
   cursor: pointer;
   padding: var(--sp-6);
@@ -115,30 +114,4 @@
   gap: var(--sp-3);
   justify-content: flex-end;
   margin-top: var(--sp-2);
-}
-
-/* Explanatory paragraphs above the password fields. This dialog exports a
-   private key under a password nothing can recover, so it is worth more than
-   one line of text. */
-.explain {
-  font-size: var(--fs-sm);
-  line-height: var(--lh-normal);
-  color: var(--text-secondary);
-}
-
-/* Live requirement checklist. The Generate button is disabled until both are
-   met; without this the user cannot tell which one it is waiting on. */
-.requirements {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
-.requirementMet {
-  color: var(--success);
 }

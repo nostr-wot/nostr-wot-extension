@@ -15,6 +15,7 @@ import { useVault } from '@popup/context/VaultContext';
 import styles from './KeyActionModal.module.css';
 import { validatePasswordPair, MIN_PASSWORD_LENGTH } from '@shared/passwordPair.ts';
 import SeedWord from '@components/SeedWord/SeedWord';
+import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
 
 interface KeyActionModalProps {
   action: string;
@@ -30,20 +31,12 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
      check by eye, so a clipboard the browser refused looked exactly like a
      successful copy. */
   const nsecCopy = useCopy();
-  const ncCopy = useCopy();
   const seedCopy = useCopy();
 
   // nsec state
   // 30s for the nsec, 60s for the seed phrase — the two timings this screen
   // has always used, now one machine instead of two hand-written copies.
   const nsec = useTimedReveal<string>('', 30_000);
-
-  // ncryptsec state
-  const [ncPassword, setNcPassword] = useState<string>('');
-  const [ncConfirm, setNcConfirm] = useState<string>('');
-  const [ncValue, setNcValue] = useState<string>('');
-  const [ncError, setNcError] = useState<string>('');
-  const [ncGenerating, setNcGenerating] = useState<boolean>(false);
 
   // seed state
   const seed = useTimedReveal<string[]>([], 60_000);
@@ -89,13 +82,16 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
    *
    * This used to be a nine-setter list, which is the shape where a newly added
    * secret field is quietly left out. The two reveals clear themselves — and
-   * cancel their auto-hide timers — through the hook; the rest is the encrypt
-   * form, which holds a password rather than a key.
+   * cancel their auto-hide timers — through the hook; the rest is the seed's
+   * encrypt form, which holds a password rather than a key.
+   *
+   * The ncryptsec export is not listed because it is mounted only while that
+   * action is selected, so unmounting it IS its reset — the same reason
+   * AddRuleModal has no reset either.
    */
   const handleClose = () => {
     nsec.clear();
     seed.clear();
-    setNcValue('');
     setSeedEncMode(false);
     setSeedEncPw('');
     setSeedEncConfirm('');
@@ -109,35 +105,6 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
       const value = await rpc<string>('vault_exportNsec');
       if (value) nsec.reveal(value);
     } catch { /* ignore */ }
-  };
-
-  // --- ncryptsec ---
-  // Derived, not stored: the button's guard and the checklist must agree, and
-  // two pieces of state for one question is how they stop agreeing.
-  const ncLongEnough = ncPassword.length >= MIN_PASSWORD_LENGTH;
-  const ncMatches = ncPassword.length > 0 && ncPassword === ncConfirm;
-  const ncReady = ncLongEnough && ncMatches;
-
-  const downloadNcryptsec = () => {
-    downloadFile(ncValue, `nostr-key-${Date.now()}.ncryptsec`);
-  };
-
-  const generateNcryptsec = async () => {
-    setNcError('');
-    const ncProblem = validatePasswordPair(ncPassword, ncConfirm);
-    if (ncProblem) {
-      setNcError(t(ncProblem === 'tooShort' ? 'key.passwordMin8' : 'key.passwordsNoMatch'));
-      return;
-    }
-    setNcGenerating(true);
-    try {
-      const result = await rpc<string>('vault_exportNcryptsec', { password: ncPassword });
-      if (result) setNcValue(result);
-      else setNcError(t('key.failedExport'));
-    } catch {
-      setNcError(t('key.failedExport'));
-    }
-    setNcGenerating(false);
   };
 
   // --- seed ---
@@ -263,72 +230,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
             )}
           </div>
         ) : action === 'ncryptsec' ? (
-          <div className={styles.section}>
-            {!ncValue ? (
-              <>
-                <p className={styles.explain}>{t('key.ncryptsecExplain')}</p>
-                <p className={styles.explain}>{t('key.ncryptsecExplainMore')}</p>
-                <div className={styles.warning}>
-                  <IconWarning />
-                  <span>{t('key.ncryptsecNoRecovery')}</span>
-                </div>
-
-                <label>{t('key.encryptionPassword')}</label>
-                <Input
-                  type="password"
-                  showToggle
-                  placeholder={t('key.passwordMinChars')}
-                  value={ncPassword}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNcPassword(e.target.value)}
-                />
-                <Input
-                  type="password"
-                  placeholder={t('key.confirmPassword')}
-                  value={ncConfirm}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNcConfirm(e.target.value)}
-                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && ncReady && generateNcryptsec()}
-                />
-
-                {/* Say what is still missing rather than only refusing on submit.
-                    The button below is disabled until both are met, so without
-                    this the user is left guessing which one it is waiting on. */}
-                <ul className={styles.requirements}>
-                  <li className={ncLongEnough ? styles.requirementMet : ''}>
-                    {ncLongEnough ? '\u2713' : '\u25cb'} {t('key.reqMinChars')}
-                  </li>
-                  <li className={ncMatches ? styles.requirementMet : ''}>
-                    {ncMatches ? '\u2713' : '\u25cb'} {t('key.reqMatch')}
-                  </li>
-                </ul>
-
-                {ncError && <div className={styles.error}>{ncError}</div>}
-                <div className={styles.actions}>
-                  <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
-                  <Button small onClick={generateNcryptsec} disabled={ncGenerating || !ncReady}>
-                    {ncGenerating ? t('key.generating') : t('key.generate')}
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={styles.keyDisplay}>{ncValue}</div>
-                <div className={styles.hint}>{t('key.storeHint')}</div>
-                {/* Download first: the file is the artefact worth keeping, and
-                    ncryptsec is the interchange format other clients import.
-                    Copying is offered too, but selecting the string by hand
-                    should never have been the way to get it out. */}
-                <div className={styles.actions}>
-                  <Button small onClick={downloadNcryptsec}>{t('key.downloadBackupFile')}</Button>
-                  <Button variant="secondary" small onClick={() => ncCopy.copy(ncValue)}>
-                    {ncCopy.copied ? t('common.copied') : t('common.copy')}
-                  </Button>
-                </div>
-                <div className={styles.actions}>
-                  <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
-                </div>
-              </>
-            )}
-          </div>
+          <EncryptedBackupForm rpcMethod="vault_exportNcryptsec" onClose={handleClose} />
         ) : action === 'seed' ? (
           <div className={styles.section}>
             {!seed.revealed ? (
