@@ -83,7 +83,7 @@ sequence.
 | `tests/profile-read.test.ts` | A kind:0 read must say whether anyone answered; merging into the result of a silent read publishes a profile with fields erased |
 | `tests/profile-metadata.test.ts` | The kind:0 read-modify-write behind Edit Profile — publishing replaces the whole event |
 | `tests/relay-cache.test.ts` | The background's cached-first relay reads; an unreachable read is never cached and never evicts a real answer |
-| `tests/activity.test.ts` | The activity log's grouping and filtering |
+| `tests/activity.test.ts` | The activity log's grouping and filtering, and the account/type filter option builders pulled out of `ActivityOverlay` |
 | `tests/approval.test.ts` | The approval queue's decision logic — which pending requests a given site may be shown |
 | `tests/permissions-ui.test.ts` | The permission-screen decision helpers |
 | `tests/pqc-state.test.ts` | What the post-quantum surfaces say; an unreachable relay read is not "nothing is published" |
@@ -100,6 +100,7 @@ sequence.
 | `tests/i18n-keys.test.ts` | Every string the UI asks for exists, in every locale, with the same placeholders |
 | `tests/theme-tokens.test.ts` | Every `var(--x)` resolves, and no declaration is malformed by a stray bracket — both fail silently in CSS |
 | `tests/paged-list.test.ts` | `paginate` — the client-side "load more" window shared by the contexts |
+| `tests/format-time.test.ts` | `classifyDay` — the today/yesterday boundary behind the activity log's day headers |
 | `tests/cn.test.ts` | `cn()` — that a caller's utility overrides the component's, and that a font size and a colour are not mistaken for one conflict |
 | `tests/tailwind-classes.test.ts` | Every static Tailwind utility the source names generates a rule — a misspelled utility is silent, and the compiler never sees these strings |
 | `tests/css-selectors.test.ts` | No stylesheet selector names a class nothing puts on an element — the rule that survives an extraction and applies to nothing |

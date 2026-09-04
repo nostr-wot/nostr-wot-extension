@@ -1,17 +1,8 @@
 import React, { useState } from 'react';
-import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import {
-  filterPendingForDomain,
-  partitionPending,
-  groupApprovals,
-  groupNip46,
   asGroup,
-  liveIds,
-  isRequestLive,
-  isGroupLive,
   type PendingRequest,
   type ApprovalGroup,
 } from '@domain/permissions/approval.ts';

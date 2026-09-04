@@ -4,6 +4,7 @@ import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
 import type { ApprovalGroup } from '@domain/permissions/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
 import Card from '@components/Card/Card';
+import Button from '@components/Button/Button';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;
@@ -39,17 +40,24 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
         )}
       </div>
       {isNip46 && onCancel ? (
-        // Not IconButton: its tone="danger" only colours :hover, staying
-        // chromeless at rest by design. This has to read as cancellable
-        // without a hover — an async NIP-46 wait with no other visible
-        // control — so it keeps its own always-visible border and glyph.
-        <button
-          className="shrink-0 w-12 h-12 p-0 flex items-center justify-center border border-[rgba(239,68,68,0.3)] rounded-sm bg-transparent text-error text-2xl leading-none cursor-pointer font-[inherit] transition-all hover:bg-[rgba(239,68,68,0.08)] hover:border-[rgba(239,68,68,0.5)]"
+        // The shared Button, secondary/outline — not danger. The label is
+        // "Cancel" (t('approval.cancelNip46')), not a destructive action, so
+        // it follows the convention (cancel is secondary, destructive is
+        // danger) rather than the red glyph this used to hand-roll. Outline's
+        // border is visible at rest, same as the hand-rolled version needed:
+        // an async NIP-46 wait has no other visible control, so this has to
+        // read as cancellable without a hover (IconButton's tones only
+        // colour on hover, which is why this was not one).
+        <Button
+          variant="secondary"
+          outline
+          small
+          className="shrink-0 w-12 h-12 p-0 text-2xl leading-none rounded-sm"
           onClick={(e) => { e.stopPropagation(); onCancel(); }}
           title={t('approval.cancelNip46')}
         >
           &times;
-        </button>
+        </Button>
       ) : !isNip46 ? <IconChevronRight size={16} className="shrink-0 text-muted" /> : null}
     </Card>
   );

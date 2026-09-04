@@ -16,6 +16,8 @@ import {
   filterActivityEntries,
   countActivityFilters,
   activityDomains,
+  activityAccountOptions,
+  availableTypeKeys,
   buildDayGroups,
   TYPE_METHODS,
   type ActivityEntry,
@@ -144,5 +146,70 @@ describe('buildDayGroups', () => {
     // reappearing is a real boundary rather than something to merge.
     const out = buildDayGroups([{ day: 'Mon' }, { day: 'Tue' }, { day: 'Mon' }]);
     assert.equal(out.filter((i) => i.type === 'header').length, 3);
+  });
+});
+
+describe('activityAccountOptions', () => {
+  it('labels a pubkey by profile name first', () => {
+    const out = activityAccountOptions(
+      [entry({ pubkey: 'a' })],
+      [{ id: '1', pubkey: 'a', name: 'nickname' }],
+      { a: { name: 'Profile Name' } },
+    );
+    assert.deepEqual(out, [{ pubkey: 'a', label: 'Profile Name' }]);
+  });
+
+  it('falls back to the account nickname when there is no profile', () => {
+    const out = activityAccountOptions(
+      [entry({ pubkey: 'a' })],
+      [{ id: '1', pubkey: 'a', name: 'nickname' }],
+      {},
+    );
+    assert.deepEqual(out, [{ pubkey: 'a', label: 'nickname' }]);
+  });
+
+  it('falls back to a truncated npub when neither exists', () => {
+    // A pubkey that appears in the log but matches no known account — e.g.
+    // one whose account was since deleted.
+    const out = activityAccountOptions([entry({ pubkey: 'deadbeef'.repeat(8) })], [], {});
+    assert.equal(out.length, 1);
+    assert.notEqual(out[0].label, 'deadbeef'.repeat(8));
+  });
+
+  it('is de-duplicated and drops entries with no pubkey', () => {
+    const out = activityAccountOptions(
+      [entry({ pubkey: 'a' }), entry({ pubkey: 'a' }), entry({ pubkey: undefined })],
+      [],
+      {},
+    );
+    assert.equal(out.length, 1);
+  });
+});
+
+describe('availableTypeKeys', () => {
+  const entries = [
+    entry({ method: 'signEvent', domain: 'alice.example', pubkey: 'a' }),
+    entry({ method: 'nip04Encrypt', domain: 'bob.example', pubkey: 'b' }),
+    entry({ method: 'nip44Decrypt', domain: 'bob.example', pubkey: 'b' }),
+  ];
+
+  it('simple mode collapses nip04/nip44 into encrypt/decrypt', () => {
+    assert.deepEqual(availableTypeKeys(entries, {}, false), ['signEvent', 'encrypt', 'decrypt']);
+  });
+
+  it('advanced mode lists the wire methods instead', () => {
+    assert.deepEqual(availableTypeKeys(entries, {}, true), ['signEvent', 'nip04Encrypt', 'nip44Decrypt']);
+  });
+
+  it('scopes to the selected domain', () => {
+    assert.deepEqual(availableTypeKeys(entries, { domain: 'alice.example' }, false), ['signEvent']);
+  });
+
+  it('scopes to the selected account', () => {
+    assert.deepEqual(availableTypeKeys(entries, { account: 'b' }, false), ['encrypt', 'decrypt']);
+  });
+
+  it('offers nothing for an empty log', () => {
+    assert.deepEqual(availableTypeKeys([], {}, false), []);
   });
 });
