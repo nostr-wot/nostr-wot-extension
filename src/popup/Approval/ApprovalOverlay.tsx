@@ -113,12 +113,12 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
   return (
     <>
-      <div className={styles.scrim} />
-      <div className={styles.overlay}>
-        <div className={styles.header}>
-          <span className={styles.title}>{t('approval.pendingRequests')}</span>
-          <span className={styles.count}>{totalCount}</span>
-          <div className={styles.headerActions}>
+      <div className={`${styles.scrim} absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)]`} />
+      <div className={`${styles.overlay} absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-[rgba(255,255,255,0.96)] backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] flex flex-col p-8`}>
+        <div className="flex items-center gap-4 mb-6 flex-wrap">
+          <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
+          <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
+          <div className="ml-auto flex items-center gap-3">
             {allRequests.length > 1 && (
               <Button small outline onClick={() => setExpanded(!expanded)}>
                 {expanded ? t('approval.grouped') : t('approval.expanded')}
@@ -132,14 +132,14 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           </div>
         </div>
         {actionError && (
-          <div className={styles.actionError} role="alert">{actionError}</div>
+          <div className="py-3 px-6 text-sm text-error text-center" role="alert">{actionError}</div>
         )}
         {groups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
-          <div className={styles.legend}>
+          <div className="pt-2 px-6 pb-4 text-xs text-muted text-center">
             {t('approval.appliesToAllAccounts')}
           </div>
         )}
-        <div className={styles.list}>
+        <div className="flex-1 overflow-y-auto flex flex-col gap-4">
           {expanded ? (
             allRequests.map((req) => (
               <ApprovalCard

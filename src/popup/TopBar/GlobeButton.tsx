@@ -6,7 +6,6 @@ import { resolveActiveTabDomain } from '@shared/activeTabDomain.ts';
 import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
-import styles from './TopBar.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useBrowserStorage from '@hooks/useBrowserStorage.ts';
 
@@ -89,10 +88,10 @@ export default function GlobeButton() {
   const iconUrl = domain ? getFaviconUrl(domain) : null;
 
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div ref={ref} className="relative">
       <IconButton
         tone="brand"
-        className={styles.globeBtn}
+        className="relative"
         title={t('topbar.siteConnection')}
         aria-label={t('topbar.siteConnection')}
         onClick={() => setOpen((v) => !v)}
@@ -101,17 +100,19 @@ export default function GlobeButton() {
         {/* Neutral/blank dot while loading (connected === null) so we never
             flash a misleading "connected" or "not connected" state. */}
         {connected !== null && (
-          <span className={`${styles.globeDot} ${connected ? styles.globeConnected : styles.globeDisconnected}`} />
+          <span
+            className={`absolute top-2 right-2 size-3.5 rounded-full border-[1.5px] border-[rgba(255,255,255,0.8)] ${connected ? 'bg-success-bright' : 'bg-error-bright'}`}
+          />
         )}
       </IconButton>
 
       {open && (
-        <div className={styles.globePopover}>
+        <div className="absolute top-full right-0 mt-2 bg-elevated border border-card-border rounded-panel py-6 px-7 z-[calc(var(--z-topbar)+1)] shadow-pop min-w-100 text-center">
           {iconUrl && (
-            <img src={iconUrl} alt={domain!} className={styles.clientIconLarge} />
+            <img src={iconUrl} alt={domain!} className="w-16 h-16 rounded-sm object-contain mb-3" />
           )}
-          <div className={styles.globeDomain}>{domain || '—'}</div>
-          <div className={styles.globeStatus}>
+          <div className="text-md font-semibold text-heading mb-1 break-all">{domain || '—'}</div>
+          <div className="text-xs text-secondary mb-5">
             {connected === null
               ? t('common.loading')
               : connected
@@ -132,7 +133,7 @@ export default function GlobeButton() {
           {connected === false && domain && (
             <>
               {connectError && (
-                <div className={styles.globeError}>{t('globe.connectFailed')}</div>
+                <div className="text-xs text-error mb-4">{t('globe.connectFailed')}</div>
               )}
               <Button small onClick={handleConnect} disabled={connecting} style={{ width: '100%' }}>
                 {connecting ? t('common.loading') : t('common.connect')}

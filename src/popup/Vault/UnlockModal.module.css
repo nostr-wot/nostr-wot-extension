@@ -1,20 +1,11 @@
+/* CSS Modules scope @keyframes per file, so a Tailwind arbitrary value
+   can't reach these by name from a class in this file — verified against
+   the compiled output, where every file's own "spin"-style keyframe gets
+   its own hash. The four animations here (entrance/exit for both the scrim
+   and the card) stay paired with the elements that use them; everything
+   else about those elements moved to utilities. */
 .overlay {
-  position: absolute;
-  inset: 0;
-  z-index: var(--z-lock);
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--sp-12);
   animation: backdropIn var(--transition-slow) ease-out;
-}
-
-.fullScreen {
-  z-index: var(--z-lock);
-  background: var(--scrim-heavy);
-  backdrop-filter: blur(20px);
 }
 
 .exiting {
@@ -22,18 +13,7 @@
 }
 
 .card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--card-border);
-  border-radius: 14px;
-  padding: var(--sp-12);
-  width: 100%;
-  max-width: 320px;
   animation: modalFadeIn var(--transition-slow) ease-out;
-}
-
-.cardFullScreen {
-  background: var(--surface-glass-heavy);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
 }
 
 .cardExiting {
@@ -45,147 +25,11 @@
 @keyframes modalFadeIn  { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 @keyframes modalFadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95); } }
 
-.account {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-4);
-  margin-bottom: var(--sp-8);
-}
-
-.avatar, .avatarFallback {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-full);
-}
-
-.avatar {
-  object-fit: cover;
-}
-
-.avatarFallback {
-  background: rgba(99, 102, 241, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-semibold);
-  color: var(--text-secondary);
-}
-
-.name {
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  color: var(--text-heading);
-}
-
-.count {
-  font-size: var(--fs-sm);
-  color: var(--text-secondary);
-  text-align: center;
-  margin-bottom: var(--sp-8);
-}
-
-.input {
-  width: 100%;
-  padding: var(--sp-5) var(--sp-6);
-  font-size: var(--fs-md);
-  background: var(--brand-tint-hover);
-  border: 1px solid var(--card-active);
-  border-radius: var(--radius-md);
-  color: var(--text-heading);
-  margin-bottom: var(--sp-4);
-  box-sizing: border-box;
-}
-
-.input:focus {
-  outline: none;
-  border-color: rgba(99, 102, 241, 0.5);
-}
-
-.waitingEvents {
-  width: 100%;
-  margin-top: var(--sp-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-}
-
-.waitingLabel {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: var(--sp-1);
-}
-
-.waitingEvent {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--brand-tint-hover);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-sm);
-}
-
-.waitingEventLabel {
-  font-weight: var(--fw-medium);
-  color: var(--text-heading);
-}
-
-.waitingEventOrigin {
-  color: var(--text-muted);
-  flex: 1;
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* The dismiss button here used to be bespoke; it is now
-   <IconButton tone="danger" size={20}>, which already covers this shape. */
-.actions {
-  display: flex;
-  gap: var(--sp-4);
-  margin-top: var(--sp-4);
-}
-
-.actions button {
-  flex: 1;
-}
-
-/* Layout only — LinkButton supplies the surface. */
-.resetLink {
-  display: block;
-  width: 100%;
-  margin-top: var(--sp-6);
-  text-align: center;
-}
-
+/* Layout is a utility on the <LinkButton>; the hover colour stays here
+   because it overrides LinkButton's own hover treatment, and an unlayered
+   CSS Modules rule always outranks a Tailwind utility (which tailwind.css
+   puts in a named `utilities` layer) regardless of source order — see
+   docs/component-standards.md §7's cascade-order note. */
 .resetLink:hover {
   color: var(--error);
-}
-
-.resetConfirm {
-  margin-top: var(--sp-6);
-  padding: var(--sp-6);
-  background: rgba(239, 68, 68, 0.06);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: var(--radius-md);
-}
-
-.resetWarning {
-  font-size: var(--fs-xs);
-  color: var(--error);
-  margin: 0 0 var(--sp-5);
-  line-height: var(--lh-normal);
-}
-
-.resetActions {
-  display: flex;
-  gap: var(--sp-4);
-}
-
-.resetActions button {
-  flex: 1;
 }

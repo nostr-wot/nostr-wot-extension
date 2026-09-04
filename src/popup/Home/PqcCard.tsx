@@ -4,7 +4,6 @@ import { t } from '@lib/i18n.js';
 import { IconKey, IconShield, IconWarning } from '@assets';
 import { useNavigate } from './NavigationContext';
 import Card from '@components/Card/Card';
-import styles from './PqcCard.module.css';
 import { usePqc } from '@popup/context/PqcContext';
 
 /**
@@ -31,41 +30,50 @@ export default function PqcCard() {
 
   if (!state) return null;
 
-  const COPY: Record<PqcCardState, { icon: React.ReactNode; title: string; desc: string; className: string }> = {
+  const COPY: Record<PqcCardState, { icon: React.ReactNode; title: string; desc: string }> = {
     enabled: {
       icon: <IconShield size={18} />,
       title: t('pqc.cardEnabledTitle'),
       desc: t('pqc.cardEnabledDesc'),
-      className: styles.pqcCardOn,
     },
     stale: {
       icon: <IconWarning size={18} />,
       title: t('pqc.cardStaleTitle'),
       desc: t('pqc.cardStaleDesc'),
-      className: styles.pqcCardWarn,
     },
     setup: {
       icon: <IconKey size={18} />,
       title: t('pqc.cardTitle'),
       desc: t('pqc.cardDesc'),
-      className: '',
     },
     import: {
       icon: <IconKey size={18} />,
       title: t('pqc.cardImportTitle'),
       desc: t('pqc.cardImportDesc'),
-      className: '',
     },
   };
 
-  const { icon, title, desc, className } = COPY[state];
+  const { icon, title, desc } = COPY[state];
+
+  // "On" is a status, not a call to action, so its icon reads calmer than the
+  // setup invitation; "stale" needs to catch the eye because senders are
+  // currently encrypting to the wrong key. `.pqcCardOn strong` never changed
+  // the title colour in practice — it restated the same --text-heading the
+  // base rule already set — so there is no "enabled" title override here.
+  const iconTone = state === 'enabled' ? 'text-success' : state === 'stale' ? 'text-warning' : 'text-brand';
+  const cardTone = state === 'stale' ? 'border-warning' : '';
 
   return (
-    <Card as="button" variant="flat" className={`${styles.pqcCard} ${className}`.trim()} onClick={navigate.openPqc}>
-      <div className={styles.pqcIcon}>{icon}</div>
-      <div className={styles.pqcText}>
-        <strong>{title}</strong>
-        <span>{desc}</span>
+    <Card
+      as="button"
+      variant="flat"
+      className={`flex items-center gap-6 w-full py-6 px-7 mb-0 cursor-pointer text-left transition-colors hover:border-brand ${cardTone}`.trim()}
+      onClick={navigate.openPqc}
+    >
+      <div className={`flex items-center justify-center w-16 h-16 shrink-0 rounded-md bg-card-active ${iconTone}`}>{icon}</div>
+      <div className="flex flex-col">
+        <strong className="block text-md font-semibold text-heading">{title}</strong>
+        <span className="text-xs leading-normal text-secondary">{desc}</span>
       </div>
     </Card>
   );

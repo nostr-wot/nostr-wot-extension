@@ -18,7 +18,6 @@ import LinkButton from '@components/LinkButton/LinkButton';
 import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import { IconCamera, IconChevronDown } from '@assets';
-import styles from './EditProfileOverlay.module.css';
 import FormError from '@components/FormError/FormError';
 
 const STEPS = { FORM: 0, UPLOADING: 1, PREVIEW: 2, PUBLISHING: 3, DONE: 4 } as const;
@@ -151,31 +150,35 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   };
 
   const renderForm = () => (
-    <div className={styles.body}>
-      <div className={styles.avatarPicker}>
-        <button type="button" className={styles.avatarCircle} onClick={() => fileRef.current?.click()}>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
+      <div className="flex flex-col items-center gap-3 mb-2">
+        <button
+          type="button"
+          className="relative w-40 h-40 p-0 font-[inherit] rounded-full cursor-pointer overflow-hidden bg-brand-light flex items-center justify-center border-2 border-card-border transition-colors duration-slow hover:border-brand"
+          onClick={() => fileRef.current?.click()}
+        >
           {displayPicture ? (
-            <img src={displayPicture} alt="" className={styles.avatarImg} />
+            <img src={displayPicture} alt="" className="w-full h-full object-cover" />
           ) : (
-            <span className={styles.avatarPlaceholder}>{initial}</span>
+            <span className="text-display font-bold text-brand uppercase">{initial}</span>
           )}
-          <div className={styles.cameraOverlay}>
+          <div className="absolute bottom-0 left-0 right-0 h-14 bg-[rgba(0,0,0,0.45)] flex items-center justify-center text-on-brand">
             <IconCamera size={14} />
           </div>
         </button>
-        <span className={styles.avatarHint}>
+        <span className="text-xs text-muted">
           {displayPicture ? t('profileEdit.changeImage') : t('profileEdit.uploadImage')}
         </span>
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          className={styles.hiddenInput}
+          className="hidden"
           onChange={handleFilePick}
         />
       </div>
 
-      <div className={styles.form}>
+      <div className="flex flex-col gap-6">
         <Input
           label={t('profileEdit.displayName')}
           placeholder={t('profileEdit.namePlaceholder')}
@@ -190,16 +193,15 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
         />
 
         <LinkButton
-          className={styles.advancedToggle}
-          data-open={advancedOpen}
+          className="flex items-center gap-3 text-sm font-semibold text-secondary py-2"
           onClick={() => setAdvancedOpen(!advancedOpen)}
         >
-          <IconChevronDown size={14} />
+          <IconChevronDown size={14} className={`transition-transform duration-slow ${advancedOpen ? 'rotate-180' : ''}`} />
           {t('profileEdit.advanced')}
         </LinkButton>
 
         {advancedOpen && (
-          <div className={styles.advancedFields}>
+          <div className="flex flex-col gap-6">
             <Input
               label={t('profileEdit.nip05')}
               placeholder={t('profileEdit.nip05Placeholder')}
@@ -230,18 +232,18 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
 
       <FormError>{error}</FormError>
 
-      <div className={styles.actions}>
-        <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
-        <Button onClick={handlePublish} disabled={!hasChanges}>{t('profileEdit.publish')}</Button>
+      <div className="flex gap-4 mt-2">
+        <Button className="flex-1" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+        <Button className="flex-1" onClick={handlePublish} disabled={!hasChanges}>{t('profileEdit.publish')}</Button>
       </div>
     </div>
   );
 
   const renderUploading = () => (
-    <div className={styles.body}>
-      <div className={styles.statusRow}>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
+      <div className="flex flex-col items-center justify-center gap-5 py-12">
         <Spinner size={28} />
-        <span className={styles.statusText}>{t('profileEdit.uploading')}</span>
+        <span className="text-md text-body font-semibold">{t('profileEdit.uploading')}</span>
       </div>
     </div>
   );
@@ -258,18 +260,18 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   );
 
   const renderPublishing = () => (
-    <div className={styles.body}>
-      <div className={styles.statusRow}>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
+      <div className="flex flex-col items-center justify-center gap-5 py-12">
         <Spinner size={28} />
-        <span className={styles.statusText}>{t('common.publishing')}</span>
+        <span className="text-md text-body font-semibold">{t('common.publishing')}</span>
       </div>
     </div>
   );
 
   const renderDone = () => (
-    <div className={styles.body}>
-      <div className={styles.statusRow}>
-        <span className={styles.successText}>{t('profileEdit.published')}</span>
+    <div className="flex-1 overflow-y-auto flex flex-col gap-7">
+      <div className="flex flex-col items-center justify-center gap-5 py-12">
+        <span className="text-lg font-bold text-success">{t('profileEdit.published')}</span>
       </div>
     </div>
   );

@@ -19,24 +19,28 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
   const fallbackText = !active ? '+' : isReadOnly ? '\u{1F441}' : initial;
 
   return (
-    <div className={styles.accountBar}>
-      <button className={styles.accountBarToggle} onClick={onToggleDropdown}>
-        <div className={styles.avatarWrap}>
+    <div className="relative flex items-center gap-2 flex-1 min-w-0 bg-transparent rounded-lg py-4 px-5 transition-colors hover:bg-card">
+      <button className="flex items-center gap-5 flex-1 cursor-pointer min-w-0 bg-transparent border-none p-0 text-left" onClick={onToggleDropdown}>
+        <div className="w-18 h-18 rounded-full overflow-hidden shrink-0">
           <Avatar
             src={avatarUrl}
             fallback={fallbackText}
-            imgClassName={styles.avatar}
-            fallbackClassName={styles.avatarFallback}
+            imgClassName="w-full h-full object-cover"
+            fallbackClassName="w-full h-full flex items-center justify-center bg-[rgba(99,102,241,0.15)] text-brand-hover font-bold text-xl"
           />
         </div>
-        <div className={styles.barInfo}>
-          <div className={styles.barNameRow}>
-            <span className={styles.barName}>{displayName}</span>
-            {isReadOnly && <span className={styles.readOnlyBadge}>{t('account.readOnly')}</span>}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="font-semibold text-md text-heading whitespace-nowrap overflow-hidden text-ellipsis">{displayName}</span>
+            {isReadOnly && (
+              <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted bg-brand-tint-active py-px px-2.5 rounded-xs shrink-0 leading-normal">
+                {t('account.readOnly')}
+              </span>
+            )}
           </div>
-          <span className={styles.barSub}>{displaySub}</span>
+          <span className="text-xs text-muted font-mono whitespace-nowrap overflow-hidden text-ellipsis">{displaySub}</span>
         </div>
-        <IconChevronDown className={`${styles.chevron} ${dropdownOpen ? styles.chevronOpen : ''}`} />
+        <IconChevronDown className={`text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (

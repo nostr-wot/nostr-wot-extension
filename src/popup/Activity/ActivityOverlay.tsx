@@ -16,7 +16,6 @@ import { ActivityProvider, useActivity } from '@popup/context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import usePagedList from '@hooks/usePagedList.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
-import styles from './ActivityOverlay.module.css';
 import type { DropdownOption } from '@models/dropdown.ts';
 
 /** Rendered rows per page. Grown by the "show more" button, reset whenever
@@ -208,9 +207,10 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
 
   return (
     <OverlayPanel title={t('activity.title')} onClose={onClose} animating={animating}>
-      <div className={styles.toolbar}>
-        <div className={styles.dropdowns}>
+      <div className="flex items-center gap-4 pb-4 border-b border-card-border">
+        <div className="flex gap-3 flex-1 min-w-0">
           <Dropdown
+            className="flex-1 min-w-0"
             options={domainOptions}
             value={filter}
             onChange={(v: string) => { setFilter(v); setTypeFilter(''); }}
@@ -218,6 +218,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
           />
           {accountOptions.length > 2 && (
             <Dropdown
+              className="flex-1 min-w-0"
               options={accountOptions}
               value={accountFilter}
               onChange={setAccountFilter}
@@ -226,13 +227,15 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
           )}
         </div>
         <button
-          className={`${styles.filterToggle} ${activeFilterCount > 0 ? styles.filterToggleActive : ''}`}
+          className={`relative flex items-center justify-center w-16 h-16 rounded-md border border-card-active bg-brand-tint-hover text-secondary cursor-pointer transition-colors shrink-0 hover:bg-brand-tint-active hover:text-heading ${activeFilterCount > 0 ? 'bg-brand-light text-brand border-brand' : ''}`}
           onClick={() => setFiltersOpen(true)}
           title={t('activity.filters')}
         >
           <IconTuner size={16} />
           {activeFilterCount > 0 && (
-            <span className={styles.filterBadge}>{activeFilterCount}</span>
+            <span className="absolute -top-2 -right-2 min-w-8 h-8 px-2 rounded-md bg-brand text-on-brand text-2xs font-bold flex items-center justify-center leading-none">
+              {activeFilterCount}
+            </span>
           )}
         </button>
         {rawLog.length > 0 && (
@@ -240,43 +243,43 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
         )}
       </div>
 
-      <div className={styles.list}>
+      <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className={styles.empty}>{t('common.loading')}</div>
+          <div className="text-muted text-md text-center py-14">{t('common.loading')}</div>
         ) : loadFailed ? (
-          <div className={styles.empty}>
+          <div className="text-muted text-md text-center py-14">
             <div role="alert">{t('activity.loadFailed')}</div>
             <Button small onClick={loadActivity}>{t('common.retry')}</Button>
           </div>
         ) : dayGroups.length === 0 ? (
-          <div className={styles.empty}>
+          <div className="text-muted text-md text-center py-14">
             {t('activity.noActivity')}
           </div>
         ) : (
           dayGroups.map((item, i) =>
             item.type === 'header' ? (
-              <div key={`h-${i}`} className={styles.dayHeader}>{item.label}</div>
+              <div key={`h-${i}`} className="text-xs font-bold text-secondary pt-4 pb-2 uppercase tracking-[0.5px]">{item.label}</div>
             ) : (
               <button
                 key={`e-${i}`}
-                className={styles.entry}
+                className="flex items-center gap-4 py-3 text-sm border-b border-brand-tint-hover w-full bg-transparent border-l-0 border-r-0 border-t-0 cursor-pointer text-left transition-colors duration-fast rounded-xs text-inherit hover:bg-brand-tint-hover"
                 onClick={() => setSelectedGroup(item as any)}
               >
                 <StatusDot status={item.decision} />
-                <span className={styles.entryTime}>{item.timeKey}</span>
+                <span className="text-muted text-xs whitespace-nowrap shrink-0 min-w-18">{item.timeKey}</span>
                 {showDomain && item.domain && (
-                  <span className={styles.entryDomain}>{item.domain}</span>
+                  <span className="text-secondary font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[100px]">{item.domain}</span>
                 )}
-                <span className={styles.entryAction}>{formatLabel(item.methodKey, item.entries?.[0]?.event)}</span>
+                <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{formatLabel(item.methodKey, item.entries?.[0]?.event)}</span>
                 {item.count > 1 && (
-                  <span className={styles.entryCount}>&times;{item.count}</span>
+                  <span className="text-muted text-xs shrink-0">&times;{item.count}</span>
                 )}
               </button>
             )
           )
         )}
         {page.hasMore && (
-          <div className={styles.showMore}>
+          <div className="text-center py-4">
             <Button small variant="secondary" onClick={page.loadMore}>{t('common.showMore')}</Button>
           </div>
         )}
@@ -297,23 +300,28 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
           onClose={() => setFiltersOpen(false)}
           zIndex={350}
         >
-          <div className={styles.filterPanel}>
-            <span className={styles.filterLabel}>{t('activity.filterByType')}</span>
+          <div className="flex flex-col gap-4 pb-6 mb-2 border-b border-card-border">
+            <span className="text-xs font-semibold text-secondary uppercase tracking-[0.5px]">{t('activity.filterByType')}</span>
             <ChipGroup
               options={typeOptions}
               value={typeFilter}
               onChange={setTypeFilter}
             />
             <button
-              className={styles.advancedToggle}
+              className="self-start bg-transparent border-none p-0 text-xs font-medium text-brand cursor-pointer transition-colors hover:text-brand-hover"
               onClick={handleToggleAdvanced}
             >
               {advancedTypes ? t('activity.hideProtocols') : t('activity.showProtocols')}
             </button>
           </div>
 
-          <div className={styles.filterPanel}>
-            <span className={styles.filterLabel}>{t('activity.filterByPubkey')}</span>
+          {/* `.filterPanel:last-of-type` used to drop this border when this
+              was the last <div> among its siblings — true only when
+              `activeFilterCount` is 0 and the actions row below does not
+              render. That is state the component already computes, so the
+              condition is explicit here instead of implicit in a selector. */}
+          <div className={`flex flex-col gap-4 ${activeFilterCount > 0 ? 'pb-6 mb-2 border-b border-card-border' : ''}`}>
+            <span className="text-xs font-semibold text-secondary uppercase tracking-[0.5px]">{t('activity.filterByPubkey')}</span>
             <Input
               mono
               placeholder={t('activity.pubkeyPlaceholder')}
@@ -323,7 +331,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
           </div>
 
           {activeFilterCount > 0 && (
-            <div className={styles.filterActions}>
+            <div className="pt-4 flex justify-end">
               <Button variant="secondary" small onClick={handleClearFilters}>
                 {t('activity.clearFilters')}
               </Button>

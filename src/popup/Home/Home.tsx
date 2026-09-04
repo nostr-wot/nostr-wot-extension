@@ -120,8 +120,8 @@ export default function Home({ menuOpen }: HomeProps) {
 
   if (siteState === 'empty') {
     return (
-      <div className={styles.centerWrap}>
-        <Card className={styles.emptyState}>
+      <div className="flex-1 flex flex-col justify-center">
+        <Card className="mb-0">
           <EmptyState
             icon={
               <IconGlobe size={32} strokeWidth="1.5" />
@@ -136,8 +136,8 @@ export default function Home({ menuOpen }: HomeProps) {
 
   if (siteState === null) {
     return (
-      <div className={styles.centerWrap}>
-        <Card className={styles.emptyState}>
+      <div className="flex-1 flex flex-col justify-center">
+        <Card className="mb-0">
           <EmptyState
             icon={
               <IconGlobe size={32} strokeWidth="1.5" />
@@ -151,8 +151,8 @@ export default function Home({ menuOpen }: HomeProps) {
 
   if (siteState === 'notConnected') {
     return (
-      <div className={styles.centerWrap}>
-        <Card className={styles.emptyState}>
+      <div className="flex-1 flex flex-col justify-center">
+        <Card className="mb-0">
           <EmptyState
             icon={
               <IconGlobe size={32} strokeWidth="1.5" />
@@ -161,9 +161,9 @@ export default function Home({ menuOpen }: HomeProps) {
             hint={t('home.siteNotConnected')}
           >
             {connectFailed && (
-              <div className={styles.actionError} role="alert">{t('home.actionFailed')}</div>
+              <div className="py-3 px-6 text-sm text-error text-center" role="alert">{t('home.actionFailed')}</div>
             )}
-            <div className={styles.connectActions}>
+            <div className="flex gap-4 justify-center">
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
               <Button small variant="secondary" onClick={() => handleDismiss(false)}>{t('home.notNow')}</Button>
               <Button small variant="secondary" onClick={() => handleDismiss(true)}>{t('home.never')}</Button>
@@ -177,21 +177,21 @@ export default function Home({ menuOpen }: HomeProps) {
   return (
     <>
       {pendingCount > 0 && (
-        <Card className={styles.pendingCard}>
-          <div className={styles.pendingInfo}>
-            <span className={styles.pendingBadge}>{pendingCount}</span>
-            <span className={styles.pendingText}>{t('unlock.pendingCount', { count: pendingCount })}</span>
+        <Card className="flex items-center py-5 px-7 bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)] cursor-default">
+          <div className="flex items-center gap-4">
+            <span className="bg-warning-bright text-on-brand text-xs font-semibold min-w-10 h-10 rounded-panel flex items-center justify-center px-3">{pendingCount}</span>
+            <span className="text-md text-body">{t('unlock.pendingCount', { count: pendingCount })}</span>
           </div>
         </Card>
       )}
       {/* Wallet — on top: balance card when a wallet exists, else the setup prompt */}
       {walletState && typeof walletState === 'object' && (
-        <Card className={styles.walletCard} onClick={navigate.openWallet}>
-          <div className={styles.walletCardInfo}>
-            <IconZap size={14} className={styles.walletCardIcon} />
-            <div className={styles.walletCardText}>
-              <strong>{formatSats(walletState.balance)}</strong>
-              <span>{t('wallet.balance')}</span>
+        <Card className="flex items-center justify-between gap-5 py-6 px-7 cursor-pointer transition-colors hover:bg-brand-tint-hover" onClick={navigate.openWallet}>
+          <div className="flex items-center gap-5 min-w-0">
+            <IconZap size={14} className="text-brand shrink-0" />
+            <div className="flex flex-col gap-px">
+              <strong className="text-xl font-bold text-heading">{formatSats(walletState.balance)}</strong>
+              <span className="text-xs text-muted uppercase tracking-[0.3px] font-semibold">{t('wallet.balance')}</span>
             </div>
           </div>
           <IconChevronRight size={16} />
@@ -199,15 +199,15 @@ export default function Home({ menuOpen }: HomeProps) {
       )}
 
       {showWalletBanner && (
-        <Card className={styles.profileSuggestion}>
-          <div className={styles.profileSuggestionContent}>
-            <IconZap size={14} className={styles.profileSuggestionIcon} />
-            <div className={styles.profileSuggestionText}>
-              <strong>{t('wallet.setupBanner')}</strong>
-              <span>{t('wallet.setupBannerHint')}</span>
+        <Card className="flex items-center justify-between gap-5 py-6 px-7">
+          <div className="flex items-start gap-5 flex-1 min-w-0">
+            <IconZap size={14} className="text-brand shrink-0 mt-1" />
+            <div className="flex flex-col gap-1">
+              <strong className="text-md font-semibold text-heading">{t('wallet.setupBanner')}</strong>
+              <span className="text-xs text-secondary leading-normal">{t('wallet.setupBannerHint')}</span>
             </div>
           </div>
-          <div className={styles.profileSuggestionActions}>
+          <div className="flex flex-col items-center gap-2 shrink-0">
             <Button small onClick={navigate.openWallet}>{t('home.setupProfileButton')}</Button>
             <LinkButton onClick={handleDismissWallet}>{t('home.skip')}</LinkButton>
           </div>
@@ -216,7 +216,7 @@ export default function Home({ menuOpen }: HomeProps) {
 
       {/* Identity access for the current site */}
       {siteState === 'error' ? (
-        <Card className={styles.emptyState}>
+        <Card className="mb-0">
           <EmptyState
             icon={<IconGlobe size={32} strokeWidth="1.5" />}
             text={domain ?? ''}
@@ -228,7 +228,7 @@ export default function Home({ menuOpen }: HomeProps) {
       ) : (
         <>
           {connectFailed && (
-            <div className={styles.actionError} role="alert">{t('home.actionFailed')}</div>
+            <div className="py-3 px-6 text-sm text-error text-center" role="alert">{t('home.actionFailed')}</div>
           )}
           <SiteControls
             identityEnabled={identityEnabled}
@@ -242,9 +242,9 @@ export default function Home({ menuOpen }: HomeProps) {
       {/* Account — profile, mutes, and relays that follow the identity, grouped
           into one card so they read as a single list. */}
       {active && (
-        <div className={styles.accountSection}>
+        <div className={`${styles.accountSection} mt-7`}>
           <SectionLabel>{t('home.account')}</SectionLabel>
-          <Card className={styles.accountCard}>
+          <Card className="p-0 overflow-hidden">
             {canEditProfile && <ProfileRow />}
             <MutesRow />
             <RelaysRow />
