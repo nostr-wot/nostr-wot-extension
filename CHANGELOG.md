@@ -57,6 +57,21 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - `Tabs` keeps two variants because the product has two tab designs — the wallet uses outlined segments, the NIP-46 step a track with a moving thumb. Converging them is a design decision, not a refactor, and is still worth making.
 - Raw `<button>` outside `src/components/` is down to 24, and each remaining one is a documented mismatch rather than an omission — a semantic-scope colour set no variant covers, a control joined to an adjacent `Select`, a bordered-at-rest chip against `IconButton`'s chromeless contract.
 
+### Changed — Tailwind
+
+- **Tailwind v4, wired to the tokens that already existed** rather than to its own defaults, so a utility and a stylesheet reaching for the same idea get the same value. The spacing scale needed no mapping at all: it was already exactly `n x 2px`, so `p-6` **is** `--sp-6` by construction. Tailwind's own type, weight, leading, radius and shadow scales are cleared first — its `text-xs` is 12px and ours is 11px, and leaving both in place means one class name means two things depending on whether the author knew the config existed.
+- **58 stylesheets became 24; 6,280 lines of CSS became 1,115.** What remains is what utilities genuinely cannot express: custom `@keyframes`, adjacent-sibling rules, `:global`, 3D transforms, and the handful of properties a caller sets through an inline custom property.
+- **Preflight is deliberately off.** It is a global reset — every margin and padding zeroed, headings unsized, lists unmarked — and the stylesheets here were written against browser defaults. Switching it on changes the spacing of every paragraph and heading at once, which no test in this repo can see. It goes on as its own change, verified with the extension loaded.
+
+### Fixed — four ways Tailwind fails silently
+
+Each of these compiles, breaks no test, and shows up only as something that looks slightly wrong on screen.
+
+- **A gradient mapped into the colour namespace.** `--bg-page` is a `linear-gradient`, and a colour utility only ever emits `background-color` — so `bg-page` produced an invalid declaration that browsers drop, leaving the surface with no background at all. It is unmapped now, with a test that walks every `--color-*` mapping down its `var()` chain and fails if what it ends at is not a colour.
+- **A mapping in a namespace Tailwind does not read.** `--duration-fast` looks obviously right and generates nothing; Tailwind takes `duration-*` from `--transition-duration-*`. Now checked against the namespaces Tailwind actually reads.
+- **A misspelled utility.** `text-secondry` is a string the compiler never sees. `tests/tailwind-classes.test.ts` checks every static class name against the generated stylesheet — verified against typos planted in four positions, after two earlier versions of the scan passed while a planted typo sat in the source.
+- **A caller's override losing to the component's own class.** Two utilities for the same property are resolved by their order in the *generated stylesheet*, not in `className`: `<Card className="p-0">` rendered with 14px of padding because Tailwind emits `.p-0` before `.p-7`. Three were live at once — `p-0`, `mb-0`, and a warning tint that never appeared. Every component now composes through `cn()`, whose configuration is itself load-bearing: `text-md` is a font size here and `text-muted` is a colour, and an unconfigured merger deletes one of them.
+
 ### Changed — the contexts share their machinery
 
 - Seven contexts each hand-wrote the same read: `data`/`loading`/`error`, a run-version ref so a slow refresh cannot win by finishing last, a `storage.onChanged` subscription filtered by area, and the `createContext` + `useContext`-or-throw boilerplate. That is now `useAsyncResource`, `useStorageWatch` and `createRequiredContext` — three composable pieces rather than one factory, because the contexts' mutations and failure semantics differ too much for a single shape to hold them without flattening what each one knows.
