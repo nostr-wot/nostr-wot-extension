@@ -139,9 +139,16 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
       ) : (
         <>
           <QrCode value={invoice.bolt11} size={200} className={styles.qrCode} />
-          <div className={styles.qrBolt11} onClick={() => bolt11Copy.copy(invoice.bolt11)}>
+          {/* The only way to copy the invoice, so it has to be reachable
+              without a mouse. It was a div with an onClick. */}
+          <button
+            type="button"
+            className={styles.qrBolt11}
+            onClick={() => bolt11Copy.copy(invoice.bolt11)}
+            aria-label={t('common.copy')}
+          >
             {invoice.bolt11}
-          </div>
+          </button>
         </>
       )}
     </Modal>

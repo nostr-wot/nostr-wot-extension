@@ -30,6 +30,13 @@
 }
 
 .keyDisplay {
+  /* A <button> now, for the keyboard — reset the chrome the UA adds. */
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
   padding: var(--sp-6);
   background: var(--card-bg);
   border: 1px solid var(--card-border);
@@ -75,6 +82,13 @@
 }
 
 .seedGridWrap {
+  /* A <button> now, for the keyboard — reset the chrome the UA adds. */
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
   cursor: pointer;
   border-radius: var(--radius-panel);
 }

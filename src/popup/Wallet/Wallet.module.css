@@ -170,6 +170,13 @@
 }
 
 .qrBolt11 {
+  /* A <button> now, for the keyboard — reset the chrome the UA adds. */
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
   font-family: var(--font-mono);
   font-size: var(--fs-2xs);
   color: var(--text-muted);

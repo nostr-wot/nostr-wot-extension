@@ -241,12 +241,17 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
               </>
             ) : (
               <>
-                <div
+                {/* Reveal is a toggle, and it was a div with an onClick — so
+                    the only way to see your own nsec required a mouse.
+                    aria-pressed reports whether it is currently revealed. */}
+                <button
+                  type="button"
                   className={`${styles.keyDisplay} ${nsec.blurred ? styles.blurred : ''}`}
                   onClick={nsec.toggleBlur}
+                  aria-pressed={!nsec.blurred}
                 >
                   {nsec.value}
-                </div>
+                </button>
                 <div className={styles.hint}>{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</div>
                 <div className={styles.actions}>
                   <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
@@ -339,13 +344,13 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
               </>
             ) : (
               <>
-                <div className={styles.seedGridWrap} onClick={seed.toggleBlur}>
+                <button type="button" className={styles.seedGridWrap} onClick={seed.toggleBlur} aria-pressed={!seed.blurred}>
                   <div className={`${styles.seedGrid} ${seed.blurred ? styles.blurred : ''}`}>
                     {seed.value.map((word, i) => (
                       <SeedWord key={i} index={i + 1} word={word} />
                     ))}
                   </div>
-                </div>
+                </button>
                 <div className={styles.hint}>{`${t(seed.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.seedAutoHideHint')}`}</div>
                 {seedEncMode ? (
                   <>
