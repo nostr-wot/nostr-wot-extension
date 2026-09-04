@@ -173,7 +173,7 @@ A panel whose content can exceed the card must have exactly one scroller in the 
 
 ## 5. Hooks
 
-All shared hooks live in `src/shared/hooks/`, one hook per file.
+All shared hooks live in `src/hooks/`, one hook per file — outside any feature folder, because a hook that sits beside one screen is a hook the next screen re-writes.
 
 | Hook | Purpose |
 |------|---------|
@@ -186,10 +186,18 @@ All shared hooks live in `src/shared/hooks/`, one hook per file.
 | `useRelayCache(name, onRefreshed)` | Re-read when the background refreshes a cached relay answer |
 | `useBrowserStorage(key, default, area)` | A `browser.storage` value that follows `onChanged` in its own area |
 | `useWizardFlow()` | State machine hook for onboarding wizard |
+| `useAsyncResource<T>({ load, deps })` | `data` / `loading` / `error` for one async read, with the run-version guard |
+| `useStorageWatch(matchers, onChange)` | Re-run on `storage.onChanged` for given (area, key) pairs |
+| `usePagedList(items, pageSize)` | A growing rendered prefix of an already-loaded array |
+| `useApprovalQueue()`, `useSiteState()`, `usePendingCount()`, `useWalletBanner()` | Feature reads, each extracted from a component that was doing it inline |
 
 `useBrowserStorage(key, default, area)` was documented here for a long time before it existed, so two components each hand-rolled its exact body rather than finding it. It is written now. **Pass the area** — most keys are `local`, but `relays` is `sync`, and a listener that ignores the area reacts to writes it should not see.
 
 **Use `useCopy` for every clipboard write.** `copied` is what you render; the promise resolves to whether the write actually landed, for the callers that must *decide* on it (the wizard only marks a seed phrase backed up if the copy succeeded). Copying a value the user cannot verify by eye — an nsec, an ncryptsec, a seed phrase — with a bare un-awaited `navigator.clipboard.writeText` makes a refused clipboard look exactly like a successful copy. That was live on all three of those values.
+
+**`useAsyncResource` is where "a failed read means unknown" is enforced.** Every context in this popup reads something over RPC that can fail, and the rule that matters is that a failure must never collapse into a negative answer — "we could not reach a relay" is not "nothing is published", and acting on the second when the first is true overwrites a profile or a mute list. A thrown load sets `error` and leaves `data` alone, so the rule holds by construction instead of by each context remembering it. `VaultContext` deliberately overrides this: a vault it cannot read is treated as **locked**, because there the safe direction is the negative one.
+
+**Related fields belong in one `data` object.** A consumer must never see one field from a new read paired with another from an old one — the post-quantum panel showing a fresh `status` beside a stale `published` is a wrong answer rather than a late one. One resource, one `patch()`, updated atomically.
 
 ### Hook guidelines
 
@@ -215,6 +223,7 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `passwordPair.ts` | `validatePasswordPair` — the "new password, twice" rule |
 | `vaultAutoUnlock.ts` | `isVaultOpen` — never-lock auto-unlock, behind its mode check |
 | `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups`, `TYPE_METHODS` |
+| `pagedList.ts` | `paginate` — the render window behind `usePagedList`. Distinct from `txPager.ts`, which pages a *remote* API: the activity RPC already returns the whole log, so there is nothing left to fetch, only a prefix to grow |
 
 `permissionRules.ts` is split from `permissions.ts` on purpose: that module imports
 `t()`, which drags in the browser layer and makes it unloadable under plain
