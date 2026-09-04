@@ -5,7 +5,7 @@ import useCopy from '@hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
-import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
+import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { IconWarning } from '@assets';
 import styles from './EncryptedBackupForm.module.css';
 

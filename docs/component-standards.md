@@ -195,6 +195,7 @@ All shared hooks live in `src/hooks/`, one hook per file — outside any feature
 | `useAsyncResource<T>({ load, deps })` | `data` / `loading` / `error` for one async read, with the run-version guard |
 | `useStorageWatch(matchers, onChange)` | Re-run on `storage.onChanged` for given (area, key) pairs |
 | `usePagedList(items, pageSize)` | A growing rendered prefix of an already-loaded array |
+| `usePasswordPair(minLength?)` | The "new password, twice" pair, with `ready` derived rather than stored |
 | `useApprovalQueue()`, `useSiteState()`, `usePendingCount()`, `useWalletBanner()` | Feature reads, each extracted from a component that was doing it inline |
 
 `useBrowserStorage(key, default, area)` was documented here for a long time before it existed, so two components each hand-rolled its exact body rather than finding it. It is written now. **Pass the area** — most keys are `local`, but `relays` is `sync`, and a listener that ignores the area reacts to writes it should not see.
@@ -227,6 +228,7 @@ All shared utilities live in `src/shared/`, one concern per file.
 | `pqcState.ts` | `derivePqcCardState`, `isAlreadyPublished`, `PqcStatus`, `PqcPublished` |
 | `permissionRules.ts` | `countDecisions`, `filterKeysForAccountKind`, `availablePermKeys`, `buildRuleKey`, `DECISIONS` |
 | `passwordPair.ts` | `validatePasswordPair` — the "new password, twice" rule |
+| `passwordPairState.ts` | `derivePasswordPairState` — the same rule as the three booleans a form renders (`longEnough`, `matches`, `ready`) |
 | `vaultAutoUnlock.ts` | `isVaultOpen` — never-lock auto-unlock, behind its mode check |
 | `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups`, `TYPE_METHODS` |
 | `pagedList.ts` | `paginate` — the render window behind `usePagedList`. Distinct from `txPager.ts`, which pages a *remote* API: the activity RPC already returns the whole log, so there is nothing left to fetch, only a prefix to grow |

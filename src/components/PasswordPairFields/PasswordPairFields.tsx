@@ -1,7 +1,7 @@
 import { ChangeEvent, KeyboardEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import Input from '@components/Input/Input';
-import type { UsePasswordPairResult } from './usePasswordPair.ts';
+import type { UsePasswordPairResult } from '@hooks/usePasswordPair.ts';
 import styles from './PasswordPairFields.module.css';
 
 interface PasswordPairFieldsProps {

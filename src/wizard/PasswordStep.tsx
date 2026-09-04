@@ -7,7 +7,7 @@ import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
-import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
+import usePasswordPair from '@hooks/usePasswordPair.ts';
 import styles from './WizardOverlay.module.css';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@shared/vaultAutoUnlock.ts';

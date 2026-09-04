@@ -15,7 +15,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { derivePasswordPairState } from '../src/components/PasswordPairFields/passwordPairState.ts';
+import { derivePasswordPairState } from '../src/shared/passwordPairState.ts';
 import { MIN_PASSWORD_LENGTH } from '../src/shared/passwordPair.ts';
 
 describe('derivePasswordPairState', () => {

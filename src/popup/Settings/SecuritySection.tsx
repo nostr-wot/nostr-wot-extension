@@ -10,7 +10,7 @@ import ChipGroup from '@components/ChipGroup/ChipGroup';
 import ListRow from '@components/ListRow/ListRow';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
-import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
+import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@popup/context/VaultContext';
 
 import styles from './SecuritySection.module.css';

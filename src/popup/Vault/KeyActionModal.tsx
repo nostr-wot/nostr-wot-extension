@@ -16,7 +16,7 @@ import styles from './KeyActionModal.module.css';
 import SeedWord from '@components/SeedWord/SeedWord';
 import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
-import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
+import usePasswordPair from '@hooks/usePasswordPair.ts';
 
 interface KeyActionModalProps {
   action: string;

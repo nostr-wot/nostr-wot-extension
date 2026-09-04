@@ -6,7 +6,7 @@ import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
-import usePasswordPair from '@components/PasswordPairFields/usePasswordPair.ts';
+import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { downloadFile } from '@shared/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
 import styles from './PqcSection.module.css';
