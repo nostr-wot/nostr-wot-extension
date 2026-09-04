@@ -7,6 +7,7 @@ import { t } from '@lib/i18n.js';
 import { IconWarning, IconEye, IconCopy, IconDownload, IconLock } from '@assets';
 import Button from '@components/Button/Button';
 import ActionTile from '@components/ActionTile/ActionTile';
+import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
 
@@ -107,14 +108,14 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       </div>
 
       <div className={styles.mnemonicWrapper}>
-        <div className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''} ${!revealed ? styles.mnemonicBlurred : ''}`}>
+        <Card variant="flat" className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''} ${!revealed ? styles.mnemonicBlurred : ''}`}>
           {words.map((word, i) => (
             <div key={i} className={styles.mnemonicWord}>
               <span className={styles.wordNum}>{i + 1}</span>
               {word}
             </div>
           ))}
-        </div>
+        </Card>
 
         {!revealed && (
           <button className={styles.revealBtn} onClick={() => setRevealed(true)}>

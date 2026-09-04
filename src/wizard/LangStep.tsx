@@ -1,8 +1,11 @@
-import React, { useState, useMemo, KeyboardEvent } from 'react';
+import React, { useState, useMemo } from 'react';
 import { getSupportedLanguages, setLanguage, getLanguage, t } from '@lib/i18n.js';
 import TopoBg from '@components/TopoBg/TopoBg';
 import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
 import Button from '@components/Button/Button';
+import Card from '@components/Card/Card';
+import IconButton from '@components/IconButton/IconButton';
+import { IconClose } from '@assets';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
 import styles from './WizardOverlay.module.css';
 import type { Language } from '@models/language.ts';
@@ -65,9 +68,9 @@ export default function LangStep({ onSelect }: LangStepProps) {
         </div>
         <div className={styles.langDivider} />
         <div className={styles.langPicker}>
-          <div className={styles.langTrigger}>
+          <Card variant="flat" className={styles.langTrigger}>
             <span className={styles.langTriggerSelected}>{lang.flag} {lang.native}</span>
-          </div>
+          </Card>
           <Button
             className={styles.langConfirm}
             onClick={() => { setLanguage(lang.code); onSelect(lang.code); }}
@@ -88,14 +91,10 @@ export default function LangStep({ onSelect }: LangStepProps) {
       </div>
       <div className={styles.langDivider} />
       <div className={styles.langPicker}>
-        {/* Dropdown trigger -- cycles prompt translations or shows selection */}
-        <div
-          className={styles.langTrigger}
-          onClick={() => setModalOpen(true)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => e.key === 'Enter' && setModalOpen(true)}
-        >
+        {/* Dropdown trigger -- cycles prompt translations or shows selection.
+            Card gives it native button semantics (keyboard activation, focus)
+            for free, dropping the hand-rolled role/tabIndex/onKeyDown trio. */}
+        <Card as="button" variant="flat" className={styles.langTrigger} onClick={() => setModalOpen(true)}>
           {selected ? (
             <span className={styles.langTriggerSelected}>
               {selected.flag} {selected.native}
@@ -121,7 +120,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
           <svg className={styles.langTriggerChevron} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
-        </div>
+        </Card>
         <Button className={styles.langConfirm} onClick={handleConfirm}>
           {t('common.continue')}
         </Button>
@@ -134,15 +133,9 @@ export default function LangStep({ onSelect }: LangStepProps) {
             <span className={styles.langModalTitle}>
               {selected?.prompt || languages[0].prompt}
             </span>
-            <button
-              className={styles.langModalClose}
-              onClick={() => setModalOpen(false)}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            <IconButton size={32} onClick={() => setModalOpen(false)} aria-label={t('common.close')}>
+              <IconClose size={18} />
+            </IconButton>
           </div>
 
           <LanguageWheel languages={languages} selected={selected} onChange={setSelected} />

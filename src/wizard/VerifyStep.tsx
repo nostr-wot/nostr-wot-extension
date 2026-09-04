@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
+import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
 
 // Decoy words from BIP-39 for verification
@@ -96,7 +97,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
         {t('wizard.verifyDesc')}
       </p>
 
-      <div className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''}`}>
+      <Card variant="flat" className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''}`}>
         {words.map((word, i) => {
           const isBlank = blankIndices.includes(i);
           const filled = filledSlots[i];
@@ -113,7 +114,7 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
             </div>
           );
         })}
-      </div>
+      </Card>
 
       {!verified && (
         <div className={styles.wordBank}>
