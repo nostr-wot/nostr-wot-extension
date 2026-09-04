@@ -5,6 +5,7 @@ import AccountBar from './AccountBar';
 import AccountDropdown from './AccountDropdown';
 import GlobeButton from './GlobeButton';
 import styles from './TopBar.module.css';
+import IconButton from '@components/IconButton/IconButton';
 
 interface TopBarProps {
   onMenuOpen: () => void;
@@ -27,9 +28,9 @@ export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile }: TopB
         )}
       </div>
       <GlobeButton />
-      <button className={styles.menuBtn} title={t('topbar.settings')} onClick={onMenuOpen}>
+      <IconButton tone="brand" onClick={onMenuOpen} title={t('topbar.settings')} aria-label={t('topbar.settings')}>
         <IconSettings />
-      </button>
+      </IconButton>
     </div>
   );
 }

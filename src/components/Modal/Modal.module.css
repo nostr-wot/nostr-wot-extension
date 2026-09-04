@@ -52,27 +52,6 @@
   color: var(--text-heading);
 }
 
-.close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--transition);
-  font-family: inherit;
-}
-
-.close:hover {
-  background: var(--card-bg);
-  color: var(--text-heading);
-}
-
 .body {
   flex: 1;
   min-height: 0;

@@ -187,8 +187,3 @@
   border-radius: var(--radius-sm);
   transition: all var(--transition);
 }
-
-.headerHelp:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
-}

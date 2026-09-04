@@ -18,6 +18,7 @@ import { useVault } from '@popup/context/VaultContext';
 import { useAccount } from '@popup/context/AccountContext';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import styles from './MenuOverlay.module.css';
+import IconButton from '@components/IconButton/IconButton';
 
 interface MenuOverlayProps {
   visible: boolean;
@@ -186,14 +187,14 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       animating={animating}
       headerRight={currentSection === 'pqc' ? (
         // The explainer shows itself once; this is how it is reached again afterwards.
-        <button
-          className={styles.headerHelp}
+        <IconButton
+          size={36}
           title={t('pqc.howTitle')}
           aria-label={t('pqc.howTitle')}
           onClick={() => pqcSectionRef.current?.openHowItWorks()}
         >
           <IconInfo size={16} />
-        </button>
+        </IconButton>
       ) : undefined}
     >
       <div className={styles.menuContent}>

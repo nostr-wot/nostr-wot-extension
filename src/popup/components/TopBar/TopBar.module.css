@@ -8,24 +8,6 @@
   flex-shrink: 0;
 }
 
-.menuBtn {
-  background: none;
-  border: none;
-  color: var(--brand);
-  cursor: pointer;
-  padding: var(--sp-3);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-
-.menuBtn:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
-}
-
 .accountWrap {
   position: relative;
   flex: 1;

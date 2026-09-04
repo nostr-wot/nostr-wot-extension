@@ -47,24 +47,6 @@
   font-size: var(--fs-2xl);
 }
 
-.closeBtn, .backBtn {
-  background: transparent;
-  border: none;
-  padding: var(--sp-4);
-  cursor: pointer;
-  color: var(--brand);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition);
-}
-
-.closeBtn:hover, .backBtn:hover {
-  background: var(--card-bg);
-  color: var(--text-body);
-}
-
 .placeholder {
   width: 36px;
 }

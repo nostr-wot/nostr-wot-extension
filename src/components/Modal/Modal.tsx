@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { t } from '@lib/i18n.js';
 import { IconClose } from '@assets';
+import IconButton from '@components/IconButton/IconButton';
 import styles from './Modal.module.css';
 
 /**
@@ -82,9 +83,9 @@ export default function Modal({
         {title && (
           <div className={styles.header}>
             <span className={styles.title}>{title}</span>
-            <button className={styles.close} onClick={onClose} aria-label={t('common.close')}>
+            <IconButton onClick={onClose} aria-label={t('common.close')}>
               <IconClose size={16} />
-            </button>
+            </IconButton>
           </div>
         )}
         <div className={styles.body}>{children}</div>

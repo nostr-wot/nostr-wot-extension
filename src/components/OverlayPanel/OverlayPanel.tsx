@@ -1,5 +1,7 @@
 import React from 'react';
+import { t } from '@lib/i18n.js';
 import { IconChevronLeft, IconClose } from '@assets';
+import IconButton from '@components/IconButton/IconButton';
 import styles from './OverlayPanel.module.css';
 
 interface OverlayPanelProps {
@@ -41,9 +43,9 @@ export default function OverlayPanel({
           {centered ? (
             <>
               {onBack ? (
-                <button className={styles.backBtn} onClick={onBack}>
+                <IconButton tone="brand" size={36} onClick={onBack} aria-label={t('common.back')}>
                   <IconChevronLeft />
-                </button>
+                </IconButton>
               ) : (
                 <div className={styles.placeholder} />
               )}
@@ -57,9 +59,9 @@ export default function OverlayPanel({
                 <div className={styles.headerRight}>
                   {headerRight}
                   {onClose && (
-                    <button className={styles.closeBtn} onClick={onClose}>
+                    <IconButton size={36} onClick={onClose} aria-label={t('common.close')}>
                       <IconClose />
-                    </button>
+                    </IconButton>
                   )}
                 </div>
               ) : (
@@ -72,9 +74,9 @@ export default function OverlayPanel({
               {headerRight ? (
                 <div className={styles.headerRight}>
                   {headerRight}
-                  <button className={styles.closeBtn} onClick={onClose}>
+                  <IconButton size={36} onClick={onClose} aria-label={t('common.close')}>
                     <IconClose />
-                  </button>
+                  </IconButton>
                 </div>
               ) : (
                 <button className={styles.closeBtn} onClick={onClose}>

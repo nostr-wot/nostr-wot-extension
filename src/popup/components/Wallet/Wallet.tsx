@@ -14,6 +14,7 @@ import { type Transaction } from '@lib/wallet/types.ts';
 import { matchesTxFilter, dateRangeToTs, type TxFilters } from '@shared/txFilter.ts';
 
 import styles from './Wallet.module.css';
+import IconButton from '@components/IconButton/IconButton';
 
 interface WalletProps {
   providerType: string;
@@ -122,9 +123,9 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     <div className={styles.section}>
       {/* Balance */}
       <Card className={styles.balanceCard}>
-        <button className={styles.settingsBtn} onClick={() => setShowSettings(true)} title={t('wallet.settings')}>
+        <IconButton className={styles.settingsBtn} onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
           <IconSettings size={16} />
-        </button>
+        </IconButton>
         <span className={styles.balanceLabel}>{t('wallet.balance')}</span>
         {balanceLoading ? (
           <div className={styles.loading}>
