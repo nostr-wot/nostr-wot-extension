@@ -5,7 +5,7 @@ import { truncateNpub, getInitial } from '@shared/format/text.ts';
 import { rpc } from '@shared/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
-import createRequiredContext from './createRequiredContext.ts';
+import createRequiredContext from '@utils/createRequiredContext.ts';
 import type { ProfileMetadata } from '@shared/profileMetadata.ts';
 import type { Account } from '@models/account.ts';
 

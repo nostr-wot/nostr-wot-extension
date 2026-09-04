@@ -253,7 +253,9 @@ Configured in `vite.config.ts`:
 | Alias | Path |
 |-------|------|
 | `@components` | `src/components` |
-| `@shared` | `src/shared` |
+| `@shared` | `src/shared` — logic with **no React import**, because `lib/bg/` and `lib/wallet/` reach into it and anything React here would pull React into the service worker's import graph |
+| `@utils` | `src/utils` — React-side helpers that are neither a component nor a hook (`createRequiredContext`) |
+| `@styles` | `src/styles` — global stylesheets (`theme.css`) |
 | `@lib` | `lib` |
 | `@assets` | `src/assets` |
 

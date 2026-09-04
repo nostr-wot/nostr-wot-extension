@@ -1,7 +1,7 @@
 import React from 'react';
 import { rpcNotify } from '@shared/rpc.ts';
 import { t } from '@lib/i18n.js';
-import '@shared/theme.css';
+import '@styles/theme.css';
 import './onboarding.css';
 import TopoBg from '@components/TopoBg/TopoBg';
 import PulseLogo from '@components/PulseLogo/PulseLogo';

@@ -21,6 +21,8 @@
       "@wizard/*": ["./src/wizard/*"],
       "@models/*": ["./src/models/*"],
       "@hooks/*": ["./src/hooks/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@styles/*": ["./src/styles/*"],
       "@lib/*": ["./lib/*"]
     }
   },

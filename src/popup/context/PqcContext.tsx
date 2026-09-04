@@ -4,7 +4,7 @@ import useRelayCache from '@hooks/useRelayCache.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import { PQC_PUBLISHED_CACHE } from '@shared/relayCacheNames.ts';
 import type { PqcPanelStatus, PqcPublished } from '@shared/pqcState.ts';
-import createRequiredContext from './createRequiredContext.ts';
+import createRequiredContext from '@utils/createRequiredContext.ts';
 import { useAccount } from './AccountContext';
 
 interface PqcData {

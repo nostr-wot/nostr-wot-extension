@@ -4,7 +4,7 @@ import { rpcNotify } from '@shared/rpc.ts';
 import { DEFAULT_RELAYS } from '@shared/constants.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
-import createRequiredContext from './createRequiredContext.ts';
+import createRequiredContext from '@utils/createRequiredContext.ts';
 
 export interface RelayFlags {
   read: boolean;

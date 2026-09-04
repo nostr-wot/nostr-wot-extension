@@ -93,6 +93,8 @@ export default defineConfig({
       '@wizard': resolve(__dirname, 'src/wizard'),
       '@models': resolve(__dirname, 'src/models'),
       '@hooks': resolve(__dirname, 'src/hooks'),
+      '@utils': resolve(__dirname, 'src/utils'),
+      '@styles': resolve(__dirname, 'src/styles'),
       '@lib': resolve(__dirname, 'lib'),
     },
   },

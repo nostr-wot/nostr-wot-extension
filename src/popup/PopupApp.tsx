@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import browser from '@shared/browser.ts';
 import { rpcNotify } from '@shared/rpc.ts';
-import '@shared/theme.css';
+import '@styles/theme.css';
 import styles from './PopupApp.module.css';
 import { AccountProvider, useAccount } from './context/AccountContext';
 import { VaultProvider, useVault } from './context/VaultContext';

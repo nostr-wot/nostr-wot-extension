@@ -3,7 +3,7 @@ import { rpc } from '@shared/rpc.ts';
 import { LOCK_STATE_KEY } from '@lib/constants.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
-import createRequiredContext from './createRequiredContext.ts';
+import createRequiredContext from '@utils/createRequiredContext.ts';
 
 interface VaultData {
   exists: boolean;

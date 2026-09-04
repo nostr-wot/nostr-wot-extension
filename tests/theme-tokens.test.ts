@@ -23,7 +23,7 @@ import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(fileURLToPath(import.meta.url), '..', '..');
-const THEME = join(ROOT, 'src', 'shared', 'theme.css');
+const THEME = join(ROOT, 'src', 'styles', 'theme.css');
 
 function cssFiles(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
