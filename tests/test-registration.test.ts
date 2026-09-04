@@ -72,4 +72,19 @@ describe('test registration', () => {
       `test files never run by tests/run.sh:\n  ${missing.join('\n  ')}`,
     );
   });
+
+  it('every test file appears in the testing doc', () => {
+    // The same drift, one step further out. docs/testing.md carries a table of
+    // every suite and what it pins; it had gone twenty-five files stale, which
+    // covered essentially everything added over the last stretch of work. An
+    // inventory that omits entries is worse than no inventory, because it is
+    // read as the list. Here the doc names files individually, so no glob.
+    const doc = readFileSync(join(ROOT, 'docs/testing.md'), 'utf8');
+    const missing = FILES.filter((f) => !doc.includes(f)).sort();
+    assert.deepEqual(
+      missing,
+      [],
+      `test files missing from docs/testing.md — add a line saying what each one pins:\n  ${missing.join('\n  ')}`,
+    );
+  });
 });
