@@ -182,3 +182,8 @@
   text-align: center;
   padding: var(--sp-14) 0;
 }
+
+.showMore {
+  text-align: center;
+  padding: var(--sp-4) 0;
+}
