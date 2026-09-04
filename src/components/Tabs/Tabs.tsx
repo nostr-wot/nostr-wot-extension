@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 export interface TabOption<T extends string = string> {
   value: T;
@@ -49,14 +50,14 @@ export default function Tabs<T extends string = string>({
   options, value, onChange, variant = 'outlined', label, className = '',
 }: TabsProps<T>) {
   return (
-    <div className={`${VARIANT_WRAP[variant]} ${className}`} role="tablist" aria-label={label}>
+    <div className={cn(VARIANT_WRAP[variant], className)} role="tablist" aria-label={label}>
       {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
           role="tab"
           aria-selected={opt.value === value}
-          className={`${TAB_BASE} ${VARIANT_TAB[variant]} ${opt.value === value ? VARIANT_TAB_ACTIVE[variant] : ''}`}
+          className={cn(TAB_BASE, VARIANT_TAB[variant], opt.value === value ? VARIANT_TAB_ACTIVE[variant] : '')}
           onClick={() => onChange(opt.value)}
         >
           {opt.label}

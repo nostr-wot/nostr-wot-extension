@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 /**
  * An indeterminate loading ring.
@@ -22,7 +23,7 @@ interface SpinnerProps {
 export default function Spinner({ size = 20, border, className = '' }: SpinnerProps) {
   return (
     <div
-      className={`rounded-full border-card-border border-t-brand animate-spin [animation-duration:0.7s] ${className}`}
+      className={cn('rounded-full border-card-border border-t-brand animate-spin [animation-duration:0.7s]', className)}
       style={{
         width: size,
         height: size,

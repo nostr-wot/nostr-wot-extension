@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import { IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
 import styles from './Modal.module.css';
+import { cn } from '@utils/cn.ts';
 
 // rgba(0,0,0,0.45) is a one-off, distinct from both --scrim (0.4) and
 // --scrim-heavy (0.6) — kept exact rather than snapped to a neighbour.
@@ -91,7 +92,7 @@ export default function Modal({
 
   return (
     <div
-      className={`${styles.backdrop} ${BACKDROP}`}
+      className={cn(styles.backdrop, BACKDROP)}
       style={style}
       onMouseDown={(e) => {
         // mousedown, not click: a drag that starts inside the card and ends on the
@@ -100,7 +101,7 @@ export default function Modal({
       }}
     >
       <div
-        className={`${styles.card} ${CARD}`}
+        className={cn(styles.card, CARD)}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -121,7 +122,7 @@ export default function Modal({
             `.footer:not(.footerRow) > *` selector, since the component
             already knows which case it is in. */}
         {footer && (
-          <div className={`${FOOTER_SHELL} ${footerRow ? FOOTER_ROW : '[&>*]:w-full'}`}>{footer}</div>
+          <div className={cn(FOOTER_SHELL, footerRow ? FOOTER_ROW : '[&>*]:w-full')}>{footer}</div>
         )}
       </div>
     </div>

@@ -3,6 +3,7 @@ import { t } from '@lib/i18n.js';
 import { IconChevronLeft, IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
 import styles from './OverlayPanel.module.css';
+import { cn } from '@utils/cn.ts';
 
 const OVERLAY_BASE = 'absolute inset-0 bg-elevated flex flex-col p-8';
 const HEADER_BASE = 'flex items-center justify-between mb-8 pb-5 border-b border-card-border';
@@ -44,11 +45,11 @@ export default function OverlayPanel({
 
   return (
     <div
-      className={`${styles.overlay} ${OVERLAY_BASE} ${noPadding ? 'p-0' : ''} ${animating ? styles.exiting : ''} ${className}`}
+      className={cn(styles.overlay, OVERLAY_BASE, noPadding ? 'p-0' : '', animating ? styles.exiting : '', className)}
       style={overlayStyle}
     >
       {showHeader && (
-        <div className={`${HEADER_BASE} ${noPadding ? HEADER_NO_PADDING : ''}`}>
+        <div className={cn(HEADER_BASE, noPadding ? HEADER_NO_PADDING : '')}>
           {centered ? (
             <>
               {onBack ? (
@@ -58,7 +59,7 @@ export default function OverlayPanel({
               ) : (
                 <div className={PLACEHOLDER} />
               )}
-              <span className={`${TITLE_BASE} ${noPadding ? TITLE_SMALL : ''}`}>{title}</span>
+              <span className={cn(TITLE_BASE, noPadding ? TITLE_SMALL : '')}>{title}</span>
               {/* This branch used to drop `headerRight` on the floor. It is taken
                   whenever `onBack` is passed — which MenuOverlay always does — so
                   the post-quantum panel's "How it works" button, the only way back

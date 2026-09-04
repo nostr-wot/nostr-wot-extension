@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './PulseLogo.module.css';
+import { cn } from '@utils/cn.ts';
 
 const WRAP = 'relative inline-flex items-center justify-center';
 
@@ -12,7 +13,7 @@ interface PulseLogoProps {
 
 export default function PulseLogo({ src = '', size = 96, alt = '', className = '' }: PulseLogoProps) {
   return (
-    <div className={`${styles.wrap} ${WRAP} ${className}`}>
+    <div className={cn(styles.wrap, WRAP, className)}>
       <img
         src={src}
         width={size}

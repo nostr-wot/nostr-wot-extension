@@ -1,5 +1,6 @@
 import ScrollWheelPicker from '@components/ScrollWheelPicker/ScrollWheelPicker';
 import type { Language } from '@models/language.ts';
+import { cn } from '@utils/cn.ts';
 
 const WRAP = 'flex-1 flex items-center justify-center px-8';
 const ITEM = 'flex items-center gap-7';
@@ -39,7 +40,7 @@ export default function LanguageWheel({ languages, selected, onChange }: Languag
         renderItem={(lang: Language, _i: number, isActive: boolean) => (
           <div className={ITEM}>
             <span className={FLAG}>{lang.flag}</span>
-            <span className={`${NAME} ${isActive ? 'font-semibold' : 'font-medium'}`}>{lang.native}</span>
+            <span className={cn(NAME, isActive ? 'font-semibold' : 'font-medium')}>{lang.native}</span>
           </div>
         )}
       />

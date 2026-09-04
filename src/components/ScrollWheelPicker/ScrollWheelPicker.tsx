@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import styles from './ScrollWheelPicker.module.css';
+import { cn } from '@utils/cn.ts';
 
 const WHEEL_BASE = 'relative w-full overflow-hidden select-none touch-none cursor-grab active:cursor-grabbing';
 // z-[1] is local stacking against this wheel's own rows, not a rung of the
@@ -179,7 +180,7 @@ export default function ScrollWheelPicker<T>({
   return (
     <div
       ref={ref}
-      className={`${styles.wheel} ${WHEEL_BASE}`}
+      className={cn(styles.wheel, WHEEL_BASE)}
       style={{ height }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -202,7 +203,7 @@ export default function ScrollWheelPicker<T>({
         return (
           <div
             key={i}
-            className={`${styles.item} ${ITEM_BASE}`}
+            className={cn(styles.item, ITEM_BASE)}
             style={{
               height: itemHeight,
               marginTop: -itemHeight / 2,

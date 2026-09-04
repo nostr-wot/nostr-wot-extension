@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 interface LinkButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** `muted` is the default; `brand` for an affordance, `danger` for removal. */
@@ -29,7 +30,7 @@ const TONE: Record<NonNullable<LinkButtonProps['tone']>, string> = {
  */
 export default function LinkButton({ tone = 'muted', className = '', children, ...rest }: LinkButtonProps) {
   return (
-    <button type="button" className={`${BASE} ${TONE[tone]} ${className}`} {...rest}>
+    <button type="button" className={cn(BASE, TONE[tone], className)} {...rest}>
       {children}
     </button>
   );

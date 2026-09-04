@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Resting colour. `brand` for primary affordances, `danger` for removals. */
@@ -50,7 +51,7 @@ export default function IconButton({
   return (
     <button
       type="button"
-      className={`${BASE} ${TONE[tone]} ${className}`}
+      className={cn(BASE, TONE[tone], className)}
       style={{ width: px, height: px }}
       {...rest}
     >

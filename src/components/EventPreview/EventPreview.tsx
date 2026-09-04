@@ -15,6 +15,7 @@ import SealedPreview from './kinds/SealedPreview';
 import AppSpecificPreview from './kinds/AppSpecificPreview';
 import GenericPreview from './kinds/GenericPreview';
 import { EP } from './eventPreviewClasses.ts';
+import { cn } from '@utils/cn.ts';
 
 /** Maps event kind to component. Entries here skip the generic fallback. */
 const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisplay }>> = {
@@ -111,7 +112,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
           the FULL payload being signed, not just the kind-specific summary. */}
       {event.tags && event.tags.length > 0 && (
         <>
-          <h3 className={`${EP.sectionTitle} ${EP.tagsTitle}`}>
+          <h3 className={cn(EP.sectionTitle, EP.tagsTitle)}>
             {t('event.tags', { count: event.tags.length })}
           </h3>
           <div className={EP.tagsList}>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 interface CardProps extends React.HTMLAttributes<HTMLElement> {
   /**
@@ -33,7 +34,7 @@ export default function Card({ variant = 'raised', as = 'div', className = '', c
   const Tag = as;
   return (
     <Tag
-      className={`${BASE} ${VARIANT[variant]} ${className}`}
+      className={cn(BASE, VARIANT[variant], className)}
       {...(as === 'button' ? { type: 'button' as const } : {})}
       {...rest}
     >

@@ -1,6 +1,7 @@
 import React from 'react';
 import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
 import styles from './StatusNotice.module.css';
+import { cn } from '@utils/cn.ts';
 
 type Tone = 'ok' | 'warn';
 
@@ -41,7 +42,7 @@ interface StatusNoticeProps {
  */
 export default function StatusNotice({ tone, icon, label, info, children }: StatusNoticeProps) {
   return (
-    <div className={`${styles.notice} flex items-center gap-4 py-5 px-6 rounded-panel text-md ${TONE[tone]}`}>
+    <div className={cn(styles.notice, 'flex items-center gap-4 py-5 px-6 rounded-panel text-md', TONE[tone])}>
       <span className="flex items-center shrink-0">{icon}</span>
       <strong className="font-semibold leading-[1.35]">{label}</strong>
       {info && <InfoTooltip text={info} />}

@@ -271,6 +271,14 @@ Two consequences when migrating, both of which produce a silently wrong result r
 - **A `<button>` or `<input>` keeps the UA's font.** `font-[inherit]` is required wherever the old rule said `font-family: inherit`, or the control will not match its own label.
 - **A colour utility does not create a border.** `border-card-border` sets `border-color` only. The old `border: 1px solid var(--card-border)` needs `border border-card-border` — the bare `border` is what supplies the width, and the style comes from an `@property` whose initial value is `solid`.
 
+### Always compose class lists with `cn()`
+
+`cn(OWN_CLASSES, className)` — own first, the caller's last. This is not tidiness; it is the difference between an override working and not.
+
+Two utilities for the same property on one element are resolved by their order in the **generated stylesheet**, not by their order in `className`. `<Card className="p-0">` against a `Card` that sets `p-7` rendered with 14px of padding, because Tailwind emits `.p-0` before `.p-7`. Three of these were live at once when `cn()` was introduced: `p-0` on Home and SiteControls, `mb-0` on ApprovalCard, and a warning-tinted background on Home that never appeared. Each looked like a deliberate layout and was not one.
+
+`cn()` resolves the conflict before the string reaches the DOM, so the last class written wins the way everyone already expects it to. **Its configuration is load-bearing**: tailwind-merge decides what conflicts from Tailwind's *default* scales, and ours differ — `text-md` is a font size here while `text-muted` is a colour, and a merger that cannot tell them apart silently deletes one. Every scale `tailwind.css` redefines is declared in `src/utils/cn.ts`, and `tests/cn.test.ts` pins both directions: the conflicts it must resolve, and the ones it must not invent.
+
 ### What stays in a stylesheet
 
 Utilities do not replace CSS; they replace the parts of it that were repeating a token. Keep a `.module.css` for anything that is genuinely CSS: custom `@keyframes`, selectors utilities cannot express (`.row + .row`, `:has()`, deep descendant rules), and any class accessed dynamically (``styles[`tone${x}`]``), which no scanner can see. Delete the module only once it is actually empty.

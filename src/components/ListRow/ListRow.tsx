@@ -2,6 +2,7 @@ import React from 'react';
 import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
 import { IconChevronRight } from '@assets';
 import styles from './ListRow.module.css';
+import { cn } from '@utils/cn.ts';
 
 /**
  * A clickable row in a list: [leading] [title / subtitle] [trailing chevron].
@@ -82,7 +83,7 @@ export default function ListRow({
   return (
     <button
       type="button"
-      className={`${ROW_BASE} ${VARIANT[variant]} ${className}`}
+      className={cn(ROW_BASE, VARIANT[variant], className)}
       onClick={onClick}
     >
       {leading != null && (

@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 /**
  * A small selectable pill.
@@ -51,7 +52,7 @@ export default function Chip({
     <button
       type="button"
       aria-pressed={toggle ? selected : undefined}
-      className={`${BASE} ${selected ? TONES[tone] : UNSELECTED} ${className}`}
+      className={cn(BASE, selected ? TONES[tone] : UNSELECTED, className)}
       {...rest}
     >
       {children}

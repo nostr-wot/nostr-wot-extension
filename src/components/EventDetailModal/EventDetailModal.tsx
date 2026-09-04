@@ -9,6 +9,7 @@ import StatusDot from '@components/StatusDot/StatusDot';
 import Button from '@components/Button/Button';
 import type { ActivityEntry } from '@models/activity.ts';
 import styles from './EventDetailModal.module.css';
+import { cn } from '@utils/cn.ts';
 
 const CLS = {
   // The modal fills the fixed-height popup, so the event body must scroll
@@ -186,7 +187,7 @@ export default function EventDetailModal({
             </>
           ) : (
             uniqueEntries.map((entry, i) => (
-              <div key={i} className={`${CLS.entryBlock} ${styles.entryBlock}`}>
+              <div key={i} className={cn(CLS.entryBlock, styles.entryBlock)}>
                 <div className={CLS.entryHeader}>
                   <StatusDot status={entry.decision || ''} />
                   <span className={CLS.entryTime}>{formatTime(entry.timestamp ?? 0)}</span>

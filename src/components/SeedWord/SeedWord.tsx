@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 const SEED_WORD = 'flex items-center gap-3 px-4 py-2 text-sm font-medium text-heading';
 // A 24-word phrase does not fit the popup at the default size.
@@ -39,7 +40,7 @@ export default function SeedWord({ index, word, onClick, compact = false, classN
     </>
   );
   return onClick ? (
-    <button type="button" className={`${cls} ${CLICKABLE}`} onClick={onClick}>
+    <button type="button" className={cn(cls, CLICKABLE)} onClick={onClick}>
       {body}
     </button>
   ) : (

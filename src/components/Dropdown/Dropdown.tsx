@@ -4,6 +4,7 @@ import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import styles from './Dropdown.module.css';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import type { DropdownOption } from '@models/dropdown.ts';
+import { cn } from '@utils/cn.ts';
 
 const TRIGGER_BASE =
   'flex items-center justify-between gap-4 w-full px-6 py-5 border border-card-active rounded-md text-md ' +
@@ -64,23 +65,23 @@ export default function Dropdown({
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={`relative ${className}`} ref={wrapperRef}>
+    <div className={cn('relative', className)} ref={wrapperRef}>
       <button
         type="button"
         className={triggerCls}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className={`${TRIGGER_LABEL} ${!selected ? 'text-muted' : ''}`}>
+        <span className={cn(TRIGGER_LABEL, !selected ? 'text-muted' : '')}>
           {label}
         </span>
         <IconChevronDown
           size={small ? 12 : 14}
-          className={`${CHEVRON} ${open ? 'rotate-180' : ''}`}
+          className={cn(CHEVRON, open ? 'rotate-180' : '')}
         />
       </button>
 
       {menuVisible && (
-        <div className={`${MENU_BASE} ${styles.menu} ${menuAnimating ? styles.menuExiting : ''}`}>
+        <div className={cn(MENU_BASE, styles.menu, menuAnimating ? styles.menuExiting : '')}>
           {options.map((opt) => (
             <button
               key={opt.value}

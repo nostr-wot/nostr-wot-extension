@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@utils/cn.ts';
 
 // One size, chosen: text-sm. The copies were split between sm and xs with no
 // pattern, and the smaller one was being used for the message explaining why
@@ -32,7 +33,7 @@ interface FormErrorProps {
 export default function FormError({ children, className = '' }: FormErrorProps) {
   if (!children) return null;
   return (
-    <div className={`${ERROR} ${className}`} role="alert">
+    <div className={cn(ERROR, className)} role="alert">
       {children}
     </div>
   );

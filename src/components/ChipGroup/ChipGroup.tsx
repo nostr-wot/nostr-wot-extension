@@ -1,5 +1,6 @@
 import React from 'react';
 import Chip from '@components/Chip/Chip';
+import { cn } from '@utils/cn.ts';
 
 interface ChipOption {
   value: string | number;
@@ -15,7 +16,7 @@ interface ChipGroupProps {
 
 export default function ChipGroup({ options, value, onChange, className = '' }: ChipGroupProps) {
   return (
-    <div className={`flex gap-3 flex-wrap ${className}`}>
+    <div className={cn('flex gap-3 flex-wrap', className)}>
       {options.map((opt) => (
         <Chip
           key={String(opt.value)}
