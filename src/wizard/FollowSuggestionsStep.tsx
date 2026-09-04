@@ -156,8 +156,15 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
           const isSelected = selected.has(hex);
           const avatar = getAvatar(hex);
           return (
-            <div
+            <button
               key={hex}
+              type="button"
+              // A toggle, not a link: aria-pressed is what tells a screen
+              // reader this row is currently chosen. It was a div with an
+              // onClick, so it could not be reached or activated from the
+              // keyboard at all — on a step whose whole purpose is picking
+              // from a list.
+              aria-pressed={isSelected}
               className={`${styles.suggestionCard} ${isSelected ? styles.suggestionCardSelected : ''}`}
               onClick={() => toggle(hex)}
             >
@@ -178,7 +185,7 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
                   </svg>
                 )}
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

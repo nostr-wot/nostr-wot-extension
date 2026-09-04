@@ -17,10 +17,15 @@ import styles from './ListRow.module.css';
  * hairline. `standalone` carries its own card chrome and is meant to stand on
  * its own with space around it.
  *
- * Not everything that looks vaguely row-shaped belongs here: the language
+ * Not everything that looks vaguely row-shaped belongs here. The language
  * trigger in the menu footer is an auto-width pill with a chevron-DOWN, which
- * is a dropdown trigger rather than a list row. Widening this component to
- * cover it would mean it no longer describes anything.
+ * is a dropdown trigger rather than a list row. The account rows in the top-bar
+ * dropdown carry their own hover-revealed edit/copy/remove buttons, so the row
+ * is a container of controls rather than one control. And the follow
+ * suggestions in the wizard are a multi-SELECT list with a checkmark, which is
+ * a different control from a row that navigates — it stays hand-rolled until
+ * there is a second one, because a variant with a single caller is a guess
+ * about what the second one will need.
  */
 
 interface ListRowProps {

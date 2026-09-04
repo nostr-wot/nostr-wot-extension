@@ -662,6 +662,11 @@
 }
 
 .suggestionCard {
+  /* Now a real <button>, so it has to opt back out of the UA's font and
+     full-width defaults that a div gave it for free. */
+  width: 100%;
+  font-family: inherit;
+  text-align: left;
   display: flex;
   align-items: center;
   gap: var(--sp-5);
