@@ -6,11 +6,11 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each in its own folder. There are **38**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
+All shared components live in `src/components/`, each in its own folder. There are **40**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`.
 
-**Content** — `Card`, `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`.
+**Content** — `Card`, `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`.
 
 **Controls** — `Button`, `IconButton`, `LinkButton`, `Input`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`.
 
@@ -29,6 +29,8 @@ The recurring failure is not that a primitive is missing, it is that a feature h
 **Every clickable list row is a `ListRow`.** `NavRow`, `NavItem` and the permissions screen's `.permRow` were three implementations of `[leading] [title / subtitle] [chevron]`, which is why the chevron was brand coloured in two of them and muted in the third, and why only one ellipsised a long subtitle. Chrome is the variant: `grouped` is a bare row for a bordered container (a `Card`, or a rounded scroll list) to own the edge, siblings separated by a hairline; `standalone` carries its own card chrome.
 
 Three row-shaped things are deliberately *not* `ListRow`, and the reasoning is worth keeping because each looks like a candidate: the menu footer's language trigger is an auto-width pill with a chevron pointing **down**, so it is a dropdown trigger; the top bar's account rows carry hover-revealed edit/copy/remove buttons, so the row is a container of controls rather than one control; and the wizard's follow suggestions are a multi-**select** list with a checkmark. That last one stays hand-rolled only until there is a second multi-select list — **a variant with a single caller is a guess about what the second caller will need**, and guessing is how `NavRow` and `NavItem` became two things.
+
+**`FormError` is the line a form shows when it could not do what was asked**, and it is worth knowing why it exists: there were twenty-six of them across twenty-one files, and exactly one carried `role="alert"`. Everywhere else the error raised by a failed submit was never announced — a screen-reader user pressed the button and heard nothing at all. The visual duplication (two font sizes for the same thing, chosen by nobody) was the smaller half of the problem. It renders nothing for an empty message, so the `{error && ...}` guard goes away too. `Input` and `InputRow` keep their own field-level error: that belongs to the field's contract, not the form's.
 
 **A component can be a form rather than a screen.** `EncryptedBackupForm` exists because "export the key as an `ncryptsec`" had two implementations — the vault's key dialog, which explained the format, warned that nothing can recover the password, showed a live checklist of what the password still needed and offered both a download and a copy; and the wizard's, which had two bare password fields and a button that objected only once pressed. Same operation, same irreversible consequence, and the thinner one was what a new user met. It is deliberately **not** a `Modal`: the vault dialog is already inside one and switches between four actions, so a modal there would nest. Each caller brings the shell, the component brings the body and its own actions. Reach for this shape whenever the duplicated thing is a *flow* rather than a piece of chrome.
 

@@ -71,6 +71,10 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - The wizard marked a seed **backed up when the export was generated**, not when it was received. A file the user never got is not a backup; it now marks on download or on a clipboard write the browser actually accepted.
 - Marking the backup taken no longer closes the dialog. With both a download and a copy on offer, dismissing on the first made the second unreachable.
 
+### Fixed — errors nobody heard
+
+- **Twenty-six form-error lines, one of which announced itself.** Each screen had its own `.error` rule — the same two declarations at two different font sizes, some with a top margin compensating for a parent without a gap — and only `ConfirmDialog` carried `role="alert"`. Everywhere else, an error raised by a failed submit was never read out: a screen-reader user pressed the button and heard nothing, with the only evidence on screen. They are one `FormError` now, and the fix that was already understood in one place is carried everywhere.
+
 ### Fixed — things that only worked with a mouse
 
 - **Revealing your own key material required a mouse.** The nsec display and the recovery-phrase grid both reveal on click and were divs with an `onClick`: no tab stop, no Enter key. Same for the deposit dialog's invoice, where clicking is the only way to copy it, the wizard's follow-suggestion rows, the verify step's placed words, and the avatar picker in Edit Profile. All are buttons now, and the two reveals report `aria-pressed`.
