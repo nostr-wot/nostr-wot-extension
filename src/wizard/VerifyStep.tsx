@@ -3,6 +3,8 @@ import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
+import SeedWord from '@components/SeedWord/SeedWord';
+import Chip from '@components/Chip/Chip';
 
 // Decoy words from BIP-39 for verification
 const DECOYS = ['abandon', 'ability', 'achieve', 'acquire', 'adapt', 'adjust', 'admit', 'afford'];
@@ -104,29 +106,32 @@ export default function VerifyStep({ mnemonic, onVerified }: VerifyStepProps) {
           const isWrong = wrongSlots.has(i);
           const isClickable = isBlank && filled !== undefined && !verified;
           return (
-            <div
+            <SeedWord
               key={i}
-              className={`${styles.mnemonicWord} ${isBlank ? styles.blank : ''} ${isWrong ? styles.wordWrong : ''} ${isClickable ? styles.wordClickable : ''}`}
+              index={i + 1}
+              word={isBlank ? (filled || '___') : word}
+              compact={words.length > 12}
+              className={`${isBlank ? styles.blank : ''} ${isWrong ? styles.wordWrong : ''}`}
               onClick={isClickable ? () => handleSlotClick(i) : undefined}
-            >
-              <span className={styles.wordNum}>{i + 1}</span>
-              {isBlank ? (filled || '___') : word}
-            </div>
+            />
           );
         })}
       </Card>
 
       {!verified && (
         <div className={styles.wordBank}>
+          {/* toggle={false}: tapping a word consumes it into a slot, it is not
+              a switch. aria-pressed here would announce every available word as
+              "not pressed". */}
           {wordBank.map((word) => (
-            <button
+            <Chip
               key={word}
-              className={`${styles.wordChip} ${selectedChips.has(word) ? styles.wordChipSelected : ''}`}
-              onClick={() => handleChipClick(word)}
+              toggle={false}
               disabled={selectedChips.has(word)}
+              onClick={() => handleChipClick(word)}
             >
               {word}
-            </button>
+            </Chip>
           ))}
         </div>
       )}

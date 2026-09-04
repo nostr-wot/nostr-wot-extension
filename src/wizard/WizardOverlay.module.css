@@ -244,17 +244,6 @@
   gap: var(--sp-2) var(--sp-1);
 }
 
-.mnemonicDisplayWide .mnemonicWord {
-  gap: var(--sp-2);
-  padding: var(--sp-2) 5px;
-  font-size: var(--fs-xs);
-}
-
-.mnemonicDisplayWide .wordNum {
-  min-width: 13px;
-  font-size: 9px;
-}
-
 .mnemonicBlurred {
   filter: blur(6px);
   user-select: none;
@@ -315,17 +304,9 @@
   border-color: var(--success);
 }
 
-.mnemonicWord {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-2) var(--sp-4);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-heading);
-}
-
-.mnemonicWord.blank {
+/* Applied to a SeedWord via className, so it cannot qualify on the word's own
+   class any more — that lives in SeedWord's scope. */
+.blank {
   color: var(--brand);
   font-weight: var(--fw-bold);
 }
@@ -335,23 +316,6 @@
   background: rgba(220, 38, 38, 0.06);
   border-radius: var(--radius-sm);
   animation: shake 0.3s;
-}
-
-.wordClickable {
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition);
-}
-
-.wordClickable:hover {
-  background: var(--brand-tint-active);
-}
-
-.wordNum {
-  font-size: var(--fs-2xs);
-  font-weight: var(--fw-semibold);
-  color: var(--text-muted);
-  min-width: 16px;
 }
 
 /* Backup actions — the tiles themselves are <ActionTile>; this just lays
@@ -395,28 +359,6 @@
   grid-template-columns: repeat(4, 1fr);
   gap: var(--sp-3);
   margin-top: var(--sp-6);
-}
-
-.wordChip {
-  padding: var(--sp-3) var(--sp-2);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--text-heading);
-  background: var(--card-bg);
-  cursor: pointer;
-  transition: all var(--transition);
-  text-align: center;
-}
-
-.wordChip:hover {
-  background: var(--card-active);
-}
-
-.wordChipSelected {
-  opacity: 0.3;
-  cursor: default;
 }
 
 /* Warning box */

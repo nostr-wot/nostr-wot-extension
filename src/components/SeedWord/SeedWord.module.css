@@ -19,3 +19,23 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* Only when it renders as a button — resets the chrome the UA adds. */
+.clickable {
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* A 24-word phrase does not fit the popup at the default size. */
+.compact {
+  gap: var(--sp-2);
+  padding: var(--sp-2) 5px;
+  font-size: var(--fs-xs);
+}
+
+.compact .index {
+  min-width: 13px;
+  font-size: 9px;
+}

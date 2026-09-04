@@ -8,6 +8,15 @@ interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
    * `neutral` marks selection only.
    */
   tone?: 'neutral' | 'allow' | 'deny' | 'ask';
+  /**
+   * Whether this chip is a toggle that reports its own on/off state.
+   *
+   * True for a filter or a permission decision. False for a chip that is a
+   * one-shot action — the recovery-phrase word bank, where tapping a word
+   * consumes it — because `aria-pressed="false"` on those announces every
+   * available word as "not pressed", which describes a toggle nobody offered.
+   */
+  toggle?: boolean;
   children: React.ReactNode;
 }
 
@@ -19,13 +28,13 @@ interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * no way to tell which one is active.
  */
 export default function Chip({
-  selected = false, tone = 'neutral', className = '', children, ...rest
+  selected = false, tone = 'neutral', toggle = true, className = '', children, ...rest
 }: ChipProps) {
   const toneClass = selected ? (tone === 'neutral' ? styles.selected : styles[tone]) : '';
   return (
     <button
       type="button"
-      aria-pressed={selected}
+      aria-pressed={toggle ? selected : undefined}
       className={`${styles.chip} ${toneClass} ${className}`}
       {...rest}
     >

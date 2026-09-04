@@ -10,6 +10,7 @@ import ActionTile from '@components/ActionTile/ActionTile';
 import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
+import SeedWord from '@components/SeedWord/SeedWord';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -110,10 +111,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       <div className={styles.mnemonicWrapper}>
         <Card variant="flat" className={`${styles.mnemonicDisplay} ${words.length > 12 ? styles.mnemonicDisplayWide : ''} ${!revealed ? styles.mnemonicBlurred : ''}`}>
           {words.map((word, i) => (
-            <div key={i} className={styles.mnemonicWord}>
-              <span className={styles.wordNum}>{i + 1}</span>
-              {word}
-            </div>
+            <SeedWord key={i} index={i + 1} word={word} compact={words.length > 12} />
           ))}
         </Card>
 

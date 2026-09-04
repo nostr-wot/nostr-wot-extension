@@ -1,37 +1,4 @@
-/* Tab bar */
-.tabs {
-  display: flex;
-  gap: var(--sp-1);
-  padding: 3px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-panel);
-  margin-bottom: var(--sp-8);
-}
 
-.tab {
-  flex: 1;
-  padding: 7px 0;
-  border: none;
-  background: transparent;
-  border-radius: var(--radius-md);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  font-family: inherit;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.tab:hover {
-  color: var(--text-heading);
-}
-
-.tabActive {
-  background: var(--bg-elevated);
-  color: var(--brand);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
 
 /* QR tab layout */
 .qrTab {

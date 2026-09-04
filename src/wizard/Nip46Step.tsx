@@ -8,6 +8,7 @@ import QrCode from '@components/QrCode/QrCode';
 import styles from './WizardOverlay.module.css';
 import nip46Styles from './Nip46Step.module.css';
 import Spinner from '@components/Spinner/Spinner';
+import Tabs from '@components/Tabs/Tabs';
 
 function isValidBunkerUrl(url: string): boolean {
   if (!url.startsWith('bunker://')) return false;
@@ -140,21 +141,16 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
       <h2 className={styles.stepTitle}>{t('wizard.nip46Title')}</h2>
       <p className={styles.stepDesc}>{t('wizard.nip46Desc')}</p>
 
-      {/* Tab bar */}
-      <div className={nip46Styles.tabs}>
-        <button
-          className={`${nip46Styles.tab} ${tab === 'qr' ? nip46Styles.tabActive : ''}`}
-          onClick={() => setTab('qr')}
-        >
-          {t('wizard.nip46QrTab')}
-        </button>
-        <button
-          className={`${nip46Styles.tab} ${tab === 'bunker' ? nip46Styles.tabActive : ''}`}
-          onClick={() => setTab('bunker')}
-        >
-          {t('wizard.nip46BunkerTab')}
-        </button>
-      </div>
+      <Tabs
+        variant="segmented"
+        label={t('wizard.nip46Title')}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'qr', label: t('wizard.nip46QrTab') },
+          { value: 'bunker', label: t('wizard.nip46BunkerTab') },
+        ]}
+      />
 
       {/* QR tab */}
       {tab === 'qr' && (
