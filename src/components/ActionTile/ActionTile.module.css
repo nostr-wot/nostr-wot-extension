@@ -1,0 +1,47 @@
+/* Icon + title + description tile, wide and stacked in a column of siblings
+   (the wizard's backup-method choices). Pulled out of WizardOverlay.module.css
+   — the same five rule blocks were duplicated across BackupStep and
+   CreateStep with only the icon and copy changing. */
+.tile {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+  width: 100%;
+  padding: var(--sp-6) var(--sp-7);
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  border-radius: var(--radius-panel);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition);
+}
+
+.tile:hover {
+  background: var(--card-active);
+}
+
+.tile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tile svg {
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+}
+
+.text strong {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--text-heading);
+}
+
+.text span {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}

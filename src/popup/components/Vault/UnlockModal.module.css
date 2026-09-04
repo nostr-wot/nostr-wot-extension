@@ -148,21 +148,8 @@
   text-overflow: ellipsis;
 }
 
-.waitingEventDismiss {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--sp-1);
-  border-radius: var(--radius-xs);
-  display: flex;
-  line-height: var(--lh-none);
-}
-
-.waitingEventDismiss:hover {
-  color: var(--error);
-}
-
+/* The dismiss button here used to be bespoke; it is now
+   <IconButton tone="danger" size={20}>, which already covers this shape. */
 .actions {
   display: flex;
   gap: var(--sp-4);

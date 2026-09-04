@@ -56,20 +56,19 @@
   padding-bottom: var(--sp-12);
 }
 
+/* Surface (border, background, blur, radius, shadow) comes from
+   <Card variant="raised" as="button">; only the interactive layout — the
+   icon/text row, hover motion, and the grid's own spacing — stays here. */
 .methodCard {
   display: flex;
   align-items: center;
   gap: var(--sp-7);
   width: 100%;
   padding: var(--sp-8);
-  border: 1px solid var(--card-border);
-  background: var(--surface-glass);
-  backdrop-filter: blur(8px);
-  border-radius: var(--radius-lg);
+  margin-bottom: 0;
   cursor: pointer;
   text-align: left;
   transition: all var(--transition);
-  box-shadow: var(--shadow-card);
 }
 
 .methodCard:hover {
@@ -353,51 +352,12 @@
   min-width: 16px;
 }
 
-/* Backup actions */
+/* Backup actions — the tiles themselves are <ActionTile>; this just lays
+   out a column of them with breathing room between. */
 .backupActions {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-}
-
-.backupBtn {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-6);
-  width: 100%;
-  padding: var(--sp-6) var(--sp-7);
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  border-radius: var(--radius-panel);
-  cursor: pointer;
-  text-align: left;
-  transition: all var(--transition);
-}
-
-.backupBtn:hover {
-  background: var(--card-active);
-}
-
-.backupBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.backupBtn svg {
-  color: var(--brand);
-  flex-shrink: 0;
-}
-
-.backupBtnText strong {
-  display: block;
-  font-size: var(--fs-md);
-  font-weight: var(--fw-semibold);
-  color: var(--text-heading);
-}
-
-.backupBtnText span {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
 }
 
 /* Safety drawer */
@@ -476,14 +436,9 @@
   margin-top: 1px;
 }
 
-/* Summary card */
-.summaryCard {
-  padding: var(--sp-7);
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-}
-
+/* Summary card — every property `.summaryCard` used to set is exactly
+   <Card variant="flat">'s look, so DoneStep.tsx renders a bare Card and this
+   class no longer exists. */
 .summaryField {
   display: flex;
   justify-content: space-between;

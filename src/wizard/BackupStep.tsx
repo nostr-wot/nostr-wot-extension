@@ -4,6 +4,7 @@ import useCopy from '@shared/hooks/useCopy.ts';
 import { t } from '@lib/i18n.js';
 import { IconCopy, IconDownload, IconLock, IconWarning } from '@assets';
 import Button from '@components/Button/Button';
+import ActionTile from '@components/ActionTile/ActionTile';
 import styles from './WizardOverlay.module.css';
 import EncryptedBackupModal from './EncryptedBackupModal';
 
@@ -35,29 +36,26 @@ export default function BackupStep({ mnemonic, onNext }: BackupStepProps) {
       </p>
 
       <div className={styles.backupActions}>
-        <button className={styles.backupBtn} onClick={handleCopy}>
-          <IconCopy />
-          <div className={styles.backupBtnText}>
-            <strong>{seedCopy.copied ? t('common.copied') : t('wizard.copySeed')}</strong>
-            <span>{t('wizard.pasteIntoManager')}</span>
-          </div>
-        </button>
+        <ActionTile
+          icon={<IconCopy />}
+          title={seedCopy.copied ? t('common.copied') : t('wizard.copySeed')}
+          description={t('wizard.pasteIntoManager')}
+          onClick={handleCopy}
+        />
 
-        <button className={styles.backupBtn} onClick={handleDownloadPlain}>
-          <IconDownload />
-          <div className={styles.backupBtnText}>
-            <strong>{t('wizard.downloadPlainText')}</strong>
-            <span>{t('wizard.saveAsTxt')}</span>
-          </div>
-        </button>
+        <ActionTile
+          icon={<IconDownload />}
+          title={t('wizard.downloadPlainText')}
+          description={t('wizard.saveAsTxt')}
+          onClick={handleDownloadPlain}
+        />
 
-        <button className={styles.backupBtn} onClick={() => setEncModalOpen(true)}>
-          <IconLock />
-          <div className={styles.backupBtnText}>
-            <strong>{t('wizard.downloadEncrypted')}</strong>
-            <span>{t('wizard.passwordProtectedFile')}</span>
-          </div>
-        </button>
+        <ActionTile
+          icon={<IconLock />}
+          title={t('wizard.downloadEncrypted')}
+          description={t('wizard.passwordProtectedFile')}
+          onClick={() => setEncModalOpen(true)}
+        />
       </div>
 
       {safetyShown && (

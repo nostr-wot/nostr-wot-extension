@@ -1,11 +1,11 @@
 /* One row in the approval sheet. Split out of ApprovalOverlay.module.css. */
 
+/* Surface (border, background, radius) comes from <Card variant="flat"
+   as="button">; only the interactive row layout and hover stay here. */
 .card {
   width: 100%;
   padding: var(--sp-6) var(--sp-7);
-  border: 1px solid var(--card-border);
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: var(--sp-5);
@@ -73,7 +73,7 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: var(--radius-sm);
   background: none;
-  color: var(--danger));
+  color: var(--danger);
   font-size: var(--fs-2xl);
   line-height: var(--lh-none);
   cursor: pointer;

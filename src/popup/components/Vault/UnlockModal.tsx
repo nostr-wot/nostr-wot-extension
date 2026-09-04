@@ -7,6 +7,8 @@ import useVaultUnlock from '@shared/hooks/useVaultUnlock.ts';
 import { useAnimatedVisible } from '@shared/hooks/useAnimatedVisible.ts';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
+import IconButton from '@components/IconButton/IconButton';
+import { IconClose } from '@assets';
 import styles from './UnlockModal.module.css';
 
 interface WaiterInfo {
@@ -135,11 +137,14 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
               <div key={w.id} className={styles.waitingEvent}>
                 <span className={styles.waitingEventLabel}>{getEventLabel(w.type)}</span>
                 <span className={styles.waitingEventOrigin}>{w.origin}</span>
-                <button className={styles.waitingEventDismiss} onClick={() => handleCancelOne(w.id)}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+                <IconButton
+                  tone="danger"
+                  size={20}
+                  onClick={() => handleCancelOne(w.id)}
+                  aria-label={t('common.close')}
+                >
+                  <IconClose size={12} />
+                </IconButton>
               </div>
             ))}
           </div>

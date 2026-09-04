@@ -1,5 +1,6 @@
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
+import Card from '@components/Card/Card';
 import styles from './WizardOverlay.module.css';
 
 interface DoneAccount {
@@ -22,7 +23,7 @@ export default function DoneStep({ account, onDone }: DoneStepProps) {
       </p>
 
       {account && (
-        <div className={styles.summaryCard}>
+        <Card variant="flat">
           {account.name && (
             <div className={styles.summaryField}>
               <label>{t('wizard.nameLabel')}</label>
@@ -37,7 +38,7 @@ export default function DoneStep({ account, onDone }: DoneStepProps) {
             <label>{t('wizard.publicKeyLabel')}</label>
             <span>{account.pubkey?.slice(0, 12)}...{account.pubkey?.slice(-12)}</span>
           </div>
-        </div>
+        </Card>
       )}
 
       <div className={styles.stepActions}>
