@@ -34,25 +34,6 @@
   color: var(--text-body);
 }
 
-.controlLink {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: var(--sp-5) var(--sp-7);
-  background: none;
-  border: none;
-  font-size: var(--fs-md);
-  font-weight: var(--fw-medium);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition-fast);
-}
-
-.controlLink:hover {
-  background: var(--brand-tint-hover);
-}
-
 .managedBySigner {
   padding: var(--sp-5) var(--sp-7);
   font-size: var(--fs-sm);

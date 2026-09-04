@@ -4,6 +4,7 @@ import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
+import LinkButton from '@components/LinkButton/LinkButton';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
 
 import styles from './Wallet.module.css';
@@ -90,12 +91,12 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
           {tab === 'quick' ? (
             <>
               <SectionHint>{t('wallet.quickSetupHint')}</SectionHint>
-              <button
+              <LinkButton
                 className={styles.advancedToggle}
                 onClick={() => setShowAdvanced(!showAdvanced)}
               >
                 {t('wallet.advancedSettings')} {showAdvanced ? '\u25B2' : '\u25BC'}
-              </button>
+              </LinkButton>
               {showAdvanced && (
                 <Input
                   type="text"

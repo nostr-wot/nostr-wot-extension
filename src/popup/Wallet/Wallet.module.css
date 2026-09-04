@@ -25,15 +25,9 @@
   margin-top: var(--sp-2);
 }
 
+/* Layout only — LinkButton supplies the surface. */
 .advancedToggle {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: var(--fs-xs);
-  cursor: pointer;
   padding: var(--sp-2) 0;
-  text-align: left;
-  font-family: inherit;
 }
 
 .advancedToggle:hover {

@@ -5,6 +5,7 @@ import '@shared/theme.css';
 import './onboarding.css';
 import TopoBg from '@components/TopoBg/TopoBg';
 import PulseLogo from '@components/PulseLogo/PulseLogo';
+import Button from '@components/Button/Button';
 import useWizardFlow from '@hooks/useWizardFlow.ts';
 import WizardSteps from '@wizard/WizardSteps';
 
@@ -22,9 +23,9 @@ export default function OnboardingApp() {
             <PulseLogo />
             <h1>{t('onboarding.title')}</h1>
             <p>{t('onboarding.subtitle')}</p>
-            <button className="onboarding-start-btn" onClick={() => flow.send('NEXT')}>
+            <Button className="onboarding-start-btn" onClick={() => flow.send('NEXT')}>
               {t('wizard.getStarted')}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
