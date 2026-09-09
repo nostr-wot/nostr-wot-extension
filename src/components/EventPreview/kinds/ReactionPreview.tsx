@@ -1,6 +1,7 @@
+import Text from '@components/Text';
 import { t } from '@services/i18n/i18n.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
-import { EP } from '../eventPreviewClasses.ts';
+import Heading from '@components/Heading';
 
 interface ReactionPreviewProps {
   event: NostrEventDisplay;
@@ -15,11 +16,11 @@ export default function ReactionPreview({ event }: ReactionPreviewProps) {
 
   return (
     <>
-      <h3 className={EP.sectionTitle}>
+      <Heading level={5} as="h3" className="m-0 mb-4">
         {isLike ? t('event.like') : isDislike ? t('event.dislike') : t('event.reaction')}
-      </h3>
-      {isCustomEmoji && <div className={EP.reactionEmoji}>{content}</div>}
-      {target && <div className={EP.eventNote}>{t('event.reactingToNote')}</div>}
+      </Heading>
+      {isCustomEmoji && <Text as="div" className="text-display leading-none my-2">{content}</Text>}
+      {target && <Text variant="hint" className="text-sm italic mt-2">{t('event.reactingToNote')}</Text>}
     </>
   );
 }

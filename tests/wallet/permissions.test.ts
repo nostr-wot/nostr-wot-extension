@@ -2,7 +2,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
 import * as permissions from '../../src/services/permissions/permissions.ts';
-import * as signer from '../../src/services/signing/signer.ts';
+import * as signerApprovalQueue from '../../src/services/signing/approvalQueue.ts';
 import { handlers as walletHandlers } from '../../src/services/background/wallet-handlers.ts';
 import { addAllowedDomain, addWeblnAllowedDomain, isWeblnAllowed } from '../../src/services/background/domain-handlers.ts';
 
@@ -70,12 +70,12 @@ describe('webln_enable does not ride along on a NIP-07 connection', () => {
 
     // The user must be asked: the call parks on an approval request.
     await new Promise(r => setTimeout(r, 20));
-    const queued = await signer.getPending();
+    const queued = await signerApprovalQueue.getPending();
     const ask = queued.find(r => r.type === 'webln_enable' && r.origin === 'social.example');
     assert.ok(ask, 'an already-connected site must still be asked about the wallet');
     assert.strictEqual(await isWeblnAllowed('social.example'), false, 'nothing granted while asking');
 
-    signer.resolveRequest(ask!.id, { allow: true, remember: false });
+    signerApprovalQueue.resolveRequest(ask!.id, { allow: true, remember: false });
     assert.strictEqual(await pending, true);
     assert.strictEqual(await isWeblnAllowed('social.example'), true);
   });
@@ -86,8 +86,8 @@ describe('webln_enable does not ride along on a NIP-07 connection', () => {
     const pending = enable({ origin: 'social.example', shownConnectCard: false });
 
     await new Promise(r => setTimeout(r, 20));
-    const ask = (await signer.getPending()).find(r => r.type === 'webln_enable');
-    signer.resolveRequest(ask!.id, { allow: false, remember: false });
+    const ask = (await signerApprovalQueue.getPending()).find(r => r.type === 'webln_enable');
+    signerApprovalQueue.resolveRequest(ask!.id, { allow: false, remember: false });
 
     await assert.rejects(() => pending as Promise<unknown>, /denied/i);
     assert.strictEqual(await isWeblnAllowed('social.example'), false);
@@ -98,13 +98,13 @@ describe('webln_enable does not ride along on a NIP-07 connection', () => {
     const enable = walletHandlers.get('webln_enable')!;
     assert.strictEqual(await enable({ origin: 'zap.example', shownConnectCard: true }), true);
     assert.strictEqual(await isWeblnAllowed('zap.example'), true);
-    assert.deepStrictEqual(await signer.getPending(), []);
+    assert.deepStrictEqual(await signerApprovalQueue.getPending(), []);
   });
 
   it('is a no-op once wallet access is already granted', async () => {
     await addWeblnAllowedDomain('zap.example');
     const enable = walletHandlers.get('webln_enable')!;
     assert.strictEqual(await enable({ origin: 'zap.example', shownConnectCard: false }), true);
-    assert.deepStrictEqual(await signer.getPending(), [], 're-enabling must not re-prompt');
+    assert.deepStrictEqual(await signerApprovalQueue.getPending(), [], 're-enabling must not re-prompt');
   });
 });

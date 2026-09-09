@@ -1,3 +1,4 @@
+import useAsyncScope from '@hooks/useAsyncScope.ts';
 import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
 
 export interface AsyncResource<T> {
@@ -75,7 +76,7 @@ export default function useAsyncResource<T>(
   // Run-versioned rather than a per-call `cancelled` flag: `refresh` can be
   // invoked again (a storage change, a manual retry) while an earlier pass is
   // still in flight, and the slower one must not win by finishing last.
-  const runRef = useRef(0);
+  const scope = useAsyncScope([enabled, ...deps]);
   // Held in a ref so `refresh`'s identity stays stable across renders even
   // though `load` is usually a fresh closure — callers that pass `refresh` to
   // an effect dependency array (or a storage subscription) must not have it
@@ -88,8 +89,7 @@ export default function useAsyncResource<T>(
   }, []);
 
   const refresh = useCallback(async () => {
-    const run = ++runRef.current;
-    const isCurrent = () => run === runRef.current;
+    const isCurrent = scope.start();
     setLoading(true);
     setError('');
     try {
@@ -99,7 +99,7 @@ export default function useAsyncResource<T>(
     } finally {
       if (isCurrent()) setLoading(false);
     }
-  }, [patch]);
+  }, [patch, scope]);
 
   useEffect(() => {
     if (!enabled) return;

@@ -2,14 +2,14 @@ import { KEYGEN_SOURCE_URL, KEYGEN_COMMAND } from '@constants/pqc.ts';
 import React, { useState, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
+import Button, { ButtonSecondary } from '@components/Button';
 import { type PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
-import FormError from '@components/FormError/FormError';
-import Textarea from '@components/Textarea/Textarea';
+import FormError from '@components/FormError';
+import Textarea from '@components/Textarea';
 
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 /** Import independently generated post-quantum keys from a key file. */
 export default function PqcImportPanel() {
@@ -66,7 +66,7 @@ export default function PqcImportPanel() {
         <Button onClick={() => submit(text)} disabled={busy || !text.trim()}>
           {busy ? t('pqc.importing') : t('pqc.importSubmit')}
         </Button>
-        <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>{t('pqc.importChooseFile')}</Button>
+        <ButtonSecondary onClick={() => fileRef.current?.click()} disabled={busy}>{t('pqc.importChooseFile')}</ButtonSecondary>
         <input ref={fileRef} type="file" accept="application/json,.json,.txt,text/plain" onChange={onFile} disabled={busy} hidden />
       </Container>
 

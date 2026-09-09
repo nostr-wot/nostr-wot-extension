@@ -9,20 +9,21 @@ import {
   type ProfileMetadata,
 } from '@domain/profile/profileMetadata.ts';
 import { useAccount } from '@context/AccountContext';
-import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
+import OverlayPanel from '@components/OverlayPanel';
 import ProfilePreviewCard from './ProfilePreviewCard';
 import ProfileImageHeader from './ProfileImageHeader';
 import ProfileImageDialog, { type ProfileImageChoice } from './ProfileImageDialog';
-import Textarea from '@components/Textarea/Textarea';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import LinkButton from '@components/LinkButton/LinkButton';
-import Spinner from '@components/Spinner/Spinner';
+import Textarea from '@components/Textarea';
+import Input from '@components/Input';
+import Button, { ButtonSecondary } from '@components/Button';
+import LinkButton from '@components/LinkButton';
+import Spinner from '@components/Spinner';
+import useObjectUrl from '@hooks/useObjectUrl';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import IconChevronDown from '@assets/IconChevronDown.tsx';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 const STEPS = { FORM: 0, UPLOADING: 1, PREVIEW: 2, PUBLISHING: 3, DONE: 4 } as const;
 type StepValue = typeof STEPS[keyof typeof STEPS];
@@ -34,11 +35,9 @@ interface EditProfileOverlayProps {
 
 export default function EditProfileOverlay({ visible, onClose }: EditProfileOverlayProps) {
   const { active, cachedProfile, reload } = useAccount();
-  const bannerBlobRef = useRef<string | null>(null);
   const uploadedImagesRef = useRef(new WeakMap<File, string>());
   const operation = useRef(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const blobUrlRef = useRef<string | null>(null);
 
   const [editingImage, setEditingImage] = useState<'picture' | 'banner' | null>(null);
   const [step, setStep] = useState<StepValue>(STEPS.FORM);
@@ -51,9 +50,9 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const [banner, setBanner] = useState<string>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const bannerPreview = useObjectUrl(visible ? bannerFile : null, active?.id);
+  const imagePreview = useObjectUrl(visible ? imageFile : null, active?.id);
   const [previewMeta, setPreviewMeta] = useState<ProfileMetadata | null>(null);
   const [error, setError] = useState<string>('');
 
@@ -74,13 +73,10 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
       setLud16(''); setWebsite(''); setBanner('');
     }
     setEditingImage(null);
-    setBannerFile(null); setBannerPreview(null);
+    setBannerFile(null);
     uploadedImagesRef.current = new WeakMap();
-    if (bannerBlobRef.current) { URL.revokeObjectURL(bannerBlobRef.current); bannerBlobRef.current = null; }
-    setImageFile(null); setImagePreview(null); setError('');
+    setImageFile(null); setError('');
     setStep(STEPS.FORM); setAdvancedOpen(false); setPreviewMeta(null);
-    // Revoke old blob URL
-    if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
   }, [visible, active?.id]);
 
   // Cleanup on unmount
@@ -88,8 +84,6 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
     const lifetime = operation;
     return () => {
       lifetime.current++;
-      if (bannerBlobRef.current) URL.revokeObjectURL(bannerBlobRef.current);
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
   }, []);
@@ -106,12 +100,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const formValid = !!(name.trim() || about.trim()) && !bannerInvalid && !pictureInvalid;
 
   const applyImage = (target: 'picture' | 'banner', choice: ProfileImageChoice) => {
-    const ref = target === 'banner' ? bannerBlobRef : blobUrlRef;
-    if (ref.current) URL.revokeObjectURL(ref.current);
-    const preview = choice.file ? URL.createObjectURL(choice.file) : null;
-    ref.current = preview;
-    if (target === 'banner') { setBanner(choice.url); setBannerFile(choice.file); setBannerPreview(preview); }
-    else { setPicture(choice.url); setImageFile(choice.file); setImagePreview(preview); }
+    if (target === 'banner') { setBanner(choice.url); setBannerFile(choice.file); }
+    else { setPicture(choice.url); setImageFile(choice.file); }
     setError(''); setEditingImage(null);
   };
 
@@ -213,7 +203,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
       <FormError>{error}</FormError>
 
       <Container variant="row" gap={4} className="mt-2">
-        <Button className="flex-1" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+        <ButtonSecondary className="flex-1" onClick={onClose}>{t('common.cancel')}</ButtonSecondary>
         <Button className="flex-1" onClick={handlePublish} disabled={!hasChanges || !formValid}>{t('profileEdit.publish')}</Button>
       </Container>
     </Container>

@@ -3,8 +3,80 @@ import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ActivityEntryDetail from '../src/components/EventDetailModal/ActivityEntryDetail';
-import EventPreview from '../src/components/EventPreview/EventPreview';
-import SiteIcon from '../src/components/SiteIcon/SiteIcon';
+import EventPreview from '../src/components/EventPreview';
+import SiteIcon from '../src/components/SiteIcon';
+import DetailDisclosure from '../src/components/DetailDisclosure';
+import TextBlock from '../src/components/TextBlock';
+
+it('text blocks preserve the entire body, whitespace and escaped content in both modes', () => {
+  const body = '  First line\n<script>\n' + 'body '.repeat(500);
+  for (const mono of [false, true]) {
+    const html = renderToStaticMarkup(TextBlock({ children: body, mono }));
+    assert.match(html, /whitespace-pre-wrap/);
+    assert.match(html, /max-height:180px/);
+    assert.ok(html.includes(body.replace('<script>', '&lt;script&gt;')));
+    assert.doesNotMatch(html, /<script>/);
+  }
+});
+
+for (const [kind, content, label] of [
+  [0, '{"name":"Alice","about":"Line one\\nLine two","nip05":"alice@example.test"}', 'Alice'],
+  [1, 'A complete note', 'A complete note'],
+  [3, '', 'event.contactList'],
+  [5, '', 'event.eventDeletion'],
+  [6, '', 'event.repostingNote'],
+  [7, '🎉', '🎉'],
+  [13, 'sealed', 'event.sealedDesc'],
+  [1059, 'wrapped', 'event.sealedDesc'],
+  [30078, '', 'Application'],
+  [45678, '<unknown>', '&lt;unknown&gt;'],
+] as const) {
+  it(`kind ${kind} retains its preview and every tag when composed from shared controls`, () => {
+    const tags = [['p', 'peer'], ['e', 'event'], ['d', 'Application', 'save_data'], ['custom', 'last tag']];
+    const html = renderToStaticMarkup(createElement(EventPreview, {
+      type: 'signEvent', event: { kind, content, tags },
+    }));
+    assert.ok(html.includes(label));
+    assert.match(html, /<details open/);
+    for (const tag of tags) assert.ok(html.includes(JSON.stringify(tag).replaceAll('"', '&quot;')));
+    assert.match(html, /aria-expanded="false"/);
+    assert.match(html, /focus-visible:shadow-focus/);
+  });
+}
+
+it('profile previews reject unsafe image URLs and handle malformed metadata', () => {
+  const render = (content: string) => renderToStaticMarkup(createElement(EventPreview, {
+    type: 'signEvent', event: { kind: 0, content, tags: [] },
+  }));
+  assert.doesNotMatch(render('{"name":"Alice","banner":"javascript:bad","picture":"javascript:bad"}'), /javascript:bad|<img/);
+  assert.match(render('{"name":"Alice","banner":"https://example.test/banner.png"}'), /<img[^>]*src="https:\/\/example.test\/banner.png"/);
+  assert.match(render('invalid json'), /event.noEventData/);
+});
+
+it('raw details remain collapsed, selectable and bounded while escaping their content', () => {
+  for (const maxHeight of [undefined, 180]) {
+    const html = renderToStaticMarkup(createElement(DetailDisclosure, {
+      label: 'Raw data', content: '<script>\n  private payload', maxHeight,
+    }));
+    assert.match(html, /<summary[^>]*>Raw data<\/summary>/);
+    assert.doesNotMatch(html, /<details[^>]*open|<script>/);
+    assert.match(html, /&lt;script&gt;\n {2}private payload/);
+    assert.match(html, /whitespace-pre-wrap.*overflow-y-auto.*select-text/);
+    assert.ok(html.includes(`max-height:${maxHeight ?? 240}px`));
+  }
+});
+
+it('encrypted detail uses shared headings and box layout without exposing hidden account metadata', () => {
+  const html = renderToStaticMarkup(createElement(ActivityEntryDetail, {
+    entry: { method: 'nip44Decrypt', timestamp: 1, decision: 'approved', pubkey: '11'.repeat(32),
+      theirPubkey: '22'.repeat(32), ciphertext: '<ciphertext>', event: { kind: 4, content: '<ciphertext>' } },
+    hideAccount: true, hidePeer: true,
+  }));
+  assert.match(html, /<h5[^>]*>activity.detail.encrypted<\/h5>/);
+  assert.match(html, /bg-card.*border-card-border.*rounded-panel/);
+  assert.equal((html.match(/<details/g) || []).length, 2);
+  assert.doesNotMatch(html, /111111|222222|<ciphertext>|<details[^>]*open/);
+});
 
 it('older encryption history explains the absent body and has no decrypt button', () => {
   const html = renderToStaticMarkup(createElement(ActivityEntryDetail, { entry: { method: 'nip44Encrypt', timestamp: 1, decision: 'approved', pubkey: '11'.repeat(32) } }));
@@ -39,7 +111,7 @@ it('site icons have a stable decorative fallback before the cached image resolve
 });
 
 it('activity details preserve different ciphertexts and do not expose review actions in approval mode', async () => {
-  const { default: EventDetailModal } = await import('../src/components/EventDetailModal/EventDetailModal');
+  const { default: EventDetailModal } = await import('../src/components/EventDetailModal');
   const entry = { method: 'nip44Decrypt', timestamp: 1, decision: 'approved', pubkey: '11'.repeat(32), theirPubkey: '22'.repeat(32), ciphertext: 'first-body' };
   const html = renderToStaticMarkup(createElement(EventDetailModal, { group: { domain: 'site.test', methodKey: 'nip44Decrypt', entries: [entry, {...entry, ciphertext: 'second-body'}] } }));
   assert.doesNotMatch(html, /first-body|second-body/);
@@ -66,7 +138,7 @@ it('activity filters use a compact dialog and scrim with scrolling content and p
 });
 
 it('group detail displays metadata once above compact rows', async () => {
-  const { default: EventDetailModal } = await import('../src/components/EventDetailModal/EventDetailModal');
+  const { default: EventDetailModal } = await import('../src/components/EventDetailModal');
   const entry = { method:'nip44Decrypt',timestamp:1000,decision:'approved',pubkey:'11'.repeat(32),theirPubkey:'22'.repeat(32),ciphertext:'encrypted'};
   const group = {domain:'site.test',methodKey:'nip44Decrypt',entries:[entry,{...entry,timestamp:2000}]};
   const html = renderToStaticMarkup(createElement(EventDetailModal,{group}));
@@ -84,7 +156,7 @@ it('group detail displays metadata once above compact rows', async () => {
 });
 
 it('mixed-account groups retain each account rather than hiding it under the external selection', async () => {
-  const { default: EventDetailModal } = await import('../src/components/EventDetailModal/EventDetailModal');
+  const { default: EventDetailModal } = await import('../src/components/EventDetailModal');
   const entry = {method:'getPublicKey',timestamp:1000,decision:'approved',pubkey:'11'.repeat(32)};
   const html = renderToStaticMarkup(createElement(EventDetailModal,{selectedAccountPubkey:entry.pubkey,group:{entries:[entry,{...entry,pubkey:'22'.repeat(32)}]}}));
   assert.equal((html.match(/activity.detail.account/g) || []).length,2);
@@ -115,7 +187,7 @@ it('compact row previews adapt to profile, note, reaction and list events withou
 });
 
 it('approval group details include every event in collapsed rows with one decision footer', async () => {
- const {default: EventDetailModal}=await import('../src/components/EventDetailModal/EventDetailModal');
+ const {default: EventDetailModal}=await import('../src/components/EventDetailModal');
  const requests=[
   {id:'first',type:'signEvent',origin:'site.test',event:{kind:1,content:'first pending body',tags:[]}},
   {id:'second',type:'signEvent',origin:'site.test',event:{kind:1,content:'second pending body',tags:[]}},
@@ -128,7 +200,7 @@ it('approval group details include every event in collapsed rows with one decisi
 });
 
 it('remote signer groups also show every pending item without local approval actions', async () => {
- const {default: EventDetailModal}=await import('../src/components/EventDetailModal/EventDetailModal');
+ const {default: EventDetailModal}=await import('../src/components/EventDetailModal');
  const requests=[{id:'a',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote first',tags:[]}},
  {id:'b',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote second',tags:[]}}];
  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:requests[0],requests,nip46InFlight:true}));

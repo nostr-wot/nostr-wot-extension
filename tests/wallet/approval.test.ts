@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
-import * as signer from '../../src/services/signing/signer.ts';
+import * as signerApprovalQueue from '../../src/services/signing/approvalQueue.ts';
 import * as vault from '../../src/services/vault/vault.ts';
 
 /** Wait for queueRequest to flush its storage write */
@@ -13,11 +13,11 @@ describe('wallet payment approval', () => {
     await browserMock.storage.local.set({activeAccountId:'wallet-account',accounts:[{id:'wallet-account',type:'nsec',pubkey:'a'.repeat(64)}]});
     await browserMock.storage.sync.set({myPubkey:'a'.repeat(64)});
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('queues a payment request with walletAmount and needsPermission', async () => {
-    const promise = signer.queueRequest({
+    const promise = signerApprovalQueue.queueRequest({
       type: 'webln_sendPayment',
       origin: 'primal.net',
       needsPermission: true,
@@ -26,7 +26,7 @@ describe('wallet payment approval', () => {
 
     await tick();
 
-    const pending = await signer.getPending();
+    const pending = await signerApprovalQueue.getPending();
     assert.equal(pending.length, 1);
     assert.equal(pending[0].type, 'webln_sendPayment');
     assert.equal(pending[0].walletAmount, 1000);
@@ -34,13 +34,13 @@ describe('wallet payment approval', () => {
     assert.equal(pending[0].needsPermission, true);
 
     // Resolve it
-    signer.resolveRequest(pending[0].id, { allow: true });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true });
     const result = await promise;
     assert.ok(result.allow);
   });
 
   it('rejected payment returns deny', async () => {
-    const promise = signer.queueRequest({
+    const promise = signerApprovalQueue.queueRequest({
       type: 'webln_sendPayment',
       origin: 'evil.com',
       walletAmount: 100000,
@@ -48,30 +48,30 @@ describe('wallet payment approval', () => {
 
     await tick();
 
-    const pending = await signer.getPending();
-    signer.resolveRequest(pending[0].id, { allow: false });
+    const pending = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false });
     const result = await promise;
     assert.equal(result.allow, false);
   });
 
   it('payment request without walletAmount works', async () => {
-    const promise = signer.queueRequest({
+    const promise = signerApprovalQueue.queueRequest({
       type: 'webln_makeInvoice',
       origin: 'example.com',
     });
 
     await tick();
 
-    const pending = await signer.getPending();
+    const pending = await signerApprovalQueue.getPending();
     assert.equal(pending.length, 1);
     assert.equal(pending[0].walletAmount, undefined);
 
-    signer.resolveRequest(pending[0].id, { allow: true });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true });
     await promise;
   });
 
   it('walletAmount is preserved in pending storage', async () => {
-    const promise = signer.queueRequest({
+    const promise = signerApprovalQueue.queueRequest({
       type: 'webln_sendPayment',
       origin: 'test.com',
       walletAmount: 5000,
@@ -80,11 +80,11 @@ describe('wallet payment approval', () => {
     await tick();
 
     // Read directly from getPending
-    const pending = await signer.getPending();
+    const pending = await signerApprovalQueue.getPending();
     assert.equal(pending[0].walletAmount, 5000);
 
     // Clean up: resolve the request to avoid hanging
-    signer.resolveRequest(pending[0].id, { allow: true });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true });
     await promise;
   });
 });

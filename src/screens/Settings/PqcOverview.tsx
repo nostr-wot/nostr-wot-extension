@@ -3,11 +3,11 @@ import IconKey from '@assets/IconKey.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
 import IconWarning from '@assets/IconWarning.tsx';
 import IconGlobe from '@assets/IconGlobe.tsx';
-import Button from '@components/Button/Button';
-import ListRow from '@components/ListRow/ListRow';
-import StatusDot from '@components/StatusDot/StatusDot';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import Text from '@components/Text/Text';
+import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
+import ListRow from '@components/ListRow';
+import StatusDot from '@components/StatusDot';
+import StatusNotice from '@components/StatusNotice';
+import Text from '@components/Text';
 import type { PqcPublished } from '@domain/pqc/pqcState.ts';
 
 export default function PqcOverview({ imported, ready, removing, onKeys, onExport, onAnnouncement, onRemove }: {
@@ -30,7 +30,7 @@ export default function PqcOverview({ imported, ready, removing, onKeys, onExpor
     <Text variant="secondary" className="text-sm leading-loose">{t('pqc.protectionSummary')}</Text>
     {imported && <>
       <StatusNotice variant="callout" tone="warn" icon={<IconWarning size={18} />}>{t('pqc.importedBackupWarning')}</StatusNotice>
-      <Button variant="danger" outline small onClick={onRemove} disabled={removing}>{t('pqc.importRemove')}</Button>
+      <ButtonDanger outline small onClick={onRemove} disabled={removing}>{t('pqc.importRemove')}</ButtonDanger>
     </>}
   </div>;
 }
@@ -46,7 +46,7 @@ export function PqcPublication({ ready, existing, busy, onPublish, onRetry }: {
     </Text>
     {!ready && <div className="flex gap-4">
       <Button className="flex-1" onClick={onPublish} disabled={busy}>{busy ? t('pqc.publishing') : t('pqc.publish')}</Button>
-      {existing?.unreachable && <Button variant="secondary" onClick={onRetry} disabled={busy}>{t('common.retry')}</Button>}
+      {existing?.unreachable && <ButtonSecondary onClick={onRetry} disabled={busy}>{t('common.retry')}</ButtonSecondary>}
     </div>}
   </div>;
 }

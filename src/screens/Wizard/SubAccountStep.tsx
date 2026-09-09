@@ -1,15 +1,15 @@
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
+import Input from '@components/Input';
+import Button from '@components/Button';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
-import FormError from '@components/FormError/FormError';
-import Heading from '@components/Heading/Heading';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Heading from '@components/Heading';
+import { SectionLabel } from '@components/SectionLabel';
+import FieldDisplay from '@components/FieldDisplay';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface SubAccountStepProps {
   onNext: (account: any) => void;

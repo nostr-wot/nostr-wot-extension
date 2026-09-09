@@ -8,13 +8,13 @@ import { truncateNpub } from '@domain/nostr/display.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import IconClose from '@assets/IconClose.tsx';
 import IconPlus from '@assets/IconPlus.tsx';
-import Avatar from '@components/Avatar/Avatar';
-import Button from '@components/Button/Button';
-import IconButton from '@components/IconButton/IconButton';
-import Modal from '@components/Modal/Modal';
-import Container from '@components/Container/Container';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import Text from '@components/Text/Text';
+import Avatar from '@components/Avatar';
+import { ButtonSecondary, ButtonDanger } from '@components/Button';
+import IconButton from '@components/IconButton';
+import Modal from '@components/Modal';
+import Container from '@components/Container';
+import StatusNotice from '@components/StatusNotice';
+import Text from '@components/Text';
 
 interface AccountDropdownProps {
   onClose: () => void;
@@ -60,7 +60,7 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
 
   return (
     <Modal title={t('account.choose')} onClose={onClose} maxWidth={360}
-      footer={<Button variant="secondary" onClick={onAddAccount}><IconPlus size={16} />{t('account.addAccount')}</Button>}>
+      footer={<ButtonSecondary onClick={onAddAccount}><IconPlus size={16} />{t('account.addAccount')}</ButtonSecondary>}>
       <div className="flex flex-col gap-3">
         {(accounts || []).map((account) => {
           const cached = profileCache[account.pubkey];
@@ -88,10 +88,10 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
             </StatusNotice>
           )}
           <Container variant="row" gap={4} className="justify-end">
-            <Button variant="secondary" small onClick={() => setConfirmId(null)}>{t('common.cancel')}</Button>
-            <Button variant="danger" small onClick={handleRemove} disabled={removing}>
+            <ButtonSecondary small onClick={() => setConfirmId(null)}>{t('common.cancel')}</ButtonSecondary>
+            <ButtonDanger small onClick={handleRemove} disabled={removing}>
               {removing ? t('common.removing') : t('common.remove')}
-            </Button>
+            </ButtonDanger>
           </Container>
         </div>
       )}
@@ -117,6 +117,6 @@ export function AccountPickerRow({ name, subtitle, picture, selected, readOnly, 
       </div>
       {selected && <span className="text-brand font-semibold" aria-label={t('account.selected')}>✓</span>}
     </button>
-    <IconButton tone="danger" size={24} title={t('account.remove')} aria-label={t('account.remove')} onClick={onRemove}><IconClose size={14} /></IconButton>
+    <IconButton tone="danger" size="small" title={t('account.remove')} aria-label={t('account.remove')} onClick={onRemove}><IconClose size={14} /></IconButton>
   </div>;
 }

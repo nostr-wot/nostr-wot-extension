@@ -1,6 +1,6 @@
 # Test Suite
 
-Tests use **Node.js built-in test runner** (`node:test`, Node 22+) with the `tsx` loader for TypeScript. The full runner builds first because CSS regression tests inspect generated assets. Targeted non-CSS tests run directly without a build.
+Tests use **Node.js built-in test runner** (`node:test`, Node 22+) with the `tsx` loader for TypeScript. The full runner builds first because CSS regression tests inspect generated assets. Most targeted non-CSS tests run directly without a build. `inject-webln.test.ts` also executes the packaged MAIN-world script, so build before running it directly.
 
 ## 1. Running Tests
 
@@ -243,3 +243,9 @@ generic utilities. Interactive hook lifecycles still require browser validation.
 Entry-point regression checks verify source ownership and the manifest/Vite paths.
 The CSS/build suite also verifies that all three packaged HTML documents reference
 existing scripts and styles. Prompt and wizard tests cover the extracted views.
+
+Profile-image tests cover shared image/profile rendering, object-URL disposal and initial hook state. Mute-state tests cover async scope invalidation, immutable unique merges and replaceable timeout cleanup. Hook render checks use SSR; mounted effect transitions still require browser verification.
+
+Vault and signer suites exercise the composed vault account/PQ operations and import extracted signing queue/identity/decryption functions from their owners. Button tests cover named presets and registration checks require implementation entrypoints at `Component/index.tsx`.
+
+Wallet background regressions exercise the real handler during a deferred startup unlock and after a genuine lock. Vault-state tests verify that retired successful and failed reads cannot overwrite a newer unlocked state.

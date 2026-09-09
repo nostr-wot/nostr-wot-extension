@@ -60,7 +60,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 Responsibilities of `background.ts`:
 - Handler map assembly from all `src/services/background/*-handlers.ts` modules
 - `loadConfig()` -- initializes `state.config` (myPubkey, relays) and ensures an active account exists in `browser.storage.local`
-- Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `signer.cleanupStale()`. The auto-unlock is registered through `vault.beginStartupUnlock()` so request paths can await it instead of mistaking the cold-start window for a locked vault (see [Security](security.md))
+- Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `approvalQueue.cleanupStale()`. The auto-unlock is registered through `vault.beginStartupUnlock()` so request paths can await it instead of mistaking the cold-start window for a locked vault (see [Security](security.md))
 - `browser.runtime.onMessage` listener (privilege gate, origin derivation, dispatch to `handleRequest()`)
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
 - `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))
@@ -240,3 +240,20 @@ The main shared types are:
 ### Shared record ownership
 
 Activity storage and UI use `ActivityEntry` from `src/domain/activity/activity.ts`. The writer accepts its `ActivityLogInput` projection without a timestamp, and filtered clearing reuses `filterActivityEntries`. Mute lists, profile-read results and PQ status are declared in their domain modules and imported by background handlers. Display account/language shapes are projections of their canonical domain types. Only operational state and dependency-injection contracts remain local to services.
+
+## Service module ownership
+
+- `services/http/types.ts` owns the injectable `FetchFn` transport contract used by
+  LNbits and LNURL services.
+- `services/vault/vault.ts` owns the single private unlocked session, persistence,
+  lock timers and startup gate. `encryption.ts` owns Web Crypto operations;
+  `serialization.ts` converts stored accounts to/from zeroable in-memory bytes.
+  `accountAccess.ts` and `importedKeys.ts` build operations using injected session,
+  save and touch capabilities. The vault composes these operations once; factories
+  read the live session on each call, never a captured unlocked payload.
+- `services/signing/signer.ts` coordinates NIP-07 permission and account routing.
+  `approvalQueue.ts` owns pending storage, resolvers, unlock waiters, remote tracking,
+  cancellation and account-switch invalidation. `identity.ts` owns canonical identity
+  reads and sharing cooldowns; `remoteSigner.ts` owns NIP-46 clients;
+  `localDecryption.ts` owns classic/PQ local decryption and PQ key acquisition.
+  Consumers import queue, identity, remote and decryption APIs from their owners.

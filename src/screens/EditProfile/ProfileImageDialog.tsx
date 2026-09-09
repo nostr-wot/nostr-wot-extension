@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import { safeImageUrl } from '@utils/safeUrl.ts';
-import Modal from '@components/Modal/Modal';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import FormError from '@components/FormError/FormError';
-import Text from '@components/Text/Text';
+import Modal from '@components/Modal';
+import Input from '@components/Input';
+import Button, { ButtonSecondary } from '@components/Button';
+import FormError from '@components/FormError';
+import Text from '@components/Text';
 
 export type ProfileImageChoice = { url: string; file: File | null };
 
@@ -21,7 +21,7 @@ export default function ProfileImageDialog({ target, url, file, onClose, onSave 
   const invalid = !draftFile && !!draftUrl.trim() && !safeImageUrl(draftUrl.trim());
   return <Modal title={target === 'banner' ? t('profileEdit.editCover') : t('profileEdit.changeImage')}
     onClose={onClose} zIndex={720} footerRow footer={<>
-      <Button variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+      <ButtonSecondary onClick={onClose}>{t('common.cancel')}</ButtonSecondary>
       <Button disabled={!!invalid || !!error} onClick={() => {
         if (!invalid && !error) onSave({url: draftFile ? '' : draftUrl.trim(), file: draftFile});
       }}>{t('common.save')}</Button>
@@ -30,7 +30,7 @@ export default function ProfileImageDialog({ target, url, file, onClose, onSave 
       <Input label={target === 'banner' ? t('profileEdit.bannerUrl') : t('profileEdit.pictureUrl')}
         placeholder="https://…" value={draftUrl} error={invalid ? t('profileEdit.invalidImageUrl') : undefined}
         onChange={e => { setDraftUrl(e.target.value); setDraftFile(null); setError(''); }} />
-      <Button variant="secondary" onClick={() => fileRef.current?.click()}>{t('profileEdit.uploadImage')}</Button>
+      <ButtonSecondary onClick={() => fileRef.current?.click()}>{t('profileEdit.uploadImage')}</ButtonSecondary>
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => {
         const next = e.target.files?.[0];
         e.target.value = '';

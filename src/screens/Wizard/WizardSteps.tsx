@@ -2,8 +2,8 @@ import React from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import IconChevronLeft from '@assets/IconChevronLeft.tsx';
 import IconClose from '@assets/IconClose.tsx';
-import IconButton from '@components/IconButton/IconButton';
-import Container from '@components/Container/Container';
+import IconButton from '@components/IconButton';
+import Container from '@components/Container';
 import LangStep from './LangStep';
 import MethodStep from './MethodStep';
 import ImportStep from './ImportStep';
@@ -134,7 +134,7 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
             // Same tone/size split as OverlayPanel's header nav (back is
             // brand-coloured, close is neutral) — this header hand-rolled its
             // own copy of that pair instead of reusing it.
-            <IconButton tone="brand" size={36} onClick={handleBack!} aria-label={t('common.back')}>
+            <IconButton tone="brand" size="large" onClick={handleBack!} aria-label={t('common.back')}>
               <IconChevronLeft />
             </IconButton>
           ) : (
@@ -142,7 +142,7 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
           )}
           <span className="text-2xl font-bold text-heading">{active.title}</span>
           {onClose ? (
-            <IconButton size={36} onClick={onClose} aria-label={t('common.close')}>
+            <IconButton size="large" onClick={onClose} aria-label={t('common.close')}>
               <IconClose />
             </IconButton>
           ) : (

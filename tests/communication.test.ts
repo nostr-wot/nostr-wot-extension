@@ -1017,7 +1017,7 @@ describe('communication: account switching — pending request rejection', () =>
   });
 
   it('rejectPendingForAccount clears pending entries from session storage', async () => {
-    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/signer.ts');
+    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/approvalQueue.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Seed some pending requests for acct1
@@ -1037,7 +1037,7 @@ describe('communication: account switching — pending request rejection', () =>
   });
 
   it('rejectPendingForAccount with empty string is a no-op', async () => {
-    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/signer.ts');
+    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/approvalQueue.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     await mockBrowser.storage.session.set({
@@ -1053,7 +1053,7 @@ describe('communication: account switching — pending request rejection', () =>
   });
 
   it('rejectPendingForAccount leaves other accounts pending intact', async () => {
-    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/signer.ts');
+    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/approvalQueue.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     await mockBrowser.storage.session.set({
@@ -1313,18 +1313,18 @@ describe('communication: vault locked — pending request state', () => {
     resetMockStorage();
     vault.lock();
     await vault.create(TEST_PASSWORD, makePayload());
-    const { cleanupStale } = await import('../src/services/signing/signer.ts');
+    const { cleanupStale } = await import('../src/services/signing/approvalQueue.ts');
     await cleanupStale();
   });
 
   it('getPending returns empty after cleanupStale', async () => {
-    const { getPending } = await import('../src/services/signing/signer.ts');
+    const { getPending } = await import('../src/services/signing/approvalQueue.ts');
     const pending = await getPending();
     assert.deepStrictEqual(pending, []);
   });
 
   it('onVaultUnlocked resolves waitingForUnlock entries', async () => {
-    const { onVaultUnlocked, getPending } = await import('../src/services/signing/signer.ts');
+    const { onVaultUnlocked, getPending } = await import('../src/services/signing/approvalQueue.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Seed a waitingForUnlock entry
@@ -1344,7 +1344,7 @@ describe('communication: vault locked — pending request state', () => {
   });
 
   it('cleanupStale clears all pending requests', async () => {
-    const { cleanupStale, getPending } = await import('../src/services/signing/signer.ts');
+    const { cleanupStale, getPending } = await import('../src/services/signing/approvalQueue.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Seed some requests
@@ -1389,7 +1389,7 @@ async function setupPermissionTest() {
   });
   await mockBrowser.storage.sync.set({ myPubkey: TEST_PUBKEY_HEX });
   // Clean pending state
-  const { cleanupStale } = await import('../src/services/signing/signer.ts');
+  const { cleanupStale } = await import('../src/services/signing/approvalQueue.ts');
   await cleanupStale();
 }
 

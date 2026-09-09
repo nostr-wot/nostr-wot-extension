@@ -537,3 +537,10 @@ publication for a Nostr zap belongs to the recipient's LNURL service.
 
 References: https://www.webln.guide/building-lightning-apps/webln-reference/webln.getinfo
 and https://github.com/nostr-protocol/nips/blob/master/57.md.
+
+Wallet recovery follows the vault lock-state marker. Config, balance, requested
+settings and visible transactions refresh when it changes, preserving the display
+cache while retrying. A prior locked read must not leave a permanent error after
+unlock. Wallet operations use `vault.requireUnlocked()` to await startup auto-unlock
+before enforcing the real lock state. Retired vault status reads cannot overwrite
+newer state, including on a failed read; current failures remain fail-closed.

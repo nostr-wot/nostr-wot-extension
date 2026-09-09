@@ -9,7 +9,7 @@ import { configuredRelayUrls, relayPublicationTags, type RelayConfiguration } fr
 import { writeLocalCache } from '../relays/relay.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import * as vault from '../vault/vault.ts';
-import * as signer from '../signing/signer.ts';
+import * as signerRemoteSigner from '../signing/remoteSigner.ts';
 import { config, type HandlerFn } from './state.ts';
 import type { UnsignedEvent, SignedEvent } from '../../domain/nostr/types.ts';
 
@@ -224,7 +224,7 @@ export const handlers = new Map<string, HandlerFn>([
         const nip46Config = nip46Acct.nip46Config;
         if (!nip46Config) return null;
 
-        const clientConnected = signer.isNip46Connected(nip46Acct.id);
+        const clientConnected = signerRemoteSigner.isNip46Connected(nip46Acct.id);
 
         return {
             bunkerPubkey: nip46Acct.pubkey,
@@ -236,7 +236,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['nip46_revokeSession', async (params) => {
-        signer.disconnectNip46(params.accountId as string);
+        signerRemoteSigner.disconnectNip46(params.accountId as string);
         return { ok: true };
     }],
 

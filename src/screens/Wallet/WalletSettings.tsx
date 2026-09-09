@@ -2,18 +2,18 @@ import { PROVIDER_LABELS } from '@constants/wallet.ts';
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Card from '@components/Card/Card';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
-import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
-import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
-import CopyButton from '@components/CopyButton/CopyButton';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
-import Spinner from '@components/Spinner/Spinner';
-import IconButton from '@components/IconButton/IconButton';
+import Card from '@components/Card';
+import Button, { ButtonSecondary, ButtonDanger } from '@components/Button';
+import Input from '@components/Input';
+import OverlayPanel from '@components/OverlayPanel';
+import ConfirmDialog from '@components/ConfirmDialog';
+import { SectionLabel, SectionHint } from '@components/SectionLabel';
+import CopyButton from '@components/CopyButton';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
+import Spinner from '@components/Spinner';
+import IconButton from '@components/IconButton';
 import IconSync from '@assets/IconSync.tsx';
 import { useWallet } from '@context/WalletContext';
 
@@ -204,12 +204,12 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                   <CopyButton iconOnly value={lnAddress} label={t('common.copy')} />
                 </Container>
                 <Container gap={3}>
-                  <Button small variant="secondary" onClick={() => setShowUpdateProfile(true)}>
+                  <ButtonSecondary small onClick={() => setShowUpdateProfile(true)}>
                     {t('wallet.addToProfile')}
-                  </Button>
-                  <Button small variant="danger" onClick={() => setConfirmRelease(true)} disabled={releaseLoading}>
+                  </ButtonSecondary>
+                  <ButtonDanger small onClick={() => setConfirmRelease(true)} disabled={releaseLoading}>
                     {t('wallet.releaseAddress')}
-                  </Button>
+                  </ButtonDanger>
                 </Container>
               </Container>
             ) : (
@@ -232,9 +232,9 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
         )}
         <div className="border-t border-card-border pt-6">
             <SectionHint className="text-menu-subtitle mb-4">{t('wallet.disconnectHint')}</SectionHint>
-            <Button small variant="danger" onClick={handleDisconnect} disabled={disconnecting}>
+            <ButtonDanger small onClick={handleDisconnect} disabled={disconnecting}>
               {disconnecting ? t('common.loading') : t('common.disconnect')}
-            </Button>
+            </ButtonDanger>
         </div>
         </Container>
         </div>

@@ -5,10 +5,10 @@ import { isLightningAddress } from '@domain/wallet/lnurl.ts';
 import type { ResolvedAddress } from '@domain/wallet/paymentPreview.ts';
 import type { SendTarget } from '@domain/wallet/sendTarget.ts';
 import type { decodeBolt11 } from '@domain/wallet/bolt11.ts';
-import Input from '@components/Input/Input';
-import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Input from '@components/Input';
+import FieldDisplay from '@components/FieldDisplay';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface PaymentPreviewProps {
   sendInput: string;

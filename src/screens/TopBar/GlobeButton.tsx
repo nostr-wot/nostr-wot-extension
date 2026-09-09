@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { rpc, rpcNotify } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import SiteIcon from '@components/SiteIcon/SiteIcon';
+import SiteIcon from '@components/SiteIcon';
 import { resolveActiveTabDomain } from '@services/browser/activeTabDomain.ts';
 import IconGlobe from '@assets/IconGlobe.tsx';
-import Button from '@components/Button/Button';
-import IconButton from '@components/IconButton/IconButton';
+import Button, { ButtonDanger } from '@components/Button';
+import IconButton from '@components/IconButton';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
 import useBrowserStorage from '@hooks/useBrowserStorage.ts';
-import Text from '@components/Text/Text';
+import Text from '@components/Text';
 
 export default function GlobeButton() {
   const [domain, setDomain] = useState<string | null>(null);
@@ -117,22 +117,21 @@ export default function GlobeButton() {
                 : t('globe.notConnected')}
           </Text>
           {connected && domain && (
-            <Button
-              variant="danger"
+            <ButtonDanger
               small
               onClick={handleDisconnect}
               disabled={disconnecting}
-              style={{ width: '100%' }}
+              className="w-full"
             >
               {disconnecting ? t('common.loading') : t('common.disconnect')}
-            </Button>
+            </ButtonDanger>
           )}
           {connected === false && domain && (
             <>
               {connectError && (
                 <div className="text-xs text-error mb-4">{t('globe.connectFailed')}</div>
               )}
-              <Button small onClick={handleConnect} disabled={connecting} style={{ width: '100%' }}>
+              <Button small onClick={handleConnect} disabled={connecting} className="w-full">
                 {connecting ? t('common.loading') : t('common.connect')}
               </Button>
             </>

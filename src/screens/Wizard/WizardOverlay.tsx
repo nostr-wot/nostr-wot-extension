@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { isLanguageChosen } from '@services/i18n/i18n.ts';
 import { rpc } from '@services/rpc.ts';
-import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
-import TopoBg from '@components/TopoBg/TopoBg';
+import OverlayPanel from '@components/OverlayPanel';
+import TopoBg from '@components/TopoBg';
 import useWizardFlow from '@hooks/useWizardFlow';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import WizardSteps from './WizardSteps';

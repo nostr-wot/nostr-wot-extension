@@ -1,5 +1,5 @@
-import Modal from '@components/Modal/Modal';
-import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
+import Modal from '@components/Modal';
+import EncryptedBackupForm from '@components/EncryptedBackupForm';
 import { t } from '@services/i18n/i18n.ts';
 
 interface EncryptedBackupModalProps {

@@ -6,15 +6,20 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each in its own folder. There are **48**; the inventory below is checked against the component folders by the test suite.
+All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **53**; the inventory below is checked against the component folders by the test suite.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
-**Content** — `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
+**Content** — `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
-**Feedback** — `Spinner`.
+**Feedback** — `Spinner`, `ScreenReaderStatus`.
+
+`ScreenReaderStatus` renders visually hidden status feedback. Keep it mounted even
+when its children are empty, then update its content when an action completes.
+`CopyButton` uses it for clipboard feedback; visible status messages retain their
+own presentation.
 
 **Decoration** — `TopoBg`, `PulseLogo`, `AnimatedWotLogo`.
 
@@ -158,7 +163,7 @@ and `PopupApp` directly), so it is not purely a menu section.
 
 ## 4. CSS Patterns
 
-- **Tailwind utilities first** — see §7. Five `.module.css` files remain in the whole tree, each for something utilities genuinely cannot express.
+- **Tailwind utilities first** — see §7. Only `TopoBg.module.css` remains, containing embedded SVG background art and its layering rules.
 - **camelCase class names** in the few modules that survive — e.g. `chipGroup`, not `chip-group`.
 - **No global styles** in a shared component. Tokens come from `src/styles/theme.css`.
 - **Avoid `!important`** — and note that an unlayered CSS rule already outranks a Tailwind utility, so reaching for it usually means the override belongs in `cn()` instead.
@@ -321,7 +326,11 @@ Utilities do not replace CSS; they replace the parts of it that were repeating a
 - **A class accessed dynamically** (``styles[`tone${x}`]``) is better as an explicit `Record<string, string>` of utility strings. That also brings the file back under `tests/css-selectors.test.ts`, which has to skip any stylesheet with a computed key.
 - **An override that has to beat a component's own class** used to need an unlayered CSS rule, because Tailwind's utilities sit in `@layer utilities` and an unlayered rule outranks a layered one whatever the specificity. `cn()` settled that — the override wins as an ordinary utility now. Several files survived a whole migration pass on this reasoning alone and were retired once `cn()` existed.
 
-What genuinely stays: 3D transforms and `perspective`, `mask-image`, data-URI background art, `::-webkit-` pseudo-elements, and `<details>`/`<summary>` disclosure. The post-quantum panel's disclosure is the clearest example — it *can* be written as six stacked arbitrary variants with escaped `content` strings, and the CSS is plainly easier to read. **A file left with two honest rules beats ten utilities nobody can parse.** Delete the module only once it is actually empty.
+CSS modules are not required for perspective, masks, gradients, animation delays or
+native disclosures. Static values can use utilities, including arbitrary properties;
+verify their generated declarations and required browser prefixes. `TopoBg` currently
+keeps its embedded SVG background artwork and layering rules in a module for readability.
+Prefer shared components over distributing style strings among feature renderers.
 
 Values that are computed at runtime stay inline styles. `Spinner`'s diameter is a caller-supplied number, and a utility class cannot be generated from a value that does not exist until render.
 
@@ -509,3 +518,67 @@ restrict values to strings; chip groups retain string/number types through their
 change callback; native selects extend the base with optional `disabled`. Options
 arrays are read-only inputs. Copy-button props are separate: their label names a
 clipboard action rather than a choice, despite having similarly named fields.
+
+`ActivityEntryDetail` composes `Container`, `Heading` and `Text` for layout and
+content, including the shared box surface for encrypted messages. `DetailDisclosure`
+owns collapsed raw text/JSON sections with a native keyboard-accessible summary
+and a bounded, selectable preformatted body. It escapes content as text and is
+also reused by the activity item dialog. `TextBlock` preserves full escaped content, line breaks and selectable scrolling.
+Native `time` and the shared text block’s `pre` retain their semantics; decryption and vault-lock clearing remain in the detail view.
+
+`ActivityGroupDetail` and every kind-specific event preview compose shared UI
+primitives. Preview styling belongs to those components; there is no shared class
+registry. Unknown kinds use the standard warning notice. All tags remain visible
+in approval mode and collapsed in activity mode; raw JSON retains its explicit
+show/hide button. Profile images retain URL validation and local image geometry.
+
+`PulseLogo` uses two decorative, aria-hidden rings with utility styles and the
+shared `animate-logo-pulse` keyframes. Its second ring starts 2.5 seconds later;
+no component CSS module is needed for the gradient or delay.
+
+`ScrollWheelPicker` keeps its perspective, fade mask (including the WebKit form)
+and hidden backfaces in utility styles. Runtime row angles and dimensions stay
+in inline styles; pointer, keyboard and snapping logic are unchanged.
+
+### Button standards
+
+`Button` has two sizes (default and `small`), three intents (primary, secondary,
+danger), and an outline treatment. `IconButton` owns icon-only controls with three
+hit-area sizes: small (24px), default (28px), large (36px), and muted/brand/danger
+tones. Use it for add, cancel, copy and close icons. Caller classes may arrange
+controls (width, flex, margins and alignment), but must not override their padding,
+colors, font sizes, borders or corners. A source regression check enforces this
+boundary. Approval-row navigation and cancellation are sibling controls, never
+nested buttons. The welcome action uses the standard default button.
+
+### Shared editor lifecycles
+
+`ImageEditorButton` owns the cover/avatar editing affordance and standard shapes.
+`ProfileSummary` is shared by profile confirmation and kind-0 event review.
+`useObjectUrl` owns local preview allocation and revocation on file/scope changes
+and unmount; remote image URLs still pass through URL validation.
+
+`EditableList` owns row/list/hint styling; callers supply data, validators and
+leading/trailing content rather than overriding its class map. Relay read/write
+controls reuse `Chip`. Mute fields use the same list from a small field configuration.
+
+`useMuteListEditor` owns read/import/publish state. Its view is keyed by account
+and unmounted on close. Editing is disabled while importing or publishing; failed
+reads cannot enable publishing, and encrypted `rawContent` is preserved unchanged.
+`useAsyncScope` invalidates result tokens on replacement, dependency changes and
+unmount (it does not cancel already-issued network operations). `useAsyncResource`
+also uses this guard. `useTransientState` owns replaceable feedback timers and
+cleanup, shared by mute and relay publication.
+
+`Button` is available as a default or named export from `@components/Button`.
+`ButtonSecondary` and `ButtonDanger` are named presets in the same implementation
+module. They delegate to `Button`, preserve its size/outline/native props, and
+fix the visual variant. Callers with genuinely dynamic variants can still use
+`Button`; do not create a second style definition for a preset.
+
+Wallet recovery follows the vault lock-state marker. Config, balance, requested
+settings and visible transactions refresh when it changes, preserving the display
+cache while retrying. A prior locked read must not leave a permanent error after
+unlock. Wallet operations use `vault.requireUnlocked()` to await startup auto-unlock
+before enforcing the real lock state. Retired vault status reads cannot overwrite
+newer state, including on a failed read; current failures remain fail-closed.

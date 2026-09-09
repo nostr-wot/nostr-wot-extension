@@ -4,9 +4,9 @@ import IconLockOpen from '@assets/IconLockOpen.tsx';
 import IconCopy from '@assets/IconCopy.tsx';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
-import Avatar from '@components/Avatar/Avatar';
-import IconButton from '@components/IconButton/IconButton';
-import Container from '@components/Container/Container';
+import Avatar from '@components/Avatar';
+import IconButton from '@components/IconButton';
+import Container from '@components/Container';
 
 interface AccountBarProps {
   dropdownOpen: boolean;
@@ -48,7 +48,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown, onCopy }: A
       <IconButton onClick={onCopy} disabled={!active} title={t('common.copy')} aria-label={t('common.copy')}><IconCopy size={16} /></IconButton>
       {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (
         <IconButton
-          className="text-success hover:text-success hover:bg-[rgba(5,150,105,0.1)]"
+          tone="brand"
           title={t('topbar.vaultUnlocked')}
           aria-label={t('topbar.vaultUnlocked')}
           onClick={(e) => {

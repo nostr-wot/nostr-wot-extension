@@ -220,7 +220,7 @@ switching accounts cannot replace the current editor state.
 
 Successful NIP-04/NIP-44 operations retain ciphertext (up to 128 KiB per operation) with the peer and requesting account in local activity history. Encrypt inputs and decrypt results are never logged. Older operation-only records cannot be reconstructed. Existing signed-event snapshots retain their original content.
 
-`activity_decrypt` is an internal extension RPC, privileged through the handler-map gate. It locates the exact stored entry, derives its protocol and peer, and calls `signer.decryptForAccount` for the recorded account without switching the active account or modifying permissions. A missing peer may be supplied by the review form. NIP-04, classic NIP-44, and the existing PQ envelope decoder are reused. Gift-wrap kinds 1059/21059 verify the inner kind-13 seal before decrypting its second layer. Missing/local watch-only/remote keys produce an explicit error. The plaintext reply is never persisted.
+`activity_decrypt` is an internal extension RPC, privileged through the handler-map gate. It locates the exact stored entry, derives its protocol and peer, and calls `localDecryption.decryptForAccount` for the recorded account without switching the active account or modifying permissions. A missing peer may be supplied by the review form. NIP-04, classic NIP-44, and the existing PQ envelope decoder are reused. Gift-wrap kinds 1059/21059 verify the inner kind-13 seal before decrypting its second layer. Missing/local watch-only/remote keys produce an explicit error. The plaintext reply is never persisted.
 
 Profile editing uploads selected avatar and cover files through the existing Blossom authentication and upload service before presenting its publish preview. Successful upload URLs remain cached only for that editing session; URL-only edits do not upload. Confirming still signs and publishes the merged kind:0 event, preserving metadata fields the editor does not own. Closing or switching accounts invalidates late upload UI replies.
 
@@ -265,3 +265,19 @@ The popup’s existing `wallet_resolveLightningAddress` and
 `wallet_payToLightningAddress` RPCs also accept bech32 LNURLs and
 `lightning:LNURL…` links. They reuse pay-parameter validation, amount checks and
 payment-intent deduplication. No additional page-facing payment API is exposed.
+
+### Page API timeout constants
+
+NIP-07 and WebLN page calls use their respective constants in
+`src/constants/signing.ts`. Vite inlines these values into `inject.ts` at build
+time, preserving a synchronous, self-contained MAIN-world script without runtime
+imports. The packaged-script test verifies both timeout delays and rejection.
+
+### Signer implementation boundaries
+
+The NIP-07 RPC handlers call `signer.ts` for permission-gated operations.
+Approval resolution, unlock waiters and account-switch rejection are owned by
+`services/signing/approvalQueue.ts`; identity lookup/cooldowns by `identity.ts`.
+Remote work is tracked by the queue and delegated to `remoteSigner.ts`.
+Internal activity review imports `decryptForAccount` from `localDecryption.ts`.
+The wire method names and request/response formats are unchanged.

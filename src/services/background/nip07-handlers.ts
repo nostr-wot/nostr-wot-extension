@@ -5,6 +5,8 @@
 
 import browser from '../../lib/browser.ts';
 import * as signer from '../signing/signer.ts';
+import * as signerIdentity from '../signing/identity.ts';
+import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import * as signerPermissions from '../permissions/permissions.ts';
 import type { UnsignedEvent } from '../../domain/nostr/types.ts';
 import type { RequestDecision } from '../../domain/signing/types.ts';
@@ -162,14 +164,14 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['signer_clearPermissions', async (params) => {
         await signerPermissions.clear(params.domain as string, params.accountId as string);
-        signer.clearGetPubkeyCooldown(params.domain as string | undefined);
+        signerIdentity.clearGetPubkeyCooldown(params.domain as string | undefined);
         return { ok: true };
     }],
 
     ['signer_savePermission', async (params) => {
         await signerPermissions.saveDirect(params.domain as string, params.methodName as string, params.decision as 'allow' | 'deny' | 'ask', params.accountId as string);
         if (params.methodName === 'getPublicKey') {
-            signer.clearGetPubkeyCooldown(params.domain as string);
+            signerIdentity.clearGetPubkeyCooldown(params.domain as string);
         }
         return { ok: true };
     }],
@@ -200,30 +202,30 @@ export const handlers = new Map<string, HandlerFn>([
 
     // ── Signer pending request management ──
 
-    ['signer_getPending', async () => signer.getPending()],
+    ['signer_getPending', async () => signerApprovalQueue.getPending()],
 
     ['signer_resolve', async (params) => {
-        await signer.resolveRequest(params.id as string, params.decision as unknown as RequestDecision);
+        await signerApprovalQueue.resolveRequest(params.id as string, params.decision as unknown as RequestDecision);
         return { ok: true };
     }],
 
     ['signer_resolveBatch', async (params) => {
-        await signer.resolveBatch(params.origin as string, params.permKey as string, params.decision as unknown as RequestDecision);
+        await signerApprovalQueue.resolveBatch(params.origin as string, params.permKey as string, params.decision as unknown as RequestDecision);
         return { ok: true };
     }],
 
     ['signer_cancelNip46', async (params) => {
-        await signer.cancelNip46InFlight(params.id as string);
+        await signerApprovalQueue.cancelNip46InFlight(params.id as string);
         return { ok: true };
     }],
 
     ['signer_cancelUnlockWaiters', async () => {
-        await signer.cancelAllUnlockWaiters();
+        await signerApprovalQueue.cancelAllUnlockWaiters();
         return { ok: true };
     }],
 
     ['signer_cancelUnlockWaiter', async (params) => {
-        await signer.cancelUnlockWaiter(params.id as string);
+        await signerApprovalQueue.cancelUnlockWaiter(params.id as string);
         return { ok: true };
     }],
 ]);

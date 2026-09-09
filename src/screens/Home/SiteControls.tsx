@@ -1,12 +1,12 @@
 import { t } from '@services/i18n/i18n.ts';
-import Toggle from '@components/Toggle/Toggle';
-import Card from '@components/Card/Card';
-import ListRow from '@components/ListRow/ListRow';
+import Toggle from '@components/Toggle';
+import Card from '@components/Card';
+import ListRow from '@components/ListRow';
 import IconUser from '@assets/IconUser.tsx';
 import IconChevronRight from '@assets/IconChevronRight.tsx';
 import { useNavigate } from '@context/NavigationContext';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface SiteControlsProps {
   identityEnabled: boolean;

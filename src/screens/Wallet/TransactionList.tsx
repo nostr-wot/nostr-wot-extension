@@ -1,19 +1,19 @@
 import { useState, useMemo, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import Card from '@components/Card/Card';
-import Spinner from '@components/Spinner/Spinner';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
+import Card from '@components/Card';
+import Spinner from '@components/Spinner';
+import Input from '@components/Input';
+import { ButtonSecondary } from '@components/Button';
 import IconTuner from '@assets/IconTuner.tsx';
 import IconSync from '@assets/IconSync.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
 import { formatTxDate } from '@services/i18n/timeLabels.ts';
 import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@domain/wallet/txFilter.ts';
 import type { Transaction } from '@domain/wallet/types.ts';
-import IconButton from '@components/IconButton/IconButton';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import IconButton from '@components/IconButton';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -80,7 +80,7 @@ export default function TransactionList({
         </button>
       </Container>
 
-      {error && <div role="alert" className="mb-4"><FormError>{t('wallet.historyFailed')}</FormError><p className="text-xs text-secondary break-words mt-2">{error}</p><Button small variant="secondary" disabled={loading} onClick={onRefresh}>{t('common.retry')}</Button></div>}
+      {error && <div role="alert" className="mb-4"><FormError>{t('wallet.historyFailed')}</FormError><p className="text-xs text-secondary break-words mt-2">{error}</p><ButtonSecondary small disabled={loading} onClick={onRefresh}>{t('common.retry')}</ButtonSecondary></div>}
       {loading && visible.length === 0 ? (
         <Container variant="row" className="justify-center py-12">
           <Spinner />
@@ -112,9 +112,9 @@ export default function TransactionList({
 
       {hasMore && !loading && !error && (
         <div className="text-center py-4">
-          <Button small variant="secondary" onClick={onLoadMore} disabled={loading}>
+          <ButtonSecondary small onClick={onLoadMore} disabled={loading}>
             {loading ? t('common.loading') : t('common.showMore')}
-          </Button>
+          </ButtonSecondary>
         </div>
       )}
     </Card>

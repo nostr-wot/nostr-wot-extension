@@ -3,9 +3,9 @@ import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { DECISIONS } from '@constants/permissions.ts';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
-import Card from '@components/Card/Card';
-import Chip from '@components/Chip/Chip';
-import Container from '@components/Container/Container';
+import Card from '@components/Card';
+import Chip from '@components/Chip';
+import Container from '@components/Container';
 
 /**
  * Decision -> dot colour, as an explicit map rather than `styles[`permDot${...}`]`.

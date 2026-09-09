@@ -1,0 +1,78 @@
+import React from 'react';
+import { t } from '@services/i18n/i18n.ts';
+import Modal from '@components/Modal';
+import Button, { ButtonSecondary } from '@components/Button';
+import FormError from '@components/FormError';
+import Text from '@components/Text';
+
+interface ConfirmDialogProps {
+  title: string;
+  /** What is about to happen, and what it costs. Plain text or nodes. */
+  message: React.ReactNode;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** Red confirm button. Use for anything destructive or irreversible. */
+  danger?: boolean;
+  /** Disables both buttons and shows a working label while the action runs. */
+  busy?: boolean;
+  /** Shown inside the dialog so a failure does not close it silently. */
+  error?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  zIndex?: number;
+}
+
+/**
+ * The confirmation dialog. Use this for every "are you sure?" in the popup.
+ *
+ * It exists because the alternatives were worse in specific ways. Native
+ * `confirm()` was in use on at least one destructive action; some popup contexts
+ * suppress it outright, which turns a Remove button into a control that
+ * sometimes silently does nothing — and it cannot be styled, translated by our
+ * catalogue, or given a busy state. Hand-rolling a dialog per feature is how the
+ * popup ended up with several different scrims and dismissal behaviours.
+ *
+ * Built on Modal, so backdrop, Escape, focus-on-open and the z tier are shared.
+ * Backdrop dismissal is deliberately OFF: a confirmation is a question, and a
+ * stray click on the surround is not an answer to it. Cancel and Escape are the
+ * ways out, and both are the safe direction.
+ */
+export default function ConfirmDialog({
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  danger = false,
+  busy = false,
+  error,
+  onConfirm,
+  onCancel,
+  zIndex,
+}: ConfirmDialogProps) {
+  return (
+    <Modal
+      title={title}
+      onClose={busy ? () => {} : onCancel}
+      dismissOnBackdrop={false}
+      zIndex={zIndex}
+      footer={
+        <>
+          <ButtonSecondary small onClick={onCancel} disabled={busy}>
+            {cancelLabel || t('common.cancel')}
+          </ButtonSecondary>
+          <Button
+            small
+            variant={danger ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            disabled={busy}
+          >
+            {busy ? t('common.loading') : (confirmLabel || t('common.confirm'))}
+          </Button>
+        </>
+      }
+    >
+      <Text variant="body" as="div" className="leading-loose">{message}</Text>
+      <FormError>{error}</FormError>
+    </Modal>
+  );
+}

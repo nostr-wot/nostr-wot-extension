@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
-import Button from '@components/Button/Button';
-import Modal from '@components/Modal/Modal';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import Button, { ButtonSecondary } from '@components/Button';
+import Modal from '@components/Modal';
+import StatusNotice from '@components/StatusNotice';
+import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
-import FormError from '@components/FormError/FormError';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import { SectionLabel } from '@components/SectionLabel';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 /**
  * Save the post-quantum key file, plain or encrypted.
@@ -88,9 +88,9 @@ const handleExport = async (encrypted: boolean) => {
           {/* Plain stays available — the generator writes plaintext key files
               and some people keep them on hardware that has no password. It is
               second, and not the default. */}
-          <Button variant="secondary" onClick={() => handleExport(false)} disabled={exportBusy}>
+          <ButtonSecondary onClick={() => handleExport(false)} disabled={exportBusy}>
             {t('key.downloadPlain')}
-          </Button>
+          </ButtonSecondary>
         </Container>
       </Modal>
   );

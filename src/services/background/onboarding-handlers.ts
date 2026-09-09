@@ -22,7 +22,7 @@ import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
 import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { syncActivePubkey } from './vault-handlers.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
-import * as signer from '../signing/signer.ts';
+import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import type { Account } from '../../domain/accounts/types.ts';
 
 // ── NostrConnect sessions ──
@@ -686,7 +686,7 @@ export const handlers = new Map<string, HandlerFn>([
         }
         await browser.storage.local.set({ accounts: accts, activeAccountId: acctId });
         // Active-account change: same invalidation as switchAccount.
-        await signer.onActiveAccountChanged(prevActiveRo, acctId);
+        await signerApprovalQueue.onActiveAccountChanged(prevActiveRo, acctId);
         return { ok: true };
     }],
 
@@ -763,7 +763,7 @@ export const handlers = new Map<string, HandlerFn>([
         }
         await browser.storage.local.set({ accounts: accts, activeAccountId: vaultAcctId });
         // Active-account change: same invalidation as switchAccount.
-        await signer.onActiveAccountChanged(prevActiveCreate, vaultAcctId);
+        await signerApprovalQueue.onActiveAccountChanged(prevActiveCreate, vaultAcctId);
         return { ok: true };
     }],
 
@@ -803,7 +803,7 @@ export const handlers = new Map<string, HandlerFn>([
         }
         await browser.storage.local.set({ accounts: addVaultAccts, activeAccountId: fullAccountAdd.id });
         // Active-account change: same invalidation as switchAccount.
-        await signer.onActiveAccountChanged(prevActiveAdd, fullAccountAdd.id);
+        await signerApprovalQueue.onActiveAccountChanged(prevActiveAdd, fullAccountAdd.id);
         if (fullAccountAdd.pubkey) {
             void broadcastAccountChanged(fullAccountAdd.pubkey);
         }

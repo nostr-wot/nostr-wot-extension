@@ -5,12 +5,17 @@ import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { activityEncryption, activityEntryKey, type ActivityEntry } from '@domain/activity/activity.ts';
 import { rpc } from '@services/rpc.ts';
 import useStorageWatch from '@hooks/useStorageWatch';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import FormError from '@components/FormError/FormError';
-import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
-import StatusDot from '@components/StatusDot/StatusDot';
-import EventPreview from '@components/EventPreview/EventPreview';
+import Button, { ButtonSecondary } from '@components/Button';
+import Input from '@components/Input';
+import FormError from '@components/FormError';
+import FieldDisplay from '@components/FieldDisplay';
+import StatusDot from '@components/StatusDot';
+import Container from '@components/Container';
+import Heading from '@components/Heading';
+import Text from '@components/Text';
+import TextBlock from '@components/TextBlock';
+import DetailDisclosure from '@components/DetailDisclosure';
+import EventPreview from '@components/EventPreview';
 
 /** Activity-only reveal controls; approval requests never gain a decrypt action. */
 export default function ActivityEntryDetail({ entry, hideAccount = false, hidePeer = false }: { entry: ActivityEntry; hideAccount?: boolean; hidePeer?: boolean }) {
@@ -48,40 +53,34 @@ export default function ActivityEntryDetail({ entry, hideAccount = false, hidePe
     : entry.decision === 'rejected' || entry.decision === 'deny' ? 'rejected'
       : entry.decision === 'blocked' ? 'blocked' : 'pending';
   const oldCrypto = /^(nip04|nip44)(Encrypt|Decrypt)$/.test(entry.method) && !encrypted;
-  return <div className="flex flex-col gap-5 min-w-0">
-    <div className="flex items-center justify-between gap-4 text-xs text-secondary">
+  return <Container gap={5} className="min-w-0">
+    <Container variant="row" gap={4} className="justify-between text-xs text-secondary">
       <time dateTime={new Date(entry.timestamp ?? 0).toISOString()}>{new Date(entry.timestamp ?? 0).toLocaleString()}</time>
-      <span className="inline-flex items-center gap-3">{t(`activity.${decision}`)}<StatusDot status={entry.decision || ''} /></span>
-    </div>
-    {entry.pubkey && !hideAccount && <FieldDisplay label={t('activity.detail.account')} value={<span title={entry.pubkey}>{truncateMiddle(entry.pubkey)}</span>} mono />}
-    {encrypted ? <div className="flex flex-col gap-5 rounded-md border border-card-border bg-page-solid p-6 min-w-0">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-md font-semibold text-heading">{t('activity.detail.encrypted')}</span>
-        <span className="text-xs text-secondary font-mono">{encrypted.scheme.toUpperCase().replace('NIP', 'NIP-')}</span>
-      </div>
-      {encrypted.peerPubkey && !hidePeer && <FieldDisplay label={t('activity.detail.peer')} value={<span title={encrypted.peerPubkey}>{truncateMiddle(encrypted.peerPubkey)}</span>} mono />}
+      <Container as="span" variant="row" gap={3}>{t(`activity.${decision}`)}<StatusDot status={entry.decision || ''} /></Container>
+    </Container>
+    {entry.pubkey && !hideAccount && <FieldDisplay label={t('activity.detail.account')} value={<Text as="span" mono className="text-xs text-heading" title={entry.pubkey}>{truncateMiddle(entry.pubkey)}</Text>} mono />}
+    {encrypted ? <Container variant="box" gap={5} className="min-w-0">
+      <Container variant="row" gap={3} className="justify-between">
+        <Heading level={5} className="m-0">{t('activity.detail.encrypted')}</Heading>
+        <Text as="span" variant="secondary" mono className="text-xs">{encrypted.scheme.toUpperCase().replace('NIP', 'NIP-')}</Text>
+      </Container>
+      {encrypted.peerPubkey && !hidePeer && <FieldDisplay label={t('activity.detail.peer')} value={<Text as="span" mono className="text-xs text-heading" title={encrypted.peerPubkey}>{truncateMiddle(encrypted.peerPubkey)}</Text>} mono />}
       {!encrypted.peerPubkey && <Input label={t('activity.detail.peer')} mono value={peer} onChange={e => setPeer(e.target.value)} disabled={busy} placeholder="64-character hex public key" />}
       {plaintext === null ? <Button small disabled={busy || (!encrypted.peerPubkey && !/^[a-f0-9]{64}$/i.test(peer.trim()))} onClick={() => void decrypt()}>
         {busy ? t('common.loading') : t('activity.detail.reveal')}
-      </Button> : <div className="flex flex-col gap-4" aria-live="polite">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold text-heading">{t('activity.detail.decrypted')}</span>
-          <Button small variant="secondary" onClick={() => setPlaintext(null)}>{t('common.hide')}</Button>
-        </div>
-        <pre className="m-0 text-md font-[inherit] leading-loose whitespace-pre-wrap break-all text-heading select-text">{plaintext || t('activity.detail.emptyContent')}</pre>
-      </div>}
+      </Button> : <Container gap={4} aria-live="polite">
+        <Container variant="row" gap={3} className="justify-between">
+          <Heading level={5} as="h6" className="m-0 text-sm">{t('activity.detail.decrypted')}</Heading>
+          <ButtonSecondary small onClick={() => setPlaintext(null)}>{t('common.hide')}</ButtonSecondary>
+        </Container>
+        <TextBlock>{plaintext || t('activity.detail.emptyContent')}</TextBlock>
+      </Container>}
       <FormError>{error}</FormError>
-      <details className="text-sm text-secondary">
-        <summary className="cursor-pointer font-semibold py-2">{t('activity.detail.ciphertext')}</summary>
-        <pre className="text-xs whitespace-pre-wrap break-all max-h-[180px] overflow-y-auto select-text">{encrypted.ciphertext}</pre>
-      </details>
-      {entry.event && <details className="text-sm text-secondary">
-        <summary className="cursor-pointer font-semibold py-2">{t('approval.detail.moreDetails')}</summary>
-        <pre className="text-xs whitespace-pre-wrap break-all max-h-[240px] overflow-y-auto select-text">{JSON.stringify(entry.event, null, 2)}</pre>
-      </details>}
-    </div> : <>
+      <DetailDisclosure label={t('activity.detail.ciphertext')} content={encrypted.ciphertext} maxHeight={180} />
+      {entry.event && <DetailDisclosure label={t('approval.detail.moreDetails')} content={JSON.stringify(entry.event, null, 2)} />}
+    </Container> : <>
       <EventPreview type={entry.method} event={entry.event || null} theirPubkey={hidePeer ? undefined : entry.theirPubkey} compact />
-      {oldCrypto && <p className="text-sm text-secondary leading-loose">{t('activity.detail.notSaved')}</p>}
+      {oldCrypto && <Text variant="secondary" className="text-sm leading-loose">{t('activity.detail.notSaved')}</Text>}
     </>}
-  </div>;
+  </Container>;
 }

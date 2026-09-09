@@ -5,6 +5,8 @@ import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
 import * as signer from '../src/services/signing/signer.ts';
+import * as signerIdentity from '../src/services/signing/identity.ts';
+import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import * as onboarding from '../src/services/background/onboarding-handlers.ts';
 import { addAllowedDomain, removeAllowedDomain } from '../src/services/background/domain-handlers.ts';
 import type { VaultPayload } from '../src/domain/vault/types.ts';
@@ -46,7 +48,7 @@ describe('signer -- pending request queue', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('queueRequest stores entry in session storage', async () => {
@@ -64,14 +66,14 @@ describe('signer -- pending request queue', () => {
     await new Promise<void>(r => setTimeout(r, 50));
 
     // Check that pending request exists in storage
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1, 'Should have 1 pending request');
     assert.strictEqual(pending[0].type, 'signEvent');
     assert.strictEqual(pending[0].origin, 'test.com');
     assert.strictEqual(pending[0].needsPermission, true);
 
     // Resolve it (deny to clean up)
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
 
     // signPromise should reject with 'User denied'
     await assert.rejects(signPromise, /User denied/);
@@ -87,16 +89,16 @@ describe('signer -- pending request queue', () => {
 
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
 
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
     await assert.rejects(signPromise, /User denied/);
 
     // Give storage time to update
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const afterResolve: any[] = await signer.getPending();
+    const afterResolve: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(afterResolve.length, 0, 'Should have 0 pending after resolve');
   });
 
@@ -118,12 +120,12 @@ describe('signer -- pending request queue', () => {
     // Wait for all to be queued (mutex serializes writes)
     await new Promise<void>(r => setTimeout(r, 500));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, N, `Should have ${N} pending requests, got ${pending.length}`);
 
     // Clean up: deny all
     for (const req of pending) {
-      signer.resolveRequest(req.id, { allow: false, remember: false });
+      signerApprovalQueue.resolveRequest(req.id, { allow: false, remember: false });
     }
 
     // All promises should reject
@@ -146,18 +148,18 @@ describe('signer -- pending request queue', () => {
 
     await new Promise<void>(r => setTimeout(r, 500));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, N);
 
     // Batch deny all readMessages from coracle.social (covers nip04+nip44 decrypt)
-    await signer.resolveBatch('coracle.social', 'readMessages', { allow: false, remember: false });
+    await signerApprovalQueue.resolveBatch('coracle.social', 'readMessages', { allow: false, remember: false });
 
     for (const p of promises) {
       await assert.rejects(p, /User denied/);
     }
 
     await new Promise<void>(r => setTimeout(r, 50));
-    const afterBatch: any[] = await signer.getPending();
+    const afterBatch: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(afterBatch.length, 0, 'Batch resolve should clear all matching');
   });
 
@@ -175,19 +177,19 @@ describe('signer -- pending request queue', () => {
 
     await new Promise<void>(r => setTimeout(r, 200));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 2, 'Both calls should be queued');
     const permKeys = new Set(pending.map((r: any) => r.permKey));
     assert.deepStrictEqual([...permKeys], ['sendMessages'], 'Encrypt and signEvent:4 should share sendMessages');
 
     // A single batch resolve must clear both
-    await signer.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
+    await signerApprovalQueue.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
 
     await assert.rejects(p1, /User denied/);
     await assert.rejects(p2, /User denied/);
 
     await new Promise<void>(r => setTimeout(r, 50));
-    const after: any[] = await signer.getPending();
+    const after: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(after.length, 0, 'Single approval should clear the entire DM flow');
   });
 
@@ -201,11 +203,11 @@ describe('signer -- pending request queue', () => {
 
     await new Promise<void>(r => setTimeout(r, 100));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
     assert.strictEqual(pending[0].permKey, 'sendMessages', 'kind 13 should land under sendMessages');
 
-    await signer.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
+    await signerApprovalQueue.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
     await assert.rejects(p, /User denied/);
   });
 
@@ -219,19 +221,19 @@ describe('signer -- pending request queue', () => {
 
     await new Promise<void>(r => setTimeout(r, 200));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 2, 'Both encrypt variants should be queued');
     const permKeys = new Set(pending.map((r: any) => r.permKey));
     assert.deepStrictEqual([...permKeys], ['sendMessages'], 'Both should share the sendMessages permKey');
 
     // Deny by permKey -- must clear both wire methods
-    await signer.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
+    await signerApprovalQueue.resolveBatch('chat.com', 'sendMessages', { allow: false, remember: false });
 
     await assert.rejects(p1, /User denied/);
     await assert.rejects(p2, /User denied/);
 
     await new Promise<void>(r => setTimeout(r, 50));
-    const after: any[] = await signer.getPending();
+    const after: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(after.length, 0, 'No orphaned nip44 request should remain');
   });
 
@@ -244,10 +246,10 @@ describe('signer -- pending request queue', () => {
     );
 
     await new Promise<void>(r => setTimeout(r, 50));
-    assert.strictEqual((await signer.getPending()).length, 1);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 1);
 
-    await signer.cleanupStale();
-    assert.strictEqual((await signer.getPending()).length, 0);
+    await signerApprovalQueue.cleanupStale();
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0);
   });
 });
 
@@ -257,7 +259,7 @@ describe('signer -- signEvent approval flow', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('auto-allows when permission is "allow" and vault unlocked', async () => {
@@ -295,11 +297,11 @@ describe('signer -- signEvent approval flow', () => {
 
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
 
     // Approve
-    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
 
     const signed: any = await signPromise;
     assert.ok(signed.sig, 'Should have signature after approval');
@@ -316,8 +318,8 @@ describe('signer -- signEvent approval flow', () => {
 
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    const pending: any[] = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
 
     await assert.rejects(signPromise, /User denied/);
   });
@@ -335,11 +337,11 @@ describe('signer -- signEvent approval flow', () => {
     }
 
     await new Promise<void>(r => setTimeout(r, 300));
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 3);
 
     // Approve the first one with "remember"
-    signer.resolveRequest(pending[0].id, { allow: true, remember: true, rememberKind: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: true, rememberKind: false });
 
     // All 3 should resolve (first one resolves, saves permission, batch-resolves rest)
     const results: any[] = await Promise.all(promises);
@@ -362,14 +364,14 @@ describe('signer -- signEvent approval flow', () => {
 
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
     assert.strictEqual(pending[0].waitingForUnlock, true);
 
     // Unlock vault
     await vault.unlock(TEST_PASSWORD);
     // Notify signer that vault is unlocked
-    await signer.onVaultUnlocked();
+    await signerApprovalQueue.onVaultUnlocked();
 
     const signed: any = await signPromise;
     assert.ok(signed.sig, 'Should sign after vault unlock');
@@ -385,23 +387,23 @@ describe('signer -- signEvent approval flow', () => {
     await new Promise<void>(r => setTimeout(r, 50));
 
     // Should be queued for permission
-    let pending: any[] = await signer.getPending();
+    let pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
     assert.strictEqual(pending[0].needsPermission, true);
 
     // Approve permission (vault still locked)
-    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
 
     // Handler should now hit the vault.isLocked() check and queue for unlock
     await new Promise<void>(r => setTimeout(r, 50));
 
-    pending = await signer.getPending();
+    pending = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1, 'Should have new pending for vault unlock');
     assert.strictEqual(pending[0].waitingForUnlock, true);
 
     // Unlock vault
     await vault.unlock(TEST_PASSWORD);
-    await signer.onVaultUnlocked();
+    await signerApprovalQueue.onVaultUnlocked();
 
     const signed: any = await signPromise;
     assert.ok(signed.sig, 'Should sign after both permission + unlock');
@@ -414,7 +416,7 @@ describe('signer -- nip44Decrypt approval flow', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('auto-decrypts when permission is "allow" and vault unlocked', async () => {
@@ -465,11 +467,11 @@ describe('signer -- nip44Decrypt approval flow', () => {
     // Wait for all to be queued through mutex
     await new Promise<void>(r => setTimeout(r, 500));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 5, `Expected 5 pending, got ${pending.length}`);
 
     // Batch approve all
-    await signer.resolveBatch('chat.com', 'readMessages', { allow: true, remember: false });
+    await signerApprovalQueue.resolveBatch('chat.com', 'readMessages', { allow: true, remember: false });
 
     // All should decrypt successfully
     const results: any[] = await Promise.all(promises);
@@ -502,14 +504,14 @@ describe('signer -- nip44Decrypt approval flow', () => {
 
     await new Promise<void>(r => setTimeout(r, 500));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 3);
 
     // Save permission first (simulating what popup does)
     await permissions.save('chat.com', 'nip44Decrypt', null, 'allow');
 
     // Batch resolve with remember=true
-    await signer.resolveBatch('chat.com', 'readMessages', { allow: true, remember: true });
+    await signerApprovalQueue.resolveBatch('chat.com', 'readMessages', { allow: true, remember: true });
 
     const results: any[] = await Promise.all(promises);
     for (let i = 0; i < messages.length; i++) {
@@ -528,7 +530,7 @@ describe('signer -- cancelNip46InFlight', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('cancelNip46InFlight removes nip46 entry from storage', async () => {
@@ -544,22 +546,22 @@ describe('signer -- cancelNip46InFlight', () => {
     await browserMock.storage.session.set({ signerPending: [entry] });
 
     // Verify it's there
-    const before = await signer.getPending();
+    const before = await signerApprovalQueue.getPending();
     assert.strictEqual(before.length, 1);
     assert.strictEqual(before[0].id, fakeId);
 
     // Cancel it
-    await signer.cancelNip46InFlight(fakeId);
+    await signerApprovalQueue.cancelNip46InFlight(fakeId);
 
     // Verify it's gone
-    const after = await signer.getPending();
+    const after = await signerApprovalQueue.getPending();
     assert.strictEqual(after.length, 0, 'Entry should be removed after cancel');
   });
 
   it('cancelNip46InFlight is safe to call with unknown id', async () => {
     // Should not throw even if the ID doesn't exist
-    await signer.cancelNip46InFlight('nonexistent_id');
-    const pending = await signer.getPending();
+    await signerApprovalQueue.cancelNip46InFlight('nonexistent_id');
+    const pending = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 0);
   });
 });
@@ -570,7 +572,7 @@ describe('signer -- cancelAllUnlockWaiters', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('cancelAllUnlockWaiters rejects all waiters and clears storage', async () => {
@@ -591,19 +593,19 @@ describe('signer -- cancelAllUnlockWaiters', () => {
     await new Promise<void>(r => setTimeout(r, 100));
 
     // Verify unlock markers are in storage
-    const pending = await signer.getPending();
+    const pending = await signerApprovalQueue.getPending();
     const unlockWaiters = pending.filter(r => r.waitingForUnlock);
     assert.ok(unlockWaiters.length >= 2, `Should have >=2 unlock waiters, got ${unlockWaiters.length}`);
 
     // Cancel all
-    await signer.cancelAllUnlockWaiters();
+    await signerApprovalQueue.cancelAllUnlockWaiters();
 
     // Both promises should reject with 'Cancelled by user'
     await assert.rejects(p1, /Cancelled by user/);
     await assert.rejects(p2, /Cancelled by user/);
 
     // Storage should have no unlock waiters left
-    const afterCancel = await signer.getPending();
+    const afterCancel = await signerApprovalQueue.getPending();
     const remainingUnlock = afterCancel.filter(r => r.waitingForUnlock);
     assert.strictEqual(remainingUnlock.length, 0, 'No unlock waiters should remain');
   });
@@ -625,19 +627,19 @@ describe('signer -- cancelAllUnlockWaiters', () => {
 
     await new Promise<void>(r => setTimeout(r, 100));
 
-    const pending = await signer.getPending();
+    const pending = await signerApprovalQueue.getPending();
     const unlockWaiters = pending.filter(r => r.waitingForUnlock);
     assert.ok(unlockWaiters.length >= 2, `Should have >=2 unlock waiters, got ${unlockWaiters.length}`);
 
     // Cancel only the first one
-    await signer.cancelUnlockWaiter(unlockWaiters[0].id);
+    await signerApprovalQueue.cancelUnlockWaiter(unlockWaiters[0].id);
 
     // First should reject
     await assert.rejects(p1, /Cancelled by user/);
 
     // Second should still be pending — unlock vault to resolve it
     await vault.unlock(TEST_PASSWORD);
-    await signer.onVaultUnlocked();
+    await signerApprovalQueue.onVaultUnlocked();
 
     const signed = await p2;
     assert.ok(signed.sig, 'Second request should sign after unlock');
@@ -657,7 +659,7 @@ describe('signer -- cancelAllUnlockWaiters', () => {
 
     // Unlock vault and fire onVaultUnlocked
     await vault.unlock(TEST_PASSWORD);
-    await signer.onVaultUnlocked();
+    await signerApprovalQueue.onVaultUnlocked();
 
     const signed = await p1;
     assert.ok(signed.sig, 'Request should sign after vault unlock');
@@ -670,7 +672,7 @@ describe('signer -- edge cases', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('rejects account with no private key', async () => {
@@ -718,14 +720,14 @@ describe('signer -- edge cases', () => {
 
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     // Approve permission, but vault is still locked
-    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
 
     // waitForVaultUnlock is now active -- fire onVaultUnlocked WITHOUT actually unlocking.
     // This simulates the edge case where the callback fires but vault state isn't updated.
     await new Promise<void>(r => setTimeout(r, 50));
-    await signer.onVaultUnlocked();
+    await signerApprovalQueue.onVaultUnlocked();
 
     // Vault is still locked, so should throw
     await assert.rejects(signPromise, /Vault is locked/);
@@ -745,23 +747,23 @@ describe('signer -- edge cases', () => {
 
     await new Promise<void>(r => setTimeout(r, 200));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 2);
 
     // Batch resolve only site-a.com
-    await signer.resolveBatch('site-a.com', 'signEvent:1', { allow: true, remember: false });
+    await signerApprovalQueue.resolveBatch('site-a.com', 'signEvent:1', { allow: true, remember: false });
 
     // site-a should resolve
     const signedA: any = await p1;
     assert.ok(signedA.sig);
 
     // site-b should still be pending
-    const remaining: any[] = await signer.getPending();
+    const remaining: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(remaining.length, 1);
     assert.strictEqual(remaining[0].origin, 'site-b.com');
 
     // Clean up
-    signer.resolveRequest(remaining[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(remaining[0].id, { allow: false, remember: false });
     await assert.rejects(p2, /User denied/);
   });
 });
@@ -772,7 +774,7 @@ describe('signer -- getPublicKey cooldown', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('approving getPublicKey auto-allows the next call from the same origin', async () => {
@@ -782,9 +784,9 @@ describe('signer -- getPublicKey cooldown', () => {
     const first: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1, 'First call must prompt');
-    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
 
     const pubkey1: any = await first;
     assert.strictEqual(pubkey1, TEST_PUBKEY_HEX);
@@ -794,7 +796,7 @@ describe('signer -- getPublicKey cooldown', () => {
     assert.strictEqual(pubkey2, TEST_PUBKEY_HEX);
 
     await new Promise<void>(r => setTimeout(r, 50));
-    const after: any[] = await signer.getPending();
+    const after: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(after.length, 0, 'Cooldown call must not enqueue a prompt');
   });
 
@@ -803,18 +805,18 @@ describe('signer -- getPublicKey cooldown', () => {
 
     const first: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const p1: any[] = await signer.getPending();
-    signer.resolveRequest(p1[0].id, { allow: true, remember: false });
+    const p1: any[] = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(p1[0].id, { allow: true, remember: false });
     await first;
 
     // Different origin must still prompt
     const second: Promise<any> = signer.handleGetPublicKey('other.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const p2: any[] = await signer.getPending();
+    const p2: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(p2.length, 1, 'Different origin must produce its own prompt');
     assert.strictEqual(p2[0].origin, 'other.com');
 
-    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(p2[0].id, { allow: false, remember: false });
     await assert.rejects(second, /User denied/);
   });
 
@@ -823,18 +825,18 @@ describe('signer -- getPublicKey cooldown', () => {
 
     const first: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const p1: any[] = await signer.getPending();
-    signer.resolveRequest(p1[0].id, { allow: false, remember: false });
+    const p1: any[] = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(p1[0].id, { allow: false, remember: false });
     await assert.rejects(first, /User denied/);
 
     // Next call must still prompt — deny does not silently auto-allow
     signer.handleGetPublicKey('chat.com').catch(() => {});
     await new Promise<void>(r => setTimeout(r, 50));
-    const p2: any[] = await signer.getPending();
+    const p2: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(p2.length, 1, 'Deny must not seed a cooldown');
 
     // Clean up
-    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(p2[0].id, { allow: false, remember: false });
   });
 
   it('account switch (rejectPendingForAccount) clears the cooldown', async () => {
@@ -842,19 +844,19 @@ describe('signer -- getPublicKey cooldown', () => {
 
     const first: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const p1: any[] = await signer.getPending();
-    signer.resolveRequest(p1[0].id, { allow: true, remember: false });
+    const p1: any[] = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(p1[0].id, { allow: true, remember: false });
     await first;
 
     // Simulate account switch — must invalidate the cooldown
-    await signer.rejectPendingForAccount('acct1');
+    await signerApprovalQueue.rejectPendingForAccount('acct1');
 
     signer.handleGetPublicKey('chat.com').catch(() => {});
     await new Promise<void>(r => setTimeout(r, 50));
-    const p2: any[] = await signer.getPending();
+    const p2: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(p2.length, 1, 'Cooldown must not survive an account switch');
 
-    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(p2[0].id, { allow: false, remember: false });
   });
 
   it('cleanupStale clears the cooldown', async () => {
@@ -862,18 +864,18 @@ describe('signer -- getPublicKey cooldown', () => {
 
     const first: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const p1: any[] = await signer.getPending();
-    signer.resolveRequest(p1[0].id, { allow: true, remember: false });
+    const p1: any[] = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(p1[0].id, { allow: true, remember: false });
     await first;
 
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
 
     signer.handleGetPublicKey('chat.com').catch(() => {});
     await new Promise<void>(r => setTimeout(r, 50));
-    const p2: any[] = await signer.getPending();
+    const p2: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(p2.length, 1, 'cleanupStale must drop the cooldown');
 
-    signer.resolveRequest(p2[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(p2[0].id, { allow: false, remember: false });
   });
 
   it('clearGetPubkeyCooldown(origin) invalidates only that origin', async () => {
@@ -883,27 +885,27 @@ describe('signer -- getPublicKey cooldown', () => {
     for (const origin of ['chat.com', 'other.com']) {
       const p: Promise<any> = signer.handleGetPublicKey(origin);
       await new Promise<void>(r => setTimeout(r, 50));
-      const pending: any[] = await signer.getPending();
-      signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+      const pending: any[] = await signerApprovalQueue.getPending();
+      signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
       await p;
     }
 
     // Clear only chat.com
-    signer.clearGetPubkeyCooldown('chat.com');
+    signerIdentity.clearGetPubkeyCooldown('chat.com');
 
     // chat.com must re-prompt
     signer.handleGetPublicKey('chat.com').catch(() => {});
     await new Promise<void>(r => setTimeout(r, 50));
-    let pending: any[] = await signer.getPending();
+    let pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
     assert.strictEqual(pending[0].origin, 'chat.com');
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
 
     // other.com must still auto-allow
     const otherPubkey: any = await signer.handleGetPublicKey('other.com');
     assert.strictEqual(otherPubkey, TEST_PUBKEY_HEX);
     await new Promise<void>(r => setTimeout(r, 50));
-    pending = await signer.getPending();
+    pending = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 0);
   });
 });
@@ -929,7 +931,7 @@ describe('signer -- getPublicKey on connected sites', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('a connected site gets the pubkey with no prompt', async () => {
@@ -939,7 +941,7 @@ describe('signer -- getPublicKey on connected sites', () => {
     const call: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 0, 'a connected site must not enqueue a prompt');
     assert.strictEqual(await withinTimeout(call), TEST_PUBKEY_HEX);
   });
@@ -950,12 +952,12 @@ describe('signer -- getPublicKey on connected sites', () => {
     await withinTimeout(signer.handleGetPublicKey('chat.com'));
 
     // cleanupStale() drops all in-memory signer state, as an MV3 SW restart does
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
 
     const call: Promise<any> = signer.handleGetPublicKey('chat.com');
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 0, 'the grant must survive a service-worker restart');
     assert.strictEqual(await withinTimeout(call), TEST_PUBKEY_HEX);
   });
@@ -973,11 +975,11 @@ describe('signer -- getPublicKey on connected sites', () => {
 
     signer.handleGetPublicKey('stranger.com').catch(() => {});
     await new Promise<void>(r => setTimeout(r, 50));
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1, 'an unconnected origin must still ask');
     assert.strictEqual(pending[0].origin, 'stranger.com');
 
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
   });
 
   it('disconnecting the site restores the prompt', async () => {
@@ -989,10 +991,10 @@ describe('signer -- getPublicKey on connected sites', () => {
 
     signer.handleGetPublicKey('chat.com').catch(() => {});
     await new Promise<void>(r => setTimeout(r, 50));
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1, 'a disconnected site must ask again');
 
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
   });
 });
 
@@ -1020,7 +1022,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
     await vault.create(TEST_PASSWORD, makeTwoAccountPayload());
     await browserMock.storage.local.set({
       accounts: [
@@ -1035,19 +1037,19 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
   it('onActiveAccountChanged rejects a pending getPublicKey prompt for the old account', async () => {
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    assert.strictEqual((await signer.getPending()).length, 1);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 1);
 
     // Simulate what every account-change path now does
-    await signer.onActiveAccountChanged('acct1', 'acct2');
+    await signerApprovalQueue.onActiveAccountChanged('acct1', 'acct2');
 
     await assert.rejects(p, /Account switched/);
-    assert.strictEqual((await signer.getPending()).length, 0, 'Pending prompt must be cleared');
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0, 'Pending prompt must be cleared');
   });
 
   it('approval after a mid-prompt account change never returns account B pubkey', async () => {
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
     assert.strictEqual(pending[0].pubkey, TEST_PUBKEY_HEX, 'Prompt shows account A identity');
 
@@ -1057,15 +1059,15 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
     await browserMock.storage.sync.set({ myPubkey: SECOND_PUBKEY_HEX });
 
     // Approving now must NOT hand out B's pubkey
-    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
     await assert.rejects(p, /Account switched/);
   });
 
   it('approval with unchanged account returns the snapshotted pubkey', async () => {
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    const pending: any[] = await signer.getPending();
-    signer.resolveRequest(pending[0].id, { allow: true, remember: false });
+    const pending: any[] = await signerApprovalQueue.getPending();
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: true, remember: false });
     assert.strictEqual(await p, TEST_PUBKEY_HEX);
   });
 
@@ -1075,12 +1077,12 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    assert.strictEqual((await signer.getPending()).length, 1);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 1);
 
     await setActive({ accountId: 'acct2' });
 
     await assert.rejects(p, /Account switched/);
-    assert.strictEqual((await signer.getPending()).length, 0);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0);
   });
 
   it('onboarding_addToVault rejects pending prompts for the previous account', async () => {
@@ -1088,7 +1090,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    assert.strictEqual((await signer.getPending()).length, 1);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 1);
 
     await addToVault({
       account: {
@@ -1105,7 +1107,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
     });
 
     await assert.rejects(p, /Account switched/);
-    assert.strictEqual((await signer.getPending()).length, 0);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0);
   });
 
   it('onboarding_createVault refuses over a populated vault without disturbing the queue', async () => {
@@ -1124,7 +1126,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
     await new Promise<void>(r => setTimeout(r, 50));
-    assert.strictEqual((await signer.getPending()).length, 1);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 1);
 
     await assert.rejects(
       createVault({
@@ -1145,13 +1147,13 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
     );
 
     assert.strictEqual(
-      (await signer.getPending()).length,
+      (await signerApprovalQueue.getPending()).length,
       1,
       'the pending request is still the user\'s to answer',
     );
 
     // Leave nothing dangling for the runner.
-    await signer.resolveRequest((await signer.getPending())[0].id, { allow: false, remember: false });
+    await signerApprovalQueue.resolveRequest((await signerApprovalQueue.getPending())[0].id, { allow: false, remember: false });
     await assert.rejects(p);
   });
 });
@@ -1162,7 +1164,7 @@ describe('signer -- NIP-46 accounts honor local deny', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
     await browserMock.storage.local.set({
       accounts: [{ id: 'n1', type: 'nip46', pubkey: TEST_PUBKEY_HEX }],
       activeAccountId: 'n1',
@@ -1178,7 +1180,7 @@ describe('signer -- NIP-46 accounts honor local deny', () => {
       ),
       /Permission denied/
     );
-    assert.strictEqual((await signer.getPending()).length, 0, 'Nothing queued or forwarded');
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0, 'Nothing queued or forwarded');
   });
 
   it('nip04Encrypt with a local deny throws before routing to the bunker', async () => {
@@ -1187,7 +1189,7 @@ describe('signer -- NIP-46 accounts honor local deny', () => {
       signer.handleNip04Encrypt(THEIR_PUBKEY_HEX, 'secret', 'evil.com'),
       /Permission denied/
     );
-    assert.strictEqual((await signer.getPending()).length, 0);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0);
   });
 
   it('nip44Decrypt with a local deny throws before routing to the bunker', async () => {
@@ -1205,7 +1207,7 @@ describe('signer -- pending entry carries full content and tags', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('stores untruncated content and all tags for a non-kind-3 event', async () => {
@@ -1220,12 +1222,12 @@ describe('signer -- pending entry carries full content and tags', () => {
 
     await new Promise<void>(r => setTimeout(r, 50));
 
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1);
     assert.strictEqual(pending[0].event.content, longContent, 'Content must not be truncated');
     assert.deepStrictEqual(pending[0].event.tags, tags, 'All tags must be stored for every kind');
 
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
     await assert.rejects(p, /User denied/);
   });
 });
@@ -1236,7 +1238,7 @@ describe('signer -- per-origin pending request cap', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('rejects the 6th concurrent request from one origin; other origins unaffected', async () => {
@@ -1251,7 +1253,7 @@ describe('signer -- per-origin pending request cap', () => {
       promises.push(signer.handleSignEvent(mkEvent(i), 'spam.com'));
     }
     await new Promise<void>(r => setTimeout(r, 300));
-    assert.strictEqual((await signer.getPending()).length, 5);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 5);
 
     // 6th request from the same origin is rejected outright
     await assert.rejects(
@@ -1262,11 +1264,11 @@ describe('signer -- per-origin pending request cap', () => {
     // A different origin still queues fine
     const other: Promise<any> = signer.handleSignEvent(mkEvent(7), 'ok.com');
     await new Promise<void>(r => setTimeout(r, 100));
-    assert.strictEqual((await signer.getPending()).length, 6);
+    assert.strictEqual((await signerApprovalQueue.getPending()).length, 6);
 
     // Clean up
-    for (const req of await signer.getPending()) {
-      signer.resolveRequest(req.id, { allow: false, remember: false });
+    for (const req of await signerApprovalQueue.getPending()) {
+      signerApprovalQueue.resolveRequest(req.id, { allow: false, remember: false });
     }
     for (const p of promises) await assert.rejects(p, /User denied/);
     await assert.rejects(other, /User denied/);
@@ -1286,8 +1288,8 @@ describe('signer -- per-origin pending request cap', () => {
     await new Promise<void>(r => setTimeout(r, 300));
 
     // Deny all to free capacity
-    for (const req of await signer.getPending()) {
-      signer.resolveRequest(req.id, { allow: false, remember: false });
+    for (const req of await signerApprovalQueue.getPending()) {
+      signerApprovalQueue.resolveRequest(req.id, { allow: false, remember: false });
     }
     for (const p of promises) await assert.rejects(p, /User denied/);
     await new Promise<void>(r => setTimeout(r, 100));
@@ -1295,9 +1297,9 @@ describe('signer -- per-origin pending request cap', () => {
     // New request queues again
     const next: Promise<any> = signer.handleSignEvent(mkEvent(9), 'busy.com');
     await new Promise<void>(r => setTimeout(r, 100));
-    const pending: any[] = await signer.getPending();
+    const pending: any[] = await signerApprovalQueue.getPending();
     assert.strictEqual(pending.length, 1, 'Capacity must be freed after resolve');
-    signer.resolveRequest(pending[0].id, { allow: false, remember: false });
+    signerApprovalQueue.resolveRequest(pending[0].id, { allow: false, remember: false });
     await assert.rejects(next, /User denied/);
   });
 });
@@ -1472,7 +1474,7 @@ describe('signer -- cold-start auto-unlock', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   it('does not open the popup while the startup auto-unlock is still running', async () => {
@@ -1495,7 +1497,7 @@ describe('signer -- cold-start auto-unlock', () => {
       // iterations) when the page's signEvent arrives.
       vault.beginStartupUnlock(async () => {
         await vault.unlock('');
-        await signer.onVaultUnlocked();
+        await signerApprovalQueue.onVaultUnlocked();
       });
 
       const signed: any = await signer.handleSignEvent(
@@ -1505,7 +1507,7 @@ describe('signer -- cold-start auto-unlock', () => {
 
       assert.ok(signed.sig, 'request still signs once the auto-unlock lands');
       assert.strictEqual(popupOpens, 0, 'popup must not open for an already-approved request');
-      const pending: any[] = await signer.getPending();
+      const pending: any[] = await signerApprovalQueue.getPending();
       assert.strictEqual(pending.length, 0, 'no unlock marker should be queued');
     } finally {
       browserMock.tabs.query = origQuery;
@@ -1531,13 +1533,13 @@ describe('signer -- cold-start auto-unlock', () => {
       );
 
       await new Promise<void>(r => setTimeout(r, 50));
-      const pending: any[] = await signer.getPending();
+      const pending: any[] = await signerApprovalQueue.getPending();
       assert.strictEqual(pending.length, 1);
       assert.strictEqual(pending[0].waitingForUnlock, true);
       assert.strictEqual(popupOpens, 1, 'a genuinely locked vault must still prompt');
 
       await vault.unlock(TEST_PASSWORD);
-      await signer.onVaultUnlocked();
+      await signerApprovalQueue.onVaultUnlocked();
       const signed: any = await signPromise;
       assert.ok(signed.sig);
     } finally {
@@ -1583,19 +1585,19 @@ describe('signer -- cleanupStale announces the wipe', () => {
       ],
     });
 
-    const seen = await recordBroadcasts(() => signer.cleanupStale());
+    const seen = await recordBroadcasts(() => signerApprovalQueue.cleanupStale());
 
     assert.ok(
       seen.includes('signerPendingUpdated'),
       'an open popup has no other way to learn the queue was wiped',
     );
-    assert.deepStrictEqual(await signer.getPending(), [], 'the queue is cleared');
+    assert.deepStrictEqual(await signerApprovalQueue.getPending(), [], 'the queue is cleared');
   });
 
   it('broadcasts even when the queue was already empty', async () => {
     // The popup cannot tell "nothing was there" from "the worker restarted", so
     // the announcement must not depend on what was in the queue.
-    const seen = await recordBroadcasts(() => signer.cleanupStale());
+    const seen = await recordBroadcasts(() => signerApprovalQueue.cleanupStale());
     assert.ok(seen.includes('signerPendingUpdated'));
   });
 });
@@ -1619,28 +1621,28 @@ describe('signer -- resolveRequest completes its removal', () => {
       ],
     });
 
-    await signer.resolveRequest('a', { allow: true, remember: false });
+    await signerApprovalQueue.resolveRequest('a', { allow: true, remember: false });
 
-    const ids = (await signer.getPending()).map((r) => r.id);
+    const ids = (await signerApprovalQueue.getPending()).map((r) => r.id);
     assert.deepStrictEqual(ids, ['b'], 'the resolved request is gone once the promise settles');
   });
 });
 
 it('rejects a supplied foreign author before queueing or signing even with permission',async()=>{
- resetMockStorage();vault.lock();await signer.cleanupStale();await setupVault();
+ resetMockStorage();vault.lock();await signerApprovalQueue.cleanupStale();await setupVault();
  await permissions.save('foreign.test','signEvent',null,'allow');
  await assert.rejects(()=>signer.handleSignEvent({pubkey:THEIR_PUBKEY_HEX,kind:1,content:'foreign',tags:[],created_at:1},'foreign.test'),/account|author/i);
- assert.equal((await signer.getPending()).length,0);
+ assert.equal((await signerApprovalQueue.getPending()).length,0);
 });
 it('single and batch approval cannot allow requests belonging to another account',async()=>{
- resetMockStorage();vault.lock();await signer.cleanupStale();await setupVault();
- const first=signer.queueRequest({type:'signEvent',origin:'other.test',accountId:'other',needsPermission:true,permKey:'signEvent:1'});
+ resetMockStorage();vault.lock();await signerApprovalQueue.cleanupStale();await setupVault();
+ const first=signerApprovalQueue.queueRequest({type:'signEvent',origin:'other.test',accountId:'other',needsPermission:true,permKey:'signEvent:1'});
  await new Promise(resolve=>setTimeout(resolve,50));
- await signer.resolveRequest((await signer.getPending())[0].id,{allow:true,remember:false});
+ await signerApprovalQueue.resolveRequest((await signerApprovalQueue.getPending())[0].id,{allow:true,remember:false});
  assert.equal((await first).allow,false);
- const second=signer.queueRequest({type:'signEvent',origin:'other.test',accountId:'other',needsPermission:true,permKey:'signEvent:1'});
+ const second=signerApprovalQueue.queueRequest({type:'signEvent',origin:'other.test',accountId:'other',needsPermission:true,permKey:'signEvent:1'});
  await new Promise(resolve=>setTimeout(resolve,50));
- await signer.resolveBatch('other.test','signEvent:1',{allow:true,remember:false});
+ await signerApprovalQueue.resolveBatch('other.test','signEvent:1',{allow:true,remember:false});
  assert.equal((await second).allow,false);
 });
 

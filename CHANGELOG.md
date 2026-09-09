@@ -8,6 +8,18 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Fixed premature wallet lock errors during startup, refreshed wallet data after unlock, and discarded stale vault-status responses.
+
+- Split vault/signing services by responsibility, share the HTTP transport type, and use component directory entrypoints with named button presets.
+
+- Reuse profile image controls and summaries, standardize editable lists, and isolate mute-editor state with stale-response guards and shared lifecycle helpers.
+
+- Standardized button sizing and appearance, removed call-site visual overrides, and separated approval navigation from cancellation to avoid nested buttons.
+
+- Reused shared controls throughout activity details and kind previews; added shared status announcements, text blocks and disclosures, and removed the event preview class registry.
+- Migrated pulse-logo and scroll-wheel styles to utilities while retaining shared animations and wheel geometry.
+- Wired NIP-07 and WebLN page timeouts to canonical build-time constants, with packaged-script coverage for both channels.
+
 - Consolidated tab, chip, dropdown and select options into `Option<T>`, preserving typed chip callbacks and read-only option lists.
 - Grouped browser documents under `src/entrypoints/`; moved prompt and welcome content to feature screens and updated packaging paths. Prompt decisions now reuse shared buttons and selects.
 
@@ -39,6 +51,8 @@ have had.
 - Activity rows now show cached site favicons and trailing time/status. Event details have expandable payloads and local decryption for saved NIP-04/NIP-44/PQ content, including verified gift wraps. Future crypto logs retain ciphertext only; older entries without saved bodies explain their limitation.
 
 ### Store release notes
+
+- Fixed intermittent wallet lock messages and improved shared controls, profile previews and activity details.
 
 - Updated vulnerable dependencies.
 - Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.

@@ -6,12 +6,12 @@ import IconCopy from '@assets/IconCopy.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
 import IconLock from '@assets/IconLock.tsx';
 import IconWarning from '@assets/IconWarning.tsx';
-import Button from '@components/Button/Button';
-import ActionTile from '@components/ActionTile/ActionTile';
+import Button from '@components/Button';
+import ActionTile from '@components/ActionTile';
 import EncryptedBackupModal from './EncryptedBackupModal';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface BackupStepProps {
   mnemonic: string | null;

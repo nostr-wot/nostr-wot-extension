@@ -5,13 +5,13 @@ import { currentApprovalGroup, resolveDisplayedRequests, type ApprovalGroup } fr
 import { type PendingRequest } from '@domain/signing/types.ts';
 import ApprovalCard from './ApprovalCard';
 import useApprovalQueue from '@hooks/useApprovalQueue.ts';
-import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
+import EventDetailModal from '@components/EventDetailModal';
 import { usePermissions } from '@context/PermissionsContext';
 import { useAccount } from '@context/AccountContext';
-import Button from '@components/Button/Button';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
-import FormError from '@components/FormError/FormError';
+import Button, { ButtonDanger } from '@components/Button';
+import Container from '@components/Container';
+import Text from '@components/Text';
+import FormError from '@components/FormError';
 
 interface ApprovalOverlayProps {
   onRequestUnlock?: () => void;
@@ -111,9 +111,9 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           <Container variant="row" gap={3} className="ml-auto">
             {groups.length > 0 && <Button small disabled={busy} onClick={handleApproveShown}>{t('approval.approveShown')}</Button>}
             {groups.length > 0 && (
-              <Button small outline variant="danger" disabled={busy} onClick={handleRejectAll}>
+              <ButtonDanger small outline disabled={busy} onClick={handleRejectAll}>
                 {t('approval.rejectAll')}
-              </Button>
+              </ButtonDanger>
             )}
           </Container>
         </Container>

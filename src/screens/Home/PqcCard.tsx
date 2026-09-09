@@ -5,10 +5,10 @@ import IconKey from '@assets/IconKey.tsx';
 import IconShield from '@assets/IconShield.tsx';
 import IconWarning from '@assets/IconWarning.tsx';
 import { useNavigate } from '@context/NavigationContext';
-import Card from '@components/Card/Card';
+import Card from '@components/Card';
 import { usePqc } from '@context/PqcContext';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 /**
  * Post-quantum status on the dashboard.

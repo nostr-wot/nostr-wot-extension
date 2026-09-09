@@ -1,9 +1,11 @@
+import useStorageWatch from '@hooks/useStorageWatch';
+import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Card from '@components/Card/Card';
-import WalletBalance from '@components/WalletBalance/WalletBalance';
-import Button from '@components/Button/Button';
+import Card from '@components/Card';
+import WalletBalance from '@components/WalletBalance';
+import Button, { ButtonSecondary } from '@components/Button';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
 import WalletSettings from './WalletSettings';
@@ -15,9 +17,9 @@ import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';
 import { useWallet } from '@context/WalletContext';
 
-import IconButton from '@components/IconButton/IconButton';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
+import IconButton from '@components/IconButton';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
 
 interface WalletProps {
   providerType: string;
@@ -88,6 +90,10 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     return () => { runs.current++; };
   }, [fetchFiltered]);
 
+  useStorageWatch([{ area: 'local', keys: [LOCK_STATE_KEY] }], () => {
+    void fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
+  });
+
   const handleShowMore = () => {
     const filters = { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo };
     void fetchFiltered(txOffset, transactions, filters, filterTransactions(transactions, filters).length + 10);
@@ -115,12 +121,12 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         <WalletBalance balance={balance} loading={balanceLoading || configLoading} error={!!balanceError || configReadFailed} />
         {(balanceError || configReadFailed) && <div className="text-xs">
           <FormError>{balanceError || t('wallet.checkFailed')}</FormError>
-          <Button small variant="secondary" onClick={() => { void refreshConfig(); void refreshBalance(); }}>{t('common.retry')}</Button>
+          <ButtonSecondary small onClick={() => { void refreshConfig(); void refreshBalance(); }}>{t('common.retry')}</ButtonSecondary>
         </div>}
       {/* Action buttons */}
       <Container variant="row" gap={4}>
         <Button className="flex-1" onClick={() => setShowDeposit(true)}>{t('wallet.deposit')}</Button>
-        <Button className="flex-1" variant="secondary" onClick={() => setShowSend(true)}>{t('wallet.send')}</Button>
+        <ButtonSecondary className="flex-1" onClick={() => setShowSend(true)}>{t('wallet.send')}</ButtonSecondary>
       </Container>
       </Card>
 

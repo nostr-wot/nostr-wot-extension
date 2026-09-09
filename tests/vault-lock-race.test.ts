@@ -95,3 +95,28 @@ describe('vault_isLocked -- the cold-start window', () => {
     assert.strictEqual(await isLocked({}), true);
   });
 });
+
+import { loadVaultState } from '../src/context/VaultContext';
+it('a retired status read cannot overwrite a newer unlocked result, including on failure', async () => {
+  for (const fail of [false,true]) {
+    const patches:unknown[]=[];
+    let current=true, finish!:()=>void;
+    const gate=new Promise<void>(resolve=>{finish=resolve;});
+    const old=loadVaultState(value=>patches.push(value),()=>current,async(method:string)=>{
+      await gate;
+      if(fail) throw new Error('old worker response');
+      return (method==='vault_isLocked'?true:method==='vault_getActiveAccountType'?{type:'nsec'}:true) as never;
+    });
+    current=false;
+    await loadVaultState(value=>patches.push(value),()=>true,async(method:string)=>
+      (method==='vault_isLocked'?false:method==='vault_getActiveAccountType'?{type:'nsec'}:true) as never);
+    finish();await old;
+    assert.equal(patches.length,1);
+    assert.equal((patches[0] as {locked:boolean}).locked,false);
+  }
+});
+it('a current failed vault read remains fail-closed',async()=>{
+  const patches:unknown[]=[];
+  await loadVaultState(value=>patches.push(value),()=>true,async()=>{throw new Error('offline');});
+  assert.deepEqual(patches,[{locked:true}]);
+});

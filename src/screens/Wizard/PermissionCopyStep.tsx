@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Dropdown from '@components/Dropdown/Dropdown';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Button, { ButtonSecondary } from '@components/Button';
+import Dropdown from '@components/Dropdown';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface EnrichedAccount {
   id: string;
@@ -103,9 +103,9 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
       )}
 
       <Container variant="row" gap={4} stickyFooter>
-        <Button className="flex-1" variant="secondary" onClick={handleFresh} disabled={copying}>
+        <ButtonSecondary className="flex-1" onClick={handleFresh} disabled={copying}>
           {t('wizard.startFresh')}
-        </Button>
+        </ButtonSecondary>
         {accounts.length > 0 && (
           <Button className="flex-1" onClick={handleCopy} disabled={copying || !selectedId}>
             {copying ? t('common.loading') : t('wizard.copyFrom')}

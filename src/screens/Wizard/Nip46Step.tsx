@@ -2,16 +2,16 @@ import { useState, useEffect, useRef, useCallback, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import QrCode from '@components/QrCode/QrCode';
-import Spinner from '@components/Spinner/Spinner';
-import Tabs from '@components/Tabs/Tabs';
-import FormError from '@components/FormError/FormError';
-import Heading from '@components/Heading/Heading';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Input from '@components/Input';
+import Button from '@components/Button';
+import QrCode from '@components/QrCode';
+import Spinner from '@components/Spinner';
+import Tabs from '@components/Tabs';
+import FormError from '@components/FormError';
+import Heading from '@components/Heading';
+import { SectionLabel } from '@components/SectionLabel';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 function isValidBunkerUrl(url: string): boolean {
   if (!url.startsWith('bunker://')) return false;

@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RUN_SH = join(ROOT, 'tests/run.sh');
@@ -337,8 +338,52 @@ it('browser documents are grouped under entrypoints and feature modules cannot i
 it('selection controls import one option contract instead of declaring copies', () => {
   assert.equal(existsSync(join(ROOT,'src/components/Dropdown/dropdownOption.ts')),false);
   for (const name of ['Tabs','ChipGroup','Dropdown','Select']) {
-    const source=readFileSync(join(ROOT,`src/components/${name}/${name}.tsx`),'utf8');
+    const source=readFileSync(join(ROOT,`src/components/${name}/index.tsx`),'utf8');
     assert.match(source,/import type \{ Option \} from ['"]@components\/option.ts/);
     assert.doesNotMatch(source,/interface (?:TabOption|ChipOption|DropdownOption)\b/);
+  }
+});
+
+it('button callers use layout classes without overriding the shared appearance', () => {
+  const violations: string[] = [];
+  const layoutClass = /^(?:flex-(?:1|auto|none)|shrink-0|(?:min-|max-)?w-(?:full|\[[\d.]+px\])|m[trblxy]?-[\d.]+|self-(?:start|end|center)|relative)$/;
+  function scan(dir: string) {
+    for (const item of readdirSync(dir, { withFileTypes: true })) {
+      const file = join(dir, item.name);
+      if (item.isDirectory()) { scan(file); continue; }
+      if (!file.endsWith('.tsx')) continue;
+      const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+      function visit(node: ts.Node) {
+        if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+            ['Button', 'ButtonSecondary', 'ButtonDanger', 'IconButton'].includes(node.tagName.getText(source))) {
+          for (const attr of node.attributes.properties) {
+            if (!ts.isJsxAttribute(attr)) continue;
+            const name = attr.name.getText(source);
+            if (name === 'style') violations.push(`${relative(ROOT, file)}: inline button style`);
+            if (name !== 'className') continue;
+            if (!attr.initializer || !ts.isStringLiteral(attr.initializer)) {
+              violations.push(`${relative(ROOT, file)}: nonliteral button classes`);
+            } else {
+              for (const cls of attr.initializer.text.split(/\s+/).filter(Boolean)) {
+                if (!layoutClass.test(cls)) violations.push(`${relative(ROOT, file)}: ${cls}`);
+              }
+            }
+          }
+        }
+        ts.forEachChild(node, visit);
+      }
+      visit(source);
+    }
+  }
+  scan(join(ROOT, 'src'));
+  assert.deepEqual(violations, []);
+});
+
+it('shared component implementations use directory entrypoints without forwarding files', () => {
+  for (const directory of readdirSync(join(ROOT,'src/components'),{withFileTypes:true})) {
+    if (!directory.isDirectory()) continue;
+    const base = join(ROOT,'src/components',directory.name);
+    assert.ok(existsSync(join(base,'index.tsx')),`${directory.name} needs index.tsx`);
+    assert.equal(existsSync(join(base,`${directory.name}.tsx`)),false);
   }
 });

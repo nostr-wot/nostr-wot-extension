@@ -2,8 +2,74 @@ import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import Button from '../src/components/Button/Button';
-import OverlayPanel from '../src/components/OverlayPanel/OverlayPanel';
+import Button from '../src/components/Button';
+import OverlayPanel from '../src/components/OverlayPanel';
+import ScreenReaderStatus from '../src/components/ScreenReaderStatus';
+import PulseLogo from '../src/components/PulseLogo';
+import ScrollWheelPicker from '../src/components/ScrollWheelPicker';
+import IconButton from '../src/components/IconButton';
+import ApprovalCard from '../src/screens/Approval/ApprovalCard';
+
+it('icon buttons use only the three standard hit areas and shared tones', () => {
+  for (const [size, pixels] of [['small', 24], ['default', 28], ['large', 36]] as const) {
+    const html = renderToStaticMarkup(IconButton({ size, tone: 'brand', disabled: true, children: 'Icon', 'aria-label': 'Action' }));
+    assert.ok(html.includes(`width:${pixels}px;height:${pixels}px`));
+    assert.match(html, /text-brand/);
+    assert.match(html, /disabled=""/);
+    assert.match(html, /aria-label="Action"/);
+  }
+});
+
+it('remote approval details and cancellation are separate, named button actions', () => {
+  let opened = 0, cancelled = 0;
+  const props = {
+    group: { origin: 'site.test', method: 'signEvent', permKey: 'signEvent', requests: [], nip46InFlight: true },
+    onClick() { opened++; }, onCancel() { cancelled++; },
+  };
+  const tree = ApprovalCard(props);
+  const [row, cancel] = tree.props.children.props.children;
+  row.props.onClick();
+  cancel.props.onClick();
+  assert.equal(opened, 1);
+  assert.equal(cancelled, 1);
+  const html = renderToStaticMarkup(tree);
+  assert.equal((html.match(/<button\b/g) || []).length, 2);
+  assert.ok(html.indexOf('</button>') < html.lastIndexOf('<button'));
+  assert.match(html, /aria-label="approval.cancelNip46"/);
+  assert.doesNotMatch(html.slice(html.lastIndexOf('<button')), /text-2xl|leading-none|rounded-sm|&times;/);
+});
+
+it('wheel styling preserves the selected option, perspective, masks and row geometry', () => {
+  const html = renderToStaticMarkup(createElement(ScrollWheelPicker<string>, {
+    items: ['First', 'Second', 'Third'], selectedIndex: 1, itemHeight: 40, visibleCount: 5,
+  }));
+  assert.match(html, /tabindex="0" role="listbox"/);
+  assert.match(html, /height:200px/);
+  assert.match(html, /perspective:900px/);
+  assert.match(html, /-webkit-mask-image:linear-gradient/);
+  assert.match(html, /backface-visibility:hidden/);
+  assert.match(html, /transform:rotateX\(0deg\)[^>]*role="option" aria-selected="true">Second/);
+  assert.equal((html.match(/role="option"/g) || []).length, 3);
+});
+
+it('pulse logo preserves two decorative staggered rings and the accessible image', () => {
+  const html = renderToStaticMarkup(createElement(PulseLogo, { src: '/logo.png', size: 72, alt: 'Nostr WoT' }));
+  assert.equal((html.match(/aria-hidden="true"/g) || []).length, 2);
+  assert.equal((html.match(/animate-logo-pulse/g) || []).length, 2);
+  assert.equal((html.match(/animation-delay:2.5s/g) || []).length, 1);
+  assert.match(html, /width="72" height="72" alt="Nostr WoT"/);
+});
+
+it('screen-reader status stays mounted when empty and renders feedback as text', () => {
+  for (const message of [undefined, '', 'Copied', 'Copy failed', '<script>']) {
+    const html = renderToStaticMarkup(createElement(ScreenReaderStatus, {}, message));
+    assert.match(html, /^<span role="status" class="sr-only">.*<\/span>$/);
+    assert.doesNotMatch(html, /aria-hidden|display:none|<script>/);
+    if (message === '<script>') assert.match(html, /&lt;script&gt;/);
+    else if (message) assert.ok(html.includes(message));
+    else assert.match(html, /><\/span>$/);
+  }
+});
 
 it('filled buttons suppress the native browser border while outline buttons retain theirs', () => {
   const filled = renderToStaticMarkup(createElement(Button, { variant: 'secondary' }, 'Cancel'));
@@ -19,9 +85,9 @@ it('overlay close controls have an accessible name in the uncentered header', ()
   assert.match(html, /border-none/);
 });
 
-import Input from '../src/components/Input/Input';
-import InputRow from '../src/components/InputRow/InputRow';
-import EditableList from '../src/components/EditableList/EditableList';
+import Input from '../src/components/Input';
+import InputRow from '../src/components/InputRow';
+import EditableList from '../src/components/EditableList';
 
 it('input errors are associated with the field and labels focus their input', () => {
   const html = renderToStaticMarkup(createElement(Input, { id: 'pubkey', label: 'Public key', error: 'Invalid key' }));
@@ -61,9 +127,9 @@ it('list adds reject invalid, whitespace-normalized and duplicate entries before
   }
 });
 
-import Select from '../src/components/Select/Select';
-import Dropdown from '../src/components/Dropdown/Dropdown';
-import RemoveButton from '../src/components/RemoveButton/RemoveButton';
+import Select from '../src/components/Select';
+import Dropdown from '../src/components/Dropdown';
+import RemoveButton from '../src/components/RemoveButton';
 
 it('select and dropdown retain native keyboard semantics and disabled state', () => {
   for (const component of [Select, Dropdown]) {
@@ -80,7 +146,7 @@ it('remove controls have an accessible name and honor disabled state', () => {
   assert.match(html, /disabled=""/);
 });
 
-import PublishRow from '../src/components/PublishRow/PublishRow';
+import PublishRow from '../src/components/PublishRow';
 it('publishing stays disabled when the editor has no valid changes', () => {
   const html = renderToStaticMarkup(createElement(PublishRow, {
     disabled: true, publishing: false, dirty: false, status: null, onPublish() {},
@@ -114,7 +180,7 @@ it('inputs and selects use the shared contrasting input surface', () => {
   assert.match(renderToStaticMarkup(createElement(Select, {options:[]})), /bg-input/);
 });
 
-import CopyButton from '../src/components/CopyButton/CopyButton';
+import CopyButton from '../src/components/CopyButton';
 
 it('shared copy actions expose their purpose and never render the copied credential', () => {
   for (const iconOnly of [true, false]) {
@@ -135,8 +201,8 @@ it('shared date and search fields retain native types, labels and control stylin
   }
 });
 
-import Tabs from '../src/components/Tabs/Tabs';
-import ChipGroup from '../src/components/ChipGroup/ChipGroup';
+import Tabs from '../src/components/Tabs';
+import ChipGroup from '../src/components/ChipGroup';
 import type { Option } from '../src/components/option.ts';
 
 it('selection controls share readonly options while preserving string and numeric values', () => {
@@ -148,4 +214,17 @@ it('selection controls share readonly options while preserving string and numeri
   type Selected = Parameters<typeof ChipGroup<'all'|'in'>>[0]['onChange'];
   const retainsLiteralUnion: Parameters<Selected>[0] extends 'all'|'in' ? true : false = true;
   assert.equal(retainsLiteralUnion,true);
+});
+
+import { Button as NamedButton, ButtonSecondary, ButtonDanger } from '../src/components/Button';
+it('named button presets preserve standard styling and native behavior', () => {
+  assert.equal(NamedButton, Button);
+  for (const [Preset, variant] of [[ButtonSecondary, 'secondary'], [ButtonDanger, 'danger']] as const) {
+    const onClick = () => {};
+    const props = {small:true,outline:true,disabled:true,type:'submit' as const,'aria-label':'Confirm',onClick,children:'Confirm'};
+    assert.equal(Preset(props).props.onClick,onClick);
+    assert.equal(renderToStaticMarkup(createElement(Preset,props)),renderToStaticMarkup(createElement(Button,{...props,variant})));
+    // A runtime spread cannot override a named preset's variant.
+    assert.equal(Preset({...props,variant:'primary'} as never).props.variant,variant);
+  }
 });

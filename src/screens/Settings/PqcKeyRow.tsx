@@ -1,7 +1,7 @@
 import { t } from '@services/i18n/i18n.ts';
 import { truncateMiddle } from '@utils/format/text.ts';
-import CopyButton from '@components/CopyButton/CopyButton';
-import Container from '@components/Container/Container';
+import CopyButton from '@components/CopyButton';
+import Container from '@components/Container';
 
 /** Label, shortened value, copy. Shortened in the MIDDLE so both ends stay
  *  checkable and the row stays one line. */

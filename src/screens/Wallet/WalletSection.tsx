@@ -1,12 +1,12 @@
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import EmptyState from '@components/EmptyState/EmptyState';
+import Button from '@components/Button';
+import EmptyState from '@components/EmptyState';
 import WalletSetup from './WalletSetup';
 import Wallet from './Wallet';
 import { useWallet } from '@context/WalletContext';
 
-import Spinner from '@components/Spinner/Spinner';
-import Container from '@components/Container/Container';
+import Spinner from '@components/Spinner';
+import Container from '@components/Container';
 
 /**
  * Wallet section for the settings menu.

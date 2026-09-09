@@ -4,11 +4,14 @@ import { activityEncryption, type ActivityEntry } from '@domain/activity/activit
 import { KIND_LABELS } from '@constants/nostr.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { truncate, truncateMiddle } from '@utils/format/text.ts';
-import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
-import ListRow from '@components/ListRow/ListRow';
-import Modal from '@components/Modal/Modal';
-import Button from '@components/Button/Button';
-import StatusDot from '@components/StatusDot/StatusDot';
+import FieldDisplay from '@components/FieldDisplay';
+import ListRow from '@components/ListRow';
+import Modal from '@components/Modal';
+import { ButtonSecondary } from '@components/Button';
+import StatusDot from '@components/StatusDot';
+import Container from '@components/Container';
+import Text from '@components/Text';
+import DetailDisclosure from '@components/DetailDisclosure';
 import ActivityEntryDetail from './ActivityEntryDetail';
 
 /** Small, kind-specific preview; ciphertext is never used as a row preview. */
@@ -32,12 +35,9 @@ export function activityRowPreview(entry: ActivityEntry): string {
 
 export function ActivityItemDialog({ entry, onClose }: { entry: ActivityEntry; onClose: () => void }) {
   return <Modal title={formatPermissionLabel(entry.method, entry.event ?? undefined)} onClose={onClose} maxWidth={360}
-    footer={<Button variant="secondary" onClick={onClose}>{t('common.close')}</Button>}>
+    footer={<ButtonSecondary onClick={onClose}>{t('common.close')}</ButtonSecondary>}>
     <ActivityEntryDetail entry={entry} />
-    {!entry.event && <details className="mt-5 text-xs text-secondary">
-      <summary className="cursor-pointer font-semibold py-3">JSON</summary>
-      <pre className="whitespace-pre-wrap break-all select-text">{JSON.stringify(entry.event || entry, null, 2)}</pre>
-    </details>}
+    {!entry.event && <DetailDisclosure label="JSON" content={JSON.stringify(entry, null, 2)} className="mt-5" />}
   </Modal>;
 }
 
@@ -59,26 +59,26 @@ export default function ActivityGroupDetail({ entries, selectedAccountPubkey }: 
   const end = new Date(Math.max(...dates));
   const time = start.toLocaleString([], {year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   const sameMinute = Math.floor(start.getTime() / 60000) === Math.floor(end.getTime() / 60000);
-  return <div className="flex flex-col flex-1 min-h-0 gap-5">
-    <div className="shrink-0 rounded-md bg-input px-5 py-3">
+  return <Container gap={5} className="flex-1 min-h-0">
+    <Container variant="box" className="shrink-0">
       <FieldDisplay label={t('activity.detail.time')} value={sameMinute ? time : `${time} – ${end.toLocaleString()}`} />
       {sharedKind && <FieldDisplay label={t('event.kind')} value={`${kind} · ${KIND_LABELS[kind] || formatPermissionLabel(first.method, first.event ?? undefined)}`} />}
-      {account && account !== selectedAccountPubkey && <FieldDisplay label={t('activity.detail.account')} mono value={<span title={account}>{truncateMiddle(account)}</span>} />}
-      {peer && <FieldDisplay label={t('activity.detail.peer')} mono value={<span title={peer}>{truncateMiddle(peer)}</span>} />}
-      {sharedDecision && <FieldDisplay label={t('activity.detail.status')} value={<span className="inline-flex items-center gap-3">{t(`activity.${decision}`)}<StatusDot status={first.decision} /></span>} />}
-    </div>
-    <div className="text-xs text-secondary shrink-0">{t('activity.requests', { count: entries.length })}</div>
-    <ol className="flex flex-col list-none m-0 p-0 min-h-0 overflow-y-auto overscroll-contain rounded-md border border-card-border">
+      {account && account !== selectedAccountPubkey && <FieldDisplay label={t('activity.detail.account')} mono value={<Text as="span" mono className="text-xs text-heading" title={account}>{truncateMiddle(account)}</Text>} />}
+      {peer && <FieldDisplay label={t('activity.detail.peer')} mono value={<Text as="span" mono className="text-xs text-heading" title={peer}>{truncateMiddle(peer)}</Text>} />}
+      {sharedDecision && <FieldDisplay label={t('activity.detail.status')} value={<Container as="span" variant="row" gap={3}>{t(`activity.${decision}`)}<StatusDot status={first.decision} /></Container>} />}
+    </Container>
+    <Text variant="secondary" className="text-xs shrink-0">{t('activity.requests', { count: entries.length })}</Text>
+    <Container as="ol" className="list-none m-0 p-0 min-h-0 overflow-y-auto overscroll-contain rounded-md border border-card-border">
       {entries.map((entry, i) => <li key={i} className="border-b border-card-border last:border-b-0">
-        <ListRow leading={<span className="text-xs text-muted tabular-nums">{i + 1}</span>} leadingChip={false} title={activityRowPreview(entry)} subtitle={<span className="flex flex-wrap gap-3">
-          <span>{formatPermissionLabel(entry.method, entry.event ?? undefined)}</span>
-          {!!entry.event?.tags?.length && <span>{t('event.tags', {count:entry.event.tags.length})}</span>}
-          {!account && entry.pubkey && <span title={entry.pubkey}>{t('activity.detail.account')}: {truncateMiddle(entry.pubkey)}</span>}
-          {!peer && peers[i] && <span title={peers[i] ?? undefined}>{t('activity.detail.peer')}: {truncateMiddle(peers[i])}</span>}
+        <ListRow leading={<Text as="span" variant="muted" className="tabular-nums">{i + 1}</Text>} leadingChip={false} title={activityRowPreview(entry)} subtitle={<Container as="span" variant="row" gap={3} className="flex-wrap">
+          <Text as="span" variant="secondary" className="text-xs">{formatPermissionLabel(entry.method, entry.event ?? undefined)}</Text>
+          {!!entry.event?.tags?.length && <Text as="span" variant="secondary" className="text-xs">{t('event.tags', {count:entry.event.tags.length})}</Text>}
+          {!account && entry.pubkey && <Text as="span" variant="secondary" className="text-xs" title={entry.pubkey}>{t('activity.detail.account')}: {truncateMiddle(entry.pubkey)}</Text>}
+          {!peer && peers[i] && <Text as="span" variant="secondary" className="text-xs" title={peers[i] ?? undefined}>{t('activity.detail.peer')}: {truncateMiddle(peers[i])}</Text>}
           {!sharedDecision && <StatusDot status={entry.decision} />}
-        </span>} onClick={() => setSelected(entry)} />
+        </Container>} onClick={() => setSelected(entry)} />
       </li>)}
-    </ol>
+    </Container>
     {selected && <ActivityItemDialog entry={selected} onClose={() => setSelected(null)} />}
-  </div>;
+  </Container>;
 }

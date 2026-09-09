@@ -6,8 +6,8 @@ import IconSettings from '@assets/IconSettings.tsx';
 import AccountBar from './AccountBar';
 import AccountDropdown from './AccountDropdown';
 import GlobeButton from './GlobeButton';
-import IconButton from '@components/IconButton/IconButton';
-import Container from '@components/Container/Container';
+import IconButton from '@components/IconButton';
+import Container from '@components/Container';
 
 interface TopBarProps {
   onMenuOpen: () => void;

@@ -6,7 +6,7 @@
 import browser from '../../lib/browser.ts';
 import { updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
 import * as vault from '../vault/vault.ts';
-import * as signer from '../signing/signer.ts';
+import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import * as signerPermissions from '../permissions/permissions.ts';
 import { npubEncode } from '../../lib/crypto/bech32.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
@@ -25,8 +25,7 @@ import { logActivity } from '@services/background/activity-handlers.ts';
 // ── Shared utilities ──
 
 export async function getConnectedProvider(): Promise<{ provider: NonNullable<ReturnType<typeof getWalletProvider>>; acct: NonNullable<ReturnType<typeof vault.getActiveAccountWithWallet>> }> {
-    await vault.whenStartupUnlockSettled();
-    if (vault.isLocked()) throw new Error('Vault is locked');
+    await vault.requireUnlocked();
     const acct = vault.getActiveAccountWithWallet();
     if (!acct?.walletConfig) throw new Error('No wallet configured');
     const provider = getWalletProvider(acct.id, acct.walletConfig);
@@ -66,7 +65,7 @@ export const handlers = new Map<string, HandlerFn>([
         // connected over NIP-07 has seen nothing about the wallet, and used to fall
         // straight through this handler: one silent enable() away from reading balances.
         if (!shownConnectCard) {
-            const decision = await signer.queueRequest({
+            const decision = await signerApprovalQueue.queueRequest({
                 type: 'webln_enable',
                 origin,
                 needsPermission: true,
@@ -144,7 +143,7 @@ export const handlers = new Map<string, HandlerFn>([
         }
 
         if (!autoApproved) {
-            const decision = await signer.queueRequest({
+            const decision = await signerApprovalQueue.queueRequest({
                 type: 'webln_sendPayment',
                 origin,
                 needsPermission: true,
@@ -171,8 +170,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['wallet_hasConfig', async () => {
         const revision = walletDisplayRevision();
-        await vault.whenStartupUnlockSettled();
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acct = vault.getActiveAccountWithWallet();
         if (!acct) throw new Error('No active account');
         if (acct.walletConfig) await updateWalletDisplayCache(acct.id, {providerType:acct.walletConfig.type}, revision).catch(() => {});
@@ -194,7 +192,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['wallet_connect', async (params) => {
         const { walletConfig } = params as { walletConfig: WalletConfig };
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         await vault.updateAccountWalletConfig(acctId, walletConfig);
@@ -207,7 +205,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_disconnect', async () => {
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         removeWalletProvider(acctId);
@@ -217,6 +215,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_setAutoApproveThreshold', async (params) => {
+        await vault.requireUnlocked();
         const { threshold } = params as { threshold: number };
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
@@ -260,7 +259,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_resolveLightningAddress', async (params) => {
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const { address } = params as { address: string };
         const payParams = await fetchPayParams(address);
         const minSats = Math.ceil(payParams.minSendable / 1000);
@@ -306,7 +305,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_provision', async (params) => {
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         const acct = vault.getActiveAccountWithWallet();
@@ -328,15 +327,14 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_getNwcUri', async () => {
-        await vault.whenStartupUnlockSettled();
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acct = vault.getActiveAccountWithWallet();
         if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') return null;
         return acct.walletConfig.nwcUri ?? null;
     }],
 
     ['wallet_claimLightningAddress', async (params) => {
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         const acct = vault.getActiveAccountWithWallet();
@@ -349,8 +347,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_getLightningAddress', async () => {
-        await vault.whenStartupUnlockSettled();
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acct = vault.getActiveAccountWithWallet();
         if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') {
             return { address: null };
@@ -360,7 +357,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_releaseLightningAddress', async () => {
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         const acct = vault.getActiveAccountWithWallet();

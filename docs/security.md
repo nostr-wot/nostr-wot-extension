@@ -27,7 +27,7 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
 
 The configured interval is stored as `autoLockMs` in `browser.storage.local`, but `_autoLockMs` is module-level in-memory state that resets to the 15-minute default on every service-worker cold start. `restoreAutoLockSetting()` re-reads the persisted `autoLockMs` (defaulting to 15 min when absent) and re-arms the timer; it is called on background startup and after every successful `vault_unlock`, so the user's chosen interval — not the default — governs locking after the SW restarts (bug #10).
 
-**"Never lock" auto-unlock and the cold-start window**: with `autoLockMs === 0` the vault is stored under an empty password and `background.ts` re-unlocks it on every service-worker cold start. That unlock is asynchronous — a storage read plus PBKDF2 at 210,000 iterations — so `isLocked()` reports **locked** for a few hundred milliseconds after every startup, and no keep-alive alarm is armed in this mode (`armKeepAlive()` returns early when `_autoLockMs <= 0`), so Chrome tears the worker down after ~30s idle and cold starts are routine. The startup sequence is therefore registered via `vault.beginStartupUnlock()`, and request paths (`waitForVaultUnlock()` in `src/services/signing/signer.ts`) `await vault.whenStartupUnlockSettled()` before concluding the vault is locked. Without that gate a `signEvent` arriving inside the window queued an unlock marker and auto-opened the action popup — showing an empty popup on requests the user's saved `allow` permission had already approved.
+**"Never lock" auto-unlock and the cold-start window**: with `autoLockMs === 0` the vault is stored under an empty password and `background.ts` re-unlocks it on every service-worker cold start. That unlock is asynchronous — a storage read plus PBKDF2 at 210,000 iterations — so `isLocked()` reports **locked** for a few hundred milliseconds after every startup, and no keep-alive alarm is armed in this mode (`armKeepAlive()` returns early when `_autoLockMs <= 0`), so Chrome tears the worker down after ~30s idle and cold starts are routine. The startup sequence is therefore registered via `vault.beginStartupUnlock()`, and request paths (`waitForVaultUnlock()` in `src/services/signing/approvalQueue.ts`) `await vault.whenStartupUnlockSettled()` before concluding the vault is locked. Without that gate a `signEvent` arriving inside the window queued an unlock marker and auto-opened the action popup — showing an empty popup on requests the user's saved `allow` permission had already approved.
 
 **The `vault_isLocked` RPC awaits the same gate**, and did not until the UX audit found it. The popup asks that one question and trusts the answer, so on a never-lock vault every popup opened after ~30s idle — which is every ordinary open — raced the startup PBKDF2 and was told "locked". Because a *successful* unlock wrote nothing observable, the answer never corrected: the wallet balance card, the Wallet menu row and every locked-gated action stayed hidden for the whole life of that popup and reappeared on the next open for no visible reason. This was the extension's most reproducible intermittent fault. `unlock()` now bumps `LOCK_STATE_KEY` on success as well as `lock()` doing so, so the marker means "the lock state changed" in either direction and an open popup re-reads it.
 
@@ -208,7 +208,7 @@ independently generated key instead.
 
 ## 9. Rate Limiting
 
-- **Per-origin pending-request cap** (`src/services/signing/signer.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
+- **Per-origin pending-request cap** (`src/services/signing/approvalQueue.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
 - **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 600,000 iterations (~600ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----srclibvaultts).
 
 ### 9b. Permission Resolution Is Deny-Wins
@@ -423,3 +423,13 @@ Pasted LNURLs are checksum-validated bech32 with strict UTF-8 decoding and a
 2,000-character limit. Mixed case is rejected before normalization. Decoded URLs
 pass the same HTTPS/public-host guard; embedded URL credentials are refused.
 Only `payRequest` responses proceed to payment.
+
+Vault implementation boundaries: encryption and byte serialization live in
+`services/vault/encryption.ts` and `serialization.ts`; account and imported-key
+operations are constructed with capabilities from the private vault session.
+The split does not export the mutable session or add another session instance.
+Existing lock zeroing, copied-key cleanup, KDF migration and save behavior remain
+in place. Signer queue/account rejection lives in `approvalQueue.ts`, while local
+classic/PQ decryption lives in `localDecryption.ts`.
+
+Wallet operations enforce lock state through `vault.requireUnlocked()`: it waits for the registered startup auto-unlock, then rejects if the vault remains locked. This never unlocks a password-protected vault on its own. Current failed UI vault reads still fail closed; only responses from retired reads are discarded.

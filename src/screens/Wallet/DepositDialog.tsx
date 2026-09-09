@@ -1,15 +1,15 @@
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import Modal from '@components/Modal/Modal';
-import QrCode from '@components/QrCode/QrCode';
+import Button, { ButtonSecondary } from '@components/Button';
+import Input from '@components/Input';
+import Modal from '@components/Modal';
+import QrCode from '@components/QrCode';
 import useCopy from '@hooks/useCopy.ts';
 import { formatSats } from '@domain/wallet/display.ts';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface Invoice {
   bolt11: string;
@@ -106,16 +106,16 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         <Button small onClick={onClose}>{t('common.close')}</Button>
       ) : !invoice ? (
         <>
-          <Button small variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+          <ButtonSecondary small onClick={onClose}>{t('common.cancel')}</ButtonSecondary>
           <Button small onClick={createInvoice} disabled={loading || !amount || parseInt(amount, 10) <= 0}>
             {loading ? t('common.loading') : t('wallet.createInvoice')}
           </Button>
         </>
       ) : (
         <>
-          <Button small variant="secondary" onClick={() => bolt11Copy.copy(invoice.bolt11)}>
+          <ButtonSecondary small onClick={() => bolt11Copy.copy(invoice.bolt11)}>
             {bolt11Copy.copied ? t('common.copied') : t('common.copy')}
-          </Button>
+          </ButtonSecondary>
           <Button small onClick={onClose}>{t('common.close')}</Button>
         </>
       )}

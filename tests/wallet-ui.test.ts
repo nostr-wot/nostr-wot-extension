@@ -64,7 +64,7 @@ it('disconnect invalidates an in-flight display check',async()=>{
  assert.deepEqual(patches,[]);
 });
 it('balance remains visible beside loading and failed refresh indicators, without inventing zero',async()=>{
- const {default:WalletBalance}=await import('../src/components/WalletBalance/WalletBalance');
+ const {default:WalletBalance}=await import('../src/components/WalletBalance');
  const refreshing=renderToStaticMarkup(createElement(WalletBalance,{balance:123,loading:true,error:false}));
  assert.match(refreshing,/123/); assert.match(refreshing,/role="status"/);
  const failed=renderToStaticMarkup(createElement(WalletBalance,{balance:123,loading:false,error:true}));
@@ -111,7 +111,7 @@ it('wallet settings owns a bounded scroll region and explains its refresh and di
  assert.match(html,/wallet.refreshSettingsHint/);assert.match(html,/wallet.disconnectHint/);
 });
 it('wallet copy controls use named SVG icons without rendering connection credentials',async()=>{
- const {default:CopyButton}=await import('../src/components/CopyButton/CopyButton');
+ const {default:CopyButton}=await import('../src/components/CopyButton');
  const html=renderToStaticMarkup(createElement(CopyButton,{iconOnly:true,value:'secret-connection',label:'Copy connection'}));
  assert.match(html,/<svg/);assert.match(html,/aria-label="Copy connection"/);assert.doesNotMatch(html,/secret-connection|>Copy connection</);
 });

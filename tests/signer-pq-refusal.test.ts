@@ -22,6 +22,7 @@ import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
 import * as signer from '../src/services/signing/signer.ts';
+import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import { arrayToBase64 } from '../src/lib/crypto/utils.ts';
 import type { VaultPayload } from '../src/domain/vault/types.ts';
 
@@ -73,7 +74,7 @@ describe('post-quantum on a NIP-46 account', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
     await browserMock.storage.local.set({
       accounts: [{ id: 'n1', type: 'nip46', pubkey: TEST_PUBKEY_HEX }],
       activeAccountId: 'n1',
@@ -122,7 +123,7 @@ describe('post-quantum on a local account that cannot derive', () => {
   beforeEach(async () => {
     resetMockStorage();
     vault.lock();
-    await signer.cleanupStale();
+    await signerApprovalQueue.cleanupStale();
   });
 
   async function setup(payload: VaultPayload): Promise<void> {

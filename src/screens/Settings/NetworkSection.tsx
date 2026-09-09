@@ -1,18 +1,21 @@
+import { mergeUnique } from '@utils/collections.ts';
+import useTransientState from '@hooks/useTransientState';
+import Chip from '@components/Chip';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useAccount } from '@context/AccountContext';
-import Button from '@components/Button/Button';
+import { ButtonSecondary } from '@components/Button';
 import { configuredRelayUrls, parseRelayList, sameRelayList, type RelayConfiguration } from '@domain/relays/relayList';
 import { type RelayListRead } from '@domain/relays/types.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatTimeAgo } from '@services/i18n/timeLabels.ts';
 import { isValidWssUrl } from '@utils/url.ts';
-import StatusDot from '@components/StatusDot/StatusDot';
-import EditableList from '@components/EditableList/EditableList';
-import PublishRow from '@components/PublishRow/PublishRow';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import StatusDot from '@components/StatusDot';
+import EditableList from '@components/EditableList';
+import PublishRow from '@components/PublishRow';
+import { SectionLabel } from '@components/SectionLabel';
 import { useRelays } from '@context/RelaysContext';
-import Container from '@components/Container/Container';
+import Container from '@components/Container';
 
 export default function NetworkSection() {
   const { relays, relayFlags, loaded, previousConfiguration, saveRelays } = useRelays();
@@ -27,7 +30,7 @@ export default function NetworkSection() {
   const [lastPublish, setLastPublish] = useState<number | null>(null);
   const [publishUnsaved, setPublishUnsaved] = useState<boolean>(false);
   const [publishing, setPublishing] = useState<boolean>(false);
-  const [publishResult, setPublishResult] = useState<'success' | 'error' | null>(null);
+  const [publishResult, setPublishResult] = useTransientState<'success' | 'error' | null>(null, 3000);
 
   const mounted = useRef<boolean>(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -73,7 +76,7 @@ export default function NetworkSection() {
     if (!url) return;
     if (!isValidWssUrl(url)) { setRelayError(t('network.mustBeWss')); return; }
     if (relays.includes(url)) { setRelayError(t('network.relayAlreadyAdded')); return; }
-    const updated = [...relays, url];
+    const updated = mergeUnique(relays, [url]);
     setNewRelay('');
     setRelayError('');
     setPublishUnsaved(true);
@@ -101,6 +104,7 @@ export default function NetworkSection() {
     setPublishResult(null);
     try {
       const result = await rpc<{ sent?: number }>('publishRelayList', {configuration:{relays,flags:relayFlags},pubkey:active?.pubkey});
+      if (!mounted.current) return;
       if (result?.sent) {
         setLastPublish(Date.now());
         setPublishUnsaved(false);
@@ -110,10 +114,9 @@ export default function NetworkSection() {
         setPublishResult('error');
       }
     } catch {
-      setPublishResult('error');
+      if (mounted.current) setPublishResult('error');
     }
-    setPublishing(false);
-    setTimeout(() => setPublishResult(null), 3000);
+    if (mounted.current) setPublishing(false);
   };
 
   return (
@@ -122,41 +125,20 @@ export default function NetworkSection() {
         onApply={configuration => { void saveRelays(configuration.relays, configuration.flags).then(() => setPublishUnsaved(false)).catch(() => setRelayError(t('common.error'))); }}
         onRetry={() => setRevision(n => n + 1)} />
       <SectionLabel>{t('network.localConfiguration')}</SectionLabel>
-      {loaded && (previousConfiguration || !relays.length) && <Button small variant="secondary" disabled={publishing} onClick={() => {
+      {loaded && (previousConfiguration || !relays.length) && <ButtonSecondary small disabled={publishing} onClick={() => {
         const restored = previousConfiguration || {relays:configuredRelayUrls(undefined),flags:{}};
         void saveRelays(restored.relays, restored.flags).then(() => setPublishUnsaved(true)).catch(() => setRelayError(t('common.error')));
-      }}>{t(previousConfiguration ? 'network.restorePrevious' : 'network.restoreDefaults')}</Button>}
+      }}>{t(previousConfiguration ? 'network.restorePrevious' : 'network.restoreDefaults')}</ButtonSecondary>}
       <EditableList
         items={relays}
-        classNames={{
-          list: 'flex flex-col gap-2',
-          row: 'flex items-center gap-4 py-4 px-6 border border-card-border bg-card rounded-panel',
-          item: 'flex-1 text-sm font-medium text-heading min-w-0 overflow-hidden text-ellipsis whitespace-nowrap',
-        }}
         renderItem={(url) => url.replace(/^wss:\/\/|^https:\/\//, '')}
         leading={(url) => <StatusDot status={relayHealth[url]} />}
         trailing={(url) => {
           const flags = relayFlags[url] || { read: true, write: true };
-          // Not <Chip>: these badges sit inside an already-compact relay row and
-          // need a tighter scale than Chip owns (2xs font, sp-1/sp-4 padding vs
-          // Chip's xs/sp-2/sp-5) — the one caller SeedWord's `compact` prop
-          // solved for. A single relay row is not a second caller yet.
-          return (
-            <Container variant="row" gap={2}>
-              <button
-                className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
-                  flags.read ? 'bg-brand-light text-brand border-[rgb(99_102_241_/_0.2)]' : 'border-card-border bg-transparent text-muted'
-                }`}
-                onClick={() => toggleRelayFlag(url, 'read')}
-              >R</button>
-              <button
-                className={`py-1 px-4 rounded-sm text-2xs font-semibold border cursor-pointer transition-all ${
-                  flags.write ? 'bg-brand-light text-brand border-[rgb(99_102_241_/_0.2)]' : 'border-card-border bg-transparent text-muted'
-                }`}
-                onClick={() => toggleRelayFlag(url, 'write')}
-              >W</button>
-            </Container>
-          );
+          return <Container variant="row" gap={2}>
+            <Chip selected={flags.read} aria-label={`Read ${url}`} onClick={() => toggleRelayFlag(url, 'read')}>R</Chip>
+            <Chip selected={flags.write} aria-label={`Write ${url}`} onClick={() => toggleRelayFlag(url, 'write')}>W</Chip>
+          </Container>;
         }}
         placeholder={t('network.relayPlaceholder')}
         buttonLabel={t('common.add')}
@@ -204,8 +186,8 @@ export function PublishedRelayConfiguration({result, checking, local, disabled, 
         <p className="font-semibold text-heading">{t('network.publishedConfiguration')}</p>
         <p className="mt-2">{t(checking ? 'network.checkingPublished' : result?.event ? (published?.relays.length ? 'network.publishedFound' : 'network.publishedEmpty') : result?.reachable ? 'network.noPublishedEvent' : 'network.publishedUnavailable')}</p>
         {published && <ul className="my-3 space-y-2">{published.relays.map(url => <li key={url} className="flex justify-between gap-3"><span className="break-all">{url}</span><span className="shrink-0">{published.flags[url].read ? 'R' : ''}{published.flags[url].write ? 'W' : ''}</span></li>)}</ul>}
-        {differs && <Button small variant="secondary" disabled={disabled || !published?.relays.length} onClick={() => { if (published?.relays.length) { onApply(published); } }}>{t('network.usePublished')}</Button>}
-        <Button small variant="secondary" disabled={checking} onClick={onRetry}>{t('network.checkAgain')}</Button>
+        {differs && <ButtonSecondary small disabled={disabled || !published?.relays.length} onClick={() => { if (published?.relays.length) { onApply(published); } }}>{t('network.usePublished')}</ButtonSecondary>}
+        <ButtonSecondary small disabled={checking} onClick={onRetry}>{t('network.checkAgain')}</ButtonSecondary>
       </div>
   );
 }

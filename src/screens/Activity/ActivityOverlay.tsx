@@ -6,21 +6,21 @@ import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { filterActivityEntries, countActivityFilters, activityDomains, activityAccountOptions, availableTypeKeys, buildDayGroups, groupActivityEntries, type GroupedActivity } from '@domain/activity/activity.ts';
 import { classifyDay } from '@utils/format/time.ts';
-import Button from '@components/Button/Button';
-import Dropdown from '@components/Dropdown/Dropdown';
-import SiteIcon from '@components/SiteIcon/SiteIcon';
-import StatusDot from '@components/StatusDot/StatusDot';
-import Card from '@components/Card/Card';
-import ListRow from '@components/ListRow/ListRow';
-import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
+import Dropdown from '@components/Dropdown';
+import SiteIcon from '@components/SiteIcon';
+import StatusDot from '@components/StatusDot';
+import Card from '@components/Card';
+import ListRow from '@components/ListRow';
+import OverlayPanel from '@components/OverlayPanel';
+import Container from '@components/Container';
+import Text from '@components/Text';
 import IconTuner from '@assets/IconTuner.tsx';
 import { useAccount } from '@context/AccountContext';
 import { ActivityProvider, useActivity } from '@context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import usePagedList from '@hooks/usePagedList.ts';
-import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
+import EventDetailModal from '@components/EventDetailModal';
 import type { Option } from '@components/option.ts';
 
 interface ActivityOverlayProps {
@@ -194,7 +194,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
           )}
         </Card>
         {rawLog.length > 0 && (
-          <Button variant="danger" small onClick={handleClear}>{t('activity.clearAll')}</Button>
+          <ButtonDanger small onClick={handleClear}>{t('activity.clearAll')}</ButtonDanger>
         )}
       </Container>
 
@@ -249,7 +249,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
         )}
         {page.hasMore && (
           <div className="text-center py-4">
-            <Button small variant="secondary" onClick={page.loadMore}>{t('common.showMore')}</Button>
+            <ButtonSecondary small onClick={page.loadMore}>{t('common.showMore')}</ButtonSecondary>
           </div>
         )}
       </Container>

@@ -1,13 +1,17 @@
 /**
  * inject.ts — Page-context script exposing window.nostr (NIP-07) and window.webln
  *
- * Runs in MAIN world (page context). Cannot use ES module imports.
+ * Runs in MAIN world (page context). No runtime imports; Vite inlines timeout constants.
  * All NIP-07 and WebLN methods are thin message-passing wrappers — no crypto happens here.
  *
  * @see https://github.com/nostr-protocol/nips/blob/master/07.md — NIP-07: window.nostr capability for web browsers
  */
 
 export {}; // make this a module for declare global
+
+// Replaced by Vite from src/constants/signing.ts; never browser globals.
+declare const __NIP07_CALL_TIMEOUT_MS__: number;
+declare const __WEBLN_CALL_TIMEOUT_MS__: number;
 
 interface PendingEntry {
     resolve: (value: unknown) => void;
@@ -125,8 +129,8 @@ declare global {
         return { call, handleResponse };
     }
 
-    const nip07 = createChannel('NIP07_REQUEST', 'NIP07_RESPONSE', 120_000);
-    const webln = createChannel('WEBLN_REQUEST', 'WEBLN_RESPONSE', 120_000);
+    const nip07 = createChannel('NIP07_REQUEST', 'NIP07_RESPONSE', __NIP07_CALL_TIMEOUT_MS__);
+    const webln = createChannel('WEBLN_REQUEST', 'WEBLN_RESPONSE', __WEBLN_CALL_TIMEOUT_MS__);
 
     // Single message listener for all channels
     window.addEventListener('message', async (event: MessageEvent) => {

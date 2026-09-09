@@ -5,7 +5,7 @@
 
 import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
 
-type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
+import type { FetchFn } from '@services/http/types.ts';
 
 export interface LnbitsConfig {
   instanceUrl: string;

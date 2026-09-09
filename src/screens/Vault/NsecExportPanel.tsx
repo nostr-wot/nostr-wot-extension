@@ -1,12 +1,12 @@
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
-import Button from '@components/Button/Button';
-import CopyButton from '@components/CopyButton/CopyButton';
+import { ButtonSecondary, ButtonDanger } from '@components/Button';
+import CopyButton from '@components/CopyButton';
 import useTimedReveal from '@hooks/useTimedReveal.ts';
-import Container from '@components/Container/Container';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import Text from '@components/Text/Text';
+import Container from '@components/Container';
+import StatusNotice from '@components/StatusNotice';
+import Text from '@components/Text';
 
 /** State is scoped to this action and discarded when its panel unmounts. */
 export default function NsecExportPanel({ onClose }: { onClose: () => void }) {
@@ -27,8 +27,8 @@ export default function NsecExportPanel({ onClose }: { onClose: () => void }) {
             {t('key.nsecWarning')}
           </StatusNotice>
           <Container variant="row" gap={4} className="justify-end mt-2">
-            <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
-            <Button variant="danger" small onClick={revealNsec}>{t('key.revealKey')}</Button>
+            <ButtonSecondary small onClick={handleClose}>{t('common.cancel')}</ButtonSecondary>
+            <ButtonDanger small onClick={revealNsec}>{t('key.revealKey')}</ButtonDanger>
           </Container>
         </>
       ) : (
@@ -46,7 +46,7 @@ export default function NsecExportPanel({ onClose }: { onClose: () => void }) {
           </button>
           <Text variant="muted" as="div" className="text-center">{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</Text>
           <Container variant="row" gap={4} className="justify-end mt-2">
-            <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
+            <ButtonSecondary small onClick={handleClose}>{t('common.close')}</ButtonSecondary>
             <CopyButton value={nsec.value} label={t('common.copy')} />
           </Container>
         </>

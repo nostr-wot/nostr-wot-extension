@@ -14,6 +14,31 @@
 
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { NIP07_CALL_TIMEOUT_MS, WEBLN_CALL_TIMEOUT_MS } from '../src/constants/signing.ts';
+
+it('the packaged MAIN-world script inlines canonical timeouts without runtime imports', async () => {
+    const manifest = JSON.parse(readFileSync(new URL('../dist/manifest.json', import.meta.url), 'utf8'));
+    const script = manifest.content_scripts.find((entry: { world?: string }) => entry.world === 'MAIN').js[0];
+    const source = readFileSync(new URL(`../dist/${script}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\bimport\s*\(|__NIP07_CALL_TIMEOUT_MS__|__WEBLN_CALL_TIMEOUT_MS__/);
+    const timers: { callback: () => void; delay: number }[] = [];
+    const window: any = {
+        location: { origin: 'https://example.test' },
+        addEventListener() {}, dispatchEvent() {}, postMessage() {},
+    };
+    runInNewContext(source, {
+        window, crypto, clearTimeout() {},
+        setTimeout(callback: () => void, delay: number) { timers.push({ callback, delay }); return timers.length; },
+        CustomEvent: class { constructor(public type: string) {} },
+    });
+    const signing = assert.rejects(window.nostr.getPublicKey(), /NIP07_REQUEST timeout/);
+    const wallet = assert.rejects(window.webln.enable(), /WEBLN_REQUEST timeout/);
+    assert.deepEqual(timers.map(timer => timer.delay), [NIP07_CALL_TIMEOUT_MS, WEBLN_CALL_TIMEOUT_MS]);
+    timers.forEach(timer => timer.callback());
+    await Promise.all([signing, wallet]);
+});
 
 // ── Simulate the inject.ts WebLN internals ──
 // We replicate the core logic from inject.ts to test it in isolation.

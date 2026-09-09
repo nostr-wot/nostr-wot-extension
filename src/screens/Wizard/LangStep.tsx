@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react';
 import { getSupportedLanguages, setLanguage, getLanguage, t } from '@services/i18n/i18n.ts';
-import TopoBg from '@components/TopoBg/TopoBg';
-import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
-import Button from '@components/Button/Button';
-import Card from '@components/Card/Card';
-import IconButton from '@components/IconButton/IconButton';
+import TopoBg from '@components/TopoBg';
+import AnimatedWotLogo from '@components/AnimatedWotLogo';
+import Button from '@components/Button';
+import Card from '@components/Card';
+import IconButton from '@components/IconButton';
 import IconClose from '@assets/IconClose.tsx';
-import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
+import LanguageWheel from '@components/LanguageWheel';
 import type { Language } from '@domain/i18n/language.ts';
-import Container from '@components/Container/Container';
+import Container from '@components/Container';
 
 const ITEM_H = 36;
 const PAUSE = 2.5;
@@ -138,7 +138,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
             <span className="text-xl font-bold text-heading">
               {selected?.prompt || languages[0].prompt}
             </span>
-            <IconButton size={32} onClick={() => setModalOpen(false)} aria-label={t('common.close')}>
+            <IconButton size="large" onClick={() => setModalOpen(false)} aria-label={t('common.close')}>
               <IconClose size={18} />
             </IconButton>
           </div>

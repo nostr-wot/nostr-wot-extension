@@ -3,7 +3,7 @@ import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 
 import browser from './src/lib/browser.ts';
 import * as vault from './src/services/vault/vault.ts';
-import * as signer from './src/services/signing/signer.ts';
+import * as signerApprovalQueue from './src/services/signing/approvalQueue.ts';
 import * as signerPermissions from './src/services/permissions/permissions.ts';
 import { randomHex } from './src/lib/crypto/utils.ts';
 
@@ -299,7 +299,7 @@ if (browser.alarms?.onAlarm) {
 
 void loadConfig();
 
-void signer.cleanupStale();
+void signerApprovalQueue.cleanupStale();
 
 // Drop an abandoned onboarding record. Matters on Safari, where storage.session is
 // storage.local and an expired record would otherwise sit on disk indefinitely.
@@ -351,7 +351,7 @@ void vault.beginStartupUnlock(async () => {
                         vault.clearActiveAccount();
                     }
                 }
-                await signer.onVaultUnlocked();
+                await signerApprovalQueue.onVaultUnlocked();
             }
         }
     } catch (e: unknown) {

@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { uploadProfileImages } from '../src/services/media/blossom.ts';
 import ProfilePreviewCard from '../src/screens/EditProfile/ProfilePreviewCard';
-import EncryptedBackupForm from '../src/components/EncryptedBackupForm/EncryptedBackupForm';
+import EncryptedBackupForm from '../src/components/EncryptedBackupForm';
 
 it('uploads avatar and cover with the same uploader and reuses successful uploads on preview/back', async () => {
   const picture = new File(['avatar'], 'avatar.png', {type:'image/png'});
@@ -76,7 +76,7 @@ it('PQ overview orders key, export, announcement rows and puts the warning immed
   assert.doesNotMatch(renderToStaticMarkup(createElement(PqcOverview,{...props,imported:false})),/pqc.importedBackupWarning|pqc.importRemove/);
 });
 
-import Textarea, { fitTextarea } from '../src/components/Textarea/Textarea';
+import Textarea, { fitTextarea } from '../src/components/Textarea';
 import ProfileImageHeader from '../src/screens/EditProfile/ProfileImageHeader';
 import ProfileImageDialog from '../src/screens/EditProfile/ProfileImageDialog';
 it('About preserves existing line breaks in the multiline field and publish preview', () => {
@@ -167,8 +167,8 @@ it('copy remains available beside the account switcher and offers both public ke
 
 import { commitAccountSwitch } from '../src/context/AccountContext';
 import { PqcCardView } from '../src/screens/Home/PqcCard';
-import ListRow from '../src/components/ListRow/ListRow';
-import ActionTile from '../src/components/ActionTile/ActionTile';
+import ListRow from '../src/components/ListRow';
+import ActionTile from '../src/components/ActionTile';
 it('menu subtitles and the PQ shield reuse the existing wizard brand colors', () => {
   for (const state of ['enabled','stale','setup','import'] as const) {
     const html=renderToStaticMarkup(createElement(PqcCardView,{state,onClick(){}}));
@@ -199,4 +199,49 @@ it('PQ key paste reuses a labelled, bounded textarea and retains the native file
   assert.match(html,/max-h-80/);
   assert.match(html,/<input[^>]*type="file"/);
   assert.match(html,/<button[^>]*disabled=""[^>]*>pqc.importSubmit<\/button>/);
+});
+
+import ImageEditorButton from '../src/components/ImageEditorButton';
+import ProfileSummary from '../src/components/ProfileSummary';
+import { createObjectUrlResource } from '../src/services/media/objectUrl';
+import useObjectUrl from '../src/hooks/useObjectUrl';
+import useTransientState from '../src/hooks/useTransientState';
+import useAsyncScope from '../src/hooks/useAsyncScope';
+import useMuteListEditor from '../src/screens/Filters/useMuteListEditor';
+it('shared image controls accept local previews but reject unsafe remote sources', () => {
+  const props = {variant:'avatar' as const,label:'Change avatar',onClick(){}};
+  const html = renderToStaticMarkup(createElement(ImageEditorButton,{...props,previewUrl:'blob:local'}));
+  assert.match(html,/src="blob:local"/);
+  assert.match(html,/aria-label="Change avatar"/);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(ImageEditorButton,{...props,previewUrl:'javascript:bad',src:'javascript:bad'})),/javascript:/);
+});
+it('shared profile summary tolerates malformed remote fields and escapes text', () => {
+  const html = renderToStaticMarkup(createElement(ProfileSummary,{meta:{name:42,about:'<script>\ntext',picture:'javascript:bad'} as never}));
+  assert.match(html,/&lt;script&gt;/);
+  assert.doesNotMatch(html,/javascript:|<script>/);
+});
+it('object URL resource revokes its own URL only once', t => {
+  const created = t.mock.method(URL,'createObjectURL',()=> 'blob:owned');
+  const revoked = t.mock.method(URL,'revokeObjectURL',()=>{});
+  const blob = new Blob(['image']);
+  const resource = createObjectUrlResource(blob);
+  assert.equal(created.mock.calls[0].arguments[0],blob);
+  assert.equal(resource.url,'blob:owned');
+  resource.dispose(); resource.dispose();
+  assert.equal(revoked.mock.callCount(),1);
+  assert.equal(revoked.mock.calls[0].arguments[0],'blob:owned');
+});
+it('lifecycle hooks start without render-time I/O and mute edits start unavailable', t => {
+  t.mock.method(URL,'createObjectURL',()=> { throw new Error('render-time URL allocation'); });
+  function Probe() {
+    assert.equal(useObjectUrl(new Blob(['image'])),null);
+    assert.equal(useTransientState<string|null>(null,3000)[0],null);
+    assert.equal(useAsyncScope().start()(),true);
+    const editor = useMuteListEditor();
+    assert.equal(editor.list,null);
+    assert.equal(editor.loading,true);
+    assert.equal(editor.busy,true);
+    return null;
+  }
+  renderToStaticMarkup(createElement(Probe));
 });

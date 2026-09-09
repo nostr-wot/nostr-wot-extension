@@ -4,12 +4,12 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { formatSats } from '@domain/wallet/display.ts';
-import Button from '@components/Button/Button';
-import EventPreview from '@components/EventPreview/EventPreview';
+import Button, { ButtonSecondary } from '@components/Button';
+import EventPreview from '@components/EventPreview';
 import DecisionRow from './DecisionRow';
 import UnlockSection from './UnlockSection';
 import type { PromptDecision } from '@domain/permissions/prompt.ts';
-import Container from '@components/Container/Container';
+import Container from '@components/Container';
 
 interface PendingPrompt {
   pubkey?: string;
@@ -135,13 +135,12 @@ export default function PromptScreen() {
         />
       ) : (
         <Container variant="row" gap={3} className="flex-wrap">
-          <Button
-            variant="secondary"
+          <ButtonSecondary
             disabled={buttonsDisabled}
             onClick={() => sendDecision({ allow: false, remember: false })}
           >
             {t('common.cancel')}
-          </Button>
+          </ButtonSecondary>
           <Button
             disabled={buttonsDisabled || vaultLocked}
             onClick={() => sendDecision({ allow: true, remember: false })}

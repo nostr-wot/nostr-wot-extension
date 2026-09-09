@@ -20,3 +20,12 @@ helpers and canonical domain contracts for activity, mute lists and PQ status.
 Shared symbols are imported directly from their defining modules, without forwarding exports.
 
 UI maintenance: focused key-action panels, shared copy/form controls, and clearer formatter/media service boundaries.
+
+Latest updates:
+- Wallet operations wait for startup auto-unlock; wallet data retries after lock-state
+  changes, and stale vault status responses cannot overwrite newer results.
+- Standard button sizes and named presets, shared profile/image controls, accessible
+  status announcements, reusable event details and consistent editable lists.
+- Account-scoped mute editing guards late responses and preserves encrypted content.
+- Shared component directory entrypoints and focused vault/signing service modules.
+- NIP-07 and WebLN page timeouts use canonical build-time constants.

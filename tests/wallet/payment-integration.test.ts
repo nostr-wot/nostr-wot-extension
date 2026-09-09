@@ -6,10 +6,12 @@ import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import { NIP07_CALL_TIMEOUT_MS, WEBLN_CALL_TIMEOUT_MS } from '../../src/constants/signing.ts';
 import { getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import browser, {resetMockStorage} from '../helpers/browser-mock.ts';
 import * as vault from '../../src/services/vault/vault.ts';
 import * as signer from '../../src/services/signing/signer.ts';
+import * as signerApprovalQueue from '../../src/services/signing/approvalQueue.ts';
 import { handlers } from '../../src/services/background/wallet-handlers.ts';
 import { getWalletProvider, setWalletProvider, clearWalletProviders } from '../../src/services/wallet/index.ts';
 import { isWeblnAllowed } from '../../src/services/background/domain-handlers.ts';
@@ -50,7 +52,7 @@ function page() {
   };
   const source=readFileSync(new URL('../../inject.ts',import.meta.url),'utf8');
   runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
-    {window,exports:{},crypto,setTimeout,clearTimeout,CustomEvent:class {constructor(public type:string){}},console});
+    {window,exports:{},crypto,setTimeout,clearTimeout,__NIP07_CALL_TIMEOUT_MS__:NIP07_CALL_TIMEOUT_MS,__WEBLN_CALL_TIMEOUT_MS__:WEBLN_CALL_TIMEOUT_MS,CustomEvent:class {constructor(public type:string){}},console});
   return {window,events};
 }
 
@@ -78,7 +80,7 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
     assert.equal(typeof webln.sendPayment,'function');assert.ok(p.events.includes('webln-ready'));
     await assert.rejects(webln.sendPayment(invoice),/enable/);
     const enabling=webln.enable();const approval=await pending();assert.equal(approval.type,'webln_enable');
-    assert.equal(webln.enabled,false);await signer.resolveRequest(approval.id,{allow:true});await enabling;assert.equal(webln.enabled,true);
+    assert.equal(webln.enabled,false);await signerApprovalQueue.resolveRequest(approval.id,{allow:true});await enabling;assert.equal(webln.enabled,true);
   });
   await t.test('LNbits advertises the WebLN methods that websites can call',async()=>{
     const info=await webln.getInfo();assert.deepEqual(info.methods,['getInfo','sendPayment','makeInvoice','getBalance']);
@@ -102,17 +104,17 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
   });
   await t.test('website zap request signs kind 9734 and pays its invoice after approval',async()=>{
     const signing=p.window.nostr.signEvent({kind:9734,created_at:1700000000,tags:[['p',pubkey],['amount','250000000'],['relays','wss://relay.example']],content:'Test zap'});
-    const signApproval=await pending();await signer.resolveRequest(signApproval.id,{allow:true});const signed=await signing;
+    const signApproval=await pending();await signerApprovalQueue.resolveRequest(signApproval.id,{allow:true});const signed=await signing;
     assert.ok(verifyEvent(signed));assert.equal(signed.kind,9734);
     const payment=webln.sendPayment(invoice);const payApproval=await pending();assert.equal(payApproval.walletAmount,250000);
-    const count=requests.filter(x=>x.body.out).length;await signer.resolveRequest(payApproval.id,{allow:true});
+    const count=requests.filter(x=>x.body.out).length;await signerApprovalQueue.resolveRequest(payApproval.id,{allow:true});
     assert.equal((await payment).preimage,'test-preimage');assert.equal(requests.filter(x=>x.body.out).length,count+1);
   });
   await t.test('rejection never pays; wallet error reaches the website',async()=>{
     let count=requests.filter(x=>x.body.out).length;
-    const rejected=assert.rejects(webln.sendPayment(invoice),/denied/);await signer.resolveRequest((await pending()).id,{allow:false});await rejected;
+    const rejected=assert.rejects(webln.sendPayment(invoice),/denied/);await signerApprovalQueue.resolveRequest((await pending()).id,{allow:false});await rejected;
     assert.equal(requests.filter(x=>x.body.out).length,count);
-    failPayment=true;const failed=assert.rejects(webln.sendPayment(invoice),/LNbits API error/);await signer.resolveRequest((await pending()).id,{allow:true});await failed;
+    failPayment=true;const failed=assert.rejects(webln.sendPayment(invoice),/LNbits API error/);await signerApprovalQueue.resolveRequest((await pending()).id,{allow:true});await failed;
     assert.equal(requests.filter(x=>x.body.out).length,++count);failPayment=false;
   });
   for (const recipient of ['alice@recipient.example', bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode('https://recipient.example/.well-known/lnurlp/alice')), 2000)]) await t.test(`${recipient.includes('@') ? 'Lightning Address' : 'Pasted LNURL'} resolves, verifies amount, pays once per intent`,async()=>{

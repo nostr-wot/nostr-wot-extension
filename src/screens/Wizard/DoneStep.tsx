@@ -1,10 +1,10 @@
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Card from '@components/Card/Card';
-import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Button from '@components/Button';
+import Card from '@components/Card';
+import FieldDisplay from '@components/FieldDisplay';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface DoneAccount {
   name?: string;

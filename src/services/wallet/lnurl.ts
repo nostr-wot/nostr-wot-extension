@@ -9,7 +9,7 @@ import {
   type ResolvedInvoice,
 } from '../../domain/wallet/lnurl.ts';
 
-type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
+import type { FetchFn } from '@services/http/types.ts';
 
 // ── Fetch helpers ──
 

@@ -5,14 +5,14 @@ import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
-import Avatar from '@components/Avatar/Avatar';
-import Button from '@components/Button/Button';
-import IconButton from '@components/IconButton/IconButton';
+import Avatar from '@components/Avatar';
+import Button, { ButtonSecondary, ButtonDanger } from '@components/Button';
+import IconButton from '@components/IconButton';
 import IconClose from '@assets/IconClose.tsx';
-import LinkButton from '@components/LinkButton/LinkButton';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import LinkButton from '@components/LinkButton';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface WaiterInfo {
   id: string;
@@ -156,7 +156,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
                 <span className="text-muted flex-1 text-right overflow-hidden text-ellipsis">{w.origin}</span>
                 <IconButton
                   tone="danger"
-                  size={20}
+                  size="small"
                   onClick={() => handleCancelOne(w.id)}
                   aria-label={t('common.close')}
                 >
@@ -168,14 +168,13 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
         )}
         <Container variant="row" gap={4} className="mt-4">
           {onCancel && (
-            <Button
-              variant="secondary"
+            <ButtonSecondary
               small
               className="flex-1"
               onClick={handleCancelAll}
             >
               {t('common.cancel')}
-            </Button>
+            </ButtonSecondary>
           )}
           <Button className="flex-1" small onClick={unlock} disabled={busy}>
             {loading ? t('common.loading') : t('common.unlock')}
@@ -190,12 +189,12 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           <div className="mt-6 p-6 bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] rounded-md">
             <p className="text-xs text-error mb-5 leading-normal">{t('unlock.resetWarning')}</p>
             <Container variant="row" gap={4}>
-              <Button variant="secondary" small className="flex-1" onClick={() => setConfirmReset(false)}>
+              <ButtonSecondary small className="flex-1" onClick={() => setConfirmReset(false)}>
                 {t('common.cancel')}
-              </Button>
-              <Button variant="danger" small className="flex-1" onClick={handleDestroyVault}>
+              </ButtonSecondary>
+              <ButtonDanger small className="flex-1" onClick={handleDestroyVault}>
                 {t('unlock.resetVault')}
-              </Button>
+              </ButtonDanger>
             </Container>
           </div>
         )}

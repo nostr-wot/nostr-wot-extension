@@ -10,6 +10,8 @@ import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
 import * as signer from '../src/services/signing/signer.ts';
+import * as signerRemoteSigner from '../src/services/signing/remoteSigner.ts';
+import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
 
 const remoteKey = new Uint8Array(32).fill(7);
@@ -87,7 +89,7 @@ async function fixture() {
 test('Nostr Connect integration: real relay and remote approvals', {timeout:20000}, async t => {
   const relay=await fixture();
   resetMockStorage(); vault.lock();
-  t.after(async()=>{signer.disconnectNip46('remote'); await signer.cleanupStale(); vault.lock(); await relay.close();});
+  t.after(async()=>{signerRemoteSigner.disconnectNip46('remote'); await signerApprovalQueue.cleanupStale(); vault.lock(); await relay.close();});
   await vault.create('integration-password', {activeAccountId:'remote',accounts:[{
     id:'remote',name:'Integration',type:'nip46',pubkey,privkey:null,mnemonic:null,readOnly:false,createdAt:1,
     nip46Config:{bunkerUrl:`bunker://${pubkey}?relay=${encodeURIComponent(relay.url)}`,relay:relay.url,secret:null,localPrivkey:Buffer.from(clientKey).toString('hex')}
@@ -145,12 +147,12 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
     const result=assert.rejects(signer.handleSignEvent({...event},origin),/cancel/i);
     await until(()=>relay.requests.length>count);
     const pending=(await browser.storage.session.get('signerPending')).signerPending as {id:string}[];
-    await signer.cancelNip46InFlight(pending[0].id); await result;
+    await signerApprovalQueue.cancelNip46InFlight(pending[0].id); await result;
     await relay.approve(relay.requests[count]);
     assert.deepEqual((await browser.storage.session.get('signerPending')).signerPending,[]);
   });
   await t.test('disconnect reconnects with the persisted client identity',async()=>{
-    signer.disconnectNip46('remote');
+    signerRemoteSigner.disconnectNip46('remote');
     const start=relay.requests.length;
     const pending=signer.handleSignEvent({...event},origin);
     await until(()=>relay.requests.slice(start).some(r=>r.method==='sign_event'));
@@ -163,7 +165,7 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
     const pending=signer.handleSignEvent({...event},origin);
     await until(async()=>((await browser.storage.session.get('signerPending')).signerPending as {waitingForUnlock?:boolean}[]).some(r=>r.waitingForUnlock));
     assert.equal(relay.requests.length,start);
-    await vault.unlock('integration-password'); await signer.onVaultUnlocked();
+    await vault.unlock('integration-password'); await signerApprovalQueue.onVaultUnlocked();
     await until(()=>relay.requests.slice(start).some(r=>r.method==='sign_event'));
     await relay.approve(relay.requests.slice(start).find(r=>r.method==='sign_event')!); await pending;
     assert.deepEqual((await browser.storage.session.get('signerPending')).signerPending,[]);

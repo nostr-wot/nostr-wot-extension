@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import StatusNotice from '../src/components/StatusNotice/StatusNotice';
+import StatusNotice from '../src/components/StatusNotice';
 
 describe('StatusNotice', () => {
   it('renders an error callout with its full explanation and an unshrinking icon', () => {

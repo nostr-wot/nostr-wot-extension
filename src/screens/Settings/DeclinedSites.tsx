@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import Select from '@components/Select/Select';
-import LinkButton from '@components/LinkButton/LinkButton';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import { SectionLabel } from '@components/SectionLabel';
+import Select from '@components/Select';
+import LinkButton from '@components/LinkButton';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 /**
  * Sites the user declined to connect, and how long that lasts.

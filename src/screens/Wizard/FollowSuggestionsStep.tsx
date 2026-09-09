@@ -3,14 +3,14 @@ import { useMemo, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { npubDecode } from '@lib/crypto/bech32.ts';
-import Button from '@components/Button/Button';
-import Avatar from '@components/Avatar/Avatar';
+import Button, { ButtonSecondary } from '@components/Button';
+import Avatar from '@components/Avatar';
 import { getInitial as getInitialChar } from '@utils/format/text.ts';
 import { truncateNpub } from '@domain/nostr/display.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 /* ------------------------------------------------------------------ */
 /*  Selection algorithm                                                */
@@ -176,7 +176,7 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
       <Container variant="row" gap={4} stickyFooter>
         {/* Skip is NEVER disabled: a still-loading (or hung) relay query must
             not trap the user on this step. */}
-        <Button className="flex-1" variant="secondary" onClick={onNext}>{t('wizard.skipForNow')}</Button>
+        <ButtonSecondary className="flex-1" onClick={onNext}>{t('wizard.skipForNow')}</ButtonSecondary>
         <Button
           className="flex-1"
           onClick={handleFollow}

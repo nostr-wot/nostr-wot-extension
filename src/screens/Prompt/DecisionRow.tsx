@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Select from '@components/Select/Select';
-import Container from '@components/Container/Container';
+import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
+import Select from '@components/Select';
+import Container from '@components/Container';
 import type { PromptDecision } from '@domain/permissions/prompt.ts';
 
 interface DecisionRowProps {
@@ -16,24 +16,24 @@ export default function DecisionRow({ disabled, onDecision }: DecisionRowProps) 
   return (
     <Container gap={3}>
       <Container variant="row" gap={3} className="flex-wrap">
-        <Button type="button" variant="danger" disabled={disabled}
+        <ButtonDanger type="button" disabled={disabled}
           onClick={() => onDecision({ allow: false, remember: false })}>
           {t('prompt.deny')}
-        </Button>
-        <Button type="button" variant="secondary" disabled={disabled}
+        </ButtonDanger>
+        <ButtonSecondary type="button" disabled={disabled}
           onClick={() => onDecision({ allow: true, remember: false })}>
           {t('prompt.once')}
-        </Button>
+        </ButtonSecondary>
         <Button type="button" disabled={disabled}
           onClick={() => onDecision({ allow: true, remember: true, duration: 0 })}>
           {t('prompt.always')}
         </Button>
       </Container>
       <Container variant="row" gap={3}>
-        <Button type="button" variant="secondary" disabled={disabled}
+        <ButtonSecondary type="button" disabled={disabled}
           onClick={() => onDecision({ allow: true, remember: true, duration: Number(duration) })}>
           {t('prompt.session')}
-        </Button>
+        </ButtonSecondary>
         <Select
           aria-label={t('prompt.session')}
           disabled={disabled}

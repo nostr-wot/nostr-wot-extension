@@ -10,20 +10,20 @@ import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import IconCopy from '@assets/IconCopy.tsx';
 import PqcOverview, { PqcPublication } from './PqcOverview';
-import Button from '@components/Button/Button';
-import Modal from '@components/Modal/Modal';
+import Button from '@components/Button';
+import Modal from '@components/Modal';
 import PqcExportModal from './PqcExportModal';
 import HowItWorks from './PqcHowItWorks';
 import PqcImportPanel from './PqcImportPanel';
 import KeyRow from './PqcKeyRow';
-import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
+import ConfirmDialog from '@components/ConfirmDialog';
+import StatusNotice from '@components/StatusNotice';
 import useCopy from '@hooks/useCopy.ts';
 import browser from '@lib/browser.ts';
-import LinkButton from '@components/LinkButton/LinkButton';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import LinkButton from '@components/LinkButton';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 /**
  * What this actually does, in the order it happens.

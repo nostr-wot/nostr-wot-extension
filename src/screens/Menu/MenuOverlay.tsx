@@ -8,7 +8,7 @@ import IconDownload from '@assets/IconDownload.tsx';
 import IconZap from '@assets/IconZap.tsx';
 import IconInfo from '@assets/IconInfo.tsx';
 import { version as appVersion } from '../../../package.json';
-import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
+import OverlayPanel from '@components/OverlayPanel';
 import MenuSection from './MenuSection';
 import LanguagePicker from './LanguagePicker';
 import type { Language } from '@domain/i18n/language.ts';
@@ -18,13 +18,13 @@ import SecuritySection from '@screens/Settings/SecuritySection';
 import NetworkSection from '@screens/Settings/NetworkSection';
 import WalletSection from '@screens/Wallet/WalletSection';
 import KeyActionModal from '@screens/Vault/KeyActionModal';
-import ListRow from '@components/ListRow/ListRow';
+import ListRow from '@components/ListRow';
 import { useVault } from '@context/VaultContext';
 import { useAccount } from '@context/AccountContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
-import IconButton from '@components/IconButton/IconButton';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import IconButton from '@components/IconButton';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface MenuOverlayProps {
   visible: boolean;
@@ -199,7 +199,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       headerRight={currentSection === 'pqc' ? (
         // The explainer shows itself once; this is how it is reached again afterwards.
         <IconButton
-          size={36}
+          size="large"
           title={t('pqc.howTitle')}
           aria-label={t('pqc.howTitle')}
           onClick={() => pqcSectionRef.current?.openHowItWorks()}

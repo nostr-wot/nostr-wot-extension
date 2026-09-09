@@ -73,7 +73,7 @@ it('PQ review uses the recorded mnemonic account and reuses the hybrid decoder',
 });
 
 it('review rejects missing accounts, watch-only keys, invalid peers and absent ciphertext', async () => {
-  const { decryptForAccount } = await import('../src/services/signing/signer.ts');
+  const { decryptForAccount } = await import('../src/services/signing/localDecryption.ts');
   const owner = await importNsec(ownerKey, 'Owner');
   await vault.create('', { accounts: [{...owner, readOnly: true, type: 'npub', privkey: null}], activeAccountId: owner.id });
   await assert.rejects(() => decryptForAccount(owner.id, 'nip44', '22'.repeat(32), 'x'), /not available/i);

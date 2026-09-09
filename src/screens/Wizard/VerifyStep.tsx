@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Card from '@components/Card/Card';
-import SeedWord from '@components/SeedWord/SeedWord';
-import Chip from '@components/Chip/Chip';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Button from '@components/Button';
+import Card from '@components/Card';
+import SeedWord from '@components/SeedWord';
+import Chip from '@components/Chip';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 // Decoy words from BIP-39 for verification
 const DECOYS = ['abandon', 'ability', 'achieve', 'acquire', 'adapt', 'adjust', 'admit', 'afford'];

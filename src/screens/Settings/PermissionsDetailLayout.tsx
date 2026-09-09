@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import SiteIcon from '@components/SiteIcon/SiteIcon';
+import SiteIcon from '@components/SiteIcon';
 
 /** Site identity and actions stay visible while the rules scroll. */
 export default function PermissionsDetailLayout({ domain, children, actions }: {

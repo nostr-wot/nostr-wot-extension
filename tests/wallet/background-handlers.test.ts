@@ -1671,3 +1671,22 @@ it('settings reads wait for startup unlock before reading account state',async()
  release();await startup;const values=await reads;
  assert.equal(values[1],null);assert.deepEqual(values[2],{address:null});await vault.destroy();
 });
+
+it('wallet mutations wait for startup unlock and still reject a genuinely locked vault', async () => {
+  const { handlers: actual } = await import('../../src/services/background/wallet-handlers.ts');
+  await vault.destroy();
+  await vault.create(TEST_PASSWORD, makePayloadWithWallet());
+  vault.lock();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const startup = vault.beginStartupUnlock(async () => { await gate; await vault.unlock(TEST_PASSWORD); });
+  const pending = actual.get('wallet_disconnect')!({}).then(value => ({value}), error => ({error}));
+  await Promise.resolve();
+  release(); await startup;
+  const result = await pending;
+  assert.deepEqual(result, {value:true});
+  assert.equal(vault.getActiveAccountWithWallet()?.walletConfig, undefined);
+  vault.lock();
+  await assert.rejects(() => actual.get('wallet_disconnect')!({}), /Vault is locked/);
+  await vault.destroy();
+});

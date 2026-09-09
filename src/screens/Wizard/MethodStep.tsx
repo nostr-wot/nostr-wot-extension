@@ -4,9 +4,9 @@ import IconPlus from '@assets/IconPlus.tsx';
 import IconKey from '@assets/IconKey.tsx';
 import IconEye from '@assets/IconEye.tsx';
 import IconLink from '@assets/IconLink.tsx';
-import Card from '@components/Card/Card';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
+import Card from '@components/Card';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
   create: <IconPlus />,

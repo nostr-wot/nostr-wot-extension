@@ -6,6 +6,7 @@ import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { build as esbuild } from 'esbuild';
+import { NIP07_CALL_TIMEOUT_MS, WEBLN_CALL_TIMEOUT_MS } from './src/constants/signing.ts';
 import manifest from './manifest.json' with { type: 'json' };
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -80,6 +81,8 @@ export default defineConfig({
     bundleServiceWorker(),
   ],
   define: {
+    __NIP07_CALL_TIMEOUT_MS__: NIP07_CALL_TIMEOUT_MS,
+    __WEBLN_CALL_TIMEOUT_MS__: WEBLN_CALL_TIMEOUT_MS,
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   build: {

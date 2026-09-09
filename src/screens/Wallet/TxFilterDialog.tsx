@@ -1,11 +1,11 @@
 import { useState, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import Modal from '@components/Modal/Modal';
-import ChipGroup from '@components/ChipGroup/ChipGroup';
+import Input from '@components/Input';
+import Button, { ButtonSecondary } from '@components/Button';
+import Modal from '@components/Modal';
+import ChipGroup from '@components/ChipGroup';
 import type { TxFilters } from '@domain/wallet/txFilter.ts';
-import Container from '@components/Container/Container';
+import Container from '@components/Container';
 
 interface TxFilterDialogProps {
   /** What is applied right now — the drafts start here. */
@@ -38,7 +38,7 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
       footerRow
       footer={(
         <>
-          <Button small variant="secondary" onClick={clear}>{t('wallet.filterClear')}</Button>
+          <ButtonSecondary small onClick={clear}>{t('wallet.filterClear')}</ButtonSecondary>
           <Button small onClick={() => onApply({ direction, dateFrom, dateTo })}>
             {t('wallet.filterApply')}
           </Button>

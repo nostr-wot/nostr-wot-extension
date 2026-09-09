@@ -9,7 +9,7 @@ import { UNLOCK_GUARD_KEY, UNLOCK_FAILURES_PER_LOCKOUT, UNLOCK_LOCKOUT_STEPS_MS 
 import browser from '../../lib/browser.ts';
 import { clearWalletDisplayCaches } from '../wallet/display-cache.ts';
 import * as vault from '../vault/vault.ts';
-import * as signer from '../signing/signer.ts';
+import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import * as signerPermissions from '../permissions/permissions.ts';
 import * as accounts from '../../domain/accounts/creation.ts';
 import { nsecEncode } from '../../lib/crypto/bech32.ts';
@@ -80,7 +80,7 @@ export const handlers = new Map<string, HandlerFn>([
                     vault.clearActiveAccount();
                 }
             }
-            await signer.onVaultUnlocked();
+            await signerApprovalQueue.onVaultUnlocked();
         }
         return unlockResult;
     }],
@@ -183,7 +183,7 @@ export const handlers = new Map<string, HandlerFn>([
         if (rmLocalData.activeAccountId === removedId) {
             // Removing the active account changes the active identity — same
             // invalidation as an explicit switch.
-            await signer.onActiveAccountChanged(removedId, updates.activeAccountId as string | null);
+            await signerApprovalQueue.onActiveAccountChanged(removedId, updates.activeAccountId as string | null);
         }
         return { ok: true };
     }],
@@ -205,7 +205,7 @@ export const handlers = new Map<string, HandlerFn>([
             await browser.storage.sync.set({ myPubkey: switchPubkey });
         }
         await browser.storage.local.set({ activeAccountId: switchId });
-        await signer.onActiveAccountChanged(oldAccountId, switchId);
+        await signerApprovalQueue.onActiveAccountChanged(oldAccountId, switchId);
         if (switchPubkey) {
             void broadcastAccountChanged(switchPubkey);
         }
@@ -219,7 +219,7 @@ export const handlers = new Map<string, HandlerFn>([
         await syncActivePubkey();
         // Same invalidation as switchAccount: reject the previous account's
         // pending prompts and clear the getPublicKey cooldown.
-        await signer.onActiveAccountChanged(prevData.activeAccountId, newActiveId);
+        await signerApprovalQueue.onActiveAccountChanged(prevData.activeAccountId, newActiveId);
         return { ok: true };
     }],
 
@@ -295,7 +295,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['vault_destroy', async () => {
         clearWalletProviders();
-        await signer.cancelAllUnlockWaiters();
+        await signerApprovalQueue.cancelAllUnlockWaiters();
         await vault.destroy();
         await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);

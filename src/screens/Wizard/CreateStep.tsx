@@ -9,16 +9,16 @@ import IconEye from '@assets/IconEye.tsx';
 import IconCopy from '@assets/IconCopy.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
 import IconLock from '@assets/IconLock.tsx';
-import Button from '@components/Button/Button';
-import ActionTile from '@components/ActionTile/ActionTile';
-import Card from '@components/Card/Card';
+import Button from '@components/Button';
+import ActionTile from '@components/ActionTile';
+import Card from '@components/Card';
 import EncryptedBackupModal from './EncryptedBackupModal';
-import SeedWord from '@components/SeedWord/SeedWord';
-import FormError from '@components/FormError/FormError';
-import Heading from '@components/Heading/Heading';
-import Container from '@components/Container/Container';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import Text from '@components/Text/Text';
+import SeedWord from '@components/SeedWord';
+import FormError from '@components/FormError';
+import Heading from '@components/Heading';
+import Container from '@components/Container';
+import StatusNotice from '@components/StatusNotice';
+import Text from '@components/Text';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes

@@ -1,12 +1,12 @@
 import { useState, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import Button, { ButtonSecondary } from '@components/Button';
+import Input from '@components/Input';
+import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
 
 /** State is scoped to this action and discarded when its panel unmounts. */
 export default function ChangePasswordPanel({ onClose }: { onClose: () => void }) {
@@ -52,7 +52,7 @@ export default function ChangePasswordPanel({ onClose }: { onClose: () => void }
           />
           <FormError>{cpError}</FormError>
           <Container variant="row" gap={4} className="justify-end mt-2">
-            <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
+            <ButtonSecondary small onClick={handleClose}>{t('common.cancel')}</ButtonSecondary>
             <Button small onClick={handleChangePassword} disabled={!cpPair.ready}>{t('common.save')}</Button>
           </Container>
         </>

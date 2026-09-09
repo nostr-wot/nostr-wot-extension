@@ -1,23 +1,23 @@
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import IconWarning from '@assets/IconWarning.tsx';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
+import StatusNotice from '@components/StatusNotice';
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import ChipGroup from '@components/ChipGroup/ChipGroup';
-import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import Input from '@components/Input';
+import Button from '@components/Button';
+import ChipGroup from '@components/ChipGroup';
+import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@domain/vault/vaultAutoUnlock.ts';
-import FormError from '@components/FormError/FormError';
-import Heading from '@components/Heading/Heading';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Heading from '@components/Heading';
+import { SectionLabel } from '@components/SectionLabel';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface PasswordStepProps {
   account: any;

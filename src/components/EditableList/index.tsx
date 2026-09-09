@@ -1,0 +1,134 @@
+import React, { useState, ChangeEvent } from 'react';
+import { t } from '@services/i18n/i18n.ts';
+import InputRow from '@components/InputRow';
+import RemoveButton from '@components/RemoveButton';
+import Container from '@components/Container';
+import Text from '@components/Text';
+import { SectionLabel } from '@components/SectionLabel';
+
+interface EditableListProps {
+  /** Optional section label; when set, renders a <SectionLabel> above the list. */
+  label?: string;
+  items: string[];
+  /** Render the item's main text node (defaults to the raw string). */
+  renderItem?: (item: string) => React.ReactNode;
+  /** Leading node before the item text (e.g. a StatusDot). */
+  leading?: (item: string) => React.ReactNode;
+  /** Trailing node after the item text, before the remove button (e.g. R/W chips). */
+  trailing?: (item: string) => React.ReactNode;
+  placeholder: string;
+  buttonLabel: string;
+  onRemove: (item: string) => void;
+  hint?: string;
+  mono?: boolean;
+  disabled?: boolean;
+
+  /* Internal-input mode (component owns value + error) */
+  validate?: (raw: string) => string | null;
+  invalidMsg?: string;
+  onAdd?: (value: string) => void;
+
+  /* Controlled-input mode (caller owns value + error). When `inputValue` is
+     provided, the component defers input state to the caller. */
+  inputValue?: string;
+  onInputChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
+}
+
+/**
+ * List of removable items + an add-input row. Two input modes:
+ *
+ *  - Internal (FiltersOverlay / MuteGroup): pass `validate` + `onAdd`; the
+ *    component owns the input value and its inline error.
+ *  - Controlled (NetworkSection / EndpointList): pass `inputValue`,
+ *    `onInputChange`, `error` and an `onAdd` that reads the caller's own
+ *    state; the component renders but does not own the input.
+ */
+export default function EditableList({
+  label,
+  items,
+  renderItem,
+  leading,
+  trailing,
+  placeholder,
+  buttonLabel,
+  onRemove,
+  hint,
+  mono = false,
+  disabled = false,
+  validate,
+  invalidMsg,
+  onAdd,
+  inputValue,
+  onInputChange,
+  error,
+}: EditableListProps) {
+  const controlled = inputValue !== undefined;
+  const [value, setValue] = useState('');
+  const [internalError, setInternalError] = useState('');
+
+  const rawValue = (controlled ? inputValue! : value).trim();
+  const normalized = rawValue ? (validate ? validate(rawValue) : rawValue) : null;
+  const canAdd = !!normalized && !items.includes(normalized) && !disabled;
+
+  const handleInternalAdd = () => {
+    if (!canAdd) return;
+    const raw = value.trim();
+    if (!raw) return;
+    const normalized = validate ? validate(raw) : raw;
+    if (normalized === null) {
+      setInternalError(invalidMsg || t('mutes.invalidEntry'));
+      return;
+    }
+    setInternalError('');
+    setValue('');
+    onAdd?.(normalized);
+  };
+
+  /* Controlled callers own the input value, so most read their own state and
+     ignore the argument — but `onAdd` is typed as taking one, and handing it
+     straight to InputRow's zero-arg `onSubmit` passed `undefined` to anyone who
+     did read it. Pass the value we already have. */
+  const submitControlled = () => { if (canAdd) onAdd?.(normalized!); };
+
+  const body = (
+    <>
+      <Container as="ul" gap={2} className="list-none m-0 p-0">
+        {items.map((item) => (
+          <Container as="li" variant="row" gap={4} key={item} className="px-6 py-4 border border-card-border bg-card rounded-panel">
+            {leading?.(item)}
+            <Text as="span" className="flex-1 text-sm text-heading truncate min-w-0" title={item}>
+              {renderItem ? renderItem(item) : item}
+            </Text>
+            {trailing?.(item)}
+            <RemoveButton disabled={disabled} onClick={() => onRemove(item)} />
+          </Container>
+        ))}
+      </Container>
+      <InputRow
+        value={controlled ? inputValue! : value}
+        onChange={controlled
+          ? onInputChange!
+          : (e: ChangeEvent<HTMLInputElement>) => { setValue(e.target.value); setInternalError(''); }}
+        placeholder={placeholder}
+        onSubmit={controlled ? submitControlled : handleInternalAdd}
+        buttonLabel={buttonLabel}
+        add
+        disabled={!canAdd}
+        error={(controlled ? error : internalError) || (rawValue && !normalized ? (invalidMsg || t('mutes.invalidEntry')) : '')}
+        mono={mono}
+      />
+      {hint && items.length === 0 && <Text variant="hint">{hint}</Text>}
+    </>
+  );
+
+  if (label) {
+    return (
+      <Container gap={3}>
+        <SectionLabel>{label}</SectionLabel>
+        {body}
+      </Container>
+    );
+  }
+  return body;
+}

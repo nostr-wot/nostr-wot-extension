@@ -4,16 +4,16 @@ import ChangePasswordPanel from './ChangePasswordPanel';
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import Modal from '@components/Modal/Modal';
+import Button, { ButtonSecondary } from '@components/Button';
+import Input from '@components/Input';
+import Modal from '@components/Modal';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@domain/vault/vaultAutoUnlock.ts';
 import { useVault } from '@context/VaultContext';
-import EncryptedBackupForm from '@components/EncryptedBackupForm/EncryptedBackupForm';
-import FormError from '@components/FormError/FormError';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import Container from '@components/Container/Container';
+import EncryptedBackupForm from '@components/EncryptedBackupForm';
+import FormError from '@components/FormError';
+import { SectionLabel } from '@components/SectionLabel';
+import Container from '@components/Container';
 
 interface KeyActionModalProps {
   action: string;
@@ -75,7 +75,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
             />
             <FormError>{unlockError}</FormError>
             <Container variant="row" gap={4} className="justify-end mt-2">
-              <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
+              <ButtonSecondary small onClick={handleClose}>{t('common.cancel')}</ButtonSecondary>
               <Button small onClick={handleUnlock}>{t('common.unlock')}</Button>
             </Container>
           </Container>

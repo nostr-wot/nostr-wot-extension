@@ -3,14 +3,14 @@ import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { buildRuleKey, validCustomKind } from '@domain/permissions/permissionRules.ts';
 import { DECISIONS } from '@constants/permissions.ts';
-import Input from '@components/Input/Input';
+import Input from '@components/Input';
 import IconPlus from '@assets/IconPlus.tsx';
-import Button from '@components/Button/Button';
-import Modal from '@components/Modal/Modal';
-import Dropdown from '@components/Dropdown/Dropdown';
-import LinkButton from '@components/LinkButton/LinkButton';
-import Chip from '@components/Chip/Chip';
-import Container from '@components/Container/Container';
+import Button, { ButtonSecondary } from '@components/Button';
+import Modal from '@components/Modal';
+import Dropdown from '@components/Dropdown';
+import LinkButton from '@components/LinkButton';
+import Chip from '@components/Chip';
+import Container from '@components/Container';
 
 interface AddRuleModalProps {
   availableKeys: string[];
@@ -46,7 +46,7 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
         footerRow
         footer={(
           <>
-            <Button small variant="secondary" onClick={() => onClose()}>{t('common.cancel')}</Button>
+            <ButtonSecondary small onClick={() => onClose()}>{t('common.cancel')}</ButtonSecondary>
             <Button small onClick={submit} disabled={!valid} aria-label={t('perms.addRule')} title={t('perms.addRule')}><IconPlus size={18} /></Button>
           </>
         )}

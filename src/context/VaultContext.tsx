@@ -29,34 +29,7 @@ export function VaultProvider({ children }: VaultProviderProps) {
   const { data, refresh: checkState, patch: patchVault } = useAsyncResource<VaultData>(
     { exists: false, locked: true, autoLockEnabled: false, isNip46: false, isGenerated: false },
     {
-      load: async (patch) => {
-        try {
-          const [existsResult, lockedResult, autoLockMs, acctType] = await Promise.all([
-            rpc('vault_exists'),
-            rpc('vault_isLocked'),
-            rpc<number>('vault_getAutoLock'),
-            rpc<{ type?: string }>('vault_getActiveAccountType'),
-          ]);
-          patch({
-            exists: !!existsResult,
-            locked: !!lockedResult,
-            autoLockEnabled: autoLockMs > 0,
-            isNip46: acctType?.type === 'nip46',
-            isGenerated: acctType?.type === 'generated',
-          });
-        } catch {
-          // Deliberately not resetting the rest here. `exists: false` is what
-          // PopupApp uses to decide there is no vault to lock, so a failed
-          // read — a worker asleep past rpc()'s three wake retries —
-          // suppressed the lock screen over a locked vault. A read that did
-          // not come back tells us nothing about the vault; the last thing we
-          // did manage to read is a better answer than a confident wrong one,
-          // and the background re-checks the real lock state on every
-          // operation regardless. `locked: true` is the one field worth
-          // forcing rather than leaving unknown — the safe default.
-          patch({ locked: true });
-        }
-      },
+      load: (patch, isCurrent) => loadVaultState(patch, isCurrent),
     },
   );
 
@@ -92,3 +65,37 @@ export function VaultProvider({ children }: VaultProviderProps) {
 }
 
 export { useVault };
+
+/** Discard late status reads, including failures from a retired refresh. */
+export async function loadVaultState(
+  patch: (next: Partial<VaultData>) => void,
+  isCurrent: () => boolean,
+  request: typeof rpc = rpc,
+): Promise<void> {
+  try {
+    const [existsResult, lockedResult, autoLockMs, acctType] = await Promise.all([
+      request('vault_exists'),
+      request('vault_isLocked'),
+      request<number>('vault_getAutoLock'),
+      request<{ type?: string }>('vault_getActiveAccountType'),
+    ]);
+    if (isCurrent()) patch({
+      exists: !!existsResult,
+      locked: !!lockedResult,
+      autoLockEnabled: autoLockMs > 0,
+      isNip46: acctType?.type === 'nip46',
+      isGenerated: acctType?.type === 'generated',
+    });
+  } catch {
+    // Deliberately not resetting the rest here. `exists: false` is what
+    // PopupApp uses to decide there is no vault to lock, so a failed
+    // read — a worker asleep past request()'s three wake retries —
+    // suppressed the lock screen over a locked vault. A read that did
+    // not come back tells us nothing about the vault; the last thing we
+    // did manage to read is a better answer than a confident wrong one,
+    // and the background re-checks the real lock state on every
+    // operation regardless. `locked: true` is the one field worth
+    // forcing rather than leaving unknown — the safe default.
+    if (isCurrent()) patch({ locked: true });
+  }
+}

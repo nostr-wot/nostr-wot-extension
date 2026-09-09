@@ -5,20 +5,20 @@ import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import IconLock from '@assets/IconLock.tsx';
-import Card from '@components/Card/Card';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import ChipGroup from '@components/ChipGroup/ChipGroup';
-import ListRow from '@components/ListRow/ListRow';
-import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
-import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import Card from '@components/Card';
+import Input from '@components/Input';
+import Button, { ButtonSecondary } from '@components/Button';
+import ChipGroup from '@components/ChipGroup';
+import ListRow from '@components/ListRow';
+import { SectionLabel, SectionHint } from '@components/SectionLabel';
+import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@context/VaultContext';
 
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import StatusNotice from '@components/StatusNotice';
+import Text from '@components/Text';
 import type {AutoLockOption} from "@domain/vault/autoLock.ts";
 
 interface SecuritySectionProps {
@@ -135,7 +135,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
               />
               <FormError>{error}</FormError>
               <Container variant="row" gap={4} className="justify-end">
-                <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
+                <ButtonSecondary small onClick={handleCancel}>{t('common.cancel')}</ButtonSecondary>
                 <Button small onClick={handleConfirm} disabled={loading || !pair.ready}>
                   {loading ? t('common.saving') : t('common.confirm')}
                 </Button>
@@ -159,7 +159,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
               />
               <FormError>{error}</FormError>
               <Container variant="row" gap={4} className="justify-end">
-                <Button variant="secondary" small onClick={handleCancel}>{t('common.cancel')}</Button>
+                <ButtonSecondary small onClick={handleCancel}>{t('common.cancel')}</ButtonSecondary>
                 <Button small onClick={handleConfirm} disabled={loading}>
                   {loading ? t('common.saving') : t('common.confirm')}
                 </Button>

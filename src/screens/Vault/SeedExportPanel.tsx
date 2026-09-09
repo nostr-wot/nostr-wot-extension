@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
-import Button from '@components/Button/Button';
-import CopyButton from '@components/CopyButton/CopyButton';
+import Button, { ButtonSecondary, ButtonDanger } from '@components/Button';
+import CopyButton from '@components/CopyButton';
 import useTimedReveal from '@hooks/useTimedReveal.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
 import { encryptBackup } from '@lib/crypto/keyBackup.ts';
-import SeedWord from '@components/SeedWord/SeedWord';
-import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
+import SeedWord from '@components/SeedWord';
+import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import StatusNotice from '@components/StatusNotice/StatusNotice';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import StatusNotice from '@components/StatusNotice';
+import Text from '@components/Text';
 
 /** State is scoped to this action and discarded when its panel unmounts. */
 export default function SeedExportPanel({ onClose }: { onClose: () => void }) {
@@ -60,8 +60,8 @@ export default function SeedExportPanel({ onClose }: { onClose: () => void }) {
             {t('key.seedWarning')}
           </StatusNotice>
           <Container variant="row" gap={4} className="justify-end mt-2">
-            <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
-            <Button variant="danger" small onClick={revealSeed}>{t('key.revealKey')}</Button>
+            <ButtonSecondary small onClick={handleClose}>{t('common.cancel')}</ButtonSecondary>
+            <ButtonDanger small onClick={revealSeed}>{t('key.revealKey')}</ButtonDanger>
           </Container>
         </>
       ) : (
@@ -85,7 +85,7 @@ export default function SeedExportPanel({ onClose }: { onClose: () => void }) {
               />
               <FormError>{seedEncError}</FormError>
               <Container variant="row" gap={4} className="justify-end mt-2">
-                <Button variant="secondary" small onClick={() => { setSeedEncMode(false); seedEncPair.reset(); setSeedEncError(''); }}>{t('common.cancel')}</Button>
+                <ButtonSecondary small onClick={() => { setSeedEncMode(false); seedEncPair.reset(); setSeedEncError(''); }}>{t('common.cancel')}</ButtonSecondary>
                 <Button small onClick={downloadSeedEncrypted} disabled={seedEncrypting || !seedEncPair.ready}>
                   {seedEncrypting ? t('key.seedEncrypting') : t('common.download')}
                 </Button>
@@ -93,9 +93,9 @@ export default function SeedExportPanel({ onClose }: { onClose: () => void }) {
             </>
           ) : (
             <Container variant="row" gap={3} className="flex-wrap justify-end mt-2">
-              <Button variant="secondary" small onClick={handleClose}>{t('common.close')}</Button>
+              <ButtonSecondary small onClick={handleClose}>{t('common.close')}</ButtonSecondary>
               <CopyButton value={seed.value.join(' ')} label={t('common.copy')} />
-              <Button variant="secondary" small onClick={downloadSeedPlain}>{t('key.downloadPlain')}</Button>
+              <ButtonSecondary small onClick={downloadSeedPlain}>{t('key.downloadPlain')}</ButtonSecondary>
               <Button small onClick={() => setSeedEncMode(true)}>{t('key.downloadEncrypted')}</Button>
             </Container>
           )}

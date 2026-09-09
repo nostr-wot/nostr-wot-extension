@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import WalletBalance from '@components/WalletBalance/WalletBalance';
+import WalletBalance from '@components/WalletBalance';
 import { t } from '@services/i18n/i18n.ts';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
@@ -14,16 +14,16 @@ import ProfileRow from './ProfileRow';
 import MutesRow from './MutesRow';
 import PqcCard from './PqcCard';
 import RelaysRow from './RelaysRow';
-import Card from '@components/Card/Card';
-import Button from '@components/Button/Button';
-import EmptyState from '@components/EmptyState/EmptyState';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Card from '@components/Card';
+import Button, { ButtonSecondary } from '@components/Button';
+import EmptyState from '@components/EmptyState';
+import { SectionLabel } from '@components/SectionLabel';
 import IconGlobe from '@assets/IconGlobe.tsx';
 import IconZap from '@assets/IconZap.tsx';
 import IconChevronRight from '@assets/IconChevronRight.tsx';
-import LinkButton from '@components/LinkButton/LinkButton';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import LinkButton from '@components/LinkButton';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface HomeProps {
   menuOpen?: boolean;
@@ -198,8 +198,8 @@ export default function Home({ menuOpen }: HomeProps) {
             )}
             <Container variant="row" gap={4} className="justify-center">
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
-              <Button small variant="secondary" onClick={() => handleDismiss(false)}>{t('home.notNow')}</Button>
-              <Button small variant="secondary" onClick={() => handleDismiss(true)}>{t('home.never')}</Button>
+              <ButtonSecondary small onClick={() => handleDismiss(false)}>{t('home.notNow')}</ButtonSecondary>
+              <ButtonSecondary small onClick={() => handleDismiss(true)}>{t('home.never')}</ButtonSecondary>
             </Container>
           </EmptyState>
         </Card>

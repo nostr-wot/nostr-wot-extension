@@ -1,18 +1,18 @@
 import { useState, useEffect, useMemo, useRef, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button/Button';
-import Input from '@components/Input/Input';
-import Modal from '@components/Modal/Modal';
+import Button, { ButtonSecondary } from '@components/Button';
+import Input from '@components/Input';
+import Modal from '@components/Modal';
 import { decodeBolt11 } from '@domain/wallet/bolt11.ts';
 import { isLightningAddress, parseLnurl } from '@domain/wallet/lnurl.ts';
 import { resolveSendTarget } from '@domain/wallet/sendTarget.ts';
 import type { ResolvedAddress } from '@domain/wallet/paymentPreview.ts';
 import { paymentErrorMessage } from '@services/i18n/paymentLabels.ts';
 import PaymentPreview from './PaymentPreview';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 interface SendDialogProps {
   onClose: () => void;
@@ -160,9 +160,9 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
         footerRow={!sendSuccess}
         footer={(
           <>
-            <Button small variant="secondary" onClick={onClose} disabled={sendLoading}>
+            <ButtonSecondary small onClick={onClose} disabled={sendLoading}>
               {sendSuccess ? t('common.close') : t('common.cancel')}
-            </Button>
+            </ButtonSecondary>
             {!sendSuccess && (
               <Button
                 small

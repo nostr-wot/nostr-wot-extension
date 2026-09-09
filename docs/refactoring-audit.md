@@ -6,6 +6,24 @@ and automated-test audit; it does not certify every interactive browser flow.
 
 ## Completed
 
+- Shared component implementations moved to `Name/index.tsx`, with directory
+  imports and same-module secondary/danger button presets.
+- Vault lifecycle stays in a 423-line owner, with encryption, serialization and
+  capability-based account/PQ operations extracted. Signer orchestration is 325
+  lines; queue, identity, NIP-46 clients and local decryption have explicit owners.
+- LNbits and LNURL share `services/http/types.ts`'s injectable fetch contract.
+
+
+- Profile image controls and kind-0/profile confirmation summaries share
+  `ImageEditorButton` and `ProfileSummary`; preview URLs share `useObjectUrl`.
+- Mute I/O lives in `useMuteListEditor`, with account-scoped view ownership,
+  stale-result guards, and blocked editing during imports/publication.
+- Mute and relay lists share standard `EditableList` chrome; relay flags use `Chip`.
+- Async result generations, temporary feedback timing and unique merges have
+  small reusable owners. Lifecycle primitives have regression tests; SSR checks
+  do not substitute for mounted browser interaction tests.
+
+
 - Favicon network access, persistence and request deduplication moved from generic
   utilities to `services/media/favicon.ts`. `SiteIcon` still shares that cache.
 - Public-key and sats formatters now live in their Nostr/wallet domains. Translated

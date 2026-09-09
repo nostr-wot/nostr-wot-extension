@@ -1,3 +1,4 @@
+import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { readWalletDisplayCache, walletDisplayKey, type WalletDisplayCache } from '@services/wallet/display-cache.ts';
 import type { Transaction } from '@domain/wallet/types.ts';
@@ -149,6 +150,17 @@ export function AccountWalletProvider({ children, enabled, accountId = '' }: Wal
 
   useStorageWatch([{area:'local',keys:[walletDisplayKey(accountId)]}], () => {
     void readWalletDisplayCache(accountId).then(snapshot => { if (snapshot?.providerType === false) markDisconnected(); }).catch(() => {});
+  });
+
+  // A read made while locked may have failed without changing configType. The
+  // unchanged provider type cannot trigger the resources' dependency effects.
+  useStorageWatch([{ area: 'local', keys: [LOCK_STATE_KEY] }], () => {
+    if (!enabled) return;
+    void refreshConfig();
+    if (typeof configData.configType === 'string') {
+      void refreshBalance();
+      if (settingsRequested) void settingsResource.refresh();
+    }
   });
 
   const value: WalletContextValue = {

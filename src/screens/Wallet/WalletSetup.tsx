@@ -2,15 +2,15 @@ import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 import { useState, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import Card from '@components/Card/Card';
-import Input from '@components/Input/Input';
-import Button from '@components/Button/Button';
-import LinkButton from '@components/LinkButton/LinkButton';
-import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
+import Card from '@components/Card';
+import Input from '@components/Input';
+import Button from '@components/Button';
+import LinkButton from '@components/LinkButton';
+import { SectionLabel, SectionHint } from '@components/SectionLabel';
 
-import Tabs from '@components/Tabs/Tabs';
-import FormError from '@components/FormError/FormError';
-import Container from '@components/Container/Container';
+import Tabs from '@components/Tabs';
+import FormError from '@components/FormError';
+import Container from '@components/Container';
 
 interface WalletSetupProps {
   onConnected: () => void;

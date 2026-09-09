@@ -3,23 +3,23 @@ import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
 import { useState, useEffect, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import { countDecisions, filterKeysForAccountKind, availablePermKeys } from '@domain/permissions/permissionRules.ts';
-import Input from '@components/Input/Input';
+import Input from '@components/Input';
 import IconShield from '@assets/IconShield.tsx';
 import IconUsers from '@assets/IconUsers.tsx';
 import IconPlus from '@assets/IconPlus.tsx';
 import { useAccount } from '@context/AccountContext';
 import { usePermissions } from '@context/PermissionsContext';
 import PermissionsDetailLayout from './PermissionsDetailLayout';
-import Card from '@components/Card/Card';
-import Button from '@components/Button/Button';
-import Dropdown from '@components/Dropdown/Dropdown';
+import Card from '@components/Card';
+import Button, { ButtonDanger } from '@components/Button';
+import Dropdown from '@components/Dropdown';
 import DeclinedSites from './DeclinedSites';
 import AddRuleModal from './AddRuleModal';
-import Toggle from '@components/Toggle/Toggle';
-import EmptyState from '@components/EmptyState/EmptyState';
-import ListRow from '@components/ListRow/ListRow';
-import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
+import Toggle from '@components/Toggle';
+import EmptyState from '@components/EmptyState';
+import ListRow from '@components/ListRow';
+import Container from '@components/Container';
+import Text from '@components/Text';
 
 export interface PermissionsSectionHandle {
   goBack: () => boolean;
@@ -177,7 +177,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
       <PermissionsDetailLayout domain={detailDomain} actions={
         <Container variant="row" className="justify-between">
           <Button small onClick={() => setAddRuleOpen(true)}><IconPlus size={12} /> {t('perms.addRule')}</Button>
-          <Button variant="danger" small onClick={handleRevoke}>{t('perms.revokeAll')}</Button>
+          <ButtonDanger small onClick={handleRevoke}>{t('perms.revokeAll')}</ButtonDanger>
         </Container>
       }>
         {allKeys.length === 0 ? (

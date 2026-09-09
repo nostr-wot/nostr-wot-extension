@@ -1,5 +1,5 @@
 import { t } from '@services/i18n/i18n.ts';
-import ListRow from '@components/ListRow/ListRow';
+import ListRow from '@components/ListRow';
 import IconGlobe from '@assets/IconGlobe.tsx';
 import { useNavigate } from '@context/NavigationContext';
 import { useRelays } from '@context/RelaysContext';
