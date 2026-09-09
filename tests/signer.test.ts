@@ -2,12 +2,12 @@ import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import * as permissions from '../src/lib/permissions.ts';
-import * as signer from '../src/lib/signer.ts';
-import * as onboarding from '../src/lib/bg/onboarding-handlers.ts';
-import { addAllowedDomain, removeAllowedDomain } from '../src/lib/bg/domain-handlers.ts';
-import type { VaultPayload } from '../src/lib/types.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import * as permissions from '../src/services/permissions/permissions.ts';
+import * as signer from '../src/services/signing/signer.ts';
+import * as onboarding from '../src/services/background/onboarding-handlers.ts';
+import { addAllowedDomain, removeAllowedDomain } from '../src/services/background/domain-handlers.ts';
+import type { VaultPayload } from '../src/domain/vault/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';
@@ -1070,7 +1070,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
   });
 
   it('vault_setActiveAccount handler rejects pending prompts for the previous account', async () => {
-    const vaultHandlers = await import('../src/lib/bg/vault-handlers.ts');
+    const vaultHandlers = await import('../src/services/background/vault-handlers.ts');
     const setActive = vaultHandlers.handlers.get('vault_setActiveAccount')!;
 
     const p: Promise<any> = signer.handleGetPublicKey('site.com');
@@ -1645,7 +1645,7 @@ it('single and batch approval cannot allow requests belonging to another account
 });
 
 it('incoming requests reuse an already-visible popup after an account switch refresh', async () => {
-  const { openPopupForActiveTab } = await import('../src/lib/openPopupForActiveTab.ts');
+  const { openPopupForActiveTab } = await import('../src/services/browser/openPopupForActiveTab.ts');
   const runtime = browserMock.runtime as any;
   const previousContexts = runtime.getContexts;
   const previousQuery = browserMock.tabs.query;
@@ -1668,7 +1668,7 @@ it('incoming requests reuse an already-visible popup after an account switch ref
 });
 
 it('visible-popup detection supports browsers with extension.getViews', async () => {
-  const { openPopupForActiveTab } = await import('../src/lib/openPopupForActiveTab.ts');
+  const { openPopupForActiveTab } = await import('../src/services/browser/openPopupForActiveTab.ts');
   const api = browserMock as any;
   const previousContexts = api.runtime.getContexts;
   const previousExtension = api.extension;

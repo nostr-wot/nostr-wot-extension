@@ -1,8 +1,8 @@
 import ActivityFiltersDialog from './ActivityFiltersDialog';
 import { useState, useEffect, useMemo } from 'react';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
-import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { t } from '@services/i18n/i18n.ts';
+import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import {
   filterActivityEntries,
   countActivityFilters,
@@ -137,7 +137,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   }, [rawLog, accountFilter, filter, typeFilter, pubkeyFilter]);
 
   // Renders a growing prefix of `entries` rather than all of it — the log can
-  // hold up to 2000 raw entries (lib/constants.ts), and grouping does not
+  // hold up to 2000 raw entries (domain/activity/constants.ts), and grouping does not
   // bound how many rows that becomes.
   const page = usePagedList(entries, PAGE_SIZE);
 

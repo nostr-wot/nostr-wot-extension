@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { IconKey, IconDownload, IconWarning, IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
 import ListRow from '@components/ListRow/ListRow';

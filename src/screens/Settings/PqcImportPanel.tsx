@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import { type PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';

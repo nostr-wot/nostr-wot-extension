@@ -27,7 +27,7 @@ it('wallet uses the shared purple controls and has named history refresh',()=>{
 });
 
 it('LNbits pending-response rows remain pending and are hidden from activity',async()=>{
- const {LnbitsProvider}=await import('../src/lib/wallet/lnbits.ts');
+ const {LnbitsProvider}=await import('../src/services/wallet/lnbits.ts');
  const provider=new LnbitsProvider({instanceUrl:'https://wallet.test',adminKey:'test'},async()=>new Response(JSON.stringify([
   {payment_hash:'fixture',amount:1000,fee:0,status:'pending',memo:'Lightning Address',time:'2026-09-08T21:40:02.785317+00:00',preimage:'fixture-preimage'},
  ])));

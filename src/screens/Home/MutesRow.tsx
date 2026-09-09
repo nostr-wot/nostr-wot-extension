@@ -1,7 +1,7 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import useRpc from '@hooks/useRpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';
-import { MUTE_LIST_CACHE } from '@services/relayCacheNames.ts';
+import { MUTE_LIST_CACHE } from '@domain/relays/cacheNames.ts';
 import ListRow from '@components/ListRow/ListRow';
 import { IconShield } from '@assets';
 import { useNavigate } from '@context/NavigationContext';

@@ -1,5 +1,5 @@
 import React, { useState, useId } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { cn } from '@utils/cn.ts';
 import Container from '@components/Container/Container';
 

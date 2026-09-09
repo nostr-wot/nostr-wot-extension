@@ -1,7 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import { fetchRelayList, type RelayListRead } from '../src/lib/bg/relay-list-handlers.ts';
+import { fetchRelayList, type RelayListRead } from '../src/services/background/relay-list-handlers.ts';
 import { parseRelayList, sameRelayList } from '../src/domain/relays/relayList.ts';
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { schnorr } from '@noble/curves/secp256k1.js';
@@ -57,9 +57,9 @@ test('missing, unreachable and a published empty list are distinct', async () =>
 });
 
 test('privileged discovery uses the active account, not a caller-supplied public key', async () => {
-  const vault = await import('../src/lib/vault.ts');
-  const { importNsec } = await import('../src/lib/accounts.ts');
-  const { handlers } = await import('../src/lib/bg/relay-list-handlers.ts');
+  const vault = await import('../src/services/vault/vault.ts');
+  const { importNsec } = await import('../src/domain/accounts/creation.ts');
+  const { handlers } = await import('../src/services/background/relay-list-handlers.ts');
   await vault.destroy();
   const owner = await importNsec('07'.repeat(32), 'Owner');
   await vault.create('', { accounts: [owner], activeAccountId: owner.id });
@@ -73,8 +73,8 @@ test('privileged discovery uses the active account, not a caller-supplied public
 
 test('relay discovery uses the selected public account even when the vault is locked or points elsewhere', async () => {
   const browser = (await import('./helpers/browser-mock.ts')).default;
-  const vault = await import('../src/lib/vault.ts');
-  const { handlers } = await import('../src/lib/bg/relay-list-handlers.ts');
+  const vault = await import('../src/services/vault/vault.ts');
+  const { handlers } = await import('../src/services/background/relay-list-handlers.ts');
   await vault.destroy();
   await browser.storage.local.set({accounts:[{id:'public',pubkey}],activeAccountId:'public'});
   const event = await signEvent({pubkey,kind:10002,created_at:2,tags:[['r','wss://mine','read']],content:''},key);
@@ -88,7 +88,7 @@ test('relay discovery uses the selected public account even when the vault is lo
 });
 
 test('PQ checks distinguish exhausted sockets from EOSE and retain the newest signed publication', async () => {
-  const {checkPqcPublication,PQC_KIND} = await import('../src/lib/bg/pqc-handlers.ts');
+  const {checkPqcPublication,PQC_KIND} = await import('../src/services/background/pqc-handlers.ts');
   const status = {pubkey,keys:{kem:'new-kem',dsa:'new-dsa'}};
   mock([],true);
   assert.deepEqual(await checkPqcPublication(status,['wss://test']), {published:false,current:false,unreachable:true});
@@ -107,7 +107,7 @@ test('PQ checks distinguish exhausted sockets from EOSE and retain the newest si
 
 test('discovery falls back to the first displayed account when selection has not been persisted', async () => {
  const browser=(await import('./helpers/browser-mock.ts')).default;
- const {handlers}=await import('../src/lib/bg/relay-list-handlers.ts');
+ const {handlers}=await import('../src/services/background/relay-list-handlers.ts');
  await browser.storage.local.set({accounts:[{id:'first',pubkey}]});
  const event=await signEvent({pubkey,kind:10002,created_at:2,tags:[['r','wss://mine']],content:''},key);
  mock([event]);

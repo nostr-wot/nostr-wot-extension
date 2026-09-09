@@ -7,15 +7,16 @@ import {
   readLocalCache,
   writeLocalCache,
   liveQuery,
-} from '../src/lib/relay.ts';
+} from '../src/services/relays/relay.ts';
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { bytesToHex } from '../src/lib/crypto/utils.ts';
 import mock, { resetMockStorage } from './helpers/browser-mock.ts';
-import type { SignedEvent, UnsignedEvent, LiveEvent } from '../src/lib/types.ts';
+import type { SignedEvent, UnsignedEvent } from '../src/domain/nostr/types.ts';
+import type { LiveEvent } from '../src/domain/relays/types.ts';
 
 // ── Helpers ──
 
-// Inbound relay events are now signature-verified (lib/relay.ts), so test
+// Inbound relay events are now signature-verified (services/relays/relay.ts), so test
 // events must be genuinely signed — fabricated ids/sigs get dropped.
 const PRIV1 = new Uint8Array(32).fill(1);
 const PRIV2 = new Uint8Array(32).fill(2);

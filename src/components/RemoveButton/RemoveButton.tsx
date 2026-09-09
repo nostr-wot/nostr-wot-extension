@@ -1,6 +1,6 @@
 import React from 'react';
 import { IconClose } from '@assets';
-import { t } from '@lib/i18n.ts';
+import { t } from '@services/i18n/i18n.ts';
 import IconButton from '@components/IconButton/IconButton';
 
 type RemoveButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;

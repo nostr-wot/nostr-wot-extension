@@ -1,10 +1,10 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
-import * as permissions from '../../src/lib/permissions.ts';
-import * as signer from '../../src/lib/signer.ts';
-import { handlers as walletHandlers } from '../../src/lib/bg/wallet-handlers.ts';
-import { addAllowedDomain, addWeblnAllowedDomain, isWeblnAllowed } from '../../src/lib/bg/domain-handlers.ts';
+import * as permissions from '../../src/services/permissions/permissions.ts';
+import * as signer from '../../src/services/signing/signer.ts';
+import { handlers as walletHandlers } from '../../src/services/background/wallet-handlers.ts';
+import { addAllowedDomain, addWeblnAllowedDomain, isWeblnAllowed } from '../../src/services/background/domain-handlers.ts';
 
 describe('wallet permissions', () => {
   beforeEach(() => {

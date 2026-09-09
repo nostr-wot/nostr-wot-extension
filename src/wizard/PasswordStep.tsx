@@ -4,7 +4,7 @@ import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import ChipGroup from '@components/ChipGroup/ChipGroup';

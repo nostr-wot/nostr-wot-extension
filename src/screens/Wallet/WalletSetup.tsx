@@ -1,6 +1,6 @@
 import { useState, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Card from '@components/Card/Card';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';

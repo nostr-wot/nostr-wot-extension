@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
-import * as signerPermissions from '../src/lib/permissions.ts';
+import * as signerPermissions from '../src/services/permissions/permissions.ts';
 import {
   getAllowedDomains,
   isDomainAllowed,
@@ -26,7 +26,7 @@ import {
   setDismissDuration,
   connectDomain,
   handlers,
-} from '../src/lib/bg/domain-handlers.ts';
+} from '../src/services/background/domain-handlers.ts';
 
 describe('broadcastAccountChanged -- only notifies connected origins', () => {
   beforeEach(() => { resetMockStorage(); __getTabOrigins().clear(); });

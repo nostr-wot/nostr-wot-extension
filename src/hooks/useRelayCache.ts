@@ -5,7 +5,7 @@ import browser from '@lib/browser.ts';
  * Re-read a relay-backed value when the background finishes refreshing it.
  *
  * The background serves these cached-first so the popup paints without waiting
- * on a relay (`lib/bg/relayCache.ts`), then asks the relays behind and writes
+ * on a relay (`services/relays/relayCache.ts`), then asks the relays behind and writes
  * the answer to `storage.local`. This is the other half: the open popup hears
  * that write and corrects itself.
  *

@@ -96,9 +96,10 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import * as permissions from '../src/lib/permissions.ts';
-import type { VaultPayload, UnsignedEvent } from '../src/lib/types.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import * as permissions from '../src/services/permissions/permissions.ts';
+import type { VaultPayload } from '../src/domain/vault/types.ts';
+import type { UnsignedEvent } from '../src/domain/nostr/types.ts';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
@@ -723,7 +724,7 @@ describe('communication: end-to-end — getPublicKey flow', () => {
     assert.doesNotThrow(() => validateNip07Params(method, params));
 
     // Step 3: Signer handles request (using actual signer module)
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
 
     // Mock the storage that signer reads for account info
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
@@ -773,7 +774,7 @@ describe('communication: end-to-end — signEvent flow', () => {
     ));
 
     // Signer handles
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const signed = await handleSignEvent(event, 'example.com');
 
     // Verify signed event structure
@@ -1017,7 +1018,7 @@ describe('communication: account switching — pending request rejection', () =>
   });
 
   it('rejectPendingForAccount clears pending entries from session storage', async () => {
-    const { rejectPendingForAccount, getPending } = await import('../src/lib/signer.ts');
+    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Seed some pending requests for acct1
@@ -1037,7 +1038,7 @@ describe('communication: account switching — pending request rejection', () =>
   });
 
   it('rejectPendingForAccount with empty string is a no-op', async () => {
-    const { rejectPendingForAccount, getPending } = await import('../src/lib/signer.ts');
+    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     await mockBrowser.storage.session.set({
@@ -1053,7 +1054,7 @@ describe('communication: account switching — pending request rejection', () =>
   });
 
   it('rejectPendingForAccount leaves other accounts pending intact', async () => {
-    const { rejectPendingForAccount, getPending } = await import('../src/lib/signer.ts');
+    const { rejectPendingForAccount, getPending } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     await mockBrowser.storage.session.set({
@@ -1090,13 +1091,13 @@ describe('communication: account switching — pubkey after switch', () => {
   });
 
   it('handleGetPublicKey returns acct1 pubkey initially', async () => {
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     const pubkey = await handleGetPublicKey('example.com');
     assert.strictEqual(pubkey, TEST_PUBKEY_HEX);
   });
 
   it('handleGetPublicKey returns acct2 pubkey after switch', async () => {
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Simulate the switchAccount flow from background.ts
@@ -1109,7 +1110,7 @@ describe('communication: account switching — pubkey after switch', () => {
   });
 
   it('signEvent uses the correct key after account switch', async () => {
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     await permissions.save('example.com', 'signEvent', 1, 'allow');
@@ -1264,7 +1265,7 @@ describe('communication: vault locked — signer behavior', () => {
 
   it('handleGetPublicKey works when locked (reads from sync storage)', async () => {
     vault.lock();
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     const pubkey = await handleGetPublicKey('example.com');
     assert.strictEqual(pubkey, TEST_PUBKEY_HEX);
   });
@@ -1281,7 +1282,7 @@ describe('communication: vault locked — signer behavior', () => {
     // Vault starts unlocked from beforeEach
     assert.strictEqual(vault.isLocked(), false);
 
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const event: UnsignedEvent = {
       kind: 1,
       created_at: Math.floor(Date.now() / 1000),
@@ -1313,18 +1314,18 @@ describe('communication: vault locked — pending request state', () => {
     resetMockStorage();
     vault.lock();
     await vault.create(TEST_PASSWORD, makePayload());
-    const { cleanupStale } = await import('../src/lib/signer.ts');
+    const { cleanupStale } = await import('../src/services/signing/signer.ts');
     await cleanupStale();
   });
 
   it('getPending returns empty after cleanupStale', async () => {
-    const { getPending } = await import('../src/lib/signer.ts');
+    const { getPending } = await import('../src/services/signing/signer.ts');
     const pending = await getPending();
     assert.deepStrictEqual(pending, []);
   });
 
   it('onVaultUnlocked resolves waitingForUnlock entries', async () => {
-    const { onVaultUnlocked, getPending } = await import('../src/lib/signer.ts');
+    const { onVaultUnlocked, getPending } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Seed a waitingForUnlock entry
@@ -1344,7 +1345,7 @@ describe('communication: vault locked — pending request state', () => {
   });
 
   it('cleanupStale clears all pending requests', async () => {
-    const { cleanupStale, getPending } = await import('../src/lib/signer.ts');
+    const { cleanupStale, getPending } = await import('../src/services/signing/signer.ts');
     const { default: mockBrowser } = await import('./helpers/browser-mock.ts');
 
     // Seed some requests
@@ -1389,7 +1390,7 @@ async function setupPermissionTest() {
   });
   await mockBrowser.storage.sync.set({ myPubkey: TEST_PUBKEY_HEX });
   // Clean pending state
-  const { cleanupStale } = await import('../src/lib/signer.ts');
+  const { cleanupStale } = await import('../src/services/signing/signer.ts');
   await cleanupStale();
 }
 
@@ -1398,7 +1399,7 @@ describe('communication: permissions × lock — getPublicKey', () => {
 
   it('deny + unlocked → rejects', async () => {
     await permissions.save('app.com', 'getPublicKey', null, 'deny');
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     await assert.rejects(
       () => handleGetPublicKey('app.com'),
       /Permission denied/
@@ -1408,7 +1409,7 @@ describe('communication: permissions × lock — getPublicKey', () => {
   it('deny + locked → rejects', async () => {
     await permissions.save('app.com', 'getPublicKey', null, 'deny');
     vault.lock();
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     await assert.rejects(
       () => handleGetPublicKey('app.com'),
       /Permission denied/
@@ -1417,7 +1418,7 @@ describe('communication: permissions × lock — getPublicKey', () => {
 
   it('allow + unlocked → returns pubkey', async () => {
     await permissions.save('app.com', 'getPublicKey', null, 'allow');
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     const pubkey = await handleGetPublicKey('app.com');
     assert.strictEqual(pubkey, TEST_PUBKEY_HEX);
   });
@@ -1425,7 +1426,7 @@ describe('communication: permissions × lock — getPublicKey', () => {
   it('allow + locked → still returns pubkey (reads from storage)', async () => {
     await permissions.save('app.com', 'getPublicKey', null, 'allow');
     vault.lock();
-    const { handleGetPublicKey } = await import('../src/lib/signer.ts');
+    const { handleGetPublicKey } = await import('../src/services/signing/signer.ts');
     const pubkey = await handleGetPublicKey('app.com');
     assert.strictEqual(pubkey, TEST_PUBKEY_HEX);
   });
@@ -1455,7 +1456,7 @@ describe('communication: permissions × lock — signEvent', () => {
 
   it('allow + unlocked → signs successfully', async () => {
     await permissions.save('app.com', 'signEvent', 1, 'allow');
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const event: UnsignedEvent = {
       kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'test'
     };
@@ -1467,7 +1468,7 @@ describe('communication: permissions × lock — signEvent', () => {
 
   it('deny + unlocked → rejects even though vault is available', async () => {
     await permissions.save('app.com', 'signEvent', 1, 'deny');
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const event: UnsignedEvent = {
       kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'test'
     };
@@ -1480,7 +1481,7 @@ describe('communication: permissions × lock — signEvent', () => {
   it('deny + locked → rejects (permission check happens before lock check)', async () => {
     await permissions.save('app.com', 'signEvent', 1, 'deny');
     vault.lock();
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const event: UnsignedEvent = {
       kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'test'
     };
@@ -1517,7 +1518,7 @@ describe('communication: permissions × lock — signEvent', () => {
     await permissions.save('app.com', 'signEvent', 1, 'allow');
     await permissions.save('app.com', 'signEvent', 4, 'deny');
 
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
 
     // Kind 1 succeeds
     const event1: UnsignedEvent = {
@@ -1549,7 +1550,7 @@ describe('communication: permissions × lock — encrypt/decrypt', () => {
 
   it('nip04Encrypt: deny + unlocked → rejects', async () => {
     await permissions.save('app.com', 'nip04Encrypt', null, 'deny');
-    const { handleNip04Encrypt } = await import('../src/lib/signer.ts');
+    const { handleNip04Encrypt } = await import('../src/services/signing/signer.ts');
     await assert.rejects(
       () => handleNip04Encrypt(VALID_PUBKEY, 'hello', 'app.com'),
       /Permission denied/
@@ -1558,7 +1559,7 @@ describe('communication: permissions × lock — encrypt/decrypt', () => {
 
   it('nip04Decrypt: deny + unlocked → rejects', async () => {
     await permissions.save('app.com', 'nip04Decrypt', null, 'deny');
-    const { handleNip04Decrypt } = await import('../src/lib/signer.ts');
+    const { handleNip04Decrypt } = await import('../src/services/signing/signer.ts');
     await assert.rejects(
       () => handleNip04Decrypt(VALID_PUBKEY, 'cipher', 'app.com'),
       /Permission denied/
@@ -1568,7 +1569,7 @@ describe('communication: permissions × lock — encrypt/decrypt', () => {
   it('nip44Encrypt: deny + locked → rejects (permission first)', async () => {
     await permissions.save('app.com', 'nip44Encrypt', null, 'deny');
     vault.lock();
-    const { handleNip44Encrypt } = await import('../src/lib/signer.ts');
+    const { handleNip44Encrypt } = await import('../src/services/signing/signer.ts');
     await assert.rejects(
       () => handleNip44Encrypt(VALID_PUBKEY, 'hello', 'app.com'),
       /Permission denied/
@@ -1578,7 +1579,7 @@ describe('communication: permissions × lock — encrypt/decrypt', () => {
   it('nip44Decrypt: deny + locked → rejects (permission first)', async () => {
     await permissions.save('app.com', 'nip44Decrypt', null, 'deny');
     vault.lock();
-    const { handleNip44Decrypt } = await import('../src/lib/signer.ts');
+    const { handleNip44Decrypt } = await import('../src/services/signing/signer.ts');
     await assert.rejects(
       () => handleNip44Decrypt(VALID_PUBKEY, 'cipher', 'app.com'),
       /Permission denied/
@@ -1669,7 +1670,7 @@ describe('communication: permissions × lock — cross-cutting', () => {
     vault.getPrivkey('acct1')!.fill(0);
 
     await permissions.save('app.com', 'signEvent', 1, 'deny');
-    const { handleSignEvent } = await import('../src/lib/signer.ts');
+    const { handleSignEvent } = await import('../src/services/signing/signer.ts');
     const event: UnsignedEvent = {
       kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'x'
     };

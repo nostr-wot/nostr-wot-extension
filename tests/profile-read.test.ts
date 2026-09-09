@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 // lib/browser.ts to this file with a short-circuited file:// URL, which skips
 // tsx's resolver. Importing it here normally is what gets the .ts registered.
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import { fetchKind0Read, fetchMuteList } from '../src/lib/bg/profile-handlers.ts';
+import { fetchKind0Read, fetchMuteList } from '../src/services/background/profile-handlers.ts';
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { schnorr } from '@noble/curves/secp256k1.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
@@ -241,11 +241,11 @@ describe('a relay is not trusted to tell the truth about who signed', () => {
   });
 });
 
-import * as vault from '../src/lib/vault.ts';
-import { importNsec } from '../src/lib/accounts.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import { importNsec } from '../src/domain/accounts/creation.ts';
 import browserMock from './helpers/browser-mock.ts';
-import { handlers } from '../src/lib/bg/profile-handlers.ts';
-import { cacheKey, MUTE_LIST_CACHE } from '../src/lib/bg/relayCache.ts';
+import { handlers } from '../src/services/background/profile-handlers.ts';
+import { cacheKey, MUTE_LIST_CACHE } from '../src/services/relays/relayCache.ts';
 
 it('own mute-list reads wait for Never-lock startup and fetch kind 10000', async () => {
   resetMockStorage();
@@ -280,8 +280,8 @@ it('opening the mute editor reads fresh data instead of editing a stale cached l
 });
 
 it('repeated metadata reads share sockets even when no profile exists or relays fail', async () => {
-  const {fetchProfileMetadata} = await import('../src/lib/bg/profile-handlers.ts');
-  const {config} = await import('../src/lib/bg/state.ts');
+  const {fetchProfileMetadata} = await import('../src/services/background/profile-handlers.ts');
+  const {config} = await import('../src/services/background/state.ts');
   const previous = config.relays;
   config.relays=['wss://one.test','wss://two.test','wss://three.test'];
   try {

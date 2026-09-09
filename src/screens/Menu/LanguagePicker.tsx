@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { t, getSupportedLanguages, getLanguage, setLanguage } from '@lib/i18n.js';
+import { t, getSupportedLanguages, getLanguage, setLanguage } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';

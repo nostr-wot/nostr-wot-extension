@@ -15,7 +15,7 @@
  * auto-connected. Permissions record what a connected site may do; they are not evidence
  * that it is connected.
  *
- * @module shared/siteState
+ * @module domain/site/siteState
  */
 
 export type SiteConnectionState = 'connected' | 'notConnected' | 'error';

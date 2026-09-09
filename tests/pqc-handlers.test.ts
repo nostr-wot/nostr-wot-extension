@@ -1,8 +1,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
-import * as vault from '../src/lib/vault.ts';
-import { handlers, PQC_KIND } from '../src/lib/bg/pqc-handlers.ts';
-import { createFromMnemonic, importNsec, importNpub } from '../src/lib/accounts.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import { handlers, PQC_KIND } from '../src/services/background/pqc-handlers.ts';
+import { createFromMnemonic, importNsec, importNpub } from '../src/domain/accounts/creation.ts';
 import { verifyPop, popMessage } from '../src/lib/crypto/pq.ts';
 import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
 
@@ -300,8 +300,8 @@ describe('pqc_removeImportedKeys', () => {
 
 // ── The point of the feature: imported keys must actually decrypt ──
 
-import * as signer from '../src/lib/signer.ts';
-import * as permissions from '../src/lib/permissions.ts';
+import * as signer from '../src/services/signing/signer.ts';
+import * as permissions from '../src/services/permissions/permissions.ts';
 import { pqEncrypt, KEM_PUBLIC_KEY_BYTES } from '../src/lib/crypto/pq.ts';
 import { getConversationKey } from '../src/lib/crypto/nip44.ts';
 import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';
@@ -386,7 +386,7 @@ it('acknowledged PQ publication immediately updates the shared status and retain
     const result = await handlers.get('pqc_publishAttestation')!({}) as {sent:number;eventId:string};
     assert.equal(result.sent,1);
     assert.deepEqual(await handlers.get('pqc_checkPublished')!({}),{published:true,current:true});
-    const {replaceableKey} = await import('../src/lib/relay.ts');
+    const {replaceableKey} = await import('../src/services/relays/relay.ts');
     const key=replaceableKey(PQC_KIND,vault.getActivePubkey()!);
     assert.equal((await browserMock.storage.local.get(key))[key].id,result.eventId);
   } finally { globalThis.WebSocket=original; await vault.destroy(); }

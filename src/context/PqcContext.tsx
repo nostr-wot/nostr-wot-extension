@@ -3,7 +3,7 @@ import { rpc } from '@services/rpc.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { mergePqcStatus, mergePqcPublished } from '@domain/pqc/pqcState.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
-import { PQC_PUBLISHED_CACHE } from '@services/relayCacheNames.ts';
+import { PQC_PUBLISHED_CACHE } from '@domain/relays/cacheNames.ts';
 import type { PqcPanelStatus, PqcPublished } from '@domain/pqc/pqcState.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
 import { useAccount } from './AccountContext';
@@ -79,7 +79,7 @@ export function PqcProvider({ children }: PqcProviderProps) {
   }, [patch]);
 
   // The published check is served from the background's cache
-  // (lib/bg/relayCache.ts) so the popup paints without a relay round trip;
+  // (services/relays/relayCache.ts) so the popup paints without a relay round trip;
   // this picks up the answer once the background finishes refreshing it. Runs
   // through the same run-versioned `refresh` as the mount effect, so this can
   // overlap an account-switch read in flight without the slower one winning.

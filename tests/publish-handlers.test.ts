@@ -1,5 +1,5 @@
 /**
- * Tests for lib/bg/publish-handlers.ts — focused on the checkRelayHealth
+ * Tests for services/background/publish-handlers.ts — focused on the checkRelayHealth
  * handler's SSRF hardening (scheme allowlist + private-host rejection).
  *
  * Run with the browser mock:
@@ -10,7 +10,7 @@ import { strict as assert } from 'node:assert';
 // Import the browser mock before any lib/ module so the loader-hook redirect
 // resolves to the already-loaded mock module (same pattern as other bg tests).
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import { handlers, isPrivateHost } from '../src/lib/bg/publish-handlers.ts';
+import { handlers, isPrivateHost } from '../src/services/background/publish-handlers.ts';
 
 const checkRelayHealth = handlers.get('checkRelayHealth')!;
 
@@ -152,10 +152,10 @@ describe('publishMuteList -- refuses to build on a read nobody answered', () => 
 });
 
 import browser from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import { importNsec } from '../src/lib/accounts.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import { importNsec } from '../src/domain/accounts/creation.ts';
 import { DEFAULT_RELAYS } from '../src/domain/relays/defaultRelays.ts';
-import type { SignedEvent } from '../src/lib/types.ts';
+import type { SignedEvent } from '../src/domain/nostr/types.ts';
 
 describe('relay publication uses the displayed configuration', () => {
   const socket = globalThis.WebSocket;

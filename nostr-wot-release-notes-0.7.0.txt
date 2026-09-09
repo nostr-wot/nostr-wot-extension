@@ -1,5 +1,7 @@
 Nostr WoT 0.7.0
 
+- Updated vulnerable dependencies; npm audit reports zero known vulnerabilities.
+
 - Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
 - Fixed NWC wallet connection and startup.
 - Improved website payment compatibility and detection of supported WebLN methods.

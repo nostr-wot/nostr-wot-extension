@@ -8,11 +8,11 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import browser, {resetMockStorage} from '../helpers/browser-mock.ts';
-import * as vault from '../../src/lib/vault.ts';
-import * as signer from '../../src/lib/signer.ts';
-import { handlers } from '../../src/lib/bg/wallet-handlers.ts';
-import { getWalletProvider, setWalletProvider, clearWalletProviders } from '../../src/lib/wallet/index.ts';
-import { isWeblnAllowed } from '../../src/lib/bg/domain-handlers.ts';
+import * as vault from '../../src/services/vault/vault.ts';
+import * as signer from '../../src/services/signing/signer.ts';
+import { handlers } from '../../src/services/background/wallet-handlers.ts';
+import { getWalletProvider, setWalletProvider, clearWalletProviders } from '../../src/services/wallet/index.ts';
+import { isWeblnAllowed } from '../../src/services/background/domain-handlers.ts';
 
 const invoice='lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp';
 const origin='zap.example';

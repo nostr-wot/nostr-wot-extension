@@ -1,8 +1,8 @@
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { NwcProvider } from '../../src/lib/wallet/nwc.ts';
-import type { NwcCryptoDeps } from '../../src/lib/wallet/nwc.ts';
-import type { UnsignedEvent, SignedEvent } from '../../src/lib/types.ts';
+import { NwcProvider } from '../../src/services/wallet/nwc.ts';
+import type { NwcCryptoDeps } from '../../src/services/wallet/nwc.ts';
+import type { UnsignedEvent, SignedEvent } from '../../src/domain/nostr/types.ts';
 
 // ── Test constants ──
 
@@ -926,12 +926,12 @@ describe('NwcProvider', () => {
   describe('NwcProvider crypto integration', () => {
     it('encrypt() is called with walletPubkey bytes and request content', async () => {
       let capturedPlaintext = '';
-      let capturedTheirPubkey: Uint8Array | null = null;
+      const capturedTheirPubkey: { current: Uint8Array | null } = { current: null };
 
       const provider = createProvider({
         encrypt: async (plaintext: string, _privkey: Uint8Array, theirPubkey: Uint8Array) => {
           capturedPlaintext = plaintext;
-          capturedTheirPubkey = new Uint8Array(theirPubkey);
+          capturedTheirPubkey.current = new Uint8Array(theirPubkey);
           return `encrypted:${plaintext}`;
         },
       });
@@ -949,15 +949,15 @@ describe('NwcProvider', () => {
 
       // Verify encrypt was called with correct arguments
       assert.ok(capturedPlaintext.includes('get_balance'));
-      assert.ok(capturedTheirPubkey instanceof Uint8Array);
-      assert.equal(capturedTheirPubkey!.length, WALLET_PUBKEY.length / 2);
+      assert.ok(capturedTheirPubkey.current instanceof Uint8Array);
+      assert.equal(capturedTheirPubkey.current!.length, WALLET_PUBKEY.length / 2);
 
       // Verify the pubkey bytes match the hex wallet pubkey
       const expectedBytes = new Uint8Array(WALLET_PUBKEY.length / 2);
       for (let i = 0; i < expectedBytes.length; i++) {
         expectedBytes[i] = parseInt(WALLET_PUBKEY.slice(i * 2, i * 2 + 2), 16);
       }
-      assert.deepEqual(capturedTheirPubkey, expectedBytes);
+      assert.deepEqual(capturedTheirPubkey.current, expectedBytes);
 
       // Clean up
       const response = buildResponseMessage(
@@ -971,12 +971,12 @@ describe('NwcProvider', () => {
 
     it('decrypt() is called with walletPubkey bytes and response content', async () => {
       let capturedCiphertext = '';
-      let capturedTheirPubkey: Uint8Array | null = null;
+      const capturedTheirPubkey: { current: Uint8Array | null } = { current: null };
 
       const provider = createProvider({
         decrypt: async (ciphertext: string, _privkey: Uint8Array, theirPubkey: Uint8Array) => {
           capturedCiphertext = ciphertext;
-          capturedTheirPubkey = new Uint8Array(theirPubkey);
+          capturedTheirPubkey.current = new Uint8Array(theirPubkey);
           // Return valid decrypted content (balance in msats)
           return JSON.stringify({ result_type: 'get_balance', result: { balance: 300000 } });
         },
@@ -1011,23 +1011,23 @@ describe('NwcProvider', () => {
 
       // Verify decrypt was called with correct arguments
       assert.equal(capturedCiphertext, 'the-ciphertext-blob');
-      assert.ok(capturedTheirPubkey instanceof Uint8Array);
+      assert.ok(capturedTheirPubkey.current instanceof Uint8Array);
 
       const expectedBytes = new Uint8Array(WALLET_PUBKEY.length / 2);
       for (let i = 0; i < expectedBytes.length; i++) {
         expectedBytes[i] = parseInt(WALLET_PUBKEY.slice(i * 2, i * 2 + 2), 16);
       }
-      assert.deepEqual(capturedTheirPubkey, expectedBytes);
+      assert.deepEqual(capturedTheirPubkey.current, expectedBytes);
 
       provider.disconnect();
     });
 
     it('signEvent() is called with kind 23194 and correct p tag', async () => {
-      let capturedEvent: UnsignedEvent | null = null;
+      const capturedEvent: { current: UnsignedEvent | null } = { current: null };
 
       const provider = createProvider({
         signEvent: async (event: UnsignedEvent, _privkey: Uint8Array) => {
-          capturedEvent = { ...event };
+          capturedEvent.current = { ...event };
           return {
             ...event,
             id: `test-event-id-${++eventIdCounter}`,
@@ -1048,13 +1048,13 @@ describe('NwcProvider', () => {
       const sentEvent = JSON.parse(ws.sentMessages[0])[1] as SignedEvent;
 
       // Verify signEvent was called with correct unsigned event
-      assert.ok(capturedEvent);
-      assert.equal(capturedEvent!.kind, 23194);
-      const pTag = capturedEvent!.tags.find((t) => t[0] === 'p');
+      assert.ok(capturedEvent.current);
+      assert.equal(capturedEvent.current!.kind, 23194);
+      const pTag = capturedEvent.current!.tags.find((t) => t[0] === 'p');
       assert.ok(pTag);
       assert.equal(pTag![1], WALLET_PUBKEY);
-      assert.ok(capturedEvent!.content.startsWith('encrypted:'));
-      assert.ok(capturedEvent!.created_at > 0);
+      assert.ok(capturedEvent.current!.content.startsWith('encrypted:'));
+      assert.ok(capturedEvent.current!.created_at > 0);
 
       // Clean up
       const response = buildResponseMessage(

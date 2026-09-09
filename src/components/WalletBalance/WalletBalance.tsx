@@ -1,5 +1,5 @@
 import Spinner from '@components/Spinner/Spinner';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 
 /** The last known balance stays visible through refreshes and failures. */
 export default function WalletBalance({balance, loading, error, compact = false}: {

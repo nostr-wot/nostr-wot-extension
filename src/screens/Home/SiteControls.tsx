@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Toggle from '@components/Toggle/Toggle';
 import Card from '@components/Card/Card';
 import ListRow from '@components/ListRow/ListRow';

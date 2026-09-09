@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 
 export function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);

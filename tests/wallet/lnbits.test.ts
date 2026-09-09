@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { LnbitsProvider } from '../../src/lib/wallet/lnbits.ts';
+import { LnbitsProvider } from '../../src/services/wallet/lnbits.ts';
 
 /** Helper to build a mock fetch that returns the given JSON body with status 200. */
 function mockFetch(body: unknown, status = 200): (url: string, init?: RequestInit) => Promise<Response> {

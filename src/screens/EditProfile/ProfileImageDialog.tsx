@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 import Modal from '@components/Modal/Modal';
 import Input from '@components/Input/Input';

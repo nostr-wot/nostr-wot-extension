@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import type { PendingRequest } from '@lib/types.ts';
+import type { PendingRequest } from '@domain/signing/types.ts';
 
 /**
  * How many pending requests need the user, for the home badge.

@@ -4,7 +4,7 @@ import { createContext, useContext, type Context } from 'react';
  * src/utils/ is for React-side helpers that are neither a component nor a hook.
  *
  * It is not src/shared/: that is React-free on purpose and is imported by
- * background code (lib/bg/domain-handlers.ts, lib/wallet/payment-intents.ts),
+ * background code (services/background/domain-handlers.ts, services/wallet/payment-intents.ts),
  * so putting anything that imports React there would pull React into the
  * service worker's import graph. And this is not a context — it is the factory
  * that makes one, so it does not belong in src/popup/context/ either.

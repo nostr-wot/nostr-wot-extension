@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { isLanguageChosen } from '@lib/i18n.js';
+import { isLanguageChosen } from '@services/i18n/i18n.ts';
 import { rpc } from '@services/rpc.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import TopoBg from '@components/TopoBg/TopoBg';

@@ -29,7 +29,6 @@ export interface ProfileMetadata {
  * of a published profile, and there was no test on it.
  */
 
-
 /** The fields the edit form owns. Anything else on the existing event is passed through. */
 export interface ProfileFields {
   name: string;

@@ -22,13 +22,10 @@ node --import tsx --test tests/wallet/bolt11.test.ts tests/inject-webln.test.ts
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet/nwc.test.ts tests/wallet/lnbits.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/background-handlers.test.ts tests/wallet/permissions.test.ts tests/wallet/approval.test.ts tests/wallet/types.test.ts tests/wallet/index.test.ts
 ```
 
-`tests/run.sh` runs these groups in sequence: crypto, wallet (no-mock),
-wizardMachine + openPopupForActiveTab + safeUrl, then the browser-mocked module +
-wallet group (vault, permissions, accounts, signer, security-hardening,
-communication, wallet permissions/background-handlers, vault-wallet, relay,
-publish-handlers). Some additional test files exist in the tree
-(`domain-handlers`, `site-state`) that are not part of the default `run.sh`
-sequence.
+`tests/run.sh` runs crypto, wallet protocol, pure/UI helper and browser-mocked
+module groups. Every test file is registered locally and in CI; registration
+checks fail if a new suite is omitted. The mocked signer timeout cases can keep
+the last group running for about two minutes even after most tests finish.
 
 ---
 
@@ -61,13 +58,13 @@ sequence.
 | `tests/wizardMachine.test.ts` | Onboarding wizard state machine transitions |
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
-| `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers (not in default `run.sh`) |
+| `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers |
 | `tests/relay.test.ts` | Relay utilities, liveQuery streaming, inbound event signature verification (forged events rejected), exhaustion when relays close without EOSE |
 | `tests/rpc.test.ts` | Popup `rpc()` transport: envelope unwrapping, Chrome wakeup-rejection retry, Safari undefined-response retry (throws `RpcError` instead of resolving `undefined`) |
 | `tests/delete-recreate.test.ts` | Delete last account / destroy vault → re-run onboarding (`onboarding_generateAccount` + `onboarding_createVault`), incl. simulated service-worker restart |
 | `tests/publish-handlers.test.ts` | `checkRelayHealth` SSRF hardening (scheme allowlist, private-host rejection) |
 | `tests/safeUrl.test.ts` | `safeImageUrl` sanitizer for untrusted profile image URLs |
-| `tests/site-state.test.ts` | Per-site state helpers (not in default `run.sh`) |
+| `tests/site-state.test.ts` | Per-site state helpers |
 | `tests/wallet/nwc.test.ts` | NWC provider: connection, balance, pay, make invoice (msats), response verification/DoS hardening |
 | `tests/wallet/lnbits.test.ts` | LNbits provider: REST API calls, error handling, HTTPS enforcement |
 | `tests/wallet/lnbits-provision.test.ts` | Auto-provisioning: challenge-response flow |
@@ -107,7 +104,7 @@ sequence.
 | `tests/cn.test.ts` | `cn()` — that a caller's utility overrides the component's, and that a font size and a colour are not mistaken for one conflict |
 | `tests/tailwind-classes.test.ts` | Every static Tailwind utility the source names generates a rule — a misspelled utility is silent, and the compiler never sees these strings |
 | `tests/css-selectors.test.ts` | No stylesheet selector names a class nothing puts on an element — the rule that survives an extraction and applies to nothing |
-| `tests/test-registration.test.ts` | Every test file is actually run, locally and in CI |
+| `tests/test-registration.test.ts` | Test registration, documentation paths, release metadata and domain/service/library boundaries |
 | `tests/wallet/types.test.ts` | WalletConfig type guards |
 | `tests/wallet/index.test.ts` | Provider factory and caching |
 
@@ -227,3 +224,5 @@ CI and `tests/run.sh` build before any tests. `tests/test-registration.test.ts` 
 LNURL tests cover checksum/case/UTF-8 validation, unsafe decoded endpoints,
 non-payment tags and recipient changes. Payment integration runs the same
 resolve/pay/deduplicate/amount-mismatch flow for Lightning Addresses and bech32 LNURLs.
+
+The boundary checks in `tests/test-registration.test.ts` keep domain modules free of service, browser and React dependencies, and keep `src/lib/` limited to crypto and the browser shim. Existing behavioral suites import the moved modules directly.

@@ -1,5 +1,5 @@
-import { t } from '@lib/i18n.js';
-import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { t } from '@services/i18n/i18n.ts';
+import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { ApprovalGroup } from '@domain/permissions/approval.ts';
 import { IconChevronRight, IconSync } from '@assets';
 import Card from '@components/Card/Card';

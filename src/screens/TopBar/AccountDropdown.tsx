@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { useAccount } from '@context/AccountContext';
 import { truncateNpub, getInitial } from '@utils/format/text.ts';
 import { IconWarning, IconClose, IconPlus } from '@assets';

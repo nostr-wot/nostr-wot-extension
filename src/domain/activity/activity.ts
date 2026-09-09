@@ -234,7 +234,6 @@ export function buildDayGroups<T extends { day?: string }>(groups: T[]): DayGrou
   return out;
 }
 
-
 /** Stable identity for a saved entry, including account and encrypted body. */
 export function activityEntryKey(entry: ActivityEntry): string {
   return JSON.stringify([entry.timestamp, entry.domain, entry.pubkey, entry.method,

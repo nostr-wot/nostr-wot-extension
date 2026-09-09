@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import ListRow from '@components/ListRow/ListRow';
 import { IconUser } from '@assets';
 import { useNavigate } from '@context/NavigationContext';

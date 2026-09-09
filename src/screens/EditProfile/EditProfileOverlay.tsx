@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, ChangeEvent } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { rpc } from '@services/rpc.ts';
-import { uploadProfileImages } from '@services/blossom.ts';
+import { uploadProfileImages } from '@services/media/blossom.ts';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 import {
   mergeProfileMetadata,

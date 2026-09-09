@@ -30,13 +30,13 @@ Firefox natively supports the `browser.*` API; Chrome uses the `chrome.*` API. A
 
 ## 2. Extension Architecture
 
-### 2.1 Background Script -- `background.ts` + `src/lib/bg/`
+### 2.1 Background Script -- `background.ts` + `src/services/background/`
 
 The central coordinator. Runs as a **service worker** on Chrome and a **persistent background script** on Firefox (both declared in `manifest.json` via `"service_worker"` and `"scripts"` fields respectively, with `"type": "module"`).
 
-`background.ts` is a thin orchestrator (~300 lines) that assembles handler modules, sets up listeners, and dispatches requests. Business logic lives in `src/lib/bg/` handler modules, each exporting a `Map<string, HandlerFn>` plus individual functions for direct testing.
+`background.ts` is a thin orchestrator (~300 lines) that assembles handler modules, sets up listeners, and dispatches requests. Business logic lives in `src/services/background/` handler modules, each exporting a `Map<string, HandlerFn>` plus individual functions for direct testing.
 
-#### Handler Modules -- `src/lib/bg/`
+#### Handler Modules -- `src/services/background/`
 
 | Module | Responsibility |
 |--------|---------------|
@@ -55,10 +55,10 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 
 **Dispatch pattern:** Each handler module exports `handlers: Map<string, HandlerFn>`. `background.ts` merges all maps into a single `allHandlers` map. `handleRequest()` does pre-checks (NIP-07 validation, domain gating, read-only guard, npub normalization) then delegates to `allHandlers.get(method)`.
 
-**Dependency rules:** Handler modules import from `state.ts` and `src/lib/*`, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `activity-handlers`). No circular dependency chains exist.
+**Dependency rules:** Handler modules import from `state.ts`, feature services, domain models and low-level libraries, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `activity-handlers`). No circular dependency chains exist.
 
 Responsibilities of `background.ts`:
-- Handler map assembly from all `src/lib/bg/*-handlers.ts` modules
+- Handler map assembly from all `src/services/background/*-handlers.ts` modules
 - `loadConfig()` -- initializes `state.config` (myPubkey, relays) and ensures an active account exists in `browser.storage.local`
 - Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `signer.cleanupStale()`. The auto-unlock is registered through `vault.beginStartupUnlock()` so request paths can await it instead of mistaking the cold-start window for a locked vault (see [Security](security.md))
 - `browser.runtime.onMessage` listener (privilege gate, origin derivation, dispatch to `handleRequest()`)
@@ -129,20 +129,20 @@ Signing request approval popup. The signer queues pending requests in `browser.s
 
 ---
 
-### 2.7 Wallet Provider Layer -- `src/lib/wallet/`
+### 2.7 Wallet Provider Layer -- `src/services/wallet/`
 
 Abstracts Lightning wallet backends behind a common `WalletProvider` interface. Each provider implements `getInfo()`, `getBalance()`, `payInvoice(bolt11)`, `makeInvoice(amount, memo)`, `connect()`, `disconnect()`, and `isConnected()`.
 
 | File | Purpose |
 |------|---------|
-| `src/lib/wallet/types.ts` | `WalletConfig` (discriminated union: `nwc` or `lnbits`), `WalletProvider` interface, `SafeWalletInfo` |
-| `src/lib/wallet/nwc.ts` | NWC (Nostr Wallet Connect / NIP-47) provider — communicates over Nostr relays |
-| `src/lib/wallet/lnbits.ts` | LNbits provider — communicates over HTTPS REST API |
-| `src/lib/wallet/lnbits-provision.ts` | Auto-provisioning: creates a new LNbits wallet via `POST /api/provision` on a proxy server |
-| `src/lib/wallet/lnurl.ts` | LNURL-pay / Lightning Address resolution (LUD-16, LUD-06) |
-| `src/lib/wallet/bolt11.ts` | BOLT11 invoice decoder |
-| `src/lib/wallet/payment-intents.ts` | At-most-once payment intent tracking across popup teardown |
-| `src/lib/wallet/index.ts` | Factory + per-account provider cache (`getWalletProvider`, `setWalletProvider`, `clearWalletProviders`) |
+| `src/domain/wallet/types.ts` | `WalletConfig` (discriminated union: `nwc` or `lnbits`), `WalletProvider` interface, `SafeWalletInfo` |
+| `src/services/wallet/nwc.ts` | NWC (Nostr Wallet Connect / NIP-47) provider — communicates over Nostr relays |
+| `src/services/wallet/lnbits.ts` | LNbits provider — communicates over HTTPS REST API |
+| `src/services/wallet/lnbits-provision.ts` | Auto-provisioning: creates a new LNbits wallet via `POST /api/provision` on a proxy server |
+| `src/services/wallet/lnurl.ts` | LNURL-pay / Lightning Address resolution (LUD-16, LUD-06) |
+| `src/domain/wallet/bolt11.ts` | BOLT11 invoice decoder |
+| `src/services/wallet/payment-intents.ts` | At-most-once payment intent tracking across popup teardown |
+| `src/services/wallet/index.ts` | Factory + per-account provider cache (`getWalletProvider`, `setWalletProvider`, `clearWalletProviders`) |
 
 Provider instances are cached per account ID in a `Map<string, WalletProvider>`. The cache is cleared on vault lock via `clearWalletProviders()`. Both LNbits and NWC providers are created directly by the factory. For NWC, the factory validates connection key formats and injects the shared NIP-04 encryption and NIP-01 signing implementations. Recreating a provider after cache removal restores fresh connection key bytes from the saved configuration.
 
@@ -197,9 +197,25 @@ Firefox-specific settings (`browser_specific_settings`):
 
 ---
 
-## 4. Type System -- `src/lib/types.ts`
+## 4. Feature-owned types and module boundaries
 
-Central type definitions shared across all modules:
+Shared types live with their owning domain: `src/domain/nostr/types.ts` owns events,
+`src/domain/accounts/types.ts` owns account records, `src/domain/vault/types.ts` owns
+vault payloads, `src/domain/signing/types.ts` owns approval requests,
+`src/domain/permissions/types.ts` owns permission decisions, and
+`src/domain/wallet/types.ts` owns wallet contracts. Relay and language types live
+in their respective domain directories. Constants follow the same ownership.
+
+`src/domain/` contains data contracts and pure feature rules. `src/services/`
+contains background RPC handlers, signing orchestration, vault persistence,
+relay connections/cache, wallet providers, browser operations, media upload and
+localization. `src/utils/` contains domain-independent helpers such as the async
+lock. `src/lib/` retains only cryptographic primitives and the shared browser
+compatibility shim. Domain modules do not import services or browser APIs.
+LNURL parsing and URL validation live in the wallet domain; fetching pay parameters
+and invoices lives in the wallet service. There are no legacy re-export facades.
+
+The main shared types are:
 
 | Type | Purpose |
 |------|---------|

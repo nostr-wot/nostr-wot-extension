@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { IconChevronDown, IconLockOpen, IconCopy } from '@assets';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';

@@ -1,5 +1,5 @@
 import { useState, useMemo, ChangeEvent } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Card from '@components/Card/Card';
 import Spinner from '@components/Spinner/Spinner';
 import Input from '@components/Input/Input';
@@ -7,7 +7,7 @@ import Button from '@components/Button/Button';
 import { IconTuner, IconSync, IconDownload } from '@assets/index';
 import { formatTxDate } from '@utils/format/time.ts';
 import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@domain/wallet/txFilter.ts';
-import type { Transaction } from '@lib/wallet/types.ts';
+import type { Transaction } from '@domain/wallet/types.ts';
 import IconButton from '@components/IconButton/IconButton';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';

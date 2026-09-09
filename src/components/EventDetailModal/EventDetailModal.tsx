@@ -1,6 +1,6 @@
 import { KIND_LABELS } from '@domain/nostr/kindLabels';
-import { t } from '@lib/i18n.js';
-import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { t } from '@services/i18n/i18n.ts';
+import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import EventPreview from '@components/EventPreview/EventPreview';
@@ -34,7 +34,7 @@ interface ActivityGroup {
 }
 
 /** The fields this view reads off a pending request. Structurally satisfied by
- *  `PendingRequest` in lib/types.ts, which is what callers actually pass —
+ *  `PendingRequest` in domain/signing/types.ts, which is what callers actually pass —
  *  `permKey` is nullable there, and narrowing it here made every call site a
  *  type error. */
 interface ApprovalRequest {

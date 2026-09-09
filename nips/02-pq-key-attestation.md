@@ -151,6 +151,6 @@ key, and it is what makes the capability question in draft 04 answerable.
 
 ## Reference implementation
 
-`lib/bg/pqc-handlers.ts` and `lib/crypto/pq.ts` in this repository. The
+`services/background/pqc-handlers.ts` and `lib/crypto/pq.ts` in this repository. The
 attestation-reading side is in
 [Obelisk](https://github.com/obelisk-app/obelisk/blob/main/src/lib/pq/attestations.ts).

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Container from '@components/Container/Container';

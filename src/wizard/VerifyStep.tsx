@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
 import SeedWord from '@components/SeedWord/SeedWord';

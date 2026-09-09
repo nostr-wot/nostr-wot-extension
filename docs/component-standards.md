@@ -101,10 +101,10 @@ src/
   screens/     one folder per popup screen
   context/     the eight React contexts
   domain/      feature logic, one folder per module, pure and tested
-  services/    the things that talk to something (rpc, blossom)
+  services/    I/O and orchestration, grouped by feature
   utils/       no domain knowledge
   hooks/       every hook, feature or generic
-  lib/         the extension core: background handlers, crypto, the vault, the cross-browser shim
+  lib/         cryptographic primitives and the cross-browser compatibility shim
   popup/  prompt/  onboarding/  wizard/   the four documents' screens
 ```
 
@@ -118,8 +118,8 @@ Aliases: `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`
 
 - **`src/utils`** — no domain knowledge at all. Formatting, `downloadFile`, `paginate`, URL predicates. You could paste any of it into another product.
 - **`src/domain`** — the decisions this product makes, one folder per module. Pure functions over plain data: no React, no `browser.*`, no network. That is what makes them testable, and every one of them has a test.
-- **`src/services`** — the things that talk to something. `rpc` to the background, `blossom` to a media host.
-- **`src/lib`** — the extension core: background handlers, crypto, the vault, the cross-browser shim. Imported by the service worker, so **nothing here may import React**, and nothing else in `src/` should reimplement it. It held the same job at the repo root as plain `lib/` until everything the extension is built from — `lib/`, `icons/`, `locales/` — moved under `src/`, so "where does code live" has one answer; `icons/` and `locales/` land in `src/public/` instead, since Vite's `publicDir` is what puts them back at the root of `dist/` where `manifest.json` and the runtime `getURL()` calls expect them.
+- **`src/services`** — I/O and orchestration, grouped into `background`, `browser`, `i18n`, `media`, `permissions`, `relays`, `signing`, `vault` and `wallet`. Browser state, network requests, persistence and translated permission labels belong here. Services must not import React or UI modules; the popup RPC client remains `src/services/rpc.ts`.
+- **`src/lib`** — cryptographic primitives and the single cross-browser compatibility shim. No application orchestration or React. Reuse these implementations rather than copying them. Public icons and locales remain in `src/public/` so Vite copies them to the runtime paths the manifest expects.
 
 That last rule was already being broken once. `src/shared/browser.ts` was a six-line copy of `src/lib/browser.ts` that omitted its Safari `storage.session` polyfill, and twenty-one UI files imported the copy — seven of which call `storage.session` directly. It is deleted; everything uses `@lib/browser.ts`.
 
@@ -137,7 +137,7 @@ and `PopupApp` directly), so it is not purely a menu section.
 
 ### One shape, one definition
 
-`PendingRequest` had five definitions: the canonical one in `src/lib/types.ts` and four narrower restatements across ApprovalOverlay, ApprovalCard, EventDetailModal and PopupApp. They had already drifted into a type error that one of the copies documented in a comment rather than fixing. Import the canonical type; if it does not fit, widen it there.
+`PendingRequest` had five definitions: the canonical one in `src/domain/signing/types.ts` and four narrower restatements across ApprovalOverlay, ApprovalCard, EventDetailModal and PopupApp. They had already drifted into a type error that one of the copies documented in a comment rather than fixing. Import the canonical type; if it does not fit, widen it there.
 
 ---
 
@@ -339,7 +339,7 @@ Configured in `vite.config.ts`:
 | `@context` | `src/context` — the React contexts, all eight |
 | `@utils` | `src/utils` — React-side helpers that are neither a component nor a hook (`createRequiredContext`) |
 | `@styles` | `src/styles` — global stylesheets (`theme.css`) |
-| `@lib` | `src/lib` — the extension core: background handlers, crypto, the vault, the cross-browser shim. Imported by the service worker, so never React |
+| `@lib` | `src/lib` — cryptographic primitives and the cross-browser compatibility shim. Imported by the service worker, so never React |
 | `@assets` | `src/assets` |
 | `@popup` | `src/popup` — the popup entry document |
 | `@wizard` | `src/wizard` — the account-creation wizard, a peer of `popup/`, `prompt/` and `onboarding/` since more than one of them renders it |

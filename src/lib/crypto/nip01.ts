@@ -11,7 +11,7 @@
 
 import { schnorr } from '@noble/curves/secp256k1.js';
 import { bytesToHex, hexToBytes, sha256 } from './utils.ts';
-import type { UnsignedEvent, SignedEvent } from '../types.ts';
+import type { UnsignedEvent, SignedEvent } from '../../domain/nostr/types.ts';
 
 export async function computeEventId(event: UnsignedEvent): Promise<string> {
   const serialized = JSON.stringify([

@@ -8,9 +8,9 @@ import * as nip04 from 'nostr-tools/nip04';
 import { SimplePool } from 'nostr-tools/pool';
 import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import * as signer from '../src/lib/signer.ts';
-import * as permissions from '../src/lib/permissions.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import * as signer from '../src/services/signing/signer.ts';
+import * as permissions from '../src/services/permissions/permissions.ts';
 
 const remoteKey = new Uint8Array(32).fill(7);
 const clientKey = new Uint8Array(32).fill(8);

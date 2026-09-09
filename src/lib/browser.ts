@@ -22,7 +22,7 @@ const browserAPI = (globals.browser ?? globals.chrome) as typeof chrome;
 // at import time and takes the whole module down with it.
 if (browserAPI?.storage && !browserAPI.storage.session) {
   const PREFIX = '__session__';
-  (browserAPI.storage as typeof chrome.storage).session = {
+  (browserAPI.storage as { -readonly [K in keyof typeof chrome.storage]: typeof chrome.storage[K] }).session = {
     get: (keys: string | string[] | Record<string, unknown> | null) => {
       if (keys === null) return browserAPI.storage.local.get(null).then((all: Record<string, unknown>) => {
         const result: Record<string, unknown> = {};

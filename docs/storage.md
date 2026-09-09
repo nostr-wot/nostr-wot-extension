@@ -39,7 +39,7 @@ Safari has no `storage.session`, so `src/lib/browser.ts` shims it onto `storage.
 Wallet credentials are stored as `walletConfig` inside the `Account` object, which is encrypted inside the vault (`keyVault` in `browser.storage.local`). This means wallet configs are protected by the same AES-256-GCM + PBKDF2 encryption as private keys and mnemonics.
 
 ```ts
-// Part of Account in src/lib/types.ts
+// Part of Account in src/domain/accounts/types.ts
 walletConfig?: WalletConfig;
 
 // WalletConfig is a discriminated union:

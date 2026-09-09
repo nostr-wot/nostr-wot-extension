@@ -1,5 +1,5 @@
 import { useState, ChangeEvent } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import ChipGroup from '@components/ChipGroup/ChipGroup';

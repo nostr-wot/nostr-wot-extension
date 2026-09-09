@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { getSupportedLanguages, setLanguage, getLanguage, t } from '@lib/i18n.js';
+import { getSupportedLanguages, setLanguage, getLanguage, t } from '@services/i18n/i18n.ts';
 import TopoBg from '@components/TopoBg/TopoBg';
 import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
 import Button from '@components/Button/Button';

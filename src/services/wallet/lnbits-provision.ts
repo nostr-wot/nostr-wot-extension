@@ -1,0 +1,131 @@
+/**
+ * LNbits auto-provisioning with challenge-response
+ *
+ * Two-step flow:
+ *   1. GET  /api/provision/challenge → { challenge: "<hex>" }
+ *   2. POST /api/provision           → { name, event: <signed-kind-27235> }
+ *
+ * The caller supplies a signFn that signs the challenge as a NIP-98
+ * kind:27235 event. The proxy verifies signature + pubkey before
+ * creating the wallet via LNbits admin API.
+ *
+ * @module services/wallet/lnbits-provision
+ */
+
+import type { SignedEvent } from '../../domain/nostr/types.ts';
+
+export const DEFAULT_LNBITS_URL = 'https://zaps.nostr-wot.com';
+
+interface ProvisionResponse {
+  id: string;
+  name: string;
+  adminkey: string;
+  inkey: string;
+  balance_msat: number;
+  user: string;
+  nwcUri?: string;
+}
+
+/**
+ * Create a new wallet via the provisioning proxy.
+ *
+ * @param instanceUrl - The provisioning server base URL
+ * @param walletName - Name for the new wallet (e.g. "WoT:npub1abc...")
+ * @param signFn - Signs a challenge string, returns a kind:27235 SignedEvent
+ * @param fetchFn - Optional fetch override for testing
+ * @returns The admin key and wallet ID
+ */
+export async function provisionLnbitsWallet(
+  instanceUrl: string,
+  walletName: string,
+  signFn: (challenge: string) => Promise<SignedEvent>,
+  fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
+): Promise<{ adminKey: string; walletId: string; nwcUri?: string }> {
+  const baseUrl = instanceUrl.replace(/\/+$/, '');
+
+  // Step 1: Fetch challenge
+  const challengeRes = await fetchFn(`${baseUrl}/api/provision/challenge`);
+  if (!challengeRes.ok) {
+    throw new Error(`Challenge request failed: ${challengeRes.status}`);
+  }
+  const { challenge } = (await challengeRes.json()) as { challenge: string };
+
+  // Step 2: Sign the challenge
+  const signedEvent = await signFn(challenge);
+
+  // Step 3: Provision with signed event
+  const res = await fetchFn(`${baseUrl}/api/provision`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: walletName, event: signedEvent }),
+  });
+  if (!res.ok) {
+    throw new Error(`Wallet provisioning failed: ${res.status}`);
+  }
+  const data = (await res.json()) as ProvisionResponse;
+  return { adminKey: data.adminkey, walletId: data.id, nwcUri: data.nwcUri };
+}
+
+/**
+ * Claim a Lightning Address username via the provisioning proxy.
+ *
+ * Uses the same challenge-response auth as provisioning.
+ */
+export async function claimLightningAddress(
+  instanceUrl: string,
+  username: string,
+  signFn: (challenge: string) => Promise<SignedEvent>,
+  fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
+): Promise<{ address: string }> {
+  const baseUrl = instanceUrl.replace(/\/+$/, '');
+  const challengeRes = await fetchFn(`${baseUrl}/api/provision/challenge`);
+  if (!challengeRes.ok) throw new Error(`Challenge request failed: ${challengeRes.status}`);
+  const { challenge } = (await challengeRes.json()) as { challenge: string };
+  const signedEvent = await signFn(challenge);
+  const res = await fetchFn(`${baseUrl}/api/claim-username`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event: signedEvent, username }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as Record<string, string>).error || `Claim failed: ${res.status}`);
+  }
+  return (await res.json()) as { address: string };
+}
+
+/**
+ * Look up the Lightning Address for a pubkey (public, no auth needed).
+ */
+export async function getLightningAddress(
+  instanceUrl: string,
+  pubkey: string,
+  fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
+): Promise<string | null> {
+  const baseUrl = instanceUrl.replace(/\/+$/, '');
+  const res = await fetchFn(`${baseUrl}/api/lightning-address?pubkey=${pubkey}`);
+  if (!res.ok) throw new Error(`Lightning Address lookup failed: ${res.status}`);
+  const data = (await res.json()) as { address: string | null };
+  return data.address;
+}
+
+/**
+ * Release a claimed Lightning Address (authenticated).
+ */
+export async function releaseLightningAddress(
+  instanceUrl: string,
+  signFn: (challenge: string) => Promise<SignedEvent>,
+  fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
+): Promise<void> {
+  const baseUrl = instanceUrl.replace(/\/+$/, '');
+  const challengeRes = await fetchFn(`${baseUrl}/api/provision/challenge`);
+  if (!challengeRes.ok) throw new Error(`Challenge request failed: ${challengeRes.status}`);
+  const { challenge } = (await challengeRes.json()) as { challenge: string };
+  const signedEvent = await signFn(challenge);
+  const res = await fetchFn(`${baseUrl}/api/release-username`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event: signedEvent }),
+  });
+  if (!res.ok) throw new Error(`Release failed: ${res.status}`);
+}

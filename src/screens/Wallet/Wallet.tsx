@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Card from '@components/Card/Card';
 import WalletBalance from '@components/WalletBalance/WalletBalance';
 import Button from '@components/Button/Button';
@@ -10,7 +10,7 @@ import WalletSettings from './WalletSettings';
 import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import { IconSettings } from '@assets/index';
-import { type Transaction } from '@lib/wallet/types.ts';
+import { type Transaction } from '@domain/wallet/types.ts';
 import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';
 import { useWallet } from '@context/WalletContext';

@@ -23,7 +23,7 @@ import PermissionsSection from '@screens/Settings/PermissionsSection';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Container from '@components/Container/Container';
 import UnlockModal from '@screens/Vault/UnlockModal';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import type { PendingRequest } from '@domain/permissions/approval.ts';
 
 type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'permissions' | null;

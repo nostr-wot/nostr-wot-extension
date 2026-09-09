@@ -1,9 +1,10 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import type { VaultPayload, Account } from '../src/lib/types.ts';
-import type { WalletConfig } from '../src/lib/wallet/types.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import type { VaultPayload } from '../src/domain/vault/types.ts';
+import type { Account } from '../src/domain/accounts/types.ts';
+import type { WalletConfig } from '../src/domain/wallet/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
 const TEST_PUBKEY_HEX = 'dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659';

@@ -158,6 +158,6 @@ any key material.
 
 ## Reference implementation
 
-`inject.ts` and `lib/signer.ts` in this repository. The consuming side is
+`inject.ts` and `services/signing/signer.ts` in this repository. The consuming side is
 `signerSupportsPq` in
 [`@nostr-wot/signers`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/signers).

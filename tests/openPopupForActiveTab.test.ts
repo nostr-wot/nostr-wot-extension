@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { originMatchesActiveTab, requestIsFromActiveTab } from '../src/lib/originMatchesActiveTab.ts';
+import { originMatchesActiveTab, requestIsFromActiveTab } from '../src/domain/site/originMatchesActiveTab.ts';
 
 // The popup must only auto-open for the tab the user is actually looking at —
 // a background/inactive tab making (or polling) nostr requests must not pop it.

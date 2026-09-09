@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { truncate } from '@utils/format/text.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';

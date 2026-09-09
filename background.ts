@@ -1,8 +1,8 @@
 
 import browser from './src/lib/browser.ts';
-import * as vault from './src/lib/vault.ts';
-import * as signer from './src/lib/signer.ts';
-import * as signerPermissions from './src/lib/permissions.ts';
+import * as vault from './src/services/vault/vault.ts';
+import * as signer from './src/services/signing/signer.ts';
+import * as signerPermissions from './src/services/permissions/permissions.ts';
 import { randomHex } from './src/lib/crypto/utils.ts';
 
 // ── State & handler modules ──
@@ -14,8 +14,8 @@ import {
     buildPrivilegedMethods, setPrivilegedMethods,
     PRIVILEGED_METHODS,
     type HandlerFn,
-} from './src/lib/bg/state.ts';
-import { handlers as miscHandlers, logActivity } from './src/lib/bg/misc-handlers.ts';
+} from './src/services/background/state.ts';
+import { handlers as miscHandlers, logActivity } from './src/services/background/misc-handlers.ts';
 import {
     handlers as domainHandlers,
     isDomainAllowed, isDomainDismissed,
@@ -24,12 +24,12 @@ import {
     isWeblnAllowed,
     waitForConnectDecision,
     isActiveAccountReadOnly,
-} from './src/lib/bg/domain-handlers.ts';
-import { handlers as vaultHandlers } from './src/lib/bg/vault-handlers.ts';
-import { handlers as walletHandlers } from './src/lib/bg/wallet-handlers.ts';
-import { handlers as nip07Handlers, validateNip07Params } from './src/lib/bg/nip07-handlers.ts';
-import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './src/lib/bg/onboarding-handlers.ts';
-import { handlers as pqcHandlers } from './src/lib/bg/pqc-handlers.ts';
+} from './src/services/background/domain-handlers.ts';
+import { handlers as vaultHandlers } from './src/services/background/vault-handlers.ts';
+import { handlers as walletHandlers } from './src/services/background/wallet-handlers.ts';
+import { handlers as nip07Handlers, validateNip07Params } from './src/services/background/nip07-handlers.ts';
+import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './src/services/background/onboarding-handlers.ts';
+import { handlers as pqcHandlers } from './src/services/background/pqc-handlers.ts';
 
 // ── Assemble handler map ──
 
@@ -214,7 +214,7 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
 
     // The requesting tab's id, so the connect gate can tell "this is the tab the user is
     // looking at" without needing to read its URL — which tabs.query strips unless we hold
-    // an explicit host permission for it. See lib/originMatchesActiveTab.ts.
+    // an explicit host permission for it. See domain/site/originMatchesActiveTab.ts.
     handleRequest(request as { method: string; params: Record<string, unknown> }, sender.tab?.id)
         .then(result => {
             sendResponse({ result });
@@ -273,7 +273,7 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
     });
 });
 
-// Keep-alive alarm: while the vault is unlocked in timed-lock mode, lib/vault.ts
+// Keep-alive alarm: while the vault is unlocked in timed-lock mode, services/vault/vault.ts
 // arms a periodic 'vault-keepalive' alarm. Each tick does a trivial async
 // storage read, which resets the Chrome MV3 service-worker idle timer and keeps
 // the in-memory decrypted key alive until the configured auto-lock fires —

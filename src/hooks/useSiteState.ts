@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
+import { resolveActiveTabDomain } from '@services/browser/activeTabDomain.ts';
 import { resolveSiteState } from '@domain/site/siteState.ts';
 import type { Account } from '@domain/accounts/account.ts';
 

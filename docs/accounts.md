@@ -41,7 +41,7 @@ return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
 
 ## 4. Account Switching
 
-When the active account changes (`switchAccount` handler in `src/lib/bg/vault-handlers.ts`):
+When the active account changes (`switchAccount` handler in `src/services/background/vault-handlers.ts`):
 
 1. `vault.setActiveAccount(accountId)` -- update vault's active account pointer (or `clearActiveAccount()` for read-only accounts not in vault)
 2. Update `config.myPubkey` and `browser.storage.sync.myPubkey` -- canonical pubkey source for signer

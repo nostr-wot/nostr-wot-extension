@@ -1,0 +1,315 @@
+/**
+ * Vault lifecycle and account-switching handlers.
+ * @module services/background/vault-handlers
+ */
+
+import browser from '../../lib/browser.ts';
+import { clearWalletDisplayCaches } from '../wallet/display-cache.ts';
+import * as vault from '../vault/vault.ts';
+import * as signer from '../signing/signer.ts';
+import * as signerPermissions from '../permissions/permissions.ts';
+import * as accounts from '../../domain/accounts/creation.ts';
+import { nsecEncode } from '../../lib/crypto/bech32.ts';
+import { bytesToHex } from '../../lib/crypto/utils.ts';
+import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
+import { clearWalletProviders } from '../wallet/index.ts';
+import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
+import { broadcastAccountChanged } from './domain-handlers.ts';
+import type { Account } from '../../domain/accounts/types.ts';
+import type { VaultPayload } from '../../domain/vault/types.ts';
+
+// ── Mirror active pubkey into the background config / storage.sync ──
+
+export async function syncActivePubkey(): Promise<void> {
+    const pubkey = vault.getActivePubkey();
+    if (pubkey) {
+        config.myPubkey = pubkey;
+        await browser.storage.sync.set({ myPubkey: pubkey });
+    } else {
+        config.myPubkey = '';
+        await browser.storage.sync.remove('myPubkey');
+    }
+}
+
+// ── Unlock brute-force guard (persisted, background-side) ──
+//
+// The popup's useVaultUnlock hook has its own escalating lockout, but that
+// state is in-page and resets on reload. This counter lives in storage.local
+// so repeated vault_unlock RPCs hit a server-side lockout regardless of how
+// the caller resets its UI. Reset on successful unlock and on vault_destroy.
+
+const UNLOCK_GUARD_KEY = 'vaultUnlockGuard';
+const UNLOCK_FAILURES_PER_LOCKOUT = 5;
+// Every 5 consecutive failures: 1 min, 5 min, 15 min, 30 min (cap)
+const UNLOCK_LOCKOUT_STEPS_MS = [60_000, 300_000, 900_000, 1_800_000];
+
+interface UnlockGuard { failures: number; lockedUntil: number; }
+
+async function readUnlockGuard(): Promise<UnlockGuard> {
+    const data = await browser.storage.local.get([UNLOCK_GUARD_KEY]) as Record<string, UnlockGuard | undefined>;
+    return data[UNLOCK_GUARD_KEY] ?? { failures: 0, lockedUntil: 0 };
+}
+
+async function recordUnlockFailure(): Promise<void> {
+    const guard = await readUnlockGuard();
+    guard.failures += 1;
+    if (guard.failures % UNLOCK_FAILURES_PER_LOCKOUT === 0) {
+        const step = Math.min(
+            guard.failures / UNLOCK_FAILURES_PER_LOCKOUT - 1,
+            UNLOCK_LOCKOUT_STEPS_MS.length - 1
+        );
+        guard.lockedUntil = Date.now() + UNLOCK_LOCKOUT_STEPS_MS[step];
+    }
+    await browser.storage.local.set({ [UNLOCK_GUARD_KEY]: guard });
+}
+
+// ── Handler Map ──
+
+export const handlers = new Map<string, HandlerFn>([
+    ['vault_unlock', async (params) => {
+        const guard = await readUnlockGuard();
+        if (guard.lockedUntil > Date.now()) {
+            const secondsLeft = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
+            throw new Error(`Too many failed attempts. Try again in ${secondsLeft}s`);
+        }
+        const unlockResult = await vault.unlock(params.password as string);
+        if (!unlockResult) {
+            await recordUnlockFailure();
+        }
+        if (unlockResult) {
+            await browser.storage.local.remove(UNLOCK_GUARD_KEY);
+            // Re-arm the persisted auto-lock interval (not the 15-min default that
+            // _autoLockMs resets to on every service-worker cold start). See bug #10.
+            await vault.restoreAutoLockSetting();
+            const unlockData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+            if (unlockData.activeAccountId) {
+                try {
+                    await vault.setActiveAccount(unlockData.activeAccountId);
+                } catch {
+                    vault.clearActiveAccount();
+                }
+            }
+            await signer.onVaultUnlocked();
+        }
+        return unlockResult;
+    }],
+
+    ['vault_lock', async () => {
+        vault.lock();
+        clearWalletProviders();
+        return { ok: true };
+    }],
+
+    // Await the startup auto-unlock before answering.
+    //
+    // In "Never lock" mode the background re-unlocks on every service-worker
+    // cold start, and that unlock is asynchronous — a storage read plus PBKDF2 —
+    // so for a few hundred milliseconds `isLocked()` reports true while an
+    // unlock that will succeed is still running. Chrome tears the worker down
+    // after ~30s idle, so a popup opened at any ordinary moment landed inside
+    // that window, was told "locked", and hid the wallet card and every
+    // locked-gated action for the rest of its life.
+    //
+    // services/signing/signer.ts already waits on this gate for the same reason
+    // (waitForVaultUnlock); the RPC the popup trusts did not.
+    ['vault_isLocked', async () => {
+        await vault.whenStartupUnlockSettled();
+        return vault.isLocked();
+    }],
+
+    ['vault_exists', async () => vault.exists()],
+
+    ['vault_setAutoLock', async (params) => {
+        const prevMs = ((await browser.storage.local.get(['autoLockMs'])) as Record<string, number>).autoLockMs ?? 900000;
+        const wasNever = prevMs === 0;
+        const willBeNever = params.ms === 0;
+
+        if (wasNever !== willBeNever) {
+            const payload = vault.getDecryptedPayload();
+            if (wasNever) {
+                if (!params.password || (params.password as string).length < 8) {
+                    throw new Error('Password required (min 8 characters)');
+                }
+                await vault.create(params.password as string, payload!);
+            } else {
+                if (!params.currentPassword) {
+                    throw new Error('Current password required');
+                }
+                const ok = await vault.unlock(params.currentPassword as string);
+                if (!ok) throw new Error('Current password is incorrect');
+                await vault.create('', payload!);
+            }
+        }
+
+        vault.setAutoLockTimeout(params.ms as number);
+        await browser.storage.local.set({ autoLockMs: params.ms });
+        return { result: true };
+    }],
+
+    ['vault_getAutoLock', async () => {
+        const data = await browser.storage.local.get(['autoLockMs']) as Record<string, number>;
+        return data.autoLockMs ?? 900000;
+    }],
+
+    ['vault_create', async (params) => {
+        await vault.create(params.password as string, params.payload as VaultPayload);
+        await syncActivePubkey();
+        return { ok: true };
+    }],
+
+    ['vault_listAccounts', async () => vault.listAccounts()],
+
+    ['vault_addAccount', async (params) => {
+        await vault.addAccount(params.account as Account);
+        const addLocalData = await browser.storage.local.get(['accounts']) as Record<string, LocalAccountEntry[]>;
+        const addAccts = addLocalData.accounts || [];
+        if (!addAccts.some(a => a.id === (params.account as Account).id)) {
+            addAccts.push({
+                id: (params.account as Account).id,
+                name: (params.account as Account).name || 'Account',
+                pubkey: (params.account as Account).pubkey,
+                type: (params.account as Account).type || 'generated',
+                readOnly: (params.account as Account).readOnly
+            });
+            await browser.storage.local.set({ accounts: addAccts });
+        }
+        return { ok: true };
+    }],
+
+    ['vault_removeAccount', async (params) => {
+        const removedId = params.accountId as string;
+        await vault.removeAccount(removedId);
+        await clearWalletDisplayCaches(removedId);
+        await signerPermissions.clearForAccount(removedId);
+        await syncActivePubkey();
+        const rmLocalData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
+        const rmAccts = ((rmLocalData.accounts as Array<{ id: string }>) || []).filter(a => a.id !== removedId);
+        const updates: Record<string, unknown> = { accounts: rmAccts };
+        if (rmLocalData.activeAccountId === removedId) {
+            updates.activeAccountId = vault.getActiveAccountId() || (rmAccts[0] as { id: string })?.id || null;
+        }
+        await browser.storage.local.set(updates);
+        if (rmLocalData.activeAccountId === removedId) {
+            // Removing the active account changes the active identity — same
+            // invalidation as an explicit switch.
+            await signer.onActiveAccountChanged(removedId, updates.activeAccountId as string | null);
+        }
+        return { ok: true };
+    }],
+
+    ['switchAccount', async (params) => {
+        const switchId = params.accountId as string;
+        const oldData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        const oldAccountId = oldData.activeAccountId;
+        try {
+            await vault.setActiveAccount(switchId);
+        } catch {
+            vault.clearActiveAccount();
+        }
+        const switchData = await browser.storage.local.get(['accounts']) as Record<string, Array<{ id: string; pubkey: string }>>;
+        const switchAcct = (switchData.accounts || []).find(a => a.id === switchId);
+        const switchPubkey = switchAcct?.pubkey || vault.getActivePubkey();
+        if (switchPubkey) {
+            config.myPubkey = switchPubkey;
+            await browser.storage.sync.set({ myPubkey: switchPubkey });
+        }
+        await browser.storage.local.set({ activeAccountId: switchId });
+        await signer.onActiveAccountChanged(oldAccountId, switchId);
+        if (switchPubkey) {
+            void broadcastAccountChanged(switchPubkey);
+        }
+        return { ok: true };
+    }],
+
+    ['vault_setActiveAccount', async (params) => {
+        const newActiveId = params.accountId as string;
+        const prevData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        await vault.setActiveAccount(newActiveId);
+        await syncActivePubkey();
+        // Same invalidation as switchAccount: reject the previous account's
+        // pending prompts and clear the getPublicKey cooldown.
+        await signer.onActiveAccountChanged(prevData.activeAccountId, newActiveId);
+        return { ok: true };
+    }],
+
+    ['vault_getActivePubkey', async () => vault.getActivePubkey()],
+
+    ['vault_exportNsec', async () => {
+        const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
+        if (!privkeyBytes) throw new Error('No private key available');
+        try {
+            return nsecEncode(bytesToHex(privkeyBytes));
+        } finally {
+            // finally: a throw inside nsecEncode must not skip zeroing
+            privkeyBytes.fill(0);
+        }
+    }],
+
+    ['vault_exportNcryptsec', async (params) => {
+        const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
+        if (!privkeyBytes) throw new Error('No private key available');
+        try {
+            return await ncryptsecEncode(bytesToHex(privkeyBytes), params.password as string);
+        } finally {
+            privkeyBytes.fill(0);
+        }
+    }],
+
+    ['vault_exportSeed', async () => {
+        if (vault.isLocked()) throw new Error('Vault is locked');
+        const payload = vault.getDecryptedPayload();
+        const activeId = (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
+        const activeAcct = payload.accounts.find(a => a.id === activeId);
+        if (!activeAcct || activeAcct.type !== 'generated' || !activeAcct.mnemonic) {
+            throw new Error('Active account has no seed phrase');
+        }
+        return { mnemonic: activeAcct.mnemonic, wordCount: activeAcct.mnemonic.split(' ').length };
+    }],
+
+    ['vault_importNcryptsec', async (params) => {
+        const privkeyHex = await ncryptsecDecode(params.ncryptsec as string, params.password as string);
+        const acct = await accounts.importNsec(privkeyHex, params.name as string);
+        const { privkey, mnemonic, ...safeAcct } = acct;
+        return { account: safeAcct, pubkey: acct.pubkey };
+    }],
+
+    ['vault_changePassword', async (params) => {
+        // An empty password is meaningful to reEncrypt(): it is how "Never lock" mode
+        // stores the vault. Reaching that state through a *password change* would
+        // silently disarm the vault — it would still present as password-protected
+        // while anyone could open it, and the user's old password would stop working.
+        // The only legitimate route into never-lock is vault_setAutoLock, which asks
+        // for confirmation and re-creates the vault deliberately.
+        const newPassword = params.newPassword as string;
+        if (typeof newPassword !== 'string' || newPassword.length === 0) {
+            throw new Error('New password is required');
+        }
+        const unlocked = await vault.unlock(params.currentPassword as string);
+        if (!unlocked) throw new Error('Current password is incorrect');
+        await vault.reEncrypt(newPassword);
+        return { ok: true };
+    }],
+
+    ['vault_getActiveAccountType', async () => {
+        const typeData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
+        const typeAccts = (typeData.accounts as LocalAccountEntry[]) || [];
+        const typeActive = typeAccts.find(a => a.id === typeData.activeAccountId);
+        if (typeActive) {
+            return { type: typeActive.type || 'npub', readOnly: typeActive.readOnly !== false };
+        }
+        return null;
+    }],
+
+    ['vault_destroy', async () => {
+        clearWalletProviders();
+        await signer.cancelAllUnlockWaiters();
+        await vault.destroy();
+        await clearWalletDisplayCaches();
+        await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
+        await browser.storage.sync.remove('myPubkey');
+        config.myPubkey = '';
+        return { ok: true };
+    }],
+]);

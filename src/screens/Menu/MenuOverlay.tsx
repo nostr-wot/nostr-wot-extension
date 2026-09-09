@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
-import { t, getSupportedLanguages, getLanguage } from '@lib/i18n.js';
+import { t, getSupportedLanguages, getLanguage } from '@services/i18n/i18n.ts';
 import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap, IconInfo } from '@assets';
 import { version as appVersion } from '../../../package.json';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';

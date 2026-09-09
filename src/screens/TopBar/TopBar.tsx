@@ -1,7 +1,7 @@
 import AccountCopyDialog from './AccountCopyDialog';
 import { useAccount } from '@context/AccountContext';
 import { useState } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { IconSettings } from '@assets';
 import AccountBar from './AccountBar';
 import AccountDropdown from './AccountDropdown';

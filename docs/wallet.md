@@ -36,15 +36,14 @@ This mirrors the NIP-07 signer flow: inject.ts exposes the API, content.ts bridg
 ## 3. File Structure
 
 ```
-src/lib/wallet/
-  types.ts              # WalletConfig, WalletProvider, Transaction, SafeWalletInfo
+src/services/wallet/
   index.ts              # Factory + per-account provider cache
   nwc.ts                # NWC (NIP-47) provider
   lnbits.ts             # LNbits REST provider
   lnbits-provision.ts   # Auto-provisioning via challenge-response
-  bolt11.ts             # BOLT11 invoice decoder
   lnurl.ts              # LNURL-pay / Lightning Address resolution (LUD-16, LUD-06)
   payment-intents.ts    # At-most-once payment tracking across popup teardown
+  display-cache.ts      # Persisted, account-scoped safe wallet display data
 
 src/screens/Wallet/
   Wallet.tsx           # Composition: balance card, action row, which dialog is open
@@ -56,7 +55,11 @@ src/screens/Wallet/
   TxFilterDialog.tsx   # Direction + date-range form
   WalletSettings.tsx   # Connection, auto-approve threshold, Lightning Address
 
-src/domain/wallet/        # the decision logic, unit-tested without a browser
+src/domain/wallet/        # contracts and pure decision logic
+  types.ts                # WalletConfig, WalletProvider, Transaction, SafeWalletInfo
+  constants.ts            # Wallet protocol timeout
+  bolt11.ts               # BOLT11 invoice decoder
+  lnurl.ts                # Address/LNURL parsing, types and URL validation
   txFilter.ts             # what matches the filter bar; the memo placeholder rule
   invoiceExpiry.ts        # how long an invoice has left
   sendTarget.ts           # the single answer to "what would Pay send?"
@@ -147,7 +150,7 @@ User clicks "Create Wallet"
 
 ### File
 
-`src/lib/wallet/lnbits-provision.ts` — `provisionLnbitsWallet(instanceUrl, walletName, signFn)`
+`src/services/wallet/lnbits-provision.ts` — `provisionLnbitsWallet(instanceUrl, walletName, signFn)`
 
 ### 5.2 Lightning Address Claiming
 
@@ -171,7 +174,7 @@ Server endpoints:
 
 Username validation: `^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$` (3-30 chars). Reserved names blocked.
 
-Client functions in `src/lib/wallet/lnbits-provision.ts`:
+Client functions in `src/services/wallet/lnbits-provision.ts`:
 - `claimLightningAddress(instanceUrl, username, signFn)`
 - `getLightningAddress(instanceUrl, pubkey)`
 - `releaseLightningAddress(instanceUrl, signFn)`
@@ -211,7 +214,7 @@ User pastes name@domain
   → provider.payInvoice(bolt11)
 ```
 
-Both hops are attacker-influenced — the user pastes the address, the *server* picks the callback — so `src/lib/wallet/lnurl.ts` constrains every one of them (see [Security §17](security.md#17-lnurl-pay-hardening-srclibwalletlnurlts)):
+Both hops are attacker-influenced — the user pastes the address, the *server* picks the callback — so `src/services/wallet/lnurl.ts` constrains every one of them (see [Security §17](security.md#17-lnurl-pay-hardening-srcserviceswalletlnurlts)):
 
 | Guard | Why |
 |-------|-----|
@@ -225,11 +228,13 @@ Both hops are attacker-influenced — the user pastes the address, the *server* 
 | 15s timeout on every request | An endpoint that stops answering must not hold the worker open |
 | 64 KB response cap, enforced while reading; LUD-06 `status: "ERROR"` surfaced verbatim | Bounded, legible failures |
 
-Exports:
+Pure exports from `src/domain/wallet/lnurl.ts`:
 - `parseLnurl(input)` — decode bech32 or lightning-prefixed LNURL; invalid input returns null
 - `parseLightningAddress(input)` / `isLightningAddress(input)` — parse/detect; never throws
 - `lightningAddressToLnurlpUrl(address)` — the LUD-16 well-known URL
 - `assertPublicHttpsUrl(url)` — the guard above; returns the parsed `URL`
+
+Network exports from `src/services/wallet/lnurl.ts`:
 - `fetchPayParams(address, fetchFn?)` — validated `LnurlPayParams`
 - `requestInvoice(params, amountSats, comment?, fetchFn?)` — amount-verified `{ bolt11, amountSats }`
 
@@ -259,7 +264,7 @@ that *threw* clears its record, because `rpc()` does not retry application
 errors and the user is the one deciding whether to try again.
 
 **Claiming an intent is serialized** through the same `AsyncLock` that
-`src/lib/signer.ts` and `src/lib/permissions.ts` use for their session-storage maps.
+`src/services/signing/signer.ts` and `src/services/permissions/permissions.ts` use for their session-storage maps.
 Read-modify-write on one key is not atomic, and the guard cannot itself be racy:
 two claims that both read before either writes each store back a map missing the
 other's record, and once an in-flight marker is gone a retry finds nothing and
@@ -272,7 +277,7 @@ written to stop. Intent ids are per-click UUIDs, so a stranded marker blocks
 nothing — the long bound exists only so the leak cannot grow without limit.
 
 Errors that cross back to the popup are **stable codes**, not sentences
-(`PAYMENT_IN_FLIGHT`, in `src/lib/wallet/types.ts` — the one wallet module that
+(`PAYMENT_IN_FLIGHT`, in `src/domain/wallet/types.ts` — the one wallet module that
 imports nothing, so the popup can recognise it without pulling the background's
 storage shim into its bundle). A sentence thrown in the background is an English
 sentence in all six locales.
@@ -335,7 +340,7 @@ WebLN access is a **separate consent** from the NIP-07 connect. A site that is
 merely NIP-07-connected (e.g. via `getPublicKey`) cannot see the wallet at all.
 
 - Stored in `browser.storage.local` at key `weblnAllowedDomains` (list of
-  origins), managed by `src/lib/bg/domain-handlers.ts`
+  origins), managed by `src/services/background/domain-handlers.ts`
   (`getWeblnAllowedDomains` / `addWeblnAllowedDomain` / `isWeblnAllowed` /
   `removeWeblnAllowedDomain`).
 - Recorded by the `webln_enable` handler after the user approves the
@@ -417,7 +422,7 @@ Extends the existing signer prompt system:
 
 ## 9. BOLT11 Invoice Decoder
 
-`src/lib/wallet/bolt11.ts` provides lightweight BOLT11 invoice decoding using the existing bech32 infrastructure:
+`src/domain/wallet/bolt11.ts` provides lightweight BOLT11 invoice decoding using the existing bech32 infrastructure:
 
 ```typescript
 interface DecodedInvoice {

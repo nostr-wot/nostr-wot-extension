@@ -1,5 +1,5 @@
 import { useState, ChangeEvent } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Select from '@components/Select/Select';
 import type { PromptDecision } from '@domain/permissions/prompt.ts';
 import Container from '@components/Container/Container';

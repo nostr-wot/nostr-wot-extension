@@ -82,10 +82,10 @@ function constArrayMembers(file: string, name: string): string[] {
  */
 function dynamicKeys(): string[] {
   const keys: string[] = [];
-  for (const type of unionMembers('src/lib/types.ts', 'AccountType')) {
+  for (const type of unionMembers('src/domain/accounts/types.ts', 'AccountType')) {
     keys.push(`wizard.type.${type}`);
   }
-  for (const reason of unionMembers('src/lib/bg/pqc-handlers.ts', 'PqcBlockReason')) {
+  for (const reason of unionMembers('src/services/background/pqc-handlers.ts', 'PqcBlockReason')) {
     keys.push(`pqc.reason.${reason}`);
   }
   for (const decision of constArrayMembers('src/domain/permissions/permissionRules.ts', 'DECISIONS')) {

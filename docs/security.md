@@ -1,6 +1,6 @@
 # Security
 
-## 1. Vault -- `src/lib/vault.ts`
+## 1. Vault -- `src/services/vault/vault.ts`
 
 The vault encrypts sensitive account data (private keys, mnemonics) at rest using Web Crypto APIs.
 
@@ -23,11 +23,11 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
 }
 ```
 
-**Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. It also writes `LOCK_STATE_KEY` (`vaultLockedAt`, `src/lib/constants.ts`) to `storage.local`, fire-and-forget, because locking left no trace an open popup could observe: `VaultContext` re-checked only when the active account changed, so a popup sitting open past the interval went on rendering unlocked UI over a locked vault — and an incoming request that queued an unlock waiter produced no prompt at all, since the surface that raises one only does so when it believes the vault is locked. The request simply timed out after two minutes with no UI ever shown. `storage.onChanged` is the only channel that carries this: runtime messages are not delivered back to the document that sent them, and a background broadcast reaches only a popup already listening. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
+**Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. It also writes `LOCK_STATE_KEY` (`vaultLockStateAt`, `src/domain/vault/constants.ts`) to `storage.local`, fire-and-forget, because locking left no trace an open popup could observe: `VaultContext` re-checked only when the active account changed, so a popup sitting open past the interval went on rendering unlocked UI over a locked vault — and an incoming request that queued an unlock waiter produced no prompt at all, since the surface that raises one only does so when it believes the vault is locked. The request simply timed out after two minutes with no UI ever shown. `storage.onChanged` is the only channel that carries this: runtime messages are not delivered back to the document that sent them, and a background broadcast reaches only a popup already listening. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
 
 The configured interval is stored as `autoLockMs` in `browser.storage.local`, but `_autoLockMs` is module-level in-memory state that resets to the 15-minute default on every service-worker cold start. `restoreAutoLockSetting()` re-reads the persisted `autoLockMs` (defaulting to 15 min when absent) and re-arms the timer; it is called on background startup and after every successful `vault_unlock`, so the user's chosen interval — not the default — governs locking after the SW restarts (bug #10).
 
-**"Never lock" auto-unlock and the cold-start window**: with `autoLockMs === 0` the vault is stored under an empty password and `background.ts` re-unlocks it on every service-worker cold start. That unlock is asynchronous — a storage read plus PBKDF2 at 210,000 iterations — so `isLocked()` reports **locked** for a few hundred milliseconds after every startup, and no keep-alive alarm is armed in this mode (`armKeepAlive()` returns early when `_autoLockMs <= 0`), so Chrome tears the worker down after ~30s idle and cold starts are routine. The startup sequence is therefore registered via `vault.beginStartupUnlock()`, and request paths (`waitForVaultUnlock()` in `src/lib/signer.ts`) `await vault.whenStartupUnlockSettled()` before concluding the vault is locked. Without that gate a `signEvent` arriving inside the window queued an unlock marker and auto-opened the action popup — showing an empty popup on requests the user's saved `allow` permission had already approved.
+**"Never lock" auto-unlock and the cold-start window**: with `autoLockMs === 0` the vault is stored under an empty password and `background.ts` re-unlocks it on every service-worker cold start. That unlock is asynchronous — a storage read plus PBKDF2 at 210,000 iterations — so `isLocked()` reports **locked** for a few hundred milliseconds after every startup, and no keep-alive alarm is armed in this mode (`armKeepAlive()` returns early when `_autoLockMs <= 0`), so Chrome tears the worker down after ~30s idle and cold starts are routine. The startup sequence is therefore registered via `vault.beginStartupUnlock()`, and request paths (`waitForVaultUnlock()` in `src/services/signing/signer.ts`) `await vault.whenStartupUnlockSettled()` before concluding the vault is locked. Without that gate a `signEvent` arriving inside the window queued an unlock marker and auto-opened the action popup — showing an empty popup on requests the user's saved `allow` permission had already approved.
 
 **The `vault_isLocked` RPC awaits the same gate**, and did not until the UX audit found it. The popup asks that one question and trusts the answer, so on a never-lock vault every popup opened after ~30s idle — which is every ordinary open — raced the startup PBKDF2 and was told "locked". Because a *successful* unlock wrote nothing observable, the answer never corrected: the wallet balance card, the Wallet menu row and every locked-gated action stayed hidden for the whole life of that popup and reappeared on the next open for no visible reason. This was the extension's most reproducible intermittent fault. `unlock()` now bumps `LOCK_STATE_KEY` on success as well as `lock()` doing so, so the marker means "the lock state changed" in either direction and an open popup re-reads it.
 
@@ -38,7 +38,7 @@ The configured interval is stored as `autoLockMs` in `browser.storage.local`, bu
 **Brute-force protection**: Two layers with the same escalation schedule (every 5 consecutive failures: 1 min, 5 min, 15 min, 30 min cap):
 
 1. **Popup-side** — the `useVaultUnlock` hook displays the countdown and disables the input during lockout. Module-level state, so remounting components does not reset it; it does reset on full page reload.
-2. **Background-side (authoritative)** — the `vault_unlock` handler (`src/lib/bg/vault-handlers.ts`) keeps a persisted failure counter in `browser.storage.local` under `vaultUnlockGuard { failures, lockedUntil }`. While `lockedUntil` is in the future, `vault_unlock` throws `Too many failed attempts. Try again in Ns` without attempting decryption — even for the correct password. A failed attempt increments the counter; a successful unlock removes the guard; `vault_destroy` clears it. Because it is persisted, popup reloads and service-worker restarts do not reset it.
+2. **Background-side (authoritative)** — the `vault_unlock` handler (`src/services/background/vault-handlers.ts`) keeps a persisted failure counter in `browser.storage.local` under `vaultUnlockGuard { failures, lockedUntil }`. While `lockedUntil` is in the future, `vault_unlock` throws `Too many failed attempts. Try again in Ns` without attempting decryption — even for the correct password. A failed attempt increments the counter; a successful unlock removes the guard; `vault_destroy` clears it. Because it is persisted, popup reloads and service-worker restarts do not reset it.
 
 **Creating a vault refuses to replace one that holds accounts.** `vault.create()` writes the payload it is given, so `onboarding_createVault` — whose payload is `accounts: [theNewOne]` — replaces the vault outright. Adding to an existing vault is `onboarding_addToVault`; deliberately replacing one is `vault_destroy` first. The popup tries to route between them and cannot be relied on to: `PasswordStep` probes for an existing vault and falls into `catch { setVaultExists(false) }`, so a cold worker — or the persisted brute-force guard throwing during a lockout — turns *any* failure of that probe into "there is no vault", and the next screen offers to create one. The handler therefore enforces it, refusing when a vault exists **and holds accounts**. The account list in `storage.local` is what makes that answerable while the vault is locked, which is the state the dangerous path arrives in: the decrypted payload is unreadable then, so asking the vault itself would answer "no accounts" and wave the overwrite through. An empty vault left behind by removing the last account is still a supported thing to onboard into.
 
@@ -85,7 +85,7 @@ try {
 }
 ```
 
-The same try/finally discipline applies in `src/lib/accounts.ts` and the vault handlers:
+The same try/finally discipline applies in `src/domain/accounts/creation.ts` and the vault handlers:
 
 - `createFromMnemonic` / `createFromMnemonicAtIndex` / `importFromMnemonicDerived` zero the 64-byte BIP-39 seed (`mnemonicToSeed` result) and the derived privkey `Uint8Array` in a `finally` block — only the hex copy on the returned `Account` survives.
 - `importNsec` zeroes the decoded `privkeyBytes` after deriving the pubkey.
@@ -122,7 +122,7 @@ AES-CBC decrypt errors are caught and re-thrown as a generic `"Decryption failed
 ## 7. NIP-46 Connect Secret
 
 The `nostrconnect://` QR code flow includes a `connectSecret` parameter:
-- A random 16-byte hex string is generated (`onboarding_initNostrConnect` in `src/lib/bg/onboarding-handlers.ts`) and embedded in the URI via `createNostrConnectURI`
+- A random 16-byte hex string is generated (`onboarding_initNostrConnect` in `src/services/background/onboarding-handlers.ts`) and embedded in the URI via `createNostrConnectURI`
 - `BunkerSigner.fromURI` (from `nostr-tools/nip46`, not a hand-rolled client) validates that the wallet's `connect` acknowledgement echoes the same secret before it resolves
 - Requests with a wrong or missing secret never resolve the signer promise
 
@@ -185,7 +185,7 @@ The auto-approve threshold (`walletThreshold_{accountId}`) is stored in `browser
 
 ---
 
-## 8d. Post-Quantum Key Derivation (`src/lib/bg/pqc-handlers.ts`)
+## 8d. Post-Quantum Key Derivation (`src/services/background/pqc-handlers.ts`)
 
 Post-quantum keys are derived from the BIP-39 seed as **siblings** of the secp256k1 key,
 never from the private key itself. This is the property the scheme depends on: deriving
@@ -208,7 +208,7 @@ independently generated key instead.
 
 ## 9. Rate Limiting
 
-- **Per-origin pending-request cap** (`src/lib/signer.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
+- **Per-origin pending-request cap** (`src/services/signing/signer.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
 - **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 600,000 iterations (~600ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----srclibvaultts).
 
 ### 9b. Permission Resolution Is Deny-Wins
@@ -221,7 +221,7 @@ The redacted pending-onboarding account is persisted to `browser.storage.session
 
 ## Connecting a site
 
-Connecting is one decision, made in one place. The "Connect this site" card calls the `connectDomain` RPC, which is the **only** writer of `allowedDomains` — and `allowedDomains` is what every consumer reads: the NIP-07 gate in `background.ts`, the identity shortcut in `src/lib/signer.ts`, the account-change broadcast, and the popup's own site state. One writer and one reader-of-record is what makes the list trustworthy.
+Connecting is one decision, made in one place. The "Connect this site" card calls the `connectDomain` RPC, which is the **only** writer of `allowedDomains` — and `allowedDomains` is what every consumer reads: the NIP-07 gate in `background.ts`, the identity shortcut in `src/services/signing/signer.ts`, the account-change broadcast, and the popup's own site state. One writer and one reader-of-record is what makes the list trustworthy.
 
 The extension asks the browser for no host permissions. Up to 0.5.0 the Connect flow additionally requested `*://<site>/*`, which gated nothing — identity release is decided by the allowlist, and no NIP-07 path consults `permissions.contains` — while causing two bugs of its own: the browser's dialog dismissed the popup and lost the click, and recording the click before the dialog released the identity while it was still unanswered. The request is gone, and `releaseLegacyHostGrants()` hands back on startup whatever earlier versions were granted, so the browser stops listing those sites as ones this extension can read.
 
@@ -262,7 +262,7 @@ return safe;
 
 ---
 
-## 12. Relay Event Integrity (`src/lib/relay.ts`)
+## 12. Relay Event Integrity (`src/services/relays/relay.ts`)
 
 Relays are untrusted. Every inbound event consumed through `liveQuery` is
 schnorr-signature-verified with `verifyEvent()` (`src/lib/crypto/nip01.ts` —
@@ -280,7 +280,7 @@ Per-socket message handling is serialized (promise chain) so async verification
 preserves relay ordering — an `EOSE` can't exhaust the query while an event is
 still being verified.
 
-### 12.1 The readers that bypassed it (`src/lib/bg/profile-handlers.ts`)
+### 12.1 The readers that bypassed it (`src/services/background/profile-handlers.ts`)
 
 `liveQuery` is not the only way this extension reads from a relay. Two readers open their own sockets — `fetchKind0Read` (profile) and `fetchMuteList` (NIP-51 kind:10000) — and both accepted events on `pubkey` and `kind` alone. Those are fields the relay asserts; they are only meaningful once the signature over them is checked, so any relay could serve a document attributed to anyone, with a `created_at` high enough to win the "newest wins" comparison.
 
@@ -297,7 +297,7 @@ Both now verify through a shared `acceptedEvent()` (id + `verifyEvent()`) before
 
 ---
 
-## 13. NWC Response Hardening (`src/lib/wallet/nwc.ts`)
+## 13. NWC Response Hardening (`src/services/wallet/nwc.ts`)
 
 Kind-23195 NWC responses are only trusted when all of the following hold:
 
@@ -313,7 +313,7 @@ slot and drop the wallet's real response (previously a response-DoS vector).
 
 ---
 
-## 14. Relay Health Check SSRF Guard (`src/lib/bg/publish-handlers.ts`)
+## 14. Relay Health Check SSRF Guard (`src/services/background/publish-handlers.ts`)
 
 `checkRelayHealth` only probes URLs that start with `ws://`/`wss://` and whose
 host is not private: `localhost`, `*.local`, `[::1]`, `0.0.0.0/8`,
@@ -324,7 +324,7 @@ probe keeps its 5-second timeout.
 
 ---
 
-## 15. LNbits Transport Security (`src/lib/wallet/lnbits.ts`)
+## 15. LNbits Transport Security (`src/services/wallet/lnbits.ts`)
 
 Every LNbits request calls `assertSecureUrl()` first: the admin key
 (`X-Api-Key`) is only ever sent over `https://`, with a development exception
@@ -346,7 +346,7 @@ upload previews are exempt because they never come from relay data.
 
 ---
 
-## 17. LNURL-pay Hardening (`src/lib/wallet/lnurl.ts`)
+## 17. LNURL-pay Hardening (`src/services/wallet/lnurl.ts`)
 
 Paying a Lightning Address or pasted LNURL makes the background service worker — the context
 holding the wallet's admin key — fetch a URL derived from user input, then a

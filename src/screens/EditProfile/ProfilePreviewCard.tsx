@@ -1,5 +1,5 @@
 import { safeImageUrl } from '@utils/safeUrl.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import { type ProfileMetadata } from '@domain/profile/profileMetadata.ts';

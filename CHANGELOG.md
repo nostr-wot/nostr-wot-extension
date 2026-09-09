@@ -8,6 +8,9 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Updated vulnerable dependencies; npm audit reports zero known vulnerabilities.
+- Reorganized application code into feature domains, services and generic utilities; retained crypto and browser compatibility in lib.
+
 - Send now accepts pasted bech32 LNURL-pay strings and `lightning:LNURL…` links, with endpoint-domain preview and the existing amount, approval and duplicate-payment safeguards.
 - LNURL checksums, mixed case, malformed UTF-8, unsafe URLs and non-payment endpoints are rejected.
 - Refreshed Chrome/Firefox packages, reviewer notes and reproducible source archive.
@@ -27,6 +30,7 @@ have had.
 
 ### Store release notes
 
+- Updated vulnerable dependencies.
 - Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
 - Fixed NWC wallet connection and startup.
 - Improved website payment compatibility and detection of supported WebLN methods.

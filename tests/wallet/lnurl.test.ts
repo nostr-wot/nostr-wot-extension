@@ -12,11 +12,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { bech32 } from '@scure/base';
-import {
-  parseLnurl, parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl,
-  assertPublicHttpsUrl, fetchPayParams, requestInvoice,
-  type LnurlPayParams,
-} from '../../src/lib/wallet/lnurl.ts';
+import { parseLnurl, parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl, assertPublicHttpsUrl, type LnurlPayParams } from '../../src/domain/wallet/lnurl.ts';
+import { fetchPayParams, requestInvoice } from '../../src/services/wallet/lnurl.ts';
 
 // lnbc2500u = 250,000 sats
 const INVOICE_250K =

@@ -202,3 +202,33 @@ it('builds before tests in local and CI runners so clean checkouts have CSS asse
   assert.ok(local.indexOf('npm run build') >= 0 && local.indexOf('npm run build') < local.indexOf('node --import'), 'local runner must build before tests');
   assert.ok(ci.indexOf('run: npm run build') >= 0 && ci.indexOf('run: npm run build') < ci.indexOf('run: node --import'), 'CI must build before tests');
 });
+
+// Keep feature rules usable without initializing browser or network services.
+describe('source boundaries', () => {
+  it('keeps lib limited to cryptography and browser compatibility', () => {
+    assert.deepEqual(readdirSync(join(ROOT, 'src/lib')).sort(), ['browser.ts', 'crypto']);
+  });
+
+  it('keeps domain imports independent of services, browser APIs and React', () => {
+    const domainRoot = join(ROOT, 'src/domain');
+    const files = readdirSync(domainRoot, { recursive: true })
+      .filter((file): file is string => typeof file === 'string' && file.endsWith('.ts'));
+    assert.ok(files.length > 30, 'must inspect the domain tree');
+    const violations: string[] = [];
+    for (const file of files) {
+      const full = join(domainRoot, file);
+      const source = readFileSync(full, 'utf8');
+      // Includes import/export-from, side-effect imports and dynamic imports.
+      const imports = source.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)["']([^"']+)["']/g);
+      for (const [, specifier] of imports) {
+        const target = specifier.startsWith('.')
+          ? relative(join(ROOT, 'src'), join(dirname(full), specifier))
+          : specifier.replace(/^@/, '');
+        if (/^(?:services\/|lib\/browser(?:\.|$)|react(?:-dom)?(?:\/|$)|components\/|screens\/|context\/|hooks\/)/.test(target)) {
+          violations.push(`${file}: ${specifier}`);
+        }
+      }
+    }
+    assert.deepEqual(violations, [], 'domain rules must not depend on I/O or UI modules');
+  });
+});

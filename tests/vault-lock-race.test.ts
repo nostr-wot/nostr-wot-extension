@@ -11,7 +11,7 @@
  * Wallet menu row and every locked-gated action stayed hidden for the whole life
  * of that popup, then came back on the next open for no visible reason.
  *
- * lib/signer.ts already awaited this gate. The RPC the popup trusts did not.
+ * services/signing/signer.ts already awaited this gate. The RPC the popup trusts did not.
  *
  * Run with:
  *   node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault-lock-race.test.ts
@@ -20,9 +20,9 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import { handlers as vaultHandlers } from '../src/lib/bg/vault-handlers.ts';
-import type { VaultPayload } from '../src/lib/types.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import { handlers as vaultHandlers } from '../src/services/background/vault-handlers.ts';
+import type { VaultPayload } from '../src/domain/vault/types.ts';
 
 const PASSWORD = 'testpassword123';
 

@@ -1,5 +1,5 @@
 import React, { useState, ChangeEvent } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import InputRow from '@components/InputRow/InputRow';
 import RemoveButton from '@components/RemoveButton/RemoveButton';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';

@@ -1,4 +1,4 @@
-import { parseLnurl } from '../../lib/wallet/lnurl.ts';
+import { parseLnurl } from './lnurl.ts';
 
 /**
  * What, if anything, the wallet's Send box should pay right now.

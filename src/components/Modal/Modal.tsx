@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { IconClose } from '@assets';
 import IconButton from '@components/IconButton/IconButton';
 import { cn } from '@utils/cn.ts';

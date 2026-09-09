@@ -5,7 +5,7 @@
  * "connected" and should be auto-added back to the allowlist. That turned Disconnect into a
  * suggestion — `removeAllowedDomain` never cleared signer permissions, so the next popup
  * render silently re-added the domain and the pubkey was released again through the
- * allowlist shortcut in lib/signer.ts.
+ * allowlist shortcut in services/signing/signer.ts.
  *
  * It was worse than it looks: the check counted ANY non-empty permission map, including one
  * whose only entry is an explicit `deny`. A site the user had specifically refused was

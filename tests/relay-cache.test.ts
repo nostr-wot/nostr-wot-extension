@@ -23,8 +23,8 @@ import {
   cacheKey,
   PQC_PUBLISHED_CACHE,
   MUTE_LIST_CACHE,
-} from '../src/lib/bg/relayCache.ts';
-import * as popupNames from '../src/services/relayCacheNames.ts';
+} from '../src/services/relays/relayCache.ts';
+import * as popupNames from '../src/domain/relays/cacheNames.ts';
 
 const PUBKEY = 'a'.repeat(64);
 
@@ -157,7 +157,7 @@ it('many readers share one cold query and fresh cache reads perform no network w
 });
 
 it('a successful publication cannot be overwritten by an older in-flight negative check', async () => {
-  const { seedRelayCache } = await import('../src/lib/bg/relayCache.ts');
+  const { seedRelayCache } = await import('../src/services/relays/relayCache.ts');
   let finish!: () => void;
   let started!: () => void;
   const ready = new Promise<void>(resolve => { started = resolve; });

@@ -1,7 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { crx } from '@crxjs/vite-plugin';
+import { crx, type ManifestV3Export } from '@crxjs/vite-plugin';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -76,7 +76,7 @@ export default defineConfig({
     // Before crx(): the CRX plugin rewrites asset references for the extension's
     // packaging, and it has to see the stylesheet Tailwind has already generated.
     tailwindcss(),
-    crx({ manifest }),
+    crx({ manifest: manifest as ManifestV3Export }),
     bundleServiceWorker(),
   ],
   define: {

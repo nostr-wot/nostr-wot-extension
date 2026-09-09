@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
-import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
+import { t } from '@services/i18n/i18n.ts';
+import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { formatSats } from '@utils/format/number.ts';
 import '@styles/tailwind.css';
 import Button from '@components/Button/Button';

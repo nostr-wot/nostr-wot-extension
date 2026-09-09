@@ -11,15 +11,15 @@
  * ApprovalOverlay and ApprovalCard, and the copies had already drifted into a
  * type error that the card's own comment documented.
  *
- * `PendingRequest` is NOT redefined here: `lib/types.ts` already owns the
+ * `PendingRequest` is NOT redefined here: `domain/signing/types.ts` already owns the
  * canonical shape — the one the background actually queues — and the two UI
  * copies were narrower restatements of it that had to be kept in sync by hand.
  * Re-exporting the real one is the point.
  */
 
-export type { PendingRequest } from '@lib/types.ts';
+export type { PendingRequest } from '@domain/signing/types.ts';
 
-import type { PendingRequest } from '@lib/types.ts';
+import type { PendingRequest } from '@domain/signing/types.ts';
 
 export interface ApprovalGroup {
   origin: string;

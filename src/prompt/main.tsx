@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { initI18n } from '@lib/i18n.js';
+import { initI18n } from '@services/i18n/i18n.ts';
 import PromptApp from './PromptApp';
 
 initI18n().then(() => {

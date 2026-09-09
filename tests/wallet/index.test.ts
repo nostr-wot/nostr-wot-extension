@@ -6,8 +6,8 @@ import {
   removeWalletProvider,
   clearWalletProviders,
   hasWalletConfig,
-} from '../../src/lib/wallet/index.ts';
-import type { WalletConfig, WalletProvider } from '../../src/lib/wallet/index.ts';
+} from '../../src/services/wallet/index.ts';
+import type { WalletConfig, WalletProvider } from '../../src/services/wallet/index.ts';
 
 /** Minimal mock provider for testing cache behavior. */
 function mockProvider(type: 'nwc' | 'lnbits' = 'nwc'): WalletProvider & { disconnected: boolean } {

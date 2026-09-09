@@ -81,7 +81,6 @@ export function isAlreadyPublished(
   return !!existing && !existing.unreachable && existing.published && existing.current;
 }
 
-
 /** Keep publication evidence only while the same account and keys are active. */
 export function mergePqcStatus(previous: { status: PqcPanelStatus | null; published: PqcPublished | null }, status: PqcPanelStatus) {
   const sameKeys = previous.status?.pubkey === status.pubkey && previous.status?.keys?.kem === status.keys?.kem && previous.status?.keys?.dsa === status.keys?.dsa;

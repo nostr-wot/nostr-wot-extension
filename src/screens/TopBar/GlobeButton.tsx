@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { rpc, rpcNotify } from '@services/rpc.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import SiteIcon from '@components/SiteIcon/SiteIcon';
-import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
+import { resolveActiveTabDomain } from '@services/browser/activeTabDomain.ts';
 import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
@@ -49,7 +49,7 @@ export default function GlobeButton() {
 
   useOutsideClick(ref, () => setOpen(false), open);
 
-  // One step, same as the home card. See lib/bg/domain-handlers.ts connectDomain.
+  // One step, same as the home card. See services/background/domain-handlers.ts connectDomain.
   //
   // Guarded like handleDisconnect three lines below, which it was not: a failed
   // connectDomain — the worker asleep past rpc()'s three wake retries — was an

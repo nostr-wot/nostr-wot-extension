@@ -31,7 +31,7 @@ let session: Record<string, unknown> = {};
   },
 };
 
-const { resolveActiveTabDomain } = await import('../src/domain/site/activeTabDomain.ts');
+const { resolveActiveTabDomain } = await import('../src/services/browser/activeTabDomain.ts');
 
 function activeTab(tab: unknown) { tabs = tab ? [tab] : []; }
 function backgroundKnows(map: Record<number, string>) { origins = map; }

@@ -2,7 +2,7 @@ import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { uploadProfileImages } from '../src/services/blossom.ts';
+import { uploadProfileImages } from '../src/services/media/blossom.ts';
 import ProfilePreviewCard from '../src/screens/EditProfile/ProfilePreviewCard';
 import EncryptedBackupForm from '../src/components/EncryptedBackupForm/EncryptedBackupForm';
 

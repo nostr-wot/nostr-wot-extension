@@ -36,9 +36,9 @@ Everything here is implemented and running:
 
 | Draft | Implementation |
 |---|---|
-| 01, 02 | `lib/crypto/pq.ts`, `lib/bg/pqc-handlers.ts` |
+| 01, 02 | `lib/crypto/pq.ts`, `services/background/pqc-handlers.ts` |
 | 03 | `lib/crypto/pq.ts` (envelope section), [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq) |
-| 04 | `inject.ts`, `lib/signer.ts`, [`@nostr-wot/signers`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/signers) |
+| 04 | `inject.ts`, `services/signing/signer.ts`, [`@nostr-wot/signers`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/signers) |
 
 A second implementation exists in [Obelisk](https://github.com/obelisk-app/obelisk),
 which consumes all four through the SDK rather than reimplementing them. That is

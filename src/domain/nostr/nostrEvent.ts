@@ -1,4 +1,4 @@
-import type { UnsignedEvent } from '@lib/types.ts';
+import type { UnsignedEvent } from '@domain/nostr/types.ts';
 
 /**
  * Event shape shared by every approval/activity display surface: EventPreview, its
@@ -22,7 +22,7 @@ import type { UnsignedEvent } from '@lib/types.ts';
  * extra wire fields (`id`, `sig`, `pubkey`, ...) an event happens to carry without this
  * type having to enumerate them.
  *
- * Deliberately not folded into `UnsignedEvent` (lib/types.ts): that type is the strict
+ * Deliberately not folded into `UnsignedEvent` (domain/nostr/types.ts): that type is the strict
  * wire shape used for signing, where `tags` is required and there is no index
  * signature. Loosening it here would leak a display-only permissiveness into every
  * signing path that depends on it.

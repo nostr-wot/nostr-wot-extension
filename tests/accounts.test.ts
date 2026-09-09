@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
   createFromMnemonic, createFromMnemonicAtIndex, generateNewAccount, importNsec, importNpub, connectNip46, importFromMnemonicDerived
-} from '../src/lib/accounts.ts';
+} from '../src/domain/accounts/creation.ts';
 import { nsecEncode, npubEncode } from '../src/lib/crypto/bech32.ts';
 import { bytesToHex, hexToBytes } from '../src/lib/crypto/utils.ts';
 import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';

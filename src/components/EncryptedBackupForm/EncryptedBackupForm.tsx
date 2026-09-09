@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
 import useCopy from '@hooks/useCopy.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';

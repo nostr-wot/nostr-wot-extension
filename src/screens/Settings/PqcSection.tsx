@@ -5,7 +5,7 @@ import {
   type PqcBlockReason,
 } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { IconWarning, IconCopy } from '@assets';
 import PqcOverview, { PqcPublication } from './PqcOverview';
 import Button from '@components/Button/Button';

@@ -7,7 +7,7 @@ import {
 
 describe('generateMnemonic', () => {
   // The default must match the extension's own policy: every identity it mints is
-  // 256-bit / 24 words (lib/accounts.ts), and the post-quantum handlers refuse a
+  // 256-bit / 24 words (domain/accounts/creation.ts), and the post-quantum handlers refuse a
   // 12-word seed as 'short-seed'. A 128-bit default was a footgun waiting for the
   // first call site that forgot to pass a strength.
   it('returns 24 words by default (256-bit)', async () => {

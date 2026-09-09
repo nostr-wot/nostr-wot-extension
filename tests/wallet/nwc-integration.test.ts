@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { WebSocketServer, WebSocket } from 'ws';
 import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import * as nip04 from 'nostr-tools/nip04';
-import { getWalletProvider, clearWalletProviders, removeWalletProvider } from '../../src/lib/wallet/index.ts';
+import { getWalletProvider, clearWalletProviders, removeWalletProvider } from '../../src/services/wallet/index.ts';
 
 const walletKey = new Uint8Array(32).fill(21);
 const clientKey = new Uint8Array(32).fill(22);

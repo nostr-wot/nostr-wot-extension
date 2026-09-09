@@ -1,4 +1,4 @@
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { npubEncode } from '@lib/crypto/bech32.ts';
 import { truncateMiddle } from '@utils/format/text.ts';
 import useCopy from '@hooks/useCopy';

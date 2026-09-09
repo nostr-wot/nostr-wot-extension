@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { truncateNpub, getInitial } from '@utils/format/text.ts';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';

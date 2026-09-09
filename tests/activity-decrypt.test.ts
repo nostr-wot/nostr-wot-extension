@@ -1,12 +1,12 @@
 import { it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
-import * as vault from '../src/lib/vault.ts';
-import { importNsec } from '../src/lib/accounts.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import { importNsec } from '../src/domain/accounts/creation.ts';
 import { nip04Encrypt } from '../src/lib/crypto/nip04.ts';
 import { nip44Encrypt } from '../src/lib/crypto/nip44.ts';
 import { hexToBytes } from '../src/lib/crypto/utils.ts';
-import { handlers } from '../src/lib/bg/activity-handlers.ts';
+import { handlers } from '../src/services/background/activity-handlers.ts';
 import { activityEntryKey, type ActivityEntry } from '../src/domain/activity/activity.ts';
 
 beforeEach(async () => { resetMockStorage(); await vault.destroy(); });
@@ -54,7 +54,7 @@ it('gift-wrap review verifies the seal and decrypts both layers', async () => {
 });
 
 it('PQ review uses the recorded mnemonic account and reuses the hybrid decoder', async () => {
-  const { createFromMnemonic } = await import('../src/lib/accounts.ts');
+  const { createFromMnemonic } = await import('../src/domain/accounts/creation.ts');
   const { mnemonicToSeed } = await import('../src/lib/crypto/bip39.ts');
   const { derivePqKeys, pqEncrypt } = await import('../src/lib/crypto/pq.ts');
   const { getConversationKey } = await import('../src/lib/crypto/nip44.ts');
@@ -73,7 +73,7 @@ it('PQ review uses the recorded mnemonic account and reuses the hybrid decoder',
 });
 
 it('review rejects missing accounts, watch-only keys, invalid peers and absent ciphertext', async () => {
-  const { decryptForAccount } = await import('../src/lib/signer.ts');
+  const { decryptForAccount } = await import('../src/services/signing/signer.ts');
   const owner = await importNsec(ownerKey, 'Owner');
   await vault.create('', { accounts: [{...owner, readOnly: true, type: 'npub', privkey: null}], activeAccountId: owner.id });
   await assert.rejects(() => decryptForAccount(owner.id, 'nip44', '22'.repeat(32), 'x'), /not available/i);
@@ -89,9 +89,9 @@ it('review rejects missing accounts, watch-only keys, invalid peers and absent c
 });
 
 it('successful crypto requests retain ciphertext, never the plaintext result or input', async () => {
-  const { handlers: nip07 } = await import('../src/lib/bg/nip07-handlers.ts');
-  const permissions = await import('../src/lib/permissions.ts');
-  const { config } = await import('../src/lib/bg/state.ts');
+  const { handlers: nip07 } = await import('../src/services/background/nip07-handlers.ts');
+  const permissions = await import('../src/services/permissions/permissions.ts');
+  const { config } = await import('../src/services/background/state.ts');
   const owner = await importNsec(ownerKey, 'Owner');
   const peer = await importNsec(peerKey, 'Peer');
   await vault.create('', { accounts: [owner], activeAccountId: owner.id });
@@ -113,7 +113,7 @@ it('successful crypto requests retain ciphertext, never the plaintext result or 
   }
 });
 it('activity decryption remains internal to extension pages', async () => {
-  const { buildPrivilegedMethods } = await import('../src/lib/bg/state.ts');
-  const { handlers: misc } = await import('../src/lib/bg/misc-handlers.ts');
+  const { buildPrivilegedMethods } = await import('../src/services/background/state.ts');
+  const { handlers: misc } = await import('../src/services/background/misc-handlers.ts');
   assert.equal(buildPrivilegedMethods(misc).has('activity_decrypt'), true);
 });

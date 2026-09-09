@@ -18,19 +18,19 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetMockStorage } from '../helpers/browser-mock.ts';
-import * as vault from '../../src/lib/vault.ts';
-import * as permissions from '../../src/lib/permissions.ts';
+import * as vault from '../../src/services/vault/vault.ts';
+import * as permissions from '../../src/services/permissions/permissions.ts';
 import {
   getWalletProvider, setWalletProvider, removeWalletProvider,
   clearWalletProviders,
-} from '../../src/lib/wallet/index.ts';
-import type { WalletProvider, WalletProviderInfo, WalletConfig } from '../../src/lib/wallet/types.ts';
-import type { VaultPayload } from '../../src/lib/types.ts';
+} from '../../src/services/wallet/index.ts';
+import type { WalletProvider, WalletProviderInfo, WalletConfig } from '../../src/domain/wallet/types.ts';
+import type { VaultPayload } from '../../src/domain/vault/types.ts';
 import { npubEncode } from '../../src/lib/crypto/bech32.ts';
 import {
   addWeblnAllowedDomain, isWeblnAllowed,
-} from '../../src/lib/bg/domain-handlers.ts';
-import { fetchPayParams, requestInvoice } from '../../src/lib/wallet/lnurl.ts';
+} from '../../src/services/background/domain-handlers.ts';
+import { fetchPayParams, requestInvoice } from '../../src/services/wallet/lnurl.ts';
 
 // ── Test Constants ──
 
@@ -113,7 +113,7 @@ async function handleWeblnEnable(params?: { origin?: string }): Promise<HandlerR
   // driven by an explicit user click. Reaching this handler means the origin
   // is user-approved — the handler then records the WebLN-specific consent
   // (weblnAllowedDomains) that gates every other webln_* method, and acks.
-  // Uses the REAL addWeblnAllowedDomain from lib/bg/domain-handlers.ts.
+  // Uses the REAL addWeblnAllowedDomain from services/background/domain-handlers.ts.
   if (params?.origin) await addWeblnAllowedDomain(params.origin);
   return { result: true, error: null };
 }
@@ -187,7 +187,7 @@ async function handleWeblnGetBalance(): Promise<HandlerResult> {
   }
 }
 
-// Replicates lib/bg/wallet-handlers.ts webln_sendPayment. invoiceAmountSats is
+// Replicates services/background/wallet-handlers.ts webln_sendPayment. invoiceAmountSats is
 // injected in place of decodeBolt11 (0 = decode failed / no amount), and
 // promptFn stands in for signer.queueRequest so tests never hang on a real
 // prompt. Semantics under test: auto-approve WITHOUT a prompt ONLY when the
@@ -385,7 +385,7 @@ async function handleWalletProvision(params: {
   const acct = vault.getActiveAccountWithWallet();
   if (!acct) throw new Error('No active account');
 
-  const { provisionLnbitsWallet, DEFAULT_LNBITS_URL } = await import('../../src/lib/wallet/lnbits-provision.ts');
+  const { provisionLnbitsWallet, DEFAULT_LNBITS_URL } = await import('../../src/services/wallet/lnbits-provision.ts');
   const url = params.instanceUrl?.trim() || DEFAULT_LNBITS_URL;
   const npub = npubEncode(acct.pubkey);
   const walletName = `WoT:${npub.slice(0, 16)}`;
@@ -1394,7 +1394,7 @@ describe('wallet handlers: wallet_provision', () => {
 // ── wallet_resolveLightningAddress / wallet_payToLightningAddress ──
 //
 // Same replication approach as the handlers above: the logic mirrors
-// lib/bg/wallet-handlers.ts, with fetch injected so no network is touched.
+// services/background/wallet-handlers.ts, with fetch injected so no network is touched.
 
 async function handleWalletResolveLightningAddress(
   params: { address: string },
@@ -1580,7 +1580,7 @@ describe('wallet handlers: wallet_payToLightningAddress', () => {
 });
 
 it('real wallet history waits for startup unlock and still rejects a locked vault', async () => {
-  const {handlers: actualHandlers} = await import('../../src/lib/bg/wallet-handlers.ts');
+  const {handlers: actualHandlers} = await import('../../src/services/background/wallet-handlers.ts');
   await vault.destroy();
   await vault.create(TEST_PASSWORD, makePayloadWithWallet());
   vault.lock();
@@ -1602,7 +1602,7 @@ it('real wallet history waits for startup unlock and still rejects a locked vaul
 });
 
 it('wallet presence waits for startup and a locked vault is unknown, never no-wallet',async()=>{
- const {handlers:actual}=await import('../../src/lib/bg/wallet-handlers.ts');
+ const {handlers:actual}=await import('../../src/services/background/wallet-handlers.ts');
  await vault.destroy(); await vault.create(TEST_PASSWORD,makePayloadWithWallet()); vault.lock();
  let release!:()=>void;
  const gate=new Promise<void>(resolve=>{release=resolve;});
@@ -1616,7 +1616,7 @@ it('wallet presence waits for startup and a locked vault is unknown, never no-wa
 });
 
 it('display cache isolates accounts, strips secrets and prevents stale resurrection after disconnect',async()=>{
- const {updateWalletDisplayCache,resetWalletDisplayCache,readWalletDisplayCache,walletDisplayRevision,clearWalletDisplayCaches}=await import('../../src/lib/wallet/display-cache.ts');
+ const {updateWalletDisplayCache,resetWalletDisplayCache,readWalletDisplayCache,walletDisplayRevision,clearWalletDisplayCaches}=await import('../../src/services/wallet/display-cache.ts');
  const revision=walletDisplayRevision();
  await updateWalletDisplayCache('cache-a',{providerType:'lnbits',balance:42,transactions:[{paymentHash:'hash',amount:1,status:'pending',createdAt:1,preimage:'secret',bolt11:'invoice'}]},revision);
  const first=await readWalletDisplayCache('cache-a');
@@ -1634,8 +1634,8 @@ it('display cache isolates accounts, strips secrets and prevents stale resurrect
 });
 
 it('actual wallet handlers retain cached values on failure and clear them on explicit disconnect',async()=>{
- const {handlers:actual}=await import('../../src/lib/bg/wallet-handlers.ts');
- const {readWalletDisplayCache}=await import('../../src/lib/wallet/display-cache.ts');
+ const {handlers:actual}=await import('../../src/services/background/wallet-handlers.ts');
+ const {readWalletDisplayCache}=await import('../../src/services/wallet/display-cache.ts');
  resetMockStorage(); await vault.destroy(); await vault.create(TEST_PASSWORD,makePayloadWithWallet());
  setWalletProvider('acct1',createMockProvider());
  await actual.get('wallet_hasConfig')!({});
@@ -1651,8 +1651,8 @@ it('actual wallet handlers retain cached values on failure and clear them on exp
  await vault.destroy();
 });
 it('account removal and vault destruction erase wallet display data',async()=>{
- const {handlers:actual}=await import('../../src/lib/bg/vault-handlers.ts');
- const {resetWalletDisplayCache,readWalletDisplayCache}=await import('../../src/lib/wallet/display-cache.ts');
+ const {handlers:actual}=await import('../../src/services/background/vault-handlers.ts');
+ const {resetWalletDisplayCache,readWalletDisplayCache}=await import('../../src/services/wallet/display-cache.ts');
  resetMockStorage(); await vault.destroy();
  const payload=makePayloadWithWallet(); payload.accounts.push({...payload.accounts[0],id:'acct2'});
  await vault.create(TEST_PASSWORD,payload);
@@ -1665,7 +1665,7 @@ it('account removal and vault destruction erase wallet display data',async()=>{
 });
 
 it('settings reads wait for startup unlock before reading account state',async()=>{
- const {handlers:actual}=await import('../../src/lib/bg/wallet-handlers.ts');
+ const {handlers:actual}=await import('../../src/services/background/wallet-handlers.ts');
  await vault.destroy();await vault.create(TEST_PASSWORD,makePayloadNoWallet());vault.lock();
  let release!:()=>void; const gate=new Promise<void>(resolve=>{release=resolve;});
  const startup=vault.beginStartupUnlock(async()=>{await gate;await vault.unlock(TEST_PASSWORD);});

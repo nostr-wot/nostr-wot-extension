@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { readWalletDisplayCache, walletDisplayKey, type WalletDisplayCache } from '@lib/wallet/display-cache.ts';
-import type { Transaction } from '@lib/wallet/types.ts';
+import { readWalletDisplayCache, walletDisplayKey, type WalletDisplayCache } from '@services/wallet/display-cache.ts';
+import type { Transaction } from '@domain/wallet/types.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';

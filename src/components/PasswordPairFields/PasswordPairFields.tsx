@@ -1,5 +1,5 @@
 import { ChangeEvent, KeyboardEvent } from 'react';
-import { t } from '@lib/i18n.js';
+import { t } from '@services/i18n/i18n.ts';
 import Input from '@components/Input/Input';
 import type { UsePasswordPairResult } from '@hooks/usePasswordPair.ts';
 import Container from '@components/Container/Container';
