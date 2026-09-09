@@ -18,6 +18,8 @@ function mockProvider(type: 'nwc' | 'lnbits' = 'nwc'): WalletProvider & { discon
     async getBalance() { return { balance: 0 }; },
     async payInvoice(_bolt11: string) { return { preimage: 'mock' }; },
     async makeInvoice(_amount: number) { return { bolt11: 'lnbc1...', paymentHash: 'hash' }; },
+    async lookupInvoice() { return { paid: false }; },
+    async listTransactions() { return []; },
     async connect() {},
     disconnect() { this.disconnected = true; },
     isConnected() { return !this.disconnected; },
@@ -74,7 +76,7 @@ describe('Wallet provider factory', () => {
       assert.notEqual(p1, p2, 'different accounts should get different providers');
     });
 
-    it('throws for nwc config (requires crypto deps)', () => {
+    it('rejects malformed NWC connection keys', () => {
       const config: WalletConfig = {
         type: 'nwc',
         connectionString: 'nostr+walletconnect://abc?relay=wss://r.example.com&secret=def',
@@ -82,7 +84,7 @@ describe('Wallet provider factory', () => {
       assert.throws(
         () => getWalletProvider('acct-1', config),
         (err: Error) => {
-          assert.match(err.message, /createNwcProvider/);
+          assert.match(err.message, /Invalid NWC connection keys/);
           return true;
         },
       );

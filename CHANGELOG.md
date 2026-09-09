@@ -6,6 +6,11 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## Unreleased
+
+- Added local-relay NWC wallet integration tests using real signatures and encryption.
+- Fixed NWC connection and cold startup: the wallet factory now constructs the provider with shared crypto instead of referring callers to a nonexistent factory function.
+
 ## 0.7.0 — 2026-09-09
 
 - Fixed repeated relay traffic caused by cache-change notifications starting another refresh. Recent mute/PQ answers are reused for one minute; stale reads still refresh in the background.

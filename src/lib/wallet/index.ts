@@ -4,15 +4,19 @@
  * Creates and caches WalletProvider instances keyed by account ID.
  * Pattern mirrors `_nip46Clients` map in `lib/signer.ts`.
  *
- * NWC providers require crypto dependencies injected at runtime, so they
- * cannot be constructed here — use `setWalletProvider()` to cache an
- * externally-created NwcProvider instance.
+ * NWC providers receive the shared signing and NIP-04 crypto implementation
+ * here, so cold startup and reconnect use the same construction path.
  *
  * @module lib/wallet/index
  */
 
 import type { WalletConfig, WalletProvider } from './types.ts';
 import { LnbitsProvider } from './lnbits.ts';
+import { NwcProvider } from './nwc.ts';
+import { nip04Encrypt, nip04Decrypt } from '../crypto/nip04.ts';
+import { getPublicKey } from '../crypto/secp256k1.ts';
+import { signEvent } from '../crypto/nip01.ts';
+import { hexToBytes } from '../crypto/utils.ts';
 
 export type { WalletConfig, WalletProvider, WalletProviderInfo, SafeWalletInfo, Transaction } from './types.ts';
 
@@ -25,8 +29,7 @@ const _providers: Map<string, WalletProvider> = new Map();
  *
  * Returns null if config is undefined/null.
  * For 'lnbits' configs, creates an LnbitsProvider directly.
- * For 'nwc' configs, throws — NWC needs crypto deps injected at runtime;
- * use `createNwcProvider()` externally and pass via `setWalletProvider()`.
+ * For 'nwc' configs, validates the connection keys and injects shared crypto.
  */
 export function getWalletProvider(
   accountId: string,
@@ -51,7 +54,18 @@ export function getWalletProvider(
   }
 
   if (config.type === 'nwc') {
-    throw new Error('Use createNwcProvider() for NWC accounts');
+    const parsed = NwcProvider.parseConnectionString(config.connectionString);
+    if (!/^[0-9a-f]{64}$/i.test(parsed.secret) || !/^[0-9a-f]{64}$/i.test(parsed.walletPubkey)) {
+      throw new Error('Invalid NWC connection keys');
+    }
+    const provider = new NwcProvider(config, hexToBytes(parsed.secret), {
+      encrypt: nip04Encrypt,
+      decrypt: nip04Decrypt,
+      getPubkey: getPublicKey,
+      signEvent,
+    });
+    _providers.set(accountId, provider);
+    return provider;
   }
 
   return null;

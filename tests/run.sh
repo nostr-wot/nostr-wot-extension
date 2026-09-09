@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 node --import tsx --test tests/crypto/*.test.ts
 
 # Wallet tests (no browser mock needed)
-node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/wallet/lnurl.test.ts tests/inject-webln.test.ts tests/inject-nip44-schemes.test.ts
+node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/wallet/lnurl.test.ts tests/inject-webln.test.ts tests/inject-nip44-schemes.test.ts
 
 # Pure popup decision logic: wizard state machine, popup gating, rpc transport,
 # and the shared helpers the UI defers its decisions to. site-state was written

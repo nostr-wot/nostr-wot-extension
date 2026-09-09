@@ -144,7 +144,7 @@ Abstracts Lightning wallet backends behind a common `WalletProvider` interface. 
 | `src/lib/wallet/payment-intents.ts` | At-most-once payment intent tracking across popup teardown |
 | `src/lib/wallet/index.ts` | Factory + per-account provider cache (`getWalletProvider`, `setWalletProvider`, `clearWalletProviders`) |
 
-Provider instances are cached per account ID in a `Map<string, WalletProvider>`. The cache is cleared on vault lock via `clearWalletProviders()`. LNbits providers are created directly by the factory; NWC providers require crypto dependencies injected at runtime and must be created externally via `createNwcProvider()` then registered with `setWalletProvider()`.
+Provider instances are cached per account ID in a `Map<string, WalletProvider>`. The cache is cleared on vault lock via `clearWalletProviders()`. Both LNbits and NWC providers are created directly by the factory. For NWC, the factory validates connection key formats and injects the shared NIP-04 encryption and NIP-01 signing implementations. Recreating a provider after cache removal restores fresh connection key bytes from the saved configuration.
 
 ---
 

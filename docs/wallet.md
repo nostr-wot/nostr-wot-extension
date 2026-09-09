@@ -104,8 +104,8 @@ interface WalletProvider {
   service, the signature verifies (`verifyEvent`), and the content decrypts;
   the pending request is only consumed by such a response (see
   `docs/security.md` §13)
-- Crypto dependencies injected at runtime (cannot be constructed by the factory directly)
-- Created externally via `createNwcProvider()`, then registered with `setWalletProvider()`
+- The provider factory injects shared NIP-04 encryption and NIP-01 signing after validating connection key formats.
+- Cold startup constructs and caches NWC providers directly; removal clears the instance so reconnect creates fresh key bytes from the stored configuration.
 
 ### 4.2 LNbits Provider (`lnbits.ts`)
 
@@ -119,7 +119,7 @@ interface WalletProvider {
 
 Per-account provider cache (`Map<string, WalletProvider>`):
 - `getWalletProvider(accountId, config)` — returns cached or creates new
-- `setWalletProvider(accountId, provider)` — cache an externally-created provider (NWC)
+- `setWalletProvider(accountId, provider)` — register an externally-created provider when needed
 - `removeWalletProvider(accountId)` — disconnect and remove
 - `clearWalletProviders()` — disconnect all, called on vault lock
 

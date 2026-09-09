@@ -192,3 +192,18 @@ communication tests cover the content/background bridge; popup rendering tests
 cover the approval surfaces. Actual QR scanning and third-party signer UI still
 need a browser/device smoke test. The QR handshake here exercises BunkerSigner;
 the onboarding session persistence handlers retain their separate existing tests.
+
+## NWC wallet integration
+
+Run `npm run test:nwc`. `tests/wallet/nwc-integration.test.ts` connects through
+the production wallet factory to a loopback WebSocket wallet. The extension's
+shared signing/encryption code communicates with an independent nostr-tools
+peer using real kind:23194/23195 events and NIP-04 ciphertext.
+
+Coverage includes response subscriptions, alias/balance, sats/msats conversion,
+deposit invoices and settlement lookup, history offsets and settled-only queries,
+payment success and errors without automatic retry, concurrent responses,
+wrong-author/forged/undecryptable/unrelated replies, pending-request rejection on
+disconnect and provider reconstruction. Tests use synthetic invoices and fixed
+throwaway keys; no Lightning node or real payment is involved. Existing mocked
+NWC unit tests retain timeout coverage. Both suites run locally and in CI.
