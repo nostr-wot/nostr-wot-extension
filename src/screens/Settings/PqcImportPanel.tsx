@@ -1,3 +1,4 @@
+import { KEYGEN_SOURCE_URL, KEYGEN_COMMAND } from '@constants/pqc.ts';
 import React, { useState, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -8,10 +9,6 @@ import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
-
-const KEYGEN_SOURCE_URL =
-  'https://github.com/nostr-wot/nostr-wot-extension/blob/main/scripts/pqc-keygen.mjs';
-const KEYGEN_COMMAND = 'npm run pqc:keygen -- --independent --keyfile keys.json';
 
 /** Import independently generated post-quantum keys from a key file. */
 export default function PqcImportPanel() {

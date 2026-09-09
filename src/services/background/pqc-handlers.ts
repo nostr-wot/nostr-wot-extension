@@ -1,3 +1,9 @@
+import type { PqcBlockReason, PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
+export type { PqcBlockReason, PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
+import { PQC_SEED_WORD_COUNT } from '@constants/accounts.ts';
+import { countWords } from '@utils/text.ts';
+import { PQC_KIND, IMPORTABLE_REASONS } from '@constants/pqc.ts';
+export { PQC_KIND } from '@constants/pqc.ts';
 /**
  * Post-quantum key handlers.
  *
@@ -21,58 +27,16 @@ import browser from '../../lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { mnemonicToSeed } from '../../lib/crypto/bip39.ts';
 import { arrayToBase64, base64ToArray } from '../../lib/crypto/utils.ts';
-import {
-  derivePqKeys, popMessage, signPop, parsePqKeyfile,
-  ALG_KEM, ALG_DSA, PQ_PROFILE,
-} from '../../lib/crypto/pq.ts';
+import { derivePqKeys, popMessage, signPop, parsePqKeyfile } from '../../lib/crypto/pq.ts';
+import { ALG_KEM, ALG_DSA, PQ_PROFILE } from '@constants/crypto/pq.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { broadcastEvent } from './publish-handlers.ts';
-import { cachedRelayRead, seedRelayCache, clearRelayCache, PQC_PUBLISHED_CACHE } from '../relays/relayCache.ts';
+import { cachedRelayRead, seedRelayCache, clearRelayCache } from '../relays/relayCache.ts';
+import { PQC_PUBLISHED_CACHE } from '@constants/relays.ts';
 import { writeLocalCache } from '../relays/relay.ts';
 import { readPublishedEvent } from '../relays/readPublishedEvent.ts';
 import { config, type HandlerFn } from './state.ts';
 import type { UnsignedEvent } from '../../domain/nostr/types.ts';
-
-/** Replaceable kind carrying post-quantum public keys. See the proposed NIP. */
-export const PQC_KIND = 10203;
-
-/** Why an account cannot derive post-quantum keys from its seed. */
-export type PqcBlockReason =
-  | 'read-only'      // npub-only, no signing capability at all
-  | 'remote-signer'  // NIP-46: the protocol has no post-quantum operations
-  | 'no-seed'        // imported from an nsec; there is no mnemonic to derive from
-  | 'short-seed';    // 12 words: 128 bits would be the weakest link
-
-/**
- * Which blocked accounts may import keys instead.
- *
- * A read-only account can sign nothing, so it could neither publish an attestation nor
- * take part in the hybrid key agreement — post-quantum decryption needs the classical
- * private key too. A NIP-46 account's nip44 traffic is routed to the bunker, which knows
- * nothing about our envelope, so imported keys would sit unused. The other two blocked
- * reasons describe accounts that hold a perfectly good secp256k1 key and merely have no
- * mnemonic to derive from — exactly what an imported key is for.
- */
-const IMPORTABLE_REASONS: ReadonlySet<PqcBlockReason> = new Set<PqcBlockReason>(['no-seed', 'short-seed']);
-
-export type PqcStatus = {
-  canDerive: boolean;
-  reason: PqcBlockReason | null;
-  wordCount: number | null;
-  pubkey: string | null;
-  keys: { kem: string; dsa: string } | null;
-  /** Where the keys came from. null when the account has none. */
-  source: 'derived' | 'imported' | null;
-  /** True when this account has no keys but may import them. */
-  canImport: boolean;
-  /** Unsigned attestation, ready for the caller to sign and publish. */
-  attestation: {
-    kind: number;
-    created_at: number;
-    tags: string[][];
-    content: string;
-  } | null;
-};
 
 async function activeAccount() {
   // Never-lock vaults briefly have no decrypted payload on worker startup.
@@ -131,7 +95,7 @@ async function activeKeysForExport(): Promise<{
   }
 
   if (!acct.mnemonic) throw new Error('This account has no seed phrase, so it has no post-quantum keys to export');
-  if (acct.mnemonic.trim().split(/\s+/).length !== 24) {
+  if (countWords(acct.mnemonic) !== PQC_SEED_WORD_COUNT) {
     throw new Error('Post-quantum keys require a 24-word seed phrase');
   }
   const seed = await mnemonicToSeed(acct.mnemonic);
@@ -202,8 +166,8 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
 
     if (!acct.mnemonic) return blocked('no-seed');
 
-    const wordCount = acct.mnemonic.trim().split(/\s+/).length;
-    if (wordCount !== 24) return blocked('short-seed', wordCount);
+    const wordCount = countWords(acct.mnemonic);
+    if (wordCount !== PQC_SEED_WORD_COUNT) return blocked('short-seed', wordCount);
 
     const seed = await mnemonicToSeed(acct.mnemonic);
     try {

@@ -1,3 +1,6 @@
+import type { SafeAccount } from '@domain/accounts/types.ts';
+import { DEFAULT_RELAYS } from '@constants/relays.ts';
+export { DEFAULT_RELAYS } from '@constants/relays.ts';
 /**
  * Shared state, constants, and utilities for background handler modules.
  * Follows the same pattern as services/vault/vault.ts (module-level mutable state).
@@ -5,14 +8,6 @@
  */
 
 import { npubDecode } from '../../lib/crypto/bech32.ts';
-import { PROFILE_CACHE_TTL_MS } from '../../domain/profile/constants.ts';
-
-// ── Constants ──
-
-/* nos.lol first: relay.damus.io led this list and is the one that stalls most
-   often, and every read here tries relays in order, so a slow first entry sits
-   on the popup's path before anything else can answer. */
-export const DEFAULT_RELAYS = ['wss://nos.lol', 'wss://relay.damus.io', 'wss://nostr-01.yakihonne.com'];
 
 // ── Config ──
 
@@ -23,32 +18,23 @@ export interface ExtConfig {
 
 export const config: ExtConfig = {
     myPubkey: null,
-    relays: DEFAULT_RELAYS,
+    relays: [...DEFAULT_RELAYS],
 };
 
 // ── Shared types ──
 
 /** Account entry shape stored in browser.storage.local.accounts */
-export interface LocalAccountEntry {
-    id: string;
-    name: string;
-    pubkey: string;
-    type: string;
-    readOnly: boolean;
-}
+export type LocalAccountEntry = Pick<SafeAccount, 'id' | 'name' | 'pubkey' | 'type' | 'readOnly'>;
 
 // ── Profile Cache ──
 
-export const PROFILE_CACHE_TTL = PROFILE_CACHE_TTL_MS;
+export { PROFILE_CACHE_TTL_MS as PROFILE_CACHE_TTL } from '@constants/profile.ts';
 export interface ProfileCacheEntry { metadata: Record<string, unknown>; fetchedAt: number; }
 export const profileCache = new Map<string, ProfileCacheEntry>();
 
 // ── Method Sets ──
 
-export const NIP07_SIGNING_METHODS = new Set([
-    'nip07_signEvent', 'nip07_nip04Encrypt', 'nip07_nip04Decrypt',
-    'nip07_nip44Encrypt', 'nip07_nip44Decrypt'
-]);
+export { NIP07_SIGNING_METHODS } from '@constants/signing.ts';
 
 /**
  * Build the set of privileged methods from handler maps.

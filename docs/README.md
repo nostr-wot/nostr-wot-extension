@@ -61,7 +61,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `src/services/signing/signer.ts` -- NIP-07 signing coordinator
 - `src/services/permissions/permissions.ts` -- per-domain/per-account permission cascade
 - `src/services/wallet/` -- wallet providers (NWC, LNbits), auto-provisioning and LNURL requests
-- `src/domain/` -- feature-owned contracts, types, constants and pure rules
+- `src/domain/` -- feature-owned contracts, types and pure rules
 
 **Path aliases** (configured in `vite.config.ts`):
 - `@components` -> `src/components` — shared UI
@@ -70,6 +70,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `@services` -> `src/services` — the things that talk to something (`rpc`, `blossom`)
 - `@context` -> `src/context` — the eight React contexts
 - `@hooks` -> `src/hooks`, `@utils` -> `src/utils` (no domain knowledge), `@styles` -> `src/styles`
+- `@constants` -> `src/constants` — shared configuration and protocol data
 - `@lib` -> `src/lib` — cryptographic primitives and the browser compatibility shim, never React
 - `@assets` -> `src/assets`
 - `@popup` -> `src/popup`, `@wizard` -> `src/wizard` — `@models` and `@shared` no longer exist; `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/`

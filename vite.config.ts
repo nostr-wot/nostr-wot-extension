@@ -103,6 +103,7 @@ export default defineConfig({
       '@wizard': resolve(__dirname, 'src/wizard'),
       '@hooks': resolve(__dirname, 'src/hooks'),
       '@utils': resolve(__dirname, 'src/utils'),
+      '@constants': resolve(__dirname, 'src/constants'),
       '@domain': resolve(__dirname, 'src/domain'),
       '@services': resolve(__dirname, 'src/services'),
       '@context': resolve(__dirname, 'src/context'),

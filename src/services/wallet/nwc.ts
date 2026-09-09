@@ -1,3 +1,4 @@
+import { NWC_REQUEST_TIMEOUT_MS } from '@constants/wallet.ts';
 /**
  * NWC (Nostr Wallet Connect, NIP-47) wallet provider
  *
@@ -38,10 +39,6 @@ export interface NwcCryptoDeps {
 export interface NwcConfig {
   connectionString: string;
 }
-
-// ── Request timeout ──
-
-const NWC_REQUEST_TIMEOUT_MS = 60_000;
 
 // ── Pending request tracking ──
 

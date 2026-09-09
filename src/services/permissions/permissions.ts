@@ -1,3 +1,4 @@
+import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, DM_SIGN_KINDS } from '@constants/permissions.ts';
 /**
  * Signing Permission Policies -- Per-domain, per-account, per-kind
  *
@@ -32,10 +33,6 @@ import type { PermissionDecision, PermissionMap, PermissionBucket, DomainPermiss
 import browser from '@lib/browser.ts';
 import { AsyncLock } from '../../utils/asyncLock.ts';
 
-const STORAGE_KEY = 'signerPermissions';
-const GLOBAL_DEFAULTS_KEY = 'signerUseGlobalDefaults';
-const DEFAULT_BUCKET = '_default';
-
 // Shared async lock for storage writes
 const _lock = new AsyncLock();
 
@@ -57,17 +54,6 @@ try {
     }
   });
 } catch { /* storage.onChanged may not be available in tests */ }
-
-// Decisions: "allow" | "deny" | "ask"
-
-// Event kinds that are part of the "send a DM" flow. signEvent for any of
-// these collapses into the sendMessages permission so a single approval
-// covers both the encrypt step and the matching signEvent.
-//   4    NIP-04 legacy DM
-//   13   NIP-59 seal (wraps an encrypted DM)
-//   14   NIP-17 chat rumor
-//   1059 NIP-59 gift wrap
-const DM_SIGN_KINDS = new Set<number>([4, 13, 14, 1059]);
 
 /**
  * Map NIP-07 wire methods to logical permission keys.

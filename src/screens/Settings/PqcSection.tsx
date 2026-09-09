@@ -1,3 +1,4 @@
+import { PQC_HOW_SEEN_KEY as HOW_SEEN_KEY } from '@constants/pqc.ts';
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import {
@@ -22,22 +23,6 @@ import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
-
-
-
-/**
- * Step-by-step guide, linked from the panel. Kept as one constant so it is changed in one
- * place rather than hunted through six locale files.
- *
- * Points at the extension-facing guide, not the command-line one: someone who tapped this
- * link is in the popup, not at a terminal. English only on the site today (next-intl is
- * configured `localePrefix: 'as-needed'`, so the default locale is unprefixed and this URL
- * resolves). Linking the unprefixed English page from every locale is deliberate — it
- * exists, whereas /es/guides/... does not.
- */
-
-/** Remembers that the explainer has been shown once, so it does not reappear every visit. */
-const HOW_SEEN_KEY = 'pqcHowItWorksSeen';
 
 /**
  * What this actually does, in the order it happens.

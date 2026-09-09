@@ -26,3 +26,9 @@ export interface LiveQueryOptions {
   /** Injected for testing — defaults to `(url) => new WebSocket(url)` */
   _createSocket?: (url: string) => WebSocket;
 }
+
+export interface RelayListRead {
+  pubkey: string;
+  event: SignedEvent | null;
+  reachable: boolean;
+}

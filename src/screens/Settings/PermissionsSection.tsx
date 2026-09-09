@@ -1,12 +1,9 @@
+import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
 import { useState, useEffect, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
-import {
-  countDecisions,
-  filterKeysForAccountKind,
-  availablePermKeys,
-  DECISIONS,
-} from '@domain/permissions/permissionRules.ts';
+import { countDecisions, filterKeysForAccountKind, availablePermKeys } from '@domain/permissions/permissionRules.ts';
+import { DECISIONS } from '@constants/permissions.ts';
 import { IconSearch, IconShield, IconUsers, IconPlus } from '@assets';
 import { useAccount } from '@context/AccountContext';
 import { usePermissions } from '@context/PermissionsContext';
@@ -24,7 +21,6 @@ import ListRow from '@components/ListRow/ListRow';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 
-
 /**
  * Decision -> dot colour, as an explicit map rather than `styles[`permDot${...}`]`.
  *
@@ -39,23 +35,6 @@ const DECISION_DOT_TONE: Record<string, string> = {
   deny: 'bg-error',
   ask: 'bg-warning',
 };
-
-const COMMON_PERM_KEYS = [
-  'getPublicKey',
-  'signEvent:0',
-  'signEvent:1',
-  'signEvent:3',
-  'signEvent:5',
-  'signEvent:6',
-  'signEvent:7',
-  'signEvent:1111',
-  'signEvent:9734',
-  'signEvent:24242',
-  'signEvent:27235',
-  'signEvent:30023',
-  'readMessages',
-  'sendMessages',
-];
 
 export interface PermissionsSectionHandle {
   goBack: () => boolean;
@@ -208,10 +187,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   useOutsideClick(dropdownRef, () => setOpenDropdownKey(null), !!openDropdownKey);
 
-
-
-
-
   const availableKeys = availablePermKeys(COMMON_PERM_KEYS, domainPerms);
 
   // Detail view
@@ -334,5 +309,4 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     </Container>
   );
 });
-
 

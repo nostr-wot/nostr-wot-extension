@@ -13,3 +13,6 @@ Nostr WoT 0.7.0
 - Concurrent approval requests appear in groups with expandable details, website origins and readable event types. Requests for another account are rejected.
 - Improved account switching, scrolling, copy controls and keyboard accessibility.
 - Corrected Firefox data disclosures and required consent-compatible Firefox versions.
+
+Internal maintenance: centralized configuration constants, shared account-import
+helpers and canonical domain contracts for activity, mute lists and PQ status.

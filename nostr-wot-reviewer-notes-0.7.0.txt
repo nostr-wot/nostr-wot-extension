@@ -38,3 +38,6 @@ The source archive includes Nostr Connect, NWC and WebLN integration tests.
 Store-facing release notes are in nostr-wot-release-notes-0.7.0.txt.
 
 This package has not been submitted or approved by Mozilla.
+
+Internal maintenance: centralized configuration constants, shared account-import
+helpers and canonical domain contracts for activity, mute lists and PQ status.

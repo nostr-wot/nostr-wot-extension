@@ -21,6 +21,7 @@
       "@wizard/*": ["./src/wizard/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils/*": ["./src/utils/*"],
+      "@constants/*": ["./src/constants/*"],
       "@domain/*": ["./src/domain/*"],
       "@services/*": ["./src/services/*"],
       "@context/*": ["./src/context/*"],

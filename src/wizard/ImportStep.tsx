@@ -1,3 +1,5 @@
+import { detectImportType } from '@domain/accounts/importInput.ts';
+import { countWords } from '@utils/text.ts';
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -9,21 +11,6 @@ import Heading from '@components/Heading/Heading';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
-
-type ImportType = 'ncryptsec' | 'nsec' | 'mnemonic' | null;
-
-function detectType(val: string): ImportType {
-  if (val.startsWith('ncryptsec1')) return 'ncryptsec';
-  if (val.startsWith('nsec1') || /^[0-9a-f]{64}$/i.test(val)) return 'nsec';
-  // Check for 12 or 24 word mnemonic (words separated by spaces)
-  const words = val.split(/\s+/).filter(Boolean);
-  if (words.length === 12 || words.length === 24) return 'mnemonic';
-  return null;
-}
-
-function wordCount(val: string): number {
-  return val.split(/\s+/).filter(Boolean).length;
-}
 
 interface ImportStepProps {
   onNext: (account: any, upgradeId: string | null) => void;
@@ -48,7 +35,7 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
       .catch(() => {});
   }, []);
 
-  const importType = detectType(input.trim());
+  const importType = detectImportType(input.trim());
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -57,13 +44,13 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
     setPubkey('');
     setUpgradeNotice('');
 
-    const type = detectType(val.trim());
+    const type = detectImportType(val.trim());
     if (type === 'ncryptsec') {
       setTypeHint(t('wizard.encryptedDetected'));
     } else if (type === 'nsec') {
       setTypeHint(t('wizard.privateKeyDetected'));
     } else if (type === 'mnemonic') {
-      setTypeHint(t('wizard.seedDetected', { count: String(wordCount(val.trim())) }));
+      setTypeHint(t('wizard.seedDetected', { count: String(countWords(val.trim())) }));
     } else if (val.trim()) {
       setTypeHint('');
     } else {

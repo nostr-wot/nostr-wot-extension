@@ -1,12 +1,11 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { sha256 } from '@noble/hashes/sha2.js';
-import {
-  derivePqKeys, kemInfo, dsaInfo, popMessage, signPop, verifyPop,
-  encapsulate, decapsulate, KEM_PUBLIC_KEY_BYTES, DSA_PUBLIC_KEY_BYTES,
-} from '../../src/lib/crypto/pq.ts';
+import { derivePqKeys, kemInfo, dsaInfo, popMessage, signPop, verifyPop, encapsulate, decapsulate } from '../../src/lib/crypto/pq.ts';
+import { KEM_PUBLIC_KEY_BYTES, DSA_PUBLIC_KEY_BYTES } from '@constants/crypto/pq.ts';
 import { mnemonicToSeed } from '../../src/lib/crypto/bip39.ts';
-import { derivePath, NIP06_PATH } from '../../src/lib/crypto/bip32.ts';
+import { derivePath } from '../../src/lib/crypto/bip32.ts';
+import { NIP06_PATH } from '@constants/crypto/bip32.ts';
 import { getPublicKey } from '../../src/lib/crypto/secp256k1.ts';
 import { bytesToHex } from '../../src/lib/crypto/utils.ts';
 

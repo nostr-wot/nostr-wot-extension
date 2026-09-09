@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { resetMockStorage, hasAlarm } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
-import { LOCK_STATE_KEY } from '../src/domain/vault/constants.ts';
+import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { bytesToHex } from '../src/lib/crypto/utils.ts';
 import type { VaultPayload } from '../src/domain/vault/types.ts';
 

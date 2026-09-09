@@ -1,3 +1,33 @@
+import {
+  PQ_PROFILE,
+  ALG_KEM,
+  ALG_DSA,
+  KEM_PUBLIC_KEY_BYTES,
+  DSA_PUBLIC_KEY_BYTES,
+  KEM_SEED_BYTES,
+  DSA_SEED_BYTES,
+  KEM_SECRET_KEY_BYTES,
+  DSA_SECRET_KEY_BYTES,
+  ENVELOPE_VERSION,
+  ALG_MLKEM1024_XCHACHA,
+  KEM_CIPHERTEXT_BYTES,
+  NONCE_BYTES,
+  TAG_BYTES,
+  HEADER_BYTES,
+  MAX_PLAINTEXT_BYTES,
+} from '@constants/crypto/pq.ts';
+export {
+  PQ_PROFILE,
+  ALG_KEM,
+  ALG_DSA,
+  KEM_PUBLIC_KEY_BYTES,
+  DSA_PUBLIC_KEY_BYTES,
+  KEM_SECRET_KEY_BYTES,
+  DSA_SECRET_KEY_BYTES,
+  ENVELOPE_VERSION,
+  ALG_MLKEM1024_XCHACHA,
+  KEM_CIPHERTEXT_BYTES,
+} from '@constants/crypto/pq.ts';
 /**
  * Post-Quantum Key Derivation (ML-KEM-1024 / ML-DSA-87)
  *
@@ -27,20 +57,6 @@ import { ml_kem1024 } from '@noble/post-quantum/ml-kem.js';
 import { ml_dsa87 } from '@noble/post-quantum/ml-dsa.js';
 import { expand as hkdfExpand, extract as hkdfExtract } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
-
-/** Derivation profile identifier. Bump when the derivation changes. */
-export const PQ_PROFILE: string = 'nip-pqc/v1';
-
-/** Algorithm identifiers as they appear in the attestation event. */
-export const ALG_KEM: string = 'ml-kem-1024';
-export const ALG_DSA: string = 'ml-dsa-87';
-
-/** Public key sizes in bytes, per FIPS 203 / 204. Used to reject malformed keys. */
-export const KEM_PUBLIC_KEY_BYTES: number = 1568;
-export const DSA_PUBLIC_KEY_BYTES: number = 2592;
-
-const KEM_SEED_BYTES = 64; // ML-KEM keygen takes d || z
-const DSA_SEED_BYTES = 32; // ML-DSA keygen takes xi
 
 export interface PqKeyPair {
   publicKey: Uint8Array;
@@ -107,10 +123,6 @@ export function derivePqKeys(seed: Uint8Array, account: number = 0): PqKeys {
     dsaSeed.fill(0);
   }
 }
-
-/** Secret key sizes in bytes, per FIPS 203 / 204. */
-export const KEM_SECRET_KEY_BYTES: number = 3168;
-export const DSA_SECRET_KEY_BYTES: number = 4896;
 
 /** Pull base64 blobs of the two secret-key lengths out of arbitrary pasted text. */
 function findSecretKeys(text: string): { kem?: string; dsa?: string } {
@@ -359,15 +371,6 @@ export function decapsulate(cipherText: Uint8Array, kemSecretKey: Uint8Array): U
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { randomBytes } from '@noble/hashes/utils.js';
 import { arrayToBase64 as _b64, base64ToArray as _unb64 } from './utils.ts';
-
-export const ENVELOPE_VERSION = 0x01;
-export const ALG_MLKEM1024_XCHACHA = 0x01;
-export const KEM_CIPHERTEXT_BYTES = 1568;
-
-const NONCE_BYTES = 24;
-const TAG_BYTES = 16;
-const HEADER_BYTES = 2 + KEM_CIPHERTEXT_BYTES + NONCE_BYTES;
-const MAX_PLAINTEXT_BYTES = 65535;
 
 function calcPaddedLen(len: number): number {
   if (len <= 32) return 32;

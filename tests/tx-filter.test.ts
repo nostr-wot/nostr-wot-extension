@@ -12,17 +12,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  dateRangeToTs,
-  matchesTxFilter,
-  matchesTxSearch,
-  filterTransactions,
-  countActiveFilters,
-  isPlaceholderMemo,
-  EMPTY_TX_FILTERS,
-  type TxFilters,
-  type FilterableTx,
-} from '../src/domain/wallet/txFilter.ts';
+import { dateRangeToTs, matchesTxFilter, matchesTxSearch, filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters, type FilterableTx } from '../src/domain/wallet/txFilter.ts';
+import { EMPTY_TX_FILTERS } from '@constants/wallet.ts';
 
 const at = (iso: string) => new Date(iso).getTime() / 1000;
 const tx = (over: Partial<FilterableTx> = {}): FilterableTx => ({

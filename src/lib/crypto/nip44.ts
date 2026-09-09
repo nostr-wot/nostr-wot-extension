@@ -1,3 +1,4 @@
+import { NIP44_VERSION } from '@constants/crypto/nip44.ts';
 /**
  * NIP-44 v2 — Versioned Encryption (ChaCha20 + HMAC-SHA256)
  *
@@ -14,8 +15,6 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { chacha20 } from '@noble/ciphers/chacha.js';
 import { concatBytes, constantTimeEqual, arrayToBase64, base64ToArray } from './utils.ts';
 import { ecdh } from './secp256k1.ts';
-
-const NIP44_VERSION: number = 2;
 
 // ── NIP-44 padding ──
 

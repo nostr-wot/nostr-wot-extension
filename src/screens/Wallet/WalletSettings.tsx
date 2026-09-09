@@ -1,3 +1,4 @@
+import { PROVIDER_LABELS } from '@constants/wallet.ts';
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -15,11 +16,6 @@ import Spinner from '@components/Spinner/Spinner';
 import IconButton from '@components/IconButton/IconButton';
 import { IconCopy, IconSync } from '@assets';
 import { useWallet } from '@context/WalletContext';
-
-const PROVIDER_LABELS: Record<string, string> = {
-  nwc: 'Nostr Wallet Connect',
-  lnbits: 'LNbits',
-};
 
 interface WalletSettingsProps {
   providerType: string;

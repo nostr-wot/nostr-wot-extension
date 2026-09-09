@@ -1,4 +1,4 @@
-import { KIND_LABELS } from '@domain/nostr/kindLabels';
+import { KIND_LABELS } from '@constants/nostr.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';

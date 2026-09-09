@@ -1,7 +1,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import * as vault from '../src/services/vault/vault.ts';
-import { handlers, PQC_KIND } from '../src/services/background/pqc-handlers.ts';
+import { handlers } from '../src/services/background/pqc-handlers.ts';
+import { PQC_KIND } from '@constants/pqc.ts';
 import { createFromMnemonic, importNsec, importNpub } from '../src/domain/accounts/creation.ts';
 import { verifyPop, popMessage } from '../src/lib/crypto/pq.ts';
 import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
@@ -106,7 +107,8 @@ describe('pqc_getStatus', () => {
 
 // ── Importing keys for an account that cannot derive ──
 
-import { derivePqKeys, PQ_PROFILE, ALG_KEM, ALG_DSA } from '../src/lib/crypto/pq.ts';
+import { derivePqKeys } from '../src/lib/crypto/pq.ts';
+import { PQ_PROFILE, ALG_KEM, ALG_DSA } from '@constants/crypto/pq.ts';
 import { arrayToBase64 } from '../src/lib/crypto/utils.ts';
 
 const importKeys = (keyfile: string) => handlers.get('pqc_importKeys')!({ keyfile }) as Promise<any>;
@@ -302,7 +304,8 @@ describe('pqc_removeImportedKeys', () => {
 
 import * as signer from '../src/services/signing/signer.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
-import { pqEncrypt, KEM_PUBLIC_KEY_BYTES } from '../src/lib/crypto/pq.ts';
+import { pqEncrypt } from '../src/lib/crypto/pq.ts';
+import { KEM_PUBLIC_KEY_BYTES } from '@constants/crypto/pq.ts';
 import { getConversationKey } from '../src/lib/crypto/nip44.ts';
 import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';
 import { hexToBytes, bytesToHex, base64ToArray } from '../src/lib/crypto/utils.ts';

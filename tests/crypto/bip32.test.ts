@@ -2,7 +2,8 @@ import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { hexToBytes, bytesToHex } from '../../src/lib/crypto/utils.ts';
 import { getPublicKey } from '../../src/lib/crypto/secp256k1.ts';
-import { masterKeyFromSeed, derivePath, NIP06_PATH } from '../../src/lib/crypto/bip32.ts';
+import { masterKeyFromSeed, derivePath } from '../../src/lib/crypto/bip32.ts';
+import { NIP06_PATH } from '@constants/crypto/bip32.ts';
 import { mnemonicToSeed, entropyToMnemonic } from '../../src/lib/crypto/bip39.ts';
 
 // BIP-32 test vector 1 (from spec)

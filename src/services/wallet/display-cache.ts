@@ -1,3 +1,4 @@
+import { WALLET_DISPLAY_CACHE_PREFIX as PREFIX } from '@constants/wallet.ts';
 import browser from '../../lib/browser.ts';
 import type { Transaction } from '../../domain/wallet/types.ts';
 
@@ -8,7 +9,6 @@ export interface WalletDisplayCache {
   transactions?: Transaction[];
   updatedAt?: number;
 }
-const PREFIX = 'walletDisplay_';
 let revision = 0;
 let writes: Promise<void> = Promise.resolve();
 export const walletDisplayKey = (accountId: string) => `${PREFIX}${accountId}`;

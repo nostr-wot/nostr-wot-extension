@@ -1,9 +1,10 @@
+import { RELAY_CACHE_PREFIX } from '@constants/relays.ts';
 import { useCallback, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { mergePqcStatus, mergePqcPublished } from '@domain/pqc/pqcState.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
-import { PQC_PUBLISHED_CACHE } from '@domain/relays/cacheNames.ts';
+import { PQC_PUBLISHED_CACHE } from '@constants/relays.ts';
 import type { PqcPanelStatus, PqcPublished } from '@domain/pqc/pqcState.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
 import { useAccount } from './AccountContext';
@@ -83,7 +84,7 @@ export function PqcProvider({ children }: PqcProviderProps) {
   // this picks up the answer once the background finishes refreshing it. Runs
   // through the same run-versioned `refresh` as the mount effect, so this can
   // overlap an account-switch read in flight without the slower one winning.
-  useStorageWatch([{ area: 'local', keys: [`relayCache_${PQC_PUBLISHED_CACHE}_${active?.pubkey}`] }], refresh);
+  useStorageWatch([{ area: 'local', keys: [`${RELAY_CACHE_PREFIX}${PQC_PUBLISHED_CACHE}_${active?.pubkey}`] }], refresh);
 
   const current = data.status?.pubkey === active?.pubkey ? data : { status: null, published: null };
   const value: PqcContextValue = { ...current, loading, error, refresh, applyStatus };

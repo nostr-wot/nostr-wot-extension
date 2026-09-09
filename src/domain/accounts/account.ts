@@ -1,15 +1,5 @@
-/**
- * The account fields the popup renders.
- *
- * Deliberately narrower than `domain/accounts/types.ts`'s `Account`, which is the stored
- * record and carries key material. The UI only ever needs these five, and it
- * should not be able to reach the rest by accident — but the shape was written
- * out twice, so this is the one place it lives.
- */
-export interface Account {
-  id: string;
-  pubkey: string;
-  name?: string;
-  readOnly?: boolean;
-  type?: string;
-}
+import type { SafeAccount } from './types.ts';
+
+/** Minimal public account projection for UI surfaces; never includes secret fields. */
+export type Account = Pick<SafeAccount, 'id' | 'pubkey'>
+  & Partial<Pick<SafeAccount, 'name' | 'readOnly' | 'type'>>;

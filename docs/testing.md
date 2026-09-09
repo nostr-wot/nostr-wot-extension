@@ -225,4 +225,8 @@ LNURL tests cover checksum/case/UTF-8 validation, unsafe decoded endpoints,
 non-payment tags and recipient changes. Payment integration runs the same
 resolve/pay/deduplicate/amount-mismatch flow for Lightning Addresses and bech32 LNURLs.
 
-The boundary checks in `tests/test-registration.test.ts` keep domain modules free of service, browser and React dependencies, and keep `src/lib/` limited to crypto and the browser shim. Existing behavioral suites import the moved modules directly.
+The boundary checks in `tests/test-registration.test.ts` keep domain modules free of service, browser and React dependencies, keep `src/lib/` limited to crypto and the browser shim, and enforce canonical constant declarations and side-effect-free constant imports. Existing behavioral suites import the moved modules directly.
+
+`tests/account-import.test.ts` covers import-format hints, exact hex lengths, supported mnemonic lengths, whitespace handling, and the distinction between detection and cryptographic validation.
+
+Activity handler regressions in `tests/activity-decrypt.test.ts` verify canonical record storage, per-domain caps and that clearing with filters selects the same records as the domain/UI filter.

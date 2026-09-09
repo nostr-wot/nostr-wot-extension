@@ -1,3 +1,12 @@
+import {
+  VAULT_STORAGE_KEY as STORAGE_KEY,
+  VAULT_VERSION,
+  VAULT_PBKDF2_ITERATIONS as PBKDF2_ITERATIONS,
+  LEGACY_VAULT_PBKDF2_ITERATIONS as PBKDF2_ITERATIONS_LEGACY,
+  DEFAULT_AUTO_LOCK_MS as AUTO_LOCK_DEFAULT_MS,
+  KEEPALIVE_ALARM,
+  KEEPALIVE_PERIOD_MIN,
+} from '@constants/vault.ts';
 /**
  * Encrypted Key Vault -- AES-256-GCM + PBKDF2
  *
@@ -26,22 +35,7 @@ import type { VaultPayload, MemoryAccount, MemoryVaultPayload } from '../../doma
 import type { Account, SafeAccount, SafeAccountWithWallet } from '../../domain/accounts/types.ts';
 import { hexToBytes, bytesToHex, arrayToBase64, base64ToArray } from '../../lib/crypto/utils.ts';
 import browser from '@lib/browser.ts';
-import { LOCK_STATE_KEY } from '../../domain/vault/constants.ts';
-
-const STORAGE_KEY = 'keyVault';
-const VAULT_VERSION = 1;
-
-// PBKDF2 work factor, in iterations of HMAC-SHA-256.
-//
-// 600,000 is OWASP's recommendation for PBKDF2-HMAC-SHA-256. The previous value,
-// 210,000, is OWASP's figure for SHA-**512** — the wrong row of the same table, which
-// made the parameter look calibrated while being ~2.9x weak. Existing vaults record the
-// count they were written with and are upgraded transparently on the next unlock.
-const PBKDF2_ITERATIONS = 600000;
-
-// The count used before that, and still used for "Never lock" vaults. Records written
-// by older builds carry no `iterations` field and must be read back at this count.
-const PBKDF2_ITERATIONS_LEGACY = 210000;
+import { LOCK_STATE_KEY } from '@constants/vault.ts';
 
 /**
  * Work factor for a given password.
@@ -55,11 +49,6 @@ const PBKDF2_ITERATIONS_LEGACY = 210000;
 function iterationsFor(password: string): number {
   return password.length > 0 ? PBKDF2_ITERATIONS : PBKDF2_ITERATIONS_LEGACY;
 }
-const AUTO_LOCK_DEFAULT_MS = 15 * 60 * 1000; // 15 minutes
-const KEEPALIVE_ALARM = 'vault-keepalive';
-// Chrome clamps alarm periods to a 30s (0.5 min) minimum; we just need any
-// periodic wake to reset the service-worker idle timer while unlocked.
-const KEEPALIVE_PERIOD_MIN = 0.5;
 
 let _cryptoKey: CryptoKey | null = null;
 let _decrypted: MemoryVaultPayload | null = null;

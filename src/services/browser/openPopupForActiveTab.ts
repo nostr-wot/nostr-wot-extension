@@ -1,10 +1,9 @@
+import { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
+export { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
 import browser from '@lib/browser.ts';
 import { originMatchesActiveTab, requestIsFromActiveTab } from '../../domain/site/originMatchesActiveTab.ts';
 
 export { originMatchesActiveTab, requestIsFromActiveTab };
-
-/** Where the background records which site it opened the popup for. */
-export const POPUP_CONTEXT_KEY = 'popupContext';
 
 export interface PopupContext {
   origin: string;

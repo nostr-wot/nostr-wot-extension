@@ -1,3 +1,4 @@
+import { ACTIVITY_PAGE_SIZE as PAGE_SIZE, TYPE_LABEL_KEYS } from '@constants/activity.ts';
 import ActivityFiltersDialog from './ActivityFiltersDialog';
 import { useState, useEffect, useMemo } from 'react';
 import { rpc } from '@services/rpc.ts';
@@ -30,27 +31,6 @@ import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import usePagedList from '@hooks/usePagedList.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
 import type { DropdownOption } from '@components/Dropdown/dropdownOption.ts';
-
-/** Rendered rows per page. Grown by the "show more" button, reset whenever
- *  the filters narrowing `rawLog` change (see the effect below). */
-const PAGE_SIZE = 40;
-
-/** Translation keys for `availableTypeKeys`' chip keys. A key lookup rather
- *  than the translated text itself, so it can live at module scope without
- *  freezing in whatever language was active on first import — `t()` still
- *  runs at render time, in `typeOptions` below. Kept out of the domain module
- *  because that layer stays i18n-free (see docs/component-standards.md §6,
- *  `permissionRules.ts`). */
-const TYPE_LABEL_KEYS: Record<string, string> = {
-  signEvent: 'approval.signEvent',
-  getPublicKey: 'perm.readProfile',
-  encrypt: 'activity.sendMessage',
-  decrypt: 'activity.readMessage',
-  nip04Encrypt: 'activity.sendNip04',
-  nip44Encrypt: 'activity.sendNip44',
-  nip04Decrypt: 'activity.readNip04',
-  nip44Decrypt: 'activity.readNip44',
-};
 
 interface ActivityOverlayProps {
   visible: boolean;
@@ -137,7 +117,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   }, [rawLog, accountFilter, filter, typeFilter, pubkeyFilter]);
 
   // Renders a growing prefix of `entries` rather than all of it — the log can
-  // hold up to 2000 raw entries (domain/activity/constants.ts), and grouping does not
+  // hold up to 2000 raw entries (constants/activity.ts), and grouping does not
   // bound how many rows that becomes.
   const page = usePagedList(entries, PAGE_SIZE);
 

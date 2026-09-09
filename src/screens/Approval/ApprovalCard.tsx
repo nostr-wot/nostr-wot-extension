@@ -7,7 +7,7 @@ import Button from '@components/Button/Button';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 import SiteIcon from '@components/SiteIcon/SiteIcon';
-import { KIND_LABELS } from '@domain/nostr/kindLabels';
+import { KIND_LABELS } from '@constants/nostr.ts';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;

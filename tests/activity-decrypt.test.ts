@@ -117,3 +117,43 @@ it('activity decryption remains internal to extension pages', async () => {
   const { handlers: misc } = await import('../src/services/background/misc-handlers.ts');
   assert.equal(buildPrivilegedMethods(misc).has('activity_decrypt'), true);
 });
+
+it('stores the canonical activity record with a timestamp and nullable account', async () => {
+  const { logActivity } = await import('../src/services/background/activity-handlers.ts');
+  const { filterActivityEntries } = await import('../src/domain/activity/activity.ts');
+  const start = Date.now();
+  await logActivity({ method: 'signEvent', decision: 'approved', pubkey: null,
+    domain: 'site.test', kind: 1, event: { kind: 1, content: 'public', tags: [['p', 'abc']] } });
+  const log = (await browser.storage.local.get('activityLog')).activityLog as ActivityEntry[];
+  assert.equal(log.length, 1);
+  assert.ok(log[0].timestamp >= start);
+  assert.equal(log[0].pubkey, null);
+  assert.deepEqual(filterActivityEntries(log, { domain: 'site.test', pubkeyQuery: 'ABC' }), log);
+});
+
+it('filtered clearing removes exactly the entries selected by the shared UI rules', async () => {
+  const { filterActivityEntries } = await import('../src/domain/activity/activity.ts');
+  const log: ActivityEntry[] = [
+    { method: 'nip44Decrypt', decision: 'approved', timestamp: 1, domain: 'site.test', pubkey: 'owner', theirPubkey: 'ABCD' },
+    { method: 'signEvent', decision: 'approved', timestamp: 2, domain: 'site.test', pubkey: 'owner', event: { tags: [['p','abcd']] } },
+    { method: 'nip04Decrypt', decision: 'approved', timestamp: 3, domain: 'other.test', pubkey: 'owner', theirPubkey: 'abcd' },
+    { method: 'nip44Decrypt', decision: 'approved', timestamp: 4, domain: 'site.test', pubkey: 'other', theirPubkey: 'abcd' },
+  ];
+  for (const type of ['decrypt', 'signEvent', 'unknown']) {
+    await browser.storage.local.set({ activityLog: log });
+    const selected = new Set(filterActivityEntries(log, { account: 'owner', domain: 'site.test', type, pubkeyQuery: 'BC' }));
+    await handlers.get('clearActivityLog')!({ accountPubkey: 'owner', domain: 'site.test', typeFilter: type, pubkeyFilter: 'BC' });
+    assert.deepEqual((await browser.storage.local.get('activityLog')).activityLog, log.filter(e => !selected.has(e)));
+  }
+});
+
+it('caps activity per domain and drops oversized ciphertext', async () => {
+  const { logActivity } = await import('../src/services/background/activity-handlers.ts');
+  const { ACTIVITY_LOG_MAX_PER_DOMAIN, ACTIVITY_MAX_CIPHERTEXT_LENGTH } = await import('../src/constants/activity.ts');
+  const entries: ActivityEntry[] = Array.from({ length: ACTIVITY_LOG_MAX_PER_DOMAIN }, (_, timestamp) => ({ method: 'getPublicKey', decision: 'approved', domain: 'site.test', timestamp }));
+  await browser.storage.local.set({ activityLog: entries });
+  await logActivity({ method: 'nip44Decrypt', decision: 'approved', domain: 'site.test', ciphertext: 'a'.repeat(ACTIVITY_MAX_CIPHERTEXT_LENGTH + 1) });
+  const log = (await browser.storage.local.get('activityLog')).activityLog as ActivityEntry[];
+  assert.equal(log.length, ACTIVITY_LOG_MAX_PER_DOMAIN);
+  assert.equal(log[0].ciphertext, undefined);
+});

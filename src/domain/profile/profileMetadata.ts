@@ -1,3 +1,4 @@
+import { PROFILE_OWNED_FIELDS as OWNED } from '@constants/profile.ts';
 /**
  * A user's kind:0 profile metadata.
  *
@@ -30,18 +31,7 @@ export interface ProfileMetadata {
  */
 
 /** The fields the edit form owns. Anything else on the existing event is passed through. */
-export interface ProfileFields {
-  name: string;
-  about: string;
-  picture: string;
-  nip05: string;
-  lud16: string;
-  website: string;
-  banner: string;
-}
-
-/** Fields the form owns, in the order they are applied. */
-const OWNED = ['name', 'about', 'picture', 'nip05', 'lud16', 'website', 'banner'] as const;
+export type ProfileFields = Required<Pick<ProfileMetadata, (typeof OWNED)[number]>>;
 
 /**
  * Merge the form's fields over the existing kind:0 content.
@@ -93,4 +83,16 @@ export function profileHasChanges(
   return OWNED.some(
     (key) => key !== 'name' && key !== 'picture' && fields[key] !== ((existing?.[key] as string) || ''),
   ) || fields.picture !== ((existing?.picture as string) || '');
+}
+
+/** The outcome of a profile read, distinguishing "nothing there" from "could not ask". */
+export interface ProfileRead {
+    metadata: Record<string, unknown> | null;
+    /**
+     * True when at least one relay actually answered — delivered the event, or
+     * reached EOSE, which is a relay saying authoritatively that it holds no
+     * kind:0 for this pubkey. False means every relay errored or timed out, and
+     * the null metadata carries no information at all.
+     */
+    reachable: boolean;
 }

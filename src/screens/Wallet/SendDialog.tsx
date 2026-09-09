@@ -8,7 +8,7 @@ import { decodeBolt11 } from '@domain/wallet/bolt11.ts';
 import { isLightningAddress, parseLnurl } from '@domain/wallet/lnurl.ts';
 import { resolveSendTarget } from '@domain/wallet/sendTarget.ts';
 import { describeInvoiceExpiry } from '@domain/wallet/invoiceExpiry.ts';
-import { PAYMENT_IN_FLIGHT } from '@domain/wallet/types.ts';
+import { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
 import FormError from '@components/FormError/FormError';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import Container from '@components/Container/Container';

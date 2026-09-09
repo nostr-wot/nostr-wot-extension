@@ -1,3 +1,5 @@
+import { NIP07_SIGNING_METHODS } from '@constants/signing.ts';
+import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 
 import browser from './src/lib/browser.ts';
 import * as vault from './src/services/vault/vault.ts';
@@ -9,7 +11,6 @@ import { randomHex } from './src/lib/crypto/utils.ts';
 
 import {
     config,
-    NIP07_SIGNING_METHODS,
     npubToHex,
     buildPrivilegedMethods, setPrivilegedMethods,
     PRIVILEGED_METHODS,
@@ -336,7 +337,7 @@ void vault.beginStartupUnlock(async () => {
         // every time the service worker restarts (bug #10).
         await vault.restoreAutoLockSetting();
         const data = await browser.storage.local.get(['autoLockMs', 'activeAccountId']);
-        if (((data as Record<string, unknown>).autoLockMs ?? 900000) === 0 && await vault.exists()) {
+        if (((data as Record<string, unknown>).autoLockMs ?? DEFAULT_AUTO_LOCK_MS) === 0 && await vault.exists()) {
             const ok = await vault.unlock('');
             if (ok) {
                 if ((data as Record<string, unknown>).activeAccountId) {

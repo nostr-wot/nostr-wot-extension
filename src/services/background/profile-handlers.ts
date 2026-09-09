@@ -1,3 +1,9 @@
+import { PROFILE_CACHE_TTL_MS as PROFILE_CACHE_TTL } from '@constants/profile.ts';
+import type { MyMuteList as GroupedMuteList } from '@domain/mutes/muteList.ts';
+import type { ProfileRead } from '@domain/profile/profileMetadata.ts';
+export type { MyMuteList as GroupedMuteList } from '@domain/mutes/muteList.ts';
+export type { ProfileRead } from '@domain/profile/profileMetadata.ts';
+import { PROFILE_RETRY_MS } from '@constants/profile.ts';
 /**
  * Profile metadata and NIP-51 mute list (kind:10000) handlers.
  * @module services/background/profile-handlers
@@ -7,10 +13,12 @@ import browser from '../../lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { randomHex } from '../../lib/crypto/utils.ts';
 import { verifyEvent } from '../../lib/crypto/nip01.ts';
-import { cachedRelayRead, MUTE_LIST_CACHE } from '../relays/relayCache.ts';
+import { cachedRelayRead } from '../relays/relayCache.ts';
+import { MUTE_LIST_CACHE } from '@constants/relays.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 
-import { config, DEFAULT_RELAYS, profileCache, PROFILE_CACHE_TTL, type HandlerFn, type ProfileCacheEntry } from './state.ts';
+import { config, profileCache, type HandlerFn, type ProfileCacheEntry } from './state.ts';
+import { DEFAULT_RELAYS } from '@constants/relays.ts';
 
 /**
  * Accept a relay's EVENT only if it is really the event we asked for.
@@ -40,17 +48,6 @@ async function acceptedEvent(
     return ev;
 }
 
-/** Public entries of a NIP-51 mute list, grouped by tag type, plus the raw
- *  (still-encrypted) private `.content` so callers can round-trip it verbatim. */
-export interface GroupedMuteList {
-    people: string[];   // 'p' tags  — muted pubkeys (hex)
-    hashtags: string[]; // 't' tags  — muted hashtags
-    words: string[];    // 'word' tags — muted words
-    events: string[];   // 'e' tags  — muted threads/events
-    rawContent: string; // encrypted private entries, preserved verbatim ('' if none)
-    createdAt: number;  // created_at of the newest event seen (0 if none)
-}
-
 /** Read the active user's configured relays (sync.relays CSV), falling back to config/defaults. */
 async function getUserRelays(): Promise<string[]> {
     const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
@@ -66,7 +63,6 @@ async function getUserRelays(): Promise<string[]> {
 // A missing kind:0 was never cached, so every repeated read opened every relay.
 // This is only a display-read cooldown; getProfileForMerge always reads fresh.
 const profileReads = new Map<string, { promise: Promise<Record<string, unknown> | null>; expiresAt: number }>();
-const PROFILE_RETRY_MS = 60_000;
 
 export async function fetchProfileMetadata(pubkey: string): Promise<Record<string, unknown> | null> {
     if (!pubkey) return null;
@@ -100,18 +96,6 @@ export async function fetchProfileMetadata(pubkey: string): Promise<Record<strin
     })().finally(() => { entry.expiresAt = Date.now() + PROFILE_RETRY_MS; });
     profileReads.set(pubkey, entry);
     return entry.promise;
-}
-
-/** The outcome of a profile read, distinguishing "nothing there" from "could not ask". */
-export interface ProfileRead {
-    metadata: Record<string, unknown> | null;
-    /**
-     * True when at least one relay actually answered — delivered the event, or
-     * reached EOSE, which is a relay saying authoritatively that it holds no
-     * kind:0 for this pubkey. False means every relay errored or timed out, and
-     * the null metadata carries no information at all.
-     */
-    reachable: boolean;
 }
 
 export async function fetchKind0(pubkey: string, relayUrls: string[]): Promise<Record<string, unknown> | null> {

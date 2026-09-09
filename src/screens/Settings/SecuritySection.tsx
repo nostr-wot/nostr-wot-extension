@@ -1,6 +1,7 @@
+import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
-import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
+import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { IconWarning, IconLock } from '@assets';
 import Card from '@components/Card/Card';
@@ -23,7 +24,7 @@ interface SecuritySectionProps {
 }
 
 export default function SecuritySection({ onChangePassword }: SecuritySectionProps) {
-  const [autoLockMs, setAutoLockMs] = useState<number>(900000);
+  const [autoLockMs, setAutoLockMs] = useState<number>(DEFAULT_AUTO_LOCK_MS);
   const [pendingMs, setPendingMs] = useState<number | null>(null);
   // The pair for "turning auto-lock on" (never → timed). Disabling it
   // (timed → never) asks for the *current* password instead, a single field

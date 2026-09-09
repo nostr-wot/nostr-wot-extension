@@ -1,13 +1,15 @@
+import { LNURL_MAX_RESPONSE_BYTES as MAX_RESPONSE_BYTES, LNURL_REQUEST_TIMEOUT_MS as REQUEST_TIMEOUT_MS } from '@constants/wallet.ts';
 import { decodeBolt11 } from '../../domain/wallet/bolt11.ts';
-import { parseLightningAddress, parseLnurl, lightningAddressToLnurlpUrl, assertPublicHttpsUrl, type LnurlPayParams, type ResolvedInvoice } from '../../domain/wallet/lnurl.ts';
+import {
+  parseLightningAddress,
+  parseLnurl,
+  lightningAddressToLnurlpUrl,
+  assertPublicHttpsUrl,
+  type LnurlPayParams,
+  type ResolvedInvoice,
+} from '../../domain/wallet/lnurl.ts';
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
-
-/** Cap on the pay-params body, so a hostile server cannot stream forever. */
-const MAX_RESPONSE_BYTES = 64 * 1024;
-
-/** Give up on an endpoint that will not answer. */
-const REQUEST_TIMEOUT_MS = 15_000;
 
 // ── Fetch helpers ──
 

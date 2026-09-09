@@ -1,3 +1,4 @@
+import { GENERATED_MNEMONIC_STRENGTH_BITS } from '@constants/accounts.ts';
 /**
  * Multi-Account Manager
  *
@@ -24,7 +25,8 @@ import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
 import { bytesToHex, hexToBytes } from '../../lib/crypto/utils.ts';
 import { nsecDecode, npubDecode } from '../../lib/crypto/bech32.ts';
 import { generateMnemonic, mnemonicToSeed, validateMnemonic } from '../../lib/crypto/bip39.ts';
-import { derivePath, NIP06_PATH } from '../../lib/crypto/bip32.ts';
+import { derivePath } from '../../lib/crypto/bip32.ts';
+import { NIP06_PATH } from '@constants/crypto/bip32.ts';
 
 function generateId(): string {
   const arr = crypto.getRandomValues(new Uint8Array(6));
@@ -114,7 +116,7 @@ export async function generateNewAccount(name: string = 'Main'): Promise<{ accou
   // becomes the limiting factor once post-quantum keys are derived from the same
   // seed — the seed, not the algorithm, would be the weakest link. Existing
   // 12-word accounts keep working; this affects newly generated identities only.
-  const mnemonic = await generateMnemonic(256); // 24 words
+  const mnemonic = await generateMnemonic(GENERATED_MNEMONIC_STRENGTH_BITS); // 24 words
   const account = await createFromMnemonic(mnemonic, name);
   return { account, mnemonic };
 }

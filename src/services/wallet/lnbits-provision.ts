@@ -1,3 +1,4 @@
+export { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 /**
  * LNbits auto-provisioning with challenge-response
  *
@@ -13,8 +14,6 @@
  */
 
 import type { SignedEvent } from '../../domain/nostr/types.ts';
-
-export const DEFAULT_LNBITS_URL = 'https://zaps.nostr-wot.com';
 
 interface ProvisionResponse {
   id: string;

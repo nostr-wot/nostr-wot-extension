@@ -1,3 +1,5 @@
+import { UNLOCK_FAILURES_PER_LOCKOUT as LOCKOUT_THRESHOLD } from '@constants/vault.ts';
+import { UNLOCK_LOCKOUT_STEPS_MS as LOCKOUT_DURATIONS } from '@constants/vault.ts';
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { rpc } from '@services/rpc.ts';
 
@@ -34,8 +36,6 @@ const DEFAULT_MESSAGES: Required<VaultUnlockMessages> = {
 };
 
 // Escalating lockout: 5 failures → 60s, 10 → 300s, 15 → 900s, 20+ → 1800s
-const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATIONS = [60_000, 300_000, 900_000, 1_800_000];
 
 function getLockoutDuration(failures: number): number {
   if (failures < LOCKOUT_THRESHOLD) return 0;

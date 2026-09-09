@@ -1,7 +1,7 @@
 import { truncateMiddle } from '@utils/format/text.ts';
 import { useEffect, useRef, useState } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import { LOCK_STATE_KEY } from '@domain/vault/constants.ts';
+import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { activityEncryption, activityEntryKey, type ActivityEntry } from '@domain/activity/activity.ts';
 import { rpc } from '@services/rpc.ts';
 import useStorageWatch from '@hooks/useStorageWatch';

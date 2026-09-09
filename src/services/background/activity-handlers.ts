@@ -1,3 +1,4 @@
+import { ACTIVITY_MAX_CIPHERTEXT_LENGTH } from '@constants/activity.ts';
 /**
  * Activity log handlers: log, retrieve, and clear the activity log.
  * @module services/background/activity-handlers
@@ -6,42 +7,23 @@
 import browser from '../../lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { decryptForAccount } from '../signing/signer.ts';
-import { activityEntryKey, activityEncryption, type ActivityEntry as DisplayEntry } from '../../domain/activity/activity.ts';
+import {
+  activityEntryKey,
+  activityEncryption,
+  filterActivityEntries,
+  type ActivityEntry,
+  type ActivityLogInput,
+} from '../../domain/activity/activity.ts';
 import { verifyEvent } from '../../lib/crypto/nip01.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 import { config, type HandlerFn } from './state.ts';
-import { ACTIVITY_LOG_MAX_PER_DOMAIN } from '../../domain/activity/constants.ts';
-
-// ── Types ──
-
-interface ActivityEntry {
-    pubkey?: string | null;
-    domain?: string;
-    method: string;
-    decision: string;
-    kind?: number;
-    event?: Record<string, unknown>;
-    theirPubkey?: string;
-    ciphertext?: string;
-}
-
-interface StoredActivityEntry {
-    timestamp: number;
-    domain?: string;
-    method: string;
-    kind?: number | null;
-    decision: string;
-    pubkey?: string | null;
-    event?: { tags?: string[][] } & Record<string, unknown>;
-    theirPubkey?: string;
-    ciphertext?: string;
-}
+import { ACTIVITY_LOG_MAX_PER_DOMAIN } from '@constants/activity.ts';
 
 // ── Activity Log ──
 
-export async function logActivity(entry: ActivityEntry): Promise<void> {
+export async function logActivity(entry: ActivityLogInput): Promise<void> {
     try {
-        const data = await browser.storage.local.get(['activityLog']) as Record<string, Array<Record<string, unknown>>>;
+        const data = await browser.storage.local.get(['activityLog']) as Record<string, ActivityEntry[]>;
         const log = data.activityLog || [];
         log.unshift({
             timestamp: Date.now(),
@@ -52,7 +34,7 @@ export async function logActivity(entry: ActivityEntry): Promise<void> {
             pubkey: entry.pubkey !== undefined ? entry.pubkey : config.myPubkey || null,
             ...(entry.event && { event: entry.event }),
             ...(entry.theirPubkey && { theirPubkey: entry.theirPubkey }),
-            ...(entry.ciphertext && entry.ciphertext.length <= 131072 && { ciphertext: entry.ciphertext }),
+            ...(entry.ciphertext && entry.ciphertext.length <= ACTIVITY_MAX_CIPHERTEXT_LENGTH && { ciphertext: entry.ciphertext }),
         });
         // Keep max 200 entries per domain
         const domainCounts: Record<string, number> = {};
@@ -72,7 +54,7 @@ export const handlers = new Map<string, HandlerFn>([
         await vault.whenStartupUnlockSettled();
         if (vault.isLocked()) throw new Error('Vault is locked');
         const stored = await browser.storage.local.get('activityLog');
-        const entry = ((stored.activityLog || []) as DisplayEntry[]).find((item: DisplayEntry) => activityEntryKey(item) === params.entryKey) as DisplayEntry | undefined;
+        const entry = ((stored.activityLog || []) as ActivityEntry[]).find((item: ActivityEntry) => activityEntryKey(item) === params.entryKey) as ActivityEntry | undefined;
         if (!entry) throw new Error('This activity entry is no longer available');
         const encrypted = activityEncryption(entry);
         if (!encrypted) throw new Error('No encrypted content was saved for this entry');
@@ -103,33 +85,14 @@ export const handlers = new Map<string, HandlerFn>([
         if (!hasFilter) {
             await browser.storage.local.remove('activityLog');
         } else {
-            const allLog = ((await browser.storage.local.get(['activityLog'])) as Record<string, StoredActivityEntry[]>).activityLog || [];
-            const typeMethods: Record<string, string[]> = {
-                signEvent: ['signEvent'], getPublicKey: ['getPublicKey'],
-                encrypt: ['nip04Encrypt', 'nip44Encrypt'], decrypt: ['nip04Decrypt', 'nip44Decrypt'],
-                nip04Encrypt: ['nip04Encrypt'], nip04Decrypt: ['nip04Decrypt'],
-                nip44Encrypt: ['nip44Encrypt'], nip44Decrypt: ['nip44Decrypt'],
-            };
-            const kept = allLog.filter((e: StoredActivityEntry) => {
-                if (params.accountPubkey && e.pubkey !== params.accountPubkey) return true;
-                if (params.domain && e.domain !== params.domain) return true;
-                if (params.typeFilter) {
-                    const methods = typeMethods[params.typeFilter as string];
-                    if (methods && !methods.includes(e.method)) return true;
-                }
-                if (params.pubkeyFilter) {
-                    const q = (params.pubkeyFilter as string).toLowerCase();
-                    let matches = false;
-                    if (e.theirPubkey && e.theirPubkey.toLowerCase().includes(q)) matches = true;
-                    if (!matches && e.event?.tags) {
-                        for (const tag of e.event.tags) {
-                            if (tag[0] === 'p' && tag[1] && tag[1].toLowerCase().includes(q)) { matches = true; break; }
-                        }
-                    }
-                    if (!matches) return true;
-                }
-                return false;
-            });
+            const allLog = ((await browser.storage.local.get(['activityLog'])) as Record<string, ActivityEntry[]>).activityLog || [];
+            const selected = new Set(filterActivityEntries(allLog, {
+                account: params.accountPubkey as string | undefined,
+                domain: params.domain as string | undefined,
+                type: params.typeFilter as string | undefined,
+                pubkeyQuery: params.pubkeyFilter as string | undefined,
+            }));
+            const kept = allLog.filter(entry => !selected.has(entry));
             await browser.storage.local.set({ activityLog: kept });
         }
         return { ok: true };

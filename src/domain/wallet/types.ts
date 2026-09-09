@@ -1,21 +1,4 @@
-/**
- * Wallet provider types for Lightning/Zaps support
- * @module domain/wallet/types
- */
-
-// ── Error codes ──
-
-/**
- * Raised when a payment replay arrives while the first attempt is still running.
- * See services/wallet/payment-intents.ts.
- *
- * A stable code rather than a sentence, because it crosses the RPC boundary as
- * an error message and is rendered to the user — an English sentence thrown in
- * the background is an English sentence shown in all six locales. It lives here,
- * in the one wallet module that imports nothing, so the popup can recognise it
- * without pulling the background's storage shim into its bundle.
- */
-export const PAYMENT_IN_FLIGHT = 'PAYMENT_IN_FLIGHT';
+export { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
 
 // ── Wallet Configuration ──
 

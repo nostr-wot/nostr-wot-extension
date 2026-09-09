@@ -1,3 +1,11 @@
+import { NIP46_RELAYS } from '@constants/relays.ts';
+import {
+  NC_TTL_MS,
+  NC_SESSIONS_KEY,
+  NC_SECRETS_KEY,
+  ONBOARDING_PENDING_TTL_MS as ONBOARDING_TTL_MS,
+  PENDING_KEYS,
+} from '@constants/wizard.ts';
 /**
  * Onboarding and NostrConnect session handlers.
  * @module services/background/onboarding-handlers
@@ -11,7 +19,7 @@ import { bytesToHex, hexToBytes, randomBytes, randomHex } from '../../lib/crypto
 import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
 import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
-import { config, DEFAULT_RELAYS, type HandlerFn, type LocalAccountEntry } from './state.ts';
+import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { syncActivePubkey } from './vault-handlers.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
 import * as signer from '../signing/signer.ts';
@@ -83,10 +91,6 @@ interface PersistedNcSession {
     signerPubkey?: string;
     createdAt: number;
 }
-
-const NC_TTL_MS = 5 * 60 * 1000;
-const NC_SESSIONS_KEY = '_ncSessions';
-const NC_SECRETS_KEY = '_ncSessionSecrets';
 
 /** On-disk shape: persisted mirrors keyed by sessionId, with secretKeyHex redacted. */
 type StoredNcSession = Omit<PersistedNcSession, 'secretKeyHex'>;
@@ -222,7 +226,6 @@ function ensureLiveSession(persisted: PersistedNcSession): NostrConnectSession {
 let _pendingOnboardingAccount: Account | null = null;
 let _pendingOnboardingSetAt = 0;
 let _pendingOnboardingTimer: ReturnType<typeof setTimeout> | null = null;
-const ONBOARDING_TTL_MS = 5 * 60 * 1000;
 
 /**
  * XOR two equal-length Uint8Arrays and return the result.
@@ -232,17 +235,6 @@ function xorBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
     for (let i = 0; i < a.length; i++) out[i] = a[i] ^ b[i];
     return out;
 }
-
-/** Every session-storage key the pending-onboarding record can occupy, current and legacy. */
-const PENDING_KEYS = [
-    '_pendingOnboardingAccount',
-    '_pendingOnboardingCreatedAt',
-    '_pendingOnboardingSecrets',
-    '_pendingOnboardingSecretsPad',
-    // Legacy privkey-only split, superseded by the combined blob above.
-    '_pendingOnboardingPad',
-    '_pendingOnboardingMasked',
-];
 
 /** The secret fields of an Account. Extracted together so none can be forgotten. */
 interface PendingSecrets {
@@ -503,7 +495,6 @@ export const handlers = new Map<string, HandlerFn>([
             await deleteNcSession(s.sessionId);
         }
 
-        const NIP46_RELAYS = ['wss://relay.nsec.app', ...DEFAULT_RELAYS];
         const connectSecret = randomHex(16);
         const ncSecretKey = randomBytes(32);
         const ncLocalPubkey = bytesToHex(getPublicKey(ncSecretKey));
@@ -676,7 +667,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['onboarding_saveReadOnly', async (params) => {
         const acctId = (params.account as Record<string, string>).id;
         const pubkey = (params.account as Record<string, string>).pubkey;
-        const acctType = (params.account as Record<string, string>).type || 'npub';
+        const acctType = (params.account as Pick<Account, 'type'>).type || 'npub';
         const prevActiveRo = ((await browser.storage.local.get(['activeAccountId'])) as Record<string, string>).activeAccountId;
         if (pubkey) {
             config.myPubkey = pubkey;

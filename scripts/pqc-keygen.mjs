@@ -32,10 +32,8 @@ import { getPublicKey } from '../src/lib/crypto/secp256k1.js';
 import { signEvent } from '../src/lib/crypto/nip01.js';
 import { bytesToHex } from '../src/lib/crypto/utils.js';
 import { npubEncode } from '../src/lib/crypto/bech32.js';
-import {
-  derivePqKeys, popMessage, signPop,
-  ALG_KEM, ALG_DSA, PQ_PROFILE,
-} from '../src/lib/crypto/pq.js';
+import { derivePqKeys, popMessage, signPop } from '../src/lib/crypto/pq.js';
+import { ALG_KEM, ALG_DSA, PQ_PROFILE } from '../src/constants/crypto/pq.js';
 
 const PQC_KIND = 10203;
 const b64 = (u8) => Buffer.from(u8).toString('base64');

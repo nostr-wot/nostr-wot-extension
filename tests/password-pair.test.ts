@@ -10,7 +10,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { validatePasswordPair, MIN_PASSWORD_LENGTH } from '../src/domain/vault/passwordPair.ts';
+import { validatePasswordPair } from '../src/domain/vault/passwordPair.ts';
+import { MIN_PASSWORD_LENGTH } from '@constants/vault.ts';
 
 describe('validatePasswordPair', () => {
   it('accepts a long enough matching pair', () => {

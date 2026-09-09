@@ -12,16 +12,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  filterActivityEntries,
-  countActivityFilters,
-  activityDomains,
-  activityAccountOptions,
-  availableTypeKeys,
-  buildDayGroups,
-  TYPE_METHODS,
-  type ActivityEntry,
-} from '../src/domain/activity/activity.ts';
+import { filterActivityEntries, countActivityFilters, activityDomains, activityAccountOptions, availableTypeKeys, buildDayGroups, type ActivityEntry } from '../src/domain/activity/activity.ts';
+import { TYPE_METHODS } from '@constants/activity.ts';
 
 const entry = (over: Partial<ActivityEntry> = {}): ActivityEntry => ({
   method: 'signEvent',

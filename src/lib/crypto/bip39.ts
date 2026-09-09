@@ -1,3 +1,4 @@
+import { GENERATED_MNEMONIC_STRENGTH_BITS } from '@constants/accounts.ts';
 /**
  * BIP-39 — Mnemonic Seed Phrase Generation and Seed Derivation
  *
@@ -27,7 +28,7 @@ import { wordlist } from '@scure/bip39/wordlists/english.js';
  *
  * @param strength - entropy in bits (128 = 12 words, 256 = 24 words)
  */
-export async function generateMnemonic(strength: number = 256): Promise<string> {
+export async function generateMnemonic(strength: number = GENERATED_MNEMONIC_STRENGTH_BITS): Promise<string> {
   return _gen(wordlist, strength);
 }
 

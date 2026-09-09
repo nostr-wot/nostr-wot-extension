@@ -1,3 +1,8 @@
+import {
+  PAYMENT_INTENTS_STORAGE_KEY as STORE_KEY,
+  PAYMENT_INTENT_TTL_MS as TTL_MS,
+  PAYMENT_INTENT_STUCK_TTL_MS as STUCK_TTL_MS,
+} from '@constants/wallet.ts';
 /**
  * At-most-once execution for payments that cannot be safely repeated.
  *
@@ -29,23 +34,7 @@
 
 import browser from '../../lib/browser.ts';
 import { AsyncLock } from '../../utils/asyncLock.ts';
-import { PAYMENT_IN_FLIGHT } from '../../domain/wallet/types.ts';
-
-const STORE_KEY = 'walletPaymentIntents';
-
-/** How long a completed intent stays replayable. Retries happen in milliseconds; this is slack. */
-const TTL_MS = 10 * 60 * 1000;
-
-/**
- * How long a record stuck at 'in-flight' is kept.
- *
- * Deliberately far longer than TTL_MS. An in-flight marker is the one record
- * that must not be pruned on a timer: dropping it is exactly what re-arms the
- * double payment it was written to prevent. Intent ids are per-click UUIDs, so
- * a stranded marker blocks nothing — it is a leak, not a lock — and this bound
- * exists only so the leak cannot grow without limit.
- */
-const STUCK_TTL_MS = 24 * 60 * 60 * 1000;
+import { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
 
 /**
  * Serializes the whole store, the way services/signing/signer.ts and services/permissions/permissions.ts do

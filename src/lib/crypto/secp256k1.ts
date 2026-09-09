@@ -1,3 +1,5 @@
+import { P } from '@constants/crypto/secp256k1.ts';
+export { N } from '@constants/crypto/secp256k1.ts';
 /**
  * secp256k1 — Thin wrapper over @noble/curves
  *
@@ -9,9 +11,6 @@
 
 import { secp256k1, schnorr } from '@noble/curves/secp256k1.js';
 import { bytesToHex } from './utils.ts';
-
-export const N: bigint = secp256k1.Point.Fn.ORDER;
-const P: bigint = secp256k1.Point.Fp.ORDER;
 
 export function getPublicKey(privkey: Uint8Array): Uint8Array {
   return schnorr.getPublicKey(privkey);

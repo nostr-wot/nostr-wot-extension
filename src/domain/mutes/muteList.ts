@@ -1,7 +1,7 @@
 /**
  * The user's own NIP-51 mute list (kind:10000), as the popup reads it.
  *
- * Mirrors `GroupedMuteList` in services/background/profile-handlers.ts, which is what
+ * The canonical contract used by the background and UI, which is what
  * `getMyMuteList` returns. Two screens declared their own version and they were
  * not the same: the home row wanted three counts, the editor needed all six
  * fields — including `rawContent`, which is the still-encrypted private half

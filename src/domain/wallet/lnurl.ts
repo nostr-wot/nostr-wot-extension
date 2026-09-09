@@ -1,3 +1,4 @@
+import { LOCAL_PART, DOMAIN, PRIVATE_IPV4 } from '@constants/lnurl.ts';
 import { bech32 } from '@scure/base';
 
 export interface LnurlPayParams {
@@ -28,14 +29,6 @@ export interface ResolvedInvoice {
   /** Amount encoded in the invoice — already checked against the request. */
   amountSats: number;
 }
-
-// ── Address parsing ──
-
-// LUD-16 keeps the local part to `a-z0-9-_.` (lowercase). Domains are the
-// usual dot-separated labels; a trailing dot or an empty label is rejected.
-const LOCAL_PART = /^[a-z0-9-_.]+$/;
-
-const DOMAIN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 
 /**
  * Split a Lightning Address into its parts, lowercasing as LUD-16 requires.
@@ -95,10 +88,6 @@ export function parseLnurl(input: string): { encoded: string; url: string } | nu
     return null;
   }
 }
-
-// ── URL safety ──
-
-const PRIVATE_IPV4 = /^(0|10|127)\.|^169\.254\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[01])\./;
 
 /**
  * Refuse anything that is not a plain HTTPS request to a public host.

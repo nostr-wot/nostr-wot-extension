@@ -1,3 +1,11 @@
+import {
+  DISMISS_DURATION_KEY,
+  SESSION_DISMISSED_KEY,
+  DISMISS_DURATIONS,
+  DISMISS_DURATION_DEFAULT,
+  CONNECT_WAIT_TIMEOUT_MS,
+} from '@constants/permissions.ts';
+export { DISMISS_DURATIONS } from '@constants/permissions.ts';
 /**
  * Domain, badge, tab, and injection handlers.
  * @module services/background/domain-handlers
@@ -124,14 +132,7 @@ export type DismissalLifetime = number | 'session' | 'never';
 export interface Dismissal {
     at: number;
     until: DismissalLifetime;
-}
-
-const DISMISS_DURATION_KEY = 'dismissDurationMs';
-const SESSION_DISMISSED_KEY = 'sessionDismissedDomains';
-
-/** 0 means "until the browser restarts". */
-export const DISMISS_DURATIONS = [0, 86_400_000, 604_800_000, 2_592_000_000] as const;
-const DISMISS_DURATION_DEFAULT = 604_800_000; // 7 days
+} // 7 days
 
 export async function getDismissDuration(): Promise<number> {
     const data = await browser.storage.local.get(DISMISS_DURATION_KEY) as Record<string, number>;
@@ -309,11 +310,7 @@ export async function releaseLegacyHostGrants(): Promise<string[]> {
         // if the browser refuses, leave it to the browser's own UI.
         return [];
     }
-}
-
-// ── Wait for domain to be connected ──
-
-const CONNECT_WAIT_TIMEOUT_MS = 120_000; // 2 minutes
+} // 2 minutes
 
 /**
  * Wait for the user's decision on the "Connect this site" card.

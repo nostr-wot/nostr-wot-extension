@@ -232,3 +232,63 @@ describe('source boundaries', () => {
     assert.deepEqual(violations, [], 'domain rules must not depend on I/O or UI modules');
   });
 });
+
+// Duplicated defaults previously drifted between the popup and background.
+describe('canonical constants', () => {
+  it('defines shared policies once, under constants', () => {
+    const owners: Record<string, string> = {
+      DEFAULT_RELAYS: 'constants/relays.ts',
+      PQC_PUBLISHED_CACHE: 'constants/relays.ts',
+      MUTE_LIST_CACHE: 'constants/relays.ts',
+      MIN_PASSWORD_LENGTH: 'constants/vault.ts',
+      DEFAULT_AUTO_LOCK_MS: 'constants/vault.ts',
+      UNLOCK_LOCKOUT_STEPS_MS: 'constants/vault.ts',
+      NWC_REQUEST_TIMEOUT_MS: 'constants/wallet.ts',
+      ONBOARDING_PENDING_TTL_MS: 'constants/wizard.ts',
+    };
+    const files = readdirSync(join(ROOT, 'src'), { recursive: true })
+      .filter((f): f is string => typeof f === 'string' && /\.tsx?$/.test(f));
+    for (const [name, owner] of Object.entries(owners)) {
+      const declarations = files.filter(f => new RegExp(`\\bconst\\s+${name}\\s*[:=]`).test(readFileSync(join(ROOT, 'src', f), 'utf8')));
+      assert.deepEqual(declarations, [owner], `${name} must have one definition`);
+    }
+  });
+
+  it('derives relay text defaults from the shared list without sharing mutable configuration', async () => {
+    const { DEFAULT_RELAYS, DEFAULT_RELAYS_CSV } = await import('../src/constants/relays.ts');
+    const { configuredRelayUrls } = await import('../src/domain/relays/relayList.ts');
+    assert.equal(DEFAULT_RELAYS_CSV, DEFAULT_RELAYS.join(','));
+    const urls = configuredRelayUrls(undefined);
+    assert.deepEqual(urls, DEFAULT_RELAYS);
+    urls.pop();
+    assert.equal(DEFAULT_RELAYS.length, 3);
+    assert.deepEqual(configuredRelayUrls(''), []);
+  });
+
+  it('loads every constant module without a browser or UI runtime', async () => {
+    const files = readdirSync(join(ROOT, 'src/constants'), { recursive: true })
+      .filter((f): f is string => typeof f === 'string' && f.endsWith('.ts'));
+    assert.ok(files.length >= 20);
+    for (const file of files) {
+      const source = readFileSync(join(ROOT, 'src/constants', file), 'utf8');
+      assert.doesNotMatch(source, /from ['"]@(?:services|components|screens|context|hooks)\//, file);
+      await import(new URL(`../src/constants/${file}`, import.meta.url).href);
+    }
+  });
+});
+
+it('keeps shared domain records canonical instead of redeclaring handler/UI copies', () => {
+  const owners: Record<string, string> = {
+    ActivityEntry: 'domain/activity/activity.ts',
+    MyMuteList: 'domain/mutes/muteList.ts',
+    PqcStatus: 'domain/pqc/pqcState.ts',
+    Account: 'domain/accounts/types.ts',
+    SupportedLanguage: 'domain/i18n/types.ts',
+  };
+  const files = readdirSync(join(ROOT, 'src'), { recursive: true })
+    .filter((f): f is string => typeof f === 'string' && /\.tsx?$/.test(f));
+  for (const [name, owner] of Object.entries(owners)) {
+    const declarations = files.filter(f => new RegExp(`\\binterface\\s+${name}\\b`).test(readFileSync(join(ROOT, 'src', f), 'utf8')));
+    assert.deepEqual(declarations, [owner], `${name}: use a domain import or an explicit projection`);
+  }
+});

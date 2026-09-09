@@ -100,6 +100,7 @@ src/
   components/  shared UI primitives, one folder per component
   screens/     one folder per popup screen
   context/     the eight React contexts
+  constants/   configuration and protocol values, grouped by purpose
   domain/      feature logic, one folder per module, pure and tested
   services/    I/O and orchestration, grouped by feature
   utils/       no domain knowledge
@@ -110,12 +111,13 @@ src/
 
 Three rules behind that shape. **No module nests its own `components/`** — inside `src/popup/` the folders are the screens, and a second level named after a file type said nothing. **Hooks live together**, not beside the one screen that happens to use them first, because that is how `useSiteState` ended up somewhere `useWalletBanner` had to reach for it. **A type lives with the logic that owns it**, not in a shared types folder — `domain/activity/activity.ts` defines `ActivityEntry` beside the filters that read it, `domain/profile/profileMetadata.ts` defines `ProfileMetadata` beside the merge that maintains it — so a shape has one definition and no call site learns a second import path for the same idea. A purely-UI type goes where it is used instead: `DropdownOption` beside `Dropdown`, `IconProps` beside the icons. A `models/` folder used to hold every shared type and competed with `domain/` for the same job — `domain/activity/activity.ts` opened by importing `ActivityEntry` from `models` and re-exporting it, so a reader visited two files to learn one thing. It is gone.
 
-Aliases: `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
+Aliases: `@constants`, `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
 
 ### `src/domain`, `src/services`, `src/utils` — and `src/lib`
 
 `src/shared/` was twenty-six files in one flat folder, and the name had stopped meaning anything: a Lightning invoice's expiry rule sat beside a clipboard helper beside the RPC transport. It is now split by what a thing *is*.
 
+- **`src/constants`** — one source for configuration, limits, timeouts, storage keys, protocol values and fixed lookup data. Import purpose-specific files through `@constants`; constants never import runtime services or UI. Component styles, renderer maps, function dispatch tables and mutable state stay with their implementation.
 - **`src/utils`** — no domain knowledge at all. Formatting, `downloadFile`, `paginate`, URL predicates. You could paste any of it into another product.
 - **`src/domain`** — the decisions this product makes, one folder per module. Pure functions over plain data: no React, no `browser.*`, no network. That is what makes them testable, and every one of them has a test.
 - **`src/services`** — I/O and orchestration, grouped into `background`, `browser`, `i18n`, `media`, `permissions`, `relays`, `signing`, `vault` and `wallet`. Browser state, network requests, persistence and translated permission labels belong here. Services must not import React or UI modules; the popup RPC client remains `src/services/rpc.ts`.
@@ -247,19 +249,19 @@ Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain 
 | `permissionRules.ts` | `countDecisions`, `filterKeysForAccountKind`, `availablePermKeys`, `buildRuleKey`, `DECISIONS` |
 | `passwordPair.ts` | `validatePasswordPair` — the "new password, twice" rule |
 | `vaultAutoUnlock.ts` | `isVaultOpen` — never-lock auto-unlock, behind its mode check |
-| `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups`, `TYPE_METHODS` |
+| `activity.ts` | `groupActivityEntries`, `filterActivityEntries`, `buildDayGroups` |
 | `pagedList.ts` | `paginate` — the render window behind `usePagedList`. Distinct from `txPager.ts`, which pages a *remote* API: the activity RPC already returns the whole log, so there is nothing left to fetch, only a prefix to grow |
 
-`permissionRules.ts` is split from `permissions.ts` (the `@lib` runtime permission cascade — `check`, `save`, `clear`, the migrations) on purpose: that module imports `t()`, which drags in the browser layer and makes it unloadable under plain `node --test`. The rules that *decide* something are the ones worth testing, and they need no i18n. Keep new decision logic on the i18n-free side of that line.
+`permissionRules.ts` is split from `permissions.ts` (the `@services` runtime permission cascade — `check`, `save`, `clear`, the migrations) on purpose: that module imports `t()`, which drags in the browser layer and makes it unloadable under plain `node --test`. The rules that *decide* something are the ones worth testing, and they need no i18n. Keep new decision logic on the i18n-free side of that line.
 | `format/` | `truncateNpub`, `getInitial`, `truncate`, `truncateMiddle`, `formatTimeAgo`, `formatBytes`, `toPercent`, `toFraction` |
 | `permissionLabels.ts` | `formatPermissionLabel` — the wire method / permission key to its display string |
 | `url.ts` | `getDomainFromUrl` |
 | `activeTabDomain.ts` | `resolveActiveTabDomain` — which site the popup is looking at |
 | `siteState.ts` | `resolveSiteState` — connected / notConnected / error |
 | `sendTarget.ts` | `resolveSendTarget`, `canSend` — what the wallet's Send box may pay |
-| `defaultRelays.ts` | `DEFAULT_RELAYS` |
-| `kindLabels.ts` | `KIND_LABELS` |
-| `autoLock.ts` | `AUTO_LOCK_OPTIONS` |
+| `src/constants/relays.ts` | Canonical relay defaults, derived CSV and shared cache keys |
+| `src/constants/nostr.ts` | `KIND_LABELS` |
+| `src/constants/vault.ts` | Auto-lock, password and lockout policies |
 | `blossom.ts` | Blossom media upload utilities |
 | `wizardMachine.ts` | Onboarding wizard state machine |
 
@@ -339,6 +341,7 @@ Configured in `vite.config.ts`:
 | `@context` | `src/context` — the React contexts, all eight |
 | `@utils` | `src/utils` — React-side helpers that are neither a component nor a hook (`createRequiredContext`) |
 | `@styles` | `src/styles` — global stylesheets (`theme.css`) |
+| `@constants` | `src/constants` — configuration, protocol values and fixed lookup data |
 | `@lib` | `src/lib` — cryptographic primitives and the cross-browser compatibility shim. Imported by the service worker, so never React |
 | `@assets` | `src/assets` |
 | `@popup` | `src/popup` — the popup entry document |
@@ -464,3 +467,5 @@ Wallet settings owns a flex-1/min-h-0 overflow-y-auto body inside OverlayPanel; 
 HomeWalletLayout keeps account-level wallet content outside the current-site notice branch. Loading, restricted pages and unconnected sites must not hide a configured wallet.
 
 The approval sheet always groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
+
+Shared domain contracts must not be restated in handlers or UI. The activity writer accepts `ActivityLogInput = Omit<ActivityEntry, 'timestamp'>`; stored records and UI filters use `ActivityEntry`. Complete PQ panel status extends the card contract. Account and language display types use `Pick`/`Partial` projections. Runtime-only service state and component props stay local.

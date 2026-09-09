@@ -1,3 +1,6 @@
+import { RELAY_CACHE_PREFIX } from '@constants/relays.ts';
+import { RELAY_CACHE_FRESH_MS } from '@constants/relays.ts';
+export { RELAY_CACHE_FRESH_MS, PQC_PUBLISHED_CACHE, MUTE_LIST_CACHE } from '@constants/relays.ts';
 /**
  * Serve the last known answer now; ask the relays behind.
  *
@@ -36,11 +39,8 @@ export interface CachedAnswer<T> {
 
 /** `storage.local` key for a per-pubkey cached relay answer. */
 export function cacheKey(name: string, pubkey: string): string {
-  return `relayCache_${name}_${pubkey}`;
+  return `${RELAY_CACHE_PREFIX}${name}_${pubkey}`;
 }
-
-/** Reuse recent answers across popup reads and cache-change notifications. */
-export const RELAY_CACHE_FRESH_MS = 60_000;
 
 /** In-flight refreshes, so N popup opens in a row do not start N queries. */
 const inFlight = new Map<string, Promise<unknown>>();
@@ -116,7 +116,3 @@ export async function clearRelayCache(pubkey: string, names: string[]): Promise<
     await browser.storage.local.remove(names.map((n) => cacheKey(n, pubkey)));
   } catch { /* nothing to do */ }
 }
-
-/** Cache names. Also the `storage.local` key suffixes the popup listens on. */
-export const PQC_PUBLISHED_CACHE = 'pqcPublishedV2';
-export const MUTE_LIST_CACHE = 'muteList';

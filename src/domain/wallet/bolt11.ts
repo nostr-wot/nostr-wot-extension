@@ -1,3 +1,4 @@
+import { TAG_PAYMENT_HASH, TAG_DESCRIPTION, TAG_EXPIRY, MULTIPLIERS } from '@constants/bolt11.ts';
 /**
  * Lightweight BOLT11 invoice decoder
  *
@@ -11,17 +12,6 @@
 
 import { bech32Decode, convertBits } from '../../lib/crypto/bech32.ts';
 
-// ── BOLT11 tagged field types (5-bit values) ──
-// 'p' → 1: payment hash
-// 'd' → 13: description (short)
-// 'h' → 23: description hash (for long descriptions)
-// 'x' → 6: expiry in seconds
-// 'n' → 19: payee node pubkey
-
-const TAG_PAYMENT_HASH = 1;
-const TAG_DESCRIPTION = 13;
-const TAG_EXPIRY = 6;
-
 export interface DecodedInvoice {
   amountSats: number | null;
   description: string | null;
@@ -30,15 +20,6 @@ export interface DecodedInvoice {
   network: string;          // 'bc' (mainnet), 'tb' (testnet), 'bcrt' (regtest)
   timestamp: number;
 }
-
-// ── Amount multipliers → sats ──
-// 1 BTC = 100_000_000 sats
-const MULTIPLIERS: Record<string, number> = {
-  m: 100_000,      // milli-BTC
-  u: 100,          // micro-BTC
-  n: 0.1,          // nano-BTC
-  p: 0.0001,       // pico-BTC
-};
 
 /**
  * Parse the amount from the BOLT11 HRP.

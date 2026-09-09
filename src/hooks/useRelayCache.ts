@@ -1,3 +1,4 @@
+import { RELAY_CACHE_PREFIX } from '@constants/relays.ts';
 import { useEffect, useRef } from 'react';
 import browser from '@lib/browser.ts';
 
@@ -22,7 +23,7 @@ export default function useRelayCache(name: string, onRefreshed: () => void): vo
   onRefreshedRef.current = onRefreshed;
 
   useEffect(() => {
-    const prefix = `relayCache_${name}_`;
+    const prefix = `${RELAY_CACHE_PREFIX}${name}_`;
     const listener = (changes: Record<string, unknown>, area: string) => {
       // The cache is per-pubkey, so match the family rather than one key: the
       // account can switch while the popup is open.

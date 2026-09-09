@@ -1,3 +1,4 @@
+import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 import { useState, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -101,7 +102,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
               {showAdvanced && (
                 <Input
                   type="text"
-                  placeholder="https://zaps.nostr-wot.com"
+                  placeholder={DEFAULT_LNBITS_URL}
                   value={provisionUrl}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => { setProvisionUrl(e.target.value); setError(''); }}
                   label={t('wallet.lnbitsUrl')}

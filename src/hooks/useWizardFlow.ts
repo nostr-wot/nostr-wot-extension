@@ -1,3 +1,4 @@
+import { WIZARD_STORAGE_KEY as STORAGE_KEY, WIZARD_PERSIST_TTL_MS as PERSIST_TTL_MS } from '@constants/wizard.ts';
 import { useReducer, useCallback, useRef, useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import {
@@ -5,9 +6,6 @@ import {
   reducer,
 } from '@domain/wizard/wizardMachine.ts';
 import type { WizardState, WizardAction, WizardOptions, WizardContext } from '@domain/wizard/wizardMachine.ts';
-
-const STORAGE_KEY = 'wizardState';
-const PERSIST_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 interface UseWizardFlowOptions {
   initialStep?: string;

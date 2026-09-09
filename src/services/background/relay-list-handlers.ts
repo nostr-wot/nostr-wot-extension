@@ -1,14 +1,10 @@
 import browser from '../../lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { readPublishedEvent } from '../relays/readPublishedEvent.ts';
-import type { SignedEvent } from '../../domain/nostr/types.ts';
-import { DEFAULT_RELAYS, type HandlerFn } from './state.ts';
-
-export interface RelayListRead {
-  pubkey: string;
-  event: SignedEvent | null;
-  reachable: boolean;
-}
+import type { RelayListRead } from '@domain/relays/types.ts';
+export type { RelayListRead } from '@domain/relays/types.ts';
+import { type HandlerFn } from './state.ts';
+import { DEFAULT_RELAYS } from '@constants/relays.ts';
 
 /** One finite, verified NIP-65 discovery; exhausted sockets are always closed. */
 export async function fetchRelayList(pubkey: string, relays: string[]): Promise<RelayListRead> {

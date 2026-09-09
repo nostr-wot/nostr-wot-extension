@@ -1,9 +1,8 @@
+import { PQC_GUIDE_URL as GUIDE_URL } from '@constants/pqc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Text from '@components/Text/Text';
-
-const GUIDE_URL = 'https://nostr-wot.com/guides/turn-on-post-quantum-keys';
 
 /** The one-shot explainer for the post-quantum panel. */
 export default function HowItWorks({ onClose }: { onClose: () => void }) {

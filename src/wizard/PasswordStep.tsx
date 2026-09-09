@@ -1,9 +1,10 @@
+import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import { IconWarning } from '@assets';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
+import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
@@ -26,7 +27,7 @@ interface PasswordStepProps {
 
 export default function PasswordStep({ account, upgradeId, onNext }: PasswordStepProps) {
   const pair = usePasswordPair();
-  const [autoLockMs, setAutoLockMs] = useState<number>(900000); // 15 min default
+  const [autoLockMs, setAutoLockMs] = useState<number>(DEFAULT_AUTO_LOCK_MS); // 15 min default
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [vaultExists, setVaultExists] = useState<boolean | null>(null); // null = checking
@@ -125,7 +126,6 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
 
   // Vault exists but locked — need password to unlock
   if (vaultExists && needsUnlock) {
-
 
     return (
       <Container className="flex-1">

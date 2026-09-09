@@ -40,7 +40,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 
 | Module | Responsibility |
 |--------|---------------|
-| `state.ts` | Shared mutable state (`config`), constants, method sets, utility functions |
+| `state.ts` | Shared mutable state (`config`) and background utility functions |
 | `domain-handlers.ts` | Domain allowlist (`connectDomain` is its only writer), dismissed domains, first-visit connect prompt, the tab→origin registry behind account broadcasts, identity disable |
 | `vault-handlers.ts` | Vault lifecycle (unlock/lock/create), account switching |
 | `nip07-handlers.ts` | NIP-07 signer methods (sign, encrypt/decrypt), permission management |
@@ -204,7 +204,7 @@ Shared types live with their owning domain: `src/domain/nostr/types.ts` owns eve
 vault payloads, `src/domain/signing/types.ts` owns approval requests,
 `src/domain/permissions/types.ts` owns permission decisions, and
 `src/domain/wallet/types.ts` owns wallet contracts. Relay and language types live
-in their respective domain directories. Constants follow the same ownership.
+in their respective domain directories. Configuration and protocol constants live in `src/constants/`, grouped by purpose.
 
 `src/domain/` contains data contracts and pure feature rules. `src/services/`
 contains background RPC handlers, signing orchestration, vault persistence,
@@ -235,3 +235,7 @@ The main shared types are:
 | `WalletProvider` | Interface: `getInfo`, `getBalance`, `payInvoice`, `makeInvoice`, `connect`, `disconnect` |
 | `SafeWalletInfo` | Wallet metadata without secrets: `{ type, connected, alias?, instanceUrl? }` |
 | `SafeAccountWithWallet` | Account without `privkey`/`mnemonic` but with `walletConfig` (for background wallet handlers) |
+
+### Shared record ownership
+
+Activity storage and UI use `ActivityEntry` from `src/domain/activity/activity.ts`. The writer accepts its `ActivityLogInput` projection without a timestamp, and filtered clearing reuses `filterActivityEntries`. Mute lists, profile-read results and PQ status are declared in their domain modules and imported by background handlers. Display account/language shapes are projections of their canonical domain types. Only operational state and dependency-injection contracts remain local to services.

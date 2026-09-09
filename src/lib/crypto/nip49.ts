@@ -1,3 +1,14 @@
+import {
+  VERSION_V2,
+  VERSION_LEGACY,
+  DEFAULT_LOG_N,
+  MAX_LOG_N,
+  SCRYPT_R,
+  SCRYPT_P,
+  KEY_SECURITY_UNKNOWN,
+  V2_PAYLOAD_LENGTH,
+  LEGACY_PBKDF2_ITERATIONS,
+} from '@constants/crypto/nip49.ts';
 /**
  * NIP-49 — Encrypted Private Key (ncryptsec)
  *
@@ -18,18 +29,6 @@ import { scryptAsync } from '@noble/hashes/scrypt.js';
 import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { hexToBytes, bytesToHex } from './utils.ts';
 import { bech32Encode, bech32Decode, convertBits } from './bech32.ts';
-
-const VERSION_V2: number = 0x02;
-const VERSION_LEGACY: number = 0x01;
-const DEFAULT_LOG_N: number = 16;
-const MAX_LOG_N: number = 22;
-const SCRYPT_R: number = 8;
-const SCRYPT_P: number = 1;
-// key_security_byte 0x02 = "client does not track this data" per NIP-49
-const KEY_SECURITY_UNKNOWN: number = 0x02;
-const V2_PAYLOAD_LENGTH: number = 1 + 1 + 16 + 24 + 1 + 48; // 91 bytes
-
-const LEGACY_PBKDF2_ITERATIONS: number = 210000;
 
 async function deriveScryptKey(password: string, salt: Uint8Array, logN: number): Promise<Uint8Array> {
     const passwordBytes = new TextEncoder().encode(password.normalize('NFKC'));

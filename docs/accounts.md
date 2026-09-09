@@ -56,3 +56,7 @@ Accounts no longer carry a per-account database; identity state lives entirely i
 ## 6. Read-Only Account Behavior
 
 For accounts without private keys (`npub`, some `external`), the `vault_getActiveAccountType` handler tries the vault first, then falls back to the local `accounts` array -- enabling type detection even without an unlocked vault.
+
+## Import input helpers
+
+`src/domain/accounts/importInput.ts` owns `ImportType` and `detectImportType`, shared format detection for import routing and hints. Detection accepts encrypted/private-key prefixes, 64-character hex and 12/24-word candidates; it does not validate checksums or the BIP-39 wordlist. Account creation and decryption retain those checks. `src/utils/text.ts` provides generic whitespace-aware `countWords`, reused by the import UI, vault seed export and post-quantum seed-length checks. Format constants live in `src/constants/accounts.ts`.

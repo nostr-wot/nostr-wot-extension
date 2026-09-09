@@ -17,14 +17,8 @@ import assert from 'node:assert/strict';
 // Same trick as tests/profile-read.test.ts: the loader hook redirects
 // lib/browser.ts to this mock, so import the mock rather than lib/browser.
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
-import {
-  RELAY_CACHE_FRESH_MS,
-  cachedRelayRead,
-  cacheKey,
-  PQC_PUBLISHED_CACHE,
-  MUTE_LIST_CACHE,
-} from '../src/services/relays/relayCache.ts';
-import * as popupNames from '../src/domain/relays/cacheNames.ts';
+import { cachedRelayRead, cacheKey } from '../src/services/relays/relayCache.ts';
+import { RELAY_CACHE_FRESH_MS, PQC_PUBLISHED_CACHE, MUTE_LIST_CACHE } from '@constants/relays.ts';
 
 const PUBKEY = 'a'.repeat(64);
 
@@ -99,13 +93,15 @@ describe('cachedRelayRead', () => {
 });
 
 describe('cache names', () => {
-  it('the popup and the background agree', () => {
-    // Duplicated on purpose so the popup does not import a background module;
-    // this is what keeps the two copies honest. A rename on one side alone
-    // would leave the popup listening on a key nothing ever writes — the card
-    // would simply never refresh, silently.
-    assert.equal(popupNames.PQC_PUBLISHED_CACHE, PQC_PUBLISHED_CACHE);
-    assert.equal(popupNames.MUTE_LIST_CACHE, MUTE_LIST_CACHE);
+  it('writes separate PQ and mute records at the shared storage keys', async () => {
+    for (const name of [PQC_PUBLISHED_CACHE, MUTE_LIST_CACHE]) {
+      await cachedRelayRead(name, PUBKEY, async () => ({ source: name, unreachable: false }));
+      const key = cacheKey(name, PUBKEY);
+      const stored = await browser.storage.local.get(key);
+      assert.deepEqual(stored[key].value, { source: name, unreachable: false });
+    }
+    assert.notEqual(cacheKey(PQC_PUBLISHED_CACHE, PUBKEY), cacheKey(MUTE_LIST_CACHE, PUBKEY));
+    resetMockStorage();
   });
 
   it('the storage key carries the prefix the popup listens for', () => {

@@ -85,10 +85,11 @@ function dynamicKeys(): string[] {
   for (const type of unionMembers('src/domain/accounts/types.ts', 'AccountType')) {
     keys.push(`wizard.type.${type}`);
   }
-  for (const reason of unionMembers('src/services/background/pqc-handlers.ts', 'PqcBlockReason')) {
-    keys.push(`pqc.reason.${reason}`);
+  for (const reason of unionMembers('src/domain/pqc/pqcState.ts', 'PqcBlockReason')) {
+    // Short seeds use the count-aware message in PqcSection.
+    keys.push(reason === 'short-seed' ? 'pqc.reasonShortSeed' : `pqc.reason.${reason}`);
   }
-  for (const decision of constArrayMembers('src/domain/permissions/permissionRules.ts', 'DECISIONS')) {
+  for (const decision of constArrayMembers('src/constants/permissions.ts', 'DECISIONS')) {
     keys.push(`perms.${decision}`);
   }
   return keys;

@@ -1,3 +1,4 @@
+export { EMPTY_TX_FILTERS } from '@constants/wallet.ts';
 /**
  * Which wallet transactions match the filter bar.
  *
@@ -22,8 +23,6 @@ export interface FilterableTx {
   memo?: string | null;
   status?: string;
 }
-
-export const EMPTY_TX_FILTERS: TxFilters = { direction: 'all', dateFrom: '', dateTo: '' };
 
 /**
  * The date inputs are `YYYY-MM-DD`; transactions carry epoch seconds.

@@ -1,3 +1,4 @@
+export { NIP06_PATH } from '@constants/crypto/bip32.ts';
 /**
  * BIP-32 — Hierarchical Deterministic Key Derivation
  *
@@ -10,8 +11,6 @@
  */
 
 import { HDKey } from '@scure/bip32';
-
-export const NIP06_PATH: string = "m/44'/1237'/0'/0/0";
 
 export async function derivePath(seed: Uint8Array, path: string): Promise<Uint8Array> {
   const master = HDKey.fromMasterSeed(seed);

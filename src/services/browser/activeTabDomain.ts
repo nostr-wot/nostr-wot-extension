@@ -1,3 +1,4 @@
+import { POPUP_CONTEXT_TTL_MS, RESTRICTED_URL_PREFIXES as RESTRICTED } from '@constants/browser.ts';
 /**
  * Which site is the user looking at?
  *
@@ -19,20 +20,8 @@
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { getDomainFromUrl } from '@utils/url.ts';
-import { POPUP_CONTEXT_KEY, type PopupContext } from '@services/browser/openPopupForActiveTab.ts';
-
-/* Imported rather than mirrored. Both the key and the shape were restated here
-   under a comment saying they mirrored the background's — a duplication someone
-   noticed and wrote down instead of removing. The two must agree exactly: this
-   reads the record the background writes, and a drifted key reads nothing at
-   all, silently. */
-
-// Long enough to cover opening and rendering, short enough that a context left by an
-// earlier request cannot mislabel a popup the user opens later by hand.
-const POPUP_CONTEXT_TTL_MS = 60_000;
-
-/** Page URLs the extension deliberately has nothing to say about. */
-const RESTRICTED = ['chrome://', 'edge://', 'about:', 'moz-extension://', 'chrome-extension://'];
+import { type PopupContext } from '@services/browser/openPopupForActiveTab.ts';
+import { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
 
 export interface ActiveTabDomain {
   /** The hostname, or null when it genuinely cannot be determined. */

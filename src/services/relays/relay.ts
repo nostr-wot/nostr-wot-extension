@@ -1,3 +1,4 @@
+import { RELAY_TIMEOUT_MS } from '@constants/relays.ts';
 /**
  * liveQuery — streaming relay utility for progressive profile loading.
  *
@@ -92,10 +93,6 @@ function createAsyncQueue<T>(): AsyncQueue<T> {
     },
   };
 }
-
-// ── liveQuery async generator ──
-
-const RELAY_TIMEOUT_MS = 4000;
 
 export async function* liveQuery(
   filters: NostrFilter[],

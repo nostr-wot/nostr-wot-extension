@@ -1,3 +1,6 @@
+import { countWords } from '@utils/text.ts';
+import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
+import { UNLOCK_GUARD_KEY, UNLOCK_FAILURES_PER_LOCKOUT, UNLOCK_LOCKOUT_STEPS_MS } from '@constants/vault.ts';
 /**
  * Vault lifecycle and account-switching handlers.
  * @module services/background/vault-handlers
@@ -30,18 +33,6 @@ export async function syncActivePubkey(): Promise<void> {
         await browser.storage.sync.remove('myPubkey');
     }
 }
-
-// ── Unlock brute-force guard (persisted, background-side) ──
-//
-// The popup's useVaultUnlock hook has its own escalating lockout, but that
-// state is in-page and resets on reload. This counter lives in storage.local
-// so repeated vault_unlock RPCs hit a server-side lockout regardless of how
-// the caller resets its UI. Reset on successful unlock and on vault_destroy.
-
-const UNLOCK_GUARD_KEY = 'vaultUnlockGuard';
-const UNLOCK_FAILURES_PER_LOCKOUT = 5;
-// Every 5 consecutive failures: 1 min, 5 min, 15 min, 30 min (cap)
-const UNLOCK_LOCKOUT_STEPS_MS = [60_000, 300_000, 900_000, 1_800_000];
 
 interface UnlockGuard { failures: number; lockedUntil: number; }
 
@@ -120,7 +111,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_exists', async () => vault.exists()],
 
     ['vault_setAutoLock', async (params) => {
-        const prevMs = ((await browser.storage.local.get(['autoLockMs'])) as Record<string, number>).autoLockMs ?? 900000;
+        const prevMs = ((await browser.storage.local.get(['autoLockMs'])) as Record<string, number>).autoLockMs ?? DEFAULT_AUTO_LOCK_MS;
         const wasNever = prevMs === 0;
         const willBeNever = params.ms === 0;
 
@@ -148,7 +139,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['vault_getAutoLock', async () => {
         const data = await browser.storage.local.get(['autoLockMs']) as Record<string, number>;
-        return data.autoLockMs ?? 900000;
+        return data.autoLockMs ?? DEFAULT_AUTO_LOCK_MS;
     }],
 
     ['vault_create', async (params) => {
@@ -265,7 +256,7 @@ export const handlers = new Map<string, HandlerFn>([
         if (!activeAcct || activeAcct.type !== 'generated' || !activeAcct.mnemonic) {
             throw new Error('Active account has no seed phrase');
         }
-        return { mnemonic: activeAcct.mnemonic, wordCount: activeAcct.mnemonic.split(' ').length };
+        return { mnemonic: activeAcct.mnemonic, wordCount: countWords(activeAcct.mnemonic) };
     }],
 
     ['vault_importNcryptsec', async (params) => {

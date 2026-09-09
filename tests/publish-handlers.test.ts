@@ -154,7 +154,7 @@ describe('publishMuteList -- refuses to build on a read nobody answered', () => 
 import browser from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
 import { importNsec } from '../src/domain/accounts/creation.ts';
-import { DEFAULT_RELAYS } from '../src/domain/relays/defaultRelays.ts';
+import { DEFAULT_RELAYS_CSV as DEFAULT_RELAYS } from '@constants/relays.ts';
 import type { SignedEvent } from '../src/domain/nostr/types.ts';
 
 describe('relay publication uses the displayed configuration', () => {

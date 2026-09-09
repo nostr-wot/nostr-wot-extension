@@ -1,7 +1,8 @@
 import { useState, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
-import { buildRuleKey, validCustomKind, DECISIONS } from '@domain/permissions/permissionRules.ts';
+import { buildRuleKey, validCustomKind } from '@domain/permissions/permissionRules.ts';
+import { DECISIONS } from '@constants/permissions.ts';
 import Input from '@components/Input/Input';
 import { IconPlus } from '@assets';
 import Button from '@components/Button/Button';
@@ -10,7 +11,6 @@ import Dropdown from '@components/Dropdown/Dropdown';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Chip from '@components/Chip/Chip';
 import Container from '@components/Container/Container';
-
 
 interface AddRuleModalProps {
   availableKeys: string[];

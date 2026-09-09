@@ -1,7 +1,6 @@
+import { BLOSSOM_SERVER } from '@constants/media.ts';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 import { rpc } from '@services/rpc.ts';
-
-const BLOSSOM_SERVER = 'https://blossom.primal.net';
 
 interface BlossomUploadResult {
   url: string;

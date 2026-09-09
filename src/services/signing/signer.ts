@@ -1,3 +1,6 @@
+import { PQC_SEED_WORD_COUNT } from '@constants/accounts.ts';
+import { countWords } from '@utils/text.ts';
+import { MAX_PENDING_PER_ORIGIN } from '@constants/signing.ts';
 /**
  * NIP-07 Signer -- Request Coordinator with In-Popup Approval
  *
@@ -34,8 +37,8 @@ import { isDomainAllowed } from '../background/domain-handlers.ts';
 import * as vault from '../vault/vault.ts';
 import * as permissions from '../permissions/permissions.ts';
 import { AsyncLock } from '../../utils/asyncLock.ts';
-import { SIGNER_REQUEST_TIMEOUT_MS, GET_PUBLIC_KEY_COOLDOWN_MS } from '../../domain/signing/constants.ts';
-import { VAULT_POLL_INTERVAL_MS } from '../../domain/vault/constants.ts';
+import { SIGNER_REQUEST_TIMEOUT_MS, GET_PUBLIC_KEY_COOLDOWN_MS } from '@constants/signing.ts';
+import { VAULT_POLL_INTERVAL_MS } from '@constants/vault.ts';
 import { signEvent as cryptoSignEvent } from '../../lib/crypto/nip01.ts';
 import { bytesToHex, hexToBytes, randomBytes } from '../../lib/crypto/utils.ts';
 import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
@@ -50,13 +53,7 @@ import { BunkerSigner, parseBunkerInput } from 'nostr-tools/nip46';
 const _pendingResolvers: Map<string, (decision: RequestDecision) => void> = new Map();
 let _requestCounter: number = 0;
 
-const REQUEST_TIMEOUT_MS = SIGNER_REQUEST_TIMEOUT_MS;
 const _timeoutTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
-
-// Cap on concurrently-pending ACTIONABLE requests per origin. Blunts
-// popup-spam / DoS from a connected tab: once an origin has this many
-// unresolved prompts, further queueRequest calls are rejected immediately.
-const MAX_PENDING_PER_ORIGIN = 5;
 
 // Vault unlock waiters -- independent of _pendingResolvers for resilience
 const _unlockWaiters: Map<string, { resolve: () => void; reject: (err: Error) => void }> = new Map();
@@ -279,7 +276,7 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
       _timeoutTimers.delete(id);
       void removePendingFromStorage(id);
       reject(new Error('Request timed out'));
-    }, REQUEST_TIMEOUT_MS);
+    }, SIGNER_REQUEST_TIMEOUT_MS);
     _timeoutTimers.set(id, timer);
   });
 }
@@ -608,7 +605,7 @@ async function waitForVaultUnlock(origin: string, type: string, accountId: strin
         _unlockWaiters.delete(markerId);
         clearInterval(poller);
         reject(new Error('Vault unlock timed out'));
-      }, REQUEST_TIMEOUT_MS);
+      }, SIGNER_REQUEST_TIMEOUT_MS);
     });
   } finally {
     // Remove marker from session storage
@@ -863,7 +860,7 @@ async function activePqKeys(accountId?: string) {
   // NIP-46 is not checked here: those accounts never reach this function, because
   // handleCryptoRequest refuses them at the routing step via `remoteSignerUnsupported`.
   if (!acct.mnemonic) throw new Error('This account has no seed phrase, so it cannot use post-quantum keys');
-  if (acct.mnemonic.trim().split(/\s+/).length !== 24) {
+  if (countWords(acct.mnemonic) !== PQC_SEED_WORD_COUNT) {
     throw new Error('Post-quantum keys require a 24-word seed phrase');
   }
   const seed = await mnemonicToSeed(acct.mnemonic);

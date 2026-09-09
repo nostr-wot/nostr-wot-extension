@@ -245,7 +245,8 @@ import * as vault from '../src/services/vault/vault.ts';
 import { importNsec } from '../src/domain/accounts/creation.ts';
 import browserMock from './helpers/browser-mock.ts';
 import { handlers } from '../src/services/background/profile-handlers.ts';
-import { cacheKey, MUTE_LIST_CACHE } from '../src/services/relays/relayCache.ts';
+import { cacheKey } from '../src/services/relays/relayCache.ts';
+import { MUTE_LIST_CACHE } from '@constants/relays.ts';
 
 it('own mute-list reads wait for Never-lock startup and fetch kind 10000', async () => {
   resetMockStorage();

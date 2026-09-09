@@ -1,4 +1,4 @@
-import { DEFAULT_RELAYS } from './defaultRelays.ts';
+import { DEFAULT_RELAYS_CSV as DEFAULT_RELAYS } from '@constants/relays.ts';
 
 export interface RelayConfiguration {
   relays: string[];

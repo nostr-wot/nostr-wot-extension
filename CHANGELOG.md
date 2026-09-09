@@ -8,6 +8,9 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Centralized configuration and protocol constants in `src/constants/`, removing duplicate relay defaults, cache names and lockout/password policies.
+- Shared account-import helpers and activity/mute/PQ/account/language domain contracts replace repeated UI/background definitions; activity clearing reuses the display filter.
+
 - Updated vulnerable dependencies; npm audit reports zero known vulnerabilities.
 - Reorganized application code into feature domains, services and generic utilities; retained crypto and browser compatibility in lib.
 

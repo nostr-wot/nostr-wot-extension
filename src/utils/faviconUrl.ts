@@ -1,3 +1,4 @@
+import { FAVICON_CACHE_TTL_MS as TTL } from '@constants/browser.ts';
 /**
  * Returns a Google favicon URL for any domain.
  */
@@ -7,8 +8,6 @@ export function getFaviconUrl(domain: string): string {
 
 import browser from '@lib/browser.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
-
-const TTL = 7 * 24 * 60 * 60 * 1000;
 const pending = new Map<string, Promise<string | null>>();
 const writes = new AsyncLock();
 type IconRecord = { url: string; fetchedAt: number };

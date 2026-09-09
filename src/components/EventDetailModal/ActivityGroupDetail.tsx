@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import { activityEncryption, type ActivityEntry } from '@domain/activity/activity.ts';
-import { KIND_LABELS } from '@domain/nostr/kindLabels.ts';
+import { KIND_LABELS } from '@constants/nostr.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { truncate, truncateMiddle } from '@utils/format/text.ts';
 import FieldDisplay from '@components/FieldDisplay/FieldDisplay';

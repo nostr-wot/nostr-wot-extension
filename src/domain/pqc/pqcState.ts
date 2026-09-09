@@ -1,3 +1,4 @@
+import type { UnsignedEvent } from '@domain/nostr/types.ts';
 /**
  * What the post-quantum surfaces should say, given what the background reports.
  *
@@ -11,7 +12,7 @@ export interface PqcStatus {
   canDerive: boolean;
   canImport: boolean;
   source: 'derived' | 'imported' | null;
-  reason: string | null;
+  reason: PqcBlockReason | null;
 }
 
 export interface PqcPublished {
@@ -30,11 +31,10 @@ export type PqcBlockReason = 'read-only' | 'remote-signer' | 'no-seed' | 'short-
  * back without either file importing the other.
  */
 export interface PqcPanelStatus extends PqcStatus {
-  reason: PqcBlockReason | null;
   wordCount: number | null;
   pubkey: string | null;
   keys: { kem: string; dsa: string } | null;
-  attestation: { kind: number; created_at: number; tags: string[][]; content: string } | null;
+  attestation: UnsignedEvent | null;
 }
 
 /** What the home card shows. `null` means: show nothing at all. */

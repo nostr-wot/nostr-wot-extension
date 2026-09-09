@@ -12,13 +12,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  countDecisions,
-  filterKeysForAccountKind,
-  availablePermKeys,
-  buildRuleKey,
-  READ_ONLY_KEYS,
-} from '../src/domain/permissions/permissionRules.ts';
+import { countDecisions, filterKeysForAccountKind, availablePermKeys, buildRuleKey } from '../src/domain/permissions/permissionRules.ts';
+import { READ_ONLY_KEYS } from '@constants/permissions.ts';
 
 describe('countDecisions', () => {
   it('counts allow and deny separately', () => {

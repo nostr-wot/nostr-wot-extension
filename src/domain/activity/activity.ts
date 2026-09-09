@@ -1,3 +1,5 @@
+import { TYPE_METHODS, SIMPLE_TYPE_ORDER, ADVANCED_TYPE_ORDER } from '@constants/activity.ts';
+export { TYPE_METHODS } from '@constants/activity.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import type { Account } from '@domain/accounts/account.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
@@ -17,12 +19,15 @@ export interface ActivityEntry {
   decision: string;
   timestamp: number;
   domain?: string;
-  pubkey?: string;
+  pubkey?: string | null;
   theirPubkey?: string | null;
   /** Ciphertext only; plaintext is never retained in the activity log. */
   ciphertext?: string;
   event?: Partial<NostrEventDisplay> | null;
 }
+
+/** A caller supplies the fields; the logging service stamps the timestamp. */
+export type ActivityLogInput = Omit<ActivityEntry, 'timestamp'>;
 
 export interface GroupedActivity {
   methodKey: string;
@@ -78,32 +83,6 @@ export function groupActivityEntries(
   }
   return [...groups.values()].sort((a, b) => b.timestamp - a.timestamp);
 }
-
-// ── Filtering ──
-
-/**
- * Which wire methods each grouped type filter covers.
- *
- * `encrypt` and `decrypt` deliberately span both NIP-04 and NIP-44: to a user
- * asking "what did this site read?", the scheme is an implementation detail.
- * Advanced mode exposes the four individually.
- */
-export const TYPE_METHODS: Record<string, string[]> = {
-  signEvent: ['signEvent'],
-  getPublicKey: ['getPublicKey'],
-  encrypt: ['nip04Encrypt', 'nip44Encrypt'],
-  decrypt: ['nip04Decrypt', 'nip44Decrypt'],
-  nip04Encrypt: ['nip04Encrypt'],
-  nip04Decrypt: ['nip04Decrypt'],
-  nip44Encrypt: ['nip44Encrypt'],
-  nip44Decrypt: ['nip44Decrypt'],
-};
-
-/** Display order for the type-filter chips in simple mode. */
-const SIMPLE_TYPE_ORDER = ['signEvent', 'getPublicKey', 'encrypt', 'decrypt'];
-/** Display order in advanced mode — one chip per wire method instead of the
- *  collapsed encrypt/decrypt pair. */
-const ADVANCED_TYPE_ORDER = ['signEvent', 'getPublicKey', 'nip04Encrypt', 'nip44Encrypt', 'nip04Decrypt', 'nip44Decrypt'];
 
 /**
  * Which type-filter keys to offer, scoped to the selected domain/account and
