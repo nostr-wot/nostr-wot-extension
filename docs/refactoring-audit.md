@@ -51,3 +51,11 @@ Tailwind with `tailwind-merge`, `@scure/base` for bech32, and Noble/Scure crypto
 This cleanup reuses those implementations; it adds no competing form, state,
 clipboard, formatting or cryptographic dependency. Continue direct owner imports,
 canonical domain contracts, pure decision helpers and action-scoped component state.
+
+## Correction: shared wizard ownership
+
+The initial audit accepted the existing top-level wizard exception without testing
+it against the semantic directory rules. That was a missed finding. Account-creation
+steps now live in `src/screens/Wizard/`; popup and onboarding import them through
+`@screens`. The separate wizard alias is removed. Sharing across entry points does
+not warrant a separate top-level category.

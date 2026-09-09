@@ -310,3 +310,13 @@ it('generic utilities do not depend on feature domains, services or browser/cryp
     assert.doesNotMatch(source, /(?:from\s*|import\s*\()['"](?:@(?:services|domain|lib)\/|(?:\.\.\/)+(?:services|domain|lib)\/)/, file);
   }
 });
+
+it('shared wizard screens belong to screens rather than an entry-point directory', () => {
+  assert.equal(existsSync(join(ROOT, 'src/wizard')), false);
+  for (const host of ['src/popup/PopupApp.tsx','src/onboarding/OnboardingApp.tsx']) {
+    assert.match(readFileSync(join(ROOT, host), 'utf8'), /from ['"]@screens\/Wizard\//);
+  }
+  assert.ok(existsSync(join(ROOT, 'src/screens/Wizard/WizardSteps.tsx')));
+  assert.doesNotMatch(readFileSync(join(ROOT, 'tsconfig.json'), 'utf8'), /@wizard/);
+  assert.doesNotMatch(readFileSync(join(ROOT, 'vite.config.ts'), 'utf8'), /@wizard/);
+});

@@ -17,7 +17,6 @@
       "@components/*": ["./src/components/*"],
       "@popup/*": ["./src/popup/*"],
       "@screens/*": ["./src/screens/*"],
-      "@wizard/*": ["./src/wizard/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils/*": ["./src/utils/*"],
       "@constants/*": ["./src/constants/*"],

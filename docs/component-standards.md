@@ -106,12 +106,12 @@ src/
   utils/       no domain knowledge
   hooks/       every hook, feature or generic
   lib/         cryptographic primitives and the cross-browser compatibility shim
-  popup/  prompt/  onboarding/  wizard/   the four documents' screens
+  popup/  prompt/  onboarding/   browser document entry points
 ```
 
 Three rules behind that shape. **No module nests its own `components/`** — inside `src/popup/` the folders are the screens, and a second level named after a file type said nothing. **Hooks live together**, not beside the one screen that happens to use them first, because that is how `useSiteState` ended up somewhere `useWalletBanner` had to reach for it. **A type lives with the logic that owns it**, not in a shared types folder — `domain/activity/activity.ts` defines `ActivityEntry` beside the filters that read it, `domain/profile/profileMetadata.ts` defines `ProfileMetadata` beside the merge that maintains it — so a shape has one definition and no call site learns a second import path for the same idea. A purely-UI type goes where it is used instead: `DropdownOption` beside `Dropdown`, `IconProps` beside the icons. A `models/` folder used to hold every shared type and competed with `domain/` for the same job — `domain/activity/activity.ts` opened by importing `ActivityEntry` from `models` and re-exporting it, so a reader visited two files to learn one thing. It is gone.
 
-Aliases: `@constants`, `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`, `@popup`, `@wizard`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
+Aliases: `@constants`, `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`, `@popup`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
 
 ### `src/domain`, `src/services`, `src/utils` — and `src/lib`
 
@@ -127,11 +127,12 @@ That last rule was already being broken once. `src/shared/browser.ts` was a six-
 
 ### Where a feature lives
 
-`src/wizard/` is a peer of `popup/`, `prompt/` and `onboarding/`, not a folder inside
-one of them, because two entries use it — onboarding used to reach into
-`../popup/components/Wizard`, which was the only cross-entry import in the tree.
-A feature more than one entry renders belongs beside them, not inside whichever one
-happened to build it first.
+`src/screens/Wizard/` contains the account-creation flow shared by the popup and
+onboarding entry points. Sharing a screen does not change its semantic category:
+entry-point directories host browser documents; feature screens belong in
+`screens/`; generic reusable controls belong in `components/`. Wizard decisions
+remain in `domain/wizard/` and its flow hook remains in `hooks/`.
+
 
 `MenuOverlay` importing the sections it pushes is not a boundary violation — that is a
 router importing its routes. Note that `PermissionsSection` has two hosts (the menu
@@ -347,7 +348,6 @@ Configured in `vite.config.ts`:
 | `@lib` | `src/lib` — cryptographic primitives and the cross-browser compatibility shim. Imported by the service worker, so never React |
 | `@assets` | `src/assets` |
 | `@popup` | `src/popup` — the popup entry document |
-| `@wizard` | `src/wizard` — the account-creation wizard, a peer of `popup/`, `prompt/` and `onboarding/` since more than one of them renders it |
 
 Always use aliases instead of relative paths when crossing module boundaries.
 

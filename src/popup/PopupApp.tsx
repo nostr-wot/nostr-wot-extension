@@ -17,7 +17,7 @@ import MenuOverlay from '@screens/Menu/MenuOverlay';
 import FiltersOverlay from '@screens/Filters/FiltersOverlay';
 import ActivityOverlay from '@screens/Activity/ActivityOverlay';
 import ApprovalOverlay from '@screens/Approval/ApprovalOverlay';
-import WizardOverlay from '@wizard/WizardOverlay';
+import WizardOverlay from '@screens/Wizard/WizardOverlay';
 import EditProfileOverlay from '@screens/EditProfile/EditProfileOverlay';
 import PermissionsSection from '@screens/Settings/PermissionsSection';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';

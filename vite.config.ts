@@ -100,7 +100,6 @@ export default defineConfig({
       '@components': resolve(__dirname, 'src/components'),
       '@popup': resolve(__dirname, 'src/popup'),
       '@screens': resolve(__dirname, 'src/screens'),
-      '@wizard': resolve(__dirname, 'src/wizard'),
       '@hooks': resolve(__dirname, 'src/hooks'),
       '@utils': resolve(__dirname, 'src/utils'),
       '@constants': resolve(__dirname, 'src/constants'),

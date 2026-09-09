@@ -191,7 +191,6 @@ it('account-scoped readers cannot start before the background switch completes',
 });
 
 import PqcImportPanel from '../src/screens/Settings/PqcImportPanel';
-import { AccountProvider } from '../src/context/AccountContext';
 import { PqcProvider } from '../src/context/PqcContext';
 it('PQ key paste reuses a labelled, bounded textarea and retains the native file chooser', () => {
   const html=renderToStaticMarkup(createElement(AccountProvider,null,createElement(PqcProvider,null,createElement(PqcImportPanel))));

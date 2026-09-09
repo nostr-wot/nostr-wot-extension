@@ -117,7 +117,7 @@ have had.
 - **Two security-adjacent fixes in the wizard.** Both `PasswordStep` and `SubAccountStep` called `vault_unlock` directly, so the add-account path was an unthrottled password oracle while every other unlock carried the escalating lockout. Worse, `PasswordStep` offered the empty password to *any* locked vault rather than only never-lock ones — and the background charges failed unlocks to a persisted guard, so an abandoned wizard re-running that probe on each popup open could lock a user out of their own vault in five opens without them typing anything.
 - Shared what was duplicated: `useOutsideClick` (4 copies), `useTimedReveal` (2, both guarding secret material), `Spinner` (4 CSS definitions and 4 keyframes), `IconButton` (17 rule blocks), `validatePasswordPair` (8 hand-written copies), `asGroup` (which collapsed four single-request approval handlers that were repeating the group handlers' `permKey || type` fallback by hand).
 - Renamed four files that said one thing and rendered another: `FiltersModal`/`ActivityModal` → `*Overlay` (they render `OverlayPanel`), `HomeTab` → `Home` (there are no tabs), `Profile/Mutes/RelaysCard` → `*Row` (they render a list row).
-- `src/wizard/` is now a peer of the three entry points. `onboarding` had been importing it from `../popup/components/Wizard` — the only cross-entry reach-in in the tree, and there are none left.
+- Account-creation screens live in `src/screens/Wizard/`, shared by popup and onboarding through the existing screens alias.
 - Expanded regression coverage for the refactor and subsequent wallet, relay, approval and release fixes.
 
 ### Changed — one component per pattern

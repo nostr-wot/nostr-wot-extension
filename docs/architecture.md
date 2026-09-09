@@ -15,7 +15,7 @@ The extension targets Chrome and Firefox, using a service worker on Chrome and a
 
 **Build system**: Vite + `@crxjs/vite-plugin`. All source is TypeScript (`.ts`/`.tsx`), compiled to JavaScript at build time. React JSX is used for popup, onboarding, and prompt UIs.
 
-**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@screens`, `@wizard`, `@popup`, `@domain`, `@services`, `@context`, `@hooks`, `@utils`, `@styles`, `@lib`. `@models` and `@shared` no longer exist — `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/` by what a thing is (see [Component Standards §2](component-standards.md)).
+**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@screens`, `@popup`, `@domain`, `@services`, `@context`, `@hooks`, `@utils`, `@styles`, `@lib`. `@models` and `@shared` no longer exist — `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/` by what a thing is (see [Component Standards §2](component-standards.md)).
 
 Cross-browser compatibility is handled by a thin shim at `src/lib/browser.ts`:
 
@@ -104,17 +104,17 @@ Extension popup UI opened when clicking the toolbar icon. React-based, styled wi
 | `src/popup/PopupApp.tsx` | Root component: the `OverlayType` state machine, splash/unlock gating, wires the context providers and hands navigation to `NavigationProvider` |
 | `src/screens/` | One folder per screen (`Home`, `Menu`, `TopBar`, `Vault`, `Activity`, `Approval`, `EditProfile`, `Settings`, `Wallet`, `Filters`) — all popup-only, so not split by entry point |
 | `src/context/` | The eight React contexts (`AccountContext`, `VaultContext`, `PermissionsContext`, `WalletContext`, `RelaysContext`, `PqcContext`, `NavigationContext`, `ActivityContext`) |
-| `src/wizard/` | The account-creation wizard's steps and overlay — a peer of `popup/`, `prompt/` and `onboarding/` because both the popup and the onboarding document render it |
+| `src/screens/Wizard/` | Account-creation screens shared by popup and onboarding; neither is their owner |
 
 ### 2.5 Onboarding -- `src/onboarding/`
 
-First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker) by rendering the same `src/wizard/` steps the popup uses.
+First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker) by rendering the same `src/screens/Wizard/` steps the popup uses.
 
 | File | Purpose |
 |------|---------|
 | `src/onboarding/index.html` | Entry point |
 | `src/onboarding/main.tsx` | React app mount |
-| `src/onboarding/OnboardingApp.tsx` | Hosts `useWizardFlow()` (`@hooks`) and `WizardSteps` (`@wizard`) |
+| `src/onboarding/OnboardingApp.tsx` | Hosts `useWizardFlow()` (`@hooks`) and `WizardSteps` (`@screens/Wizard`) |
 
 ### 2.6 Prompt -- `src/prompt/`
 

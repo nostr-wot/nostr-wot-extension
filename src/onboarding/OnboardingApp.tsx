@@ -5,7 +5,7 @@ import TopoBg from '@components/TopoBg/TopoBg';
 import PulseLogo from '@components/PulseLogo/PulseLogo';
 import Button from '@components/Button/Button';
 import useWizardFlow from '@hooks/useWizardFlow.ts';
-import WizardSteps from '@wizard/WizardSteps';
+import WizardSteps from '@screens/Wizard/WizardSteps';
 import Heading from '@components/Heading/Heading';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
