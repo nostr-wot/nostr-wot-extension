@@ -29,4 +29,9 @@ web-ext lint: zero errors, two warnings. Both innerHTML warnings are React DOM
 library implementations of dangerouslySetInnerHTML. The extension's src/ has
 no innerHTML or dangerouslySetInnerHTML usage.
 
+Release contents:
+Includes pasted LNURL-pay support (using the existing payment flow), the NWC provider startup fix and website-payment compatibility updates.
+The source archive includes Nostr Connect, NWC and WebLN integration tests.
+Store-facing release notes are in nostr-wot-release-notes-0.7.0.txt.
+
 This package has not been submitted or approved by Mozilla.

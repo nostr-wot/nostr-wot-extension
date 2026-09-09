@@ -9,6 +9,13 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ---
 
+## Current release status
+
+0.7.0 is pending store publication. All fixes remain under 0.7.0 until the
+owner explicitly requests a new publish. The briefly prepared 0.7.1 is folded
+into this version. Rebuild the same version’s packages and notes as changes
+accumulate; keep the GitHub release as a draft.
+
 ## Before any store
 
 1. Bump `version` in **both** `package.json` and `manifest.json`. They must match.
@@ -155,7 +162,7 @@ Release notes for each store live in `CHANGELOG.md` under the version, in a
 `### Store release notes` block — short, user-facing, and free of the internal
 detail the rest of the entry carries.
 
-## Reproduce the 0.7.1 packages
+## Reproduce the 0.7.0 packages
 
 Use supported Node 22 or 24, run `npm ci`, then `npm run package:chrome`
 and `npm run package:firefox`. The Chrome ZIP removes Firefox-specific settings;

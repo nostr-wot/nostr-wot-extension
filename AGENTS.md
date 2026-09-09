@@ -1,5 +1,14 @@
 # Workflow Rules
 
+## Pending store release
+
+Keep all current changes consolidated in **0.7.0**, including package/manifest
+versions, changelog, release notes and upload archives. Neither 0.7.0 nor the
+briefly prepared 0.7.1 has been properly published to the stores. Do not bump
+the version or publish a release until the user explicitly requests a new
+publish. Regenerate the 0.7.0 artifacts as fixes accumulate; keep GitHub releases
+as drafts in the meantime.
+
 **Anything you need to see in the browser must be built in the main clone.** The
 browser loads this extension unpacked from the main clone's `dist/`. A worktree builds
 into its own `dist/`, which nothing is watching, so the change looks like it did not

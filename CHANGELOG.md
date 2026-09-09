@@ -6,7 +6,7 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
-## 0.7.1 — 2026-09-09
+## 0.7.0 — pending store publication
 
 - Send now accepts pasted bech32 LNURL-pay strings and `lightning:LNURL…` links, with endpoint-domain preview and the existing amount, approval and duplicate-payment safeguards.
 - LNURL checksums, mixed case, malformed UTF-8, unsafe URLs and non-payment endpoints are rejected.
@@ -19,15 +19,6 @@ have had.
 - Added local-relay NWC wallet integration tests using real signatures and encryption.
 - Fixed NWC connection and cold startup: the wallet factory now constructs the provider with shared crypto instead of referring callers to a nonexistent factory function.
 
-### Store release notes
-
-- Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
-- Fixed NWC wallet connection and startup.
-- Improved website payment compatibility and detection of supported WebLN methods.
-- Expanded automated payment and connection tests.
-
-## 0.7.0 — 2026-09-09
-
 - Fixed repeated relay traffic caused by cache-change notifications starting another refresh. Recent mute/PQ answers are reused for one minute; stale reads still refresh in the background.
 
 - Profile covers now support Blossom upload or a typed URL and appear in the publish preview. Form fields have a distinct cool-gray surface. Post-quantum settings have a clearer status/publication layout, and the encrypted-backup recovery warning follows password validation.
@@ -35,6 +26,11 @@ have had.
 - Activity rows now show cached site favicons and trailing time/status. Event details have expandable payloads and local decryption for saved NIP-04/NIP-44/PQ content, including verified gift wraps. Future crypto logs retain ciphertext only; older entries without saved bodies explain their limitation.
 
 ### Store release notes
+
+- Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
+- Fixed NWC wallet connection and startup.
+- Improved website payment compatibility and detection of supported WebLN methods.
+- Expanded automated payment and connection tests.
 
 - Redesigned wallet, profile, post-quantum keys, activity details and form controls.
 - Wallet information appears from cache while refreshing; settled transaction history loads past pending invoices.

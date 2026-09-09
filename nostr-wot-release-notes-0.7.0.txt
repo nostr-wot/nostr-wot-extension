@@ -1,5 +1,9 @@
 Nostr WoT 0.7.0
 
+- Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
+- Fixed NWC wallet connection and startup.
+- Improved website payment compatibility and detection of supported WebLN methods.
+- Expanded automated payment and connection tests.
 
 - Redesigned wallet, profile, post-quantum keys, activity details and form controls.
 - Wallet information appears from cache while refreshing; settled transaction history loads past pending invoices.
