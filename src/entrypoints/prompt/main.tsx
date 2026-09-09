@@ -1,3 +1,4 @@
+import '@styles/tailwind.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { initI18n } from '@services/i18n/i18n.ts';

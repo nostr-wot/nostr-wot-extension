@@ -166,3 +166,29 @@ describe('CSS module selectors', () => {
     );
   });
 });
+
+describe('packaged browser documents', () => {
+  it('emits each entry document with resolvable scripts and styles', () => {
+    const dist=join(ROOT,'dist');
+    const manifest=JSON.parse(readFileSync(join(dist,'manifest.json'),'utf8'));
+    for (const page of [manifest.action.default_popup,'src/entrypoints/onboarding/index.html','src/entrypoints/prompt/index.html']) {
+      const html=readFileSync(join(dist,page),'utf8');
+      const assets=[...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)].map(m=>m[1]);
+      assert.ok(assets.some(asset=>asset.endsWith('.js')), `${page}: missing mount script`);
+      for (const asset of assets) assert.ok(statSync(join(asset.startsWith('/')?dist:dirname(join(dist,page)),asset)).isFile(),`${page}: ${asset}`);
+    }
+  });
+});
+
+
+describe('welcome screen ownership', () => {
+  it('keeps welcome content in screens and document flow in the onboarding shell', () => {
+    const screen=readFileSync(join(ROOT,'src/screens/Wizard/WelcomeStep.tsx'),'utf8');
+    const shell=readFileSync(join(ROOT,'src/entrypoints/onboarding/OnboardingApp.tsx'),'utf8');
+    assert.match(screen,/onboarding.title/);
+    assert.match(screen,/onboarding.subtitle/);
+    assert.match(screen,/<Button[^>]*onClick=\{onStart\}/);
+    assert.match(shell,/<WelcomeStep onStart=/);
+    assert.doesNotMatch(screen,/useWizardFlow|rpcNotify|window.close/);
+  });
+});

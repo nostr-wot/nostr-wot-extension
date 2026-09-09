@@ -21,7 +21,7 @@ import { ActivityProvider, useActivity } from '@context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import usePagedList from '@hooks/usePagedList.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';
-import type { DropdownOption } from '@components/Dropdown/dropdownOption.ts';
+import type { Option } from '@components/option.ts';
 
 interface ActivityOverlayProps {
   visible: boolean;
@@ -72,7 +72,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   }, [rawLog]);
 
   // Build account dropdown options from log data
-  const accountOptions = useMemo((): DropdownOption[] => [
+  const accountOptions = useMemo((): Option[] => [
     { value: '', label: t('activity.allAccounts') },
     ...activityAccountOptions(rawLog, accounts || [], profileCache || {})
       .map((o) => ({ value: o.pubkey, label: o.label })),
@@ -85,13 +85,13 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
     [rawLog, filter, accountFilter],
   );
 
-  const typeOptions = useMemo((): DropdownOption[] => [
+  const typeOptions = useMemo((): Option[] => [
     { value: '', label: t('activity.allOps') },
     ...typeKeys.map((key) => ({ value: key, label: t(TYPE_LABEL_KEYS[key]) })),
   ], [typeKeys]);
 
   // Domain dropdown options
-  const domainOptions = useMemo((): DropdownOption[] => [
+  const domainOptions = useMemo((): Option[] => [
     { value: '', label: t('activity.allSites') },
     ...activityDomains(rawLog).map((d) => ({ value: d, label: d })),
   ], [rawLog]);

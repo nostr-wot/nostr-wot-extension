@@ -19,6 +19,7 @@ import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import Text from '@components/Text/Text';
+import type {AutoLockOption} from "@domain/vault/autoLock.ts";
 
 interface SecuritySectionProps {
   onChangePassword: () => void;
@@ -117,7 +118,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
           <SectionLabel>{t('security.autoLock')}</SectionLabel>
           <SectionHint>{t('security.autoLockDesc')}</SectionHint>
           <ChipGroup
-            options={AUTO_LOCK_OPTIONS.map((opt: any) => ({ value: opt.ms, label: t(opt.labelKey) }))}
+            options={AUTO_LOCK_OPTIONS.map((opt: AutoLockOption) => ({ value: opt.ms, label: t(opt.labelKey) }))}
             value={displayMs}
             onChange={handleChipSelect}
           />

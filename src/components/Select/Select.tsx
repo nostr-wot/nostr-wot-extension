@@ -1,10 +1,11 @@
+import type { Option } from '@components/option.ts';
 import React from 'react';
 import IconChevronDown from '@assets/IconChevronDown.tsx';
 import { cn } from '@utils/cn.ts';
 
-interface SelectOption { value: string; label: string; disabled?: boolean }
+interface SelectOption extends Option { disabled?: boolean }
 interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> {
-  options: SelectOption[];
+  options: readonly SelectOption[];
   value?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
   small?: boolean;

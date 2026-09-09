@@ -34,7 +34,7 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "src/popup/index.html",
+    "default_popup": "src/entrypoints/popup/index.html",
     "default_icon": "icons/icon48.png"
   },
   "icons": {

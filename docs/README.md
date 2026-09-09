@@ -73,4 +73,4 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `@constants` -> `src/constants` — shared configuration and protocol data
 - `@lib` -> `src/lib` — cryptographic primitives and the browser compatibility shim, never React
 - `@assets` -> `src/assets`
-- `@popup` -> `src/popup`; the shared wizard lives at `src/screens/Wizard/` — `@models` and `@shared` no longer exist; `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/`
+- Browser document shells live in `src/entrypoints/`; the shared wizard lives at `src/screens/Wizard/` — `@models` and `@shared` no longer exist; `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/`

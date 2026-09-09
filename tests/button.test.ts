@@ -134,3 +134,18 @@ it('shared date and search fields retain native types, labels and control stylin
     assert.match(html,/border-control-border/);
   }
 });
+
+import Tabs from '../src/components/Tabs/Tabs';
+import ChipGroup from '../src/components/ChipGroup/ChipGroup';
+import type { Option } from '../src/components/option.ts';
+
+it('selection controls share readonly options while preserving string and numeric values', () => {
+  const options: readonly Option<'all'|'in'>[]=[{value:'all',label:'All'},{value:'in',label:'Received'}];
+  const tabs=renderToStaticMarkup(createElement(Tabs<'all'|'in'>,{options,value:'in',onChange(){}}));
+  assert.match(tabs,/aria-selected="true"[^>]*>Received/);
+  const chips=renderToStaticMarkup(createElement(ChipGroup<0|1>,{options:[{value:0,label:'Zero'},{value:1,label:'One'}],value:0,onChange(){}}));
+  assert.match(chips,/Zero/);assert.match(chips,/One/);
+  type Selected = Parameters<typeof ChipGroup<'all'|'in'>>[0]['onChange'];
+  const retainsLiteralUnion: Parameters<Selected>[0] extends 'all'|'in' ? true : false = true;
+  assert.equal(retainsLiteralUnion,true);
+});

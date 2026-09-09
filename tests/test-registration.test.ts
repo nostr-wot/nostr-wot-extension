@@ -313,10 +313,32 @@ it('generic utilities do not depend on feature domains, services or browser/cryp
 
 it('shared wizard screens belong to screens rather than an entry-point directory', () => {
   assert.equal(existsSync(join(ROOT, 'src/wizard')), false);
-  for (const host of ['src/popup/PopupApp.tsx','src/onboarding/OnboardingApp.tsx']) {
+  for (const host of ['src/entrypoints/popup/PopupApp.tsx','src/entrypoints/onboarding/OnboardingApp.tsx']) {
     assert.match(readFileSync(join(ROOT, host), 'utf8'), /from ['"]@screens\/Wizard\//);
   }
   assert.ok(existsSync(join(ROOT, 'src/screens/Wizard/WizardSteps.tsx')));
   assert.doesNotMatch(readFileSync(join(ROOT, 'tsconfig.json'), 'utf8'), /@wizard/);
   assert.doesNotMatch(readFileSync(join(ROOT, 'vite.config.ts'), 'utf8'), /@wizard/);
+});
+
+it('browser documents are grouped under entrypoints and feature modules cannot import their shells', () => {
+  for (const name of ['popup','onboarding','prompt']) {
+    assert.equal(existsSync(join(ROOT, 'src', name)),false);
+    for (const file of ['index.html','main.tsx']) assert.ok(existsSync(join(ROOT,'src/entrypoints',name,file)));
+  }
+  const manifest=JSON.parse(readFileSync(join(ROOT,'manifest.json'),'utf8'));
+  assert.equal(manifest.action.default_popup,'src/entrypoints/popup/index.html');
+  const vite=readFileSync(join(ROOT,'vite.config.ts'),'utf8');
+  for (const name of ['onboarding','prompt']) assert.ok(vite.includes(`src/entrypoints/${name}/index.html`));
+  const files=readdirSync(join(ROOT,'src'),{recursive:true}).filter((f):f is string=>typeof f==='string'&&/\.tsx?$/.test(f)&&!f.startsWith('entrypoints/'));
+  for (const file of files) assert.doesNotMatch(readFileSync(join(ROOT,'src',file),'utf8'),/(?:from\s*|import\s*\()['"][^'"]*entrypoints\//,file);
+});
+
+it('selection controls import one option contract instead of declaring copies', () => {
+  assert.equal(existsSync(join(ROOT,'src/components/Dropdown/dropdownOption.ts')),false);
+  for (const name of ['Tabs','ChipGroup','Dropdown','Select']) {
+    const source=readFileSync(join(ROOT,`src/components/${name}/${name}.tsx`),'utf8');
+    assert.match(source,/import type \{ Option \} from ['"]@components\/option.ts/);
+    assert.doesNotMatch(source,/interface (?:TabOption|ChipOption|DropdownOption)\b/);
+  }
 });

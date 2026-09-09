@@ -107,3 +107,18 @@ it('declined-site duration reuses native selection with all supported durations'
   for (const duration of ['0','86400000','604800000','2592000000']) assert.match(html,new RegExp(`value="${duration}"`));
   assert.match(html,/perm.dismissDurationLabel/);
 });
+
+import DecisionRow from '../src/screens/Prompt/DecisionRow';
+import PromptApp from '../src/entrypoints/prompt/PromptApp';
+it('prompt choices use shared button styling and disable the entire decision form', () => {
+  const html=renderToStaticMarkup(createElement(DecisionRow,{disabled:true,onDecision(){}}));
+  assert.equal((html.match(/<button/g)||[]).length,4);
+  assert.equal((html.match(/disabled=""/g)||[]).length,5);
+  assert.match(html,/focus-visible:shadow-focus/);
+  assert.doesNotMatch(html,/37,99,235|5,150,105|hover:-translate-y/);
+  for (const choice of ['deny','once','session','always']) assert.match(html,new RegExp(`prompt.${choice}`));
+});
+it('prompt entry shell mounts the approval screen with its loading state', () => {
+  const html=renderToStaticMarkup(createElement(PromptApp));
+  assert.match(html,/common.loading/);
+});

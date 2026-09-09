@@ -1,9 +1,5 @@
+import type { Option } from '@components/option.ts';
 import { cn } from '@utils/cn.ts';
-
-export interface TabOption<T extends string = string> {
-  value: T;
-  label: string;
-}
 
 // Two variants because the product genuinely has two tab designs, and
 // choosing one for both is a design decision rather than a refactor. The old
@@ -28,7 +24,7 @@ const VARIANT_TAB_ACTIVE: Record<string, string> = {
 };
 
 interface TabsProps<T extends string = string> {
-  options: TabOption<T>[];
+  options: readonly Option<T>[];
   value: T;
   onChange: (value: T) => void;
   /** `outlined` — separate bordered segments. `segmented` — one track, moving thumb. */

@@ -1,8 +1,8 @@
 import Select from '@components/Select/Select';
-import type { DropdownOption } from './dropdownOption';
+import type { Option } from '@components/option.ts';
 
 interface DropdownProps {
-  options: DropdownOption[];
+  options: readonly Option[];
   value: string;
   onChange: (value: string) => void;
   small?: boolean;

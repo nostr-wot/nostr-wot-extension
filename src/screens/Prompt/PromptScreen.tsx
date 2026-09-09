@@ -4,7 +4,6 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { formatSats } from '@domain/wallet/display.ts';
-import '@styles/tailwind.css';
 import Button from '@components/Button/Button';
 import EventPreview from '@components/EventPreview/EventPreview';
 import DecisionRow from './DecisionRow';
@@ -23,7 +22,7 @@ interface PendingPrompt {
   walletAmount?: number;
 }
 
-export default function PromptApp() {
+export default function PromptScreen() {
   const [prompt, setPrompt] = useState<PendingPrompt | null>(null);
   const [vaultLocked, setVaultLocked] = useState<boolean>(false);
   const [buttonsDisabled, setButtonsDisabled] = useState<boolean>(false);

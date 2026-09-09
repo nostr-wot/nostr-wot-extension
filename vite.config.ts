@@ -88,8 +88,8 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        onboarding: resolve(__dirname, 'src/onboarding/index.html'),
-        prompt: resolve(__dirname, 'src/prompt/index.html'),
+        onboarding: resolve(__dirname, 'src/entrypoints/onboarding/index.html'),
+        prompt: resolve(__dirname, 'src/entrypoints/prompt/index.html'),
       },
     },
   },
@@ -98,7 +98,6 @@ export default defineConfig({
     alias: {
       '@assets': resolve(__dirname, 'src/assets'),
       '@components': resolve(__dirname, 'src/components'),
-      '@popup': resolve(__dirname, 'src/popup'),
       '@screens': resolve(__dirname, 'src/screens'),
       '@hooks': resolve(__dirname, 'src/hooks'),
       '@utils': resolve(__dirname, 'src/utils'),

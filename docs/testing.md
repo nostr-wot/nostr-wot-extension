@@ -239,3 +239,7 @@ rule lists, copy controls and key-action panels. Formatter tests cover time unit
 expiry states and public-key fallback rendering. Utility boundary checks prevent
 application services, domain modules and browser/crypto imports from returning to
 generic utilities. Interactive hook lifecycles still require browser validation.
+
+Entry-point regression checks verify source ownership and the manifest/Vite paths.
+The CSS/build suite also verifies that all three packaged HTML documents reference
+existing scripts and styles. Prompt and wizard tests cover the extracted views.

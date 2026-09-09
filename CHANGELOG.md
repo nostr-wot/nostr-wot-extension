@@ -8,6 +8,9 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Consolidated tab, chip, dropdown and select options into `Option<T>`, preserving typed chip callbacks and read-only option lists.
+- Grouped browser documents under `src/entrypoints/`; moved prompt and welcome content to feature screens and updated packaging paths. Prompt decisions now reuse shared buttons and selects.
+
 - Split key actions, payment previews and permission rules into focused UI modules; reused copy/form controls and moved feature formatting and favicon caching to their semantic owners.
 
 - Removed forwarding exports and icon/format barrels; consumers import shared symbols directly from their defining modules.

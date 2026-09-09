@@ -15,7 +15,6 @@
     "paths": {
       "@assets/*": ["./src/assets/*"],
       "@components/*": ["./src/components/*"],
-      "@popup/*": ["./src/popup/*"],
       "@screens/*": ["./src/screens/*"],
       "@hooks/*": ["./src/hooks/*"],
       "@utils/*": ["./src/utils/*"],

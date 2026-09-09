@@ -15,7 +15,7 @@ The extension targets Chrome and Firefox, using a service worker on Chrome and a
 
 **Build system**: Vite + `@crxjs/vite-plugin`. All source is TypeScript (`.ts`/`.tsx`), compiled to JavaScript at build time. React JSX is used for popup, onboarding, and prompt UIs.
 
-**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@screens`, `@popup`, `@domain`, `@services`, `@context`, `@hooks`, `@utils`, `@styles`, `@lib`. `@models` and `@shared` no longer exist — `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/` by what a thing is (see [Component Standards §2](component-standards.md)).
+**TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@screens`, `@domain`, `@services`, `@context`, `@hooks`, `@utils`, `@styles`, `@lib`. `@models` and `@shared` no longer exist — `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/` by what a thing is (see [Component Standards §2](component-standards.md)).
 
 Cross-browser compatibility is handled by a thin shim at `src/lib/browser.ts`:
 
@@ -93,39 +93,40 @@ Each method posts a typed message to `window.postMessage` and returns a Promise 
 
 Fires `CustomEvent('webln-ready')` and `CustomEvent('nostr-wot-ready')` on `window` when injection completes so pages can detect API availability.
 
-### 2.4 Popup -- `src/popup/`
+### 2.4 Popup -- `src/entrypoints/popup/`
 
-Extension popup UI opened when clicking the toolbar icon. React-based, styled with Tailwind (see [Component Standards §7](component-standards.md)). The entry document itself is thin; the screens it renders live in sibling top-level folders, not nested inside it.
+Extension popup UI opened when clicking the toolbar icon. React-based, styled with Tailwind (see [Component Standards §7](component-standards.md)). The entry document itself is thin; feature content lives under `src/screens/`, outside the browser-document shells.
 
 | File | Purpose |
 |------|---------|
-| `src/popup/index.html` | Entry point |
-| `src/popup/main.tsx` | React app mount |
-| `src/popup/PopupApp.tsx` | Root component: the `OverlayType` state machine, splash/unlock gating, wires the context providers and hands navigation to `NavigationProvider` |
+| `src/entrypoints/popup/index.html` | Entry point |
+| `src/entrypoints/popup/main.tsx` | React app mount |
+| `src/entrypoints/popup/PopupApp.tsx` | Root component: the `OverlayType` state machine, splash/unlock gating, wires the context providers and hands navigation to `NavigationProvider` |
 | `src/screens/` | One folder per screen (`Home`, `Menu`, `TopBar`, `Vault`, `Activity`, `Approval`, `EditProfile`, `Settings`, `Wallet`, `Filters`) — all popup-only, so not split by entry point |
 | `src/context/` | The eight React contexts (`AccountContext`, `VaultContext`, `PermissionsContext`, `WalletContext`, `RelaysContext`, `PqcContext`, `NavigationContext`, `ActivityContext`) |
 | `src/screens/Wizard/` | Account-creation screens shared by popup and onboarding; neither is their owner |
 
-### 2.5 Onboarding -- `src/onboarding/`
+### 2.5 Onboarding -- `src/entrypoints/onboarding/`
 
 First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker) by rendering the same `src/screens/Wizard/` steps the popup uses.
 
 | File | Purpose |
 |------|---------|
-| `src/onboarding/index.html` | Entry point |
-| `src/onboarding/main.tsx` | React app mount |
-| `src/onboarding/OnboardingApp.tsx` | Hosts `useWizardFlow()` (`@hooks`) and `WizardSteps` (`@screens/Wizard`) |
+| `src/entrypoints/onboarding/index.html` | Entry point |
+| `src/entrypoints/onboarding/main.tsx` | React app mount |
+| `src/entrypoints/onboarding/OnboardingApp.tsx` | Hosts `useWizardFlow()` (`@hooks`) and `WizardSteps` (`@screens/Wizard`) |
 
-### 2.6 Prompt -- `src/prompt/`
+### 2.6 Prompt -- `src/entrypoints/prompt/`
 
 Signing request approval popup. The signer queues pending requests in `browser.storage.session` and the popup overlay shows them with approve/deny buttons.
 
 | File | Purpose |
 |------|---------|
-| `src/prompt/index.html` | Entry point |
-| `src/prompt/main.tsx` | React app mount |
-| `src/prompt/PromptApp.tsx` | Reads pending requests, sends decisions via RPC |
-| `src/prompt/DecisionRow.tsx`, `src/prompt/UnlockSection.tsx` | The row and the vault-locked sub-view `PromptApp` composes |
+| `src/entrypoints/prompt/index.html` | Entry point |
+| `src/entrypoints/prompt/main.tsx` | React app mount |
+| `src/entrypoints/prompt/PromptApp.tsx` | Document shell rendering `PromptScreen` |
+| `src/screens/Prompt/PromptScreen.tsx` | Pending-request loading, approval content and decision handling |
+| `src/screens/Prompt/DecisionRow.tsx`, `src/screens/Prompt/UnlockSection.tsx` | The row and the vault-locked sub-view `PromptScreen` composes |
 
 ---
 

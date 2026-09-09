@@ -98,7 +98,7 @@ The vocabulary the code is reaching for: **Overlay** = full-height `OverlayPanel
 src/
   assets/      icons
   components/  shared UI primitives, one folder per component
-  screens/     one folder per popup screen
+  screens/     feature screens shared by browser documents
   context/     the eight React contexts
   constants/   configuration and protocol values, grouped by purpose
   domain/      feature logic, one folder per module, pure and tested
@@ -106,12 +106,12 @@ src/
   utils/       no domain knowledge
   hooks/       every hook, feature or generic
   lib/         cryptographic primitives and the cross-browser compatibility shim
-  popup/  prompt/  onboarding/   browser document entry points
+  entrypoints/ popup/, prompt/, onboarding/: HTML, mounting and app shells
 ```
 
-Three rules behind that shape. **No module nests its own `components/`** — inside `src/popup/` the folders are the screens, and a second level named after a file type said nothing. **Hooks live together**, not beside the one screen that happens to use them first, because that is how `useSiteState` ended up somewhere `useWalletBanner` had to reach for it. **A type lives with the logic that owns it**, not in a shared types folder — `domain/activity/activity.ts` defines `ActivityEntry` beside the filters that read it, `domain/profile/profileMetadata.ts` defines `ProfileMetadata` beside the merge that maintains it — so a shape has one definition and no call site learns a second import path for the same idea. A purely-UI type goes where it is used instead: `DropdownOption` beside `Dropdown`, `IconProps` beside the icons. A `models/` folder used to hold every shared type and competed with `domain/` for the same job — `domain/activity/activity.ts` opened by importing `ActivityEntry` from `models` and re-exporting it, so a reader visited two files to learn one thing. It is gone.
+Three rules behind that shape. **Entry points do not own feature screens.** Keep document setup and app shells in `entrypoints/`, feature UI in `screens/`, and reusable controls in `components/`. **Hooks live together**, not beside the one screen that happens to use them first, because that is how `useSiteState` ended up somewhere `useWalletBanner` had to reach for it. **A type lives with the logic that owns it**, not in a shared types folder — `domain/activity/activity.ts` defines `ActivityEntry` beside the filters that read it, `domain/profile/profileMetadata.ts` defines `ProfileMetadata` beside the merge that maintains it — so a shape has one definition and no call site learns a second import path for the same idea. A purely-UI type goes where it is used instead: `Option<T>` in `components/option.ts` for selection controls, `IconProps` beside the icons. A `models/` folder used to hold every shared type and competed with `domain/` for the same job — `domain/activity/activity.ts` opened by importing `ActivityEntry` from `models` and re-exporting it, so a reader visited two files to learn one thing. It is gone.
 
-Aliases: `@constants`, `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`, `@popup`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
+Aliases: `@constants`, `@components`, `@screens`, `@hooks`, `@domain`, `@services`, `@context`, `@utils`, `@styles`, `@lib`, `@assets`. Use them rather than climbing out of a folder with `../../`. Each one answers a question about the thing you are writing, so if two of them seem to fit, the file is probably doing two jobs — see §7 for what each one means.
 
 ### `src/domain`, `src/services`, `src/utils` — and `src/lib`
 
@@ -347,7 +347,6 @@ Configured in `vite.config.ts`:
 | `@constants` | `src/constants` — configuration, protocol values and fixed lookup data |
 | `@lib` | `src/lib` — cryptographic primitives and the cross-browser compatibility shim. Imported by the service worker, so never React |
 | `@assets` | `src/assets` |
-| `@popup` | `src/popup` — the popup entry document |
 
 Always use aliases instead of relative paths when crossing module boundaries.
 
@@ -494,3 +493,19 @@ Date/search fields use `Input`, duration selection uses `Select`, and the PQ fil
 paste field uses `Textarea`. Native file inputs and specialized reveal toggles
 remain native elements because their interaction differs from a text control.
 Favicon fetching and persistent caching live in `services/media/favicon.ts`.
+
+`entrypoints/{popup,onboarding,prompt}` own HTML documents, React mounting and
+app-level wiring. Feature modules must not import from them. `PromptScreen`, its
+decision/unlock views, and the wizard's `WelcomeStep` live under `screens/`.
+The manifest popup and Vite's additional document inputs name the entrypoint HTML
+files explicitly; packaging tests verify those output pages and their assets.
+
+`DecisionRow` remains a prompt-specific view because it emits permission decisions.
+Its buttons and duration select compose shared `Button`/`Select` controls without
+local color, border or hover recipes; disabling the row disables every control.
+
+Selection controls import `Option<T>` directly from `components/option.ts`. Tabs
+restrict values to strings; chip groups retain string/number types through their
+change callback; native selects extend the base with optional `disabled`. Options
+arrays are read-only inputs. Copy-button props are separate: their label names a
+clipboard action rather than a choice, despite having similarly named fields.

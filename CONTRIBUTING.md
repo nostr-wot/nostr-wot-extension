@@ -34,7 +34,7 @@ No build step required — the extension uses plain ES modules with no bundler.
 ### Running Tests
 
 ```bash
-node --test tests/
+./tests/run.sh
 ```
 
 Tests use Node.js native `node:test` module with browser API mocks in `tests/helpers/`.
@@ -42,24 +42,27 @@ Tests use Node.js native `node:test` module with browser API mocks in `tests/hel
 ## Project Structure
 
 ```
-├── background.ts          # Service worker — thin dispatcher over lib/bg/
-├── content.ts             # Content script (ISOLATED world) — message bridge
-├── inject.ts              # Page script (MAIN world) — window.nostr + window.webln
-├── lib/
-│   ├── bg/                # Background handler modules (nip07, vault, wallet, relay, profile, publish, …)
-│   ├── crypto/            # Pure TS crypto (secp256k1, schnorr, NIPs, bip32/39)
-│   ├── wallet/            # Lightning wallet providers (NWC, LNbits, provisioning)
-│   ├── storage.ts         # IndexedDB relay-list cache + pubkey ID mapping
-│   ├── vault.ts           # AES-256-GCM encrypted key vault
-│   ├── signer.ts          # NIP-07 signing coordinator
-│   ├── permissions.ts     # Per-domain / per-account permission storage
-│   ├── accounts.ts        # Account creation/import
-│   ├── relayUtils.ts      # Relay URL normalization
-│   └── browser.ts         # Cross-browser compatibility shim
-├── src/popup/             # Extension popup (tab-based UI)
-├── src/onboarding/        # First-run setup wizard
-├── src/prompt/            # Signing request approval popup
-├── docs/                  # Technical documentation (see docs/README.md)
+├── background.ts          # Service-worker dispatcher
+├── content.ts             # Isolated-world message bridge
+├── inject.ts              # Page-facing Nostr and WebLN APIs
+├── src/
+│   ├── entrypoints/       # HTML, React mounts and document shells
+│   │   ├── popup/
+│   │   ├── onboarding/
+│   │   └── prompt/
+│   ├── screens/           # Feature UI, including Wizard and Prompt
+│   ├── components/        # Shared UI controls and presentation
+│   ├── hooks/             # React hooks
+│   ├── context/           # App providers
+│   ├── domain/            # Pure feature decisions and contracts
+│   ├── services/          # Browser, network and persistence orchestration
+│   ├── constants/         # Configuration and protocol values
+│   ├── utils/             # Generic helpers
+│   ├── lib/               # Crypto primitives and browser compatibility
+│   ├── assets/            # React icons
+│   ├── styles/            # Theme and shared styles
+│   └── public/            # Packaged icons and translations
+├── docs/                  # Technical documentation
 └── tests/                 # Node.js test suite
 ```
 
@@ -70,7 +73,7 @@ Tests use Node.js native `node:test` module with browser API mocks in `tests/hel
 1. Check existing issues first
 2. Create a failing test case if possible
 3. Fix the bug
-4. Verify existing tests still pass: `node --test tests/`
+4. Verify existing tests still pass: `./tests/run.sh`
 
 ### New Features
 
@@ -104,7 +107,7 @@ Use these branch name prefixes:
 ### 3. Test
 
 ```bash
-node --test tests/
+./tests/run.sh
 ```
 
 For UI changes, manually test in Chrome and Firefox:

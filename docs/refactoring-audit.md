@@ -59,3 +59,10 @@ it against the semantic directory rules. That was a missed finding. Account-crea
 steps now live in `src/screens/Wizard/`; popup and onboarding import them through
 `@screens`. The separate wizard alias is removed. Sharing across entry points does
 not warrant a separate top-level category.
+
+## Browser entry points
+
+Popup, onboarding and prompt document setup now lives under `src/entrypoints/`.
+Prompt approval content lives in `src/screens/Prompt/`, and welcome content lives
+in `src/screens/Wizard/WelcomeStep.tsx`. The old popup alias is removed; feature
+code cannot import entrypoint implementation details.
