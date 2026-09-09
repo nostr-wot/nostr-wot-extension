@@ -499,3 +499,32 @@ Deposit and Send use a 340px maximum width with labelled inputs and a consistent
 Wallet settings scrolls within the available popup height. Header refresh reloads alias, connection details, approval limit and Lightning Address (not balance/history). “Release address” releases the username through the provider and retains its confirmation; “Disconnect” removes the extension’s saved connection without deleting the provider wallet or funds. Copy actions are icons beside their values/labels.
 
 Home wallet visibility is independent of the active website connection: the wallet summary remains above loading, restricted-page and unconnected-site notices. Existing account eligibility and vault lock gates still apply.
+
+## Website discovery and supported payment paths
+
+Websites detect `window.webln`, can listen for `webln-ready`, then call `enable()`
+and `getInfo()`. The returned `methods` maps the connected wallet's advertised
+`pay_invoice`, `make_invoice` and `get_balance` capabilities to `sendPayment`,
+`makeInvoice` and `getBalance`; unavailable backend methods are not advertised.
+`getInfo` remains present and the Nostr identity is not exposed as a node pubkey.
+
+`makeInvoice` accepts a positive whole-sat number, numeric string, or an object
+with `amount` and optional `defaultMemo`. Invalid amounts are rejected before
+transport and revalidated by the background. Amount-selection prompts using only
+`minimumAmount`/`maximumAmount` are not implemented; provide a fixed amount.
+
+| Payment path | Support |
+|---|---|
+| Website BOLT11 invoice through WebLN | LNbits and NWC `pay_invoice` |
+| Website NIP-57 zap | Website signs kind:9734 via NIP-07, obtains the LNURL invoice, then pays via WebLN |
+| Popup Lightning Address | LUD-16 address resolution and LUD-06 invoice payment; ordinary payment, not a generated zap request |
+| Popup pasted BOLT11 | Direct payment through the selected provider |
+| Bech32 LNURL pasted into Send | Not implemented; use a Lightning Address or BOLT11 |
+| Keysend, BOLT12, on-chain, Cashu | Not implemented or advertised |
+
+A NWC connection grants capabilities to this extension; it does not expose the
+connection secret to websites. Websites use WebLN for that wallet. Receipt
+publication for a Nostr zap belongs to the recipient's LNURL service.
+
+References: https://www.webln.guide/building-lightning-apps/webln-reference/webln.getinfo
+and https://github.com/nostr-protocol/nips/blob/master/57.md.

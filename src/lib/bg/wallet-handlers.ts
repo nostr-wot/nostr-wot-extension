@@ -89,7 +89,11 @@ export const handlers = new Map<string, HandlerFn>([
             // automatically learn the identity).
             node: { alias: info.alias || '', pubkey: '' },
             supports: ['lightning'],
-            methods: ['getInfo', 'sendPayment', 'makeInvoice', 'getBalance'],
+            methods: ['getInfo', ...[
+                ['pay_invoice', 'sendPayment'],
+                ['make_invoice', 'makeInvoice'],
+                ['get_balance', 'getBalance'],
+            ].filter(([walletMethod]) => info.methods.includes(walletMethod)).map(([, webMethod]) => webMethod)],
         };
     }],
 
@@ -156,6 +160,8 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['webln_makeInvoice', async (params) => {
         const { amount, defaultMemo } = params as { amount: number; defaultMemo?: string; origin: string };
+        if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Invoice amount must be a positive whole number of sats');
+        if (defaultMemo !== undefined && typeof defaultMemo !== 'string') throw new Error('Invalid invoice memo');
         const { provider } = await getConnectedProvider();
         const inv = await provider.makeInvoice(amount, defaultMemo);
         return { paymentRequest: inv.bolt11 };

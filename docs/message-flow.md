@@ -253,3 +253,10 @@ The in-popup approval queue is account-wide, grouping all origins for the select
 The content bridge multiplexes concurrent NIP-07/WebLN calls on one port per channel. The background echoes each internal request ID on success and failure; the bridge maps it back to the page request ID. Replies may finish out of order. Calls are not held behind an earlier approval, so all received requests can reach the approval list together. Disconnect rejects every outstanding call; no signing or payment request is automatically replayed. After updating this bridge, reload existing website tabs as well as the extension to replace their injected content scripts.
 
 Automatic popup opening first checks for an existing popup context (runtime.getContexts, or extension.getViews on older browsers). Requests caused by an account-switch page refresh update the open approval UI without reopening the native popup. The originating-tab check still applies and popup context metadata is refreshed.
+
+### WebLN capability and invoice compatibility
+
+`webln_getInfo` translates backend method grants into WebLN method names instead
+of advertising all operations unconditionally. The injected `makeInvoice`
+normalizes numeric, string and object arguments to a validated fixed amount;
+the background repeats amount validation before invoking the wallet provider.

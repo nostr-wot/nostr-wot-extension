@@ -8,6 +8,10 @@ have had.
 
 ## Unreleased
 
+- Fixed clean-checkout CI failures by building before CSS regression tests in GitHub Actions and the local test runner.
+
+- WebLN reports the connected wallet's available methods and accepts number/string/object invoice amounts with validation. Added website-payment integration coverage for LNbits, Lightning Addresses and Nostr zap signing/payment.
+
 - Added local-relay NWC wallet integration tests using real signatures and encryption.
 - Fixed NWC connection and cold startup: the wallet factory now constructs the provider with shared crypto instead of referring callers to a nonexistent factory function.
 

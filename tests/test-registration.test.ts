@@ -195,3 +195,10 @@ describe('release manifest', () => {
     assert.equal(lock.packages[''].version, pkg.version);
   });
 });
+
+it('builds before tests in local and CI runners so clean checkouts have CSS assets', () => {
+  const local = readFileSync(RUN_SH, 'utf8');
+  const ci = readFileSync(WORKFLOW, 'utf8');
+  assert.ok(local.indexOf('npm run build') >= 0 && local.indexOf('npm run build') < local.indexOf('node --import'), 'local runner must build before tests');
+  assert.ok(ci.indexOf('run: npm run build') >= 0 && ci.indexOf('run: npm run build') < ci.indexOf('run: node --import'), 'CI must build before tests');
+});

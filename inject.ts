@@ -49,12 +49,20 @@ interface SignedEvent {
     sig: string;
 }
 
+interface WebLNInfo {
+    node: { alias: string; pubkey: string };
+    supports: string[];
+    methods: string[];
+}
+
+type InvoiceArgs = number | string | { amount: number | string; defaultMemo?: string };
+
 interface WebLNProvider {
     enabled: boolean;
     enable(): Promise<void>;
-    getInfo(): Promise<{ node: { alias: string; pubkey: string } }>;
+    getInfo(): Promise<WebLNInfo>;
     sendPayment(paymentRequest: string): Promise<{ preimage: string }>;
-    makeInvoice(args: { amount: number; defaultMemo?: string }): Promise<{ paymentRequest: string }>;
+    makeInvoice(args: InvoiceArgs): Promise<{ paymentRequest: string }>;
     getBalance(): Promise<{ balance: number }>;
 }
 
@@ -180,14 +188,20 @@ declare global {
             weblnEnabled = true;
             window.webln!.enabled = true;
         },
-        getInfo: () => webln.call('getInfo', {}) as Promise<{ node: { alias: string; pubkey: string } }>,
+        getInfo: () => webln.call('getInfo', {}) as Promise<WebLNInfo>,
         sendPayment: (paymentRequest: string) => {
             if (!weblnEnabled) return Promise.reject(new Error('WebLN not enabled. Call webln.enable() first.'));
             return webln.call('sendPayment', { paymentRequest }) as Promise<{ preimage: string }>;
         },
-        makeInvoice: (args: { amount: number; defaultMemo?: string }) => {
+        makeInvoice: (args: InvoiceArgs) => {
             if (!weblnEnabled) return Promise.reject(new Error('WebLN not enabled. Call webln.enable() first.'));
-            return webln.call('makeInvoice', args) as Promise<{ paymentRequest: string }>;
+            const options = typeof args === 'number' || typeof args === 'string' ? { amount: args } : args;
+            const raw = options?.amount;
+            const amount = typeof raw === 'number' || (typeof raw === 'string' && raw.trim()) ? Number(raw) : NaN;
+            if (!Number.isSafeInteger(amount) || amount <= 0) {
+                return Promise.reject(new Error('Invoice amount must be a positive whole number of sats.'));
+            }
+            return webln.call('makeInvoice', { amount, defaultMemo: options?.defaultMemo }) as Promise<{ paymentRequest: string }>;
         },
         getBalance: () => {
             if (!weblnEnabled) return Promise.reject(new Error('WebLN not enabled. Call webln.enable() first.'));

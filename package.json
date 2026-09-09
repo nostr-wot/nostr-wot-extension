@@ -19,7 +19,8 @@
     "sync:safari": "rsync -a --delete dist/ \"safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/\" && node -e \"import{readFileSync as r,writeFileSync as w}from'node:fs';const f='safari-xcode/Nostr WoT/Nostr WoT Extension/Resources/manifest.json',m=JSON.parse(r(f,'utf8'));if(m.background&&m.background.service_worker){m.background={scripts:[m.background.service_worker],persistent:true};}w(f,JSON.stringify(m,null,2)+'\\n')\"",
     "pqc:keygen": "node --import tsx scripts/pqc-keygen.mjs",
     "test:nostr-connect": "node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/nostr-connect-integration.test.ts",
-    "test:nwc": "node --import tsx --test tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts"
+    "test:nwc": "node --import tsx --test tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts",
+    "test:payments": "node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet/payment-integration.test.ts tests/wallet/payment-intents.test.ts tests/wallet/lnbits.test.ts tests/wallet/lnurl.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts"
   },
   "dependencies": {
     "@noble/ciphers": "^2.1.1",

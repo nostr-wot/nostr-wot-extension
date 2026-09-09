@@ -1,6 +1,6 @@
 # Test Suite
 
-Tests use **Node.js built-in test runner** (`node:test`, Node 22+) with the `tsx` loader for TypeScript. No build step required for testing.
+Tests use **Node.js built-in test runner** (`node:test`, Node 22+) with the `tsx` loader for TypeScript. The full runner builds first because CSS regression tests inspect generated assets. Targeted non-CSS tests run directly without a build.
 
 ## 1. Running Tests
 
@@ -207,3 +207,19 @@ wrong-author/forged/undecryptable/unrelated replies, pending-request rejection o
 disconnect and provider reconstruction. Tests use synthetic invoices and fixed
 throwaway keys; no Lightning node or real payment is involved. Existing mocked
 NWC unit tests retain timeout coverage. Both suites run locally and in CI.
+
+## Website payment integration
+
+Run `npm run test:payments`. `tests/wallet/payment-integration.test.ts` executes
+actual `inject.ts` in a page VM and forwards its messages to real wallet/signer
+handlers. An HTTP server emulates LNbits; controlled LNURL responses exercise
+Lightning Address resolution, amount verification and payment-intent replay.
+The suite covers WebLN discovery/consent, backend-aware capability reporting,
+number/string/object invoice requests, invalid amounts, a signed kind:9734 zap
+request followed by invoice payment, rejection and provider errors.
+
+This harness replaces browser message transport (covered separately by
+communication.test.ts) and external payment services. It does not send real
+funds or verify a recipient's kind:9735 receipt publication.
+
+CI and `tests/run.sh` build before any tests. `tests/test-registration.test.ts` guards this ordering; clean GitHub runners have no pre-existing `dist/assets`. Do not run a build concurrently with CSS tests.
