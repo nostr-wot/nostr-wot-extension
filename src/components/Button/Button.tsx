@@ -22,35 +22,30 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 // UA's own font family and would not otherwise match its own label.
 const BASE =
   'inline-flex items-center justify-center gap-3 rounded-md font-semibold font-[inherit] ' +
-  'cursor-pointer transition-all duration-slow hover:-translate-y-0.5 active:translate-y-0 ' +
-  'disabled:opacity-60 disabled:cursor-not-allowed disabled:translate-y-0';
+  'cursor-pointer leading-normal transition-colors duration-150 ' +
+  'focus-visible:outline-none focus-visible:shadow-focus ' +
+  'disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none';
 
 const SIZE: Record<'default' | 'small', string> = {
-  default: 'px-8 py-5 text-md',
-  small: 'px-6 py-3 text-xs',
+  default: 'min-h-20 px-7 py-4 text-md',
+  small: 'min-h-16 px-5 py-3 text-sm',
 };
 
-/**
- * Filled variants. The two shadow values on `primary` are one-off literals —
- * `rgba(0, 0, 0, …)` rather than a brand tint — and appear nowhere else in the
- * stylesheets, so they stay arbitrary values rather than inventing a token
- * with a single caller.
- */
+/** Filled actions keep a quiet surface; hover only applies when enabled. */
 const FILLED: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand text-on-brand shadow-[0_2px_8px_rgba(0,0,0,0.15)] ' +
-    'hover:bg-brand-hover hover:shadow-[0_4px_12px_rgba(0,0,0,0.2)]',
-  secondary: 'bg-brand-light text-brand-hover hover:bg-[rgba(99,102,241,0.18)]',
-  danger: 'bg-[rgba(220,38,38,0.1)] text-error hover:bg-[rgba(220,38,38,0.18)]',
+    'bg-brand text-on-brand enabled:hover:bg-brand-hover enabled:active:bg-brand-hover',
+  secondary: 'bg-brand-light text-brand-hover enabled:hover:bg-[rgba(99,102,241,0.18)]',
+  danger: 'bg-[rgba(220,38,38,0.1)] text-error enabled:hover:bg-[rgba(220,38,38,0.18)]',
 };
 
 /** Transparent, bordered in the variant's own colour. `danger` gets its own
  *  pair rather than reusing `--card-border` / `--text-secondary`, because a
  *  danger outline still has to read as danger. */
 const OUTLINE: Record<ButtonVariant, string> = {
-  primary: 'bg-transparent border border-card-border text-secondary hover:bg-card hover:text-heading',
-  secondary: 'bg-transparent border border-card-border text-secondary hover:bg-card hover:text-heading',
-  danger: 'bg-transparent border border-error-tint text-error hover:bg-error-tint hover:text-error',
+  primary: 'bg-transparent border border-card-border text-secondary enabled:hover:bg-card enabled:hover:text-heading',
+  secondary: 'bg-transparent border border-card-border text-secondary enabled:hover:bg-card enabled:hover:text-heading',
+  danger: 'bg-transparent border border-error-tint text-error enabled:hover:bg-error-tint enabled:hover:text-error',
 };
 
 export default function Button({
@@ -64,7 +59,7 @@ export default function Button({
   const cls = cn(
     BASE,
     SIZE[small ? 'small' : 'default'],
-    outline ? OUTLINE[variant] : FILLED[variant],
+    outline ? OUTLINE[variant] : ['border-0', FILLED[variant]],
     className,
   );
 

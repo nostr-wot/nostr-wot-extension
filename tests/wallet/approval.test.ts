@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { resetMockStorage } from '../helpers/browser-mock.ts';
+import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
 import * as signer from '../../src/lib/signer.ts';
 import * as vault from '../../src/lib/vault.ts';
 
@@ -10,6 +10,8 @@ const tick = () => new Promise<void>(r => setTimeout(r, 100));
 describe('wallet payment approval', () => {
   beforeEach(async () => {
     resetMockStorage();
+    await browserMock.storage.local.set({activeAccountId:'wallet-account',accounts:[{id:'wallet-account',type:'nsec',pubkey:'a'.repeat(64)}]});
+    await browserMock.storage.sync.set({myPubkey:'a'.repeat(64)});
     vault.lock();
     await signer.cleanupStale();
   });

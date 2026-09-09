@@ -23,6 +23,7 @@ interface PublishRowLabels {
 
 interface PublishRowProps {
   publishing: boolean;
+  disabled?: boolean;
   status: 'success' | 'error' | null;
   dirty: boolean;
   labels: PublishRowLabels;
@@ -36,7 +37,7 @@ interface PublishRowProps {
  * idle). The `idle` label is precomputed by the caller (it may itself depend
  * on last-published time / never-published state).
  */
-export default function PublishRow({ publishing, status, dirty, labels, onPublish }: PublishRowProps) {
+export default function PublishRow({ publishing, disabled = false, status, dirty, labels, onPublish }: PublishRowProps) {
   const tone = status === 'success' ? TONE.success : status === 'error' ? TONE.error : dirty ? TONE.unsaved : '';
   const infoClass = `${INFO} ${tone}`;
 
@@ -54,7 +55,7 @@ export default function PublishRow({ publishing, status, dirty, labels, onPublis
     <div className={ROW}>
       <span className={infoClass}>{statusText}</span>
       {publishing && <div className={SPINNER} />}
-      <Button small variant="secondary" onClick={onPublish} disabled={publishing}>{t('common.publish')}</Button>
+      <Button small variant="secondary" onClick={onPublish} disabled={publishing || disabled}>{t('common.publish')}</Button>
     </div>
   );
 }

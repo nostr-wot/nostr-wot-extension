@@ -2,7 +2,7 @@ import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { AUTO_LOCK_OPTIONS } from '@domain/vault/autoLock.ts';
 import { t } from '@lib/i18n.js';
-import { IconLock } from '@assets';
+import { IconWarning, IconLock } from '@assets';
 import Card from '@components/Card/Card';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
@@ -15,6 +15,7 @@ import { useVault } from '@context/VaultContext';
 
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
+import StatusNotice from '@components/StatusNotice/StatusNotice';
 import Text from '@components/Text/Text';
 
 interface SecuritySectionProps {
@@ -141,14 +142,9 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
           {showCurrentPassword && (
             <Container gap={5} className="mt-6 pt-6 border-t border-brand-tint-active">
-              <div className="flex items-start gap-4 py-5 px-6 bg-[rgb(217_119_6_/_0.06)] rounded-panel text-sm text-warning leading-normal">
-                <svg className="shrink-0 mt-px" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  <line x1="12" y1="9" x2="12" y2="13" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-                <span>{t('security.neverLockWarning')}</span>
-              </div>
+              <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>
+                {t('security.neverLockWarning')}
+              </StatusNotice>
               <Text variant="secondary" as="p" className="text-sm m-0">{t('security.confirmPasswordHint')}</Text>
               <Input
                 type="password"

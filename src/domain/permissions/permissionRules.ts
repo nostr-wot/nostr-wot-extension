@@ -61,3 +61,8 @@ export function availablePermKeys(all: string[], existing: Record<string, string
 export function buildRuleKey(preset: string, customKind: string, useCustom: boolean): string {
   return useCustom ? `signEvent:${customKind.trim()}` : preset;
 }
+
+/** A custom event kind must be a complete integer, never a partially typed number. */
+export function validCustomKind(value: string): boolean {
+  return /^\d+$/.test(value.trim()) && Number(value) <= 65535;
+}

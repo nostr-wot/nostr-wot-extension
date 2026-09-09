@@ -466,8 +466,10 @@ See [Storage](storage.md#wallet-storage) and [Security](security.md#8b-wallet-cr
 - **Balance card** with gear icon for settings
 - **Deposit** (`DepositDialog.tsx`) — amount → invoice + QR → paid, polling every 2s and auto-closing 2.5s after payment lands. The amount is stored *with* the invoice rather than read back from the form, which the old version did through a stale closure that only worked because the field was unreachable by then.
 - **Send** (`SendDialog.tsx`) takes either a BOLT11 invoice or a Lightning Address. An address is detected as it is typed, resolved (debounced 400 ms) via `wallet_resolveLightningAddress`, and shown as destination + description + accepted range, with amount and — where the endpoint allows it — comment fields. Pay stays disabled until the amount is inside the range. The backdrop stops dismissing while a payment is in flight.
-- **Transaction list** (`TransactionList.tsx`) with search and pagination; the filter form is `TxFilterDialog.tsx`.
-- **Settings** (`WalletSettings.tsx`) is an `OverlayPanel`: provider info + disconnect, NWC URI copy, auto-approve threshold, Lightning Address claim/view (LNbits only). Its three RPCs fire when it opens, not on every wallet open.
+- **Transaction list** (`TransactionList.tsx`) with search, refresh, and pagination; the filter form is `TxFilterDialog.tsx`. Failed reads show an error and retry control, never “No transactions yet.” Paging can continue even when the loaded rows do not match the filters. Rows show sats, date, direction, and failed status. Pending invoices are excluded from activity, including cached records. A preimage never overrides the provider’s pending status.
+- LNbits requests `status[ne]=pending&sortby=time&direction=desc`: filtering happens on the server before limit/offset. NWC already requests `unpaid:false`. If a server still returns pending rows, the adapter preserves raw page length for correct offsets and the pager drops those rows. Pending-only pages do not consume the 500 non-pending-row scan budget; paging continues until matches or the end, and stops requesting pages when the view unmounts or filters change.
+- Wallet reads wait for startup auto-unlock before checking the vault. Wallet context and history reset when the selected account changes; late history responses cannot replace a newer filter request. The balance and actions share one compact card using the app’s purple controls.
+- **Settings** (`WalletSettings.tsx`) is an `OverlayPanel`: provider info + disconnect, NWC URI copy, auto-approve threshold, Lightning Address claim/view (LNbits only). Alias, threshold, NWC URI and Lightning Address load independently through account-scoped WalletContext on the first settings visit. Reopening reuses that state; Refresh retries without erasing existing values. A failed lookup is unknown, never an invitation to claim an address. Successful claim/release/save updates the context and invalidates older reads. The NWC URI remains in memory only.
 
 All of these are the shared `Modal`. Nothing portals to `#root` any more — that was a workaround for a containing-block bug fixed in `c01f087`, and it put wallet dialogs above the lock screen and the approval sheet. See `docs/component-standards.md` §4.
 
@@ -485,3 +487,15 @@ Client: user clicks "Zap 1000 sats"
   ──> window.webln.sendPayment(bolt11)       → Extension pays it
   5. Recipient's service publishes kind:9735 receipt
 ```
+
+### Wallet display cache
+
+`wallet/display-cache.ts` keeps account-specific `storage.local` snapshots of provider presence, the last successful balance and up to 50 recent history rows. `WalletContext` hydrates these before checking live data. The shared `WalletBalance` keeps the amount visible beside its refresh indicator; transaction refresh keeps existing rows visible. Failed checks preserve the snapshot and offer retry. A locked vault is an error/unknown presence check, never a successful “no wallet” response.
+
+Only successful background reads update display snapshots. No cache notification initiates another network request. Explicit disconnect writes an empty disconnected snapshot; wallet replacement clears the old balance/history. Account removal and vault destruction erase the applicable cache. Serialized writes and revision checks prevent older in-flight responses from restoring removed data. Cached data is display-only; every operation still requires the live unlocked vault and provider.
+
+Deposit and Send use a 340px maximum width with labelled inputs and a consistently spaced body; footer actions stay pinned while content scrolls. Settings uses separate identity, approval-limit and address sections, with disconnect at the bottom. Approval-limit changes use a validated Save action and only update shared state after the RPC succeeds. Settings reads await startup unlock, and Lightning Address HTTP errors propagate instead of returning a false absence.
+
+Wallet settings scrolls within the available popup height. Header refresh reloads alias, connection details, approval limit and Lightning Address (not balance/history). “Release address” releases the username through the provider and retains its confirmation; “Disconnect” removes the extension’s saved connection without deleting the provider wallet or funds. Copy actions are icons beside their values/labels.
+
+Home wallet visibility is independent of the active website connection: the wallet summary remains above loading, restricted-page and unconnected-site notices. Existing account eligibility and vault lock gates still apply.

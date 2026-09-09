@@ -100,7 +100,7 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
     <Modal
       title={t('wallet.deposit')}
       onClose={onClose}
-      maxWidth={300}
+      maxWidth={340}
       footerRow={!paid}
       footer={paid ? (
         <Button small onClick={onClose}>{t('common.close')}</Button>
@@ -120,7 +120,8 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         </>
       )}
     >
-      <Text variant="secondary" as="div" className="text-sm">{t('wallet.depositDesc')}</Text>
+      <Container gap={6}>
+      <Text variant="secondary" as="div" className="text-sm leading-normal text-menu-subtitle">{t('wallet.depositDesc')}</Text>
       {paid ? (
         <Container gap={4} className="text-center">
           <div className="text-[48px] leading-none text-success">{'✓'}</div>
@@ -131,6 +132,8 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         <Container gap={5}>
           <Input
             type="number"
+            label={t('wallet.amountSats')}
+            min={1} step={1}
             placeholder={t('wallet.amountSats')}
             value={amount}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setAmount(e.target.value)}
@@ -140,7 +143,7 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         </Container>
       ) : (
         <>
-          <QrCode value={invoice.bolt11} size={200} className="rounded-md overflow-hidden" />
+          <div className="flex justify-center"><QrCode value={invoice.bolt11} size={200} className="rounded-md overflow-hidden" /></div>
           {/* The only way to copy the invoice, so it has to be reachable
               without a mouse. It was a div with an onClick. */}
           <button
@@ -153,6 +156,7 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
           </button>
         </>
       )}
+    </Container>
     </Modal>
   );
 }

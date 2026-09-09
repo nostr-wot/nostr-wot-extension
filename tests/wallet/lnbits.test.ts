@@ -263,7 +263,7 @@ describe('LnbitsProvider', () => {
   });
 
   describe('listTransactions', () => {
-    it('filters out pending entries (unpaid invoices)', async () => {
+    it('preserves raw page length and pending status for pagination', async () => {
       const rows = [
         { checking_id: 'a', payment_hash: 'a', bolt11: '', amount: 1000, fee: 0, memo: '', status: 'success', time: 1700000000, preimage: 'pa' },
         { checking_id: 'b', payment_hash: 'b', bolt11: '', amount: 2000, fee: 0, memo: '', status: 'pending', time: 1700000001, preimage: '' },
@@ -271,11 +271,12 @@ describe('LnbitsProvider', () => {
       ];
       const provider = new LnbitsProvider(config, mockFetch(rows));
       const txs = await provider.listTransactions();
-      assert.equal(txs.length, 2);
+      assert.equal(txs.length, 3);
       assert.equal(txs[0].paymentHash, 'a');
       assert.equal(txs[0].status, 'settled');
-      assert.equal(txs[1].paymentHash, 'c');
-      assert.equal(txs[1].status, 'failed');
+      assert.equal(txs[1].paymentHash, 'b');
+      assert.equal(txs[1].status, 'pending');
+      assert.equal(txs[2].status, 'failed');
     });
   });
 
@@ -315,4 +316,12 @@ describe('LnbitsProvider', () => {
       assert.equal(res.amountPaid, 25);
     });
   });
+});
+
+it('requests non-pending history from LNbits before pagination, newest first',async()=>{
+ const {fn,getCapturedUrl}=capturingFetch([]);
+ await new LnbitsProvider({instanceUrl:'https://wallet.test',adminKey:'test'},fn).listTransactions(50,100);
+ const query=new URL(getCapturedUrl()).searchParams;
+ assert.equal(query.get('status[ne]'),'pending'); assert.equal(query.get('limit'),'50'); assert.equal(query.get('offset'),'100');
+ assert.equal(query.get('sortby'),'time'); assert.equal(query.get('direction'),'desc');
 });

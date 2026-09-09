@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
@@ -11,6 +11,10 @@ import useCopy from '@hooks/useCopy.ts';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
+import Spinner from '@components/Spinner/Spinner';
+import IconButton from '@components/IconButton/IconButton';
+import { IconCopy, IconSync } from '@assets';
+import { useWallet } from '@context/WalletContext';
 
 const PROVIDER_LABELS: Record<string, string> = {
   nwc: 'Nostr Wallet Connect',
@@ -23,87 +27,47 @@ interface WalletSettingsProps {
   onDisconnected: () => void;
 }
 
-/**
- * Wallet settings: connection, auto-approve threshold, Lightning Address.
- *
- * Everything here is reachable only from the settings button, so all of its
- * state and all four of its RPCs live here rather than in Wallet — which was
- * fetching the NWC URI, the threshold and the Lightning Address on mount for a
- * panel most sessions never open.
- *
- * It is an OverlayPanel, not a hand-rolled fixed sheet. The old version painted
- * itself over the whole viewport from inside a menu section, which is the shape
- * that made the containing-block bug matter in the first place.
- */
+/** Settings read through the shared account context; only editable drafts stay local. */
 export default function WalletSettings({ providerType, onClose, onDisconnected }: WalletSettingsProps) {
-  const [threshold, setThreshold] = useState<number>(0);
-  const [thresholdDraft, setThresholdDraft] = useState<string>('0');
+  const {settings,settingsLoading,settingsError,ensureSettings,refreshSettings,patchSettings} = useWallet();
+  const {threshold,nwcUri,address:lnAddress,alias} = settings;
+  const [thresholdDraft, setThresholdDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [settingsSaveError, setSettingsSaveError] = useState('');
+  useEffect(() => { ensureSettings(); }, [ensureSettings]);
+  useEffect(() => { if (threshold !== undefined) setThresholdDraft(String(threshold)); }, [threshold]);
   const [disconnecting, setDisconnecting] = useState<boolean>(false);
-  const [nwcUri, setNwcUri] = useState<string | null>(null);
-  const nwcCopy = useCopy();
 
-  const [lnAddress, setLnAddress] = useState<string | null>(null);
   const [usernameDraft, setUsernameDraft] = useState<string>('');
   const [claimLoading, setClaimLoading] = useState<boolean>(false);
   const [claimError, setClaimError] = useState<string>('');
-  const addressCopy = useCopy();
   const [showUpdateProfile, setShowUpdateProfile] = useState<boolean>(false);
   const [profileError, setProfileError] = useState<string>('');
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [releaseLoading, setReleaseLoading] = useState<boolean>(false);
   const [confirmRelease, setConfirmRelease] = useState<boolean>(false);
 
-  const fetchThreshold = useCallback(async () => {
-    try {
-      const result = await rpc<number>('wallet_getAutoApproveThreshold');
-      const val = typeof result === 'number' ? result : 0;
-      setThreshold(val);
-      setThresholdDraft(String(val));
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const fetchNwcUri = useCallback(async () => {
-    try {
-      setNwcUri(await rpc<string | null>('wallet_getNwcUri'));
-    } catch {
-      // ignore — not all wallets have NWC
-    }
-  }, []);
-
-  const fetchLnAddress = useCallback(async () => {
-    try {
-      const result = await rpc<{ address: string | null }>('wallet_getLightningAddress');
-      setLnAddress(result?.address ?? null);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchThreshold();
-    void fetchNwcUri();
-    void fetchLnAddress();
-  }, [fetchThreshold, fetchNwcUri, fetchLnAddress]);
-
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
       await rpc('wallet_disconnect');
       onDisconnected();
-    } catch {
+    } catch (error) {
+      setSettingsSaveError((error as Error).message);
       setDisconnecting(false);
     }
   };
 
-  const handleThresholdBlur = async () => {
-    const val = Math.max(0, parseInt(thresholdDraft, 10) || 0);
-    setThresholdDraft(String(val));
-    if (val !== threshold) {
-      setThreshold(val);
-      await rpc('wallet_setAutoApproveThreshold', { threshold: val });
-    }
+  const thresholdValue = Number(thresholdDraft);
+  const thresholdValid = thresholdDraft.trim() !== '' && Number.isSafeInteger(thresholdValue) && thresholdValue >= 0;
+  const handleThresholdSave = async () => {
+    if (!thresholdValid || threshold === undefined || saving) return;
+    setSaving(true); setSettingsSaveError('');
+    try {
+      await rpc('wallet_setAutoApproveThreshold', {threshold:thresholdValue});
+      patchSettings({threshold:thresholdValue});
+    } catch (error) { setSettingsSaveError((error as Error).message); }
+    finally { setSaving(false); }
   };
 
   const handleClaimUsername = async () => {
@@ -111,7 +75,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
     setClaimError('');
     try {
       const result = await rpc<{ address: string }>('wallet_claimLightningAddress', { username: usernameDraft.trim() });
-      setLnAddress(result.address);
+      patchSettings({address:result.address});
       setUsernameDraft('');
       setShowUpdateProfile(true);
     } catch (e: unknown) {
@@ -129,7 +93,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
     setClaimError('');
     try {
       await rpc('wallet_releaseLightningAddress');
-      setLnAddress(null);
+      patchSettings({address:null});
       setConfirmRelease(false);
     } catch (e: unknown) {
       setClaimError((e as Error).message);
@@ -189,54 +153,61 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
 
   return (
     <>
-      <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500}>
-        <Card className="py-5 px-6">
+      <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500} headerRight={
+        <IconButton tone="brand" disabled={settingsLoading} onClick={refreshSettings} title={t('wallet.refreshSettingsHint')} aria-label={t('wallet.refreshSettingsHint')}>
+          {settingsLoading ? <Spinner size={14}/> : <IconSync size={16}/>}
+        </IconButton>
+      }>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+        <Container gap={6}>
+        {settingsError && <FormError>{t('wallet.checkFailed')}</FormError>}
+        <FormError>{settingsSaveError}</FormError>
+        <Card className="m-0 p-6 flex flex-col gap-5">
           <Container variant="row" gap={4} className="justify-between">
             <Container gap={1}>
-              <span className="text-md font-semibold text-heading">{providerLabel}</span>
+              <span className="text-md font-semibold text-heading break-words">{alias || providerLabel}</span>
+              {alias && <span className="text-xs text-menu-subtitle">{providerLabel}</span>}
               <span className="text-xs text-success font-medium">{t('wallet.connected')}</span>
             </Container>
-            <Button small variant="danger" onClick={handleDisconnect} disabled={disconnecting}>
-              {disconnecting ? t('common.loading') : t('common.disconnect')}
-            </Button>
+
           </Container>
           {nwcUri && (
             <Container variant="row" gap={4} className="justify-between">
-              <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" title={nwcUri}>{t('wallet.nwcUri')}</span>
-              <Button small variant="secondary" onClick={() => nwcUri && nwcCopy.copy(nwcUri)}>
-                {nwcCopy.copied ? t('wallet.nwcCopied') : t('wallet.copyNwc')}
-              </Button>
+              <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" >{t('wallet.nwcUri')}</span>
+              <WalletCopyButton value={nwcUri} label={t('wallet.copyNwc')} />
             </Container>
           )}
         </Card>
 
-        <Card>
-          <SectionLabel>{t('wallet.autoApprove')}</SectionLabel>
-          <SectionHint>{t('wallet.autoApproveHint')}</SectionHint>
-          <Container variant="row" gap={4} className="justify-between py-5">
-            <Text variant="body" as="span" className="text-sm flex-1">{t('wallet.maxSats')}</Text>
+        <Card className="m-0 p-6 flex flex-col gap-5">
+          <Container gap={2}><SectionLabel className="m-0 text-heading">{t('wallet.autoApprove')}</SectionLabel>
+          <SectionHint className="m-0 text-menu-subtitle">{t('wallet.autoApproveHint')}</SectionHint></Container>
+          <Container variant="row" gap={4} className="justify-between">
+            <Text variant="body" as="span" className="text-sm shrink-0">{t('wallet.maxSats')}</Text>
             <Input
               type="number"
               value={thresholdDraft}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setThresholdDraft(e.target.value)}
-              onBlur={handleThresholdBlur}
+              min={0} step={1} disabled={threshold === undefined || saving}
               small
-              className="w-[80px]"
+              className="text-right"
+              aria-label={t('wallet.maxSats')}
             />
           </Container>
+          <Button small disabled={!thresholdValid || threshold === undefined || thresholdValue === threshold || saving} onClick={handleThresholdSave}>{saving ? t('common.loading') : t('common.save')}</Button>
         </Card>
 
         {providerType === 'lnbits' && (
-          <Card>
-            <SectionLabel>{t('wallet.lightningAddress')}</SectionLabel>
-            <SectionHint>{t('wallet.lightningAddressHint')}</SectionHint>
-            {lnAddress ? (
+          <Card className="m-0 p-6 flex flex-col gap-5">
+            <Container gap={2}><SectionLabel className="m-0 text-heading">{t('wallet.lightningAddress')}</SectionLabel>
+            <SectionHint className="m-0 text-menu-subtitle">{t('wallet.lightningAddressHint')}</SectionHint></Container>
+            {lnAddress === undefined ? (<div className="text-sm text-menu-subtitle">{settingsLoading ? t('common.loading') : t('wallet.checkFailed')}</div>) : lnAddress ? (
               <Container gap={4} className="py-4">
-                <span className="text-lg font-semibold text-heading break-all">{lnAddress}</span>
-                <Container variant="row" gap={3}>
-                  <Button small variant="secondary" onClick={() => lnAddress && addressCopy.copy(lnAddress)}>
-                    {addressCopy.copied ? t('common.copied') : t('common.copy')}
-                  </Button>
+                <Container variant="row" gap={3} className="justify-between">
+                  <span className="text-md font-semibold text-heading break-all min-w-0">{lnAddress}</span>
+                  <WalletCopyButton value={lnAddress} label={t('common.copy')} />
+                </Container>
+                <Container gap={3}>
                   <Button small variant="secondary" onClick={() => setShowUpdateProfile(true)}>
                     {t('wallet.addToProfile')}
                   </Button>
@@ -246,7 +217,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                 </Container>
               </Container>
             ) : (
-              <Container variant="row" gap={2} className="py-4 flex-wrap">
+              <Container gap={4} className="py-2">
                 <Input
                   type="text"
                   placeholder={t('wallet.usernamePlaceholder')}
@@ -263,6 +234,14 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
             <FormError>{claimError}</FormError>
           </Card>
         )}
+        <div className="border-t border-card-border pt-6">
+            <SectionHint className="text-menu-subtitle mb-4">{t('wallet.disconnectHint')}</SectionHint>
+            <Button small variant="danger" onClick={handleDisconnect} disabled={disconnecting}>
+              {disconnecting ? t('common.loading') : t('common.disconnect')}
+            </Button>
+        </div>
+        </Container>
+        </div>
       </OverlayPanel>
 
       {confirmRelease && lnAddress && (
@@ -294,4 +273,14 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
       )}
     </>
   );
+}
+
+/** Both wallet copy actions reuse the app's clipboard feedback and icon control. */
+export function WalletCopyButton({value,label}: {value:string;label:string}) {
+  const {copy,copied,failed} = useCopy();
+  const feedback = copied ? t('common.copied') : failed ? t('common.error') : '';
+  return <span className="flex items-center gap-2 shrink-0">
+    <IconButton tone="brand" title={feedback || label} aria-label={feedback || label} onClick={() => void copy(value)}><IconCopy size={16}/></IconButton>
+    <span role="status" className="sr-only">{feedback}</span>
+  </span>;
 }

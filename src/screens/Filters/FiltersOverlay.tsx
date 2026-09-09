@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { npubDecode } from '@lib/crypto/bech32.js';
 import { truncateNpub } from '@utils/format/text.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Button from '@components/Button/Button';
@@ -10,7 +9,11 @@ import EditableList from '@components/EditableList/EditableList';
 import EmptyState from '@components/EmptyState/EmptyState';
 import PublishRow from '@components/PublishRow/PublishRow';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
-import type { MyMuteList } from '@domain/mutes/muteList.ts';
+import { muteListState, toHexPubkey, normalizeHashtag, type MyMuteList, type MuteListRead } from '@domain/mutes/muteList.ts';
+import { useAccount } from '@context/AccountContext';
+import IconButton from '@components/IconButton/IconButton';
+import Modal from '@components/Modal/Modal';
+import { IconInfo } from '@assets';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 
@@ -35,18 +38,6 @@ interface FiltersOverlayProps {
  */
 const SUGGESTED_LISTS: Array<{ name: string; pubkey: string }> = [];
 
-/** Normalize an npub/hex pubkey input to lowercase hex, or null if invalid. */
-function toHexPubkey(input: string): string | null {
-  const v = input.trim();
-  if (!v) return null;
-  if (/^[0-9a-fA-F]{64}$/.test(v)) return v.toLowerCase();
-  try {
-    return npubDecode(v);
-  } catch {
-    return null;
-  }
-}
-
 const muteClassNames = {
   group: "flex flex-col gap-3",
   list: "flex flex-col gap-2",
@@ -56,6 +47,8 @@ const muteClassNames = {
 };
 
 export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps) {
+  const { active } = useAccount();
+  const [showInfo, setShowInfo] = useState(false);
   const [list, setList] = useState<MyMuteList | null>(null);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
@@ -73,14 +66,16 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
 
   useEffect(() => {
     if (!visible) return;
+    let cancelled = false;
     setLoading(true);
+    setList(null);
     setDirty(false);
     setPublishResult(null);
     setReadFailed(false);
     void (async () => {
       try {
-        const data = await rpc<MyMuteList & { reachable?: boolean }>('getMyMuteList');
-        if (!mounted.current) return;
+        const data = await rpc<MuteListRead>('getMyMuteList', { fresh: true });
+        if (cancelled) return;
         // A read no relay answered is not an empty mute list. Rendering it as
         // one produced an editable, apparently-empty list whose Publish replaced
         // the real kind:10000 — including every NIP-44-encrypted private mute,
@@ -92,15 +87,18 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
           setList(data);
         }
       } catch {
-        if (mounted.current) setReadFailed(true);
+        if (!cancelled) setReadFailed(true);
       }
-      if (mounted.current) setLoading(false);
+      if (!cancelled) setLoading(false);
     })();
-  }, [visible, reloadNonce]);
+    return () => { cancelled = true; };
+  }, [visible, reloadNonce, active?.id]);
 
   if (!visible) return null;
 
   const cur: MyMuteList = list || { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0 };
+
+  const readState = muteListState(list);
 
   const update = (patch: Partial<MyMuteList>) => {
     setList({ ...cur, ...patch });
@@ -121,15 +119,18 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
   };
 
   const handleImport = async () => {
+    if (importing || publishing || loading || readFailed) return;
     const hex = toHexPubkey(importValue);
     if (!hex) { setImportError(t('mutes.invalidPubkey')); return; }
     setImportError('');
     setImporting(true);
     try {
-      const result = await rpc<{ ok?: boolean; people?: string[] }>('fetchMuteList', { pubkey: hex });
+      const result = await rpc<MuteListRead & { ok?: boolean }>('fetchMuteList', { pubkey: hex });
       const people = result?.people || [];
-      if (people.length === 0) {
-        setImportError(t('mutes.noMuteListFound'));
+      if (result?.reachable === false || result?.ok === false) {
+        setImportError(t('mutes.failedFetch'));
+      } else if (people.length === 0) {
+        setImportError(result?.createdAt ? t('mutes.noPublicPeople') : t('mutes.noMuteListFound'));
       } else {
         const added = mergePeople(people);
         setImportValue('');
@@ -144,13 +145,14 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
   const handleSuggested = async (pubkey: string) => {
     setImporting(true);
     try {
-      const result = await rpc<{ ok?: boolean; people?: string[] }>('fetchMuteList', { pubkey });
+      const result = await rpc<MuteListRead & { ok?: boolean }>('fetchMuteList', { pubkey });
       mergePeople(result?.people || []);
     } catch { /* ignore */ }
     if (mounted.current) setImporting(false);
   };
 
   const handlePublish = async () => {
+    if (publishing || loading || readFailed || !list || !dirty) return;
     setPublishing(true);
     setPublishResult(null);
     try {
@@ -178,7 +180,12 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
   };
 
   return (
-    <OverlayPanel title={t('mutes.title')} onBack={onClose}>
+    <OverlayPanel title={t('mutes.title')} onBack={onClose}
+      headerRight={<IconButton size={36} aria-label={t('mutes.aboutTitle')} onClick={() => setShowInfo(true)}><IconInfo size={18} /></IconButton>}>
+      {showInfo && <Modal title={t('mutes.aboutTitle')} onClose={() => setShowInfo(false)}
+        footer={<Button onClick={() => setShowInfo(false)}>{t('common.gotIt')}</Button>}>
+        <Text as="p" className="leading-normal">{t('mutes.aboutBody')}</Text>
+      </Modal>}
       <Container className="flex-1 overflow-y-auto gap-8">
         {loading ? (
           <EmptyState text={t('common.loading')} />
@@ -190,6 +197,11 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
           </EmptyState>
         ) : (
           <>
+            {(readState === 'missing' || readState === 'empty' || readState === 'private') && (
+              <div role="status" className="rounded-md border border-card-border bg-card px-6 py-5 text-sm text-secondary leading-normal">
+                {readState === 'missing' ? t('mutes.ownListMissing') : readState === 'private' ? t('mutes.privateOnly') : t('mutes.emptyList')}
+              </div>
+            )}
             <EditableList
               label={t('mutes.people')}
               hint={t('mutes.peopleHint')}
@@ -197,6 +209,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
               buttonLabel={t('common.add')}
               items={cur.people}
               classNames={muteClassNames}
+              disabled={publishing}
               renderItem={(pk) => truncateNpub(pk)}
               validate={toHexPubkey}
               invalidMsg={t('mutes.invalidPubkey')}
@@ -211,6 +224,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
               buttonLabel={t('common.add')}
               items={cur.words}
               classNames={muteClassNames}
+              disabled={publishing}
               validate={(raw) => raw.toLowerCase()}
               onAdd={(v) => update({ words: addUnique(cur.words, v) })}
               onRemove={(v) => update({ words: cur.words.filter((w) => w !== v) })}
@@ -223,7 +237,8 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
               buttonLabel={t('common.add')}
               items={cur.hashtags}
               classNames={muteClassNames}
-              validate={(raw) => raw.replace(/^#/, '').toLowerCase()}
+              disabled={publishing}
+              validate={normalizeHashtag}
               onAdd={(v) => update({ hashtags: addUnique(cur.hashtags, v) })}
               onRemove={(v) => update({ hashtags: cur.hashtags.filter((h) => h !== v) })}
             />
@@ -236,7 +251,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
                 placeholder={t('mutes.importPlaceholder')}
                 onSubmit={handleImport}
                 buttonLabel={importing ? t('common.fetching') : t('mutes.importButton')}
-                disabled={importing}
+                disabled={importing || publishing || !toHexPubkey(importValue)}
                 error={importError}
                 mono
               />
@@ -253,6 +268,7 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
             </Container>
 
             <PublishRow
+              disabled={!dirty || importing}
               publishing={publishing}
               status={publishResult}
               dirty={dirty}

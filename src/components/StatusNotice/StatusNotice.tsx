@@ -6,7 +6,7 @@ import { cn } from '@utils/cn.ts';
 // cn() merges this with a caller's own margin-top utility as one group.
 const NOTICE = 'flex items-center gap-4 py-5 px-6 rounded-panel text-md [&+&]:mt-4';
 
-type Tone = 'ok' | 'warn';
+type Tone = 'ok' | 'warn' | 'error';
 
 /**
  * `ok`'s tint is a one-off literal (`rgba(22, 163, 74, 0.08)`) that appears
@@ -19,20 +19,23 @@ type Tone = 'ok' | 'warn';
 const TONE: Record<Tone, string> = {
   ok: 'bg-[rgba(22,163,74,0.08)] text-success-strong',
   warn: 'bg-warning-tint-heavy text-warning-strong',
+  error: 'bg-error-tint text-error',
 };
 
 interface StatusNoticeProps {
   tone: Tone;
   icon: React.ReactNode;
-  label: string;
+  label?: string;
+  variant?: 'status' | 'callout';
+  className?: string;
   /** Detail, shown on hover or keyboard focus rather than taking a paragraph. */
   info?: string;
   children?: React.ReactNode;
 }
 
 /**
- * A one-line status row: an icon, a short label, and the long version behind an
- * (i).
+ * A compact status row, or a top-aligned callout with a wrapping paragraph.
+ * Both share spacing and corners; callouts keep their explanation visible.
  *
  * One component with a tone rather than two similar blocks, because the pair
  * appears together — a green "here is what you have" above a yellow "here is
@@ -43,13 +46,28 @@ interface StatusNoticeProps {
  * The tone carries meaning on its own. Someone who never hovers should still be
  * able to tell a state from a warning, so the colour is not decoration.
  */
-export default function StatusNotice({ tone, icon, label, info, children }: StatusNoticeProps) {
+export default function StatusNotice({ tone, icon, label, info, children, variant = 'status', className }: StatusNoticeProps) {
+  const callout = variant === 'callout';
   return (
-    <div className={cn(NOTICE, TONE[tone])}>
-      <span className="flex items-center shrink-0">{icon}</span>
-      <strong className="font-semibold leading-[1.35]">{label}</strong>
-      {info && <InfoTooltip text={info} />}
-      {children}
+    <div className={cn(
+      NOTICE, TONE[tone],
+      callout && 'items-start text-sm leading-normal',
+      className,
+    )}>
+      <span aria-hidden="true" className={cn('flex items-center shrink-0', callout && 'mt-px')}>{icon}</span>
+      {callout ? (
+        <div className="min-w-0 flex-1 break-words">
+          {label && <strong className="block text-md font-semibold leading-normal mb-1">{label}</strong>}
+          {children}
+          {info && <InfoTooltip text={info} />}
+        </div>
+      ) : (
+        <>
+          {label && <strong className="min-w-0 font-semibold leading-[1.35]">{label}</strong>}
+          {info && <InfoTooltip text={info} />}
+          {children}
+        </>
+      )}
     </div>
   );
 }

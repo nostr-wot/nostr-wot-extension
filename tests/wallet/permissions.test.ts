@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { resetMockStorage } from '../helpers/browser-mock.ts';
+import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
 import * as permissions from '../../src/lib/permissions.ts';
 import * as signer from '../../src/lib/signer.ts';
 import { handlers as walletHandlers } from '../../src/lib/bg/wallet-handlers.ts';
@@ -58,6 +58,8 @@ describe('wallet permissions', () => {
 describe('webln_enable does not ride along on a NIP-07 connection', () => {
   beforeEach(async () => {
     resetMockStorage();
+    await browserMock.storage.local.set({activeAccountId:'wallet-account',accounts:[{id:'wallet-account',type:'nsec',pubkey:'a'.repeat(64)}]});
+    await browserMock.storage.sync.set({myPubkey:'a'.repeat(64)});
   });
 
   it('asks before granting wallet access to an already-connected site', async () => {

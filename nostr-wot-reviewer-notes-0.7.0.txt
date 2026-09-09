@@ -1,0 +1,32 @@
+Nostr WoT 0.7.0 — Mozilla reviewer notes
+
+Build with Node 22 or 24:
+  npm ci
+  npm run package:firefox
+Chrome:
+  npm run package:chrome
+Tests:
+  ./tests/run.sh
+
+Consent correction:
+Firefox built-in consent is required by minimum desktop 140 and Android 142.
+The packaged manifest declares financialAndPaymentInfo,
+personallyIdentifyingInfo, authenticationInfo, personalCommunications and
+browsingActivity. Firefox presents required categories on installation and
+new required categories on update. Users can decline or disable/remove the add-on.
+
+Data flows:
+- Payment details: configured LNbits, LNURL endpoints and NWC wallet relays.
+- Identity/profile/mute/relay information: configured Nostr relays; uploaded
+  profile/cover files: blossom.primal.net.
+- Authentication: configured wallet API credentials and provisioning data.
+- Communications: event/message content sent to the selected NIP-46 signer,
+  encrypted over its relay. Local signing/decryption remains local.
+- Browsing domains: Google favicon service to retrieve site icons.
+No telemetry is sent. See docs/deployment.md for the disclosure audit.
+
+web-ext lint: zero errors, two warnings. Both innerHTML warnings are React DOM
+library implementations of dangerouslySetInnerHTML. The extension's src/ has
+no innerHTML or dangerouslySetInnerHTML usage.
+
+This package has not been submitted or approved by Mozilla.

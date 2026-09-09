@@ -98,8 +98,9 @@ export function AccountProvider({ children }: AccountProviderProps) {
 
   const switchAccount = useCallback(async (accountId: string) => {
     if (!accounts?.find((a) => a.id === accountId)) return;
-    patchAccount({ activeId: accountId });
-    await rpc('switchAccount', { accountId });
+    // Do not render an identity whose background switch has not completed:
+    // account-scoped readers would query the old account and discard the reply.
+    await commitAccountSwitch(accountId, id => rpc('switchAccount', { accountId: id }), id => patchAccount({ activeId: id }));
     // Reload active tab so injected NIP-07 content reflects the new identity
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
@@ -131,3 +132,10 @@ export function AccountProvider({ children }: AccountProviderProps) {
 }
 
 export { useAccount };
+
+
+/** The UI must not query the next identity before the background selects it. */
+export async function commitAccountSwitch(accountId: string, commit: (id: string) => Promise<unknown>, select: (id: string) => void): Promise<void> {
+  await commit(accountId);
+  select(accountId);
+}

@@ -34,7 +34,8 @@
 @layer theme, base, components, utilities;
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
-@import './theme.css';
+/* Base defaults must not outrank component and utility declarations. */
+@import './theme.css' layer(base);
 @import './animations.css';
 
 /* Scan the source tree explicitly rather than relying on auto-detection: the
@@ -64,6 +65,7 @@
 
   --color-heading: var(--text-heading);
   --color-body: var(--text-body);
+  --color-menu-subtitle: var(--menu-subtitle);
   --color-secondary: var(--text-secondary);
   --color-muted: var(--text-muted);
 
@@ -80,6 +82,7 @@
   --color-card-border: var(--card-border);
   --color-card-active: var(--card-active);
   --color-input: var(--input-bg);
+  --color-control-border: var(--control-border);
   --color-divider: var(--divider);
   --color-glass: var(--surface-glass);
   --color-glass-heavy: var(--surface-glass-heavy);

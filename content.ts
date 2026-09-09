@@ -44,52 +44,25 @@ if (window.__nostrWotContentInjected) {
     ] as const;
 
     // ── Persistent port management ──
-    // One port per channel (nip07, webln). Requests are serialized per port because
-    // the background handler does not echo request IDs in responses, so we process
-    // one request at a time to match responses unambiguously.
-
+    // One port per channel, with IDs so approvals can be pending concurrently.
     interface PortRequest {
         id: string;
         responseType: string;
-        method: string;
-        params: unknown;
     }
 
     interface PortState {
         port: ReturnType<typeof browser.runtime.connect> | null;
-        queue: PortRequest[];
-        inflight: PortRequest | null;
+        inflight: Map<number, PortRequest>;
     }
 
+    let nextRequestId = 0;
     const portStates: Record<string, PortState> = {
-        nip07: { port: null, queue: [], inflight: null },
-        webln: { port: null, queue: [], inflight: null },
+        nip07: { port: null, inflight: new Map() },
+        webln: { port: null, inflight: new Map() },
     };
 
     function postResponse(responseType: string, id: string, result: unknown, error: unknown): void {
         window.postMessage({ type: responseType, id, result, error }, window.location.origin);
-    }
-
-    function processNextInQueue(portName: string): void {
-        const state = portStates[portName];
-        if (state.inflight || state.queue.length === 0) return;
-
-        const request = state.queue.shift()!;
-        state.inflight = request;
-
-        const port = getOrCreatePort(portName);
-        if (!port) {
-            state.inflight = null;
-            postResponse(request.responseType, request.id, null, 'Extension context invalidated — reload the page');
-            processNextInQueue(portName);
-            return;
-        }
-
-        const origin = window.location.hostname;
-        port.postMessage({
-            method: portName + '_' + request.method,
-            params: { ...(request.params as Record<string, unknown>), origin }
-        });
     }
 
     function getOrCreatePort(portName: string): ReturnType<typeof browser.runtime.connect> | null {
@@ -100,26 +73,18 @@ if (window.__nostrWotContentInjected) {
             const port = browser.runtime.connect({ name: portName });
 
             port.onMessage.addListener((response: Record<string, unknown>) => {
-                const request = state.inflight;
-                if (request) {
-                    state.inflight = null;
-                    postResponse(request.responseType, request.id, response.result, response.error);
-                }
-                processNextInQueue(portName);
+                const request = state.inflight.get(response.id as number);
+                if (!request) return;
+                state.inflight.delete(response.id as number);
+                postResponse(request.responseType, request.id, response.result, response.error);
             });
 
             port.onDisconnect.addListener(() => {
                 state.port = null;
-                // Reject the in-flight request if any
-                if (state.inflight) {
-                    postResponse(state.inflight.responseType, state.inflight.id, null, 'Extension context invalidated — reload the page');
-                    state.inflight = null;
+                for (const request of state.inflight.values()) {
+                    postResponse(request.responseType, request.id, null, 'Extension context invalidated — reload the page');
                 }
-                // Reject all queued requests
-                for (const req of state.queue) {
-                    postResponse(req.responseType, req.id, null, 'Extension context invalidated — reload the page');
-                }
-                state.queue = [];
+                state.inflight.clear();
             });
 
             state.port = port;
@@ -132,8 +97,24 @@ if (window.__nostrWotContentInjected) {
 
     function forwardViaPort(portName: string, responseType: string, id: string, method: string, params: unknown): void {
         const state = portStates[portName];
-        state.queue.push({ id, responseType, method, params });
-        processNextInQueue(portName);
+        const port = getOrCreatePort(portName);
+        if (!port) {
+            postResponse(responseType, id, null, 'Extension context invalidated — reload the page');
+            return;
+        }
+        // Internal IDs also prevent page-supplied duplicate IDs overwriting calls.
+        const requestId = ++nextRequestId;
+        state.inflight.set(requestId, { id, responseType });
+        try {
+            port.postMessage({
+                id: requestId,
+                method: portName + '_' + method,
+                params: { ...(params as Record<string, unknown>), origin: window.location.hostname },
+            });
+        } catch {
+            state.inflight.delete(requestId);
+            postResponse(responseType, id, null, 'Extension context invalidated — reload the page');
+        }
     }
 
     // Bridge between page and extension

@@ -15,21 +15,21 @@ const DEFAULT_SIZE = 28;
 // the UA's own font family.
 const BASE =
   'flex items-center justify-center shrink-0 p-0 border-none rounded-md bg-transparent ' +
-  'cursor-pointer font-[inherit] transition-all disabled:opacity-50 disabled:cursor-default';
+  'cursor-pointer font-[inherit] transition-colors focus-visible:outline-none focus-visible:shadow-focus disabled:opacity-40 disabled:cursor-not-allowed';
 
 /**
  * Colour and size are props because they genuinely differ — the top bar's are
  * brand-coloured, dialog closes are muted, and removals are destructive.
  *
  * Each tone owns its full hover state (background *and* text colour) rather
- * than layering a tone-specific override on a shared `hover:bg-card`: two
- * `hover:bg-*` utilities on one element race on Tailwind's generation order,
+ * than layering a tone-specific override on a shared `enabled:hover:bg-card`: two
+ * `enabled:hover:bg-*` utilities on one element race on Tailwind's generation order,
  * not on the order they're written here, and that race is not worth having.
  */
 const TONE: Record<NonNullable<IconButtonProps['tone']>, string> = {
-  muted: 'text-muted hover:bg-card hover:text-heading',
-  brand: 'text-brand hover:bg-card hover:text-brand-hover',
-  danger: 'text-muted hover:bg-error-tint hover:text-error',
+  muted: 'text-muted enabled:hover:bg-card enabled:hover:text-heading',
+  brand: 'text-brand enabled:hover:bg-card enabled:hover:text-brand-hover',
+  danger: 'text-muted enabled:hover:bg-error-tint enabled:hover:text-error',
 };
 
 /**

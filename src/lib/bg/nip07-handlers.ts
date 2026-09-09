@@ -7,7 +7,7 @@ import browser from '../browser.ts';
 import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
 import type { UnsignedEvent, RequestDecision } from '../types.ts';
-import type { HandlerFn } from './state.ts';
+import { config, type HandlerFn } from './state.ts';
 import { isIdentityDisabled } from './domain-handlers.ts';
 import { logActivity } from './misc-handlers.ts';
 
@@ -78,12 +78,17 @@ function withIdentityGuard(
             void logActivity({ domain: origin, method, decision: 'blocked' });
             throw new Error('Identity access disabled for this site');
         }
+        // Capture the requesting identity before an approval can switch accounts.
+        const pubkey = config.myPubkey || null;
         try {
             const result = await fn(origin, params);
-            void logActivity({ domain: origin, method, decision: 'approved', theirPubkey: params.pubkey as string });
+            const ciphertext = method.endsWith('Decrypt') ? params.ciphertext : result;
+            void logActivity({ domain: origin, method, pubkey, decision: 'approved', theirPubkey: params.pubkey as string,
+                ...(typeof ciphertext === 'string' && { ciphertext }),
+            });
             return result;
         } catch (e) {
-            void logActivity({ domain: origin, method, decision: 'rejected', theirPubkey: params.pubkey as string });
+            void logActivity({ domain: origin, method, pubkey, decision: 'rejected', theirPubkey: params.pubkey as string });
             throw e;
         }
     };

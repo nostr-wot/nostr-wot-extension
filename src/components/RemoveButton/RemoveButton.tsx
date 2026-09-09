@@ -1,17 +1,12 @@
 import React from 'react';
 import { IconClose } from '@assets';
+import { t } from '@lib/i18n.ts';
+import IconButton from '@components/IconButton/IconButton';
 
-interface RemoveButtonProps {
-  onClick?: React.MouseEventHandler<HTMLButtonElement>;
-}
+type RemoveButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
-export default function RemoveButton({ onClick }: RemoveButtonProps) {
-  return (
-    <button
-      className="bg-transparent border-none text-muted cursor-pointer p-2 rounded-sm flex items-center shrink-0 transition-all hover:text-error hover:bg-error-tint-hover"
-      onClick={onClick}
-    >
-      <IconClose size={14} />
-    </button>
-  );
+export default function RemoveButton(props: RemoveButtonProps) {
+  return <IconButton tone="danger" aria-label={t('common.remove')} {...props}>
+    <IconClose size={14} aria-hidden="true" />
+  </IconButton>;
 }

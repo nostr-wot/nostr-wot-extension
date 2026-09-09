@@ -240,3 +240,67 @@ describe('a relay is not trusted to tell the truth about who signed', () => {
     assert.equal(list.reachable, false);
   });
 });
+
+import * as vault from '../src/lib/vault.ts';
+import { importNsec } from '../src/lib/accounts.ts';
+import browserMock from './helpers/browser-mock.ts';
+import { handlers } from '../src/lib/bg/profile-handlers.ts';
+import { cacheKey, MUTE_LIST_CACHE } from '../src/lib/bg/relayCache.ts';
+
+it('own mute-list reads wait for Never-lock startup and fetch kind 10000', async () => {
+  resetMockStorage();
+  const account = await importNsec(bytesToHex(PRIVKEY), 'Test');
+  await vault.create('', { accounts: [account], activeAccountId: account.id });
+  vault.lock();
+  installMuteSocket('event');
+  const startup = vault.beginStartupUnlock(async () => { await vault.unlock(''); });
+  const result = await handlers.get('getMyMuteList')!({}) as any;
+  await startup;
+  assert.equal(result.createdAt, 1000);
+  assert.equal(result.rawContent, 'encrypted-private-mutes');
+  assert.deepEqual(result.people, ['abc']);
+  vault.lock();
+});
+
+it('opening the mute editor reads fresh data instead of editing a stale cached list', async () => {
+  resetMockStorage();
+  const account = await importNsec(bytesToHex(PRIVKEY), 'Test');
+  await vault.create('', { accounts: [account], activeAccountId: account.id });
+  await browserMock.storage.local.set({
+    [cacheKey(MUTE_LIST_CACHE, PUBKEY)]: {
+      fetchedAt: 1,
+      value: { people: [], words: [], hashtags: [], events: [], rawContent: '', createdAt: 0, reachable: true },
+    },
+  });
+  installMuteSocket('event');
+  const result = await handlers.get('getMyMuteList')!({ fresh: true }) as any;
+  assert.equal(result.createdAt, 1000);
+  assert.equal(result.rawContent, 'encrypted-private-mutes');
+  vault.lock();
+});
+
+it('repeated metadata reads share sockets even when no profile exists or relays fail', async () => {
+  const {fetchProfileMetadata} = await import('../src/lib/bg/profile-handlers.ts');
+  const {config} = await import('../src/lib/bg/state.ts');
+  const previous = config.relays;
+  config.relays=['wss://one.test','wss://two.test','wss://three.test'];
+  try {
+    for (const mode of ['eose','error'] as const) {
+      installSocket(mode);
+      const Base=globalThis.WebSocket;
+      let connections=0;
+      globalThis.WebSocket=class extends Base { constructor(url:string|URL,protocols?:string|string[]){super(url,protocols);connections++;} };
+      const pubkey=mode==='eose'?'11'.repeat(32):'22'.repeat(32);
+      await Promise.all(Array.from({length:20},()=>fetchProfileMetadata(pubkey)));
+      for(let n=0;n<200;n++) assert.equal(await fetchProfileMetadata(pubkey),null);
+      assert.equal(connections,3,'one bounded query, not three connections per read');
+      const now=Date.now;
+      const later=now()+61_000;
+      try {
+        Date.now=()=>later;
+        await fetchProfileMetadata(pubkey);
+        assert.equal(connections,6,'a later read retries after the cooldown');
+      } finally {Date.now=now;}
+    }
+  } finally {config.relays=previous; globalThis.WebSocket=realWebSocket;}
+});

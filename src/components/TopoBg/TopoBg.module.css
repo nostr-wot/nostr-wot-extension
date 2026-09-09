@@ -33,7 +33,11 @@
   animation: topo-float-2 14s ease-in-out infinite;
 }
 
-.topoBg > * {
-  position: relative;
-  z-index: 1;
+/* Lift ordinary content above the art, but let overlays keep their own
+   absolute/fixed positioning and consent-surface z-index utilities. */
+@layer components {
+  .topoBg > * {
+    position: relative;
+    z-index: 1;
+  }
 }

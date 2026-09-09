@@ -175,3 +175,23 @@ describe('test registration', () => {
     );
   });
 });
+
+// Release metadata is a consent boundary: older Firefox builds must not bypass
+// the native consent prompt, and transmitted data must not be declared as none.
+describe('release manifest', () => {
+  it('requires native Firefox consent support on desktop and Android', () => {
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
+    assert.ok(parseInt(manifest.browser_specific_settings.gecko.strict_min_version) >= 140);
+    assert.ok(parseInt(manifest.browser_specific_settings.gecko_android.strict_min_version) >= 142);
+    assert.deepEqual([...manifest.browser_specific_settings.gecko.data_collection_permissions.required].sort(),
+      ['authenticationInfo', 'browsingActivity', 'financialAndPaymentInfo', 'personalCommunications', 'personallyIdentifyingInfo'].sort());
+  });
+  it('keeps package, lockfile and extension release versions aligned', () => {
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'manifest.json'), 'utf8'));
+    const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+    const lock = JSON.parse(readFileSync(join(ROOT, 'package-lock.json'), 'utf8'));
+    assert.equal(pkg.version, manifest.version);
+    assert.equal(lock.version, pkg.version);
+    assert.equal(lock.packages[''].version, pkg.version);
+  });
+});

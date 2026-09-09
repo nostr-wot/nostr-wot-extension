@@ -18,7 +18,7 @@ import Container from '@components/Container/Container';
 export default function WalletSection() {
   const wallet = useWallet();
 
-  if (wallet.configReadFailed) {
+  if (wallet.configReadFailed && typeof wallet.configType !== 'string') {
     return (
       <EmptyState text={t('wallet.checkFailed')}>
         <Button small onClick={wallet.refreshConfig}>{t('common.retry')}</Button>

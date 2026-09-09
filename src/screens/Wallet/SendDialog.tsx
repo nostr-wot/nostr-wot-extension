@@ -188,7 +188,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
   <Modal
         title={t('wallet.sendPayment')}
         onClose={onClose}
-        maxWidth={300}
+        maxWidth={340}
         /* A stray backdrop click must not tear down a payment mid-flight. */
         dismissOnBackdrop={!sendLoading}
         footerRow={!sendSuccess}
@@ -209,10 +209,12 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
           </>
         )}
       >
-        <Text variant="secondary" as="div" className="text-sm">{t('wallet.sendDesc')}</Text>
+        <Container gap={6}>
+      <Text variant="secondary" as="div" className="text-sm leading-normal text-menu-subtitle">{t('wallet.sendDesc')}</Text>
           <Container gap={5}>
             <Input
               type="text"
+              label={t('wallet.payTo')}
               placeholder={t('wallet.pasteInvoiceOrAddress')}
               value={sendInput}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setSendInput(e.target.value)}
@@ -244,7 +246,9 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
                   </Container>
                   <Input
                     type="number"
-                    placeholder={t('wallet.amountSats')}
+                    label={t('wallet.amountSats')}
+            min={1} step={1}
+            placeholder={t('wallet.amountSats')}
                     value={sendAmount}
                     onChange={(e: ChangeEvent<HTMLInputElement>) => setSendAmount(e.target.value)}
                     small
@@ -307,6 +311,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
             <FormError>{sendError}</FormError>
             {sendSuccess && <div className="text-sm text-success">{sendSuccess}</div>}
           </Container>
-      </Modal>
+      </Container>
+    </Modal>
   );
 }

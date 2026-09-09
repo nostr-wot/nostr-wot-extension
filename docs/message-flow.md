@@ -10,7 +10,7 @@ content.ts (ISOLATED world)
   |  1. Validate method against allowlist
   |  2. For NIP-07: enforce HTTPS, prefix method with 'nip07_', append origin
   |  2b. For WebLN: enforce HTTPS, prefix method with 'webln_', append origin
-  |  3. Forward over a persistent port (browser.runtime.connect)
+  |  3. Forward immediately over a persistent port with an internal request ID
   v
 background.ts (service worker)
   |  1. Privilege gate (block privileged methods from content scripts)
@@ -204,3 +204,52 @@ The three message channels are strictly separated:
 A NIP-07 request cannot invoke WebLN methods and vice versa. Neither can invoke privileged methods.
 
 The background enforces this independently of content.ts: the `browser.runtime.onConnect` port listener rejects any method that does not start with `nip07_` or `webln_` ("Permission denied"), so even a compromised or regressed content script can never reach `vault_`/`signer_`/`wallet_` privileged methods over the port channel.
+
+
+### Mute editor reads
+
+Home calls `getMyMuteList` for a cached summary. Opening Mutes calls
+`getMyMuteList({ fresh: true })`; the handler waits for startup unlock, then reads
+verified kind:10000 events for the active identity from the user's relays. A failed
+read leaves editing unavailable with Retry. A successful read without an event
+shows that no published list was found. Public edits round-trip `rawContent`
+unchanged when the user explicitly publishes. An obsolete read after closing or
+switching accounts cannot replace the current editor state.
+
+## Activity content review
+
+Successful NIP-04/NIP-44 operations retain ciphertext (up to 128 KiB per operation) with the peer and requesting account in local activity history. Encrypt inputs and decrypt results are never logged. Older operation-only records cannot be reconstructed. Existing signed-event snapshots retain their original content.
+
+`activity_decrypt` is an internal extension RPC, privileged through the handler-map gate. It locates the exact stored entry, derives its protocol and peer, and calls `signer.decryptForAccount` for the recorded account without switching the active account or modifying permissions. A missing peer may be supplied by the review form. NIP-04, classic NIP-44, and the existing PQ envelope decoder are reused. Gift-wrap kinds 1059/21059 verify the inner kind-13 seal before decrypting its second layer. Missing/local watch-only/remote keys produce an explicit error. The plaintext reply is never persisted.
+
+Profile editing uploads selected avatar and cover files through the existing Blossom authentication and upload service before presenting its publish preview. Successful upload URLs remain cached only for that editing session; URL-only edits do not upload. Confirming still signs and publishes the merged kind:0 event, preserving metadata fields the editor does not own. Closing or switching accounts invalidates late upload UI replies.
+
+## Relay cache refresh feedback
+
+`cachedRelayRead` serves successful answers fetched within the last 60 seconds without opening sockets. Stale answers still return immediately while one deduplicated refresh runs in the background; cold reads await that same shared query. A refresh writes `fetchedAt` and notifies popup listeners. Their follow-up reads now consume the fresh cache rather than starting another query. There is no periodic timer: expiration permits the next requested read to refresh. Failed/unreachable reads never overwrite a successful answer. The mute editor’s explicit `{fresh: true}` read continues to bypass this cache.
+
+Previously every cached read unconditionally refreshed. `useRelayCache` reacted to the resulting storage write with another RPC, forming a repeating cache-write → popup-read → relay-query loop affecting mute and post-quantum status.
+
+### Published relay discovery
+
+The privileged `getMyRelayList` RPC reads the selected public account from local storage after startup settles (with a legacy vault fallback) and queries kind 10002 on the configured plus default discovery relays. It reuses the finite `liveQuery` transport, verifies signatures and author/kind, and returns the newest event plus relay reachability. The popup offers explicit application of the published read/write configuration; reading never overwrites local settings. No periodic polling or storage-triggered refresh is added.
+
+NIP-65 and PQ publication discovery share `readPublishedEvent`: consume all relay replies, verify author/kind/signature, select the newest replaceable event and retain the signed event locally. Socket exhaustion without EOSE is unreachable, not proof of no publication. Public relay-list discovery works with a locked vault. PQ publication checks compare both KEM and DSA keys. The `pqcPublishedV2` cache drops legacy negative answers produced by exhaustion; acknowledged publication seeds a fresh positive answer and prevents an older in-flight refresh overwriting it.
+
+### Profile display query coalescing
+
+`getProfileMetadata` shares an in-flight kind:0 read per pubkey. Missing profiles and unavailable relay results have a 60-second, bounded in-memory cooldown, preventing repeated display reads from opening all configured relays on every call. Positive profiles still use the existing persistent profile cache. The fresh `getProfileForMerge` path bypasses the display cooldown so editing never treats an unavailable read as proof that a profile is empty. The cooldown does not schedule polling: a later caller initiates the next read.
+
+### Relay publication and recovery
+
+`publishRelayList` uses the UI’s configuration snapshot, or the same default-aware storage parser as `RelaysContext` for older callers. It refuses an empty set of NIP-65 tags before signing, waits for startup unlock, and retains the signed event and publication timestamp only after a relay acknowledgement. `getMyRelayList` uses the same first-account fallback as the popup when no selection was persisted. Configuration edits are serialized and save the previous nonempty list plus flags under `relayConfigurationBackup`; restoring a list does not publish it automatically.
+
+Wallet presence and balance/history reads wait for startup unlock. `wallet_hasConfig` rejects a locked vault instead of returning false. Successful reads persist account-specific display snapshots; popup hydration precedes RPC refresh. Local cache notifications are passive and only apply explicit disconnects, preventing a write/read/network feedback loop. Disconnect/replacement and account/vault removal invalidate older cache writes.
+
+Wallet settings reads (threshold, NWC URI, Lightning Address) wait for the startup unlock gate. The popup loads independent fields through WalletContext on first settings access, retains them across panel navigation, and explicitly refreshes on request; HTTP lookup failures remain errors.
+
+The in-popup approval queue is account-wide, grouping all origins for the selected account by website and permission with readable event kinds. Opening a group displays all pending items with expandable details and shared decisions. New arrivals update the list through existing queue notifications. “Approve shown” resolves a captured set of IDs concurrently, waits for all responses and refreshes after partial failures. Single/batch background resolution denies foreign identities, and signEvent checks claimed authors and account continuity before crypto.
+
+The content bridge multiplexes concurrent NIP-07/WebLN calls on one port per channel. The background echoes each internal request ID on success and failure; the bridge maps it back to the page request ID. Replies may finish out of order. Calls are not held behind an earlier approval, so all received requests can reach the approval list together. Disconnect rejects every outstanding call; no signing or payment request is automatically replayed. After updating this bridge, reload existing website tabs as well as the extension to replace their injected content scripts.
+
+Automatic popup opening first checks for an existing popup context (runtime.getContexts, or extension.getViews on older browsers). Requests caused by an account-switch page refresh update the open approval UI without reopening the native popup. The originating-tab check still applies and popup context metadata is refreshed.

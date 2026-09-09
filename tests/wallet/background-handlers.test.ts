@@ -1578,3 +1578,100 @@ describe('wallet handlers: wallet_payToLightningAddress', () => {
     assert.strictEqual(r.error, 'Insufficient balance');
   });
 });
+
+it('real wallet history waits for startup unlock and still rejects a locked vault', async () => {
+  const {handlers: actualHandlers} = await import('../../src/lib/bg/wallet-handlers.ts');
+  await vault.destroy();
+  await vault.create(TEST_PASSWORD, makePayloadWithWallet());
+  vault.lock();
+  let release!:()=>void;
+  const gate = new Promise<void>(resolve=>{release=resolve;});
+  const startup = vault.beginStartupUnlock(async()=>{
+    await gate;
+    await vault.unlock(TEST_PASSWORD);
+    setWalletProvider('acct1',createMockProvider());
+  });
+  const result = actualHandlers.get('wallet_getTransactions')!({limit:50,offset:0}).then(value=>({value,error:null}),error=>({value:null,error}));
+  release(); await startup;
+  const answer = await result;
+  assert.ifError(answer.error);
+  assert.equal((answer.value as unknown[]).length,2);
+  vault.lock();
+  await assert.rejects(()=>actualHandlers.get('wallet_getTransactions')!({}),/locked/i);
+  await vault.destroy();
+});
+
+it('wallet presence waits for startup and a locked vault is unknown, never no-wallet',async()=>{
+ const {handlers:actual}=await import('../../src/lib/bg/wallet-handlers.ts');
+ await vault.destroy(); await vault.create(TEST_PASSWORD,makePayloadWithWallet()); vault.lock();
+ let release!:()=>void;
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ const startup=vault.beginStartupUnlock(async()=>{await gate;await vault.unlock(TEST_PASSWORD);});
+ const pending=actual.get('wallet_hasConfig')!({});
+ release(); await startup;
+ assert.equal(await pending,'lnbits');
+ vault.lock();
+ await assert.rejects(()=>actual.get('wallet_hasConfig')!({}),/locked/i);
+ await vault.destroy();
+});
+
+it('display cache isolates accounts, strips secrets and prevents stale resurrection after disconnect',async()=>{
+ const {updateWalletDisplayCache,resetWalletDisplayCache,readWalletDisplayCache,walletDisplayRevision,clearWalletDisplayCaches}=await import('../../src/lib/wallet/display-cache.ts');
+ const revision=walletDisplayRevision();
+ await updateWalletDisplayCache('cache-a',{providerType:'lnbits',balance:42,transactions:[{paymentHash:'hash',amount:1,status:'pending',createdAt:1,preimage:'secret',bolt11:'invoice'}]},revision);
+ const first=await readWalletDisplayCache('cache-a');
+ assert.equal(first?.balance,42); assert.equal(first?.transactions?.length,1);
+ assert.doesNotMatch(JSON.stringify(first),/secret|invoice|preimage|bolt11/);
+ assert.equal(await readWalletDisplayCache('cache-b'),null);
+ await resetWalletDisplayCache('cache-a',false);
+ await updateWalletDisplayCache('cache-a',{providerType:'lnbits',balance:99},revision);
+ assert.equal((await readWalletDisplayCache('cache-a'))?.providerType,false);
+ assert.equal((await readWalletDisplayCache('cache-a'))?.balance,undefined);
+ await resetWalletDisplayCache('cache-a','lnbits');
+ await updateWalletDisplayCache('cache-a',{providerType:'lnbits',balance:0},walletDisplayRevision());
+ assert.equal((await readWalletDisplayCache('cache-a'))?.balance,0);
+ await clearWalletDisplayCaches(); assert.equal(await readWalletDisplayCache('cache-a'),null);
+});
+
+it('actual wallet handlers retain cached values on failure and clear them on explicit disconnect',async()=>{
+ const {handlers:actual}=await import('../../src/lib/bg/wallet-handlers.ts');
+ const {readWalletDisplayCache}=await import('../../src/lib/wallet/display-cache.ts');
+ resetMockStorage(); await vault.destroy(); await vault.create(TEST_PASSWORD,makePayloadWithWallet());
+ setWalletProvider('acct1',createMockProvider());
+ await actual.get('wallet_hasConfig')!({});
+ await actual.get('wallet_getBalance')!({});
+ await actual.get('wallet_getTransactions')!({limit:50,offset:0});
+ assert.equal((await readWalletDisplayCache('acct1'))?.balance,50000);
+ assert.equal((await readWalletDisplayCache('acct1'))?.transactions?.length,2);
+ setWalletProvider('acct1',createMockProvider({getBalance:async()=>{throw new Error('Offline');}}));
+ await assert.rejects(()=>actual.get('wallet_getBalance')!({}),/Offline/);
+ assert.equal((await readWalletDisplayCache('acct1'))?.balance,50000);
+ await actual.get('wallet_disconnect')!({});
+ assert.deepEqual(await readWalletDisplayCache('acct1'),{providerType:false});
+ await vault.destroy();
+});
+it('account removal and vault destruction erase wallet display data',async()=>{
+ const {handlers:actual}=await import('../../src/lib/bg/vault-handlers.ts');
+ const {resetWalletDisplayCache,readWalletDisplayCache}=await import('../../src/lib/wallet/display-cache.ts');
+ resetMockStorage(); await vault.destroy();
+ const payload=makePayloadWithWallet(); payload.accounts.push({...payload.accounts[0],id:'acct2'});
+ await vault.create(TEST_PASSWORD,payload);
+ await resetWalletDisplayCache('acct1','lnbits'); await resetWalletDisplayCache('acct2','lnbits');
+ await actual.get('vault_removeAccount')!({accountId:'acct2'});
+ assert.equal(await readWalletDisplayCache('acct2'),null);
+ assert.equal((await readWalletDisplayCache('acct1'))?.providerType,'lnbits');
+ await actual.get('vault_destroy')!({});
+ assert.equal(await readWalletDisplayCache('acct1'),null);
+});
+
+it('settings reads wait for startup unlock before reading account state',async()=>{
+ const {handlers:actual}=await import('../../src/lib/bg/wallet-handlers.ts');
+ await vault.destroy();await vault.create(TEST_PASSWORD,makePayloadNoWallet());vault.lock();
+ let release!:()=>void; const gate=new Promise<void>(resolve=>{release=resolve;});
+ const startup=vault.beginStartupUnlock(async()=>{await gate;await vault.unlock(TEST_PASSWORD);});
+ let settled=false;
+ const reads=Promise.all(['wallet_getAutoApproveThreshold','wallet_getNwcUri','wallet_getLightningAddress'].map(method=>actual.get(method)!({}))).then(values=>{settled=true;return values;});
+ await new Promise(resolve=>setImmediate(resolve)); assert.equal(settled,false);
+ release();await startup;const values=await reads;
+ assert.equal(values[1],null);assert.deepEqual(values[2],{address:null});await vault.destroy();
+});

@@ -99,6 +99,86 @@ import { resetMockStorage } from './helpers/browser-mock.ts';
 import * as vault from '../src/lib/vault.ts';
 import * as permissions from '../src/lib/permissions.ts';
 import type { VaultPayload, UnsignedEvent } from '../src/lib/types.ts';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import ts from 'typescript';
+
+describe('actual content bridge concurrency', () => {
+  it('background echoes IDs for out-of-order results and denied requests', async () => {
+    const source = readFileSync(new URL('../background.ts', import.meta.url), 'utf8');
+    const listener = source.slice(source.indexOf('browser.runtime.onConnect.addListener'), source.indexOf('// Keep-alive alarm'));
+    let connect: any;
+    let receive: any;
+    const replies: any[] = [];
+    const completions: Record<string, (value: string) => void> = {};
+    runInNewContext(ts.transpileModule(listener, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {
+      browser: {runtime:{onConnect:{addListener(fn: any) { connect = fn; }}}},
+      forgetTabOrigin() {}, rememberTabOrigin() {}, URL, console,
+      handleRequest: ({id}: any) => new Promise(resolve => { completions[id] = resolve; }),
+    });
+    const port = {name:'nip07',sender:{frameId:0,tab:{id:1,url:'https://site.test'}},
+      onDisconnect:{addListener() {}}, onMessage:{addListener(fn: any) { receive = fn; }},
+      postMessage: (reply: any) => replies.push(reply)};
+    connect(port);
+    const first = receive({id:1,method:'nip07_signEvent',params:{}});
+    const second = receive({id:2,method:'nip07_signEvent',params:{}});
+    completions[2]('two'); await second;
+    completions[1]('one'); await first;
+    await receive({id:3,method:'vault_unlock',params:{}});
+    assert.deepEqual(replies.map(r => [r.id,r.result || r.error]), [[2,'two'],[1,'one'],[3,'Permission denied']]);
+  });
+
+  function bridge() {
+    const ports: any[] = [];
+    const responses: any[] = [];
+    let receive: any;
+    const window = {
+      location: { origin: 'https://site.test', hostname: 'site.test', protocol: 'https:' },
+      addEventListener: (_: string, listener: any) => { receive = listener; },
+      postMessage: (message: any) => responses.push(message),
+    };
+    const browser = { runtime: {
+      onMessage: { addListener() {} },
+      connect: ({name}: any) => {
+        const port: any = { name, sent: [], postMessage(message: any) { this.sent.push(message); },
+          onMessage: { addListener(listener: any) { port.reply = listener; } },
+          onDisconnect: { addListener(listener: any) { port.disconnect = listener; } },
+        };
+        ports.push(port);
+        return port;
+      },
+    } };
+    const source = readFileSync(new URL('../content.ts', import.meta.url), 'utf8');
+    runInNewContext(ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
+      { window, browser, exports: {}, console });
+    return { ports, responses, send: (id: string, type = 'NIP07_REQUEST', method = 'signEvent') => receive({source:window,data:{type,id,method,params:{}}}) };
+  }
+
+  it('forwards simultaneous requests before any approval and routes out-of-order replies', async () => {
+    const b = bridge();
+    await b.send('first'); await b.send('second');
+    assert.equal(b.ports.length, 1);
+    const p = b.ports[0];
+    assert.equal(p.sent.length, 2, 'both requests must reach the approval queue immediately');
+    p.reply({id:p.sent[1].id,result:'second signature'});
+    p.reply({id:p.sent[0].id,result:'first signature'});
+    assert.deepEqual(b.responses.map(r => [r.id,r.result]), [['second','second signature'],['first','first signature']]);
+    p.reply({id:p.sent[0].id,result:'duplicate'});
+    assert.equal(b.responses.length, 2);
+  });
+
+  it('keeps channels separate and rejects all outstanding calls on disconnect', async () => {
+    const b = bridge();
+    await b.send('first'); await b.send('second'); await b.send('wallet','WEBLN_REQUEST','getBalance');
+    b.ports[0].disconnect();
+    assert.deepEqual(b.responses.map(r => r.id), ['first','second']);
+    assert.ok(b.responses.every(r => r.error));
+    b.ports[1].reply({id:b.ports[1].sent[0].id,result:42});
+    assert.equal(b.responses[2].id, 'wallet');
+    await b.send('third');
+    assert.equal(b.ports.length, 3, 'a disconnected channel reconnects');
+  });
+});
 
 // ── Constants mirrored from content.ts ──
 //

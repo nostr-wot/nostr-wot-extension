@@ -1,3 +1,5 @@
+import AccountCopyDialog from './AccountCopyDialog';
+import { useAccount } from '@context/AccountContext';
 import { useState } from 'react';
 import { t } from '@lib/i18n.js';
 import { IconSettings } from '@assets';
@@ -10,27 +12,31 @@ import Container from '@components/Container/Container';
 interface TopBarProps {
   onMenuOpen: () => void;
   onAddAccount: () => void;
-  onEditProfile: () => void;
 }
 
-export default function TopBar({ onMenuOpen, onAddAccount, onEditProfile }: TopBarProps) {
+export default function TopBar({ onMenuOpen, onAddAccount }: TopBarProps) {
+  const { active } = useAccount();
+  const [copyOpen, setCopyOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
 
   return (
+    <>
     <Container variant="row" gap={4} className="relative z-topbar mb-6 shrink-0">
       <div className="relative flex-1 min-w-0">
         <AccountBar
+          onCopy={() => setCopyOpen(true)}
           dropdownOpen={dropdownOpen}
           onToggleDropdown={() => setDropdownOpen((v) => !v)}
         />
-        {dropdownOpen && (
-          <AccountDropdown onClose={() => setDropdownOpen(false)} onAddAccount={() => { setDropdownOpen(false); onAddAccount?.(); }} onEditProfile={() => { setDropdownOpen(false); onEditProfile(); }} />
-        )}
+
       </div>
       <GlobeButton />
       <IconButton tone="brand" onClick={onMenuOpen} title={t('topbar.settings')} aria-label={t('topbar.settings')}>
         <IconSettings />
       </IconButton>
     </Container>
+    {dropdownOpen && <AccountDropdown onClose={() => setDropdownOpen(false)} onAddAccount={() => { setDropdownOpen(false); onAddAccount(); }} />}
+    {copyOpen && active && <AccountCopyDialog key={active.id} pubkey={active.pubkey} onClose={() => setCopyOpen(false)} />}
+    </>
   );
 }

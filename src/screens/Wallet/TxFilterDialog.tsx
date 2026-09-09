@@ -61,14 +61,14 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
         <Container variant="row" gap={2}>
           <input
             type="date"
-            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-card text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
+            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-input text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
             value={dateFrom}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value)}
           />
           <span className="text-xs text-muted shrink-0">—</span>
           <input
             type="date"
-            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-card text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
+            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-input text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
             value={dateTo}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value)}
           />

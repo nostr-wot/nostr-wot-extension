@@ -1,35 +1,28 @@
-Build instructions — Nostr WoT (Firefox)
+# Build instructions — Nostr WoT 0.7.0
 
-The uploaded add-on is bundled with Vite (+ @crxjs/vite-plugin) from TypeScript/React source. It is NOT minified, and building from source with the pinned dependencies reproduces the uploaded files exactly.
+Use the attached `nostr-wot-source-0.7.0.zip`, which includes the release's
+working source and lockfile. Use that archive to reproduce the packaged release;
+do not use an older GitHub tag or assume the latest main matches its contents.
 
-Requirements:
-- Node.js 22.x or 24.x (built with v24.3.0). Node 20 reached end of life in April 2026 and is no longer supported.
-- npm 11.x (built with 11.4.2)
-- macOS or Linux (Windows via WSL)
+Requirements: Node.js 22 or 24 (release built with 22.23.2), npm, and macOS or
+Linux with the `zip` utility installed. Extract the source into an empty folder:
 
-Get the source (any one — all identical):
-A) git clone https://github.com/nostr-wot/nostr-wot-extension.git
-   cd nostr-wot-extension
-   git checkout v0.4.0
-B) https://github.com/nostr-wot/nostr-wot-extension/archive/refs/tags/v0.4.0.zip
-C) The attached nostr-wot-source-0.4.0.zip (same tree as the tag).
+```sh
+npm ci
+npm run package:firefox
+# Or:
+npm run package:chrome
+```
 
-Build:
-   npm ci
-   npm run package:firefox
+The outputs are `nostr-wot-firefox.zip` and `nostr-wot-chrome.zip`. Firefox
+packaging changes the background to scripts and keeps native data consent
+metadata. Chrome packaging removes Firefox-only settings. The Firefox script
+restores the normal unpacked `dist/` build after creating its ZIP.
 
-Result: nostr-wot-firefox.zip in the repo root — the same files as the uploaded add-on. (dist/ is the unpacked build. The package:firefox script runs "vite build", rewrites dist/manifest.json for Gecko — background.scripts instead of background.service_worker — zips dist/, then rebuilds dist/. Only the zip matters for review.)
+Compare extracted files rather than ZIP checksums, since ZIP entry timestamps
+vary. Dependencies are pinned in package-lock.json. Vite bundles TypeScript and
+React without minification. Runtime network calls exchange data, not remote
+executable code.
 
-Verify against the uploaded add-on:
-   mkdir ours theirs
-   (cd ours   && unzip -q ../nostr_wot-0.4.0.xpi)     # the uploaded add-on
-   (cd theirs && unzip -q ../nostr-wot-firefox.zip)    # your build
-   diff -r ours theirs                                 # no differences
-
-Please compare the EXTRACTED files, not the .zip checksums. "zip" records a modification timestamp per entry, so two builds made at different times produce different container bytes while every file inside is byte-identical. The diff above is the meaningful check. (Verified for this release: all 32 files match by sha256.)
-
-Notes:
-- Not minified (vite.config.ts: build.minify = false); all emitted JS is readable.
-- Dependencies are pinned in package-lock.json; use "npm ci" (not "npm install").
-- No remote code: only the npm deps in package.json are bundled (@noble/*, @scure/*, nostr-tools, react, qrcode-generator). Nothing is fetched or eval'd at runtime.
-</content>
+See REVIEWER-NOTES.txt in the source archive and docs/deployment.md for the
+consent declarations and network destinations.

@@ -123,6 +123,58 @@ function keyfile(seedFill = 5): string {
   });
 }
 
+describe('post-quantum cold-start lock state', () => {
+  beforeEach(async () => {
+    await vault.whenStartupUnlockSettled();
+    resetMockStorage();
+    await vault.destroy();
+  });
+
+  for (const method of ['pqc_getStatus', 'pqc_exportKeys']) {
+    it(`${method} waits for Never-lock startup and reads the imported keys`, async () => {
+      const account = await importNsec(SOME_PRIVKEY, 'Imported');
+      await vault.create('', { accounts: [account], activeAccountId: account.id });
+      await browserMock.storage.local.set({ activeAccountId: account.id, autoLockMs: 0 });
+      const imported = await importKeys(keyfile());
+      vault.lock();
+
+      let release!: () => void;
+      const ready = new Promise<void>((resolve) => { release = resolve; });
+      const startup = vault.beginStartupUnlock(async () => {
+        await ready;
+        await vault.restoreAutoLockSetting();
+        await vault.unlock('');
+      });
+      // Capture rejection immediately so the deliberately delayed startup
+      // cannot turn a regression into an unhandled promise rejection.
+      const answer = handlers.get(method)!({}).then(
+        value => ({ value, error: null }),
+        error => ({ value: null, error }),
+      );
+      release();
+      await startup;
+      const result = await answer;
+      assert.ifError(result.error);
+      const value = result.value as any;
+      assert.strictEqual(value.source, 'imported');
+      const kem = method === 'pqc_getStatus'
+        ? value.keys.kem : JSON.parse(value.keyfile).kem.public;
+      assert.strictEqual(kem, imported.keys.kem);
+    });
+
+    it(`${method} still rejects after startup fails`, async () => {
+      await vaultWith(await importNsec(SOME_PRIVKEY, 'Imported'));
+      vault.lock();
+      const startup = vault.beginStartupUnlock(async () => {
+        await vault.unlock('wrong-password');
+      });
+      await assert.rejects(() => handlers.get(method)!({}), /Vault is locked/);
+      await startup;
+      assert.strictEqual(vault.isLocked(), true);
+    });
+  }
+});
+
 describe('pqc_importKeys', () => {
   beforeEach(async () => {
     resetMockStorage();
@@ -312,4 +364,30 @@ describe('imported keys decrypt a post-quantum message', () => {
       'without the key the account is back to having no post-quantum capability',
     );
   });
+});
+
+it('acknowledged PQ publication immediately updates the shared status and retains the signed event', async () => {
+  resetMockStorage();
+  await vaultWith(await createFromMnemonic(M24, 'Main'));
+  await browserMock.storage.sync.set({relays:'wss://publish.test'});
+  const original = globalThis.WebSocket;
+  class AckSocket {
+    onopen: (() => void) | null = null;
+    onmessage: ((event: {data:string}) => void) | null = null;
+    constructor() { queueMicrotask(() => this.onopen?.()); }
+    send(raw: string) {
+      const [type,event] = JSON.parse(raw);
+      if (type === 'EVENT') queueMicrotask(() => this.onmessage?.({data:JSON.stringify(['OK',event.id,true,'saved'])}));
+    }
+    close() {}
+  }
+  globalThis.WebSocket = AckSocket as unknown as typeof WebSocket;
+  try {
+    const result = await handlers.get('pqc_publishAttestation')!({}) as {sent:number;eventId:string};
+    assert.equal(result.sent,1);
+    assert.deepEqual(await handlers.get('pqc_checkPublished')!({}),{published:true,current:true});
+    const {replaceableKey} = await import('../src/lib/relay.ts');
+    const key=replaceableKey(PQC_KIND,vault.getActivePubkey()!);
+    assert.equal((await browserMock.storage.local.get(key))[key].id,result.eventId);
+  } finally { globalThis.WebSocket=original; await vault.destroy(); }
 });

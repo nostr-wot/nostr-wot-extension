@@ -12,6 +12,7 @@
  */
 
 import { describe, it } from 'node:test';
+import { currentApprovalGroup } from '../src/domain/permissions/approval';
 import assert from 'node:assert/strict';
 import {
   filterPendingForDomain,
@@ -167,4 +168,43 @@ describe('asGroup', () => {
     const r = req({ id: '1', origin: 's', type: 'nip04Encrypt' });
     assert.equal(asGroup(r).permKey, groupApprovals([r])[0].permKey);
   });
+});
+
+it('account approval filtering includes all websites but rejects different authors and accounts',async()=>{
+ const {requestMatchesAccount}=await import('../src/domain/permissions/approval');
+ const account={id:'a',pubkey:'alice'};
+ const requests=[
+  req({id:'1',origin:'one.test',accountId:'a',pubkey:'alice'}),
+  req({id:'2',origin:'two.test',accountId:'a',pubkey:'alice',theirPubkey:'bob'}),
+  req({id:'3',origin:'one.test',accountId:'b',pubkey:'bob'}),
+  req({id:'4',origin:'one.test',accountId:'a',pubkey:'alice',event:{pubkey:'bob'}}),
+ ];
+ assert.deepEqual(requests.filter(r=>requestMatchesAccount(r,account)).map(r=>r.id),['1','2']);
+ assert.equal(requestMatchesAccount(requests[0],null),false);
+});
+it('approval groups never combine different accounts',()=>{
+ assert.equal(groupApprovals([req({id:'1',origin:'s',accountId:'a'}),req({id:'2',origin:'s',accountId:'b'})]).length,2);
+});
+
+it('approving displayed requests excludes later arrivals and waits for all decisions',async()=>{
+ const {resolveDisplayedRequests}=await import('../src/domain/permissions/approval');
+ const requests=[req({id:'1',origin:'a'}),req({id:'2',origin:'b'})];
+ const ids:string[]=[];
+ let finish!:()=>void; const slow=new Promise<void>(resolve=>{finish=resolve;});
+ const result=resolveDisplayedRequests(requests,async id=>{ids.push(id);if(id==='1')throw new Error('Offline');await slow;});
+ requests.push(req({id:'later',origin:'c'}));
+ let settled=false;const observed=result.catch(error=>{settled=true;return error;});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);
+ finish();assert.match(String(await observed),/Offline/);assert.deepEqual(ids,['1','2']);
+});
+
+it('open approval groups follow new arrivals and removals without crossing identities', () => {
+ const selected=groupApprovals([req({id:'old',origin:'site',accountId:'a',permKey:'signEvent:1'})])[0];
+ const groups=groupApprovals([
+  req({id:'new',origin:'site',accountId:'a',permKey:'signEvent:1'}),
+  req({id:'foreign',origin:'site',accountId:'b',permKey:'signEvent:1'}),
+ ]);
+ assert.deepEqual(currentApprovalGroup(selected,groups)?.requests.map(r=>r.id),['new']);
+ assert.equal(currentApprovalGroup(selected,groups.slice(1)),null);
+ assert.equal(currentApprovalGroup(null,groups),null);
 });

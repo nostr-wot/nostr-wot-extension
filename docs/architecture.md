@@ -73,7 +73,7 @@ Runs in the **ISOLATED** world. Acts as a bidirectional message bridge between t
 
 - Listens for `window.postMessage` events with `type: 'NIP07_REQUEST'` or `type: 'WEBLN_REQUEST'`.
 - Validates the method name against hardcoded allowlists: `NIP07_ALLOWED_METHODS`, `WEBLN_ALLOWED_METHODS`.
-- Forwards valid requests to the background over a persistent port (`browser.runtime.connect`).
+- Forwards valid requests concurrently over one persistent port per channel (`browser.runtime.connect`), correlating replies by internal request ID so approvals do not serialize delivery.
 - Posts responses back to the page as `NIP07_RESPONSE` or `WEBLN_RESPONSE`.
 - **HTTPS enforcement**: NIP-07 and WebLN methods are blocked on `http:` origins except `localhost`, `127.0.0.1`, and `[::1]`.
 - **NIP-07 prefixing**: Adds `nip07_` prefix and `origin` (hostname) to all NIP-07 requests before forwarding.

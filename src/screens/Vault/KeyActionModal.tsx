@@ -19,6 +19,7 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import Container from '@components/Container/Container';
+import StatusNotice from '@components/StatusNotice/StatusNotice';
 import Text from '@components/Text/Text';
 
 interface KeyActionModalProps {
@@ -189,10 +190,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
           <Container gap={5}>
             {!nsec.revealed ? (
               <>
-                <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal">
-                  <IconWarning className="shrink-0 mt-px" />
-                  <span>{t('key.nsecWarning')}</span>
-                </div>
+                <StatusNotice variant="callout" tone="error" icon={<IconWarning />}>
+                  {t('key.nsecWarning')}
+                </StatusNotice>
                 <Container variant="row" gap={4} className="justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button variant="danger" small onClick={revealNsec}>{t('key.revealKey')}</Button>
@@ -227,10 +227,9 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
           <Container gap={5}>
             {!seed.revealed ? (
               <>
-                <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal">
-                  <IconWarning className="shrink-0 mt-px" />
-                  <span>{t('key.seedWarning')}</span>
-                </div>
+                <StatusNotice variant="callout" tone="error" icon={<IconWarning />}>
+                  {t('key.seedWarning')}
+                </StatusNotice>
                 <Container variant="row" gap={4} className="justify-end mt-2">
                   <Button variant="secondary" small onClick={handleClose}>{t('common.cancel')}</Button>
                   <Button variant="danger" small onClick={revealSeed}>{t('key.revealKey')}</Button>

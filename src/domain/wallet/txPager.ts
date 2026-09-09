@@ -1,7 +1,7 @@
 /**
  * Paging through the wallet's transaction list until there is enough to show.
  *
- * The API returns pages newest-first and has no server-side filter, so getting
+ * Providers return pages newest-first; local direction/date filters still apply, so getting
  * "the last 10 outgoing payments" means fetching pages and counting matches
  * client-side until enough have accumulated. That loop was tangled with
  * `setState` calls in Wallet.tsx, which is exactly why it was never tested: no
@@ -28,14 +28,17 @@ export interface AccumulateOptions<T extends FilterableTx> {
   target?: number;
   /** Rows requested per page. A short page (fewer rows than this) means the API is exhausted. */
   batch?: number;
-  /** Hard ceiling on rows fetched in this call, regardless of `target`. */
+  /** Ceiling on non-pending rows scanned; pending-only pages never hide older history. */
   maxFetched?: number;
+  /** Stops requesting more pages after unmount or a newer filter request. */
+  shouldContinue?: () => boolean;
 }
 
 export interface AccumulateResult<T> {
   transactions: T[];
   offset: number;
   hasMore: boolean;
+  error?: string;
 }
 
 /**
@@ -50,24 +53,27 @@ export async function accumulateTransactions<T extends FilterableTx>({
   target = 10,
   batch = 50,
   maxFetched = 500,
+  shouldContinue = () => true,
 }: AccumulateOptions<T>): Promise<AccumulateResult<T>> {
   const accumulated = [...existing];
   let offset = startOffset;
+  let scanned = 0;
   let hasMore = true;
   // Same conversion the renderer uses — this was a third hand-written copy.
   const range = dateRangeToTs(filters);
 
   try {
-    while (hasMore && offset - startOffset < maxFetched) {
+    while (hasMore && scanned < maxFetched && shouldContinue()) {
       const page = await fetchPage(batch, offset);
       if (page.length < batch) hasMore = false;
       offset += page.length;
+      scanned += page.filter(tx => tx.status !== 'pending').length;
 
       for (const tx of page) {
         // API returns newest-first; once a row is older than the from-date, no
         // later row in this page (or any further page) can match either.
         if (range.fromTs && tx.createdAt < range.fromTs) { hasMore = false; break; }
-        accumulated.push(tx);
+        if (tx.status !== 'pending') accumulated.push(tx);
       }
 
       // Count how many match all filters so far. Same predicate the render
@@ -75,11 +81,8 @@ export async function accumulateTransactions<T extends FilterableTx>({
       const matchCount = accumulated.filter((t) => matchesTxFilter(t, filters, range)).length;
       if (matchCount >= target) break;
     }
-  } catch {
-    // A page fetch is not the only thing keeping the wallet usable — balance
-    // and send still work — so a transient failure mid-page returns what was
-    // accumulated so far rather than throwing past the caller's setState and
-    // blanking a list that was already partially populated.
+  } catch (error) {
+    return { transactions: accumulated, offset, hasMore, error: error instanceof Error ? error.message : String(error) };
   }
 
   return { transactions: accumulated, offset, hasMore };

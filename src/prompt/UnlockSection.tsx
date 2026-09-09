@@ -35,7 +35,7 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
       <span className="text-sm font-bold uppercase tracking-[0.5px] text-warning">{t('prompt.vaultLocked')}</span>
       <input
         ref={inputRef}
-        className="w-full p-5 border border-card-active rounded-sm bg-brand-tint-hover text-heading text-lg outline-none focus:border-brand focus:shadow-[var(--focus-ring)]"
+        className="w-full p-5 border border-card-active rounded-sm bg-input text-heading text-lg outline-none focus:border-brand focus:shadow-[var(--focus-ring)]"
         type="password"
         placeholder={t('prompt.enterVaultPassword')}
         autoComplete="off"

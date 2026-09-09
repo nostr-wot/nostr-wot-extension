@@ -15,7 +15,6 @@ import SealedPreview from './kinds/SealedPreview';
 import AppSpecificPreview from './kinds/AppSpecificPreview';
 import GenericPreview from './kinds/GenericPreview';
 import { EP } from './eventPreviewClasses.ts';
-import { cn } from '@utils/cn.ts';
 
 /** Maps event kind to component. Entries here skip the generic fallback. */
 const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisplay }>> = {
@@ -41,6 +40,7 @@ interface EventPreviewProps {
   event: Partial<NostrEventDisplay> | null;
   theirPubkey?: string | null;
   className?: string;
+  compact?: boolean;
 }
 
 /**
@@ -48,7 +48,7 @@ interface EventPreviewProps {
  * Dispatches to kind-specific components for signEvent, handles
  * encrypt/decrypt and getPublicKey inline.
  */
-export default function EventPreview({ type, event, theirPubkey, className = '' }: EventPreviewProps) {
+export default function EventPreview({ type, event, theirPubkey, className = '', compact = false }: EventPreviewProps) {
   const [showRaw, setShowRaw] = useState<boolean>(false);
   const rootCls = [EP.root, className].filter(Boolean).join(' ');
 
@@ -102,28 +102,30 @@ export default function EventPreview({ type, event, theirPubkey, className = '' 
       ) : KIND_LABELS[kind] ? (
         <GenericPreview event={event as NostrEventDisplay} />
       ) : (
-        <div className={EP.unknownWarning}>
+        <><div className={EP.unknownWarning}>
           <IconWarning size={14} />
           <span>{t('event.unknownKind')}</span>
-        </div>
+        </div><GenericPreview event={event as NostrEventDisplay} /></>
       )}
 
       {/* Always list every tag, for every kind — the user must be able to see
           the FULL payload being signed, not just the kind-specific summary. */}
       {event.tags && event.tags.length > 0 && (
-        <>
-          <h3 className={cn(EP.sectionTitle, EP.tagsTitle)}>
+        <details open={compact ? undefined : true}>
+          <summary className="text-sm font-semibold text-secondary cursor-pointer mt-5 py-2">
             {t('event.tags', { count: event.tags.length })}
-          </h3>
+          </summary>
           <div className={EP.tagsList}>
             {event.tags.map((tag, i) => (
               <div key={i} className={EP.tagRow}>{JSON.stringify(tag)}</div>
             ))}
           </div>
-        </>
+        </details>
       )}
 
       <button
+        type="button"
+        aria-expanded={showRaw}
         className={EP.expandToggle}
         onClick={() => setShowRaw(!showRaw)}
       >

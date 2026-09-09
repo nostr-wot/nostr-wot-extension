@@ -1,7 +1,9 @@
 import { useState, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
-import { buildRuleKey, DECISIONS } from '@domain/permissions/permissionRules.ts';
+import { buildRuleKey, validCustomKind, DECISIONS } from '@domain/permissions/permissionRules.ts';
+import Input from '@components/Input/Input';
+import { IconPlus } from '@assets';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -29,8 +31,10 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
   const [decision, setDecision] = useState<string>('allow');
   const [useCustom, setUseCustom] = useState<boolean>(false);
 
+  const valid = useCustom ? validCustomKind(customKind) : availableKeys.includes(presetKey);
   const submit = () => {
-    void onAdd(buildRuleKey(presetKey, customKind, useCustom && !!customKind.trim()), decision);
+    if (!valid) return;
+    void onAdd(buildRuleKey(presetKey, customKind, useCustom), decision);
     onClose();
   };
 
@@ -43,7 +47,7 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
         footer={(
           <>
             <Button small variant="secondary" onClick={() => onClose()}>{t('common.cancel')}</Button>
-            <Button small onClick={submit}>{t('perms.addRule')}</Button>
+            <Button small onClick={submit} disabled={!valid} aria-label={t('perms.addRule')} title={t('perms.addRule')}><IconPlus size={18} /></Button>
           </>
         )}
       >
@@ -55,12 +59,18 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
                 value={presetKey}
                 onChange={setPresetKey}
                 small
+                aria-label={t('perms.permission')}
               />
             ) : (
               <Container variant="row" gap={1}>
                 <span className="text-sm font-semibold text-secondary whitespace-nowrap">signEvent:</span>
-                <input
+                <Input
+                  small
                   type="number"
+                  min={0}
+                  max={65535}
+                  step={1}
+                  aria-label={t('perms.customKind')}
                   className="flex-1 min-w-0 py-2.5 px-4 border border-card-border rounded-md bg-card text-sm font-[inherit] text-body outline-none transition-colors focus:border-brand"
                   placeholder="e.g. 30023"
                   value={customKind}

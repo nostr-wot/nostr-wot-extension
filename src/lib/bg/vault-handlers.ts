@@ -4,6 +4,7 @@
  */
 
 import browser from '../browser.ts';
+import { clearWalletDisplayCaches } from '../wallet/display-cache.ts';
 import * as vault from '../vault.ts';
 import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
@@ -177,6 +178,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_removeAccount', async (params) => {
         const removedId = params.accountId as string;
         await vault.removeAccount(removedId);
+        await clearWalletDisplayCaches(removedId);
         await signerPermissions.clearForAccount(removedId);
         await syncActivePubkey();
         const rmLocalData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
@@ -303,6 +305,7 @@ export const handlers = new Map<string, HandlerFn>([
         clearWalletProviders();
         await signer.cancelAllUnlockWaiters();
         await vault.destroy();
+        await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';

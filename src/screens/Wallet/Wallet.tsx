@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Card from '@components/Card/Card';
-import Spinner from '@components/Spinner/Spinner';
+import WalletBalance from '@components/WalletBalance/WalletBalance';
 import Button from '@components/Button/Button';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
@@ -11,14 +11,13 @@ import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import { IconSettings } from '@assets/index';
 import { type Transaction } from '@lib/wallet/types.ts';
-import { type TxFilters } from '@domain/wallet/txFilter.ts';
+import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';
 import { useWallet } from '@context/WalletContext';
 
 import IconButton from '@components/IconButton/IconButton';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
-import Text from '@components/Text/Text';
 
 interface WalletProps {
   providerType: string;
@@ -29,7 +28,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   // Balance and its refresh live in WalletContext now — this used to fetch it
   // again on its own mount, on top of the config check WalletSection already
   // did.
-  const { balance, balanceLoading, balanceError, refreshBalance } = useWallet();
+  const { balance, balanceLoading, balanceError, refreshBalance, cachedTransactions, configLoading, configReadFailed, refreshConfig } = useWallet();
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
   const [showDeposit, setShowDeposit] = useState<boolean>(false);
@@ -37,9 +36,11 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [showSend, setShowSend] = useState<boolean>(false);
 
   // Transactions
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(cachedTransactions);
+  const txRun = useRef(0);
+  const [txError, setTxError] = useState('');
   const [txLoading, setTxLoading] = useState<boolean>(true);
-  const [txOffset, setTxOffset] = useState<number>(0);
+  const [txOffset, setTxOffset] = useState<number>(cachedTransactions.length);
   const [txHasMore, setTxHasMore] = useState<boolean>(true);
   const [txDirection, setTxDirection] = useState<'all' | 'in' | 'out'>('all');
   const [txDateFrom, setTxDateFrom] = useState<string>('');
@@ -55,17 +56,24 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     filters: TxFilters,
     target = 10,
   ) => {
+    const run = ++txRun.current;
     setTxLoading(true);
-    const { transactions, offset, hasMore } = await accumulateTransactions({
+    setTxError('');
+    const { transactions, offset, hasMore, error } = await accumulateTransactions({
       fetchPage: (limit, pageOffset) => rpc<Transaction[]>('wallet_getTransactions', { limit, offset: pageOffset }),
       startOffset,
       existing,
       filters,
       target,
+      shouldContinue: () => run === txRun.current,
     });
-    setTransactions(transactions);
-    setTxOffset(offset);
-    setTxHasMore(hasMore);
+    if (run !== txRun.current) return;
+    setTxError(error || '');
+    if (!error || transactions.length > 0) {
+      setTransactions(transactions);
+      setTxOffset(offset);
+      setTxHasMore(hasMore);
+    }
     setTxLoading(false);
   }, []);
 
@@ -76,10 +84,13 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   // component ever mounts.
   useEffect(() => {
     void fetchFiltered(0, [], { direction: 'all', dateFrom: '', dateTo: '' });
+    const runs = txRun;
+    return () => { runs.current++; };
   }, [fetchFiltered]);
 
   const handleShowMore = () => {
-    void fetchFiltered(txOffset, transactions, { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
+    const filters = { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo };
+    void fetchFiltered(txOffset, transactions, filters, filterTransactions(transactions, filters).length + 10);
   };
 
   const applyFilters = (f: TxFilters) => {
@@ -94,37 +105,24 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   return (
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
       {/* Balance */}
-      <Card className="py-8 px-6 relative flex flex-col items-center gap-2">
-        <IconButton className="p-2 rounded-sm hover:text-brand absolute top-4 right-4" onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
+      <Card className="m-0 p-6 shrink-0 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div><span className="text-sm font-semibold text-heading">{t('wallet.balance')}</span><p className="text-xs text-menu-subtitle mt-1">{providerType === 'lnbits' ? 'LNbits · Lightning' : 'NWC · Lightning'}</p></div>
+        <IconButton tone="brand" onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
           <IconSettings size={16} />
         </IconButton>
-        <span className="text-xs font-semibold text-muted uppercase tracking-[0.5px]">{t('wallet.balance')}</span>
-        {balanceLoading ? (
-          <Container variant="row" className="justify-center py-12">
-            <Spinner />
-          </Container>
-        ) : balanceError ? (
-          <Container gap={4} className="items-center py-2">
-            <FormError>{balanceError}</FormError>
-            <Button small variant="secondary" onClick={refreshBalance}>
-              {t('common.retry')}
-            </Button>
-          </Container>
-        ) : (
-          <div>
-            <span className="text-[24px] font-bold text-heading">
-              {Math.round(balance ?? 0).toLocaleString()}
-            </span>
-            <Text variant="secondary" as="span" className="text-sm font-medium ml-2">sats</Text>
-          </div>
-        )}
-      </Card>
-
+        </div>
+        <WalletBalance balance={balance} loading={balanceLoading || configLoading} error={!!balanceError || configReadFailed} />
+        {(balanceError || configReadFailed) && <div className="text-xs">
+          <FormError>{balanceError || t('wallet.checkFailed')}</FormError>
+          <Button small variant="secondary" onClick={() => { void refreshConfig(); void refreshBalance(); }}>{t('common.retry')}</Button>
+        </div>}
       {/* Action buttons */}
       <Container variant="row" gap={4}>
         <Button className="flex-1" onClick={() => setShowDeposit(true)}>{t('wallet.deposit')}</Button>
         <Button className="flex-1" variant="secondary" onClick={() => setShowSend(true)}>{t('wallet.send')}</Button>
       </Container>
+      </Card>
 
       {showDeposit && (
         <DepositDialog
@@ -157,6 +155,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       <TransactionList
         transactions={transactions}
         loading={txLoading}
+        error={txError}
+        onRefresh={() => { void refreshBalance(); void fetchFiltered(0, [], {direction:txDirection,dateFrom:txDateFrom,dateTo:txDateTo}); }}
         hasMore={txHasMore}
         filters={{ direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo }}
         onOpenFilters={() => setTxFilterOpen(true)}

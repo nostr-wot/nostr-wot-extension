@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import Button from '@components/Button/Button';
 import { type PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
-import styles from './PqcSection.module.css';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import Container from '@components/Container/Container';
@@ -16,6 +15,7 @@ const KEYGEN_COMMAND = 'npm run pqc:keygen -- --independent --keyfile keys.json'
 
 /** Import independently generated post-quantum keys from a key file. */
 export default function PqcImportPanel() {
+  const fileRef = useRef<HTMLInputElement>(null);
   const { applyStatus } = usePqc();
   const [text, setText] = useState<string>('');
   const [busy, setBusy] = useState<boolean>(false);
@@ -49,14 +49,14 @@ export default function PqcImportPanel() {
   };
 
   return (
-    <Container gap={4} className="mt-6 pt-6 border-t border-card-border">
+    <Container gap={4} className="rounded-panel border border-card-border p-7">
       <strong className="text-md text-heading">{t('pqc.importTitle')}</strong>
-      <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.importDesc')}</Text>
+      <Text variant="secondary" as="p" className="text-sm leading-loose">{t('pqc.importDesc')}</Text>
 
-      <SectionLabel className="mb-6 mt-4 font-normal leading-loose" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</SectionLabel>
+      <SectionLabel className="mb-2 mt-4 text-sm leading-loose" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</SectionLabel>
       <textarea
         id="pqc-keyfile"
-        className="w-full min-h-44 py-4 px-5 border border-card-border rounded-sm bg-input text-body font-code text-xs leading-normal resize-y"
+        className="w-full min-h-44 py-4 px-5 border border-card-border rounded-md bg-input text-body font-code text-xs leading-normal resize-y focus:outline-none focus:border-brand focus:shadow-focus"
         value={text}
         spellCheck={false}
         placeholder={t('pqc.importPastePlaceholder')}
@@ -68,18 +68,16 @@ export default function PqcImportPanel() {
         <Button onClick={() => submit(text)} disabled={busy || !text.trim()}>
           {busy ? t('pqc.importing') : t('pqc.importSubmit')}
         </Button>
-        <label className="text-sm text-brand cursor-pointer underline underline-offset-2 hover:opacity-85">
-          {t('pqc.importChooseFile')}
-          <input type="file" accept="application/json,.json,.txt,text/plain" onChange={onFile} disabled={busy} hidden />
-        </label>
+        <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={busy}>{t('pqc.importChooseFile')}</Button>
+        <input ref={fileRef} type="file" accept="application/json,.json,.txt,text/plain" onChange={onFile} disabled={busy} hidden />
       </Container>
 
       <FormError>{error}</FormError>
 
       {/* The one-off part, folded away: you generate the file once, then come back here to
           paste it. Keeping it expanded pushed the paste box and buttons off-screen. */}
-      <details className={`${styles.pqcGenerate} mt-6 text-xs`}>
-        <summary>{t('pqc.importCommand')}</summary>
+      <details className="mt-4 text-sm text-secondary">
+        <summary className="cursor-pointer py-3 font-semibold">{t('pqc.importCommand')}</summary>
         <code className="block py-4 px-5 border border-card-border rounded-sm bg-sunken font-code text-xs text-heading break-all select-all">{KEYGEN_COMMAND}</code>
         {/* No mt-5 here: this anchor is a direct child of `.pqcGenerate`,
             whose `> *` rule already sets its margin-top (and, being an

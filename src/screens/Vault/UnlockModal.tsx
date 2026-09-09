@@ -138,7 +138,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
         <input
           ref={inputRef}
           type="password"
-          className="w-full py-5 px-6 text-md bg-brand-tint-hover border border-card-active rounded-md text-heading mb-4 box-border focus:outline-none focus:border-[rgba(99,102,241,0.5)]"
+          className="w-full py-5 px-6 text-md bg-input border border-card-active rounded-md text-heading mb-4 box-border focus:outline-none focus:border-[rgba(99,102,241,0.5)]"
           placeholder={t('unlock.enterPassword')}
           value={password}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
@@ -151,7 +151,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           <Container gap={2} className="w-full mt-4">
             <Text variant="muted" as="div" className="uppercase tracking-[0.5px] mb-1">{t('unlock.pendingEvents')}</Text>
             {unlockWaiters.map((w) => (
-              <Container key={w.id} variant="row" gap={3} className="py-2 px-4 bg-brand-tint-hover rounded-sm text-sm">
+              <Container key={w.id} variant="row" gap={3} className="py-2 px-4 bg-input rounded-sm text-sm">
                 <span className="font-medium text-heading">{getEventLabel(w.type)}</span>
                 <span className="text-muted flex-1 text-right overflow-hidden text-ellipsis">{w.origin}</span>
                 <IconButton

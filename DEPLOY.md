@@ -36,7 +36,7 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 ### Firefox-specific manifest
 
 - `browser_specific_settings.gecko` is kept (required for AMO: extension id, min version)
-- `background.scripts` is added alongside `service_worker` (Firefox 128-129 needs `scripts`; 130+ supports both)
+- `background.scripts` replaces `service_worker` in the Firefox ZIP.
 
 ## Chrome Web Store
 
@@ -62,8 +62,8 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 ### Firefox-specific notes
 
 - The `browser_specific_settings.gecko.id` in manifest.json must be unique
-- Minimum Firefox version is 128 (for MV3 + `optional_host_permissions` support)
-- `data_collection_permissions: { required: ["none"] }` — no user data collected
+- Minimum Firefox versions: desktop 140 and Android 142, enforcing built-in data consent.
+- Required data categories cover identity, payments, authentication, personal communications and browsing domains. See `docs/deployment.md` for the audited destinations; do not declare `none`.
 - Firefox will review source code manually
 
 ## Local Testing
@@ -77,15 +77,15 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 
 ### Firefox
 
-1. `npm run build`
+1. `npm run package:firefox`, then extract `nostr-wot-firefox.zip` into a separate review folder.
 2. Go to `about:debugging#/runtime/this-firefox`
 3. Click "Load Temporary Add-on"
-4. Select `dist/manifest.json`
+4. Select the extracted Firefox package's `manifest.json`
 
 Or use web-ext CLI:
 ```bash
 npm install -g web-ext
-web-ext run -s dist
+web-ext run -s /path/to/extracted-firefox-package
 ```
 
 ## Version Bumping

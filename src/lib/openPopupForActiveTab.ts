@@ -39,6 +39,16 @@ export async function openPopupForActiveTab(origin: string, requestingTabId?: nu
       [POPUP_CONTEXT_KEY]: { origin, tabId: activeTab?.id ?? requestingTabId ?? null, at: Date.now() },
     });
 
+    // Reloading the website after an account switch can immediately generate
+    // fresh signing/connect requests. The popup already listens for them; do
+    // not invoke the native popup-opening lifecycle again while it is visible.
+    if (browser.runtime.getContexts) {
+      const contexts = await browser.runtime.getContexts({ contextTypes: ['POPUP'] });
+      if (contexts.length > 0) return;
+    } else if (browser.extension?.getViews?.({ type: 'popup' }).length) {
+      return;
+    }
+
     await browser.action.openPopup();
   } catch {
     /* no active tab / openPopup unavailable — safe no-op */

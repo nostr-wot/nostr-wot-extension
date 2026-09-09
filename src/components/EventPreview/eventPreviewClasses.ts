@@ -8,10 +8,10 @@
  * call site the way a single-file component (Chip, Spinner) would.
  */
 export const EP = {
-  root: 'bg-brand-tint-hover border border-brand-tint-active rounded-md p-6',
-  sectionTitle: 'text-md uppercase tracking-[0.5px] text-muted mb-4 font-semibold',
+  root: 'min-w-0 bg-page-solid border border-card-border rounded-md p-6',
+  sectionTitle: 'text-xs uppercase tracking-[0.5px] text-secondary mb-4 font-semibold',
   tagsTitle: 'mt-5',
-  noteContent: 'text-lg leading-loose whitespace-pre-wrap break-words text-heading max-h-[180px] overflow-y-auto',
+  noteContent: 'text-md leading-loose whitespace-pre-wrap break-words text-heading max-h-[180px] overflow-y-auto',
   tagsList: 'font-mono-alt text-xs bg-brand-tint-hover rounded-sm px-5 py-4 max-h-[140px] overflow-y-auto',
   tagRow: 'whitespace-pre-wrap break-all py-[1px] text-body',
   eventNote: 'text-sm italic text-muted mt-2',
@@ -47,5 +47,5 @@ export const EP = {
   expandToggle:
     'bg-none border-none py-2 px-0 mt-4 text-sm font-semibold text-brand cursor-pointer text-left ' +
     'transition-colors hover:text-brand-hover',
-  jsonPreview: 'font-mono-alt text-xs whitespace-pre-wrap bg-brand-tint-hover p-5 rounded-sm text-body max-h-[200px] overflow-y-auto mt-3',
+  jsonPreview: 'font-mono-alt text-xs whitespace-pre-wrap break-all bg-brand-tint-hover p-5 rounded-sm text-body max-h-[200px] overflow-y-auto mt-3',
 };

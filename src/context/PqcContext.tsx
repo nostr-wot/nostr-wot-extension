@@ -1,6 +1,7 @@
 import { useCallback, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
-import useRelayCache from '@hooks/useRelayCache.ts';
+import useStorageWatch from '@hooks/useStorageWatch.ts';
+import { mergePqcStatus, mergePqcPublished } from '@domain/pqc/pqcState.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import { PQC_PUBLISHED_CACHE } from '@services/relayCacheNames.ts';
 import type { PqcPanelStatus, PqcPublished } from '@domain/pqc/pqcState.ts';
@@ -56,8 +57,8 @@ export function PqcProvider({ children }: PqcProviderProps) {
       enabled: !!active?.id,
       load: async (patch, isCurrent) => {
         const nextStatus = await rpc<PqcPanelStatus>('pqc_getStatus');
-        if (!isCurrent()) return;
-        patch({ status: nextStatus });
+        if (!isCurrent() || nextStatus.pubkey !== active?.pubkey) return;
+        patch(previous => mergePqcStatus(previous, nextStatus));
 
         // An account that cannot derive never reaches the publish UI, so
         // asking relays it will not use would be latency for nothing.
@@ -68,13 +69,13 @@ export function PqcProvider({ children }: PqcProviderProps) {
 
         const nextPublished = await rpc<PqcPublished>('pqc_checkPublished').catch(() => null);
         if (!isCurrent()) return;
-        patch({ published: nextPublished });
+        patch(previous => ({ published: mergePqcPublished(previous.published, nextPublished) }));
       },
     },
   );
 
   const applyStatus = useCallback((next: PqcPanelStatus) => {
-    patch({ status: next });
+    patch(previous => mergePqcStatus(previous, next));
   }, [patch]);
 
   // The published check is served from the background's cache
@@ -82,9 +83,10 @@ export function PqcProvider({ children }: PqcProviderProps) {
   // this picks up the answer once the background finishes refreshing it. Runs
   // through the same run-versioned `refresh` as the mount effect, so this can
   // overlap an account-switch read in flight without the slower one winning.
-  useRelayCache(PQC_PUBLISHED_CACHE, refresh);
+  useStorageWatch([{ area: 'local', keys: [`relayCache_${PQC_PUBLISHED_CACHE}_${active?.pubkey}`] }], refresh);
 
-  const value: PqcContextValue = { ...data, loading, error, refresh, applyStatus };
+  const current = data.status?.pubkey === active?.pubkey ? data : { status: null, published: null };
+  const value: PqcContextValue = { ...current, loading, error, refresh, applyStatus };
 
   return <PqcContext.Provider value={value}>{children}</PqcContext.Provider>;
 }

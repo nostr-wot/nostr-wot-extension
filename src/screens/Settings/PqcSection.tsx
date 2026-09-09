@@ -6,7 +6,8 @@ import {
 } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
 import { t } from '@lib/i18n.js';
-import { IconKey, IconWarning, IconCopy } from '@assets';
+import { IconWarning, IconCopy } from '@assets';
+import PqcOverview, { PqcPublication } from './PqcOverview';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import PqcExportModal from './PqcExportModal';
@@ -67,6 +68,7 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   // context only supplies the data.
   const { status, published: existing, error, refresh } = usePqc();
   const attestationCopy = useCopy();
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [publishing, setPublishing] = useState<boolean>(false);
   const [published, setPublished] = useState<{ sent: number; relays: number } | null>(null);
   const [publishError, setPublishError] = useState<string>('');
@@ -143,18 +145,14 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     return (
       <>
       {how}
-      <Container gap={2}>
-        <div className="flex items-start gap-5 py-6 px-6 rounded-panel mb-6 bg-warning-tint text-warning-strong">
-          <IconWarning size={18} />
-          <div>
-            <strong className="block text-md mb-1">{t('pqc.unavailableTitle')}</strong>
-            <p className="m-0 text-sm leading-normal opacity-90">
-              {reason === 'short-seed'
-                ? t('pqc.reasonShortSeed', { count: status.wordCount ?? 12 })
-                : t(`pqc.reason.${reason}`)}
-            </p>
-          </div>
-        </div>
+      <Container gap={7}>
+        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} label={t('pqc.unavailableTitle')} className="mb-0">
+          <p className="m-0 text-sm leading-normal opacity-90">
+            {reason === 'short-seed'
+              ? t('pqc.reasonShortSeed', { count: status.wordCount ?? 12 })
+              : t(`pqc.reason.${reason}`)}
+          </p>
+        </StatusNotice>
         {/* Only accounts that hold a local signing key can use an imported key — a
             read-only or remote-signer account would store secrets nothing can use. */}
         {status.canImport && <PqcImportPanel />}
@@ -169,78 +167,14 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
     <div>
       {how}
 
-      {/* What this does and does not protect, first. It is the frame for every
-          decision below it, and it was sitting at the very bottom where it read
-          as a footnote to a screen the user had already acted on. */}
-      <Text variant="hint" as="p" className="mt-7">{t('pqc.limits')}</Text>
+      <PqcOverview imported={imported} ready={alreadyPublished} removing={removing}
+        onKeys={() => setKeysOpen(true)} onExport={() => setExportOpen(true)}
+        onAnnouncement={() => setAnnouncementOpen(true)} onRemove={() => setConfirmRemove(true)} />
 
-      {/* One line each instead of two paragraphs, and one component for both so
-          the pair cannot drift apart — the state and its caveat read as one
-          thing. The prose is in the tooltips: reference material, wanted once and
-          in the way every visit after.
-
-          `info` is not readyDesc when imported: that one says the keys come from
-          the seed phrase, which for an imported key is false — and contradicted
-          the backup warning sitting right beside it. */}
-      <StatusNotice
-        tone="ok"
-        icon={<IconKey size={18} />}
-        label={imported ? t('pqc.importedTitle') : t('pqc.readyTitle')}
-        info={imported ? t('pqc.importedDesc') : t('pqc.readyDesc')}
-      />
-
-      {imported && (
-        <StatusNotice
-          tone="warn"
-          icon={<IconWarning size={18} />}
-          label={t('pqc.importedBackupShort')}
-          info={t('pqc.importedBackupWarning')}
-        />
-      )}
-
-      {alreadyPublished ? (
-        <p className="mb-4 text-sm text-success">
-          {published
-            ? t('pqc.published', { sent: published.sent, relays: published.relays })
-            : t('pqc.alreadyPublished')}
-        </p>
-      ) : (
-        <>
-          {/* No relay answered, so whether this is published is genuinely unknown.
-              Saying "not published yet" would be a guess, and the guess costs a
-              needless republish of an attestation that may already be correct. */}
-          {existing?.unreachable && (
-            <Container variant="row" gap={3} className="my-5 text-sm text-warning">
-              <IconWarning size={16} />
-              <span>{t('pqc.checkFailed')}</span>
-              <LinkButton tone="brand" className={`text-muted hover:text-brand inline-flex items-center gap-2.5 mt-5`} onClick={refresh}>{t('common.retry')}</LinkButton>
-            </Container>
-          )}
-          {/* Only while it is still an instruction. Telling someone to publish,
-              directly above a line saying they already have, was the panel
-              arguing with itself. */}
-          {!existing?.unreachable && <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.publishDesc')}</Text>}
-          {existing?.published && !existing.current && (
-            <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.staleAttestation')}</Text>
-          )}
-          <Button onClick={handlePublish} disabled={publishing}>
-            {publishing ? t('pqc.publishing') : t('pqc.publish')}
-          </Button>
-        </>
-      )}
-
-      <FormError>{publishError}</FormError>
-
-      <Container variant="row" gap={4} className="flex-wrap mt-7">
-        <Button variant="secondary" onClick={() => setKeysOpen(true)}>{t('pqc.showKeys')}</Button>
-        {/* Importing the wrong key file must not be a permanent state. */}
-        <Button variant="secondary" onClick={() => setExportOpen(true)}>{t('pqc.exportKeys')}</Button>
-        {imported && (
-          <Button variant="danger" onClick={() => setConfirmRemove(true)} disabled={removing}>
-            {t('pqc.importRemove')}
-          </Button>
-        )}
-      </Container>
+      {announcementOpen && <Modal title={t('pqc.publicationTitle')} onClose={() => setAnnouncementOpen(false)} zIndex={720}>
+        <PqcPublication ready={alreadyPublished} existing={existing} busy={publishing} onPublish={handlePublish} onRetry={refresh} />
+        <FormError>{publishError}</FormError>
+      </Modal>}
 
       {keysOpen && status.keys && (
         <Modal

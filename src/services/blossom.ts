@@ -1,3 +1,4 @@
+import { safeImageUrl } from '@utils/safeUrl.ts';
 import { rpc } from '@services/rpc.ts';
 
 const BLOSSOM_SERVER = 'https://blossom.primal.net';
@@ -53,4 +54,26 @@ export async function uploadToBlossom(file: File): Promise<BlossomUploadResult> 
 
   const data: BlossomUploadResponse = await res.json();
   return { url: data.url };
+}
+
+/** Resolve the two profile images through the same uploader. Successful files
+ * remain cached for this edit session, including after a partial failure. */
+export async function uploadProfileImages(
+  files: { picture?: File | null; banner?: File | null },
+  cache: WeakMap<File, string>,
+  upload: (file: File) => Promise<BlossomUploadResult> = uploadToBlossom,
+): Promise<Partial<Record<'picture' | 'banner', string>>> {
+  const urls: Partial<Record<'picture' | 'banner', string>> = {};
+  for (const key of ['picture', 'banner'] as const) {
+    const file = files[key];
+    if (!file) continue;
+    let url = cache.get(file);
+    if (!url) {
+      url = (await upload(file)).url;
+      if (!safeImageUrl(url)) throw new Error('The upload server returned an invalid image URL');
+      cache.set(file, url);
+    }
+    urls[key] = url;
+  }
+  return urls;
 }

@@ -213,3 +213,26 @@ describe('availableTypeKeys', () => {
     assert.deepEqual(availableTypeKeys([], {}, false), []);
   });
 });
+
+import { activityEncryption, activityEntryKey } from '../src/domain/activity/activity.ts';
+import { groupActivityEntries } from '../src/domain/activity/activity.ts';
+
+const owner = 'a'.repeat(64), peer = 'b'.repeat(64);
+it('activity encryption uses the recorded account and peer, including self-encrypted lists', () => {
+  const dm = entry({ pubkey: owner, event: { kind: 4, content: 'cipher?iv=iv', tags: [['p', peer]] } });
+  assert.deepEqual(activityEncryption(dm), { scheme: 'nip04', ciphertext: 'cipher?iv=iv', accountPubkey: owner, peerPubkey: peer });
+  assert.equal(activityEncryption(entry({ pubkey: owner, event: { kind: 10000, content: 'Ag' + 'a'.repeat(130), tags: [] } }))?.peerPubkey, owner);
+  assert.equal(activityEncryption(entry({ method: 'nip44Decrypt', pubkey: owner, theirPubkey: peer, ciphertext: 'Agcipher' }))?.scheme, 'nip44');
+  assert.equal(activityEncryption(entry({ method: 'nip44Decrypt', theirPubkey: peer })), null);
+  assert.equal(activityEncryption(entry({ event: { kind: 1, content: 'ordinary note' } })), null);
+});
+it('activity rows and detail identities never merge requests from different accounts', () => {
+  const a = entry({ pubkey: owner });
+  const b = entry({ pubkey: peer });
+  assert.equal(groupActivityEntries([a,b]).length, 2);
+  assert.notEqual(activityEntryKey(a), activityEntryKey(b));
+});
+
+it('plain application data is not offered as encrypted content', () => {
+  assert.equal(activityEncryption(entry({ pubkey: 'a'.repeat(64), event: { kind: 30078, content: '{"theme":"dark"}', tags: [] } })), null);
+});

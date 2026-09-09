@@ -61,7 +61,7 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
               <div className="w-18 h-18 rounded-panel bg-brand-light text-brand flex items-center justify-center shrink-0">{m.icon}</div>
               <div className="flex flex-col">
                 <strong className="block text-lg font-semibold text-heading mb-1">{m.label}</strong>
-                <span className="text-xs text-[rgba(99,102,241,0.55)]">{m.desc}</span>
+                <span className="text-xs text-menu-subtitle">{m.desc}</span>
               </div>
             </Card>
           </React.Fragment>

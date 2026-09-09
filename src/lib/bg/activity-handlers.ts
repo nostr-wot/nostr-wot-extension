@@ -4,18 +4,25 @@
  */
 
 import browser from '../browser.ts';
+import * as vault from '../vault.ts';
+import { decryptForAccount } from '../signer.ts';
+import { activityEntryKey, activityEncryption, type ActivityEntry as DisplayEntry } from '../../domain/activity/activity.ts';
+import { verifyEvent } from '../crypto/nip01.ts';
+import type { SignedEvent } from '../types.ts';
 import { config, type HandlerFn } from './state.ts';
 import { ACTIVITY_LOG_MAX_PER_DOMAIN } from '../constants.ts';
 
 // ── Types ──
 
 interface ActivityEntry {
+    pubkey?: string | null;
     domain?: string;
     method: string;
     decision: string;
     kind?: number;
     event?: Record<string, unknown>;
     theirPubkey?: string;
+    ciphertext?: string;
 }
 
 interface StoredActivityEntry {
@@ -27,6 +34,7 @@ interface StoredActivityEntry {
     pubkey?: string | null;
     event?: { tags?: string[][] } & Record<string, unknown>;
     theirPubkey?: string;
+    ciphertext?: string;
 }
 
 // ── Activity Log ──
@@ -41,9 +49,10 @@ export async function logActivity(entry: ActivityEntry): Promise<void> {
             method: entry.method,
             kind: entry.kind ?? null,
             decision: entry.decision,
-            pubkey: config.myPubkey || null,
+            pubkey: entry.pubkey !== undefined ? entry.pubkey : config.myPubkey || null,
             ...(entry.event && { event: entry.event }),
             ...(entry.theirPubkey && { theirPubkey: entry.theirPubkey }),
+            ...(entry.ciphertext && entry.ciphertext.length <= 131072 && { ciphertext: entry.ciphertext }),
         });
         // Keep max 200 entries per domain
         const domainCounts: Record<string, number> = {};
@@ -59,6 +68,31 @@ export async function logActivity(entry: ActivityEntry): Promise<void> {
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
+    ['activity_decrypt', async (params) => {
+        await vault.whenStartupUnlockSettled();
+        if (vault.isLocked()) throw new Error('Vault is locked');
+        const stored = await browser.storage.local.get('activityLog');
+        const entry = ((stored.activityLog || []) as DisplayEntry[]).find((item: DisplayEntry) => activityEntryKey(item) === params.entryKey) as DisplayEntry | undefined;
+        if (!entry) throw new Error('This activity entry is no longer available');
+        const encrypted = activityEncryption(entry);
+        if (!encrypted) throw new Error('No encrypted content was saved for this entry');
+        const account = vault.listAccounts().find(item => item.pubkey === encrypted.accountPubkey);
+        if (!account) throw new Error('The account key for this entry is no longer on this device');
+        const peer = encrypted.peerPubkey || (typeof params.peerPubkey === 'string' ? params.peerPubkey : '');
+        let plaintext = await decryptForAccount(account.id, encrypted.scheme, peer, encrypted.ciphertext);
+        // Gift wraps contain a signed NIP-59 seal. Reuse the decoder for its
+        // second layer, but authenticate the seal before trusting its author.
+        if ((entry.event?.kind === 1059 || entry.event?.kind === 21059)) {
+            let seal: SignedEvent | null = null;
+            try { seal = JSON.parse(plaintext); } catch { /* not a seal */ }
+            if (seal?.kind === 13) {
+                if (!(await verifyEvent(seal))) throw new Error('Invalid sealed event signature');
+                plaintext = await decryptForAccount(account.id, 'nip44', seal.pubkey, seal.content);
+            }
+        }
+        return { plaintext };
+    }],
+
     ['getActivityLog', async () => {
         const logData = await browser.storage.local.get(['activityLog']) as Record<string, unknown[]>;
         return logData.activityLog || [];

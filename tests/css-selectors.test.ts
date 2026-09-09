@@ -23,6 +23,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, relative, basename, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import postcss from 'postcss';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -39,6 +40,33 @@ function walk(dir: string, out: string[] = []): string[] {
 const FILES = walk(join(ROOT, 'src'));
 const STYLESHEETS = FILES.filter((f) => f.endsWith('.module.css'));
 const CODE = FILES.filter((f) => ['.tsx', '.ts'].includes(extname(f)));
+
+describe('CSS cascade boundaries', () => {
+  it('keeps reset spacing and decorative child positioning below utilities in the built CSS', () => {
+    const assets = join(ROOT, 'dist/assets');
+    const violations: string[] = [];
+    let checked = 0;
+    for (const file of readdirSync(assets).filter((f) => f.endsWith('.css'))) {
+      const css = postcss.parse(readFileSync(join(assets, file), 'utf8'));
+      css.walkRules((rule) => {
+        const reset = rule.selector.split(',').some((s) => s.trim() === '*');
+        const decoration = /topoBg.*>\s*\*/.test(rule.selector);
+        if (!reset && !decoration) return;
+        rule.walkDecls((decl) => {
+          if (decl.important || !['margin', 'padding', 'position', 'z-index'].includes(decl.prop)) return;
+          checked++;
+          let parent: postcss.Rule['parent'] | postcss.Root['parent'] = rule.parent;
+          while (parent && !(parent.type === 'atrule' && parent.name === 'layer')) parent = parent.parent;
+          if (!parent || parent.type !== 'atrule' || !['base', 'components'].includes(parent.params)) {
+            violations.push(`${rule.selector}: ${decl.prop} overrides utility classes`);
+          }
+        });
+      });
+    }
+    assert.ok(checked >= 4, 'must check the reset and decorative child rules in a current build');
+    assert.deepEqual(violations, []);
+  });
+});
 
 /** Class names appearing anywhere in a selector, not only at the start of one. */
 function classesInSelectors(css: string): Set<string> {

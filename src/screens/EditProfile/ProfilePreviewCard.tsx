@@ -1,3 +1,4 @@
+import { safeImageUrl } from '@utils/safeUrl.ts';
 import { t } from '@lib/i18n.js';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
@@ -22,6 +23,7 @@ export default function ProfilePreviewCard({
   return (
   <Container gap={7} className="flex-1 overflow-y-auto">
     <Card variant="flat" className="flex flex-col gap-4 mb-0">
+      {safeImageUrl(meta?.banner) && <img src={safeImageUrl(meta?.banner)} alt={t('profileEdit.banner')} className="w-full h-[100px] object-cover rounded-md" />}
       <Container variant="row" gap={5}>
         <Avatar
           src={meta?.picture}
@@ -31,7 +33,7 @@ export default function ProfilePreviewCard({
         />
         <span className="text-lg font-bold text-heading">{meta?.name || meta?.display_name || '\u2014'}</span>
       </Container>
-      {meta?.about && <Text variant="body" as="div" className="text-sm">{meta.about}</Text>}
+      {meta?.about && <Text variant="body" as="div" className="text-sm whitespace-pre-wrap break-words">{meta.about}</Text>}
       {meta?.nip05 && (
         <Container as="dl" variant="row" gap={3} className="text-xs">
           <dt className="text-muted min-w-[60px] font-semibold">NIP-05</dt><dd className="text-body break-all">{meta.nip05}</dd>

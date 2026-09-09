@@ -1,3 +1,4 @@
+import StatusNotice from '@components/StatusNotice/StatusNotice';
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
@@ -13,9 +14,6 @@ import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 
 const CLS = {
-  // rgba(220,38,38,0.06) is a one-off, not --error-tint (0.08) — kept exact
-  // rather than snapped to the nearest existing tint.
-  warning: 'flex items-start gap-4 px-6 py-5 bg-[rgba(220,38,38,0.06)] rounded-panel text-sm text-error leading-normal',
   keyDisplay: 'p-6 bg-card border border-card-border rounded-panel font-mono-alt text-xs text-heading ' +
     'break-all leading-loose cursor-pointer transition-[filter] duration-slow',
 };
@@ -104,14 +102,6 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
     <Container gap={5}>
       <Text variant="secondary" as="p" className="text-sm">{t('key.ncryptsecExplain')}</Text>
       <Text variant="secondary" as="p" className="text-sm">{t('key.ncryptsecExplainMore')}</Text>
-      {/* The password is the only thing standing between this file and the key,
-          and there is nobody to ask if it is forgotten. Said before the fields,
-          not after the export. */}
-      <div className={CLS.warning}>
-        <IconWarning />
-        <span>{t('key.ncryptsecNoRecovery')}</span>
-      </div>
-
       <SectionLabel>{t('key.encryptionPassword')}</SectionLabel>
       <PasswordPairFields
         pair={pair}
@@ -121,6 +111,9 @@ export default function EncryptedBackupForm({ rpcMethod, onClose, onExported }: 
         disabled={generating}
       />
 
+      <StatusNotice variant="callout" tone="error" icon={<IconWarning />}>
+        {t('key.ncryptsecNoRecovery')}
+      </StatusNotice>
       <FormError>{error}</FormError>
       <Container variant="row" gap={4} className="justify-end mt-2">
         <Button variant="secondary" small onClick={onClose}>{t('common.cancel')}</Button>

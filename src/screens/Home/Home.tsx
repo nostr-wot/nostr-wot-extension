@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { formatSats } from '@utils/format/number.ts';
+import WalletBalance from '@components/WalletBalance/WalletBalance';
 import { t } from '@lib/i18n.js';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
@@ -115,8 +115,42 @@ export default function Home({ menuOpen }: HomeProps) {
   // Show wallet setup banner only after the profile banner is gone, and only for signing accounts
   const showWalletBanner = canUseWallet && walletState === false && !walletDismissed;
 
+  const walletOverview = <>
+      {/* Wallet — on top: balance card when a wallet exists, else the setup prompt */}
+      {walletState && typeof walletState === 'object' && (
+        <Card className="flex items-center justify-between gap-5 py-6 px-7 cursor-pointer transition-colors hover:bg-brand-tint-hover" onClick={navigate.openWallet}>
+          <Container variant="row" gap={5} className="min-w-0">
+            <IconZap size={14} className="text-brand shrink-0" />
+            <Container gap="px">
+              <WalletBalance {...walletState} compact />
+              <Text variant="muted" as="span" className="uppercase tracking-[0.3px] font-semibold">{t('wallet.balance')}</Text>
+            </Container>
+          </Container>
+          <IconChevronRight size={16} />
+        </Card>
+      )}
+
+      {showWalletBanner && (
+        <Card className="flex items-center justify-between gap-5 py-6 px-7">
+          <Container variant="row" gap={5} className="items-start flex-1 min-w-0">
+            <IconZap size={14} className="text-brand shrink-0 mt-1" />
+            <Container gap={1}>
+              <strong className="text-md font-semibold text-heading">{t('wallet.setupBanner')}</strong>
+              <Text variant="secondary" as="span" className="text-xs">{t('wallet.setupBannerHint')}</Text>
+            </Container>
+          </Container>
+          <Container gap={2} className="items-center shrink-0">
+            <Button small onClick={navigate.openWallet}>{t('home.setupProfileButton')}</Button>
+            <LinkButton onClick={handleDismissWallet}>{t('home.skip')}</LinkButton>
+          </Container>
+        </Card>
+      )}
+
+  </>;
+  let siteNotice: ReactNode = null;
+
   if (siteState === 'empty') {
-    return (
+    siteNotice = (
       <Container className="flex-1 justify-center">
         <Card className="mb-0">
           <EmptyState
@@ -132,7 +166,7 @@ export default function Home({ menuOpen }: HomeProps) {
   }
 
   if (siteState === null) {
-    return (
+    siteNotice = (
       <Container className="flex-1 justify-center">
         <Card className="mb-0">
           <EmptyState
@@ -147,7 +181,7 @@ export default function Home({ menuOpen }: HomeProps) {
   }
 
   if (siteState === 'notConnected') {
-    return (
+    siteNotice = (
       <Container className="flex-1 justify-center">
         <Card className="mb-0">
           <EmptyState
@@ -172,7 +206,7 @@ export default function Home({ menuOpen }: HomeProps) {
   }
 
   return (
-    <>
+    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice}>
       {pendingCount > 0 && (
         <Card className="flex items-center py-5 px-7 bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)] cursor-default">
           <Container variant="row" gap={4}>
@@ -181,36 +215,6 @@ export default function Home({ menuOpen }: HomeProps) {
           </Container>
         </Card>
       )}
-      {/* Wallet — on top: balance card when a wallet exists, else the setup prompt */}
-      {walletState && typeof walletState === 'object' && (
-        <Card className="flex items-center justify-between gap-5 py-6 px-7 cursor-pointer transition-colors hover:bg-brand-tint-hover" onClick={navigate.openWallet}>
-          <Container variant="row" gap={5} className="min-w-0">
-            <IconZap size={14} className="text-brand shrink-0" />
-            <Container gap="px">
-              <strong className="text-xl font-bold text-heading">{formatSats(walletState.balance)}</strong>
-              <Text variant="muted" as="span" className="uppercase tracking-[0.3px] font-semibold">{t('wallet.balance')}</Text>
-            </Container>
-          </Container>
-          <IconChevronRight size={16} />
-        </Card>
-      )}
-
-      {showWalletBanner && (
-        <Card className="flex items-center justify-between gap-5 py-6 px-7">
-          <Container variant="row" gap={5} className="items-start flex-1 min-w-0">
-            <IconZap size={14} className="text-brand shrink-0 mt-1" />
-            <Container gap={1}>
-              <strong className="text-md font-semibold text-heading">{t('wallet.setupBanner')}</strong>
-              <Text variant="secondary" as="span" className="text-xs">{t('wallet.setupBannerHint')}</Text>
-            </Container>
-          </Container>
-          <Container gap={2} className="items-center shrink-0">
-            <Button small onClick={navigate.openWallet}>{t('home.setupProfileButton')}</Button>
-            <LinkButton onClick={handleDismissWallet}>{t('home.skip')}</LinkButton>
-          </Container>
-        </Card>
-      )}
-
       {/* Identity access for the current site */}
       {siteState === 'error' ? (
         <Card className="mb-0">
@@ -251,6 +255,11 @@ export default function Home({ menuOpen }: HomeProps) {
           </Card>
         </div>
       )}
-    </>
+    </HomeWalletLayout>
   );
+}
+
+/** Wallet access belongs to the account, independently of the current website. */
+export function HomeWalletLayout({wallet,siteNotice,children}: {wallet:ReactNode;siteNotice:ReactNode;children?:ReactNode}) {
+  return <>{wallet}{siteNotice ?? children}</>;
 }

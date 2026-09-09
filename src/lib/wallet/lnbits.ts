@@ -101,17 +101,17 @@ export class LnbitsProvider implements WalletProvider {
       status: string;
       time: string | number; // ISO 8601 string or unix timestamp
       preimage: string;
-    }>>('GET', `/api/v1/payments?limit=${limit}&offset=${offset}`);
+    }>>('GET', `/api/v1/payments?limit=${limit}&offset=${offset}&status%5Bne%5D=pending&sortby=time&direction=desc`);
 
-    return data
-      .filter(p => p.status !== 'pending')
-      .map(p => ({
+    // Keep the raw page length: filtering unpaid invoices here makes the
+    // caller stop early and calculate the next offset incorrectly.
+    return data.map(p => ({
         paymentHash: p.payment_hash,
         bolt11: p.bolt11,
         amount: Math.round(p.amount / 1000),   // msats → sats
         fee: Math.round((p.fee || 0) / 1000),
         memo: p.memo || undefined,
-        status: p.status === 'success' ? 'settled' as const : 'failed' as const,
+        status: p.status === 'success' ? 'settled' as const : p.status === 'pending' ? 'pending' as const : 'failed' as const,
         createdAt: typeof p.time === 'string'
           ? Math.floor(new Date(p.time).getTime() / 1000)
           : p.time,

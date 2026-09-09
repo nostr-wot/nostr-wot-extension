@@ -6,6 +6,8 @@ import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
+import SiteIcon from '@components/SiteIcon/SiteIcon';
+import { KIND_LABELS } from '@domain/nostr/kindLabels';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;
@@ -18,6 +20,7 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
   const firstReq = group.requests[0];
   const label = formatPermissionLabel(firstReq?.permKey || group.method, firstReq?.event);
   const isNip46 = group.nip46InFlight;
+  const kind = firstReq?.eventKind ?? firstReq?.event?.kind;
 
   return (
     <Card
@@ -30,15 +33,17 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
       }`}
       onClick={onClick}
     >
+      <SiteIcon domain={domain} />
       <Container gap={1} className="flex-1 min-w-0">
         {/* Not `Text`: `font-semibold` + `text-heading` is not one of the four
             variants (semibold sits between `body`'s normal weight and
             `Heading`'s bold). */}
         <div className="text-md font-semibold text-heading">{domain}</div>
-        <Container variant="row" gap={3} className="text-sm text-body">
+        <Container variant="row" gap={3} className="text-sm text-menu-subtitle">
           {isNip46 && <IconSync size={12} className="animate-spin [animation-duration:1.5s] shrink-0" />}
           {isNip46 ? t('approval.awaitingSigner') : label}
         </Container>
+        {!isNip46 && kind !== undefined && <span className="text-xs text-menu-subtitle">{formatPermissionLabel(group.method)} · {KIND_LABELS[kind] || `Kind ${kind}`} ({kind})</span>}
         {!isNip46 && group.requests.length > 1 && (
           <Text variant="muted" as="div">{t('approval.requests', { count: group.requests.length })}</Text>
         )}

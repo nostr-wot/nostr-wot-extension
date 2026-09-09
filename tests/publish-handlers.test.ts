@@ -150,3 +150,56 @@ describe('publishMuteList -- refuses to build on a read nobody answered', () => 
     );
   });
 });
+
+import browser from './helpers/browser-mock.ts';
+import * as vault from '../src/lib/vault.ts';
+import { importNsec } from '../src/lib/accounts.ts';
+import { DEFAULT_RELAYS } from '../src/domain/relays/defaultRelays.ts';
+import type { SignedEvent } from '../src/lib/types.ts';
+
+describe('relay publication uses the displayed configuration', () => {
+  const socket = globalThis.WebSocket;
+  let events: SignedEvent[];
+  let accept = true;
+  beforeEach(async () => {
+    resetMockStorage(); await vault.destroy();
+    const account = await importNsec('07'.repeat(32),'Relay test');
+    await vault.create('',{accounts:[account],activeAccountId:account.id});
+    events=[]; accept=true;
+    class Socket {
+      onopen: (()=>void)|null=null;
+      onmessage: ((e:{data:string})=>void)|null=null;
+      constructor(){queueMicrotask(()=>this.onopen?.());}
+      send(raw:string){const [,event]=JSON.parse(raw);events.push(event);queueMicrotask(()=>this.onmessage?.({data:JSON.stringify(['OK',event.id,accept,''])}));}
+      close(){}
+    }
+    globalThis.WebSocket=Socket as unknown as typeof WebSocket;
+  });
+  afterEach(async()=>{globalThis.WebSocket=socket;await vault.destroy();});
+  it('publishes the three visible defaults when storage has no relay setting',async()=>{
+    await handlers.get('publishRelayList')!({});
+    assert.deepEqual(events[0].tags,DEFAULT_RELAYS.split(',').map(url=>['r',url]));
+  });
+  it('refuses an empty list or a list with both flags off before broadcasting',async()=>{
+    await browser.storage.sync.set({relays:''});
+    await assert.rejects(()=>handlers.get('publishRelayList')!({}),/empty/i);
+    await browser.storage.sync.set({relays:'wss://one.test'});
+    await browser.storage.local.set({relayFlags:{'wss://one.test':{read:false,write:false}}});
+    await assert.rejects(()=>handlers.get('publishRelayList')!({}),/empty/i);
+    assert.equal(events.length,0);
+  });
+  it('publishes the UI snapshot instead of stale storage and caches only acknowledged events',async()=>{
+    await browser.storage.sync.set({relays:'wss://stale.test'});
+    const configuration={relays:['wss://shown.test'],flags:{'wss://shown.test':{read:true,write:false}}};
+    const result=await handlers.get('publishRelayList')!({configuration}) as {sent:number};
+    assert.ok(result.sent > 0);
+    assert.deepEqual(events[0].tags,[['r','wss://shown.test','read']]);
+    const cacheKey=`nostr_r_10002_${events[0].pubkey}`;
+    assert.equal((await browser.storage.local.get(cacheKey))[cacheKey].id,events[0].id);
+    accept=false;
+    await browser.storage.local.remove(['lastRelayPublish',cacheKey]);
+    await handlers.get('publishRelayList')!({configuration});
+    assert.equal((await browser.storage.local.get('lastRelayPublish')).lastRelayPublish,undefined);
+    assert.equal((await browser.storage.local.get(cacheKey))[cacheKey],undefined);
+  });
+});

@@ -1,5 +1,5 @@
 import { t } from '@lib/i18n.js';
-import { IconChevronDown, IconLockOpen } from '@assets';
+import { IconChevronDown, IconLockOpen, IconCopy } from '@assets';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
 import Avatar from '@components/Avatar/Avatar';
@@ -9,9 +9,10 @@ import Container from '@components/Container/Container';
 interface AccountBarProps {
   dropdownOpen: boolean;
   onToggleDropdown: () => void;
+  onCopy: () => void;
 }
 
-export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBarProps) {
+export default function AccountBar({ dropdownOpen, onToggleDropdown, onCopy }: AccountBarProps) {
   const { displayName, displaySub, avatarUrl, initial, isReadOnly, active } = useAccount();
   const vault = useVault();
 
@@ -19,7 +20,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
 
   return (
     <Container variant="row" gap={2} className="relative flex-1 min-w-0 bg-transparent rounded-lg py-4 px-5 transition-colors hover:bg-card">
-      <button className="flex items-center gap-5 flex-1 cursor-pointer min-w-0 bg-transparent border-none p-0 text-left" onClick={onToggleDropdown}>
+      <button className="flex items-center gap-5 flex-1 cursor-pointer min-w-0 bg-transparent border-none p-0 text-left" onClick={onToggleDropdown} aria-haspopup="dialog" aria-expanded={dropdownOpen}>
         <div className="w-18 h-18 rounded-full overflow-hidden shrink-0">
           <Avatar
             src={avatarUrl}
@@ -42,6 +43,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
         <IconChevronDown className={`text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
       </button>
 
+      <IconButton onClick={onCopy} disabled={!active} title={t('common.copy')} aria-label={t('common.copy')}><IconCopy size={16} /></IconButton>
       {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (
         <IconButton
           className="text-success hover:text-success hover:bg-[rgba(5,150,105,0.1)]"

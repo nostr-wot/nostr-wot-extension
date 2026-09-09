@@ -240,7 +240,7 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
         // extension pages via onMessage only — mirror that gate here so the
         // port can never reach them even if content.ts regresses.
         if (!method?.startsWith('nip07_') && !method?.startsWith('webln_')) {
-            try { port.postMessage({ error: 'Permission denied' }); } catch {}
+            try { port.postMessage({ id: request.id, error: 'Permission denied' }); } catch {}
             return;
         }
 
@@ -250,7 +250,7 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
                 ? port.sender?.tab?.url
                 : (port.sender?.url || port.sender?.tab?.url);
             if (!originUrl) {
-                try { port.postMessage({ error: 'Cannot determine request origin' }); } catch {}
+                try { port.postMessage({ id: request.id, error: 'Cannot determine request origin' }); } catch {}
                 return;
             }
             const originHost = new URL(originUrl).hostname;
@@ -265,10 +265,10 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
                 request as { method: string; params: Record<string, unknown> },
                 port.sender?.tab?.id,
             );
-            try { port.postMessage({ result }); } catch {}
+            try { port.postMessage({ id: request.id, result }); } catch {}
         } catch (error) {
             console.error('[PORT]', port.name, 'error:', method, (error as Error).message);
-            try { port.postMessage({ error: (error as Error).message || 'Unknown error' }); } catch {}
+            try { port.postMessage({ id: request.id, error: (error as Error).message || 'Unknown error' }); } catch {}
         }
     });
 });

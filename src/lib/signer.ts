@@ -26,6 +26,7 @@
 
 import type { RequestDecision, PendingRequest, UnsignedEvent, SignedEvent, SafeAccount, AccountType } from './types.ts';
 import browser from '@lib/browser.ts';
+import { requestMatchesAccount } from '../domain/permissions/approval.ts';
 import { openPopupForActiveTab } from './openPopupForActiveTab.ts';
 import { isDomainAllowed } from './bg/domain-handlers.ts';
 import * as vault from './vault.ts';
@@ -177,7 +178,7 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
       needsPermission: true,
       accountId,
     });
-    if (!approved.allow) throw new Error('User denied access');
+    if (!approved.allow) throw new Error(approved.reason || 'User denied access');
     const { accountId: nowActiveId } = await getActiveAccountInfo();
     if (nowActiveId !== accountId) throw new Error('Account switched');
     _getPubkeyCooldown.set(origin, Date.now() + GET_PUBLIC_KEY_COOLDOWN_MS);
@@ -229,7 +230,8 @@ interface QueueRequestInput {
 
 export async function queueRequest(request: QueueRequestInput): Promise<RequestDecision> {
   const id = `req_${crypto.randomUUID()}`;
-  const entry: PendingRequest = { id, ...request, timestamp: Date.now() };
+  const {accountId: activeAccountId} = await getActiveAccountInfo();
+  const entry: PendingRequest = { id, ...request, accountId: request.accountId ?? activeAccountId ?? vault.getActiveAccountId(), timestamp: Date.now() };
 
   // Serialized storage write to prevent concurrent read-modify-write races
   let limitExceeded = false;
@@ -347,7 +349,14 @@ async function removePendingFromStorage(id: string): Promise<void> {
  * @param id - request ID
  * @param decision - { allow: boolean, remember: boolean, rememberKind?: boolean }
  */
-export function resolveRequest(id: string, decision: RequestDecision): Promise<void> {
+export async function resolveRequest(id: string, decision: RequestDecision): Promise<void> {
+  if (decision.allow) {
+    const request = (await getPending()).find(request => request.id === id);
+    const {accountId} = await getActiveAccountInfo();
+    const idNow = accountId ?? vault.getActiveAccountId();
+    const pubkey = await getActivePublicKey();
+    if (!request || !requestMatchesAccount(request, idNow && pubkey ? {id:idNow,pubkey} : null)) decision = {allow:false,remember:false,reason:'Account switched'};
+  }
   const resolver = _pendingResolvers.get(id);
   if (resolver) {
     resolver(decision);
@@ -376,10 +385,14 @@ export async function resolveBatch(origin: string, permKey: string, decision: Re
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
     const matching = pending.filter(match);
+    const {accountId} = await getActiveAccountInfo();
+    const idNow = accountId ?? vault.getActiveAccountId();
+    const pubkey = await getActivePublicKey();
+    const account = idNow && pubkey ? {id:idNow,pubkey} : null;
     for (const req of matching) {
       const resolver = _pendingResolvers.get(req.id);
       if (resolver) {
-        resolver(decision);
+        resolver(decision.allow && !requestMatchesAccount(req, account) ? {allow:false,remember:false,reason:'Account switched'} : decision);
         _pendingResolvers.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
@@ -613,6 +626,10 @@ async function waitForVaultUnlock(origin: string, type: string, accountId: strin
  */
 export async function handleSignEvent(event: UnsignedEvent, origin: string): Promise<SignedEvent> {
   const { accountId, accountType } = await getActiveAccountInfo();
+  const requestedPubkey = await getActivePublicKey();
+  const requestedAccountId = accountId ?? vault.getActiveAccountId();
+  if (event.pubkey && event.pubkey !== requestedPubkey) throw new Error('Event author does not match active account');
+
 
   if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
 
@@ -632,14 +649,15 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       // prompt must show exactly what will be signed, so a site cannot hide
       // payload in long content or in tags of non-contact-list kinds.
       origin,
-      event: { kind: event.kind, content: event.content, tags: event.tags },
+      event: { kind: event.kind, content: event.content, tags: event.tags, pubkey:event.pubkey, created_at:event.created_at },
       pubkey: pubkey ?? undefined,
       permKey: permissions.permissionKey('signEvent', event.kind),
       eventKind: event.kind,
       needsPermission: true,
       accountId,
     });
-    if (!approved.allow) throw new Error('User denied signing');
+    if (!approved.allow) throw new Error(approved.reason || 'User denied signing');
+    if ((await getActivePublicKey()) !== requestedPubkey || ((await getActiveAccountInfo()).accountId ?? vault.getActiveAccountId()) !== requestedAccountId) throw new Error('Account switched');
 
     // Save permission and batch-resolve remaining requests if user chose "remember"
     if (approved.remember) {
@@ -658,6 +676,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       await waitForVaultUnlock(origin, 'signEvent', accountId);
     }
     if (vault.isLocked()) throw new Error('Vault is locked');
+    if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
     const acct = vault.getAccountById(accountId!);
     if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
     const nip46ReqId = await queueNip46InFlight({ type: 'signEvent', origin, accountId });
@@ -678,6 +697,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   if (vault.isLocked()) throw new Error('Vault is locked');
 
+  if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
   const privkey = vault.getPrivkey(accountId ?? undefined);
   if (!privkey) throw new Error('No private key for active account');
 
@@ -698,7 +718,7 @@ async function handleCryptoRequest(
   payload: string,
   origin: string,
   nip46Data: Record<string, string>,
-  cryptoFn: (payload: string, privkey: Uint8Array, theirPubkeyBytes: Uint8Array) => Promise<string>,
+  cryptoFn: (payload: string, privkey: Uint8Array, theirPubkeyBytes: Uint8Array, accountId?: string) => Promise<string>,
   denyMessage: string,
   /**
    * Message to reject a NIP-46 account with instead of delegating to the bunker.
@@ -766,7 +786,7 @@ async function handleCryptoRequest(
   const privkey = vault.getPrivkey(accountId ?? undefined);
   if (!privkey) throw new Error('No private key for active account');
   try {
-    return await cryptoFn(payload, privkey, hexToBytes(theirPubkey));
+    return await cryptoFn(payload, privkey, hexToBytes(theirPubkey), accountId ?? undefined);
   } finally {
     privkey.fill(0);
   }
@@ -807,9 +827,9 @@ export interface PqEncryptOptions {
  * request from a connected site, never during the pre-consent capability check, which is
  * exactly why `schemes` is a fixed signer-level array and not derived from the account.
  */
-async function activePqKeys() {
+async function activePqKeys(accountId?: string) {
   if (vault.isLocked()) throw new Error('Vault is locked');
-  const activeId = (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
+  const activeId = accountId ?? (await browser.storage.local.get(['activeAccountId']) as Record<string, string>).activeAccountId;
 
   // Imported keys win: an account only holds them when it could not derive, and they
   // are the keys its published attestation advertises. Checking storage first also
@@ -877,8 +897,8 @@ export async function handleNip44Encrypt(
   return handleCryptoRequest(
     'nip44Encrypt', theirPubkey, plaintext, origin,
     { pubkey: theirPubkey, plaintext },
-    async (payload, privkey, theirPubkeyBytes) => {
-      const { keys, pubkey } = await activePqKeys();
+    async (payload, privkey, theirPubkeyBytes, accountId) => {
+      const { keys, pubkey } = await activePqKeys(accountId);
       try {
         const kem = base64ToArray(opts.recipientKemKey);
         const conv = getConversationKey(privkey, theirPubkeyBytes);
@@ -909,16 +929,7 @@ export async function handleNip44Decrypt(theirPubkey: string, ciphertext: string
   return handleCryptoRequest(
     'nip44Decrypt', theirPubkey, ciphertext, origin,
     { pubkey: theirPubkey, ciphertext },
-    async (payload, privkey, theirPubkeyBytes) => {
-      const { keys, pubkey } = await activePqKeys();
-      try {
-        const conv = getConversationKey(privkey, theirPubkeyBytes);
-        return pqDecrypt(payload, keys.kem.secretKey, conv, theirPubkey, pubkey);
-      } finally {
-        keys.kem.secretKey.fill(0);
-        keys.dsa.secretKey.fill(0);
-      }
-    },
+    decryptNip44Content,
     'User denied decryption',
     'Remote signers cannot read post-quantum messages',
   );
@@ -1020,4 +1031,33 @@ export function disconnectNip46(accountId: string): void {
     client.close().catch(() => {});
     _nip46Clients.delete(accountId);
   }
+}
+
+
+/** The shared classic/PQ decoder used by page requests and local activity review. */
+async function decryptNip44Content(payload: string, privkey: Uint8Array, peer: Uint8Array, accountId?: string): Promise<string> {
+  if (!isPqEnvelope(payload)) return nip44Decrypt(payload, privkey, peer);
+  const { keys, pubkey } = await activePqKeys(accountId);
+  let conversationKey: Uint8Array | null = null;
+  try {
+    conversationKey = getConversationKey(privkey, peer);
+    return pqDecrypt(payload, keys.kem.secretKey, conversationKey, bytesToHex(peer), pubkey);
+  } finally {
+    conversationKey?.fill(0);
+    keys.kem.secretKey.fill(0);
+    keys.dsa.secretKey.fill(0);
+  }
+}
+
+/** Internal extension review only. Does not switch accounts or change site permissions. */
+export async function decryptForAccount(accountId: string, scheme: 'nip04' | 'nip44', peer: string, ciphertext: string): Promise<string> {
+  await vault.whenStartupUnlockSettled();
+  if (vault.isLocked()) throw new Error('Vault is locked');
+  const account = vault.getAccountById(accountId);
+  if (!account || account.readOnly || account.type === 'npub') throw new Error('The decryption key is not available on this device');
+  if (account.type === 'nip46') throw new Error('This account uses a remote signer; its decryption key is not stored on this device');
+  if (!/^[a-f0-9]{64}$/i.test(peer)) throw new Error('Invalid peer public key');
+  return vault.withPrivkey(accountId, key => scheme === 'nip04'
+    ? nip04Decrypt(ciphertext, key, hexToBytes(peer))
+    : decryptNip44Content(ciphertext, key, hexToBytes(peer), accountId));
 }

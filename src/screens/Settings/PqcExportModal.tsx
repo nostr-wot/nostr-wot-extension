@@ -81,7 +81,7 @@ const handleExport = async (encrypted: boolean) => {
 
         <FormError>{exportError}</FormError>
 
-        <Container variant="row" gap={4} className="flex-wrap mt-7">
+        <Container gap={4} className="mt-7">
           <Button onClick={() => handleExport(true)} disabled={exportBusy || !exportPair.ready}>
             {exportBusy ? t('common.loading') : t('key.downloadEncrypted')}
           </Button>

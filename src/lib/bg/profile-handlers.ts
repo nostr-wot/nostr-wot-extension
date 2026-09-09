@@ -62,6 +62,13 @@ async function getUserRelays(): Promise<string[]> {
 
 // ── Profile Metadata ──
 
+// Coalesce concurrent lookups and briefly reuse missing/unavailable outcomes.
+// A missing kind:0 was never cached, so every repeated read opened every relay.
+// This is only a display-read cooldown; getProfileForMerge always reads fresh.
+const profileReads = new Map<string, { promise: Promise<Record<string, unknown> | null>; expiresAt: number }>();
+const PROFILE_RETRY_MS = 60_000;
+
+
 export async function fetchProfileMetadata(pubkey: string): Promise<Record<string, unknown> | null> {
     if (!pubkey) return null;
 
@@ -77,16 +84,23 @@ export async function fetchProfileMetadata(pubkey: string): Promise<Record<strin
         return stored[storageKey].metadata;
     }
 
-    const relays = config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
-    const metadata = await fetchKind0(pubkey, relays);
-
-    if (metadata) {
-        const entry = { metadata, fetchedAt: Date.now() };
-        profileCache.set(pubkey, entry);
-        await browser.storage.local.set({ [storageKey]: entry });
-    }
-
-    return metadata;
+    const previous = profileReads.get(pubkey);
+    if (previous && Date.now() < previous.expiresAt) return previous.promise;
+    // Bound this display cache independently of persisted positive profiles.
+    if (profileReads.size >= 100) profileReads.delete(profileReads.keys().next().value!);
+    const entry = { promise: null! as Promise<Record<string, unknown> | null>, expiresAt: Infinity };
+    entry.promise = (async () => {
+        const relays = config.relays.length > 0 ? config.relays : DEFAULT_RELAYS;
+        const metadata = await fetchKind0(pubkey, relays);
+        if (metadata) {
+            const cached = { metadata, fetchedAt: Date.now() };
+            profileCache.set(pubkey, cached);
+            await browser.storage.local.set({ [storageKey]: cached });
+        }
+        return metadata;
+    })().finally(() => { entry.expiresAt = Date.now() + PROFILE_RETRY_MS; });
+    profileReads.set(pubkey, entry);
+    return entry.promise;
 }
 
 /** The outcome of a profile read, distinguishing "nothing there" from "could not ask". */
@@ -344,11 +358,18 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     // Fetch the ACTIVE account's OWN kind:10000 mute list, grouped by type.
-    ['getMyMuteList', async () => {
+    ['getMyMuteList', async (params) => {
+        await vault.whenStartupUnlockSettled();
+        if (vault.isLocked()) throw new Error('Vault is locked');
         const myPubkey = vault.getActivePubkey();
         if (!myPubkey) {
             // No account is a definite answer, not a failed read.
             return { people: [], hashtags: [], words: [], events: [], rawContent: '', createdAt: 0, reachable: true };
+        }
+        // Editors must preserve the latest encrypted private entries, not a
+        // stale cached copy. The home summary can still use cached-first reads.
+        if (params.fresh === true) {
+            return await fetchMuteList(myPubkey, await getUserRelays());
         }
         // Cached-first so the home card does not wait on a relay; refreshed
         // behind, and an unreachable read never replaces a real one. The

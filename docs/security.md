@@ -33,6 +33,8 @@ The configured interval is stored as `autoLockMs` in `browser.storage.local`, bu
 
 **Service-worker keep-alive**: On Chrome MV3 the service worker is torn down frequently (including around page refreshes), which wipes the in-memory decrypted key and makes a timed-mode vault appear locked well before the configured interval. While the vault is unlocked in timed-lock mode (`autoLockMs > 0`), `vault.ts` arms a periodic `browser.alarms` keep-alive (`'vault-keepalive'`, ~30s period — Chrome clamps the minimum). The `onAlarm` listener in `background.ts` does a trivial async storage read on each tick, resetting the SW idle timer so the worker stays alive until the auto-lock actually fires. The alarm is cleared on every `lock()` and is **never** used to persist the decrypted key — it only holds the worker open, preserving the security model. It is a graceful no-op where `browser.alarms` is unavailable (Safari's persistent background page, tests).
 
+**Post-quantum handlers await startup auto-unlock too.** Their shared active-account lookup waits for `whenStartupUnlockSettled()` before checking the lock. This includes status and key export, so opening Security during a Never-lock cold start does not leave the post-quantum panel displaying a stale "Vault is locked" error while the main vault status says unlocked. If startup auto-unlock fails, the handlers still reject access to a locked vault.
+
 **Brute-force protection**: Two layers with the same escalation schedule (every 5 consecutive failures: 1 min, 5 min, 15 min, 30 min cap):
 
 1. **Popup-side** — the `useVaultUnlock` hook displays the countdown and disables the input during lockout. Module-level state, so remounting components does not reset it; it does reset on full page reload.
@@ -393,3 +395,26 @@ second URL chosen by that first server. Both are treated as untrusted:
 
 Both handlers are privileged (extension pages only) — the port listener still
 rejects everything that is not `nip07_`/`webln_`, so a page cannot reach them.
+
+
+### Mute-list editing and startup
+
+`getMyMuteList` waits for startup auto-unlock before reading the active identity,
+and rejects a locked vault. A Never-lock cold start must not masquerade as an
+account with no published mutes. The explicit editor request uses `{ fresh: true }`
+to bypass the Home summary cache and fetch the newest verified NIP-51 kind:10000
+from the configured relays before editing. Its raw encrypted content is preserved
+verbatim. Relay failure, a missing event, an empty event and private-only entries
+have separate UI states; private entries are not decrypted or counted by this editor.
+
+## Activity decryption
+
+Activity review uses a privileged internal `activity_decrypt` RPC tied to an existing stored log entry, never a page-provided arbitrary ciphertext. The handler waits for startup auto-unlock and requires an unlocked vault. It resolves the recorded account and uses `withPrivkey` plus the existing NIP-04/NIP-44/PQ decoders; it never switches identities or grants site permissions. Gift-wrap inner seals are signature-verified before their author is used for second-layer decryption. PQ decoding loads the recorded account’s derived/imported keys, and zeroes temporary secret key copies. Remote signer keys are not requested through this local review path.
+
+Successful crypto activity now saves ciphertext only (128 KiB maximum per operation); plaintext request inputs and decrypt outputs are excluded. Old history without a body remains unavailable. Revealed plaintext lives only in the detail component and clears on hide, closing the detail view, or vault lock-state changes. A generation guard discards replies arriving after unmount or lock.
+
+### Wallet display snapshots
+
+Account-scoped `walletDisplay_` keys in local extension storage hold non-secret display metadata outside the encrypted vault: provider type, last balance, timestamp, and up to 50 transaction summaries (payment hash, amount, fee, memo, status, time). Invoices, preimages, API keys, NWC URIs and other credentials are excluded by an explicit field allowlist. The existing lock overlay continues to gate the UI; these snapshots cannot authorize payments or prove vault unlock. Disconnect/replacement clears old details, account removal erases its snapshot, and vault destruction erases all snapshots. Revision-guarded serialized writes prevent pre-removal reads from repopulating them.
+
+Approval queue identity checks: requests are bound to an account ID. The extension popup displays pending requests from all websites for that account, never treating a website filter as an account boundary. Foreign account/author entries are rejected (remote-signer and unlock waits use their respective cancellation methods). Individual and permission-batch resolution recheck account identity in the background. signEvent rejects a supplied foreign author before permission checks and rechecks the account/public key before signing. Recipient keys in encryption/decryption requests are not author keys. Bulk approval acts only on a snapshot of displayed request IDs.

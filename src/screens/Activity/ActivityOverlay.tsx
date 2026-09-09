@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, ChangeEvent } from 'react';
+import ActivityFiltersDialog from './ActivityFiltersDialog';
+import { useState, useEffect, useMemo } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import { formatPermissionLabel } from '@domain/permissions/permissionLabels.ts';
@@ -14,10 +15,8 @@ import {
 } from '@domain/activity/activity.ts';
 import { classifyDay } from '@utils/format/time.ts';
 import Button from '@components/Button/Button';
-import LinkButton from '@components/LinkButton/LinkButton';
 import Dropdown from '@components/Dropdown/Dropdown';
-import ChipGroup from '@components/ChipGroup/ChipGroup';
-import Input from '@components/Input/Input';
+import SiteIcon from '@components/SiteIcon/SiteIcon';
 import StatusDot from '@components/StatusDot/StatusDot';
 import Card from '@components/Card/Card';
 import ListRow from '@components/ListRow/ListRow';
@@ -77,7 +76,6 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   const [accountFilter, setAccountFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [pubkeyFilter, setPubkeyFilter] = useState<string>('');
-  const [advancedTypes, setAdvancedTypes] = useState<boolean>(false);
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
   const [selectedGroup, setSelectedGroup] = useState<GroupedActivity | null>(null);
   const { accounts, profileCache } = useAccount();
@@ -90,7 +88,6 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
       setAccountFilter(initialPubkey || '');
       setTypeFilter('');
       setPubkeyFilter('');
-      setAdvancedTypes(false);
       setFiltersOpen(false);
       setSelectedGroup(null);
     }
@@ -113,8 +110,8 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   // Which type-filter chips to offer — only the ones with a matching entry
   // for the currently selected domain/account.
   const typeKeys = useMemo(
-    () => availableTypeKeys(rawLog, { domain: filter, account: accountFilter }, advancedTypes),
-    [rawLog, filter, accountFilter, advancedTypes],
+    () => availableTypeKeys(rawLog, { domain: filter, account: accountFilter }, false),
+    [rawLog, filter, accountFilter],
   );
 
   const typeOptions = useMemo((): DropdownOption[] => [
@@ -169,12 +166,6 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   const handleClearFilters = () => {
     setTypeFilter('');
     setPubkeyFilter('');
-    setAdvancedTypes(false);
-  };
-
-  const handleToggleAdvanced = () => {
-    setTypeFilter('');
-    setAdvancedTypes((v) => !v);
   };
 
   const { shouldRender, animating } = useAnimatedVisible(visible);
@@ -258,11 +249,10 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
               <ListRow
                 key={`e-${i}`}
                 variant="grouped"
-                leading={<StatusDot status={item.entry.decision} />}
+                leading={<SiteIcon domain={item.entry.domain} />}
                 leadingChip={false}
                 title={
                   <Container as="span" variant="row" gap={4} className="min-w-0 w-full text-sm font-normal">
-                    <Text variant="muted" as="span" className="whitespace-nowrap shrink-0 min-w-18">{item.entry.timeKey}</Text>
                     {showDomain && item.entry.domain && (
                       // Not `Text`: this inherits `text-sm` from the row above it rather than
                       // declaring its own size, and `secondary`'s size is `text-md` — wrapping
@@ -276,7 +266,11 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
                     </span>
                   </Container>
                 }
-                trailing={item.entry.count > 1 ? <Text variant="muted" as="span" className="shrink-0">&times;{item.entry.count}</Text> : null}
+                trailing={<span className="inline-flex items-center gap-4 shrink-0">
+                  {item.entry.count > 1 && <Text variant="muted" as="span">&times;{item.entry.count}</Text>}
+                  <time dateTime={new Date(item.entry.timestamp).toISOString()} title={new Date(item.entry.timestamp).toLocaleString()} className="text-xs text-secondary tabular-nums">{item.entry.timeKey}</time>
+                  <StatusDot status={item.entry.decision} />
+                </span>}
                 onClick={() => setSelectedGroup(item.entry)}
               />
             )
@@ -292,56 +286,17 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
       {selectedGroup && (
         <EventDetailModal
           group={selectedGroup}
+          selectedAccountPubkey={accountFilter}
           onBack={() => setSelectedGroup(null)}
           onClose={() => setSelectedGroup(null)}
         />
       )}
 
       {filtersOpen && (
-        <OverlayPanel
-          title={t('activity.filters')}
-          onBack={() => setFiltersOpen(false)}
-          onClose={() => setFiltersOpen(false)}
-          zIndex={350}
-        >
-          <Container gap={4} className="pb-6 mb-2 border-b border-card-border">
-            {/* Not `SectionLabel`/`Text`: uppercase + tracking + `text-xs` is
-                a caption style neither covers, and there is no single field
-                here for a `<label>` to point at. */}
-            <span className="text-xs font-semibold text-secondary uppercase tracking-[0.5px]">{t('activity.filterByType')}</span>
-            <ChipGroup
-              options={typeOptions}
-              value={typeFilter}
-              onChange={setTypeFilter}
-            />
-            <LinkButton tone="brand" onClick={handleToggleAdvanced}>
-              {advancedTypes ? t('activity.hideProtocols') : t('activity.showProtocols')}
-            </LinkButton>
-          </Container>
-
-          {/* `.filterPanel:last-of-type` used to drop this border when this
-              was the last <div> among its siblings — true only when
-              `activeFilterCount` is 0 and the actions row below does not
-              render. That is state the component already computes, so the
-              condition is explicit here instead of implicit in a selector. */}
-          <Container gap={4} className={activeFilterCount > 0 ? 'pb-6 mb-2 border-b border-card-border' : ''}>
-            <span className="text-xs font-semibold text-secondary uppercase tracking-[0.5px]">{t('activity.filterByPubkey')}</span>
-            <Input
-              mono
-              placeholder={t('activity.pubkeyPlaceholder')}
-              value={pubkeyFilter}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setPubkeyFilter(e.target.value)}
-            />
-          </Container>
-
-          {activeFilterCount > 0 && (
-            <Container variant="row" className="pt-4 justify-end">
-              <Button variant="secondary" small onClick={handleClearFilters}>
-                {t('activity.clearFilters')}
-              </Button>
-            </Container>
-          )}
-        </OverlayPanel>
+        <ActivityFiltersDialog typeOptions={typeOptions} typeFilter={typeFilter} pubkeyFilter={pubkeyFilter}
+          activeFilterCount={activeFilterCount}
+          onTypeChange={setTypeFilter} onPubkeyChange={setPubkeyFilter}
+          onClear={handleClearFilters} onClose={() => setFiltersOpen(false)} />
       )}
     </OverlayPanel>
   );

@@ -10,6 +10,7 @@ import {
 import { IconSearch, IconShield, IconUsers, IconPlus } from '@assets';
 import { useAccount } from '@context/AccountContext';
 import { usePermissions } from '@context/PermissionsContext';
+import PermissionsDetailLayout from './PermissionsDetailLayout';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -218,7 +219,13 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     const allKeys = filterKeysForAccount(Object.keys(domainPerms));
 
     return (
-      <Container gap={4} className="flex-1 min-h-0 py-2">
+      <>
+      <PermissionsDetailLayout domain={detailDomain} actions={
+        <Container variant="row" className="justify-between">
+          <Button small onClick={() => setAddRuleOpen(true)}><IconPlus size={12} /> {t('perms.addRule')}</Button>
+          <Button variant="danger" small onClick={handleRevoke}>{t('perms.revokeAll')}</Button>
+        </Container>
+      }>
         {allKeys.length === 0 ? (
           <EmptyState
             icon={<IconShield size={24} />}
@@ -270,12 +277,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           </Card>
         )}
 
-        <Container variant="row" className="justify-between mt-4">
-          <Button small onClick={() => setAddRuleOpen(true)}>
-            <IconPlus size={12} /> {t('perms.addRule')}
-          </Button>
-          <Button variant="danger" small onClick={handleRevoke}>{t('perms.revokeAll')}</Button>
-        </Container>
+      </PermissionsDetailLayout>
 
         {/* Add Rule modal */}
         {addRuleOpen && (
@@ -285,7 +287,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
             onClose={() => setAddRuleOpen(false)}
           />
         )}
-      </Container>
+      </>
     );
   }
 

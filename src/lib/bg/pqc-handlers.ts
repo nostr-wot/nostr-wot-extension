@@ -27,8 +27,9 @@ import {
 } from '../crypto/pq.ts';
 import { signEvent } from '../crypto/nip01.ts';
 import { broadcastEvent } from './publish-handlers.ts';
-import { cachedRelayRead, PQC_PUBLISHED_CACHE } from './relayCache.ts';
-import { liveQuery } from '../relay.ts';
+import { cachedRelayRead, seedRelayCache, clearRelayCache, PQC_PUBLISHED_CACHE } from './relayCache.ts';
+import { writeLocalCache } from '../relay.ts';
+import { readPublishedEvent } from '../readPublishedEvent.ts';
 import { config, type HandlerFn } from './state.ts';
 import type { UnsignedEvent } from '../types.ts';
 
@@ -74,6 +75,9 @@ export type PqcStatus = {
 };
 
 async function activeAccount() {
+  // Never-lock vaults briefly have no decrypted payload on worker startup.
+  // Wait for that attempt before deciding whether an actual unlock is needed.
+  await vault.whenStartupUnlockSettled();
   if (vault.isLocked()) throw new Error('Vault is locked');
   const payload = vault.getDecryptedPayload();
   const activeId = (
@@ -269,6 +273,7 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
       keys.kem.secretKey.fill(0);
       keys.dsa.secretKey.fill(0);
     }
+    await clearRelayCache(acct.pubkey, [PQC_PUBLISHED_CACHE]);
     return handlers.get('pqc_getStatus')!({}) as Promise<PqcStatus>;
   }],
 
@@ -291,7 +296,6 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
    * secrets are not in memory then and asking is the wrong shape of request.
    */
   ['pqc_exportKeys', async () => {
-    if (vault.isLocked()) throw new Error('Vault is locked');
     const acct = await activeAccount();
     if (!acct) throw new Error('No active account');
 
@@ -353,6 +357,8 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
     const { sent, failed } = await broadcastEvent(signed, relays);
     if (sent === 0) throw new Error('No relay accepted the attestation');
 
+    await writeLocalCache(signed);
+    await seedRelayCache(PQC_PUBLISHED_CACHE, status.pubkey!, { published: true, current: true });
     return { sent, failed, relays: relays.length, eventId: signed.id };
   }],
 
@@ -373,31 +379,22 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
     // the relays genuinely said. See lib/bg/relayCache.ts.
     return await cachedRelayRead(PQC_PUBLISHED_CACHE, pubkey, async () => {
       const relays = await writeRelays();
-      let found: { tags: string[][] } | null = null;
-      try {
-        for await (const ev of liveQuery(
-          [{ kinds: [PQC_KIND], authors: [pubkey], limit: 1 }],
-          relays,
-          { closeOnExhaust: true },
-        )) {
-          const e = (ev as { event?: { tags: string[][] } }).event;
-          if (e) { found = e; break; }
-        }
-      } catch {
-        // Not `published: false`. This handler exists to ask the relays, so a
-        // failure to reach them is the one answer it cannot give — reporting "not
-        // published" told a user whose attestation is live to set post-quantum
-        // keys up again, and would have had them republish a correct one, on
-        // exactly the flaky-relay day that caused the failure.
-        return { published: false, current: false, unreachable: true };
-      }
-
-      if (!found) return { published: false, current: false };
-
-      // Published is not enough: if the keys rotated, what is out there is stale and
-      // senders would encrypt to a key this account no longer uses.
-      const kemTag = found.tags.find(t => t[0] === 'alg' && t[1] === ALG_KEM);
-      return { published: true, current: kemTag?.[2] === status.keys?.kem };
+      return checkPqcPublication(status, relays);
     });
   }],
 ]);
+
+
+/** Shared verified reader keeps newest publication evidence through outages. */
+export async function checkPqcPublication(status: Pick<PqcStatus, 'pubkey' | 'keys'>, relays: string[]) {
+  if (!status.pubkey) return { published: false, current: false };
+  try {
+    const result = await readPublishedEvent(status.pubkey, PQC_KIND, relays);
+    if (!result.event) return { published: false, current: false, ...(!result.reachable && { unreachable: true }) };
+    const kem = result.event.tags.find(tag => tag[0] === 'alg' && tag[1] === ALG_KEM)?.[2];
+    const dsa = result.event.tags.find(tag => tag[0] === 'alg' && tag[1] === ALG_DSA)?.[2];
+    return { published: true, current: kem === status.keys?.kem && dsa === status.keys?.dsa };
+  } catch {
+    return { published: false, current: false, unreachable: true };
+  }
+}

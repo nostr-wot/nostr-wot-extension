@@ -83,3 +83,9 @@ describe('buildRuleKey', () => {
     assert.equal(buildRuleKey('signEvent:1', ' 30023 ', true), 'signEvent:30023');
   });
 });
+
+import { validCustomKind } from '../src/domain/permissions/permissionRules.ts';
+it('custom rule kinds must be complete non-negative integer identifiers', () => {
+  for (const value of ['', ' ', '-1', '1.5', '1e3', 'abc', '65536', '9007199254740992']) assert.equal(validCustomKind(value), false);
+  for (const value of ['0', '1', '30023', '65535']) assert.equal(validCustomKind(value), true);
+});

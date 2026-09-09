@@ -17,16 +17,16 @@ export default function useWalletBanner(
   canUseWallet: boolean | null,
   menuOpen?: boolean,
 ) {
-  const { configType, balance, refreshBalance, refreshConfig } = useWallet();
+  const { configType, balance, balanceLoading, balanceError, configLoading, configReadFailed, refreshBalance, refreshConfig } = useWallet();
   const [walletDismissed, setWalletDismissed] = useState<boolean>(false);
 
   // `null` is unknown — not fetched yet, or the read failed. It must not
   // collapse into `false`: that is a claim this account has no wallet, and it
   // showed "set up a wallet" to someone who already had one.
-  const walletState: null | false | { balance: number } =
+  const walletState: null | false | { balance: number | null; loading: boolean; error: boolean } =
     !canUseWallet || configType === null ? null
       : configType === false ? false
-        : { balance: balance ?? 0 };
+        : { balance, loading: balanceLoading || configLoading, error: !!balanceError || configReadFailed };
 
   useEffect(() => {
     if (!active?.id || !canUseWallet) { setWalletDismissed(false); return; }

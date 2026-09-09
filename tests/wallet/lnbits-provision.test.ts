@@ -269,10 +269,9 @@ describe('getLightningAddress', () => {
     assert.strictEqual(result, null);
   });
 
-  it('returns null on server error', async () => {
+  it('rejects server errors instead of claiming the address is missing', async () => {
     const mockFetch = async () => new Response('Error', { status: 500 });
-    const result = await getLightningAddress('https://zaps.example.com', 'abc123', mockFetch as typeof fetch);
-    assert.strictEqual(result, null);
+    await assert.rejects(() => getLightningAddress('https://zaps.example.com', 'abc123', mockFetch as typeof fetch), /500/);
   });
 });
 

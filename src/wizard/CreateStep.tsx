@@ -13,6 +13,7 @@ import SeedWord from '@components/SeedWord/SeedWord';
 import FormError from '@components/FormError/FormError';
 import Heading from '@components/Heading/Heading';
 import Container from '@components/Container/Container';
+import StatusNotice from '@components/StatusNotice/StatusNotice';
 import Text from '@components/Text/Text';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
@@ -106,10 +107,9 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         {t('wizard.recoveryDesc', { count: words.length })}
       </Text>
 
-      <div className="flex items-start gap-4 py-5 px-6 bg-[rgba(217,119,6,0.06)] rounded-panel text-sm text-warning leading-normal mb-6">
-        <IconWarning className="shrink-0 mt-px" />
-        <span>{t('wizard.recoveryWarning')}</span>
-      </div>
+      <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-6">
+        {t('wizard.recoveryWarning')}
+      </StatusNotice>
 
       <div className="relative mb-6">
         <Card

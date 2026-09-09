@@ -84,7 +84,12 @@ export default function EditableList({
   const [value, setValue] = useState('');
   const [internalError, setInternalError] = useState('');
 
+  const rawValue = (controlled ? inputValue! : value).trim();
+  const normalized = rawValue ? (validate ? validate(rawValue) : rawValue) : null;
+  const canAdd = !!normalized && !items.includes(normalized) && !disabled;
+
   const handleInternalAdd = () => {
+    if (!canAdd) return;
     const raw = value.trim();
     if (!raw) return;
     const normalized = validate ? validate(raw) : raw;
@@ -101,7 +106,7 @@ export default function EditableList({
      ignore the argument — but `onAdd` is typed as taking one, and handing it
      straight to InputRow's zero-arg `onSubmit` passed `undefined` to anyone who
      did read it. Pass the value we already have. */
-  const submitControlled = () => onAdd?.(inputValue ?? '');
+  const submitControlled = () => { if (canAdd) onAdd?.(normalized!); };
 
   const body = (
     <>
@@ -113,7 +118,7 @@ export default function EditableList({
               {renderItem ? renderItem(item) : item}
             </span>
             {trailing?.(item)}
-            <RemoveButton onClick={() => onRemove(item)} />
+            <RemoveButton disabled={disabled} onClick={() => onRemove(item)} />
           </div>
         ))}
       </div>
@@ -125,8 +130,9 @@ export default function EditableList({
         placeholder={placeholder}
         onSubmit={controlled ? submitControlled : handleInternalAdd}
         buttonLabel={buttonLabel}
-        disabled={disabled}
-        error={controlled ? error : internalError}
+        add
+        disabled={!canAdd}
+        error={(controlled ? error : internalError) || (rawValue && !normalized ? (invalidMsg || t('mutes.invalidEntry')) : '')}
         mono={mono}
       />
       {hint && items.length === 0 && <div className={classNames.hint || CLS.hint}>{hint}</div>}

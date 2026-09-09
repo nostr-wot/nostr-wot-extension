@@ -5,7 +5,7 @@ import { MUTE_LIST_CACHE } from '@services/relayCacheNames.ts';
 import ListRow from '@components/ListRow/ListRow';
 import { IconShield } from '@assets';
 import { useNavigate } from '@context/NavigationContext';
-import type { MyMuteList } from '@domain/mutes/muteList.ts';
+import { muteListState, type MuteListRead } from '@domain/mutes/muteList.ts';
 
 /**
  * Home-screen module for the user's own NIP-51 mute list (kind:10000). Shows a
@@ -14,24 +14,24 @@ import type { MyMuteList } from '@domain/mutes/muteList.ts';
  */
 export default function MutesRow() {
   const navigate = useNavigate();
-  // Only the three counts, not the whole list: this row renders a number, and
-  // asking for `MyMuteList` would oblige it to carry `rawContent` — the
-  // encrypted private half — for no reason.
-  const { data, reload } = useRpc<Pick<MyMuteList, 'people' | 'words' | 'hashtags'>>('getMyMuteList', {}, {
-    defaultValue: { people: [], words: [], hashtags: [] },
-  });
+  const { data, error, reload } = useRpc<MuteListRead>('getMyMuteList');
+  const state = error ? 'unavailable' : muteListState(data);
   // The first read comes from the background's cache so this paints without
   // waiting on a relay; this picks up the refreshed answer when it lands.
   useRelayCache(MUTE_LIST_CACHE, reload);
   const count =
-    (data?.people?.length || 0) + (data?.words?.length || 0) + (data?.hashtags?.length || 0);
+    (data?.people?.length || 0) + (data?.words?.length || 0) + (data?.hashtags?.length || 0) + (data?.events?.length || 0);
 
   return (
     <ListRow
       leading={<IconShield size={16} />}
       title={t('mutes.cardTitle')}
       info={t('mutes.cardInfo')}
-      subtitle={t('mutes.cardSummary', { count })}
+      subtitle={state === 'loading' ? t('common.loading')
+        : state === 'unavailable' ? t('mutes.failedFetch')
+        : state === 'missing' ? t('mutes.notPublished')
+        : state === 'private' ? t('mutes.privateSummary')
+        : t('mutes.cardSummary', { count })}
       onClick={navigate.manageFilters}
     />
   );

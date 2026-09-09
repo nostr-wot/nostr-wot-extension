@@ -73,7 +73,7 @@ function group(
   const map = new Map<string, ApprovalGroup>();
   for (const req of requests) {
     const groupKey = keyOf(req);
-    const key = `${req.origin}::${groupKey}`;
+    const key = `${req.accountId || ''}::${req.origin}::${groupKey}`;
     let g = map.get(key);
     if (!g) {
       g = { origin: req.origin, method: req.type, permKey: groupKey, ...extra, requests: [] };
@@ -132,4 +132,27 @@ export function isRequestLive(req: PendingRequest | null, live: Set<string>): bo
 
 export function isGroupLive(g: ApprovalGroup | null, live: Set<string>): boolean {
   return !!g && g.requests.some((r) => live.has(r.id));
+}
+
+/** Author identity is distinct from a message recipient (theirPubkey). */
+export function requestMatchesAccount(request: PendingRequest, account: {id:string;pubkey:string} | null): boolean {
+  return !!account && request.accountId === account.id
+    && (!request.pubkey || request.pubkey === account.pubkey)
+    && (!request.event?.pubkey || request.event.pubkey === account.pubkey);
+}
+
+/** Resolve only the IDs the user reviewed; later arrivals need their own decision. */
+export async function resolveDisplayedRequests(requests: PendingRequest[], resolve: (id:string) => Promise<unknown>): Promise<void> {
+  const ids = requests.map(request => request.id);
+  const results = await Promise.allSettled(ids.map(resolve));
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+}
+
+/** Keep an open group attached to its live queue, not its first-click snapshot. */
+export function currentApprovalGroup(selection: ApprovalGroup | null, groups: ApprovalGroup[]): ApprovalGroup | null {
+  if (!selection) return null;
+  return groups.find(group => group.origin === selection.origin
+    && group.permKey === selection.permKey
+    && group.requests[0]?.accountId === selection.requests[0]?.accountId) ?? null;
 }

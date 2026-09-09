@@ -4,6 +4,7 @@
  */
 
 import browser from '../browser.ts';
+import { updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
 import * as vault from '../vault.ts';
 import * as signer from '../signer.ts';
 import * as signerPermissions from '../permissions.ts';
@@ -21,7 +22,8 @@ import { logActivity } from './misc-handlers.ts';
 
 // ── Shared utilities ──
 
-export async function getConnectedProvider(): Promise<{ provider: ReturnType<typeof getWalletProvider>; acct: NonNullable<ReturnType<typeof vault.getActiveAccountWithWallet>> }> {
+export async function getConnectedProvider(): Promise<{ provider: NonNullable<ReturnType<typeof getWalletProvider>>; acct: NonNullable<ReturnType<typeof vault.getActiveAccountWithWallet>> }> {
+    await vault.whenStartupUnlockSettled();
     if (vault.isLocked()) throw new Error('Vault is locked');
     const acct = vault.getActiveAccountWithWallet();
     if (!acct?.walletConfig) throw new Error('No wallet configured');
@@ -160,9 +162,13 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_hasConfig', async () => {
-        if (vault.isLocked()) return false;
+        const revision = walletDisplayRevision();
+        await vault.whenStartupUnlockSettled();
+        if (vault.isLocked()) throw new Error('Vault is locked');
         const acct = vault.getActiveAccountWithWallet();
-        return acct?.walletConfig?.type ?? false;
+        if (!acct) throw new Error('No active account');
+        if (acct.walletConfig) await updateWalletDisplayCache(acct.id, {providerType:acct.walletConfig.type}, revision).catch(() => {});
+        return acct.walletConfig?.type ?? false;
     }],
 
     ['wallet_getInfo', async () => {
@@ -171,8 +177,11 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_getBalance', async () => {
-        const { provider } = await getConnectedProvider();
-        return await provider.getBalance();
+        const revision = walletDisplayRevision();
+        const { provider, acct } = await getConnectedProvider();
+        const result = await provider.getBalance();
+        await updateWalletDisplayCache(acct.id, {providerType:provider.type,balance:result.balance}, revision).catch(() => {});
+        return result;
     }],
 
     ['wallet_connect', async (params) => {
@@ -181,6 +190,7 @@ export const handlers = new Map<string, HandlerFn>([
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         await vault.updateAccountWalletConfig(acctId, walletConfig);
+        await resetWalletDisplayCache(acctId, walletConfig.type);
         const provider = getWalletProvider(acctId, walletConfig);
         if (provider) {
             await provider.connect();
@@ -194,6 +204,7 @@ export const handlers = new Map<string, HandlerFn>([
         if (!acctId) throw new Error('No active account');
         removeWalletProvider(acctId);
         await vault.updateAccountWalletConfig(acctId, null);
+        await resetWalletDisplayCache(acctId, false);
         return true;
     }],
 
@@ -206,6 +217,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_getAutoApproveThreshold', async () => {
+        await vault.whenStartupUnlockSettled();
         const acctId = vault.getActiveAccountId();
         if (!acctId) return 0;
         const data = await browser.storage.local.get(`walletThreshold_${acctId}`) as Record<string, number>;
@@ -226,8 +238,11 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['wallet_getTransactions', async (params) => {
         const { limit, offset } = params as { limit?: number; offset?: number };
-        const { provider } = await getConnectedProvider();
-        return await provider.listTransactions(limit ?? 10, offset ?? 0);
+        const revision = walletDisplayRevision();
+        const { provider, acct } = await getConnectedProvider();
+        const transactions = await provider.listTransactions(limit ?? 10, offset ?? 0);
+        if (!offset) await updateWalletDisplayCache(acct.id, {providerType:provider.type,transactions}, revision).catch(() => {});
+        return transactions;
     }],
 
     ['wallet_payInvoice', async (params) => {
@@ -298,12 +313,14 @@ export const handlers = new Map<string, HandlerFn>([
 
         const walletConfig: WalletConfig = { type: 'lnbits', instanceUrl: url, adminKey, nwcUri };
         await vault.updateAccountWalletConfig(acctId, walletConfig);
+        await resetWalletDisplayCache(acctId, walletConfig.type);
         const provider = getWalletProvider(acctId, walletConfig);
         if (provider) await provider.connect();
         return true;
     }],
 
     ['wallet_getNwcUri', async () => {
+        await vault.whenStartupUnlockSettled();
         if (vault.isLocked()) throw new Error('Vault is locked');
         const acct = vault.getActiveAccountWithWallet();
         if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') return null;
@@ -324,6 +341,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_getLightningAddress', async () => {
+        await vault.whenStartupUnlockSettled();
         if (vault.isLocked()) throw new Error('Vault is locked');
         const acct = vault.getActiveAccountWithWallet();
         if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') {

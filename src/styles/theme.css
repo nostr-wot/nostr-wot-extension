@@ -16,6 +16,7 @@
   --card-border: rgba(99, 102, 241, 0.1);
   --card-active: rgba(99, 102, 241, 0.12);
   --brand: #6366f1;
+  --menu-subtitle: rgba(99, 102, 241, 0.55);
   --brand-hover: #4f46e5;
   --brand-light: rgba(99, 102, 241, 0.1);
   --success: #059669;
@@ -61,7 +62,8 @@
   --bg-card: var(--bg-page-solid);
   --bg-surface: var(--bg-html);
   --bg-sunken: rgba(0, 0, 0, 0.04);
-  --input-bg: transparent;
+  --input-bg: #f1f2f7;
+  --control-border: rgba(99, 102, 241, 0.28);
 
   /* ── Spacing ──
    *

@@ -187,3 +187,24 @@ describe('accumulateTransactions — error handling', () => {
     assert.equal(result.offset, 10, 'offset does not advance on a call that never returned a page');
   });
 });
+
+ it('continues past unpaid invoice pages and exposes fetch failures for retry', async () => {
+   const pending = Array.from({length:50}, () => tx({status:'pending'}));
+   const offsets:number[]=[];
+   const result = await accumulateTransactions({fetchPage:async (_limit,offset)=>{offsets.push(offset); return offset===0 ? pending : [tx({status:'settled'})];},startOffset:0,existing:[],filters:EMPTY_TX_FILTERS});
+   assert.deepEqual(offsets,[0,50]);
+   assert.equal(result.offset,51);
+   const failed = await accumulateTransactions({fetchPage:async()=>{throw new Error('Offline');},startOffset:0,existing:[],filters:EMPTY_TX_FILTERS});
+   assert.equal(failed.error,'Offline');
+ });
+
+it('skips more than 500 pending invoices until real history is found', async () => {
+ const offsets:number[]=[];
+ const result=await accumulateTransactions({fetchPage:async(limit,offset)=>{offsets.push(offset); return offset<600 ? Array.from({length:limit},()=>tx({status:'pending'})) : [tx({status:'settled'})];},startOffset:0,existing:[],filters:EMPTY_TX_FILTERS});
+ assert.equal(result.offset,601); assert.equal(result.transactions.length,1); assert.equal(offsets.length,13);
+});
+it('stops paging when the view becomes stale', async () => {
+ let current=true; let calls=0;
+ await accumulateTransactions({fetchPage:async()=>{calls++;current=false;return Array.from({length:50},()=>tx({status:'pending'}));},startOffset:0,existing:[],filters:EMPTY_TX_FILTERS,shouldContinue:()=>current});
+ assert.equal(calls,1);
+});

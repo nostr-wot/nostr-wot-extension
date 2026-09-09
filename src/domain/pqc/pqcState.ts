@@ -80,3 +80,15 @@ export function isAlreadyPublished(
   if (justPublished) return true;
   return !!existing && !existing.unreachable && existing.published && existing.current;
 }
+
+
+/** Keep publication evidence only while the same account and keys are active. */
+export function mergePqcStatus(previous: { status: PqcPanelStatus | null; published: PqcPublished | null }, status: PqcPanelStatus) {
+  const sameKeys = previous.status?.pubkey === status.pubkey && previous.status?.keys?.kem === status.keys?.kem && previous.status?.keys?.dsa === status.keys?.dsa;
+  return { status, published: sameKeys ? previous.published : null };
+}
+
+/** A failed background refresh must not make a confirmed key disappear. */
+export function mergePqcPublished(previous: PqcPublished | null, next: PqcPublished | null): PqcPublished | null {
+  return !next || next.unreachable ? (previous || next) : next;
+}

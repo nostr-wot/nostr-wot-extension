@@ -19,6 +19,8 @@ export interface ActivityEntry {
   domain?: string;
   pubkey?: string;
   theirPubkey?: string | null;
+  /** Ciphertext only; plaintext is never retained in the activity log. */
+  ciphertext?: string;
   event?: Partial<NostrEventDisplay> | null;
 }
 
@@ -53,7 +55,7 @@ export function groupActivityEntries(
     const methodKey = entry.method + (entry.kind != null ? ':' + entry.kind : '');
     const d = new Date(entry.timestamp);
     const timeKey = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-    let key = methodKey + '|' + entry.decision + '|' + timeKey;
+    let key = (entry.pubkey || '') + '|' + methodKey + '|' + entry.decision + '|' + timeKey;
     if (includeDay) key = d.toDateString() + '::' + key;
     if (includeDomain) key = (entry.domain || '') + '::' + key;
 
@@ -230,4 +232,29 @@ export function buildDayGroups<T extends { day?: string }>(groups: T[]): DayGrou
     out.push({ type: 'entry', entry: g });
   }
   return out;
+}
+
+
+/** Stable identity for a saved entry, including account and encrypted body. */
+export function activityEntryKey(entry: ActivityEntry): string {
+  return JSON.stringify([entry.timestamp, entry.domain, entry.pubkey, entry.method,
+    entry.decision, entry.theirPubkey, entry.ciphertext, entry.event]);
+}
+
+/** Determine a supported encrypted body without treating arbitrary notes as ciphertext. */
+export function activityEncryption(entry: ActivityEntry) {
+  const event = entry.event;
+  const ciphertext = entry.ciphertext || event?.content;
+  if (!ciphertext || !entry.pubkey) return null;
+  const nip04 = entry.method.startsWith('nip04') || event?.kind === 4 || /^[A-Za-z0-9+/]+=*\?iv=[A-Za-z0-9+/]+=*$/.test(ciphertext);
+  const nip44 = entry.method.startsWith('nip44') || event?.kind === 13 || event?.kind === 1059 || event?.kind === 21059 ||
+    ((event?.kind === 10000 || event?.kind === 30078) && /^[A-Za-z0-9+/]{99,}={0,2}$/.test(ciphertext));
+  if (!nip04 && !nip44) return null;
+  const accountPubkey = entry.pubkey;
+  const author = typeof event?.pubkey === 'string' ? event.pubkey : null;
+  const peerPubkey = entry.theirPubkey ||
+    (author && author !== accountPubkey ? author : null) ||
+    event?.tags?.find(tag => tag[0] === 'p' && tag[1] !== accountPubkey)?.[1] ||
+    (event?.kind === 10000 || event?.kind === 30078 ? accountPubkey : null);
+  return { scheme: nip04 ? 'nip04' as const : 'nip44' as const, ciphertext, accountPubkey, peerPubkey };
 }

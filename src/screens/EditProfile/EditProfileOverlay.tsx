@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, ChangeEvent } from 'react';
 import { t } from '@lib/i18n.js';
 import { rpc } from '@services/rpc.ts';
-import { uploadToBlossom } from '@services/blossom.ts';
+import { uploadProfileImages } from '@services/blossom.ts';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 import {
   mergeProfileMetadata,
@@ -11,12 +11,15 @@ import {
 import { useAccount } from '@context/AccountContext';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import ProfilePreviewCard from './ProfilePreviewCard';
+import ProfileImageHeader from './ProfileImageHeader';
+import ProfileImageDialog, { type ProfileImageChoice } from './ProfileImageDialog';
+import Textarea from '@components/Textarea/Textarea';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
-import { IconCamera, IconChevronDown } from '@assets';
+import { IconChevronDown } from '@assets';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
@@ -31,10 +34,13 @@ interface EditProfileOverlayProps {
 
 export default function EditProfileOverlay({ visible, onClose }: EditProfileOverlayProps) {
   const { active, cachedProfile, reload } = useAccount();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const bannerBlobRef = useRef<string | null>(null);
+  const uploadedImagesRef = useRef(new WeakMap<File, string>());
+  const operation = useRef(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
+  const [editingImage, setEditingImage] = useState<'picture' | 'banner' | null>(null);
   const [step, setStep] = useState<StepValue>(STEPS.FORM);
   const [name, setName] = useState<string>('');
   const [about, setAbout] = useState<string>('');
@@ -44,6 +50,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const [website, setWebsite] = useState<string>('');
   const [banner, setBanner] = useState<string>('');
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(false);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [previewMeta, setPreviewMeta] = useState<ProfileMetadata | null>(null);
@@ -51,6 +59,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
 
   // Pre-fill from cachedProfile on open
   useEffect(() => {
+    operation.current++;
     if (!visible) return;
     if (cachedProfile) {
       setName(cachedProfile.name || cachedProfile.display_name || '');
@@ -64,15 +73,22 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
       setName(''); setAbout(''); setPicture(''); setNip05('');
       setLud16(''); setWebsite(''); setBanner('');
     }
+    setEditingImage(null);
+    setBannerFile(null); setBannerPreview(null);
+    uploadedImagesRef.current = new WeakMap();
+    if (bannerBlobRef.current) { URL.revokeObjectURL(bannerBlobRef.current); bannerBlobRef.current = null; }
     setImageFile(null); setImagePreview(null); setError('');
     setStep(STEPS.FORM); setAdvancedOpen(false); setPreviewMeta(null);
     // Revoke old blob URL
     if (blobUrlRef.current) { URL.revokeObjectURL(blobUrlRef.current); blobUrlRef.current = null; }
-  }, [visible]);
+  }, [visible, active?.id]);
 
   // Cleanup on unmount
   useEffect(() => {
+    const lifetime = operation;
     return () => {
+      lifetime.current++;
+      if (bannerBlobRef.current) URL.revokeObjectURL(bannerBlobRef.current);
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     };
@@ -83,47 +99,39 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   if (!shouldRender) return null;
 
   const initial = (name || active?.name || '?')[0]?.toUpperCase();
-  // imagePreview is a locally-created blob: URL (trusted); `picture` comes from
-  // relay-supplied profile metadata, so only render it if it's plain http(s).
-  const displayPicture = imagePreview || safeImageUrl(picture) || null;
-
   const formFields = { name, about, picture, nip05, lud16, website, banner };
-  const hasChanges = profileHasChanges(cachedProfile, formFields, imageFile !== null);
+  const hasChanges = profileHasChanges(cachedProfile, formFields, imageFile !== null || bannerFile !== null);
+  const bannerInvalid = !bannerFile && !!banner.trim() && !safeImageUrl(banner.trim());
+  const pictureInvalid = !imageFile && !!picture.trim() && !safeImageUrl(picture.trim());
+  const formValid = !!(name.trim() || about.trim()) && !bannerInvalid && !pictureInvalid;
 
-  const handleFilePick = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    // Revoke previous blob URL
-    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-    const url = URL.createObjectURL(file);
-    blobUrlRef.current = url;
-    setImagePreview(url);
+  const applyImage = (target: 'picture' | 'banner', choice: ProfileImageChoice) => {
+    const ref = target === 'banner' ? bannerBlobRef : blobUrlRef;
+    if (ref.current) URL.revokeObjectURL(ref.current);
+    const preview = choice.file ? URL.createObjectURL(choice.file) : null;
+    ref.current = preview;
+    if (target === 'banner') { setBanner(choice.url); setBannerFile(choice.file); setBannerPreview(preview); }
+    else { setPicture(choice.url); setImageFile(choice.file); setImagePreview(preview); }
+    setError(''); setEditingImage(null);
   };
 
-  const buildMetadata = (pictureUrl?: string | null): ProfileMetadata =>
-    mergeProfileMetadata(cachedProfile, formFields, pictureUrl);
-
   const handlePublish = async () => {
-    if (!name && !about) {
-      setError(t('profileEdit.fillOneField'));
-      return;
-    }
+    if (!formValid || !hasChanges || step !== STEPS.FORM) return;
     setError('');
-
-    let uploadedUrl: string | null = null;
+    const current = ++operation.current;
     try {
-      if (imageFile) {
-        setStep(STEPS.UPLOADING);
-        const result = await uploadToBlossom(imageFile);
-        uploadedUrl = result.url;
-      }
-
-      const metadata = buildMetadata(uploadedUrl);
+      if (imageFile || bannerFile) setStep(STEPS.UPLOADING);
+      const urls = await uploadProfileImages({ picture: imageFile, banner: bannerFile }, uploadedImagesRef.current);
+      if (operation.current !== current) return;
+      const metadata = mergeProfileMetadata(cachedProfile, {
+        ...formFields, picture: urls.picture || picture.trim(), banner: urls.banner || banner.trim(),
+      });
       setPreviewMeta(metadata);
-      setPicture(uploadedUrl || picture);
+      if (urls.picture) setPicture(urls.picture);
+      if (urls.banner) setBanner(urls.banner);
       setStep(STEPS.PREVIEW);
     } catch (err: any) {
+      if (operation.current !== current) return;
       setError(err.message || t('profileEdit.uploadFailed'));
       setStep(STEPS.FORM);
     }
@@ -152,32 +160,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
 
   const renderForm = () => (
     <Container gap={7} className="flex-1 overflow-y-auto">
-      <Container gap={3} className="items-center mb-2">
-        <button
-          type="button"
-          className="relative w-40 h-40 p-0 font-[inherit] rounded-full cursor-pointer overflow-hidden bg-brand-light flex items-center justify-center border-2 border-card-border transition-colors duration-slow hover:border-brand"
-          onClick={() => fileRef.current?.click()}
-        >
-          {displayPicture ? (
-            <img src={displayPicture} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-display font-bold text-brand uppercase">{initial}</span>
-          )}
-          <div className="absolute bottom-0 left-0 right-0 h-14 bg-[rgba(0,0,0,0.45)] flex items-center justify-center text-on-brand">
-            <IconCamera size={14} />
-          </div>
-        </button>
-        <Text variant="muted" as="span">
-          {displayPicture ? t('profileEdit.changeImage') : t('profileEdit.uploadImage')}
-        </Text>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFilePick}
-        />
-      </Container>
+      <ProfileImageHeader banner={banner} picture={picture} bannerPreview={bannerPreview} picturePreview={imagePreview}
+        initial={initial} onEdit={setEditingImage} />
 
       <Container gap={6}>
         <Input
@@ -186,11 +170,11 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
           value={name}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
         />
-        <Input
+        <Textarea
           label={t('profileEdit.about')}
           placeholder={t('profileEdit.aboutPlaceholder')}
           value={about}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setAbout(e.target.value)}
+          onChange={e => setAbout(e.target.value)}
         />
 
         <LinkButton
@@ -221,12 +205,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
               value={website}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setWebsite(e.target.value)}
             />
-            <Input
-              label={t('profileEdit.banner')}
-              placeholder={t('profileEdit.bannerPlaceholder')}
-              value={banner}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setBanner(e.target.value)}
-            />
+
           </Container>
         )}
       </Container>
@@ -235,7 +214,7 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
 
       <Container variant="row" gap={4} className="mt-2">
         <Button className="flex-1" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
-        <Button className="flex-1" onClick={handlePublish} disabled={!hasChanges}>{t('profileEdit.publish')}</Button>
+        <Button className="flex-1" onClick={handlePublish} disabled={!hasChanges || !formValid}>{t('profileEdit.publish')}</Button>
       </Container>
     </Container>
   );
@@ -296,6 +275,9 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
       animating={animating}
     >
       {(stepContent[step] || renderForm)()}
+      {editingImage && <ProfileImageDialog target={editingImage}
+        url={editingImage === 'banner' ? banner : picture} file={editingImage === 'banner' ? bannerFile : imageFile}
+        onClose={() => setEditingImage(null)} onSave={choice => applyImage(editingImage, choice)} /> }
     </OverlayPanel>
   );
 }

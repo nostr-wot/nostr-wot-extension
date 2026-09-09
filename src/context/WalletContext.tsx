@@ -1,4 +1,8 @@
-import { useCallback, useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { readWalletDisplayCache, walletDisplayKey, type WalletDisplayCache } from '@lib/wallet/display-cache.ts';
+import type { Transaction } from '@lib/wallet/types.ts';
+import useStorageWatch from '@hooks/useStorageWatch.ts';
+import { t } from '@lib/i18n.js';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
@@ -8,6 +12,8 @@ interface ConfigData {
   /** `string` = provider type (configured), `false` = no wallet, `null` =
    *  unknown (not fetched yet, or the last read failed). */
   configType: string | false | null;
+  cachedBalance?: number;
+  cachedTransactions?: Transaction[];
 }
 
 interface BalanceData {
@@ -15,13 +21,28 @@ interface BalanceData {
   balance: number | null;
 }
 
+export interface WalletSettingsData {
+  alias?: string;
+  threshold?: number;
+  nwcUri?: string | null;
+  address?: string | null;
+}
+
 interface WalletContextValue {
   configType: string | false | null;
+  settings: WalletSettingsData;
+  settingsLoading: boolean;
+  settingsError: string;
+  ensureSettings: () => void;
+  refreshSettings: () => Promise<void>;
+  patchSettings: (next: Partial<WalletSettingsData>) => void;
   /** True when the most recent config read threw. Kept separate from
    *  `configType` rather than coerced into `false` — WalletSection used to do
    *  that and rendered the whole "connect a wallet" flow over a wallet that was
    *  already connected, on nothing worse than a cold service worker. */
   configReadFailed: boolean;
+  configLoading: boolean;
+  cachedTransactions: Transaction[];
   balance: number | null;
   balanceLoading: boolean;
   balanceError: string;
@@ -35,7 +56,7 @@ interface WalletContextValue {
 const [WalletContext, useWallet] = createRequiredContext<WalletContextValue>('useWallet');
 
 interface WalletProviderProps {
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 /**
@@ -54,24 +75,25 @@ interface WalletProviderProps {
  */
 export function WalletProvider({ children }: WalletProviderProps) {
   const { active } = useAccount();
+  return <AccountWalletProvider key={active?.id || 'none'} accountId={active?.id || ''} enabled={!!active?.id}>{children}</AccountWalletProvider>;
+}
+
+export function AccountWalletProvider({ children, enabled, accountId = '' }: WalletProviderProps & { enabled: boolean; accountId?: string }) {
+  const intent = useRef(0);
+  const settingsRevision = useRef(0);
+  const [settingsRequested, setSettingsRequested] = useState(false);
 
   const {
-    data: configData, error: configError, refresh: refreshConfig, patch: patchConfig,
+    data: configData, loading: configLoading, error: configError, refresh: refreshConfig, patch: patchConfig,
   } = useAsyncResource<ConfigData>(
     { configType: null },
     {
-      // Wallet config is per-account. Key on the id, not the `active` object —
-      // it is recomputed with `.find()` on every AccountContext render, so an
-      // effect keyed on the object re-runs on unrelated writes (docs §9).
-      deps: [active?.id],
-      enabled: !!active?.id,
-      load: async (patch) => {
-        // A failed RPC cannot prove the wallet is gone, only that we do not
-        // currently know — leave `configType` at its last known value rather
-        // than coercing the failure into `false` (docs §9: a failed read is
-        // unknown, not a negative answer).
-        const result = await rpc<string | false>('wallet_hasConfig');
-        patch({ configType: result || false });
+      // The parent keys this resource and its consumers on the account id.
+      enabled,
+      load: async (patch, isCurrent) => {
+        const generation = intent.current;
+        await loadWalletDisplay(accountId, patch, () => isCurrent() && generation === intent.current);
+
       },
     },
   );
@@ -84,9 +106,10 @@ export function WalletProvider({ children }: WalletProviderProps) {
       // Only a configured wallet has a balance to fetch.
       enabled: typeof configData.configType === 'string',
       deps: [configData.configType],
-      load: async (patch) => {
+      load: async (patch, isCurrent) => {
+        const generation = intent.current;
         const result = await rpc<{ balance: number }>('wallet_getBalance');
-        patch({ balance: result?.balance ?? 0 });
+        if (isCurrent() && generation === intent.current) patch({ balance: result.balance });
       },
     },
   );
@@ -100,15 +123,46 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (typeof configData.configType !== 'string') patchBalance({ balance: null });
   }, [configData.configType, patchBalance]);
 
+  const settingsResource = useAsyncResource<WalletSettingsData>({}, {
+    enabled: settingsRequested && typeof configData.configType === 'string',
+    deps: [configData.configType],
+    load: async (patch, isCurrent) => {
+      const revision = settingsRevision.current;
+      await loadWalletSettings(String(configData.configType), patch, () => isCurrent() && revision === settingsRevision.current);
+    },
+  });
+  const patchSettingsData = settingsResource.patch;
+  const ensureSettings = useCallback(() => setSettingsRequested(true), []);
+  const patchSettings = useCallback((next: Partial<WalletSettingsData>) => {
+    settingsRevision.current++;
+    patchSettingsData(next);
+  }, [patchSettingsData]);
+
   const markDisconnected = useCallback(() => {
-    patchConfig({ configType: false });
+    intent.current++;
+    settingsRevision.current++;
+    setSettingsRequested(false);
+    patchSettingsData({alias:undefined,threshold:undefined,nwcUri:undefined,address:undefined});
+    patchConfig({ configType: false, cachedBalance: undefined, cachedTransactions: [] });
     patchBalance({ balance: null });
-  }, [patchConfig, patchBalance]);
+  }, [patchConfig, patchBalance, patchSettingsData]);
+
+  useStorageWatch([{area:'local',keys:[walletDisplayKey(accountId)]}], () => {
+    void readWalletDisplayCache(accountId).then(snapshot => { if (snapshot?.providerType === false) markDisconnected(); }).catch(() => {});
+  });
 
   const value: WalletContextValue = {
     configType: configData.configType,
-    configReadFailed: !!configError,
-    balance: balanceData.balance,
+    settings: settingsResource.data,
+    settingsLoading: settingsResource.loading || !settingsRequested,
+    settingsError: settingsResource.error,
+    ensureSettings,
+    refreshSettings: settingsResource.refresh,
+    patchSettings,
+    configReadFailed: !!configError && configData.configType !== false,
+    configLoading,
+    cachedTransactions: configData.cachedTransactions || [],
+    balance: balanceData.balance ?? configData.cachedBalance ?? null,
     balanceLoading,
     balanceError,
     refreshConfig,
@@ -120,3 +174,43 @@ export function WalletProvider({ children }: WalletProviderProps) {
 }
 
 export { useWallet };
+
+/** Hydrate locally before starting the presence check. A refresh cannot erase a known wallet. */
+export async function loadWalletDisplay(
+  accountId: string,
+  patch: (next: Partial<ConfigData>) => void,
+  isCurrent: () => boolean,
+  read: () => Promise<WalletDisplayCache | null> = () => readWalletDisplayCache(accountId),
+  check: () => Promise<string | false> = () => rpc<string | false>('wallet_hasConfig'),
+): Promise<void> {
+  const cached = await read().catch(() => null);
+  if (!isCurrent()) return;
+  if (cached) patch({configType:cached.providerType,cachedBalance:cached.balance,cachedTransactions:cached.transactions});
+  const result = await check();
+  if (!isCurrent()) return;
+  if (!result && cached?.providerType) throw new Error(t('wallet.checkFailed'));
+  patch({configType:result});
+}
+
+/** Independent reads never turn failures into missing settings or hold a fast field behind a slow one. */
+export async function loadWalletSettings(
+  providerType: string,
+  patch: (next: Partial<WalletSettingsData>) => void,
+  isCurrent: () => boolean,
+  request: (method: string) => Promise<unknown> = rpc,
+): Promise<void> {
+  const reads: Array<[string, (value: any) => Partial<WalletSettingsData>]> = [
+    ['wallet_getInfo', value => ({alias:value.alias || ''})],
+    ['wallet_getAutoApproveThreshold', value => ({threshold:value})],
+  ];
+  if (providerType === 'lnbits') reads.push(
+    ['wallet_getNwcUri', value => ({nwcUri:value})],
+    ['wallet_getLightningAddress', value => ({address:value.address})],
+  );
+  const results = await Promise.allSettled(reads.map(async ([method, convert]) => {
+    const value = await request(method);
+    if (isCurrent()) patch(convert(value));
+  }));
+  const failed = results.find(result => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
+}

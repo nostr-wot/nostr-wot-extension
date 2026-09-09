@@ -6,9 +6,37 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
-## Unreleased
+## 0.7.0 — 2026-09-09
 
-No version bump yet. A structural pass over the frontend — five parallel audits covering component reuse, CSS strategy, module boundaries, the overlay system and the oversized components — plus two security fixes the audits surfaced on the way.
+- Fixed repeated relay traffic caused by cache-change notifications starting another refresh. Recent mute/PQ answers are reused for one minute; stale reads still refresh in the background.
+
+- Profile covers now support Blossom upload or a typed URL and appear in the publish preview. Form fields have a distinct cool-gray surface. Post-quantum settings have a clearer status/publication layout, and the encrypted-backup recovery warning follows password validation.
+
+- Activity rows now show cached site favicons and trailing time/status. Event details have expandable payloads and local decryption for saved NIP-04/NIP-44/PQ content, including verified gift wraps. Future crypto logs retain ciphertext only; older entries without saved bodies explain their limitation.
+
+### Store release notes
+
+- Redesigned wallet, profile, post-quantum keys, activity details and form controls.
+- Wallet information appears from cache while refreshing; settled transaction history loads past pending invoices.
+- Fixed repeated relay requests, relay-list discovery and unstable key publication status.
+- Concurrent approval requests appear in groups with expandable details, website origins and readable event types. Requests for another account are rejected.
+- Improved account switching, scrolling, copy controls and keyboard accessibility.
+- Corrected Firefox data disclosures and required consent-compatible Firefox versions.
+
+### Fixed — consent and release packaging
+
+- Firefox requires desktop 140+ and Android 142+ for its built-in consent experience.
+- Disclosures now include wallet authentication, remote-signing communications and site domains sent for favicons, alongside payment and identity data. Firefox requests consent for newly required categories on upgrade.
+
+### Fixed — wallet and approvals
+
+- Account-scoped wallet display caches survive popup reopening and refresh in the background without hiding existing data. Alias and address reads update independently.
+- Transaction history excludes pending invoices at the LNbits API and in the shared filter, and continues paging when a provider still returns pending entries.
+- Deposit, send and settings dialogs use consistent spacing, bounded scrolling, reusable copy controls and clearer action descriptions.
+- Content-script requests share a multiplexed port with request IDs, out-of-order response matching and disconnect cleanup.
+- Pending approvals remain grouped with live details and batch decisions scoped to the selected account. A client that serializes requests still sends its next request only after the previous response; unseen requests cannot be grouped.
+- Automatic approval opening reuses an already-visible popup, including during account switching.
+
 
 ### Fixed — security
 
@@ -21,7 +49,22 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - The in-popup unlock prompt sat at `z-index: 360` while wallet dialogs sat at 500 — the surface demanding an unlock outranked the one asking for it. There is now a stacking ladder in `theme.css`, and `--z-lock` beats every task surface by construction.
 - Menu sections and the permissions list had no scroller anywhere in their chain, so anything taller than the card was clipped by `overflow: hidden` — not merely off-screen, unreachable.
 
+### Changed — form controls and mute lists
+
+- Inputs, selects and dropdowns share consistent heights, stronger borders, SVG chevrons and keyboard focus. Buttons have quieter hover and disabled states; list Add actions use accessible SVG plus buttons.
+- Empty, invalid and duplicate list entries cannot be submitted by click or Enter. Custom permission kinds are validated before Add is enabled, and validation errors no longer interrupt typing.
+- Mutes reads the latest verified NIP-51 kind:10000 before editing, waits for Never-lock startup and distinguishes missing, empty, private-only and failed reads. The header information button explains public edits and preserved private entries.
+
+### Changed — notice consistency
+
+- Warning and error callouts now share `StatusNotice` spacing, corners and icon alignment across recovery, key export, account removal, security settings and post-quantum availability. Paragraph warnings use a wrapping body; compact status rows retain their label and tooltip.
+
 ### Fixed — other
+
+- Post-quantum keys in Security no longer report "Vault is locked" while a Never-lock vault is still completing startup decryption. Status and key operations wait for the same startup check as the main vault status.
+- The Activity overlay’s close control now uses the shared icon button and has an accessible name.
+- Filled shared buttons now suppress the browser’s native raised border; outlined buttons retain their explicit border.
+- Fixed two CSS cascade regressions found in the visual pass: the global reset overrode Tailwind spacing, and decorative background rules forced overlays into normal flow and erased their stacking order. Defaults now sit below utilities in explicit cascade layers.
 
 - Copying an **nsec, ncryptsec or seed phrase** used an un-awaited `navigator.clipboard.writeText` with no error path, so a clipboard the browser refused looked exactly like a successful copy — on the three values a user cannot check by eye. Nine of eleven raw call sites now use `useCopy`, which reports the outcome, and the wizard only marks a seed backed up if the write actually landed.
 - **Clearing your display name left the old one published.** `display_name` was set alongside `name` but never deleted with it, so emptying the field deleted `name` and left the previous value in the field many clients prefer.
@@ -48,7 +91,7 @@ No version bump yet. A structural pass over the frontend — five parallel audit
 - Shared what was duplicated: `useOutsideClick` (4 copies), `useTimedReveal` (2, both guarding secret material), `Spinner` (4 CSS definitions and 4 keyframes), `IconButton` (17 rule blocks), `validatePasswordPair` (8 hand-written copies), `asGroup` (which collapsed four single-request approval handlers that were repeating the group handlers' `permKey || type` fallback by hand).
 - Renamed four files that said one thing and rendered another: `FiltersModal`/`ActivityModal` → `*Overlay` (they render `OverlayPanel`), `HomeTab` → `Home` (there are no tabs), `Profile/Mutes/RelaysCard` → `*Row` (they render a list row).
 - `src/wizard/` is now a peer of the three entry points. `onboarding` had been importing it from `../popup/components/Wizard` — the only cross-entry reach-in in the tree, and there are none left.
-- Tests 606 → 1206.
+- Expanded regression coverage for the refactor and subsequent wallet, relay, approval and release fixes.
 
 ### Changed — one component per pattern
 

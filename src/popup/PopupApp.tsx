@@ -122,7 +122,6 @@ function PopupInner() {
         <TopBar
           onMenuOpen={() => setActiveOverlay('menu')}
           onAddAccount={() => setActiveOverlay('wizard')}
-          onEditProfile={() => setActiveOverlay('editProfile')}
         />
 
         <Container gap={2} className="[&>*]:shrink-0 flex-1 overflow-y-auto min-h-0">

@@ -96,14 +96,9 @@ export default function OverlayPanel({
                   </IconButton>
                 </div>
               ) : (
-                // No className here on purpose: the pre-migration CSS module
-                // never defined `.closeBtn` either, so this button was
-                // already rendering with no class and pure UA button chrome.
-                // Preserved as-is rather than newly styled, to not change
-                // what actually renders.
-                <button onClick={onClose}>
+                <IconButton size={36} onClick={onClose} aria-label={t('common.close')}>
                   <IconClose />
-                </button>
+                </IconButton>
               )}
             </>
           )}

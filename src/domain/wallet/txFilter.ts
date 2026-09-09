@@ -20,6 +20,7 @@ export interface FilterableTx {
   amount: number;
   createdAt: number;
   memo?: string | null;
+  status?: string;
 }
 
 export const EMPTY_TX_FILTERS: TxFilters = { direction: 'all', dateFrom: '', dateTo: '' };
@@ -47,6 +48,7 @@ export function matchesTxFilter(
   filters: TxFilters,
   range = dateRangeToTs(filters),
 ): boolean {
+  if (tx.status === 'pending') return false;
   if (filters.direction === 'in' && tx.amount < 0) return false;
   if (filters.direction === 'out' && tx.amount >= 0) return false;
   if (range.fromTs && tx.createdAt < range.fromTs) return false;

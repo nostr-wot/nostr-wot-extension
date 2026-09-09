@@ -29,7 +29,7 @@ export default function ActionTile({ icon, title, description, onClick, disabled
       {icon}
       <Container>
         <strong className="text-md font-semibold text-heading">{title}</strong>
-        <Text variant="muted" as="span">{description}</Text>
+        <Text variant="muted" as="span" className="text-menu-subtitle">{description}</Text>
       </Container>
     </button>
   );

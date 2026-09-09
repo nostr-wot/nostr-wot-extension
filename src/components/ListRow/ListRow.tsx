@@ -108,7 +108,7 @@ export default function ListRow({
           {info && <InfoTooltip text={info} />}
         </span>
         {subtitle != null && (
-          <span className="text-xs text-muted overflow-hidden text-ellipsis whitespace-nowrap">{subtitle}</span>
+          <span className="text-xs text-menu-subtitle overflow-hidden text-ellipsis whitespace-nowrap">{subtitle}</span>
         )}
       </span>
       {trailing != null && <span className="flex items-center text-muted shrink-0">{trailing}</span>}

@@ -6,13 +6,13 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each in its own folder. There are **44**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
+All shared components live in `src/components/`, each in its own folder. There are **47**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
-**Content** — `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`.
+**Content** — `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `Button`, `IconButton`, `LinkButton`, `Input`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
 **Feedback** — `Spinner`.
 
@@ -35,6 +35,12 @@ Three row-shaped things are deliberately *not* `ListRow`, and the reasoning is w
 `FieldDisplay` is one labelled value, and there were four implementations: this component, the wizard's done step, the sub-account summary, and seven rows in the wallet's send dialog. They disagreed on every detail — the label muted in one and secondary in another, semibold in one and medium in another, the value right-aligned in two of the four. None of that was decided. The two differences that *are* real became variants: `divided` draws the hairline for a stack filling a `Card`, and `caps` is the wallet's dense block where a small uppercase label sits beside a value that matters more than it does.
 
 **`FormError` is the line a form shows when it could not do what was asked**, and it is worth knowing why it exists: there were twenty-six of them across twenty-one files, and exactly one carried `role="alert"`. Everywhere else the error raised by a failed submit was never announced — a screen-reader user pressed the button and heard nothing at all. The visual duplication (two font sizes for the same thing, chosen by nobody) was the smaller half of the problem. It renders nothing for an empty message, so the `{error && ...}` guard goes away too. `Input` and `InputRow` keep their own field-level error: that belongs to the field's contract, not the form's.
+
+**Overlay headers use `IconButton` for every close control**, including the uncentered Activity header, with the translated close label for assistive technology.
+
+**Filled `Button` variants explicitly remove the browser border.** Preflight is off, so omitting a border utility leaves the native raised border visible; outline variants retain their explicit border.
+
+**`StatusNotice` owns tinted callouts as well as compact status rows.** Use `variant="callout"` for paragraph warnings, with an optional `label` above the body. Both variants share 12px horizontal padding, 10px vertical padding, an 8px icon gap and 10px corners. Callouts top-align a non-shrinking icon and wrap their body at 12px; status rows keep their existing centered label and tooltip. Use `warn` for caution, `error` for the existing red secret-export warnings, and `ok` for positive status. Caller margins stay in `className`. Recovery, auto-lock, account removal, encrypted backup and unavailable post-quantum notices all use this component; `FormError` remains the live form-error line.
 
 **A component can be a form rather than a screen.** `EncryptedBackupForm` exists because "export the key as an `ncryptsec`" had two implementations — the vault's key dialog, which explained the format, warned that nothing can recover the password, showed a live checklist of what the password still needed and offered both a download and a copy; and the wizard's, which had two bare password fields and a button that objected only once pressed. Same operation, same irreversible consequence, and the thinner one was what a new user met. It is deliberately **not** a `Modal`: the vault dialog is already inside one and switches between four actions, so a modal there would nest. Each caller brings the shell, the component brings the body and its own actions. Reach for this shape whenever the duplicated thing is a *flow* rather than a piece of chrome.
 
@@ -64,9 +70,9 @@ Do **not** extract if:
 
 ### Extract the decision, not just the markup
 
-There is no test harness that renders React here — `tests/` is `node:test` over pure modules. So any rule that stays inside a component is, by construction, untestable, and the only extraction that buys a test is the *pure* half: the predicate, the grouping, the status derivation, the validation.
+Most tests use `node:test` over pure modules. `status-notice.test.ts` also uses React server rendering to check presentational markup; there is no mounted, interactive React test harness. So any rule that stays inside a component is, by construction, untestable, and the only extraction that buys a test is the *pure* half: the predicate, the grouping, the status derivation, the validation.
 
-`siteState.ts`, `sendTarget.ts` and `approval.ts` are the pattern. The last one is the argument for it: `filterPendingForDomain` is a cross-site isolation boundary — it must return nothing when the current origin is unknown, or one site's popup lists another site's pending signing requests, content included. It sat inline in a 400-line component with a comment explaining why, and nothing asserted it. A refactor that "simplified" the empty-domain branch back to returning everything would have been green. It now has a test that fails loudly.
+`siteState.ts`, `sendTarget.ts` and `approval.ts` isolate testable UI decisions. Approval is account-scoped: `requestMatchesAccount` rejects unknown/different accounts and conflicting author keys, while the extension popup lists all requesting websites explicitly. `filterPendingForDomain` remains available for origin-scoped surfaces; it is no longer the popup approval queue filter.
 
 When a component holds a rule that would be embarrassing to get wrong, that rule wants its own module and its own test file — and the test file wants registering in `tests/run.sh` **and** `.github/workflows/tests.yml`, or it never runs.
 
@@ -278,6 +284,10 @@ Two consequences when migrating, both of which produce a silently wrong result r
 - **A `<button>` or `<input>` keeps the UA's font.** `font-[inherit]` is required wherever the old rule said `font-family: inherit`, or the control will not match its own label.
 - **A colour utility does not create a border.** `border-card-border` sets `border-color` only. The old `border: 1px solid var(--card-border)` needs `border border-card-border` — the bare `border` is what supplies the width, and the style comes from an `@property` whose initial value is `solid`.
 
+### Keep defaults below utilities in the cascade
+
+`theme.css` is imported into `@layer base`. Its universal margin/padding reset must remain below utilities, or every `p-*` and `m-*` silently loses even though its generated rule exists. `TopoBg`'s child-position defaults live in `@layer components` for the same reason: an unlayered `position: relative; z-index: 1` overrides overlay positioning and the consent stacking ladder. The built-CSS check in `tests/css-selectors.test.ts` covers both boundaries.
+
 ### Always compose class lists with `cn()`
 
 `cn(OWN_CLASSES, className)` — own first, the caller's last. This is not tidiness; it is the difference between an override working and not.
@@ -386,3 +396,71 @@ return () => browser.storage.onChanged.removeListener(onChanged);
 **Colours and strings come from the palette and the catalogue, and both are enforced.** `tests/theme-tokens.test.ts` asserts every `var(--x)` in `src` resolves against a definition, because CSS fails silently here — a `var()` naming nothing, with no fallback, invalidates its whole declaration and the property is dropped (that is why the InfoTooltip bubble rendered transparent), and one *with* a fallback is quieter but no better: the fallback becomes the real value, the palette has no say, and two files reaching for the same idea drift apart. `tests/i18n-keys.test.ts` scans the **source** for what `t()` is actually asked for — including the dynamic families, enumerated from the unions that drive them — rather than comparing locales against `en`. Comparing against `en` is provably too weak: `wizard.type.nsec` was missing from *every* locale including `en`, so first-run importers read the raw key as their account type in all six languages and a locales-vs-en test passed the whole time.
 
 **No mount effect may open a socket.** Relay and NWC round trips on popup open put the slowest relay on the path to first paint. Ask the background for a cached answer and let it refresh behind.
+
+
+## Form controls and validation
+
+`Input`, `Select`, and `Dropdown` share 40px default / 32px compact minimum heights,
+8px corners, an opaque field surface, `--control-border`, and visible focus rings.
+`Dropdown` adapts value callbacks to the native `Select`, so arrow keys, type-ahead,
+and platform menus work without a floating panel being clipped by popup scrollers.
+The chevron is an SVG; Select no longer has a CSS module or a data-URI icon.
+Buttons use color feedback rather than movement or raised shadows. Disabled actions
+have no hover treatment. `IconButton` and `RemoveButton` share keyboard focus styles.
+
+Keep an input's wrapper stable when its error appears: changing its element path
+remounts the field and loses focus while typing. Labels use `htmlFor`; error text is
+linked through `aria-describedby` and the input exposes `aria-invalid`.
+
+`EditableList` validates and normalizes before enabling its SVG plus button. Empty,
+invalid and duplicate entries cannot be submitted, including with Enter. Pass the
+same `validate` function for controlled inputs too. `InputRow` also guards its
+submission callback, so disabling a button cannot be bypassed with the keyboard.
+Icon-only actions retain an accessible label and a title. Permission custom kinds
+must be integers from 0 through 65535 before Add is enabled.
+
+The Mutes editor displays loading, failed read, missing event, published empty list,
+and encrypted-private-only states separately. Its header information button explains
+NIP-51 and the difference between public edits and preserved private entries. Opening
+this editor explicitly requests a fresh background read before enabling editing;
+the Home summary continues to use the cache. Failed reads never enable publishing.
+
+### Activity details and site icons
+
+Activity rows place `SiteIcon` first and their time followed by `StatusDot` last. `SiteIcon` also serves the site connection popover; it calls `getCachedFavicon`, which deduplicates requests, stores up to 128 raster icons for seven days, and falls back to the existing favicon URL and browser HTTP cache when CORS prevents reading image bytes. Icons never require new host permissions.
+
+`ActivityEntryDetail` reuses `EventPreview`, `FieldDisplay`, and shared form controls. Tags and raw payloads are expandable; approval previews keep tags expanded. Encryption review is activity-only, with a validated peer key field when the event omits its recipient. Decrypted text is temporary component state, cleared on hide, unmount, entry change, and vault lock-state notifications; pending replies cannot restore it after those lifecycle changes.
+
+### Profile media and key settings
+
+Profile editing supports file selection or an HTTP(S) URL for both avatar and cover. Both file paths reuse `uploadProfileImages` / `uploadToBlossom`; successful uploads are cached per File during the edit session so revisiting the preview or retrying a partial failure does not upload the same file twice. The cover appears in the confirmation preview. Changing the URL discards its file selection. Invalid image URLs disable the preview action, and local object URLs are revoked when replaced or the editor is disposed.
+
+All text inputs, selects, date controls and the key-import textarea use the opaque cool-gray `--input-bg` surface, distinct from cards. Focus retains the existing purple border and ring. The encrypted-backup recovery warning follows `PasswordPairFields` (including its validation checklist) and precedes the action buttons.
+
+The post-quantum settings page leads with `PqcOverview`: account key source followed by three navigation rows: key viewing, export, and public key announcement. The announcement row has a green dot when confirmed current and red otherwise; its modal retains the publication/retry actions and explains an unreachable check. The imported-key backup warning sits immediately above the separate, confirmed removal action. Key cards use shared buttons with algorithm-specific accessible copy labels. Import retains both file selection and paste, with the generator instructions in a native disclosure.
+
+Relay-cache notifications are passive reads: the background reuses answers younger than one minute so a storage-triggered popup refresh cannot restart its own network query. A stale answer is served immediately and refreshed once; opening a popup or receiving a notification never starts a polling timer.
+
+### Profile, permissions, and relay editors
+
+About uses `Textarea`, preserving line breaks and growing or shrinking with its content. The cover appears above the avatar; each image opens a draft dialog with URL and Blossom upload choices. Cancel leaves the profile unchanged. Permission details show the selected site above a scrolling rules region, with actions outside the scroll.
+
+The relay editor distinguishes local configuration (including initial defaults) from the active account’s published NIP-65 event. It checks once on opening/account change and on explicit retry, displays read/write flags, and lets the user load a differing published configuration. Missing events are scoped to the relays checked; failed discovery is not reported as an unpublished list. Empty published lists are explained and cannot overwrite local configuration. Publication uses a snapshot of the visible list and flags, stays disabled until local data is loaded, and refuses empty/all-disabled lists. Local edits preserve the previous nonempty list and flags for restoration; an empty editor without a backup offers explicit restoration of the default relays.
+
+Activity filters use the shared `Modal` with a dimmed backdrop, a content-sized card capped at 360px, a scrolling body and footer actions. Filters still apply immediately; closing keeps the selection. The post-quantum overview uses a text heading, retaining icons on its action rows without a repeated decorative key icon.
+
+Activity type filters use plain operation categories without the protocol-details toggle. The pubkey tooltip explains matching the peer key and event `p` tags (including partial hexadecimal matches), distinct from selecting the signing account. Group detail keeps shared app, minute/time range, kind, account, recipient and status above a scrolling list of compact action/content/tag previews. It omits an account already selected outside and shortens displayed keys in the middle, with full values in tooltips. Differing accounts/recipients/statuses remain on their individual rows. Selecting a row opens a smaller shared Modal over a dimmed backdrop with exact time, kind-specific details and expandable JSON. Encrypted messages reuse the guarded “Reveal message” action inside that dialog; closing unmounts the plaintext.
+
+The top-bar account selector opens a shared Modal as a sibling of the positioned top bar, so its dimmed backdrop covers the entire popup. Account rows show the selected state explicitly and preserve the removal confirmation; Add account stays in the footer. Editing is reached from Home. The copy icon sits immediately after the switching chevron and opens npub/hex choices using the shared `useCopy` feedback.
+
+Menu subtitles share `--menu-subtitle`, the existing wizard purple at 55% opacity, through `text-menu-subtitle`. ListRow, ActionTile, account choices and the home PQ card reuse it; navigation icons use `text-brand` and `bg-brand-light`, including enabled/stale PQ states. Status dots retain semantic colors. PQ context watches only the selected account’s publication cache, retains verified evidence on failed refreshes, and clears it on account/key changes. Account switching waits for background completion before changing the UI identity.
+
+Wallet surfaces hydrate account-scoped display snapshots before their live refresh. `WalletBalance` is shared by Home and Wallet: the existing amount stays visible beside a small loading indicator, and refresh failures identify it as the last known balance. History refresh displays its spinner beside the heading without replacing cached rows. Pending invoices are hidden by the shared transaction predicate. Cached provider presence survives failed checks; explicit disconnect resets it.
+
+Wallet settings uses the existing account context for independent lazy reads, keeping drafts local. Deposit/Send bodies use Container gap=6 and labelled inputs within the shared Modal; settings sections reuse purple subtitles and separate disconnect from routine actions.
+
+Wallet settings owns a flex-1/min-h-0 overflow-y-auto body inside OverlayPanel; its header and refresh icon remain outside that scroller. Address and connection copy actions reuse IconButton, IconCopy and useCopy, with accessible labels and clipboard feedback.
+
+HomeWalletLayout keeps account-level wallet content outside the current-site notice branch. Loading, restricted pages and unconnected sites must not hide a configured wallet.
+
+The approval sheet always groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.

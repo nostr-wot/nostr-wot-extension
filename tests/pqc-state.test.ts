@@ -89,3 +89,15 @@ describe('isAlreadyPublished', () => {
     assert.equal(isAlreadyPublished(null), false);
   });
 });
+
+import { mergePqcStatus, mergePqcPublished, type PqcPanelStatus } from '../src/domain/pqc/pqcState.ts';
+it('PQ refresh failure retains evidence, but account and key changes clear it', () => {
+  const account = {...status(),pubkey:'a',keys:{kem:'k',dsa:'d'},wordCount:24,attestation:null} as PqcPanelStatus;
+  const previous = {status:account,published:pub()};
+  assert.deepEqual(mergePqcStatus(previous,account).published,pub());
+  assert.equal(mergePqcStatus(previous,{...account,pubkey:'b'}).published,null);
+  assert.equal(mergePqcStatus(previous,{...account,keys:{kem:'new',dsa:'d'}}).published,null);
+  assert.deepEqual(mergePqcPublished(pub(),{published:false,current:false,unreachable:true}),pub());
+  assert.deepEqual(mergePqcPublished(pub(),null),pub());
+  assert.deepEqual(mergePqcPublished(pub(),{published:true,current:false}),{published:true,current:false});
+});

@@ -32,6 +32,10 @@ export default function PqcCard() {
 
   if (!state) return null;
 
+  return <PqcCardView state={state} onClick={navigate.openPqc} />;
+}
+
+export function PqcCardView({ state, onClick }: { state: PqcCardState; onClick: () => void }) {
   const COPY: Record<PqcCardState, { icon: React.ReactNode; title: string; desc: string }> = {
     enabled: {
       icon: <IconShield size={18} />,
@@ -57,25 +61,18 @@ export default function PqcCard() {
 
   const { icon, title, desc } = COPY[state];
 
-  // "On" is a status, not a call to action, so its icon reads calmer than the
-  // setup invitation; "stale" needs to catch the eye because senders are
-  // currently encrypting to the wrong key. `.pqcCardOn strong` never changed
-  // the title colour in practice — it restated the same --text-heading the
-  // base rule already set — so there is no "enabled" title override here.
-  const iconTone = state === 'enabled' ? 'text-success' : state === 'stale' ? 'text-warning' : 'text-brand';
-  const cardTone = state === 'stale' ? 'border-warning' : '';
 
   return (
     <Card
       as="button"
       variant="flat"
-      className={`flex items-center gap-6 w-full py-6 px-7 mb-0 cursor-pointer text-left transition-colors hover:border-brand ${cardTone}`.trim()}
-      onClick={navigate.openPqc}
+      className="flex items-center gap-6 w-full py-6 px-7 mb-0 cursor-pointer text-left transition-colors hover:border-brand"
+      onClick={onClick}
     >
-      <div className={`flex items-center justify-center w-16 h-16 shrink-0 rounded-md bg-card-active ${iconTone}`}>{icon}</div>
+      <div className="flex items-center justify-center w-16 h-16 shrink-0 rounded-md bg-brand-light text-brand">{icon}</div>
       <Container>
         <strong className="block text-md font-semibold text-heading">{title}</strong>
-        <Text variant="secondary" as="span" className="text-xs">{desc}</Text>
+        <Text variant="secondary" as="span" className="text-xs text-menu-subtitle">{desc}</Text>
       </Container>
     </Card>
   );

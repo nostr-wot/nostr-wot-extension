@@ -101,6 +101,9 @@ sequence.
 | `tests/theme-tokens.test.ts` | Every `var(--x)` resolves, and no declaration is malformed by a stray bracket — both fail silently in CSS |
 | `tests/paged-list.test.ts` | `paginate` — the client-side "load more" window shared by the contexts |
 | `tests/format-time.test.ts` | `classifyDay` — the today/yesterday boundary behind the activity log's day headers |
+| `tests/button.test.ts` | Shared input, select, dropdown, add/remove and publish control rendering, validation gates, label/error associations and stable field wrappers |
+| `tests/mute-state.test.ts` | Missing, failed, empty, private-only and public mute-list states; public key and hashtag validation |
+| `tests/status-notice.test.ts` | Server-rendered notice content, warning/error tones, wrapping structure and keyboard tooltip |
 | `tests/cn.test.ts` | `cn()` — that a caller's utility overrides the component's, and that a font size and a colour are not mistaken for one conflict |
 | `tests/tailwind-classes.test.ts` | Every static Tailwind utility the source names generates a rule — a misspelled utility is silent, and the compiler never sees these strings |
 | `tests/css-selectors.test.ts` | No stylesheet selector names a class nothing puts on an element — the rule that survives an extraction and applies to nothing |
@@ -133,3 +136,59 @@ The most comprehensive test file, with 117 tests across 22 suites covering 6 lay
 | `tests/helpers/register-mocks.ts` | Registers the browser mock via Node.js module loader hooks |
 | `tests/helpers/loader-hooks.ts` | Custom loader that intercepts `src/lib/browser.ts` imports and redirects to the mock |
 | `tests/run.sh` | Shell script to run all test groups in sequence |
+
+Activity review regressions live in `tests/activity-decrypt.test.ts` (recorded account, locked/missing keys, ciphertext-only logs, classic/PQ and gift-wrap decryption), `tests/activity-detail.test.ts` (safe content rendering, unavailable bodies, validated decryption controls, approval isolation), and `tests/favicon.test.ts` (in-flight/persistent cache reuse and network fallback). All run in the browser-mocked group locally and in CI.
+
+`tests/profile-images.test.ts` covers avatar/cover upload reuse and partial retries, unsafe returned URLs, safe cover previews, backup-warning ordering, and the post-quantum status/key presentation. It runs in the browser-mocked group. Shared field-surface checks are in `tests/button.test.ts`.
+
+`tests/relay-cache.test.ts` reproduces the relay-cache notification feedback loop and verifies that ten potential notification cycles stop after one network read. It also checks that twenty concurrent cold readers and two hundred subsequent fresh readers share one query, while stale-cache refresh and unreachable-answer preservation continue to work.
+
+`tests/relay-list.test.ts` covers NIP-65 flags, newest verified event selection, socket closure, empty published lists, missing events and network failure. `tests/profile-images.test.ts` also covers multiline About, image dialogs and site-scoped permission scrolling.
+
+Activity detail rendering tests cover one shared header, compact kind-specific rows, middle-shortened keys, and a selected-item dialog with JSON/decryption controls. Account UI tests in `profile-images.test.ts` cover the picker scrim, selected state, pinned Add account action, absent edit/copy row controls, and the top-bar npub/hex copy control.
+
+Publication regression tests cover public relay discovery while locked, newest PQ event selection, exhaustion versus EOSE, verified evidence surviving empty/offline replies, and successful publishing racing an old negative read. State/UI tests cover failed PQ refreshes, changed accounts/keys, account-switch completion ordering and shared menu/icon colors.
+
+Wallet history regressions are covered by `tx-pager.test.ts` (pending pages, offsets, errors), `wallet/lnbits.test.ts` (raw page preservation), `wallet/background-handlers.test.ts` (the actual startup-unlock/history handler), and `tests/wallet-ui.test.ts` (retry, filtered empty states, pagination and status presentation). `profile-read.test.ts` verifies that hundreds of missing/offline metadata reads share three relay connections, with a new read allowed after the cooldown expires.
+
+Relay publication regressions in `tests/publish-handlers.test.ts` cover visible defaults versus missing storage, exact UI snapshots, empty/all-disabled rejection, and acknowledgement-only caching. `tests/relay-list.test.ts` covers first-account discovery, recoverable local configuration, and the disabled apply action for an empty publication. The wallet UI suite also converts a synthetic LNbits response matching the reported pending-record shape and verifies that it renders as a pending request, including when the provider supplies a preimage.
+
+Wallet cache regressions run in `tests/wallet/background-handlers.test.ts` (startup presence, account isolation, display-field allowlist, revision invalidation, disconnect and account/vault erasure) and `tests/wallet-ui.test.ts` (hydrate before refresh, preserve data on failure, late-response suppression, inline balance loading). `tests/wallet/lnbits.test.ts` verifies the server-side pending exclusion and ordering query; `tests/tx-pager.test.ts` verifies paging past more than 500 pending invoices and cancellation of stale scans.
+
+Wallet UI tests cover independent settings reads, partial failure, stale-response suppression, unknown address loading and payment-dialog labels/spacing. Wallet background tests cover the settings startup gate; provisioning tests assert HTTP failures do not become missing addresses.
+
+Wallet UI regressions assert the bounded settings scroll region, explanatory action labels and SVG copy controls that do not render connection credentials.
+
+HomeWalletLayout regression coverage keeps the wallet visible through loading/restricted/unconnected site notices and normal site controls.
+
+Approval tests cover cross-origin account filtering, foreign authors, account-separated grouping, and snapshot batch decisions that exclude later arrivals and await partial failures. Signer tests cover foreign-author rejection under an existing allow rule and foreign-account single/batch rejection. Signer fixtures persist public account metadata like real onboarding so locked-vault requests retain a verifiable identity. ApprovalCard rendering is covered in wallet-ui.test.ts.
+
+`communication.test.ts` executes the actual content script and background port listener in isolated VM contexts. Regressions cover simultaneous delivery before approval, out-of-order replies, request IDs on permission denial, channel isolation, disconnect cleanup and reconnection.
+
+Approval group regressions verify live arrivals/removals stay within the selected account and that the detail view contains every pending event in collapsed rows with one shared decision footer.
+
+Signer popup lifecycle tests cover reuse of an already-visible popup through runtime.getContexts and the extension.getViews fallback, plus normal automatic opening when no popup is present.
+
+Release checks in `tests/test-registration.test.ts` enforce matching package/lockfile/manifest versions, Firefox desktop and Android consent minimums, and the audited required data categories.
+
+## Nostr Connect integration
+
+Run `npm run test:nostr-connect`. `tests/nostr-connect-integration.test.ts` runs a
+loopback WebSocket relay and controlled remote signer with disposable test keys.
+The production signer handlers, vault, permission checks and nostr-tools
+BunkerSigner are real. The browser APIs are mocked. The remote test signer holds
+requests until the test approves or rejects them; requests and responses are
+signed kind:24133 events with real NIP-44 transport encryption.
+
+Coverage includes bunker connection, QR secret validation/cancellation, remote
+signing approval/rejection, concurrent out-of-order replies, NIP-04/NIP-44
+operations and rejections, local deny and foreign-author gates, cancellation,
+pending-state cleanup, persisted client identity on reconnect, vault unlock and
+remote auth URLs. The suite runs locally and in CI with the mocked module group.
+No public relay, real account, wallet, browser profile or external signer is used.
+
+These are protocol/handler integration tests, not browser click tests. Existing
+communication tests cover the content/background bridge; popup rendering tests
+cover the approval surfaces. Actual QR scanning and third-party signer UI still
+need a browser/device smoke test. The QR handshake here exercises BunkerSigner;
+the onboarding session persistence handlers retain their separate existing tests.

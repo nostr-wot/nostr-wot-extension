@@ -71,8 +71,7 @@ Declaring the categories is what switches on Firefox's **built-in data consent**
 — the install-time screen listing them, which the user accepts or declines. That
 is one of the two compliant routes; the other is a custom consent screen we would
 have to build and maintain ourselves. The built-in one is available on Firefox
-desktop **140+** and Android **142+**, which is why `strict_min_version` is
-`140.0`. If that minimum is ever lowered, the built-in route stops being
+desktop **140+** and Android **142+**, which is why desktop requires `140.0` and Android requires `142.0`. If that minimum is ever lowered, the built-in route stops being
 available to the users below it and a custom screen becomes mandatory.
 
 **Getting the category list right matters in both directions.** Under-declaring
@@ -80,17 +79,27 @@ is what got the version disabled. Over-declaring makes the install prompt more
 alarming than the truth and costs installs. `personallyIdentifyingInfo` was
 **not** named in the rejection — it is declared because the table above is what
 the code actually does, and being disabled a second time is far more expensive
-than a longer prompt. Categories deliberately *not* declared, and why:
+than a longer prompt. The 0.7.0 audit found three further transmissions, now declared as required:
 
-- `authenticationInfo` — private keys never leave the device. NIP-98 auth events
-  sent to the LNbits provisioning endpoint are signatures over a challenge, not
-  credentials the recipient could reuse elsewhere.
-- `personalCommunications` — the extension encrypts and decrypts DMs but does
-  not transmit them. The page does that, under its own policy.
-- `browsingActivity` / `websiteActivity` — the allowlist and the activity log are
-  local, and neither is ever sent anywhere.
-- `technicalAndInteraction` — no telemetry of any kind. This category may only be
-  `optional`, never `required`.
+| What | Where to | Category |
+|---|---|---|
+| LNbits admin API key, wallet registration and username | Configured LNbits/provisioning server | `authenticationInfo` |
+| Event and message content passed to a NIP-46 remote signer (encrypted in transit) | Selected signer through its relay | `personalCommunications` |
+| Site domain used to retrieve an icon | Google's favicon service | `browsingActivity` |
+
+Local signing keys remain on-device, but wallet API credentials are transmitted
+to the configured wallet service. Local-only DM cryptography does not transmit
+messages; the remote signer path does. Activity logs remain local, but favicon
+lookups disclose domains. Encryption in transit does not remove disclosure duties.
+No telemetry is sent, so `technicalAndInteraction` is not declared.
+
+Version 0.7.0 also adds `gecko_android.strict_min_version: "142.0"`.
+Desktop's `gecko.strict_min_version: "140.0"` alone is not sufficient to enforce
+the Android consent minimum. Both constraints are regression-tested.
+Required consent is presented by Firefox on installation and when new required
+categories are added on upgrade. Users can decline installation/update or disable
+or remove the extension to stop its transmissions. No custom consent screen is
+needed for these supported versions.
 
 The full category list and syntax:
 <https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/>
@@ -145,3 +154,17 @@ wrong and cost a rebuild each:
 Release notes for each store live in `CHANGELOG.md` under the version, in a
 `### Store release notes` block — short, user-facing, and free of the internal
 detail the rest of the entry carries.
+
+## Reproduce the 0.7.0 packages
+
+Use supported Node 22 or 24, run `npm ci`, then `npm run package:chrome`
+and `npm run package:firefox`. The Chrome ZIP removes Firefox-specific settings;
+the Firefox ZIP retains the consent declaration and uses background scripts.
+The Firefox command restores the normal main-clone `dist/` build afterwards.
+
+For AMO reviewer notes: this release uses native Firefox consent with required
+identity, payment, authentication, personal communications and browsing activity
+categories. Minimum versions are desktop 140 and Android 142. Verify install
+and upgrade prompts; no data permission is declared as `none`. Store acceptance
+still depends on Mozilla's review. Keep store privacy disclosures consistent with
+the transmission tables above.

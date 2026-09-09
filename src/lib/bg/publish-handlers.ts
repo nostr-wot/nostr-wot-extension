@@ -5,6 +5,8 @@
  */
 
 import browser from '../browser.ts';
+import { configuredRelayUrls, relayPublicationTags, type RelayConfiguration } from '../../domain/relays/relayList.ts';
+import { writeLocalCache } from '../relay.ts';
 import { signEvent } from '../crypto/nip01.ts';
 import * as vault from '../vault.ts';
 import * as signer from '../signer.ts';
@@ -89,28 +91,20 @@ export function isPrivateHost(hostname: string): boolean {
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
-    ['publishRelayList', async () => {
+    ['publishRelayList', async (params) => {
+        await vault.whenStartupUnlockSettled();
+        if (params.pubkey && params.pubkey !== vault.getActivePubkey()) throw new Error('Active account changed');
         const privkeyBytes = vault.getPrivkey();
         if (!privkeyBytes) throw new Error('Vault is locked or no private key');
 
         try {
             const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
             const flagData = await browser.storage.local.get(['relayFlags']) as Record<string, Record<string, { read: boolean; write: boolean }>>;
-            const relaysCsv = relayData.relays || '';
-            const relayUrls = relaysCsv.split(',').map(r => r.trim()).filter(Boolean);
-            const flags = flagData.relayFlags || {};
-
-            const tags: string[][] = [];
-            for (const url of relayUrls) {
-                const f = flags[url] || { read: true, write: true };
-                if (f.read && f.write) {
-                    tags.push(['r', url]);
-                } else if (f.read) {
-                    tags.push(['r', url, 'read']);
-                } else if (f.write) {
-                    tags.push(['r', url, 'write']);
-                }
-            }
+            const configuration = params.configuration as RelayConfiguration | undefined;
+            const relayUrls = configuration ? configuration.relays : configuredRelayUrls(relayData.relays);
+            const flags = configuration ? configuration.flags : flagData.relayFlags || {};
+            const tags = relayPublicationTags({ relays: relayUrls, flags });
+            const relaysCsv = relayUrls.join(',');
 
             const event: UnsignedEvent = {
                 created_at: Math.floor(Date.now() / 1000),
@@ -120,13 +114,16 @@ export const handlers = new Map<string, HandlerFn>([
             };
 
             const signed = await signEvent(event, privkeyBytes);
-            const broadcastUrls = relayUrls.length > 0 ? relayUrls : config.relays;
+            const broadcastUrls = [...new Set([...relayUrls, ...config.relays])];
             const result = await broadcastEvent(signed, broadcastUrls);
 
-            await browser.storage.local.set({
-                lastRelayPublish: Date.now(),
-                lastPublishedRelays: relaysCsv
-            });
+            if (result.sent > 0) {
+                await writeLocalCache(signed);
+                await browser.storage.local.set({
+                    lastRelayPublish: Date.now(),
+                    lastPublishedRelays: relaysCsv
+                });
+            }
 
             return { ok: true, sent: result.sent, failed: result.failed };
         } finally {

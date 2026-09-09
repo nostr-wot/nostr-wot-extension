@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
-import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
+import { useAccount } from '@context/AccountContext';
 import {
-  filterPendingForDomain,
+  requestMatchesAccount,
   partitionPending,
   groupApprovals,
+  currentApprovalGroup,
   groupNip46,
   liveIds,
   isRequestLive,
-  isGroupLive,
   type PendingRequest,
   type ApprovalGroup,
 } from '@domain/permissions/approval.ts';
@@ -29,7 +29,7 @@ interface UseApprovalQueueOptions {
  *
  * What it deliberately does NOT own: the decisions. Those are pure functions in
  * `src/shared/approval.ts`, where they are tested — including the fail-closed
- * domain filter, which is a cross-site isolation boundary.
+ * account filter. Origins stay visible on every request.
  */
 export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChange }: UseApprovalQueueOptions) {
   const [groups, setGroups] = useState<ApprovalGroup[]>([]);
@@ -38,6 +38,9 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [selectedNip46, setSelectedNip46] = useState<ApprovalGroup | null>(null);
   const vault = useVault();
+  const { active } = useAccount();
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   // Held in refs so `refresh` does not depend on their identity. PopupApp passes
   // `onRequestUnlock` as an inline arrow, so it was a new function on every
@@ -66,27 +69,19 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
   // resolved — as approvable cards. This is the rule docs/component-standards.md
   // §9 states; the function that motivated writing it down was not given it.
   const runRef = useRef(0);
-  // The tab the popup belongs to cannot change while the popup is alive, so the
-  // domain is resolved once and reused.
-  const domainRef = useRef<string | null | undefined>(undefined);
-
   const refresh = useCallback(async () => {
     const run = ++runRef.current;
-    const current = () => run === runRef.current;
-
-    if (domainRef.current === undefined) {
-      const { domain } = await resolveActiveTabDomain();
-      if (!current()) return;
-      domainRef.current = domain;
-    }
-    const currentDomain = domainRef.current;
+    const account = activeRef.current;
+    if (!account) return;
+    const current = () => run === runRef.current && activeRef.current?.id === account.id;
 
     const pending: PendingRequest[] = await rpc('signer_getPending') || [];
     if (!current()) return;
 
-    // Fails closed on an unknown domain; see the rationale and the tests that
-    // pin it in src/shared/approval.ts.
-    const filtered = filterPendingForDomain(pending, currentDomain);
+    const filtered = pending.filter(request => requestMatchesAccount(request, account));
+    const rejected = pending.filter(request => !requestMatchesAccount(request, account));
+    await Promise.all(rejected.map(request => rpc(request.nip46InFlight ? 'signer_cancelNip46' : request.waitingForUnlock ? 'signer_cancelUnlockWaiter' : 'signer_resolve', {id:request.id,decision:{allow:false,remember:false,reason:'Account switched'}})));
+    if (!current()) return;
     const { actionable, nip46InFlight, unlockWaiters } = partitionPending(filtered);
 
     // Only tell the parent when the set actually changed. The array is rebuilt
@@ -102,18 +97,20 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
     }
 
     if (!current()) return;
-    setGroups(groupApprovals(actionable));
-    setNip46Groups(groupNip46(nip46InFlight));
+    const nextGroups = groupApprovals(actionable);
+    setGroups(nextGroups);
+    const nextNip46Groups = groupNip46(nip46InFlight);
+    setNip46Groups(nextNip46Groups);
 
     // A detail modal holds a snapshot taken when it opened. The request behind it
     // can be gone by now — timed out, resolved from another surface, or dropped
     // when the worker restarted — and nothing was reconciling that, so the modal
     // outlived its request and Approve acknowledged an id the background no
     // longer had, then closed as though it had signed.
-    const live = liveIds(pending);
+    const live = liveIds(filtered);
     setSelectedRequest((sel) => (isRequestLive(sel, live) ? sel : null));
-    setSelectedGroup((sel) => (isGroupLive(sel, live) ? sel : null));
-    setSelectedNip46((sel) => (isGroupLive(sel, live) ? sel : null));
+    setSelectedGroup((sel) => currentApprovalGroup(sel, nextGroups));
+    setSelectedNip46((sel) => currentApprovalGroup(sel, nextNip46Groups));
   }, []);
 
   useEffect(() => {
@@ -125,6 +122,8 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
   }, [refresh]);
+
+  useEffect(() => { void refresh(); }, [active?.id, refresh]);
 
   // The vault unlocking is a transition the pending queue's own broadcasts do not
   // cover: nothing about `signerPending` changed, but what the popup should show

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
 import {
-  asGroup,
+  currentApprovalGroup,
+  resolveDisplayedRequests,
   type PendingRequest,
   type ApprovalGroup,
 } from '@domain/permissions/approval.ts';
@@ -22,7 +23,7 @@ interface ApprovalOverlayProps {
 }
 
 export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange }: ApprovalOverlayProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string>('');
   const permissions = usePermissions();
   const { active, accounts } = useAccount();
@@ -30,19 +31,23 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   const {
     groups,
     nip46Groups,
-    selectedGroup, setSelectedGroup,
-    selectedRequest, setSelectedRequest,
+    selectedGroup: groupSelection, setSelectedGroup,
     selectedNip46, setSelectedNip46,
     closeAndRefresh,
   } = useApprovalQueue({ onRequestUnlock, onUnlockWaitersChange });
 
+  const selectedGroup = currentApprovalGroup(groupSelection, groups);
+
   const runAction = async (action: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
     setActionError('');
     try {
       await action();
     } catch {
       setActionError(t('approval.actionFailed'));
     } finally {
+      setBusy(false);
       closeAndRefresh();
     }
   };
@@ -50,9 +55,12 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   // --- Group actions ---
 
   const handleApprove = (group: ApprovalGroup) => runAction(async () => {
-    for (const req of group.requests) {
-      await rpc('signer_resolve', { id: req.id, decision: { allow: true, remember: false } });
-    }
+    await resolveDisplayedRequests(group.requests, id => rpc('signer_resolve', { id, decision: { allow: true, remember: false } }));
+  });
+
+  const handleApproveShown = () => runAction(async () => {
+    const shown = groups.flatMap(group => group.requests);
+    await resolveDisplayedRequests(shown, id => rpc('signer_resolve', {id,decision:{allow:true,remember:false}}));
   });
 
   // Resolve first, then remember. The old order granted a standing permission
@@ -70,9 +78,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   });
 
   const handleDeny = (group: ApprovalGroup) => runAction(async () => {
-    for (const req of group.requests) {
-      await rpc('signer_resolve', { id: req.id, decision: { allow: false, remember: false } });
-    }
+    await resolveDisplayedRequests(group.requests, id => rpc('signer_resolve', { id, decision: { allow: false, remember: false } }));
   });
 
   const handleAlwaysDeny = (group: ApprovalGroup) => runAction(async () => {
@@ -85,10 +91,6 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     await permissions.savePermission(group.origin, group.permKey, 'deny', accountId);
   });
 
-  // The expanded view acts on one request; a one-request group makes that the
-  // same code path as the grouped actions rather than a second copy of each.
-  // --- Reject all ---
-
   const handleRejectAll = () => runAction(async () => {
     for (const group of groups) {
       for (const req of group.requests) {
@@ -97,9 +99,6 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     }
   });
 
-  // All individual requests for expanded view
-  const allRequests = groups.flatMap((g) => g.requests);
-
   if (groups.length === 0 && nip46Groups.length === 0) return null;
 
   const totalCount = groups.reduce((n, g) => n + g.requests.length, 0) + nip46Groups.reduce((n, g) => n + g.requests.length, 0);
@@ -107,20 +106,16 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   return (
     <>
       <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)]`} />
-      <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-[rgba(255,255,255,0.96)] backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
+      <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-elevated backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
         <Container variant="row" gap={4} className="mb-6 flex-wrap">
           {/* Not `Text`: `font-bold` + `text-heading` at `text-lg` is not one
               of the four variants. */}
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
           <Container variant="row" gap={3} className="ml-auto">
-            {allRequests.length > 1 && (
-              <Button small outline onClick={() => setExpanded(!expanded)}>
-                {expanded ? t('approval.grouped') : t('approval.expanded')}
-              </Button>
-            )}
+            {groups.length > 0 && <Button small disabled={busy} onClick={handleApproveShown}>{t('approval.approveShown')}</Button>}
             {groups.length > 0 && (
-              <Button small outline variant="danger" onClick={handleRejectAll}>
+              <Button small outline variant="danger" disabled={busy} onClick={handleRejectAll}>
                 {t('approval.rejectAll')}
               </Button>
             )}
@@ -132,24 +127,14 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
             {t('approval.appliesToAllAccounts')}
           </Text>
         )}
-        <Container gap={4} className="flex-1 overflow-y-auto">
-          {expanded ? (
-            allRequests.map((req) => (
-              <ApprovalCard
-                key={req.id}
-                group={{ origin: req.origin, method: req.type, permKey: req.permKey || req.type, requests: [req] }}
-                onClick={() => setSelectedRequest(req)}
-              />
-            ))
-          ) : (
-            groups.map((group) => (
-              <ApprovalCard
-                key={`${group.origin}::${group.permKey}`}
-                group={group}
-                onClick={() => setSelectedGroup(group)}
-              />
-            ))
-          )}
+        <Container gap={4} className="flex-1 min-h-0 overflow-y-auto">
+          {groups.map((group) => (
+            <ApprovalCard
+              key={`${group.origin}::${group.permKey}`}
+              group={group}
+              onClick={() => setSelectedGroup(group)}
+            />
+          ))}
           {nip46Groups.map((group) => (
             <ApprovalCard
               key={`nip46::${group.origin}::${group.method}`}
@@ -172,6 +157,8 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
       {selectedGroup && (
         <EventDetailModal
           request={selectedGroup.requests[0]}
+          requests={selectedGroup.requests}
+          busy={busy}
           onApprove={() => handleApprove(selectedGroup)}
           onAlwaysAllow={() => handleAlwaysAllow(selectedGroup)}
           onDeny={() => handleDeny(selectedGroup)}
@@ -181,21 +168,11 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
         />
       )}
 
-      {selectedRequest && (
-        <EventDetailModal
-          request={selectedRequest}
-          onApprove={() => handleApprove(asGroup(selectedRequest))}
-          onAlwaysAllow={() => handleAlwaysAllow(asGroup(selectedRequest))}
-          onDeny={() => handleDeny(asGroup(selectedRequest))}
-          onAlwaysDeny={() => handleAlwaysDeny(asGroup(selectedRequest))}
-          onClose={() => setSelectedRequest(null)}
-          zIndex={510}
-        />
-      )}
-
       {selectedNip46 && (
         <EventDetailModal
           request={selectedNip46.requests[0]}
+          requests={selectedNip46.requests}
+          busy={busy}
           nip46InFlight
           onDeny={() => runAction(async () => {
             for (const req of selectedNip46.requests) {

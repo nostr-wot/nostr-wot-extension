@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { rpc, rpcNotify } from '@services/rpc.ts';
 import { t } from '@lib/i18n.js';
-import { getFaviconUrl } from '@utils/faviconUrl.ts';
+import SiteIcon from '@components/SiteIcon/SiteIcon';
 import { resolveActiveTabDomain } from '@domain/site/activeTabDomain.ts';
 import { IconGlobe } from '@assets';
 import Button from '@components/Button/Button';
@@ -86,7 +86,6 @@ export default function GlobeButton() {
     }
   };
 
-  const iconUrl = domain ? getFaviconUrl(domain) : null;
 
   return (
     <div ref={ref} className="relative">
@@ -109,9 +108,7 @@ export default function GlobeButton() {
 
       {open && (
         <div className="absolute top-full right-0 mt-2 bg-elevated border border-card-border rounded-panel py-6 px-7 z-[calc(var(--z-topbar)+1)] shadow-pop min-w-100 text-center">
-          {iconUrl && (
-            <img src={iconUrl} alt={domain!} className="w-16 h-16 rounded-sm object-contain mb-3" />
-          )}
+          <SiteIcon domain={domain} className="w-18 h-18 mb-3" />
           <div className="text-md font-semibold text-heading mb-1 break-all">{domain || '—'}</div>
           <Text variant="secondary" as="div" className="text-xs mb-5">
             {connected === null

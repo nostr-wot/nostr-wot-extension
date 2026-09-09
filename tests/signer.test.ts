@@ -34,6 +34,9 @@ function makePayload(): VaultPayload {
 
 async function setupVault(): Promise<void> {
   await vault.create(TEST_PASSWORD, makePayload());
+  // Mirror the public account selection written by the real onboarding handlers.
+  await browserMock.storage.local.set({activeAccountId:'acct1',accounts:[{id:'acct1',type:'nsec',pubkey:TEST_PUBKEY_HEX}]});
+  await browserMock.storage.sync.set({myPubkey:TEST_PUBKEY_HEX});
   // Vault is now unlocked
 }
 
@@ -1037,7 +1040,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
     // Simulate what every account-change path now does
     await signer.onActiveAccountChanged('acct1', 'acct2');
 
-    await assert.rejects(p, /User denied access/);
+    await assert.rejects(p, /Account switched/);
     assert.strictEqual((await signer.getPending()).length, 0, 'Pending prompt must be cleared');
   });
 
@@ -1076,7 +1079,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
 
     await setActive({ accountId: 'acct2' });
 
-    await assert.rejects(p, /User denied access/);
+    await assert.rejects(p, /Account switched/);
     assert.strictEqual((await signer.getPending()).length, 0);
   });
 
@@ -1101,7 +1104,7 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
       },
     });
 
-    await assert.rejects(p, /User denied access/);
+    await assert.rejects(p, /Account switched/);
     assert.strictEqual((await signer.getPending()).length, 0);
   });
 
@@ -1476,6 +1479,8 @@ describe('signer -- cold-start auto-unlock', () => {
     // "Never lock" vault: empty password, auto-unlocked by background.ts on
     // every service-worker cold start.
     await vault.create('', makePayload());
+    await browserMock.storage.local.set({activeAccountId:'acct1',accounts:[{id:'acct1',type:'nsec',pubkey:TEST_PUBKEY_HEX}]});
+    await browserMock.storage.sync.set({myPubkey:TEST_PUBKEY_HEX});
     await permissions.save('test.com', 'signEvent', 1, 'allow');
     vault.lock(); // the cold start itself: in-memory key is gone
 
@@ -1509,7 +1514,7 @@ describe('signer -- cold-start auto-unlock', () => {
   });
 
   it('still opens the unlock popup when no startup auto-unlock is in flight', async () => {
-    await vault.create(TEST_PASSWORD, makePayload());
+    await setupVault();
     await permissions.save('test.com', 'signEvent', 1, 'allow');
     vault.lock();
 
@@ -1619,4 +1624,71 @@ describe('signer -- resolveRequest completes its removal', () => {
     const ids = (await signer.getPending()).map((r) => r.id);
     assert.deepStrictEqual(ids, ['b'], 'the resolved request is gone once the promise settles');
   });
+});
+
+it('rejects a supplied foreign author before queueing or signing even with permission',async()=>{
+ resetMockStorage();vault.lock();await signer.cleanupStale();await setupVault();
+ await permissions.save('foreign.test','signEvent',null,'allow');
+ await assert.rejects(()=>signer.handleSignEvent({pubkey:THEIR_PUBKEY_HEX,kind:1,content:'foreign',tags:[],created_at:1},'foreign.test'),/account|author/i);
+ assert.equal((await signer.getPending()).length,0);
+});
+it('single and batch approval cannot allow requests belonging to another account',async()=>{
+ resetMockStorage();vault.lock();await signer.cleanupStale();await setupVault();
+ const first=signer.queueRequest({type:'signEvent',origin:'other.test',accountId:'other',needsPermission:true,permKey:'signEvent:1'});
+ await new Promise(resolve=>setTimeout(resolve,50));
+ await signer.resolveRequest((await signer.getPending())[0].id,{allow:true,remember:false});
+ assert.equal((await first).allow,false);
+ const second=signer.queueRequest({type:'signEvent',origin:'other.test',accountId:'other',needsPermission:true,permKey:'signEvent:1'});
+ await new Promise(resolve=>setTimeout(resolve,50));
+ await signer.resolveBatch('other.test','signEvent:1',{allow:true,remember:false});
+ assert.equal((await second).allow,false);
+});
+
+it('incoming requests reuse an already-visible popup after an account switch refresh', async () => {
+  const { openPopupForActiveTab } = await import('../src/lib/openPopupForActiveTab.ts');
+  const runtime = browserMock.runtime as any;
+  const previousContexts = runtime.getContexts;
+  const previousQuery = browserMock.tabs.query;
+  const previousOpen = browserMock.action.openPopup;
+  let opens = 0;
+  try {
+    runtime.getContexts = async () => [{contextType:'POPUP'}];
+    browserMock.tabs.query = async () => [{id:7,url:'https://switch.test'}] as any;
+    browserMock.action.openPopup = async () => { opens++; };
+    await openPopupForActiveTab('switch.test');
+    assert.equal(opens, 0, 'do not reopen the visible native popup');
+    runtime.getContexts = async () => [];
+    await openPopupForActiveTab('switch.test');
+    assert.equal(opens, 1, 'still opens when there is no popup');
+  } finally {
+    runtime.getContexts = previousContexts;
+    browserMock.tabs.query = previousQuery;
+    browserMock.action.openPopup = previousOpen;
+  }
+});
+
+it('visible-popup detection supports browsers with extension.getViews', async () => {
+  const { openPopupForActiveTab } = await import('../src/lib/openPopupForActiveTab.ts');
+  const api = browserMock as any;
+  const previousContexts = api.runtime.getContexts;
+  const previousExtension = api.extension;
+  const previousQuery = api.tabs.query;
+  const previousOpen = api.action.openPopup;
+  let opens = 0;
+  try {
+    api.runtime.getContexts = undefined;
+    api.extension = { getViews: () => [{}] };
+    api.tabs.query = async () => [{id:7,url:'https://switch.test'}];
+    api.action.openPopup = async () => { opens++; };
+    await openPopupForActiveTab('switch.test');
+    assert.equal(opens, 0);
+    api.extension.getViews = () => [];
+    await openPopupForActiveTab('switch.test');
+    assert.equal(opens, 1);
+  } finally {
+    api.runtime.getContexts = previousContexts;
+    api.extension = previousExtension;
+    api.tabs.query = previousQuery;
+    api.action.openPopup = previousOpen;
+  }
 });

@@ -104,7 +104,7 @@ export async function getLightningAddress(
 ): Promise<string | null> {
   const baseUrl = instanceUrl.replace(/\/+$/, '');
   const res = await fetchFn(`${baseUrl}/api/lightning-address?pubkey=${pubkey}`);
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error(`Lightning Address lookup failed: ${res.status}`);
   const data = (await res.json()) as { address: string | null };
   return data.address;
 }
