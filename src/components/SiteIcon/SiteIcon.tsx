@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import IconGlobe from '@assets/IconGlobe.tsx';
-import { getCachedFavicon } from '@utils/faviconUrl.ts';
+import { getCachedFavicon } from '@services/media/favicon.ts';
 import { cn } from '@utils/cn.ts';
 
 /** Shared by site identity surfaces; all instances reuse the same favicon cache. */

@@ -6,13 +6,13 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each in its own folder. There are **47**; the list below is generated from the folder, not maintained by hand, because the previous hand-maintained one had drifted badly enough to be misleading — it named a `ModeCard` that does not exist and omitted more components than it listed.
+All shared components live in `src/components/`, each in its own folder. There are **48**; the inventory below is checked against the component folders by the test suite.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
 **Content** — `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
 **Feedback** — `Spinner`.
 
@@ -253,7 +253,9 @@ Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain 
 | `pagedList.ts` | `paginate` — the render window behind `usePagedList`. Distinct from `txPager.ts`, which pages a *remote* API: the activity RPC already returns the whole log, so there is nothing left to fetch, only a prefix to grow |
 
 `permissionRules.ts` is split from `permissions.ts` (the `@services` runtime permission cascade — `check`, `save`, `clear`, the migrations) on purpose: that module imports `t()`, which drags in the browser layer and makes it unloadable under plain `node --test`. The rules that *decide* something are the ones worth testing, and they need no i18n. Keep new decision logic on the i18n-free side of that line.
-| `format/` | `truncateNpub`, `getInitial`, `truncate`, `truncateMiddle`, `formatTimeAgo`, `formatBytes`, `toPercent`, `toFraction` |
+| `utils/format/` | Generic text, number, clock and byte formatting; no application I/O |
+| `domain/nostr/display.ts`, `domain/wallet/display.ts` | Nostr public-key and sats formatting |
+| `services/i18n/timeLabels.ts`, `services/i18n/paymentLabels.ts` | Translated relative time and payment messages |
 | `permissionLabels.ts` | `formatPermissionLabel` — the wire method / permission key to its display string |
 | `url.ts` | `getDomainFromUrl` |
 | `activeTabDomain.ts` | `resolveActiveTabDomain` — which site the popup is looking at |
@@ -475,3 +477,20 @@ types, helpers or icons through re-export barrels. For example, import relay cac
 constants from `@constants/relays.ts` and activity records from
 `@domain/activity/activity.ts`. Local exports of locally defined implementations
 remain appropriate.
+
+### Action-scoped panels and shared controls
+
+`KeyActionModal` owns the dialog and unlock gate. `NsecExportPanel`,
+`SeedExportPanel` and `ChangePasswordPanel` own only their action's state.
+Switching action or closing unmounts that panel; reveal timers still use
+`useTimedReveal`, and encrypted exports retain the shared crypto implementation.
+`PaymentPreview` renders confirmation data without sending payments, while
+`PermissionRulesList` owns its decision menu without choosing an account bucket.
+
+Use `CopyButton` for ordinary labelled or icon-only copy actions; it composes
+`useCopy`, `Button` and `IconButton` and announces clipboard feedback. Keep direct
+`useCopy` where success drives a separate workflow, such as confirming seed backup.
+Date/search fields use `Input`, duration selection uses `Select`, and the PQ file
+paste field uses `Textarea`. Native file inputs and specialized reveal toggles
+remain native elements because their interaction differs from a text control.
+Favicon fetching and persistent caching live in `services/media/favicon.ts`.

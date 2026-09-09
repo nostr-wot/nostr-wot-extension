@@ -51,7 +51,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **persiste
 | `activity-handlers.ts` | Activity log read/clear with in-memory write buffering |
 | `pqc-handlers.ts` | Post-quantum key status/import/removal (`pqc_getStatus`, `pqc_importKeys`, `pqc_removeImportedKeys`) |
 | `relayCache.ts` | Background-side cache backing the popup's cached-first relay reads |
-| `misc-handlers.ts` | Re-export facade aggregating the handler maps above |
+| `misc-handlers.ts` | Assembles focused handler maps; consumers import functions from their owners |
 
 **Dispatch pattern:** Each handler module exports `handlers: Map<string, HandlerFn>`. `background.ts` merges all maps into a single `allHandlers` map. `handleRequest()` does pre-checks (NIP-07 validation, domain gating, read-only guard, npub normalization) then delegates to `allHandlers.get(method)`.
 

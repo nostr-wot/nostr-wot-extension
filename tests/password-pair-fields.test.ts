@@ -60,3 +60,25 @@ describe('derivePasswordPairState', () => {
     assert.equal(derivePasswordPairState('abc', 'abc', 4).ready, false);
   });
 });
+
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import NsecExportPanel from '../src/screens/Vault/NsecExportPanel';
+import SeedExportPanel from '../src/screens/Vault/SeedExportPanel';
+import ChangePasswordPanel from '../src/screens/Vault/ChangePasswordPanel';
+
+it('secret panels start at the reveal warning without rendering export or copy values', () => {
+  for (const Panel of [NsecExportPanel, SeedExportPanel]) {
+    const html=renderToStaticMarkup(createElement(Panel,{onClose(){}}));
+    assert.match(html,/key.revealKey/);
+    assert.match(html,/key\.(nsecWarning|seedWarning)/);
+    assert.doesNotMatch(html,/common.copy|key.downloadPlain|aria-pressed/);
+  }
+});
+
+it('change-password panel starts with an invalid pair and disabled save action', () => {
+  const html=renderToStaticMarkup(createElement(ChangePasswordPanel,{onClose(){}}));
+  assert.match(html,/key.currentPw/);
+  assert.match(html,/key.confirmNewPw/);
+  assert.match(html,/<button[^>]*disabled=""[^>]*>common.save<\/button>/);
+});

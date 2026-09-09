@@ -1,7 +1,7 @@
 import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import browser from './helpers/browser-mock.ts';
-import { getCachedFavicon, getFaviconUrl } from '../src/utils/faviconUrl.ts';
+import { getCachedFavicon, getFaviconUrl } from '../src/services/media/favicon.ts';
 
 it('favicon reads reuse both in-flight work and persistent image bytes', async () => {
   const original = globalThis.fetch;

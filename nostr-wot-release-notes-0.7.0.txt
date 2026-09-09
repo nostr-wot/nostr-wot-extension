@@ -18,3 +18,5 @@ Internal maintenance: centralized configuration constants, shared account-import
 helpers and canonical domain contracts for activity, mute lists and PQ status.
 
 Shared symbols are imported directly from their defining modules, without forwarding exports.
+
+UI maintenance: focused key-action panels, shared copy/form controls, and clearer formatter/media service boundaries.

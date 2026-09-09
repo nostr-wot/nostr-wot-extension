@@ -1,3 +1,4 @@
+import type { ResolvedAddress } from './paymentPreview.ts';
 import { parseLnurl } from './lnurl.ts';
 
 /**
@@ -17,11 +18,7 @@ import { parseLnurl } from './lnurl.ts';
  * Anything else is `none`, with the reason the UI needs to explain itself.
  */
 
-export interface ResolvedAddressLike {
-  address: string;
-  minSats: number;
-  maxSats: number;
-}
+export type ResolvedAddressLike = Pick<ResolvedAddress, 'address' | 'minSats' | 'maxSats'>;
 
 export type SendTarget =
   | { kind: 'address'; address: string; amountSats: number }

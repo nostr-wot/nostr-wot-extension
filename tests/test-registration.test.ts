@@ -301,3 +301,12 @@ it('imports shared symbols from their owners without forwarding export barrels',
       /\bexport\s+(?:type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?)\s+from\s+['"]/, file);
   }
 });
+
+it('generic utilities do not depend on feature domains, services or browser/crypto adapters', () => {
+  const files = readdirSync(join(ROOT, 'src/utils'), { recursive: true })
+    .filter((f): f is string => typeof f === 'string' && /\.tsx?$/.test(f));
+  for (const file of files) {
+    const source=readFileSync(join(ROOT, 'src/utils', file), 'utf8');
+    assert.doesNotMatch(source, /(?:from\s*|import\s*\()['"](?:@(?:services|domain|lib)\/|(?:\.\.\/)+(?:services|domain|lib)\/)/, file);
+  }
+});

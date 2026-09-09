@@ -7,7 +7,7 @@ import Button from '@components/Button/Button';
 import IconTuner from '@assets/IconTuner.tsx';
 import IconSync from '@assets/IconSync.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
-import { formatTxDate } from '@utils/format/time.ts';
+import { formatTxDate } from '@services/i18n/timeLabels.ts';
 import { filterTransactions, countActiveFilters, isPlaceholderMemo, type TxFilters } from '@domain/wallet/txFilter.ts';
 import type { Transaction } from '@domain/wallet/types.ts';
 import IconButton from '@components/IconButton/IconButton';

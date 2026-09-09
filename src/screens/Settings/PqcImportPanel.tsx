@@ -6,7 +6,8 @@ import Button from '@components/Button/Button';
 import { type PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
 import FormError from '@components/FormError/FormError';
-import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Textarea from '@components/Textarea/Textarea';
+
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 
@@ -50,10 +51,10 @@ export default function PqcImportPanel() {
       <strong className="text-md text-heading">{t('pqc.importTitle')}</strong>
       <Text variant="secondary" as="p" className="text-sm leading-loose">{t('pqc.importDesc')}</Text>
 
-      <SectionLabel className="mb-2 mt-4 text-sm leading-loose" htmlFor="pqc-keyfile">{t('pqc.importPaste')}</SectionLabel>
-      <textarea
+      <Textarea
+        label={t('pqc.importPaste')}
         id="pqc-keyfile"
-        className="w-full min-h-44 py-4 px-5 border border-card-border rounded-md bg-input text-body font-code text-xs leading-normal resize-y focus:outline-none focus:border-brand focus:shadow-focus"
+        className="min-h-44 max-h-80 overflow-y-auto font-code text-xs"
         value={text}
         spellCheck={false}
         placeholder={t('pqc.importPastePlaceholder')}
@@ -92,12 +93,3 @@ export default function PqcImportPanel() {
     </Container>
   );
 }
-
-/**
- * One key: its algorithm, a shortened form of the value, and a copy button.
- *
- * Shortened in the middle rather than the end. A post-quantum key is thousands
- * of base64 characters with nothing a person reads in the middle, but both ends
- * are what someone checks a value against — truncating the tail hides half of
- * what showing it was for. What goes to the clipboard is always the whole thing.
- */

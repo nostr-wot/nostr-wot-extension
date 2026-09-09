@@ -1,10 +1,9 @@
+import PermissionRulesList from './PermissionRulesList';
 import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
-import { useState, useEffect, useImperativeHandle, forwardRef, useRef, ChangeEvent } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { countDecisions, filterKeysForAccountKind, availablePermKeys } from '@domain/permissions/permissionRules.ts';
-import { DECISIONS } from '@constants/permissions.ts';
-import IconSearch from '@assets/IconSearch.tsx';
+import Input from '@components/Input/Input';
 import IconShield from '@assets/IconShield.tsx';
 import IconUsers from '@assets/IconUsers.tsx';
 import IconPlus from '@assets/IconPlus.tsx';
@@ -18,26 +17,9 @@ import DeclinedSites from './DeclinedSites';
 import AddRuleModal from './AddRuleModal';
 import Toggle from '@components/Toggle/Toggle';
 import EmptyState from '@components/EmptyState/EmptyState';
-import useOutsideClick from '@hooks/useOutsideClick.ts';
-import Chip from '@components/Chip/Chip';
 import ListRow from '@components/ListRow/ListRow';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
-
-/**
- * Decision -> dot colour, as an explicit map rather than `styles[`permDot${...}`]`.
- *
- * The dynamic lookup was invisible to `tests/css-selectors.test.ts` (it
- * skips any stylesheet a component indexes into with a computed key) and it
- * is the only reason Settings.module.css was exempt from that test. Naming
- * the three cases here removes the dynamic access, so the rest of this
- * file's CSS module usage is checked like every other component's.
- */
-const DECISION_DOT_TONE: Record<string, string> = {
-  allow: 'bg-success',
-  deny: 'bg-error',
-  ask: 'bg-warning',
-};
 
 export interface PermissionsSectionHandle {
   goBack: () => boolean;
@@ -184,12 +166,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   // ── Add Rule modal state ──
   const [addRuleOpen, setAddRuleOpen] = useState<boolean>(false);
 
-  // ── Inline decision dropdown state ──
-  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useOutsideClick(dropdownRef, () => setOpenDropdownKey(null), !!openDropdownKey);
-
   const availableKeys = availablePermKeys(COMMON_PERM_KEYS, domainPerms);
 
   // Detail view
@@ -210,49 +186,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
             text={t('perms.noRules')}
           />
         ) : (
-          <Card>
-            {allKeys.map((key) => {
-              const current = domainPerms[key] || 'ask';
-              return (
-                <Container key={key} variant="row" className="justify-between py-5 border-b border-card last:border-b-0">
-                  <span className="text-md font-medium text-body">
-                    {formatPermissionLabel(key)}
-                  </span>
-                  <div className="relative shrink-0" ref={openDropdownKey === key ? dropdownRef : undefined}>
-                    {/* Always toned: this chip is not a selection among
-                        options, it is the decision currently in force, and its
-                        colour is how that reads at a glance. */}
-                    <Chip
-                      selected
-                      tone={current as 'allow' | 'deny' | 'ask'}
-                      onClick={() => setOpenDropdownKey(openDropdownKey === key ? null : key)}
-                    >
-                      {t(`perms.${current}`)}
-                    </Chip>
-                    {openDropdownKey === key && (
-                      // Not <Dropdown>: Dropdown owns its own trigger button;
-                      // here the trigger is already the Chip above, opening a
-                      // compact popover anchored to it. Not ListRow either —
-                      // a full title/subtitle/chevron row would dwarf this
-                      // 100px-wide menu of status-dot + label options.
-                      <div className="absolute right-0 top-[calc(100%+4px)] z-raised bg-elevated border border-card-border rounded-md shadow-[0_4px_16px_rgb(0_0_0_/_0.12)] min-w-50 overflow-hidden">
-                        {DECISIONS.map((d) => (
-                          <button
-                            key={d}
-                            className={`flex items-center gap-3 w-full py-3.5 px-6 border-none bg-transparent text-sm font-medium text-body cursor-pointer font-[inherit] text-left transition-colors hover:bg-brand-tint-hover ${d === current ? 'font-bold' : ''}`}
-                            onClick={() => { void handleChip(key, d); setOpenDropdownKey(null); }}
-                          >
-                            <span className={`w-[7px] h-[7px] rounded-full shrink-0 ${DECISION_DOT_TONE[d]}`} />
-                            {t(`perms.${d}`)}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </Container>
-              );
-            })}
-          </Card>
+          <PermissionRulesList keys={allKeys} permissions={domainPerms} onChange={handleChip} />
         )}
 
       </PermissionsDetailLayout>
@@ -274,16 +208,9 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     <Container gap={4} className="flex-1 min-h-0 py-2">
       {accountScopeBlock}
 
-      <div className="relative mb-2">
-        <IconSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-        <input
-          className="w-full py-5 pr-5 pl-[34px] border border-card-border rounded-panel text-md bg-card text-heading outline-none transition-colors focus:border-brand"
-          type="text"
-          placeholder={t('perms.searchSites')}
-          value={query}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-        />
-      </div>
+      <Input type="search" label={t('perms.searchSites')} placeholder={t('perms.searchSites')}
+        value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
+
 
       {domains.length === 0 ? (
         <EmptyState

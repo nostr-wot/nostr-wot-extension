@@ -4,7 +4,7 @@ import { cn } from '@utils/cn.ts';
 import Container from '@components/Container/Container';
 
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  type?: 'text' | 'password' | 'number';
+  type?: 'text' | 'password' | 'number' | 'search' | 'date';
   mono?: boolean;
   small?: boolean;
   center?: boolean;

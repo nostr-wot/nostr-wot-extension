@@ -5,7 +5,7 @@ import { configuredRelayUrls, parseRelayList, sameRelayList, type RelayConfigura
 import { type RelayListRead } from '@domain/relays/types.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { formatTimeAgo } from '@utils/format/time.ts';
+import { formatTimeAgo } from '@services/i18n/timeLabels.ts';
 import { isValidWssUrl } from '@utils/url.ts';
 import StatusDot from '@components/StatusDot/StatusDot';
 import EditableList from '@components/EditableList/EditableList';

@@ -233,3 +233,9 @@ Activity handler regressions in `tests/activity-decrypt.test.ts` verify canonica
 
 Source-boundary tests also reject forwarding re-exports in `src/`, keeping shared
 constants, contracts, helpers and icons imported from their original modules.
+
+UI decomposition is covered by server-rendered tests for payment previews, permission
+rule lists, copy controls and key-action panels. Formatter tests cover time units,
+expiry states and public-key fallback rendering. Utility boundary checks prevent
+application services, domain modules and browser/crypto imports from returning to
+generic utilities. Interactive hook lifecycles still require browser validation.

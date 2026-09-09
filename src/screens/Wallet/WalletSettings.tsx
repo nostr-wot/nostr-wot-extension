@@ -8,13 +8,12 @@ import Input from '@components/Input/Input';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import ConfirmDialog from '@components/ConfirmDialog/ConfirmDialog';
 import { SectionLabel, SectionHint } from '@components/SectionLabel/SectionLabel';
-import useCopy from '@hooks/useCopy.ts';
+import CopyButton from '@components/CopyButton/CopyButton';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 import Spinner from '@components/Spinner/Spinner';
 import IconButton from '@components/IconButton/IconButton';
-import IconCopy from '@assets/IconCopy.tsx';
 import IconSync from '@assets/IconSync.tsx';
 import { useWallet } from '@context/WalletContext';
 
@@ -171,7 +170,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
           {nwcUri && (
             <Container variant="row" gap={4} className="justify-between">
               <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" >{t('wallet.nwcUri')}</span>
-              <WalletCopyButton value={nwcUri} label={t('wallet.copyNwc')} />
+              <CopyButton iconOnly value={nwcUri} label={t('wallet.copyNwc')} />
             </Container>
           )}
         </Card>
@@ -202,7 +201,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
               <Container gap={4} className="py-4">
                 <Container variant="row" gap={3} className="justify-between">
                   <span className="text-md font-semibold text-heading break-all min-w-0">{lnAddress}</span>
-                  <WalletCopyButton value={lnAddress} label={t('common.copy')} />
+                  <CopyButton iconOnly value={lnAddress} label={t('common.copy')} />
                 </Container>
                 <Container gap={3}>
                   <Button small variant="secondary" onClick={() => setShowUpdateProfile(true)}>
@@ -270,14 +269,4 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
       )}
     </>
   );
-}
-
-/** Both wallet copy actions reuse the app's clipboard feedback and icon control. */
-export function WalletCopyButton({value,label}: {value:string;label:string}) {
-  const {copy,copied,failed} = useCopy();
-  const feedback = copied ? t('common.copied') : failed ? t('common.error') : '';
-  return <span className="flex items-center gap-2 shrink-0">
-    <IconButton tone="brand" title={feedback || label} aria-label={feedback || label} onClick={() => void copy(value)}><IconCopy size={16}/></IconButton>
-    <span role="status" className="sr-only">{feedback}</span>
-  </span>;
 }

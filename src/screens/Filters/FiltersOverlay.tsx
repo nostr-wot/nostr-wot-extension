@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { truncateNpub } from '@utils/format/text.ts';
+import { truncateNpub } from '@domain/nostr/display.ts';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Button from '@components/Button/Button';
 import InputRow from '@components/InputRow/InputRow';
@@ -21,22 +21,6 @@ interface FiltersOverlayProps {
   visible: boolean;
   onClose: () => void;
 }
-
-/** Server-returned grouped public mute list + preserved raw private content. */
-/**
- * Suggested public mute lists to one-tap import.
- *
- * NOTE (deliberately empty): the task called for a few CURRENT, reputable
- * well-known public Nostr mute-list pubkeys. Research (web search, June 2026)
- * did NOT surface any canonical "community spam / impersonator" mute-list npub
- * that could be verified with confidence. Importing the wrong pubkey would
- * pollute the user's own published mute list, so — per the instruction to
- * "include FEWER rather than guess" and "do not invent pubkeys" — no presets
- * are hardcoded. The "Import public list" input below lets the user paste any
- * pubkey whose public mute list they trust. If a verifiable list is identified
- * later, add `{ name, pubkey }` entries here.
- */
-const SUGGESTED_LISTS: Array<{ name: string; pubkey: string }> = [];
 
 const muteClassNames = {
   group: "flex flex-col gap-3",
@@ -139,15 +123,6 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
     } catch {
       setImportError(t('mutes.failedFetch'));
     }
-    if (mounted.current) setImporting(false);
-  };
-
-  const handleSuggested = async (pubkey: string) => {
-    setImporting(true);
-    try {
-      const result = await rpc<MuteListRead & { ok?: boolean }>('fetchMuteList', { pubkey });
-      mergePeople(result?.people || []);
-    } catch { /* ignore */ }
     if (mounted.current) setImporting(false);
   };
 
@@ -255,15 +230,6 @@ export default function FiltersOverlay({ visible, onClose }: FiltersOverlayProps
                 error={importError}
                 mono
               />
-              {SUGGESTED_LISTS.length > 0 && (
-                <Container variant="row" gap={3} className="flex-wrap">
-                  {SUGGESTED_LISTS.map((s) => (
-                    <Button key={s.pubkey} small variant="secondary" disabled={importing} onClick={() => handleSuggested(s.pubkey)}>
-                      {s.name}
-                    </Button>
-                  ))}
-                </Container>
-              )}
               <Text variant="muted" as="div" className="leading-tight">{t('mutes.importHint')}</Text>
             </Container>
 

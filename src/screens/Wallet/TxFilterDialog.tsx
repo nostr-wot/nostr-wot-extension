@@ -1,5 +1,6 @@
 import { useState, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
+import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import ChipGroup from '@components/ChipGroup/ChipGroup';
@@ -59,16 +60,18 @@ export default function TxFilterDialog({ initial, onApply, onClose }: TxFilterDi
       <Container gap={3}>
         <span className="text-xs font-semibold text-muted uppercase tracking-[0.4px]">{t('wallet.filterDateRange')}</span>
         <Container variant="row" gap={2}>
-          <input
+          <Input small
             type="date"
-            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-input text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
+            aria-label={t('wallet.filterDateRange')}
+            className="min-h-16 px-3 text-xs"
             value={dateFrom}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateFrom(e.target.value)}
           />
           <span className="text-xs text-muted shrink-0">—</span>
-          <input
+          <Input small
             type="date"
-            className="flex-1 min-w-0 py-2 px-3 border border-card-border rounded-md bg-input text-xs font-[inherit] text-body outline-none transition-colors focus:border-brand"
+            aria-label={t('wallet.filterDateRange')}
+            className="min-h-16 px-3 text-xs"
             value={dateTo}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDateTo(e.target.value)}
           />

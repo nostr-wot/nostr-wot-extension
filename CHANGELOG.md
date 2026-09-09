@@ -8,6 +8,8 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Split key actions, payment previews and permission rules into focused UI modules; reused copy/form controls and moved feature formatting and favicon caching to their semantic owners.
+
 - Removed forwarding exports and icon/format barrels; consumers import shared symbols directly from their defining modules.
 
 - Centralized configuration and protocol constants in `src/constants/`, removing duplicate relay defaults, cache names and lockout/password policies.

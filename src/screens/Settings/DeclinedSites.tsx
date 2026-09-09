@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
+import Select from '@components/Select/Select';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
@@ -58,13 +59,9 @@ export default function DeclinedSites() {
 
       <label className="flex items-center justify-between gap-5 mb-6 text-sm text-body">
         <span>{t('perm.dismissDurationLabel')}</span>
-        <select
-          className="shrink-0 py-2.5 px-4 border border-card-border rounded-sm bg-input text-body text-sm"
-          value={duration}
-          onChange={(e) => changeDuration(Number(e.target.value))}
-        >
-          {DURATIONS.map(([ms, label]) => <option key={ms} value={ms}>{label}</option>)}
-        </select>
+        <Select small value={String(duration)}
+          options={DURATIONS.map(([ms, label]) => ({ value: String(ms), label }))}
+          onChange={e => void changeDuration(Number(e.target.value))} />
       </label>
 
       {declined.length === 0 ? (

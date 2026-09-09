@@ -111,8 +111,8 @@ it('wallet settings owns a bounded scroll region and explains its refresh and di
  assert.match(html,/wallet.refreshSettingsHint/);assert.match(html,/wallet.disconnectHint/);
 });
 it('wallet copy controls use named SVG icons without rendering connection credentials',async()=>{
- const {WalletCopyButton}=await import('../src/screens/Wallet/WalletSettings');
- const html=renderToStaticMarkup(createElement(WalletCopyButton,{value:'secret-connection',label:'Copy connection'}));
+ const {default:CopyButton}=await import('../src/components/CopyButton/CopyButton');
+ const html=renderToStaticMarkup(createElement(CopyButton,{iconOnly:true,value:'secret-connection',label:'Copy connection'}));
  assert.match(html,/<svg/);assert.match(html,/aria-label="Copy connection"/);assert.doesNotMatch(html,/secret-connection|>Copy connection</);
 });
 
@@ -130,4 +130,22 @@ it('approval rows identify origin, action and human-readable kind',async()=>{
  const {default:ApprovalCard}=await import('../src/screens/Approval/ApprovalCard');
  const html=renderToStaticMarkup(createElement(ApprovalCard,{group:{origin:'example.com',method:'signEvent',permKey:'signEvent:1',requests:[{id:'one',origin:'example.com',type:'signEvent',eventKind:1,timestamp:1}]},onClick(){}}));
  assert.match(html,/example.com/);assert.match(html,/Short Note/);assert.match(html,/\(1\)/);assert.match(html,/approval.signEvent/);
+});
+
+it('payment preview separates resolving, recipient limits and invoice details', async () => {
+ const {default:Preview}=await import('../src/screens/Wallet/PaymentPreview');
+ const base={sendInput:'alice@example.com',sendIsAddress:true,sendAddress:null,resolveLoading:true,resolveError:'',sendAmount:'',sendComment:'',sendTarget:{kind:'none',reason:'resolving'} as const,decodedInvoice:null,setSendAmount(){},setSendComment(){}};
+ const resolving=renderToStaticMarkup(createElement(Preview,base));
+ assert.match(resolving,/wallet.resolvingAddress/);assert.doesNotMatch(resolving,/type="number"/);
+ const address=renderToStaticMarkup(createElement(Preview,{...base,resolveLoading:false,sendAddress:{address:'alice@example.com',domain:'example.com',minSats:10,maxSats:20,description:'Tip jar',commentAllowed:40,allowsNostr:false},sendAmount:'30',sendTarget:{kind:'none',reason:'amount'}}));
+ assert.match(address,/alice@example.com/);assert.match(address,/Tip jar/);assert.match(address,/maxLength="40"/i);assert.match(address,/wallet.amountOutOfRange/);
+ const invoice=renderToStaticMarkup(createElement(Preview,{...base,sendIsAddress:false,decodedInvoice:{amountSats:42,description:'Invoice memo',timestamp:1,expiry:1,paymentHash:'hash',network:'bc'}}));
+ assert.match(invoice,/42 sats/);assert.match(invoice,/Invoice memo/);assert.match(invoice,/wallet.invoiceExpired/);assert.doesNotMatch(invoice,/wallet.addressRange/);
+});
+
+it('transaction date filters retain both date drafts in shared native inputs', async () => {
+ const {default:Filters}=await import('../src/screens/Wallet/TxFilterDialog');
+ const html=renderToStaticMarkup(createElement(Filters,{initial:{direction:'all',dateFrom:'2026-09-01',dateTo:'2026-09-09'},onApply(){},onClose(){}}));
+ assert.equal((html.match(/type="date"/g)||[]).length,2);
+ assert.match(html,/value="2026-09-01"/);assert.match(html,/value="2026-09-09"/);assert.match(html,/border-control-border/);
 });

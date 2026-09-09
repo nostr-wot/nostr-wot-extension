@@ -7,51 +7,17 @@ import Modal from '@components/Modal/Modal';
 import { decodeBolt11 } from '@domain/wallet/bolt11.ts';
 import { isLightningAddress, parseLnurl } from '@domain/wallet/lnurl.ts';
 import { resolveSendTarget } from '@domain/wallet/sendTarget.ts';
-import { describeInvoiceExpiry } from '@domain/wallet/invoiceExpiry.ts';
-import { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
+import type { ResolvedAddress } from '@domain/wallet/paymentPreview.ts';
+import { paymentErrorMessage } from '@services/i18n/paymentLabels.ts';
+import PaymentPreview from './PaymentPreview';
 import FormError from '@components/FormError/FormError';
-import FieldDisplay from '@components/FieldDisplay/FieldDisplay';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
-
-/** What `wallet_resolveLightningAddress` hands back for the confirmation card. */
-interface ResolvedAddress {
-  address: string;
-  domain: string;
-  minSats: number;
-  maxSats: number;
-  description: string | null;
-  commentAllowed: number;
-  allowsNostr: boolean;
-}
 
 interface SendDialogProps {
   onClose: () => void;
   /** A payment landed — refresh balance and transactions. */
   onSent: () => void;
-}
-
-/**
- * Turn a payment failure into something worth showing.
- *
- * Most of what reaches here is an LNURL or provider message written in English
- * in the background, which is its own problem; the codes the background raises
- * deliberately are at least translated. Anything unrecognised is passed through
- * rather than replaced by a generic string — a specific English reason beats an
- * accurate but useless one.
- */
-function paymentErrorMessage(e: unknown): string {
-  const message = (e as Error)?.message || '';
-  if (message.includes(PAYMENT_IN_FLIGHT)) return t('wallet.paymentInFlight');
-  return message;
-}
-
-/** Turns the pure expiry shape into the translated string the row shows. */
-function invoiceExpiryLabel(inv: { timestamp: number; expiry: number }): string {
-  const e = describeInvoiceExpiry(inv.timestamp, inv.expiry, Date.now());
-  if (e.state === 'expired') return t('wallet.invoiceExpired');
-  if (e.state === 'minutes') return t('wallet.invoiceMinutes', { n: e.n });
-  return t('wallet.invoiceHours', { n: e.n });
 }
 
 /**
@@ -143,7 +109,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
   }, [sendInput, sendIsAddress]);
 
   // The single answer to "what would Pay send?", shared by the button's guard
-  // and the handler so the two cannot disagree. See src/shared/sendTarget.ts.
+  // and the handler so the two cannot disagree. See domain/wallet/sendTarget.ts.
   const sendTarget = useMemo(() => resolveSendTarget({
     input: sendInput,
     isAddress: sendIsAddress,
@@ -221,92 +187,10 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
               small
             />
 
-            {/* Lightning Address preview + amount */}
-            {sendIsAddress && !sendSuccess && (
-              resolveLoading ? (
-                <Container variant="box">
-                  <span className="text-xs font-semibold text-muted uppercase tracking-[0.3px] shrink-0">{t('wallet.resolvingAddress')}</span>
-                </Container>
-              ) : sendAddress ? (
-                <>
-                  <Container variant="box">
-                    <FieldDisplay caps className="py-0" label={t('wallet.payTo')} value={isLightningAddress(sendAddress.address) ? sendAddress.address : sendAddress.domain} />
-                    {sendAddress.description && (
-                      <FieldDisplay caps className="py-0" label={t('wallet.invoiceDescription')} value={sendAddress.description} />
-                    )}
-                    <FieldDisplay
-                      caps
-                      className="py-0"
-                      label={t('wallet.addressRange')}
-                      value={t('wallet.addressRangeValue', {
-                        min: sendAddress.minSats.toLocaleString(),
-                        max: sendAddress.maxSats.toLocaleString(),
-                      })}
-                    />
-                  </Container>
-                  <Input
-                    type="number"
-                    label={t('wallet.amountSats')}
-            min={1} step={1}
-            placeholder={t('wallet.amountSats')}
-                    value={sendAmount}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setSendAmount(e.target.value)}
-                    small
-                  />
-                  {sendAddress.commentAllowed > 0 && (
-                    <Input
-                      type="text"
-                      placeholder={t('wallet.commentPlaceholder')}
-                      value={sendComment}
-                      maxLength={sendAddress.commentAllowed}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setSendComment(e.target.value)}
-                      small
-                    />
-                  )}
-                  {sendAmount !== '' && sendTarget.kind === 'none' && sendTarget.reason === 'amount' && (
-                    <Text variant="muted" as="div" className="text-center py-3">
-                      {t('wallet.amountOutOfRange', {
-                        min: sendAddress.minSats.toLocaleString(),
-                        max: sendAddress.maxSats.toLocaleString(),
-                      })}
-                    </Text>
-                  )}
-                </>
-              ) : resolveError ? (
-                <Text variant="muted" as="div" className="text-center py-3">{resolveError}</Text>
-              ) : null
-            )}
-
-            {/* Invoice preview */}
-            {sendInput.trim() && !sendIsAddress && !sendSuccess && (
-              decodedInvoice ? (
-                <Container variant="box">
-                  <FieldDisplay
-                    caps
-                    className="py-0"
-                    valueClassName="text-xl font-bold"
-                    label={t('wallet.invoiceAmount')}
-                    value={decodedInvoice.amountSats !== null
-                      ? `${Math.round(decodedInvoice.amountSats).toLocaleString()} sats`
-                      : '—'}
-                  />
-                  <FieldDisplay
-                    caps
-                    className="py-0"
-                    label={t('wallet.invoiceDescription')}
-                    value={decodedInvoice.description || t('wallet.invoiceNone')}
-                  />
-                  <FieldDisplay
-                    caps
-                    className="py-0"
-                    label={t('wallet.invoiceExpiry')}
-                    value={invoiceExpiryLabel(decodedInvoice)}
-                  />
-                </Container>
-              ) : (
-                <Text variant="muted" as="div" className="text-center py-3">{t('wallet.decodeFailed')}</Text>
-              )
-            )}
+            {!sendSuccess && <PaymentPreview sendInput={sendInput} sendIsAddress={sendIsAddress}
+              sendAddress={sendAddress} resolveLoading={resolveLoading} resolveError={resolveError}
+              sendAmount={sendAmount} sendComment={sendComment} sendTarget={sendTarget}
+              decodedInvoice={decodedInvoice} setSendAmount={setSendAmount} setSendComment={setSendComment} />}
 
             <FormError>{sendError}</FormError>
             {sendSuccess && <div className="text-sm text-success">{sendSuccess}</div>}

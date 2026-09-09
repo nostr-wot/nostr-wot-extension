@@ -6,7 +6,7 @@ import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import QrCode from '@components/QrCode/QrCode';
 import useCopy from '@hooks/useCopy.ts';
-import { formatSats } from '@utils/format/number.ts';
+import { formatSats } from '@domain/wallet/display.ts';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';

@@ -113,3 +113,24 @@ it('inputs and selects use the shared contrasting input surface', () => {
   assert.match(renderToStaticMarkup(createElement(Input, {})), /bg-input/);
   assert.match(renderToStaticMarkup(createElement(Select, {options:[]})), /bg-input/);
 });
+
+import CopyButton from '../src/components/CopyButton/CopyButton';
+
+it('shared copy actions expose their purpose and never render the copied credential', () => {
+  for (const iconOnly of [true, false]) {
+    const html = renderToStaticMarkup(createElement(CopyButton, { value:'private-connection-value',label:'Copy connection',iconOnly,disabled:true }));
+    assert.match(html, /aria-label="Copy connection"/);
+    assert.match(html, /role="status"/);
+    assert.match(html, /<button[^>]*disabled=""/);
+    assert.doesNotMatch(html, /private-connection-value/);
+  }
+});
+
+it('shared date and search fields retain native types, labels and control styling', () => {
+  for (const type of ['date','search'] as const) {
+    const html=renderToStaticMarkup(createElement(Input,{type,id:type,label:type,value:'',onChange(){}}));
+    assert.match(html,new RegExp(`type="${type}"`));
+    assert.match(html,new RegExp(`for="${type}"`));
+    assert.match(html,/border-control-border/);
+  }
+});

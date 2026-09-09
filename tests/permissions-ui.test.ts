@@ -84,3 +84,26 @@ it('custom rule kinds must be complete non-negative integer identifiers', () => 
   for (const value of ['', ' ', '-1', '1.5', '1e3', 'abc', '65536', '9007199254740992']) assert.equal(validCustomKind(value), false);
   for (const value of ['0', '1', '30023', '65535']) assert.equal(validCustomKind(value), true);
 });
+
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import PermissionRulesList from '../src/screens/Settings/PermissionRulesList';
+
+it('permission rules render only the supplied account-filtered keys and their decisions', () => {
+  const html=renderToStaticMarkup(createElement(PermissionRulesList,{
+    keys:['getPublicKey'],permissions:{getPublicKey:'deny',hidden:'allow'},async onChange(){},
+  }));
+  assert.match(html,/perms.deny/);
+  assert.doesNotMatch(html,/hidden|perms.allow/);
+  const fallback=renderToStaticMarkup(createElement(PermissionRulesList,{keys:['getPublicKey'],permissions:{},async onChange(){}}));
+  assert.match(fallback,/perms.ask/);
+});
+
+import DeclinedSites from '../src/screens/Settings/DeclinedSites';
+it('declined-site duration reuses native selection with all supported durations', () => {
+  const html=renderToStaticMarkup(createElement(DeclinedSites));
+  assert.match(html,/<select/);
+  assert.match(html,/border-control-border/);
+  for (const duration of ['0','86400000','604800000','2592000000']) assert.match(html,new RegExp(`value="${duration}"`));
+  assert.match(html,/perm.dismissDurationLabel/);
+});
