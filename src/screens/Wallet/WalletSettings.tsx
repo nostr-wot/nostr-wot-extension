@@ -14,7 +14,8 @@ import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 import Spinner from '@components/Spinner/Spinner';
 import IconButton from '@components/IconButton/IconButton';
-import { IconCopy, IconSync } from '@assets';
+import IconCopy from '@assets/IconCopy.tsx';
+import IconSync from '@assets/IconSync.tsx';
 import { useWallet } from '@context/WalletContext';
 
 interface WalletSettingsProps {

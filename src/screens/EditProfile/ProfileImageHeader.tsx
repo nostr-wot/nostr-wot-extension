@@ -1,5 +1,5 @@
 import { t } from '@services/i18n/i18n.ts';
-import { IconCamera } from '@assets';
+import IconCamera from '@assets/IconCamera.tsx';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 
 /** Local previews are object URLs created by this editor; remote URLs are sanitized. */

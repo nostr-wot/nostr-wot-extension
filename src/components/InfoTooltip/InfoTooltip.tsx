@@ -1,4 +1,4 @@
-import { IconInfo } from '@assets';
+import IconInfo from '@assets/IconInfo.tsx';
 
 interface InfoTooltipProps {
   text: string;

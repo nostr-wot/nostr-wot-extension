@@ -61,8 +61,6 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
 
   useEffect(() => { void generate(); }, []);
 
-
-
   const handleContinue = async () => {
     if (!account) return;
     setSaving(true);

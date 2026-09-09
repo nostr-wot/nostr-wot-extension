@@ -13,7 +13,7 @@ import { muteListState, toHexPubkey, normalizeHashtag, type MyMuteList, type Mut
 import { useAccount } from '@context/AccountContext';
 import IconButton from '@components/IconButton/IconButton';
 import Modal from '@components/Modal/Modal';
-import { IconInfo } from '@assets';
+import IconInfo from '@assets/IconInfo.tsx';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
 

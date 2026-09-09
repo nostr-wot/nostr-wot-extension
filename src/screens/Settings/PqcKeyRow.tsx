@@ -1,5 +1,5 @@
 import { t } from '@services/i18n/i18n.ts';
-import { IconCopy } from '@assets';
+import IconCopy from '@assets/IconCopy.tsx';
 import useCopy from '@hooks/useCopy.ts';
 import { truncateMiddle } from '@utils/format/text.ts';
 import Button from '@components/Button/Button';

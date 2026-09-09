@@ -5,7 +5,6 @@ import Modal from '@components/Modal/Modal';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
 import type { Language } from '@domain/i18n/language.ts';
 
-
 /**
  * Pick the interface language.
  *

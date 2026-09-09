@@ -1,4 +1,3 @@
-
 const CYCLE = 9;
 const HOLD_END = 7.8;
 const FADE_END = 8.7;

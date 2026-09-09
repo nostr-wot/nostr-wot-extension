@@ -9,7 +9,7 @@ import TransactionList from './TransactionList';
 import WalletSettings from './WalletSettings';
 import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
-import { IconSettings } from '@assets/index';
+import IconSettings from '@assets/IconSettings.tsx';
 import { type Transaction } from '@domain/wallet/types.ts';
 import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';

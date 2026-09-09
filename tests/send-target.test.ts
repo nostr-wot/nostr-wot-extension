@@ -150,7 +150,6 @@ describe('resolveSendTarget — invoices', () => {
   });
 });
 
-
 it('LNURL recipients retain the stale-recipient guard and normalize lightning links', () => {
   const encoded = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode('https://example.com/pay')), 2000);
   const input = `lightning:${encoded.toUpperCase()}`;

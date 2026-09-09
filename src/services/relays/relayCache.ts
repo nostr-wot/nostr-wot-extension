@@ -1,6 +1,5 @@
-import { RELAY_CACHE_PREFIX } from '@constants/relays.ts';
-import { RELAY_CACHE_FRESH_MS } from '@constants/relays.ts';
-export { RELAY_CACHE_FRESH_MS, PQC_PUBLISHED_CACHE, MUTE_LIST_CACHE } from '@constants/relays.ts';
+import { RELAY_CACHE_PREFIX, RELAY_CACHE_FRESH_MS } from '@constants/relays.ts';
+
 /**
  * Serve the last known answer now; ask the relays behind.
  *

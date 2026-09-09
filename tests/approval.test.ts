@@ -14,17 +14,8 @@
 import { describe, it } from 'node:test';
 import { currentApprovalGroup } from '../src/domain/permissions/approval';
 import assert from 'node:assert/strict';
-import {
-  filterPendingForDomain,
-  partitionPending,
-  groupApprovals,
-  groupNip46,
-  asGroup,
-  liveIds,
-  isRequestLive,
-  isGroupLive,
-  type PendingRequest,
-} from '../src/domain/permissions/approval.ts';
+import { filterPendingForDomain, partitionPending, groupApprovals, groupNip46, asGroup, liveIds, isRequestLive, isGroupLive } from '../src/domain/permissions/approval.ts';
+import { type PendingRequest } from '@domain/signing/types.ts';
 
 const req = (over: Partial<PendingRequest> & { id: string; origin: string }): PendingRequest => ({
   type: 'signEvent',

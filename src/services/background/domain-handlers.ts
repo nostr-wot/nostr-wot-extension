@@ -5,7 +5,7 @@ import {
   DISMISS_DURATION_DEFAULT,
   CONNECT_WAIT_TIMEOUT_MS,
 } from '@constants/permissions.ts';
-export { DISMISS_DURATIONS } from '@constants/permissions.ts';
+
 /**
  * Domain, badge, tab, and injection handlers.
  * @module services/background/domain-handlers

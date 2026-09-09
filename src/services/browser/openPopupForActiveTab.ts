@@ -1,9 +1,7 @@
 import { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
-export { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
-import browser from '@lib/browser.ts';
-import { originMatchesActiveTab, requestIsFromActiveTab } from '../../domain/site/originMatchesActiveTab.ts';
 
-export { originMatchesActiveTab, requestIsFromActiveTab };
+import browser from '@lib/browser.ts';
+import { requestIsFromActiveTab } from '../../domain/site/originMatchesActiveTab.ts';
 
 export interface PopupContext {
   origin: string;

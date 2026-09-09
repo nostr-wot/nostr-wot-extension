@@ -8,7 +8,7 @@ import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
-import { IconClose } from '@assets';
+import IconClose from '@assets/IconClose.tsx';
 import LinkButton from '@components/LinkButton/LinkButton';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';

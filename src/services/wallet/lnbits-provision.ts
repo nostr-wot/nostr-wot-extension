@@ -1,4 +1,3 @@
-export { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 /**
  * LNbits auto-provisioning with challenge-response
  *

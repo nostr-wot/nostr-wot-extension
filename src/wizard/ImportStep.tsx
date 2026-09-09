@@ -3,7 +3,7 @@ import { countWords } from '@utils/text.ts';
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { IconInfo } from '@assets';
+import IconInfo from '@assets/IconInfo.tsx';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
 import FormError from '@components/FormError/FormError';

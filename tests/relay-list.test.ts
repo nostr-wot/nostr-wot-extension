@@ -1,7 +1,8 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetMockStorage } from './helpers/browser-mock.ts';
-import { fetchRelayList, type RelayListRead } from '../src/services/background/relay-list-handlers.ts';
+import { fetchRelayList } from '../src/services/background/relay-list-handlers.ts';
+import { type RelayListRead } from '@domain/relays/types.ts';
 import { parseRelayList, sameRelayList } from '../src/domain/relays/relayList.ts';
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { schnorr } from '@noble/curves/secp256k1.js';
@@ -88,7 +89,8 @@ test('relay discovery uses the selected public account even when the vault is lo
 });
 
 test('PQ checks distinguish exhausted sockets from EOSE and retain the newest signed publication', async () => {
-  const {checkPqcPublication,PQC_KIND} = await import('../src/services/background/pqc-handlers.ts');
+  const { checkPqcPublication } = await import('@services/background/pqc-handlers.ts');
+const { PQC_KIND } = await import('@constants/pqc.ts');
   const status = {pubkey,keys:{kem:'new-kem',dsa:'new-dsa'}};
   mock([],true);
   assert.deepEqual(await checkPqcPublication(status,['wss://test']), {published:false,current:false,unreachable:true});
@@ -125,7 +127,6 @@ test('relay configuration writes preserve a recoverable previous list and its fl
  assert.deepEqual((await browser.storage.local.get('relayConfigurationBackup')).relayConfigurationBackup,previous);
  assert.equal((await browser.storage.sync.get('relays')).relays,'wss://next');
 });
-
 
 test('an empty publication is explained and cannot be applied over a configured list', async () => {
  const {PublishedRelayConfiguration}=await import('../src/screens/Settings/NetworkSection.tsx');

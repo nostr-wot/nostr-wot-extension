@@ -24,7 +24,7 @@ import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Container from '@components/Container/Container';
 import UnlockModal from '@screens/Vault/UnlockModal';
 import { t } from '@services/i18n/i18n.ts';
-import type { PendingRequest } from '@domain/permissions/approval.ts';
+import { type PendingRequest } from '@domain/signing/types.ts';
 
 type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'permissions' | null;
 

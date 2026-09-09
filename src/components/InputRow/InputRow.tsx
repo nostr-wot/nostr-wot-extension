@@ -1,7 +1,7 @@
 import React from 'react';
 import Input from '@components/Input/Input';
 import Button from '@components/Button/Button';
-import { IconPlus } from '@assets';
+import IconPlus from '@assets/IconPlus.tsx';
 
 interface InputRowProps {
   value: string;

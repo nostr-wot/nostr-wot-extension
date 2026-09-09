@@ -12,15 +12,19 @@ import { randomHex } from './src/lib/crypto/utils.ts';
 import {
     config,
     npubToHex,
-    buildPrivilegedMethods, setPrivilegedMethods,
+    buildPrivilegedMethods,
+    setPrivilegedMethods,
     PRIVILEGED_METHODS,
     type HandlerFn,
 } from './src/services/background/state.ts';
-import { handlers as miscHandlers, logActivity } from './src/services/background/misc-handlers.ts';
+import { handlers as miscHandlers } from './src/services/background/misc-handlers.ts';
+import { logActivity } from '@services/background/activity-handlers.ts';
 import {
     handlers as domainHandlers,
-    isDomainAllowed, isDomainDismissed,
-    rememberTabOrigin, forgetTabOrigin,
+    isDomainAllowed,
+    isDomainDismissed,
+    rememberTabOrigin,
+    forgetTabOrigin,
     releaseLegacyHostGrants,
     isWeblnAllowed,
     waitForConnectDecision,

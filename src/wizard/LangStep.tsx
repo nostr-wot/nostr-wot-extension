@@ -5,7 +5,7 @@ import AnimatedWotLogo from '@components/AnimatedWotLogo/AnimatedWotLogo';
 import Button from '@components/Button/Button';
 import Card from '@components/Card/Card';
 import IconButton from '@components/IconButton/IconButton';
-import { IconClose } from '@assets';
+import IconClose from '@assets/IconClose.tsx';
 import LanguageWheel from '@components/LanguageWheel/LanguageWheel';
 import type { Language } from '@domain/i18n/language.ts';
 import Container from '@components/Container/Container';

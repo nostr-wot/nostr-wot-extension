@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconChevronDown } from '@assets';
+import IconChevronDown from '@assets/IconChevronDown.tsx';
 import { cn } from '@utils/cn.ts';
 
 interface SelectOption { value: string; label: string; disabled?: boolean }

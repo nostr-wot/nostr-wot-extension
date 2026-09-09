@@ -133,7 +133,6 @@ export function AccountProvider({ children }: AccountProviderProps) {
 
 export { useAccount };
 
-
 /** The UI must not query the next identity before the background selects it. */
 export async function commitAccountSwitch(accountId: string, commit: (id: string) => Promise<unknown>, select: (id: string) => void): Promise<void> {
   await commit(accountId);

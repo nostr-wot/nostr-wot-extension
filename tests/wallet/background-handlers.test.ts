@@ -20,16 +20,11 @@ import assert from 'node:assert/strict';
 import { resetMockStorage } from '../helpers/browser-mock.ts';
 import * as vault from '../../src/services/vault/vault.ts';
 import * as permissions from '../../src/services/permissions/permissions.ts';
-import {
-  getWalletProvider, setWalletProvider, removeWalletProvider,
-  clearWalletProviders,
-} from '../../src/services/wallet/index.ts';
+import { getWalletProvider, setWalletProvider, removeWalletProvider, clearWalletProviders } from '../../src/services/wallet/index.ts';
 import type { WalletProvider, WalletProviderInfo, WalletConfig } from '../../src/domain/wallet/types.ts';
 import type { VaultPayload } from '../../src/domain/vault/types.ts';
 import { npubEncode } from '../../src/lib/crypto/bech32.ts';
-import {
-  addWeblnAllowedDomain, isWeblnAllowed,
-} from '../../src/services/background/domain-handlers.ts';
+import { addWeblnAllowedDomain, isWeblnAllowed } from '../../src/services/background/domain-handlers.ts';
 import { fetchPayParams, requestInvoice } from '../../src/services/wallet/lnurl.ts';
 
 // ── Test Constants ──
@@ -385,7 +380,8 @@ async function handleWalletProvision(params: {
   const acct = vault.getActiveAccountWithWallet();
   if (!acct) throw new Error('No active account');
 
-  const { provisionLnbitsWallet, DEFAULT_LNBITS_URL } = await import('../../src/services/wallet/lnbits-provision.ts');
+  const { provisionLnbitsWallet } = await import('@services/wallet/lnbits-provision.ts');
+const { DEFAULT_LNBITS_URL } = await import('@constants/wallet.ts');
   const url = params.instanceUrl?.trim() || DEFAULT_LNBITS_URL;
   const npub = npubEncode(acct.pubkey);
   const walletName = `WoT:${npub.slice(0, 16)}`;

@@ -1,7 +1,8 @@
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { ApprovalGroup } from '@domain/permissions/approval.ts';
-import { IconChevronRight, IconSync } from '@assets';
+import IconChevronRight from '@assets/IconChevronRight.tsx';
+import IconSync from '@assets/IconSync.tsx';
 import Card from '@components/Card/Card';
 import Button from '@components/Button/Button';
 import Container from '@components/Container/Container';

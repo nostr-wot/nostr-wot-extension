@@ -1,5 +1,3 @@
-export { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
-
 // ── Wallet Configuration ──
 
 export type WalletConfig =

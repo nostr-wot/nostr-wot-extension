@@ -10,7 +10,7 @@ import type { UnsignedEvent } from '../../domain/nostr/types.ts';
 import type { RequestDecision } from '../../domain/signing/types.ts';
 import { config, type HandlerFn } from './state.ts';
 import { isIdentityDisabled } from './domain-handlers.ts';
-import { logActivity } from './misc-handlers.ts';
+import { logActivity } from '@services/background/activity-handlers.ts';
 
 // ── Validation ──
 

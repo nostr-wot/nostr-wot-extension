@@ -1,12 +1,8 @@
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import {
-  currentApprovalGroup,
-  resolveDisplayedRequests,
-  type PendingRequest,
-  type ApprovalGroup,
-} from '@domain/permissions/approval.ts';
+import { currentApprovalGroup, resolveDisplayedRequests, type ApprovalGroup } from '@domain/permissions/approval.ts';
+import { type PendingRequest } from '@domain/signing/types.ts';
 import ApprovalCard from './ApprovalCard';
 import useApprovalQueue from '@hooks/useApprovalQueue.ts';
 import EventDetailModal from '@components/EventDetailModal/EventDetailModal';

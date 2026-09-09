@@ -19,7 +19,7 @@ import Button from '@components/Button/Button';
 import LinkButton from '@components/LinkButton/LinkButton';
 import Spinner from '@components/Spinner/Spinner';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';
-import { IconChevronDown } from '@assets';
+import IconChevronDown from '@assets/IconChevronDown.tsx';
 import FormError from '@components/FormError/FormError';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';

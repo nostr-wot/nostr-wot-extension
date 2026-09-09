@@ -1,5 +1,4 @@
 import { READ_ONLY_KEYS } from '@constants/permissions.ts';
-export { DECISIONS, READ_ONLY_KEYS } from '@constants/permissions.ts';
 
 /**
  * Count the rules that actually decide something.

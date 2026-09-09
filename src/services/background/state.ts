@@ -1,6 +1,6 @@
 import type { SafeAccount } from '@domain/accounts/types.ts';
 import { DEFAULT_RELAYS } from '@constants/relays.ts';
-export { DEFAULT_RELAYS } from '@constants/relays.ts';
+
 /**
  * Shared state, constants, and utilities for background handler modules.
  * Follows the same pattern as services/vault/vault.ts (module-level mutable state).
@@ -28,13 +28,10 @@ export type LocalAccountEntry = Pick<SafeAccount, 'id' | 'name' | 'pubkey' | 'ty
 
 // ── Profile Cache ──
 
-export { PROFILE_CACHE_TTL_MS as PROFILE_CACHE_TTL } from '@constants/profile.ts';
 export interface ProfileCacheEntry { metadata: Record<string, unknown>; fetchedAt: number; }
 export const profileCache = new Map<string, ProfileCacheEntry>();
 
 // ── Method Sets ──
-
-export { NIP07_SIGNING_METHODS } from '@constants/signing.ts';
 
 /**
  * Build the set of privileged methods from handler maps.

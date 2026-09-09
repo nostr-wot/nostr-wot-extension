@@ -1,7 +1,9 @@
 import React from 'react';
 import { derivePqcCardState, type PqcCardState } from '@domain/pqc/pqcState.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { IconKey, IconShield, IconWarning } from '@assets';
+import IconKey from '@assets/IconKey.tsx';
+import IconShield from '@assets/IconShield.tsx';
+import IconWarning from '@assets/IconWarning.tsx';
 import { useNavigate } from '@context/NavigationContext';
 import Card from '@components/Card/Card';
 import { usePqc } from '@context/PqcContext';
@@ -60,7 +62,6 @@ export function PqcCardView({ state, onClick }: { state: PqcCardState; onClick: 
   };
 
   const { icon, title, desc } = COPY[state];
-
 
   return (
     <Card

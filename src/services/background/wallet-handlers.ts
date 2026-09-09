@@ -11,7 +11,8 @@ import * as signerPermissions from '../permissions/permissions.ts';
 import { npubEncode } from '../../lib/crypto/bech32.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { addWeblnAllowedDomain, isWeblnAllowed } from './domain-handlers.ts';
-import { getWalletProvider, removeWalletProvider, type WalletConfig } from '../wallet/index.ts';
+import { getWalletProvider, removeWalletProvider } from '../wallet/index.ts';
+import { type WalletConfig } from '@domain/wallet/types.ts';
 import { decodeBolt11 } from '../../domain/wallet/bolt11.ts';
 import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress } from '../wallet/lnbits-provision.ts';
 import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
@@ -19,7 +20,7 @@ import { fetchPayParams, requestInvoice } from '../wallet/lnurl.ts';
 import { runPaymentOnce } from '../wallet/payment-intents.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 import type { HandlerFn } from './state.ts';
-import { logActivity } from './misc-handlers.ts';
+import { logActivity } from '@services/background/activity-handlers.ts';
 
 // ── Shared utilities ──
 

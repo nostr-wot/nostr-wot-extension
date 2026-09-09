@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconGlobe } from '@assets';
+import IconGlobe from '@assets/IconGlobe.tsx';
 import { getCachedFavicon } from '@utils/faviconUrl.ts';
 import { cn } from '@utils/cn.ts';
 

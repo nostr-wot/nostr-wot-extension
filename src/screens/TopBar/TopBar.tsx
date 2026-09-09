@@ -2,7 +2,7 @@ import AccountCopyDialog from './AccountCopyDialog';
 import { useAccount } from '@context/AccountContext';
 import { useState } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import { IconSettings } from '@assets';
+import IconSettings from '@assets/IconSettings.tsx';
 import AccountBar from './AccountBar';
 import AccountDropdown from './AccountDropdown';
 import GlobeButton from './GlobeButton';

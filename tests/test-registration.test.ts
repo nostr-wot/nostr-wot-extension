@@ -292,3 +292,12 @@ it('keeps shared domain records canonical instead of redeclaring handler/UI copi
     assert.deepEqual(declarations, [owner], `${name}: use a domain import or an explicit projection`);
   }
 });
+
+it('imports shared symbols from their owners without forwarding export barrels', () => {
+  const files = readdirSync(join(ROOT, 'src'), { recursive: true })
+    .filter((f): f is string => typeof f === 'string' && /\.tsx?$/.test(f));
+  for (const file of files) {
+    assert.doesNotMatch(readFileSync(join(ROOT, 'src', file), 'utf8'),
+      /\bexport\s+(?:type\s+)?(?:\{[^}]*\}|\*(?:\s+as\s+\w+)?)\s+from\s+['"]/, file);
+  }
+});

@@ -1,6 +1,6 @@
 import React from 'react';
 import InfoTooltip from '@components/InfoTooltip/InfoTooltip';
-import { IconChevronRight } from '@assets';
+import IconChevronRight from '@assets/IconChevronRight.tsx';
 import { cn } from '@utils/cn.ts';
 
 /**

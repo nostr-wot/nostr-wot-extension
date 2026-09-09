@@ -1,8 +1,7 @@
 import { PROFILE_CACHE_TTL_MS as PROFILE_CACHE_TTL } from '@constants/profile.ts';
 import type { MyMuteList as GroupedMuteList } from '@domain/mutes/muteList.ts';
 import type { ProfileRead } from '@domain/profile/profileMetadata.ts';
-export type { MyMuteList as GroupedMuteList } from '@domain/mutes/muteList.ts';
-export type { ProfileRead } from '@domain/profile/profileMetadata.ts';
+
 import { PROFILE_RETRY_MS } from '@constants/profile.ts';
 /**
  * Profile metadata and NIP-51 mute list (kind:10000) handlers.

@@ -1,5 +1,4 @@
 import { MIN_PASSWORD_LENGTH } from '@constants/vault.ts';
-export { MIN_PASSWORD_LENGTH } from '@constants/vault.ts';
 
 export type PasswordPairProblem = 'tooShort' | 'mismatch';
 

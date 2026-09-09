@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import { IconWarning } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
 import { KIND_LABELS } from '@constants/nostr.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';

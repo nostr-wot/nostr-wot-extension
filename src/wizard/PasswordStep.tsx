@@ -1,5 +1,5 @@
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
-import { IconWarning } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
 import StatusNotice from '@components/StatusNotice/StatusNotice';
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';

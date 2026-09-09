@@ -1,7 +1,7 @@
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { IconWarning } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
 import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';

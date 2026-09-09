@@ -1,9 +1,9 @@
 import type { PqcBlockReason, PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
-export type { PqcBlockReason, PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
+
 import { PQC_SEED_WORD_COUNT } from '@constants/accounts.ts';
 import { countWords } from '@utils/text.ts';
 import { PQC_KIND, IMPORTABLE_REASONS } from '@constants/pqc.ts';
-export { PQC_KIND } from '@constants/pqc.ts';
+
 /**
  * Post-quantum key handlers.
  *

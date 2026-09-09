@@ -1,13 +1,7 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  getWalletProvider,
-  setWalletProvider,
-  removeWalletProvider,
-  clearWalletProviders,
-  hasWalletConfig,
-} from '../../src/services/wallet/index.ts';
-import type { WalletConfig, WalletProvider } from '../../src/services/wallet/index.ts';
+import { getWalletProvider, setWalletProvider, removeWalletProvider, clearWalletProviders, hasWalletConfig } from '../../src/services/wallet/index.ts';
+import { type WalletConfig, type WalletProvider } from '@domain/wallet/types.ts';
 
 /** Minimal mock provider for testing cache behavior. */
 function mockProvider(type: 'nwc' | 'lnbits' = 'nwc'): WalletProvider & { disconnected: boolean } {

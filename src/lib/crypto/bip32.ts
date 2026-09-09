@@ -1,4 +1,3 @@
-export { NIP06_PATH } from '@constants/crypto/bip32.ts';
 /**
  * BIP-32 — Hierarchical Deterministic Key Derivation
  *

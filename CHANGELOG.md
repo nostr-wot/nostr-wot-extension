@@ -8,6 +8,8 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Removed forwarding exports and icon/format barrels; consumers import shared symbols directly from their defining modules.
+
 - Centralized configuration and protocol constants in `src/constants/`, removing duplicate relay defaults, cache names and lockout/password policies.
 - Shared account-import helpers and activity/mute/PQ/account/language domain contracts replace repeated UI/background definitions; activity clearing reuses the display filter.
 

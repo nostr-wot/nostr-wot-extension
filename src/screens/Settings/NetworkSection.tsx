@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useAccount } from '@context/AccountContext';
 import Button from '@components/Button/Button';
 import { configuredRelayUrls, parseRelayList, sameRelayList, type RelayConfiguration } from '@domain/relays/relayList';
-import type { RelayListRead } from '@services/background/relay-list-handlers.ts';
+import { type RelayListRead } from '@domain/relays/types.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatTimeAgo } from '@utils/format/time.ts';

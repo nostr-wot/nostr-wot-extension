@@ -1,5 +1,8 @@
 import { t } from '@services/i18n/i18n.ts';
-import { IconKey, IconDownload, IconWarning, IconGlobe } from '@assets';
+import IconKey from '@assets/IconKey.tsx';
+import IconDownload from '@assets/IconDownload.tsx';
+import IconWarning from '@assets/IconWarning.tsx';
+import IconGlobe from '@assets/IconGlobe.tsx';
 import Button from '@components/Button/Button';
 import ListRow from '@components/ListRow/ListRow';
 import StatusDot from '@components/StatusDot/StatusDot';

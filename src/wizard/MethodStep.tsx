@@ -1,6 +1,9 @@
 import React from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import { IconPlus, IconKey, IconEye, IconLink } from '@assets';
+import IconPlus from '@assets/IconPlus.tsx';
+import IconKey from '@assets/IconKey.tsx';
+import IconEye from '@assets/IconEye.tsx';
+import IconLink from '@assets/IconLink.tsx';
 import Card from '@components/Card/Card';
 import Heading from '@components/Heading/Heading';
 import Container from '@components/Container/Container';

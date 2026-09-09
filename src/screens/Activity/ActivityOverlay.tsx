@@ -4,16 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
-import {
-  filterActivityEntries,
-  countActivityFilters,
-  activityDomains,
-  activityAccountOptions,
-  availableTypeKeys,
-  buildDayGroups,
-  groupActivityEntries,
-  type GroupedActivity,
-} from '@domain/activity/activity.ts';
+import { filterActivityEntries, countActivityFilters, activityDomains, activityAccountOptions, availableTypeKeys, buildDayGroups, groupActivityEntries, type GroupedActivity } from '@domain/activity/activity.ts';
 import { classifyDay } from '@utils/format/time.ts';
 import Button from '@components/Button/Button';
 import Dropdown from '@components/Dropdown/Dropdown';
@@ -24,7 +15,7 @@ import ListRow from '@components/ListRow/ListRow';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import Container from '@components/Container/Container';
 import Text from '@components/Text/Text';
-import { IconTuner } from '@assets';
+import IconTuner from '@assets/IconTuner.tsx';
 import { useAccount } from '@context/AccountContext';
 import { ActivityProvider, useActivity } from '@context/ActivityContext';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible.ts';

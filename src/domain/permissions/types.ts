@@ -1,5 +1,3 @@
-
-
 // ── Permissions ──
 
 export type PermissionDecision = 'allow' | 'deny' | 'ask';

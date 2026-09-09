@@ -1,5 +1,3 @@
-
-
 // ── i18n ──
 
 export interface SupportedLanguage {

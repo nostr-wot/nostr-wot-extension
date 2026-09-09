@@ -241,7 +241,7 @@ Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain 
 | File | Exports |
 |------|---------|
 | `@services/rpc.ts` | `rpc<T>()`, `rpcNotify()`, `RpcError` |
-| `approval.ts` | `filterPendingForDomain`, `partitionPending`, `groupApprovals`, `groupNip46`, `liveIds`, `isRequestLive`, `isGroupLive`; re-exports the canonical `PendingRequest` |
+| `approval.ts` | `filterPendingForDomain`, `partitionPending`, `groupApprovals`, `groupNip46`, `liveIds`, `isRequestLive`, `isGroupLive`; imports the canonical `PendingRequest` from its signing-domain module |
 | `profileMetadata.ts` | `mergeProfileMetadata`, `profileHasChanges`, `ProfileMetadata` — the kind:0 read-modify-write |
 | `txFilter.ts` | `matchesTxFilter`, `matchesTxSearch`, `filterTransactions`, `dateRangeToTs`, `countActiveFilters`, `isPlaceholderMemo` |
 | `invoiceExpiry.ts` | `describeInvoiceExpiry` — takes `now`, so it is testable |
@@ -469,3 +469,9 @@ HomeWalletLayout keeps account-level wallet content outside the current-site not
 The approval sheet always groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
 
 Shared domain contracts must not be restated in handlers or UI. The activity writer accepts `ActivityLogInput = Omit<ActivityEntry, 'timestamp'>`; stored records and UI filters use `ActivityEntry`. Complete PQ panel status extends the card contract. Account and language display types use `Pick`/`Partial` projections. Runtime-only service state and component props stay local.
+
+Import shared symbols directly from their defining modules. Do not forward constants,
+types, helpers or icons through re-export barrels. For example, import relay cache
+constants from `@constants/relays.ts` and activity records from
+`@domain/activity/activity.ts`. Local exports of locally defined implementations
+remain appropriate.

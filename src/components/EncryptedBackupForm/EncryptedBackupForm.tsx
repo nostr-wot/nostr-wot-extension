@@ -7,7 +7,7 @@ import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button/Button';
 import PasswordPairFields from '@components/PasswordPairFields/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
-import { IconWarning } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
 import FormError from '@components/FormError/FormError';
 import { SectionLabel } from '@components/SectionLabel/SectionLabel';
 import Container from '@components/Container/Container';

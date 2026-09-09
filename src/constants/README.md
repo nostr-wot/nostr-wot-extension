@@ -13,5 +13,5 @@ It contains no runtime service or UI imports. Domain type-only imports are allow
 Mutable session state, renderer/dispatch functions and component-specific style
 recipes stay in their owning modules. Shared types belong in `src/domain/`;
 behavior belongs in domain rules, services or generic utilities, not this folder.
-Some public library/service APIs re-export constants for compatibility; their
-values are defined only here. New callers should import directly from this folder.
+Import directly from the defining module. Do not add forwarding re-exports or
+barrel files; consumers should make ownership explicit.

@@ -109,7 +109,6 @@ it('Enter follows the same validation gate as clicking Add', () => {
   }
 });
 
-
 it('inputs and selects use the shared contrasting input surface', () => {
   assert.match(renderToStaticMarkup(createElement(Input, {})), /bg-input/);
   assert.match(renderToStaticMarkup(createElement(Select, {options:[]})), /bg-input/);

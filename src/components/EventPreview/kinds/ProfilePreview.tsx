@@ -5,7 +5,6 @@ import Avatar from '@components/Avatar/Avatar';
 import { EP } from '../eventPreviewClasses.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 
-
 interface ProfilePreviewProps {
   event: NostrEventDisplay;
 }

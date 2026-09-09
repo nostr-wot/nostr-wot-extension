@@ -416,7 +416,6 @@ describe('requestInvoice — ranges with no whole sat in them', () => {
   });
 });
 
-
 describe('pasted LNURL-pay', () => {
   const endpoint = 'https://example.com/Pay/AbC?token=CaseSensitive';
   const encoded = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode(endpoint)), 2000);

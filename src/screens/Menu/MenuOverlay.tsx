@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { t, getSupportedLanguages, getLanguage } from '@services/i18n/i18n.ts';
-import { IconLock, IconShield, IconGlobe, IconKey, IconDownload, IconZap, IconInfo } from '@assets';
+import IconLock from '@assets/IconLock.tsx';
+import IconShield from '@assets/IconShield.tsx';
+import IconGlobe from '@assets/IconGlobe.tsx';
+import IconKey from '@assets/IconKey.tsx';
+import IconDownload from '@assets/IconDownload.tsx';
+import IconZap from '@assets/IconZap.tsx';
+import IconInfo from '@assets/IconInfo.tsx';
 import { version as appVersion } from '../../../package.json';
 import OverlayPanel from '@components/OverlayPanel/OverlayPanel';
 import MenuSection from './MenuSection';
@@ -116,9 +122,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   };
 
   const openLangPicker = () => setLangModalOpen(true);
-
-
-
 
   const currentLang = languages.find((l: Language) => l.code === getLanguage()) || languages[0];
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconClose } from '@assets';
+import IconClose from '@assets/IconClose.tsx';
 import { t } from '@services/i18n/i18n.ts';
 import IconButton from '@components/IconButton/IconButton';
 

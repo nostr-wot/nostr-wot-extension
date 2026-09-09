@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { IconWarning } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import StatusNotice from '@components/StatusNotice/StatusNotice';

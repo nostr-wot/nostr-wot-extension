@@ -3,7 +3,7 @@ import { rpc, rpcNotify } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import SiteIcon from '@components/SiteIcon/SiteIcon';
 import { resolveActiveTabDomain } from '@services/browser/activeTabDomain.ts';
-import { IconGlobe } from '@assets';
+import IconGlobe from '@assets/IconGlobe.tsx';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
 import useOutsideClick from '@hooks/useOutsideClick.ts';
@@ -85,7 +85,6 @@ export default function GlobeButton() {
       setDisconnecting(false);
     }
   };
-
 
   return (
     <div ref={ref} className="relative">

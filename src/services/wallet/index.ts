@@ -18,8 +18,6 @@ import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { hexToBytes } from '../../lib/crypto/utils.ts';
 
-export type { WalletConfig, WalletProvider, WalletProviderInfo, SafeWalletInfo, Transaction } from '../../domain/wallet/types.ts';
-
 // ── Per-account provider cache ──
 
 const _providers: Map<string, WalletProvider> = new Map();

@@ -7,13 +7,7 @@ import { ACTIVITY_MAX_CIPHERTEXT_LENGTH } from '@constants/activity.ts';
 import browser from '../../lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { decryptForAccount } from '../signing/signer.ts';
-import {
-  activityEntryKey,
-  activityEncryption,
-  filterActivityEntries,
-  type ActivityEntry,
-  type ActivityLogInput,
-} from '../../domain/activity/activity.ts';
+import { activityEntryKey, activityEncryption, filterActivityEntries, type ActivityEntry, type ActivityLogInput } from '../../domain/activity/activity.ts';
 import { verifyEvent } from '../../lib/crypto/nip01.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 import { config, type HandlerFn } from './state.ts';

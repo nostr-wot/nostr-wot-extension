@@ -13,7 +13,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["chrome", "node"],
     "paths": {
-      "@assets": ["./src/assets/index.ts"],
       "@assets/*": ["./src/assets/*"],
       "@components/*": ["./src/components/*"],
       "@popup/*": ["./src/popup/*"],

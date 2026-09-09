@@ -1,5 +1,7 @@
 import { t } from '@services/i18n/i18n.ts';
-import { IconChevronDown, IconLockOpen, IconCopy } from '@assets';
+import IconChevronDown from '@assets/IconChevronDown.tsx';
+import IconLockOpen from '@assets/IconLockOpen.tsx';
+import IconCopy from '@assets/IconCopy.tsx';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
 import Avatar from '@components/Avatar/Avatar';

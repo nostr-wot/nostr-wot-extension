@@ -1,5 +1,5 @@
 import { P } from '@constants/crypto/secp256k1.ts';
-export { N } from '@constants/crypto/secp256k1.ts';
+
 /**
  * secp256k1 — Thin wrapper over @noble/curves
  *

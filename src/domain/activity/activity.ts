@@ -1,5 +1,5 @@
 import { TYPE_METHODS, SIMPLE_TYPE_ORDER, ADVANCED_TYPE_ORDER } from '@constants/activity.ts';
-export { TYPE_METHODS } from '@constants/activity.ts';
+
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import type { Account } from '@domain/accounts/account.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';

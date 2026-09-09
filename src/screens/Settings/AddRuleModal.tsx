@@ -4,7 +4,7 @@ import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { buildRuleKey, validCustomKind } from '@domain/permissions/permissionRules.ts';
 import { DECISIONS } from '@constants/permissions.ts';
 import Input from '@components/Input/Input';
-import { IconPlus } from '@assets';
+import IconPlus from '@assets/IconPlus.tsx';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';
 import Dropdown from '@components/Dropdown/Dropdown';

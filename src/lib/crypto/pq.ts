@@ -16,18 +16,7 @@ import {
   HEADER_BYTES,
   MAX_PLAINTEXT_BYTES,
 } from '@constants/crypto/pq.ts';
-export {
-  PQ_PROFILE,
-  ALG_KEM,
-  ALG_DSA,
-  KEM_PUBLIC_KEY_BYTES,
-  DSA_PUBLIC_KEY_BYTES,
-  KEM_SECRET_KEY_BYTES,
-  DSA_SECRET_KEY_BYTES,
-  ENVELOPE_VERSION,
-  ALG_MLKEM1024_XCHACHA,
-  KEM_CIPHERTEXT_BYTES,
-} from '@constants/crypto/pq.ts';
+
 /**
  * Post-Quantum Key Derivation (ML-KEM-1024 / ML-DSA-87)
  *

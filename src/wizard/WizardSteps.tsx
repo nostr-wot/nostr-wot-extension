@@ -1,6 +1,7 @@
 import React from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import { IconChevronLeft, IconClose } from '@assets';
+import IconChevronLeft from '@assets/IconChevronLeft.tsx';
+import IconClose from '@assets/IconClose.tsx';
 import IconButton from '@components/IconButton/IconButton';
 import Container from '@components/Container/Container';
 import LangStep from './LangStep';

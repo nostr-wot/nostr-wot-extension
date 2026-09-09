@@ -17,8 +17,6 @@
  * Re-exporting the real one is the point.
  */
 
-export type { PendingRequest } from '@domain/signing/types.ts';
-
 import type { PendingRequest } from '@domain/signing/types.ts';
 
 export interface ApprovalGroup {

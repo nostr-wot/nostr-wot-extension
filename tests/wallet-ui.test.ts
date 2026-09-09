@@ -5,7 +5,8 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import TransactionList from '../src/screens/Wallet/TransactionList';
 import Wallet from '../src/screens/Wallet/Wallet';
 import {AccountWalletProvider} from '../src/context/WalletContext';
-import {EMPTY_TX_FILTERS,filterTransactions} from '../src/domain/wallet/txFilter';
+import { filterTransactions } from '../src/domain/wallet/txFilter';
+import { EMPTY_TX_FILTERS } from '@constants/wallet.ts';
 const props={transactions:[],loading:false,hasMore:false,filters:EMPTY_TX_FILTERS,onRefresh(){},onOpenFilters(){},onLoadMore(){}};
 it('history failures show retry, not an empty-wallet claim',()=>{
  const html=renderToStaticMarkup(createElement(TransactionList,{...props,error:'Offline'}));

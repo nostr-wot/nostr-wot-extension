@@ -3,7 +3,7 @@ import useRpc from '@hooks/useRpc.ts';
 import useRelayCache from '@hooks/useRelayCache.ts';
 import { MUTE_LIST_CACHE } from '@constants/relays.ts';
 import ListRow from '@components/ListRow/ListRow';
-import { IconShield } from '@assets';
+import IconShield from '@assets/IconShield.tsx';
 import { useNavigate } from '@context/NavigationContext';
 import { muteListState, type MuteListRead } from '@domain/mutes/muteList.ts';
 

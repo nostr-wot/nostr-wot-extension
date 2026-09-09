@@ -4,7 +4,9 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { useAccount } from '@context/AccountContext';
 import { truncateNpub, getInitial } from '@utils/format/text.ts';
-import { IconWarning, IconClose, IconPlus } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
+import IconClose from '@assets/IconClose.tsx';
+import IconPlus from '@assets/IconPlus.tsx';
 import Avatar from '@components/Avatar/Avatar';
 import Button from '@components/Button/Button';
 import IconButton from '@components/IconButton/IconButton';
@@ -96,7 +98,6 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
     </Modal>
   );
 }
-
 
 export function AccountPickerRow({ name, subtitle, picture, selected, readOnly, onSelect, onRemove }: {
   name: string; subtitle: string; picture?: string; selected: boolean; readOnly: boolean;

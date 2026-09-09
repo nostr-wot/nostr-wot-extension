@@ -7,7 +7,8 @@ import {
 } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
 import { t } from '@services/i18n/i18n.ts';
-import { IconWarning, IconCopy } from '@assets';
+import IconWarning from '@assets/IconWarning.tsx';
+import IconCopy from '@assets/IconCopy.tsx';
 import PqcOverview, { PqcPublication } from './PqcOverview';
 import Button from '@components/Button/Button';
 import Modal from '@components/Modal/Modal';

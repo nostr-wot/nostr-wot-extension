@@ -2,7 +2,7 @@ import browser from '../../lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { readPublishedEvent } from '../relays/readPublishedEvent.ts';
 import type { RelayListRead } from '@domain/relays/types.ts';
-export type { RelayListRead } from '@domain/relays/types.ts';
+
 import { type HandlerFn } from './state.ts';
 import { DEFAULT_RELAYS } from '@constants/relays.ts';
 

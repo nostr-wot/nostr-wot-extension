@@ -2,17 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { useAccount } from '@context/AccountContext';
-import {
-  requestMatchesAccount,
-  partitionPending,
-  groupApprovals,
-  currentApprovalGroup,
-  groupNip46,
-  liveIds,
-  isRequestLive,
-  type PendingRequest,
-  type ApprovalGroup,
-} from '@domain/permissions/approval.ts';
+import { requestMatchesAccount, partitionPending, groupApprovals, currentApprovalGroup, groupNip46, liveIds, isRequestLive, type ApprovalGroup } from '@domain/permissions/approval.ts';
+import { type PendingRequest } from '@domain/signing/types.ts';
 import { useVault } from '@context/VaultContext';
 
 interface UseApprovalQueueOptions {

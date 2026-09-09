@@ -337,7 +337,6 @@ function makePayload(): VaultPayload {
 //   4. Method prefixing — adds nip07_ prefix so background can distinguish
 //   5. Origin injection — appends hostname for permission lookups
 
-
 describe('communication: content script — NIP-07 allowlist', () => {
   it('allows all valid NIP-07 methods', () => {
     for (const method of NIP07_ALLOWED_METHODS) {

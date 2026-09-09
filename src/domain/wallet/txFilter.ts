@@ -1,4 +1,3 @@
-export { EMPTY_TX_FILTERS } from '@constants/wallet.ts';
 /**
  * Which wallet transactions match the filter bar.
  *

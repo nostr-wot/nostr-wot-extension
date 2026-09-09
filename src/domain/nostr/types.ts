@@ -1,5 +1,3 @@
-
-
 // ── Nostr Events ──
 
 export interface UnsignedEvent {

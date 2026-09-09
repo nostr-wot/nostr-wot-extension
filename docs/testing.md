@@ -230,3 +230,6 @@ The boundary checks in `tests/test-registration.test.ts` keep domain modules fre
 `tests/account-import.test.ts` covers import-format hints, exact hex lengths, supported mnemonic lengths, whitespace handling, and the distinction between detection and cryptographic validation.
 
 Activity handler regressions in `tests/activity-decrypt.test.ts` verify canonical record storage, per-domain caps and that clearing with filters selects the same records as the domain/UI filter.
+
+Source-boundary tests also reject forwarding re-exports in `src/`, keeping shared
+constants, contracts, helpers and icons imported from their original modules.
