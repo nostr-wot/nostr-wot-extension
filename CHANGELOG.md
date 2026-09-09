@@ -6,7 +6,11 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
-## Unreleased
+## 0.7.1 — 2026-09-09
+
+- Send now accepts pasted bech32 LNURL-pay strings and `lightning:LNURL…` links, with endpoint-domain preview and the existing amount, approval and duplicate-payment safeguards.
+- LNURL checksums, mixed case, malformed UTF-8, unsafe URLs and non-payment endpoints are rejected.
+- Refreshed Chrome/Firefox packages, reviewer notes and reproducible source archive.
 
 - Fixed clean-checkout CI failures by building before CSS regression tests in GitHub Actions and the local test runner.
 
@@ -14,6 +18,13 @@ have had.
 
 - Added local-relay NWC wallet integration tests using real signatures and encryption.
 - Fixed NWC connection and cold startup: the wallet factory now constructs the provider with shared crypto instead of referring callers to a nonexistent factory function.
+
+### Store release notes
+
+- Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
+- Fixed NWC wallet connection and startup.
+- Improved website payment compatibility and detection of supported WebLN methods.
+- Expanded automated payment and connection tests.
 
 ## 0.7.0 — 2026-09-09
 

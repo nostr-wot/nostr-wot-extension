@@ -1,0 +1,15 @@
+Nostr WoT 0.7.1
+
+- Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
+- Fixed NWC wallet connection and startup.
+- Improved website payment compatibility and detection of supported WebLN methods.
+- Expanded automated payment and connection tests.
+
+Also includes the 0.7.0 improvements:
+
+- Redesigned wallet, profile, post-quantum keys, activity details and form controls.
+- Wallet information appears from cache while refreshing; settled transaction history loads past pending invoices.
+- Fixed repeated relay requests, relay-list discovery and unstable key publication status.
+- Concurrent approval requests appear in groups with expandable details, website origins and readable event types. Requests for another account are rejected.
+- Improved account switching, scrolling, copy controls and keyboard accessibility.
+- Corrected Firefox data disclosures and required consent-compatible Firefox versions.

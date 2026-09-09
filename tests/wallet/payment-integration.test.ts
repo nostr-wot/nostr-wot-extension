@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { bech32 } from '@scure/base';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { readFileSync } from 'node:fs';
@@ -114,20 +115,20 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
     failPayment=true;const failed=assert.rejects(webln.sendPayment(invoice),/LNbits API error/);await signer.resolveRequest((await pending()).id,{allow:true});await failed;
     assert.equal(requests.filter(x=>x.body.out).length,++count);failPayment=false;
   });
-  await t.test('Lightning Address resolves LNURL, verifies amount, pays once per intent',async()=>{
+  for (const recipient of ['alice@recipient.example', bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode('https://recipient.example/.well-known/lnurlp/alice')), 2000)]) await t.test(`${recipient.includes('@') ? 'Lightning Address' : 'Pasted LNURL'} resolves, verifies amount, pays once per intent`,async()=>{
     const originalFetch=globalThis.fetch;const urls:string[]=[];
     globalThis.fetch=(async(input:any,init?:RequestInit)=>{
       const url=String(input);if(!url.startsWith('https://recipient.example/'))return originalFetch(input,init);
       urls.push(url);return new Response(JSON.stringify(url.includes('/.well-known/')?{tag:'payRequest',callback:'https://recipient.example/callback',minSendable:1000,maxSendable:500000000,metadata:'[["text/plain","Donation"]]',commentAllowed:100}:{pr:invoice}));
     }) as typeof fetch;
     try {
-      const resolved=await call('wallet_resolveLightningAddress',{address:'alice@recipient.example'});assert.equal(resolved.minSats,1);
-      const params={address:'alice@recipient.example',amountSats:250000,comment:'Thanks',intentId:'integration-zap'};
+      const resolved=await call('wallet_resolveLightningAddress',{address:recipient});assert.equal(resolved.minSats,1);
+      const params={address:recipient,amountSats:250000,comment:'Thanks',intentId:`integration-zap-${recipient}`};
       const count=requests.filter(x=>x.body.out).length;
       assert.equal((await call('wallet_payToLightningAddress',params)).preimage,'test-preimage');
       await call('wallet_payToLightningAddress',params);assert.equal(requests.filter(x=>x.body.out).length,count+1);
       const callback=new URL(urls.find(x=>x.includes('/callback'))!);assert.equal(callback.searchParams.get('amount'),'250000000');assert.equal(callback.searchParams.get('comment'),'Thanks');
-      await assert.rejects(call('wallet_payToLightningAddress',{...params,amountSats:10,intentId:'wrong-amount'}),/not the 10/);
+      await assert.rejects(call('wallet_payToLightningAddress',{...params,amountSats:10,intentId:`wrong-amount-${recipient}`}),/not the 10/);
       assert.equal(requests.filter(x=>x.body.out).length,count+1);
     }finally{globalThis.fetch=originalFetch;}
   });

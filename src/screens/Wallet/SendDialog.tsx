@@ -5,7 +5,7 @@ import Button from '@components/Button/Button';
 import Input from '@components/Input/Input';
 import Modal from '@components/Modal/Modal';
 import { decodeBolt11 } from '@lib/wallet/bolt11.ts';
-import { isLightningAddress } from '@lib/wallet/lnurl.ts';
+import { isLightningAddress, parseLnurl } from '@lib/wallet/lnurl.ts';
 import { resolveSendTarget } from '@domain/wallet/sendTarget.ts';
 import { describeInvoiceExpiry } from '@domain/wallet/invoiceExpiry.ts';
 import { PAYMENT_IN_FLIGHT } from '@lib/wallet/types.ts';
@@ -76,7 +76,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
 
   // A Lightning Address goes in the same field as an invoice; decide which one
   // this is before trying to decode it as BOLT11.
-  const sendIsAddress = useMemo(() => isLightningAddress(sendInput), [sendInput]);
+  const sendIsAddress = useMemo(() => isLightningAddress(sendInput) || parseLnurl(sendInput) !== null, [sendInput]);
 
   // Decode pasted invoice for preview
   const decodedInvoice = useMemo(() => {
@@ -93,7 +93,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
   // as soon as the body cleared that state.
   const resolvedForRef = useRef<string | null>(null);
   useEffect(() => {
-    const trimmed = sendInput.trim().toLowerCase();
+    const trimmed = sendInput.trim();
     if (!sendIsAddress) {
       resolvedForRef.current = null;
       setSendAddress(null);
@@ -230,7 +230,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
               ) : sendAddress ? (
                 <>
                   <Container variant="box">
-                    <FieldDisplay caps className="py-0" label={t('wallet.payTo')} value={sendAddress.address} />
+                    <FieldDisplay caps className="py-0" label={t('wallet.payTo')} value={isLightningAddress(sendAddress.address) ? sendAddress.address : sendAddress.domain} />
                     {sendAddress.description && (
                       <FieldDisplay caps className="py-0" label={t('wallet.invoiceDescription')} value={sendAddress.description} />
                     )}

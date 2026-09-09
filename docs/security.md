@@ -348,7 +348,7 @@ upload previews are exempt because they never come from relay data.
 
 ## 17. LNURL-pay Hardening (`src/lib/wallet/lnurl.ts`)
 
-Paying a Lightning Address makes the background service worker — the context
+Paying a Lightning Address or pasted LNURL makes the background service worker — the context
 holding the wallet's admin key — fetch a URL derived from user input, then a
 second URL chosen by that first server. Both are treated as untrusted:
 
@@ -418,3 +418,8 @@ Successful crypto activity now saves ciphertext only (128 KiB maximum per operat
 Account-scoped `walletDisplay_` keys in local extension storage hold non-secret display metadata outside the encrypted vault: provider type, last balance, timestamp, and up to 50 transaction summaries (payment hash, amount, fee, memo, status, time). Invoices, preimages, API keys, NWC URIs and other credentials are excluded by an explicit field allowlist. The existing lock overlay continues to gate the UI; these snapshots cannot authorize payments or prove vault unlock. Disconnect/replacement clears old details, account removal erases its snapshot, and vault destruction erases all snapshots. Revision-guarded serialized writes prevent pre-removal reads from repopulating them.
 
 Approval queue identity checks: requests are bound to an account ID. The extension popup displays pending requests from all websites for that account, never treating a website filter as an account boundary. Foreign account/author entries are rejected (remote-signer and unlock waits use their respective cancellation methods). Individual and permission-batch resolution recheck account identity in the background. signEvent rejects a supplied foreign author before permission checks and rechecks the account/public key before signing. Recipient keys in encryption/decryption requests are not author keys. Bulk approval acts only on a snapshot of displayed request IDs.
+
+Pasted LNURLs are checksum-validated bech32 with strict UTF-8 decoding and a
+2,000-character limit. Mixed case is rejected before normalization. Decoded URLs
+pass the same HTTPS/public-host guard; embedded URL credentials are refused.
+Only `payRequest` responses proceed to payment.

@@ -194,10 +194,13 @@ uncached (a stale cache could drop a field changed elsewhere), and the popup
 refuses to publish when `reachable` is false, saying so instead of closing the
 dialog as though it had worked.
 
-### 5.3 Paying a Lightning Address (`lnurl.ts`)
+### 5.3 Paying a Lightning Address or LNURL (`lnurl.ts`)
 
 The Send flow accepts a Lightning Address (`name@domain`) in the same field as
-a BOLT11 invoice. Resolution is LUD-16 → LUD-06:
+a BOLT11 invoice. It also accepts bech32 `lnurl1…` and `lightning:LNURL1…` links.
+LNURL decoding validates the checksum, case and UTF-8, preserves URL path/query
+case, then reuses the same LUD-06 flow. Non-payment LNURLs are rejected.
+The confirmation displays the decoded endpoint domain. Resolution is LUD-16 → LUD-06:
 
 ```
 User pastes name@domain
@@ -223,6 +226,7 @@ Both hops are attacker-influenced — the user pastes the address, the *server* 
 | 64 KB response cap, enforced while reading; LUD-06 `status: "ERROR"` surfaced verbatim | Bounded, legible failures |
 
 Exports:
+- `parseLnurl(input)` — decode bech32 or lightning-prefixed LNURL; invalid input returns null
 - `parseLightningAddress(input)` / `isLightningAddress(input)` — parse/detect; never throws
 - `lightningAddressToLnurlpUrl(address)` — the LUD-16 well-known URL
 - `assertPublicHttpsUrl(url)` — the guard above; returns the parsed `URL`
@@ -465,7 +469,7 @@ See [Storage](storage.md#wallet-storage) and [Security](security.md#8b-wallet-cr
 
 - **Balance card** with gear icon for settings
 - **Deposit** (`DepositDialog.tsx`) — amount → invoice + QR → paid, polling every 2s and auto-closing 2.5s after payment lands. The amount is stored *with* the invoice rather than read back from the form, which the old version did through a stale closure that only worked because the field was unreachable by then.
-- **Send** (`SendDialog.tsx`) takes either a BOLT11 invoice or a Lightning Address. An address is detected as it is typed, resolved (debounced 400 ms) via `wallet_resolveLightningAddress`, and shown as destination + description + accepted range, with amount and — where the endpoint allows it — comment fields. Pay stays disabled until the amount is inside the range. The backdrop stops dismissing while a payment is in flight.
+- **Send** (`SendDialog.tsx`) takes a BOLT11 invoice, Lightning Address or bech32 LNURL. An address is detected as it is typed, resolved (debounced 400 ms) via `wallet_resolveLightningAddress`, and shown as destination + description + accepted range, with amount and — where the endpoint allows it — comment fields. Pay stays disabled until the amount is inside the range. The backdrop stops dismissing while a payment is in flight.
 - **Transaction list** (`TransactionList.tsx`) with search, refresh, and pagination; the filter form is `TxFilterDialog.tsx`. Failed reads show an error and retry control, never “No transactions yet.” Paging can continue even when the loaded rows do not match the filters. Rows show sats, date, direction, and failed status. Pending invoices are excluded from activity, including cached records. A preimage never overrides the provider’s pending status.
 - LNbits requests `status[ne]=pending&sortby=time&direction=desc`: filtering happens on the server before limit/offset. NWC already requests `unpaid:false`. If a server still returns pending rows, the adapter preserves raw page length for correct offsets and the pager drops those rows. Pending-only pages do not consume the 500 non-pending-row scan budget; paging continues until matches or the end, and stops requesting pages when the view unmounts or filters change.
 - Wallet reads wait for startup auto-unlock before checking the vault. Wallet context and history reset when the selected account changes; late history responses cannot replace a newer filter request. The balance and actions share one compact card using the app’s purple controls.
@@ -519,7 +523,7 @@ transport and revalidated by the background. Amount-selection prompts using only
 | Website NIP-57 zap | Website signs kind:9734 via NIP-07, obtains the LNURL invoice, then pays via WebLN |
 | Popup Lightning Address | LUD-16 address resolution and LUD-06 invoice payment; ordinary payment, not a generated zap request |
 | Popup pasted BOLT11 | Direct payment through the selected provider |
-| Bech32 LNURL pasted into Send | Not implemented; use a Lightning Address or BOLT11 |
+| Bech32 LNURL pasted into Send | LUD-01 decoding and LUD-06 payment; also accepts `lightning:LNURL…`. HTTPS pay endpoints only; login, withdraw and channel LNURLs are rejected |
 | Keysend, BOLT12, on-chain, Cashu | Not implemented or advertised |
 
 A NWC connection grants capabilities to this extension; it does not expose the

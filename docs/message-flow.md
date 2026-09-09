@@ -260,3 +260,8 @@ Automatic popup opening first checks for an existing popup context (runtime.getC
 of advertising all operations unconditionally. The injected `makeInvoice`
 normalizes numeric, string and object arguments to a validated fixed amount;
 the background repeats amount validation before invoking the wallet provider.
+
+The popup’s existing `wallet_resolveLightningAddress` and
+`wallet_payToLightningAddress` RPCs also accept bech32 LNURLs and
+`lightning:LNURL…` links. They reuse pay-parameter validation, amount checks and
+payment-intent deduplication. No additional page-facing payment API is exposed.

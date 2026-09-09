@@ -1,3 +1,5 @@
+import { parseLnurl } from '../../lib/wallet/lnurl.ts';
+
 /**
  * What, if anything, the wallet's Send box should pay right now.
  *
@@ -29,7 +31,7 @@ export type SendTarget =
 export interface SendTargetInput {
   /** Raw contents of the Send field. */
   input: string;
-  /** True when `input` parses as a Lightning Address rather than an invoice. */
+  /** True when `input` parses as a Lightning Address or LNURL rather than an invoice. */
   isAddress: boolean;
   /** The most recent resolution held by the component, whatever it is for. */
   resolved: ResolvedAddressLike | null;
@@ -56,7 +58,7 @@ export function resolveSendTarget(
   }
 
   // LUD-16 addresses are lowercase, and that is the form we resolve and store.
-  const wanted = trimmed.toLowerCase();
+  const wanted = parseLnurl(trimmed)?.encoded ?? trimmed.toLowerCase();
   if (!resolved) return { kind: 'none', reason: 'resolving' };
 
   // The load-bearing line: a resolution for some *other* address is not a

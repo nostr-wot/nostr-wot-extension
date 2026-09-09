@@ -17,6 +17,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { bech32 } from '@scure/base';
 import { resolveSendTarget, canSend, type SendTargetInput } from '../src/domain/wallet/sendTarget.ts';
 
 const ALICE = { address: 'alice@example.com', minSats: 1, maxSats: 100_000 };
@@ -147,4 +148,13 @@ describe('resolveSendTarget — invoices', () => {
       { kind: 'none', reason: 'empty' },
     );
   });
+});
+
+
+it('LNURL recipients retain the stale-recipient guard and normalize lightning links', () => {
+  const encoded = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode('https://example.com/pay')), 2000);
+  const input = `lightning:${encoded.toUpperCase()}`;
+  assert.equal(canSend(base({ input })), false);
+  assert.deepEqual(resolveSendTarget(base({ input, resolved: { ...ALICE, address: encoded } })),
+    { kind: 'address', address: encoded, amountSats: 500 });
 });

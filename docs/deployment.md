@@ -155,7 +155,7 @@ Release notes for each store live in `CHANGELOG.md` under the version, in a
 `### Store release notes` block — short, user-facing, and free of the internal
 detail the rest of the entry carries.
 
-## Reproduce the 0.7.0 packages
+## Reproduce the 0.7.1 packages
 
 Use supported Node 22 or 24, run `npm ci`, then `npm run package:chrome`
 and `npm run package:firefox`. The Chrome ZIP removes Firefox-specific settings;

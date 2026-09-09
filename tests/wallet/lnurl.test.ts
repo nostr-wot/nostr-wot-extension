@@ -11,8 +11,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { bech32 } from '@scure/base';
 import {
-  parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl,
+  parseLnurl, parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl,
   assertPublicHttpsUrl, fetchPayParams, requestInvoice,
   type LnurlPayParams,
 } from '../../src/lib/wallet/lnurl.ts';
@@ -415,5 +416,46 @@ describe('requestInvoice — ranges with no whole sat in them', () => {
       requestInvoice({ ...BASE_PARAMS, minSendable: 10_000, maxSendable: 50_000 }, 1, undefined, fetchFn),
       /between 10 and 50 sats/,
     );
+  });
+});
+
+
+describe('pasted LNURL-pay', () => {
+  const endpoint = 'https://example.com/Pay/AbC?token=CaseSensitive';
+  const encoded = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode(endpoint)), 2000);
+  it('decodes lowercase, uppercase and lightning-prefixed LNURLs without changing URL case', () => {
+    for (const input of [encoded, encoded.toUpperCase(), `lightning:${encoded}`, ` LIGHTNING:${encoded.toUpperCase()} `]) {
+      assert.deepEqual(parseLnurl(input), { encoded, url: endpoint });
+    }
+  });
+  it('rejects mixed case, bad checksums, wrong prefixes, invalid UTF-8 and oversized input', () => {
+    for (const input of [encoded.slice(0, -1), `LNURL${encoded.slice(5)}`, 'lnurl1bad',
+      bech32.encode('other', bech32.toWords(new TextEncoder().encode(endpoint)), 2000),
+      bech32.encode('lnurl', bech32.toWords(new Uint8Array([255])), 2000), 'lnurl1' + 'q'.repeat(2000)]) {
+      assert.equal(parseLnurl(input), null);
+    }
+  });
+  it('uses the same pay-params validation and preserves the encoded recipient', async () => {
+    const { fetchFn, urls } = mockFetch([jsonResponse(PAY_PARAMS_BODY)]);
+    const params = await fetchPayParams(`lightning:${encoded.toUpperCase()}`, fetchFn);
+    assert.deepEqual(urls, [endpoint]);
+    assert.equal(params.address, encoded);
+    assert.equal(params.domain, 'example.com');
+    assert.equal(params.description, 'Sats for alice');
+  });
+  it('rejects unsafe decoded URLs before fetching', async () => {
+    for (const url of ['http://example.com/pay', 'https://localhost/pay', 'https://127.0.0.1/pay', 'https://user:pass@example.com/pay', 'file:///tmp/pay']) {
+      const input = bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode(url)), 2000);
+      const { fetchFn, urls } = mockFetch([jsonResponse(PAY_PARAMS_BODY)]);
+      await assert.rejects(fetchPayParams(input, fetchFn));
+      assert.deepEqual(urls, []);
+    }
+  });
+  it('rejects non-payment LNURLs without requesting an invoice', async () => {
+    for (const tag of ['withdrawRequest', 'login', 'channelRequest']) {
+      const { fetchFn, urls } = mockFetch([jsonResponse({ ...PAY_PARAMS_BODY, tag })]);
+      await assert.rejects(fetchPayParams(encoded, fetchFn), /not a pay request/);
+      assert.equal(urls.length, 1);
+    }
   });
 });

@@ -1,6 +1,6 @@
-# Build instructions — Nostr WoT 0.7.0
+# Build instructions — Nostr WoT 0.7.1
 
-Use the attached `nostr-wot-source-0.7.0.zip`, which includes the release's
+Use the attached `nostr-wot-source-0.7.1.zip`, which includes the release's
 working source and lockfile. Use that archive to reproduce the packaged release;
 do not use an older GitHub tag or assume the latest main matches its contents.
 
@@ -20,7 +20,8 @@ metadata. Chrome packaging removes Firefox-only settings. The Firefox script
 restores the normal unpacked `dist/` build after creating its ZIP.
 
 Compare extracted files rather than ZIP checksums, since ZIP entry timestamps
-vary. Dependencies are pinned in package-lock.json. Vite bundles TypeScript and
+vary. Dependencies are pinned in package-lock.json. Keep the included nips/ documentation
+and .gitignore in place: Tailwind also scans repository text when generating CSS. Vite bundles TypeScript and
 React without minification. Runtime network calls exchange data, not remote
 executable code.
 

@@ -223,3 +223,7 @@ communication.test.ts) and external payment services. It does not send real
 funds or verify a recipient's kind:9735 receipt publication.
 
 CI and `tests/run.sh` build before any tests. `tests/test-registration.test.ts` guards this ordering; clean GitHub runners have no pre-existing `dist/assets`. Do not run a build concurrently with CSS tests.
+
+LNURL tests cover checksum/case/UTF-8 validation, unsafe decoded endpoints,
+non-payment tags and recipient changes. Payment integration runs the same
+resolve/pay/deduplicate/amount-mismatch flow for Lightning Addresses and bech32 LNURLs.

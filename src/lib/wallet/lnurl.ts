@@ -22,6 +22,7 @@
  * @module lib/wallet/lnurl
  */
 
+import { bech32 } from '@scure/base';
 import { decodeBolt11 } from './bolt11.ts';
 
 type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
@@ -33,7 +34,7 @@ const MAX_RESPONSE_BYTES = 64 * 1024;
 const REQUEST_TIMEOUT_MS = 15_000;
 
 export interface LnurlPayParams {
-  /** Normalised `name@domain` this was resolved from. */
+  /** Normalized Lightning Address or bech32 LNURL this was resolved from. */
   address: string;
   /** Domain the invoice will come from — show this to the user. */
   domain: string;
@@ -109,6 +110,24 @@ export function lightningAddressToLnurlpUrl(address: string): string {
   return `https://${parsed.domain}/.well-known/lnurlp/${encodeURIComponent(parsed.name)}`;
 }
 
+/** Decode a LUD-01 LNURL or lightning: link, preserving the URL's case.
+ * Invalid checksums, mixed case and malformed UTF-8 are never normalized away.
+ * URL safety is checked by fetchPayParams before any request.
+ */
+export function parseLnurl(input: string): { encoded: string; url: string } | null {
+  if (typeof input !== 'string') return null;
+  const encoded = input.trim().replace(/^lightning:/i, '');
+  if (!/^lnurl1/i.test(encoded) || encoded.length > 2000) return null;
+  try {
+    const decoded = bech32.decode(encoded as `${string}1${string}`, 2000);
+    if (decoded.prefix !== 'lnurl') return null;
+    const url = new TextDecoder('utf-8', { fatal: true }).decode(bech32.fromWords(decoded.words));
+    return { encoded: encoded.toLowerCase(), url };
+  } catch {
+    return null;
+  }
+}
+
 // ── URL safety ──
 
 const PRIVATE_IPV4 = /^(0|10|127)\.|^169\.254\.|^192\.168\.|^172\.(1[6-9]|2[0-9]|3[01])\./;
@@ -132,6 +151,10 @@ export function assertPublicHttpsUrl(url: string): URL {
   }
   if (parsed.protocol !== 'https:') {
     throw new Error('LNURL: refusing non-HTTPS endpoint');
+  }
+
+  if (parsed.username || parsed.password) {
+    throw new Error('LNURL: refusing URL credentials');
   }
 
   const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
@@ -283,9 +306,9 @@ function descriptionFromMetadata(metadata: string): string | null {
 // ── Public API ──
 
 /**
- * Resolve a Lightning Address to its LNURL-pay parameters.
+ * Resolve a Lightning Address or bech32 LNURL to its LNURL-pay parameters.
  *
- * @param address - `name@domain`
+ * @param address - `name@domain`, `lnurl1…`, or `lightning:LNURL1…`
  * @param fetchFn - Optional fetch override for testing
  * @throws if the address, the endpoint, or the response is invalid.
  */
@@ -294,9 +317,10 @@ export async function fetchPayParams(
   fetchFn: FetchFn = globalThis.fetch.bind(globalThis),
 ): Promise<LnurlPayParams> {
   const parsed = parseLightningAddress(address);
-  if (!parsed) throw new Error('Not a valid Lightning Address');
+  const lnurl = parsed ? null : parseLnurl(address);
+  if (!parsed && !lnurl) throw new Error('Not a valid Lightning Address or LNURL');
 
-  const url = lightningAddressToLnurlpUrl(address);
+  const url = lnurl ? lnurl.url : lightningAddressToLnurlpUrl(address);
   assertPublicHttpsUrl(url);
   const body = await fetchJson(url, fetchFn);
 
@@ -321,8 +345,8 @@ export async function fetchPayParams(
     : 0;
 
   return {
-    address: `${parsed.name}@${parsed.domain}`,
-    domain: parsed.domain,
+    address: lnurl ? lnurl.encoded : `${parsed!.name}@${parsed!.domain}`,
+    domain: new URL(url).hostname,
     callback,
     minSendable,
     maxSendable,
