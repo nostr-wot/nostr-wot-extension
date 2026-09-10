@@ -1,57 +1,31 @@
 Nostr WoT 0.7.0
 
-- Encrypt cached wallet/history data and protect account credentials from UI responses.
-- New website permissions distinguish protocol and port; existing connections and rules remain compatible. Automatic payments share a 24-hour allowance, and LNURL invoices receive stricter validation.
+Security and privacy
+- Encrypt cached balances, payment data and activity history with a vault-protected key.
+- Strengthen account and vault-session isolation for signing and payments; cancel stale operations after lock, account switch or wallet replacement.
+- Preserve existing site connections while distinguishing protocol and port for new permissions.
+- Improve automatic-payment budgets, invoice validation, wallet transport and request limits.
+- Update vulnerable dependencies and Firefox data-consent disclosures.
 
-- Security fixes: stronger account and vault-lock isolation for signing and payments, correct account-specific payment denials, secure wallet transport without redirects, and limits on pending requests and oversized payloads.
+Wallet and payments
+- Fix NWC connection/startup and intermittent "vault is locked" messages.
+- Show cached wallet information while refreshing and load settled transactions past pending invoices.
+- Accept pasted LNURL-pay strings and lightning:LNURL links.
+- Improve WebLN capability detection and website payment compatibility.
+- Refine wallet settings, profile-address state, deposit and send dialogs.
 
-- Updated vulnerable dependencies; npm audit reports zero known vulnerabilities.
+Accounts and approvals
+- Group concurrent requests with readable event types, origins and expandable details.
+- "Approve once" and "Approve all" apply only to displayed requests. "Always allow" separately saves permission for future requests.
+- Reject foreign-account signing requests and show rejection summaries with a red toolbar counter.
+- Improve account switching, sub-account creation and deletion confirmations.
+- Preview npub and hex automatically, allow custom account names, and expose validated derivation paths under Advanced.
 
-- Pay pasted LNURL strings and lightning:LNURL links directly from the wallet’s Send screen.
-- Fixed NWC wallet connection and startup.
-- Improved website payment compatibility and detection of supported WebLN methods.
-- Expanded automated payment and connection tests.
+Post-quantum keys and interface
+- Import encrypted seed and post-quantum backups, including pasted JSON.
+- Improve post-quantum key management and publication status.
+- Redesign profile, activity and shared controls; support cover-image uploads and local event decryption.
+- Fix repeated relay requests and relay-list discovery.
+- Improve scrolling, spacing, copy controls and keyboard accessibility.
 
-- Redesigned wallet, profile, post-quantum keys, activity details and form controls.
-- Wallet information appears from cache while refreshing; settled transaction history loads past pending invoices.
-- Fixed repeated relay requests, relay-list discovery and unstable key publication status.
-- Concurrent approval requests appear in groups with expandable details, website origins and readable event types. Requests for another account are rejected.
-- Improved account switching, scrolling, copy controls and keyboard accessibility.
-- Corrected Firefox data disclosures and required consent-compatible Firefox versions.
-
-Internal maintenance: centralized configuration constants, shared account-import
-helpers and canonical domain contracts for activity, mute lists and PQ status.
-
-Shared symbols are imported directly from their defining modules, without forwarding exports.
-
-UI maintenance: focused key-action panels, shared copy/form controls, and clearer formatter/media service boundaries.
-
-Latest updates:
-- Wallet operations wait for startup auto-unlock; wallet data retries after lock-state
-  changes, and stale vault status responses cannot overwrite newer results.
-- Standard button sizes and named presets, shared profile/image controls, accessible
-  status announcements, reusable event details and consistent editable lists.
-- Account-scoped mute editing guards late responses and preserves encrypted content.
-- Shared component directory entrypoints and focused vault/signing service modules.
-- NIP-07 and WebLN page timeouts use canonical build-time constants.
-
-Approvals default to “Approve once” or “Approve all” for the displayed requests. A separate “Always allow” option clearly saves permission for future requests from that site.
-
-Fixed the derived-account wizard reset and added a separate account-removal confirmation with visible errors.
-
-Consistent spacing between popup sections and action buttons, including account-removal and post-quantum dialogs.
-
-- Seed-derived account removal explains seed/path recovery. Sub-account creation supports validated custom paths, public-key previews and recognized network-prefix hints. Existing standard keys remain unchanged.
-
-- Sub-account previews show npub and hex automatically. Names are editable, and custom derivation paths live under Advanced. Stale or failed previews cannot enable Continue.
-
-
-- Restore website refresh on account switch for clients that cache identities. Foreign-author signing requests are rejected automatically and retained as unread summaries, with a red toolbar counter until acknowledged.
-
-- Hide the home wallet balance on unconnected sites and while site connection status is loading or unavailable; the wallet remains accessible in Settings.
-
-Password-encrypted post-quantum key backups can now be imported directly.
-
-The account-import wizard now accepts encrypted seed backup files and pasted JSON.
-
-Release preparation: refreshed Chrome, Firefox and source packages for the pending 0.7.0 release.
+Firefox requires desktop 140+ or Android 142+ for built-in data consent.

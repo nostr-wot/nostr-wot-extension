@@ -1,67 +1,28 @@
 Nostr WoT 0.7.0 — Mozilla reviewer notes
 
-Build with Node 22 or 24:
+Build from the attached nostr-wot-source-0.7.0.zip in an empty directory using Node 22 or 24 and npm:
   npm ci
   npm run package:firefox
-Chrome:
-  npm run package:chrome
-Tests:
-  ./tests/run.sh
+For Chrome: npm run package:chrome
+Tests: ./tests/run.sh
 
-Consent correction:
-Firefox built-in consent is required by minimum desktop 140 and Android 142.
-The packaged manifest declares financialAndPaymentInfo,
-personallyIdentifyingInfo, authenticationInfo, personalCommunications and
-browsingActivity. Firefox presents required categories on installation and
-new required categories on update. Users can decline or disable/remove the add-on.
+Release build: Node 22.23.2 / npm 10.9.8. The source includes the lockfile and integration tests. See SOURCE_BUILD.md. Keep the included documentation and .gitignore: Tailwind scans repository text for CSS generation. No private credentials are needed to build.
 
-Data flows:
-- Payment details: configured LNbits, LNURL endpoints and NWC wallet relays.
-- Identity/profile/mute/relay information: configured Nostr relays; uploaded
-  profile/cover files: blossom.primal.net.
-- Authentication: configured wallet API credentials and provisioning data.
-- Communications: event/message content sent to the selected NIP-46 signer,
-  encrypted over its relay. Local signing/decryption remains local.
-- Browsing domains: Google favicon service to retrieve site icons.
-No telemetry is sent. See docs/deployment.md for the disclosure audit.
+Reproducibility
+The source rebuild matched all 29 extracted files byte for byte in each browser package. Compare extracted files; ZIP timestamps may differ. Firefox packaging uses background scripts and retains consent metadata. Chrome packaging removes Firefox-specific settings. The Firefox command restores the normal unpacked dist/ build afterward.
 
-web-ext lint: zero errors, two warnings. Both innerHTML warnings are React DOM
-library implementations of dangerouslySetInnerHTML. The extension's src/ has
-no innerHTML or dangerouslySetInnerHTML usage.
+Consent
+Minimum Firefox versions are desktop 140 and Android 142, which support built-in data consent. Required categories are financialAndPaymentInfo, personallyIdentifyingInfo, authenticationInfo, personalCommunications and browsingActivity. Firefox presents required categories on installation and newly required categories on update. Users can decline or disable/remove the extension.
 
-Release contents:
-Dependency security updates clear all npm audit findings. Application modules are
-organized under src/domain, src/services and src/utils; crypto and browser
-compatibility remain under src/lib. Runtime permissions are unchanged.
-Includes pasted LNURL-pay support (using the existing payment flow), the NWC provider startup fix and website-payment compatibility updates.
-The source archive includes Nostr Connect, NWC and WebLN integration tests.
-Store-facing release notes are in nostr-wot-release-notes-0.7.0.txt.
+Data flows
+- Payments: configured LNbits servers, LNURL endpoints and NWC wallet relays.
+- Identity, profile, mute and relay information: configured Nostr relays. Profile/cover uploads: blossom.primal.net.
+- Authentication: wallet API credentials and provisioning data sent to the configured wallet service.
+- Communications: event/message content sent encrypted to the selected NIP-46 signer through its relay. Local signing/decryption stays local.
+- Browsing domains: Google's favicon service receives site domains to retrieve icons.
+No telemetry or remote executable code is fetched. See docs/deployment.md for disclosures.
 
-This package has not been submitted or approved by Mozilla.
+Security and testing
+Cached wallet, activity and payment data is encrypted with a vault-protected key. Signing/payment work is bound to the account and vault session. Approval separates current requests from future permissions. The source includes Nostr Connect, NWC and WebLN integration tests using synthetic accounts and local services.
 
-Internal maintenance: centralized configuration constants, shared account-import
-helpers and canonical domain contracts for activity, mute lists and PQ status.
-
-Shared symbols are imported directly from their defining modules, without forwarding exports.
-
-UI maintenance: focused key-action panels, shared copy/form controls, and clearer formatter/media service boundaries.
-
-Latest updates:
-- Wallet operations wait for startup auto-unlock; wallet data retries after lock-state
-  changes, and stale vault status responses cannot overwrite newer results.
-- Standard button sizes and named presets, shared profile/image controls, accessible
-  status announcements, reusable event details and consistent editable lists.
-- Account-scoped mute editing guards late responses and preserves encrypted content.
-- Shared component directory entrypoints and focused vault/signing service modules.
-- NIP-07 and WebLN page timeouts use canonical build-time constants.
-
-Security and recovery updates:
-- Vault-protected encryption for cached wallet, activity and payment data.
-- Account/session isolation and bounded signing/payment requests.
-- Encrypted seed/PQ backup import and separate one-time versus standing approval.
-
-Reproducibility: extract the attached source ZIP into an empty directory, run
-npm ci, then both package commands above. Compare all extracted package files
-byte for byte; ZIP metadata timestamps can differ. See SOURCE_BUILD.md.
-Native Chrome smoke coverage and remaining browser verification scope are recorded
-in docs/audits/2026-09-10/native-browser-verification.md.
+Native Chrome smoke coverage and remaining browser verification scope are documented in docs/audits/2026-09-10/native-browser-verification.md.
