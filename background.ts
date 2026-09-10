@@ -1,4 +1,4 @@
-import { NIP07_SIGNING_METHODS } from '@constants/signing.ts';
+import { NIP07_SIGNING_METHODS, MAX_IN_FLIGHT_PER_ORIGIN, MAX_IN_FLIGHT_GLOBAL } from '@constants/signing.ts';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 
 import browser from './src/lib/browser.ts';
@@ -189,6 +189,27 @@ async function handleRequest(
     return await handler(params);
 }
 
+// Page request resource budget. Shared across ports, tabs and runtime messages.
+// Keep the reservation until actual work settles even if a port disconnects:
+// freeing it on disconnect would let reconnects bypass the bound on retained work.
+const pageRequestsByOrigin = new Map<string, number>();
+let pageRequestCount = 0;
+async function handlePageRequest(request: {method: string; params: Record<string, unknown>}, tabId?: number): Promise<unknown> {
+    if (!request.method?.startsWith('nip07_') && !request.method?.startsWith('webln_')) return handleRequest(request, tabId);
+    const origin = request.params?.origin as string;
+    const count = pageRequestsByOrigin.get(origin) || 0;
+    if (count >= MAX_IN_FLIGHT_PER_ORIGIN || pageRequestCount >= MAX_IN_FLIGHT_GLOBAL) throw new Error('Too many in-flight requests');
+    pageRequestsByOrigin.set(origin, count + 1);
+    pageRequestCount++;
+    try { return await handleRequest(request, tabId); }
+    finally {
+        pageRequestCount--;
+        const remaining = (pageRequestsByOrigin.get(origin) || 1) - 1;
+        if (remaining) pageRequestsByOrigin.set(origin, remaining);
+        else pageRequestsByOrigin.delete(origin);
+    }
+}
+
 // ── Message listeners ──
 
 browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender: chrome.runtime.MessageSender, sendResponse: (response: unknown) => void) => {
@@ -206,21 +227,26 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
     }
 
     // Defense-in-depth: derive NIP-07 origin from browser-verified sender info
-    if (method?.startsWith('nip07_')) {
-        const originUrl = sender.frameId === 0
-            ? sender.tab?.url
-            : (sender.url || sender.tab?.url);
+    if (method?.startsWith('nip07_') || method?.startsWith('webln_')) {
+        const originUrl = sender.url || (sender.frameId === 0 ? sender.tab?.url : undefined);
         if (!originUrl) {
             sendResponse({ error: 'Cannot determine request origin' });
             return true;
         }
-        (request.params as Record<string, unknown>).origin = new URL(originUrl).hostname;
+        try {
+            const parsed = new URL(originUrl);
+            if (!['http:', 'https:'].includes(parsed.protocol) || sender.origin === 'null') throw new Error('Invalid origin');
+            request.params = { ...(request.params as Record<string, unknown>), origin: parsed.origin };
+        } catch {
+            sendResponse({ error: 'Cannot determine request origin' });
+            return true;
+        }
     }
 
     // The requesting tab's id, so the connect gate can tell "this is the tab the user is
     // looking at" without needing to read its URL — which tabs.query strips unless we hold
     // an explicit host permission for it. See domain/site/originMatchesActiveTab.ts.
-    handleRequest(request as { method: string; params: Record<string, unknown> }, sender.tab?.id)
+    handlePageRequest(request as { method: string; params: Record<string, unknown> }, sender.tab?.id)
         .then(result => {
             sendResponse({ result });
         })
@@ -251,22 +277,28 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
 
         // Defense-in-depth: derive origin from browser-verified sender info
         if (method?.startsWith('nip07_') || method?.startsWith('webln_')) {
-            const originUrl = port.sender?.frameId === 0
-                ? port.sender?.tab?.url
-                : (port.sender?.url || port.sender?.tab?.url);
+            const originUrl = port.sender?.url || (port.sender?.frameId === 0 ? port.sender?.tab?.url : undefined);
             if (!originUrl) {
                 try { port.postMessage({ id: request.id, error: 'Cannot determine request origin' }); } catch {}
                 return;
             }
-            const originHost = new URL(originUrl).hostname;
-            (request.params as Record<string, unknown>).origin = originHost;
+            let origin: string;
+            try {
+                const parsed = new URL(originUrl);
+                if (!['http:', 'https:'].includes(parsed.protocol) || port.sender?.origin === 'null') throw new Error('Invalid origin');
+                origin = parsed.origin;
+                request.params = { ...(request.params as Record<string, unknown>), origin };
+            } catch {
+                try { port.postMessage({ id: request.id, error: 'Cannot determine request origin' }); } catch {}
+                return;
+            }
             // Remember which tab is showing which origin, so account-change broadcasts do
             // not depend on tabs.query returning a URL we are not permitted to see.
-            rememberTabOrigin(port.sender?.tab?.id, originHost);
+            if (port.sender?.frameId === 0) rememberTabOrigin(port.sender?.tab?.id, origin);
         }
 
         try {
-            const result = await handleRequest(
+            const result = await handlePageRequest(
                 request as { method: string; params: Record<string, unknown> },
                 port.sender?.tab?.id,
             );
@@ -358,3 +390,6 @@ void vault.beginStartupUnlock(async () => {
         console.warn('[VAULT] Auto-unlock failed:', (e as Error).message);
     }
 });
+
+// Remove the temporary diagnostic record retained by development builds.
+void browser.storage.session.remove('accountSwitchTrace').catch(() => {});

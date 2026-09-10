@@ -1,10 +1,12 @@
-import { ACTIVITY_MAX_CIPHERTEXT_LENGTH } from '@constants/activity.ts';
+import { ACTIVITY_ENTRY_MAX_BYTES, ACTIVITY_LOG_MAX_BYTES, ACTIVITY_LOG_GLOBAL_MAX, ACTIVITY_MAX_CIPHERTEXT_LENGTH } from '@constants/activity.ts';
 /**
  * Activity log handlers: log, retrieve, and clear the activity log.
  * @module services/background/activity-handlers
  */
 
-import browser from '../../lib/browser.ts';
+import { readPrivateCache, writePrivateCache, removePrivateCache } from '../storage/private-cache.ts';
+import { AsyncLock } from '@utils/asyncLock.ts';
+const activityWrites = new AsyncLock();
 import * as vault from '../vault/vault.ts';
 import { decryptForAccount } from '../signing/localDecryption.ts';
 import { activityEntryKey, activityEncryption, filterActivityEntries, type ActivityEntry, type ActivityLogInput } from '../../domain/activity/activity.ts';
@@ -17,9 +19,10 @@ import { ACTIVITY_LOG_MAX_PER_DOMAIN } from '@constants/activity.ts';
 
 export async function logActivity(entry: ActivityLogInput): Promise<void> {
     try {
-        const data = await browser.storage.local.get(['activityLog']) as Record<string, ActivityEntry[]>;
-        const log = data.activityLog || [];
-        log.unshift({
+        if (vault.isLocked()) return;
+        await activityWrites.run(async () => {
+        const log = await readPrivateCache<ActivityEntry[]>('activityLog') || [];
+        const record: ActivityEntry = {
             timestamp: Date.now(),
             domain: entry.domain,
             method: entry.method,
@@ -29,15 +32,28 @@ export async function logActivity(entry: ActivityLogInput): Promise<void> {
             ...(entry.event && { event: entry.event }),
             ...(entry.theirPubkey && { theirPubkey: entry.theirPubkey }),
             ...(entry.ciphertext && entry.ciphertext.length <= ACTIVITY_MAX_CIPHERTEXT_LENGTH && { ciphertext: entry.ciphertext }),
-        });
-        // Keep max 200 entries per domain
-        const domainCounts: Record<string, number> = {};
+        };
+        if (new TextEncoder().encode(JSON.stringify(record)).length > ACTIVITY_ENTRY_MAX_BYTES) {
+            delete record.event;
+            delete record.ciphertext;
+        }
+        log.unshift(record);
+        // Bound retention across domains as well as within each domain.
+        const domainCounts = new Map<string, number>();
+        let bytes = 2;
+        let count = 0;
         const trimmed = log.filter((e) => {
             const d = (e.domain as string) || '?';
-            domainCounts[d] = (domainCounts[d] || 0) + 1;
-            return domainCounts[d] <= ACTIVITY_LOG_MAX_PER_DOMAIN;
+            const size = new TextEncoder().encode(JSON.stringify(e)).length + 1;
+            const domainCount = domainCounts.get(d) || 0;
+            if (size > ACTIVITY_ENTRY_MAX_BYTES || bytes + size > ACTIVITY_LOG_MAX_BYTES || count >= ACTIVITY_LOG_GLOBAL_MAX || domainCount >= ACTIVITY_LOG_MAX_PER_DOMAIN) return false;
+            domainCounts.set(d, domainCount + 1);
+            bytes += size;
+            count++;
+            return true;
         });
-        await browser.storage.local.set({ activityLog: trimmed });
+        await writePrivateCache('activityLog', trimmed);
+        });
     } catch { /* ignored */ }
 }
 
@@ -47,8 +63,8 @@ export const handlers = new Map<string, HandlerFn>([
     ['activity_decrypt', async (params) => {
         await vault.whenStartupUnlockSettled();
         if (vault.isLocked()) throw new Error('Vault is locked');
-        const stored = await browser.storage.local.get('activityLog');
-        const entry = ((stored.activityLog || []) as ActivityEntry[]).find((item: ActivityEntry) => activityEntryKey(item) === params.entryKey) as ActivityEntry | undefined;
+        const stored = await readPrivateCache<ActivityEntry[]>('activityLog');
+        const entry = (stored || []).find((item: ActivityEntry) => activityEntryKey(item) === params.entryKey) as ActivityEntry | undefined;
         if (!entry) throw new Error('This activity entry is no longer available');
         const encrypted = activityEncryption(entry);
         if (!encrypted) throw new Error('No encrypted content was saved for this entry');
@@ -70,16 +86,17 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['getActivityLog', async () => {
-        const logData = await browser.storage.local.get(['activityLog']) as Record<string, unknown[]>;
-        return logData.activityLog || [];
+        await vault.whenStartupUnlockSettled();
+        return await readPrivateCache<ActivityEntry[]>('activityLog') || [];
     }],
 
     ['clearActivityLog', async (params) => {
+        return activityWrites.run(async () => {
         const hasFilter = params.domain || params.accountPubkey || params.typeFilter || params.pubkeyFilter;
         if (!hasFilter) {
-            await browser.storage.local.remove('activityLog');
+            await removePrivateCache('activityLog');
         } else {
-            const allLog = ((await browser.storage.local.get(['activityLog'])) as Record<string, ActivityEntry[]>).activityLog || [];
+            const allLog = await readPrivateCache<ActivityEntry[]>('activityLog') || [];
             const selected = new Set(filterActivityEntries(allLog, {
                 account: params.accountPubkey as string | undefined,
                 domain: params.domain as string | undefined,
@@ -87,8 +104,13 @@ export const handlers = new Map<string, HandlerFn>([
                 pubkeyQuery: params.pubkeyFilter as string | undefined,
             }));
             const kept = allLog.filter(entry => !selected.has(entry));
-            await browser.storage.local.set({ activityLog: kept });
+            await writePrivateCache('activityLog', kept);
         }
         return { ok: true };
+        });
     }],
 ]);
+
+vault.onUnlock(async () => {
+  try { await readPrivateCache('activityLog'); } catch { /* Leave damaged ciphertext untouched. */ }
+});

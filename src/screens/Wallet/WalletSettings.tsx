@@ -3,7 +3,7 @@ import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Card from '@components/Card';
-import Button, { ButtonSecondary, ButtonDanger } from '@components/Button';
+import Button, { ButtonDanger } from '@components/Button';
 import Input from '@components/Input';
 import OverlayPanel from '@components/OverlayPanel';
 import ConfirmDialog from '@components/ConfirmDialog';
@@ -16,6 +16,8 @@ import Spinner from '@components/Spinner';
 import IconButton from '@components/IconButton';
 import IconSync from '@assets/IconSync.tsx';
 import { useWallet } from '@context/WalletContext';
+import { useAccount } from '@context/AccountContext';
+import ProfileAddressButton from './ProfileAddressButton';
 
 interface WalletSettingsProps {
   providerType: string;
@@ -25,8 +27,9 @@ interface WalletSettingsProps {
 
 /** Settings read through the shared account context; only editable drafts stay local. */
 export default function WalletSettings({ providerType, onClose, onDisconnected }: WalletSettingsProps) {
+  const { active, cachedProfile } = useAccount();
   const {settings,settingsLoading,settingsError,ensureSettings,refreshSettings,patchSettings} = useWallet();
-  const {threshold,nwcUri,address:lnAddress,alias} = settings;
+  const {threshold,nwcUri,address:lnAddress} = settings;
   const [thresholdDraft, setThresholdDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState('');
@@ -159,20 +162,21 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
         {settingsError && <FormError>{t('wallet.checkFailed')}</FormError>}
         <FormError>{settingsSaveError}</FormError>
         <Card className="m-0 p-6 flex flex-col gap-5">
-          <Container variant="row" gap={4} className="justify-between">
-            <Container gap={1}>
-              <span className="text-md font-semibold text-heading break-words">{alias || providerLabel}</span>
-              {alias && <span className="text-xs text-menu-subtitle">{providerLabel}</span>}
-              <span className="text-xs text-success font-medium">{t('wallet.connected')}</span>
-            </Container>
-
-          </Container>
+          <Text as="p" className="text-md font-semibold text-heading">
+            {t('wallet.connectedTo', { provider: providerType === 'lnbits' ? 'Nostr WoT LNBits' : providerLabel })}
+          </Text>
           {nwcUri && (
             <Container variant="row" gap={4} className="justify-between">
               <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" >{t('wallet.nwcUri')}</span>
               <CopyButton iconOnly value={nwcUri} label={t('wallet.copyNwc')} />
             </Container>
           )}
+          <Container gap={4} className="mt-auto border-t border-card-border pt-5">
+            <SectionHint className="m-0 text-menu-subtitle">{t('wallet.disconnectHint')}</SectionHint>
+            <ButtonDanger small onClick={handleDisconnect} disabled={disconnecting}>
+              {disconnecting ? t('common.loading') : t('common.disconnect')}
+            </ButtonDanger>
+          </Container>
         </Card>
 
         <Card className="m-0 p-6 flex flex-col gap-5">
@@ -204,9 +208,9 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
                   <CopyButton iconOnly value={lnAddress} label={t('common.copy')} />
                 </Container>
                 <Container gap={3}>
-                  <ButtonSecondary small onClick={() => setShowUpdateProfile(true)}>
-                    {t('wallet.addToProfile')}
-                  </ButtonSecondary>
+                  {active && <ProfileAddressButton key={active.pubkey} pubkey={active.pubkey}
+                    address={lnAddress} cachedAddress={cachedProfile?.lud16}
+                    onAdd={() => setShowUpdateProfile(true)} />}
                   <ButtonDanger small onClick={() => setConfirmRelease(true)} disabled={releaseLoading}>
                     {t('wallet.releaseAddress')}
                   </ButtonDanger>
@@ -230,12 +234,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
             <FormError>{claimError}</FormError>
           </Card>
         )}
-        <div className="border-t border-card-border pt-6">
-            <SectionHint className="text-menu-subtitle mb-4">{t('wallet.disconnectHint')}</SectionHint>
-            <ButtonDanger small onClick={handleDisconnect} disabled={disconnecting}>
-              {disconnecting ? t('common.loading') : t('common.disconnect')}
-            </ButtonDanger>
-        </div>
+
         </Container>
         </div>
       </OverlayPanel>

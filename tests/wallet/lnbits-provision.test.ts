@@ -305,3 +305,51 @@ describe('releaseLightningAddress', () => {
     );
   });
 });
+
+describe('provisioning transport boundaries', () => {
+  it('rejects insecure URLs in every helper before fetching or signing', async () => {
+    let calls = 0;
+    const fetchFn = (async () => { calls++; return new Response('{"challenge":"abcd","id":"id","adminkey":"key","address":null}'); }) as typeof fetch;
+    const signFn = async () => { calls++; return FAKE_SIGNED_EVENT; };
+    for (const url of ['http://remote.test', 'http://localhost.evil.test', 'https://user:pass@remote.test', 'https://remote.test/?redirect=x']) {
+      await assert.rejects(provisionLnbitsWallet(url, 'test', signFn, fetchFn));
+      await assert.rejects(claimLightningAddress(url, 'test', signFn, fetchFn));
+      await assert.rejects(releaseLightningAddress(url, signFn, fetchFn));
+      await assert.rejects(getLightningAddress(url, 'pubkey', fetchFn));
+    }
+    assert.equal(calls, 0);
+  });
+  it('rejects malformed challenges before signing', async () => {
+    for (const challenge of [null, 23, '', {}, 'a'.repeat(4097)]) {
+      const { signFn, wasCalled } = createMockSignFn();
+      await assert.rejects(provisionLnbitsWallet('https://wallet.test', 'test', signFn,
+        (async () => new Response(JSON.stringify({ challenge }))) as typeof fetch), /challenge/i);
+      assert.equal(wasCalled(), false);
+    }
+  });
+  it('rejects malformed provisioning credentials', async () => {
+    for (const body of [null, {}, {id: 'id', adminkey: 123}, {id:'id', adminkey:'key', nwcUri:'https://bad.test'}]) {
+      const fetchFn = (async (_url: unknown, init?: RequestInit) => new Response(JSON.stringify(init?.method === 'POST' ? body : {challenge: FAKE_CHALLENGE}))) as typeof fetch;
+      await assert.rejects(provisionLnbitsWallet('https://wallet.test', 'test', createMockSignFn().signFn, fetchFn), /response/i);
+    }
+  });
+});
+
+it('uses redirect refusal for challenge, provisioning, claim, lookup and release', async () => {
+  const fetchFn = (async (_url: unknown, init?: RequestInit) => {
+    assert.equal(init?.redirect, 'error');
+    return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE, id: 'id', adminkey: 'key', address: 'alice@example.test' }));
+  }) as typeof fetch;
+  const { signFn } = createMockSignFn();
+  await provisionLnbitsWallet('http://127.0.0.1:1234', 'test', signFn, fetchFn);
+  await claimLightningAddress('http://localhost:1234', 'alice', signFn, fetchFn);
+  await getLightningAddress('https://wallet.test', 'pubkey', fetchFn);
+  await releaseLightningAddress('https://wallet.test', signFn, fetchFn);
+});
+
+it('rejects malformed address responses', async () => {
+  for (const address of [undefined, 32, {}, 'no-domain']) {
+    await assert.rejects(getLightningAddress('https://wallet.test', 'key',
+      (async () => new Response(JSON.stringify({ address }))) as typeof fetch), /response/i);
+  }
+});

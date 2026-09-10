@@ -13,6 +13,11 @@ export const LNURL_REQUEST_TIMEOUT_MS = 15_000;
 
 export const WALLET_DISPLAY_CACHE_PREFIX = 'walletDisplay_';
 
+export const WALLET_AUTO_BUDGET_PREFIX = 'walletAutoBudget_';
+
+/** Rolling allowance window for unattended WebLN invoice spending. */
+export const WALLET_AUTO_BUDGET_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 export const PAYMENT_INTENTS_STORAGE_KEY = 'walletPaymentIntents';
 
 /** How long a completed intent stays replayable. Retries happen in milliseconds; this is slack. */

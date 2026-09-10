@@ -26,7 +26,8 @@ import { bytesToHex, hexToBytes } from '../../lib/crypto/utils.ts';
 import { nsecDecode, npubDecode } from '../../lib/crypto/bech32.ts';
 import { generateMnemonic, mnemonicToSeed, validateMnemonic } from '../../lib/crypto/bip39.ts';
 import { derivePath } from '../../lib/crypto/bip32.ts';
-import { NIP06_PATH } from '@constants/crypto/bip32.ts';
+import { normalizeDerivationPath, standardDerivationIndex } from './derivation.ts';
+import { MAX_BIP32_INDEX, NIP06_ACCOUNT_PREFIX, NIP06_PATH } from '@constants/crypto/bip32.ts';
 
 function generateId(): string {
   const arr = crypto.getRandomValues(new Uint8Array(6));
@@ -40,15 +41,34 @@ function generateId(): string {
  * @returns Account object
  */
 export async function createFromMnemonic(mnemonic: string, name: string = 'Main'): Promise<Account> {
+  return createFromMnemonicAtPath(mnemonic, NIP06_PATH, name);
+}
+
+/**
+ * Create a sub-account from an existing mnemonic at a specific HD derivation index.
+ * Derives from m/44'/1237'/0'/0/{index} per NIP-06.
+ * @param mnemonic - existing 12 or 24 word mnemonic
+ * @param index - derivation index (0 = first account, 1 = second, etc.)
+ * @param name - Account display name
+ * @returns Account object with derivationIndex set
+ */
+export async function createFromMnemonicAtIndex(mnemonic: string, index: number, name?: string): Promise<Account> {
+  if (!Number.isInteger(index) || index < 0 || index > MAX_BIP32_INDEX) throw new Error('Invalid derivation index');
+  return createFromMnemonicAtPath(mnemonic, NIP06_ACCOUNT_PREFIX + index, name || `Account ${index + 1}`);
+}
+
+/** Derive an identity from the seed with a validated, persisted recovery path. */
+export async function createFromMnemonicAtPath(mnemonic: string, requestedPath: string, name = 'Custom account'): Promise<Account> {
+  const path = normalizeDerivationPath(requestedPath);
+  if (!path) throw new Error('Invalid derivation path');
+  const index = standardDerivationIndex(path);
   const valid = await validateMnemonic(mnemonic);
   if (!valid) throw new Error('Invalid mnemonic');
 
-  // Zero the 64-byte BIP-39 seed and the derived privkey bytes after use —
-  // only the hex copy on the returned Account survives.
   const seed = await mnemonicToSeed(mnemonic);
   let privkey: Uint8Array | null = null;
   try {
-    privkey = await derivePath(seed, NIP06_PATH);
+    privkey = await derivePath(seed, path);
     const pubkey = getPublicKey(privkey);
 
     return {
@@ -61,44 +81,8 @@ export async function createFromMnemonic(mnemonic: string, name: string = 'Main'
       nip46Config: null,
       readOnly: false,
       createdAt: Math.floor(Date.now() / 1000),
-      derivationIndex: 0
-    };
-  } finally {
-    seed.fill(0);
-    if (privkey) privkey.fill(0);
-  }
-}
-
-/**
- * Create a sub-account from an existing mnemonic at a specific HD derivation index.
- * Derives from m/44'/1237'/0'/0/{index} per NIP-06.
- * @param mnemonic - existing 12 or 24 word mnemonic
- * @param index - derivation index (0 = first account, 1 = second, etc.)
- * @param name - Account display name
- * @returns Account object with derivationIndex set
- */
-export async function createFromMnemonicAtIndex(mnemonic: string, index: number, name?: string): Promise<Account> {
-  const valid = await validateMnemonic(mnemonic);
-  if (!valid) throw new Error('Invalid mnemonic');
-
-  const seed = await mnemonicToSeed(mnemonic);
-  let privkey: Uint8Array | null = null;
-  try {
-    const path = `m/44'/1237'/0'/0/${index}`;
-    privkey = await derivePath(seed, path);
-    const pubkey = getPublicKey(privkey);
-
-    return {
-      id: generateId(),
-      name: name || `Account ${index + 1}`,
-      type: 'generated',
-      pubkey: bytesToHex(pubkey),
-      privkey: bytesToHex(privkey),
-      mnemonic,
-      nip46Config: null,
-      readOnly: false,
-      createdAt: Math.floor(Date.now() / 1000),
-      derivationIndex: index
+      derivationPath: path,
+      ...(index !== null ? { derivationIndex: index } : {})
     };
   } finally {
     seed.fill(0);

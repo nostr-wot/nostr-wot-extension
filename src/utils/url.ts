@@ -1,6 +1,7 @@
 export function getDomainFromUrl(url: string): string | null {
   try {
-    return new URL(url).hostname;
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.origin : null;
   } catch {
     return null;
   }

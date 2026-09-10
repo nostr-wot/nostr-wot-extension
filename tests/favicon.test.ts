@@ -41,3 +41,7 @@ it('favicon failures and invalid domains keep a safe reusable fallback', async (
     assert.equal(requests, 1);
   } finally { globalThis.fetch = original; }
 });
+
+it('full-origin identity uses only its hostname for cosmetic favicon lookup', async () => {
+  assert.equal(await getCachedFavicon('https://saved.example:8443'), 'data:image/png;base64,aGVsbG8=');
+});

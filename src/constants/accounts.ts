@@ -7,3 +7,6 @@ export const PQC_SEED_WORD_COUNT = 24;
 
 /** Newly generated accounts need 256-bit seeds for post-quantum derivation. */
 export const GENERATED_MNEMONIC_STRENGTH_BITS = 256;
+
+export const MAX_ACCOUNT_NAME_LENGTH = 100;
+export const SUBACCOUNT_PREVIEW_DELAY_MS = 350;

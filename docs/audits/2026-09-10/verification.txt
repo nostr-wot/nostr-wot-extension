@@ -1,0 +1,50 @@
+Security audit verification, 2026-09-10
+
+
+full
+✓ built in 1.47s
+# tests 213
+# pass 213
+# fail 0
+# cancelled 0
+# skipped 0
+# duration_ms 2141.673291
+# tests 223
+# pass 223
+# fail 0
+# cancelled 0
+# skipped 0
+# duration_ms 923.186375
+# tests 259
+# pass 259
+# fail 0
+# cancelled 0
+# skipped 0
+# duration_ms 1260.239875
+# tests 834
+# pass 834
+# fail 0
+# cancelled 0
+# skipped 0
+# duration_ms 122774.345542
+
+typecheck
+
+> nostr-wot-extension@0.7.0 typecheck
+> tsc --noEmit
+
+
+
+lint
+  88:6  warning  React Hook useEffect has missing dependencies: 'account', 'onNext', and 'upgradeId'. Either include them or remove the dependency array. If 'onNext' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+✖ 10 problems (0 errors, 10 warnings)
+
+
+reproductions
+CONFIRMED: earlier unlock overrides later explicit lock
+CONFIRMED: crypto request uses A after active account changes to B
+CONFIRMED: B threshold authorizes payment through A provider
+CONFIRMED: account-specific WebLN deny ignored when threshold permits payment
+CONFIRMED: queued payment executes after explicit vault lock when approved
+CONFIRMED: cross-origin redirect receives LNbits admin header (Node fetch)

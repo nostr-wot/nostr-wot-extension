@@ -1,3 +1,4 @@
+import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
 /**
  * Wallet/WebLN Background Handler Tests
  *
@@ -981,9 +982,9 @@ describe('wallet handlers: wallet_connect', () => {
     await vault.create(TEST_PASSWORD, makePayloadNoWallet());
   });
 
-  it('saves config and connects provider on success', async () => {
-    // Pre-set a mock provider so getWalletProvider returns it instead
-    // of creating a real LnbitsProvider that tries HTTP fetch
+  it('saves config and connects provider on success', async (t) => {
+    // Replacing credentials must dispose the old cached provider.
+    t.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ balance: 0 })));
     const mockProvider = createMockProvider();
     setWalletProvider('acct1', mockProvider);
 
@@ -999,8 +1000,9 @@ describe('wallet handlers: wallet_connect', () => {
     assert.ok(acct?.walletConfig);
     assert.strictEqual(acct.walletConfig.type, 'lnbits');
 
-    // Verify provider was connected
-    assert.strictEqual(mockProvider.isConnected(), true);
+    // The replacement is connected; the stale provider is never reused.
+    assert.strictEqual(mockProvider.isConnected(), false);
+    assert.strictEqual(getWalletProvider('acct1', newConfig)?.isConnected(), true);
   });
 
   it('returns error when vault is locked', async () => {
@@ -1436,8 +1438,7 @@ async function handleWalletPayToLightningAddress(
   }
 }
 
-const LNURL_INVOICE_250K =
-  'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp';
+const LNURL_INVOICE_250K = makeLnurlInvoice(JSON.stringify([['text/plain', 'Sats for alice']]));
 
 function lnurlFetch(overrides?: { payParams?: Record<string, unknown>; invoice?: string }): typeof fetch {
   const payParams = {
@@ -1612,6 +1613,7 @@ it('wallet presence waits for startup and a locked vault is unknown, never no-wa
 });
 
 it('display cache isolates accounts, strips secrets and prevents stale resurrection after disconnect',async()=>{
+ resetMockStorage(); vault.lock(); await vault.create(TEST_PASSWORD,makePayloadWithWallet());
  const {updateWalletDisplayCache,resetWalletDisplayCache,readWalletDisplayCache,walletDisplayRevision,clearWalletDisplayCaches}=await import('../../src/services/wallet/display-cache.ts');
  const revision=walletDisplayRevision();
  await updateWalletDisplayCache('cache-a',{providerType:'lnbits',balance:42,transactions:[{paymentHash:'hash',amount:1,status:'pending',createdAt:1,preimage:'secret',bolt11:'invoice'}]},revision);

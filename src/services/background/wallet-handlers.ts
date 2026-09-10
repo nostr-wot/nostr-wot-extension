@@ -4,19 +4,21 @@
  */
 
 import browser from '../../lib/browser.ts';
-import { updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
+import { readWalletDisplayCache, updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
 import * as vault from '../vault/vault.ts';
 import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import * as signerPermissions from '../permissions/permissions.ts';
 import { npubEncode } from '../../lib/crypto/bech32.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { addWeblnAllowedDomain, isWeblnAllowed } from './domain-handlers.ts';
-import { getWalletProvider, removeWalletProvider } from '../wallet/index.ts';
+import { getWalletProvider, removeWalletProvider, isWalletProviderCurrent } from '../wallet/index.ts';
+import { captureAccountSession, assertAccountSession } from '../signing/accountSession.ts';
 import { type WalletConfig } from '@domain/wallet/types.ts';
 import { decodeBolt11 } from '../../domain/wallet/bolt11.ts';
 import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress } from '../wallet/lnbits-provision.ts';
 import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 import { fetchPayParams, requestInvoice } from '../wallet/lnurl.ts';
+import { reserveAutomaticPayment } from '../wallet/automatic-payment-budget.ts';
 import { runPaymentOnce } from '../wallet/payment-intents.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 import type { HandlerFn } from './state.ts';
@@ -24,27 +26,37 @@ import { logActivity } from '@services/background/activity-handlers.ts';
 
 // ── Shared utilities ──
 
-export async function getConnectedProvider(): Promise<{ provider: NonNullable<ReturnType<typeof getWalletProvider>>; acct: NonNullable<ReturnType<typeof vault.getActiveAccountWithWallet>> }> {
+export async function getConnectedProvider() {
     await vault.requireUnlocked();
     const acct = vault.getActiveAccountWithWallet();
     if (!acct?.walletConfig) throw new Error('No wallet configured');
+    const session = captureAccountSession(acct.id);
     const provider = getWalletProvider(acct.id, acct.walletConfig);
     if (!provider) throw new Error('Provider not available');
+    const assertCurrent = () => {
+        assertAccountSession(session);
+        if (!isWalletProviderCurrent(acct.id, provider)) throw new Error('Wallet disconnected or replaced');
+    };
     if (!provider.isConnected()) await provider.connect();
-    return { provider, acct };
+    assertCurrent();
+    return { provider, acct, assertCurrent };
 }
 
 export function createNip98SignFn(acctId: string, endpointUrl: string): (challenge: string) => Promise<SignedEvent> {
+    const session = captureAccountSession(acctId);
     return async (challenge: string): Promise<SignedEvent> => {
+        assertAccountSession(session);
         const privkeyBytes = vault.getPrivkey(acctId);
         if (!privkeyBytes) throw new Error('No private key available');
         try {
-            return await signEvent({
+            const signed = await signEvent({
                 kind: 27235,
                 created_at: Math.floor(Date.now() / 1000),
                 tags: [['challenge', challenge], ['u', endpointUrl], ['method', 'POST']],
                 content: '',
             }, privkeyBytes);
+            assertAccountSession(session);
+            return signed;
         } finally {
             privkeyBytes.fill(0);
         }
@@ -81,7 +93,8 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['webln_getInfo', async () => {
-        const { provider } = await getConnectedProvider();
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
         const info = await provider.getInfo();
         return {
             // node.pubkey is the Lightning node id. We don't expose one, and we
@@ -99,63 +112,62 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['webln_getBalance', async () => {
-        const { provider } = await getConnectedProvider();
-        return await provider.getBalance();
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
+        const result = await provider.getBalance();
+        assertCurrent();
+        return result;
     }],
 
     ['webln_sendPayment', async (params) => {
         const { paymentRequest, origin } = params as { paymentRequest: string; origin: string };
         if (!paymentRequest) throw new Error('Missing paymentRequest');
 
-        const { provider } = await getConnectedProvider();
+        const { provider, acct, assertCurrent } = await getConnectedProvider();
 
         // S-17: Decode BOLT11 to extract invoice amount for user display
         let invoiceAmountSats = 0;
+        let invoiceAmountMsats = 0;
         try {
             const decoded = decodeBolt11(paymentRequest);
             if (decoded?.amountSats != null) {
                 invoiceAmountSats = decoded.amountSats;
+                invoiceAmountMsats = decoded.amountMsats ?? 0;
             }
         } catch {
             // Decode failed — fall through with 0 (unknown amount)
         }
 
-        const perm = await signerPermissions.check(origin, 'webln_sendPayment');
+        const perm = await signerPermissions.check(origin, 'webln_sendPayment', undefined, acct.id);
         if (perm === 'deny') throw new Error('Permission denied');
 
-        // S-18: Auto-approve WITHOUT a prompt only when the invoice amount
-        // decoded successfully AND a per-account threshold is set AND the
-        // amount is within it. This cap applies even when perm === 'allow':
-        // a remembered "allow" means "don't ask again for amounts within my
-        // threshold", NOT "unlimited". Undecodable/zero amounts, amounts
-        // above the threshold, and no-threshold all fall through to the
-        // interactive prompt — a site can never drain the wallet silently.
-        let autoApproved = false;
-        if (invoiceAmountSats > 0) {
-            const acctId = vault.getActiveAccountId();
-            if (acctId) {
-                const data = await browser.storage.local.get(`walletThreshold_${acctId}`) as Record<string, number>;
-                const threshold = data[`walletThreshold_${acctId}`] || 0;
-                if (threshold > 0 && invoiceAmountSats <= threshold) {
-                    autoApproved = true;
-                }
-            }
-        }
+        // A single threshold caps both each invoice and all silent payments
+        // across origins in a rolling 24h window. Reserve durably before dispatch.
+        const data = await browser.storage.local.get(`walletThreshold_${acct.id}`) as Record<string, number>;
+        const threshold = data[`walletThreshold_${acct.id}`] || 0;
+        assertCurrent();
+        const autoApproved = await reserveAutomaticPayment(acct.id, invoiceAmountMsats, threshold);
 
+        assertCurrent();
         if (!autoApproved) {
             const decision = await signerApprovalQueue.queueRequest({
                 type: 'webln_sendPayment',
                 origin,
+                accountId: acct.id,
+                pubkey: acct.pubkey,
                 needsPermission: true,
                 walletAmount: invoiceAmountSats,
             });
             if (!decision.allow) throw new Error('Payment denied by user');
+            assertCurrent();
             if (decision.remember) {
                 // 'allow' here only enables threshold-capped auto-approval
-                await signerPermissions.save(origin, 'webln_sendPayment', null, 'allow');
+                await signerPermissions.save(origin, 'webln_sendPayment', null, 'allow', acct.id);
             }
         }
 
+        if (await signerPermissions.check(origin, 'webln_sendPayment', undefined, acct.id) === 'deny') throw new Error('Permission denied');
+        assertCurrent();
         return await provider.payInvoice(paymentRequest);
     }],
 
@@ -163,9 +175,16 @@ export const handlers = new Map<string, HandlerFn>([
         const { amount, defaultMemo } = params as { amount: number; defaultMemo?: string; origin: string };
         if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Invoice amount must be a positive whole number of sats');
         if (defaultMemo !== undefined && typeof defaultMemo !== 'string') throw new Error('Invalid invoice memo');
-        const { provider } = await getConnectedProvider();
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
         const inv = await provider.makeInvoice(amount, defaultMemo);
         return { paymentRequest: inv.bolt11 };
+    }],
+
+    ['wallet_readDisplayCache', async (params) => {
+        await vault.whenStartupUnlockSettled();
+        if (typeof params.accountId !== 'string') throw new Error('Invalid account');
+        return readWalletDisplayCache(params.accountId);
     }],
 
     ['wallet_hasConfig', async () => {
@@ -178,15 +197,21 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['wallet_getInfo', async () => {
-        const { provider } = await getConnectedProvider();
-        return await provider.getInfo();
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
+        const result = await provider.getInfo();
+        assertCurrent();
+        return result;
     }],
 
     ['wallet_getBalance', async () => {
         const revision = walletDisplayRevision();
-        const { provider, acct } = await getConnectedProvider();
+        const { provider, acct, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
         const result = await provider.getBalance();
+        assertCurrent();
         await updateWalletDisplayCache(acct.id, {providerType:provider.type,balance:result.balance}, revision).catch(() => {});
+        assertCurrent();
         return result;
     }],
 
@@ -195,6 +220,7 @@ export const handlers = new Map<string, HandlerFn>([
         await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
+        removeWalletProvider(acctId);
         await vault.updateAccountWalletConfig(acctId, walletConfig);
         await resetWalletDisplayCache(acctId, walletConfig.type);
         const provider = getWalletProvider(acctId, walletConfig);
@@ -217,6 +243,9 @@ export const handlers = new Map<string, HandlerFn>([
     ['wallet_setAutoApproveThreshold', async (params) => {
         await vault.requireUnlocked();
         const { threshold } = params as { threshold: number };
+        if (!Number.isSafeInteger(threshold) || threshold < 0 || !Number.isSafeInteger(threshold * 1000)) {
+            throw new Error('Threshold must be a non-negative whole number of sats');
+        }
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
         await browser.storage.local.set({ [`walletThreshold_${acctId}`]: threshold });
@@ -233,28 +262,36 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['wallet_makeInvoice', async (params) => {
         const { amount, memo } = params as { amount: number; memo?: string };
-        const { provider } = await getConnectedProvider();
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
         return await provider.makeInvoice(amount, memo);
     }],
 
     ['wallet_checkInvoice', async (params) => {
         const { paymentHash } = params as { paymentHash: string };
-        const { provider } = await getConnectedProvider();
-        return await provider.lookupInvoice(paymentHash);
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
+        const result = await provider.lookupInvoice(paymentHash);
+        assertCurrent();
+        return result;
     }],
 
     ['wallet_getTransactions', async (params) => {
         const { limit, offset } = params as { limit?: number; offset?: number };
         const revision = walletDisplayRevision();
-        const { provider, acct } = await getConnectedProvider();
+        const { provider, acct, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
         const transactions = await provider.listTransactions(limit ?? 10, offset ?? 0);
+        assertCurrent();
         if (!offset) await updateWalletDisplayCache(acct.id, {providerType:provider.type,transactions}, revision).catch(() => {});
+        assertCurrent();
         return transactions;
     }],
 
     ['wallet_payInvoice', async (params) => {
         const { bolt11 } = params as { bolt11: string };
-        const { provider } = await getConnectedProvider();
+        const { provider, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
         return await provider.payInvoice(bolt11);
     }],
 
@@ -288,7 +325,7 @@ export const handlers = new Map<string, HandlerFn>([
         const { address, amountSats, comment, intentId } = params as {
             address: string; amountSats: number; comment?: string; intentId?: string;
         };
-        const { provider } = await getConnectedProvider();
+        const { provider, assertCurrent } = await getConnectedProvider();
         if (!provider) throw new Error('Provider not available');
         // At most once per click. Each call asks the endpoint for a NEW invoice,
         // so a blind rpc() retry after a lost reply would pay a second, unrelated
@@ -299,6 +336,7 @@ export const handlers = new Map<string, HandlerFn>([
             // invoice must come from the address the user is looking at right now.
             const payParams = await fetchPayParams(address);
             const { bolt11 } = await requestInvoice(payParams, amountSats, comment);
+            assertCurrent();
             const { preimage } = await provider.payInvoice(bolt11);
             return { preimage, bolt11, amountSats, address: payParams.address };
         });
@@ -311,6 +349,7 @@ export const handlers = new Map<string, HandlerFn>([
         const acct = vault.getActiveAccountWithWallet();
         if (!acct) throw new Error('No active account');
 
+        const session = captureAccountSession(acctId);
         const url = (params.instanceUrl as string)?.trim() || DEFAULT_LNBITS_URL;
         const npub = npubEncode(acct.pubkey);
         const walletName = `WoT:${npub.slice(0, 16)}`;
@@ -318,7 +357,9 @@ export const handlers = new Map<string, HandlerFn>([
         const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/provision`);
         const { adminKey, nwcUri } = await provisionLnbitsWallet(url, walletName, signFn);
 
+        assertAccountSession(session);
         const walletConfig: WalletConfig = { type: 'lnbits', instanceUrl: url, adminKey, nwcUri };
+        removeWalletProvider(acctId);
         await vault.updateAccountWalletConfig(acctId, walletConfig);
         await resetWalletDisplayCache(acctId, walletConfig.type);
         const provider = getWalletProvider(acctId, walletConfig);

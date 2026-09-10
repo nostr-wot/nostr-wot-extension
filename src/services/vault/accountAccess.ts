@@ -1,10 +1,11 @@
 import type { MemoryVaultPayload } from '@domain/vault/types.ts';
 import type { VaultPayload } from '@domain/vault/types.ts';
-import type { Account, SafeAccount, SafeAccountWithWallet } from '@domain/accounts/types.ts';
+import type { Account, SafeAccount, SafeAccountWithWallet, BackgroundRemoteSignerAccount } from '@domain/accounts/types.ts';
+import { toSafeAccount } from '@domain/accounts/account.ts';
 import { toMemoryAccount, toStoragePayload } from './serialization.ts';
 
 /** Operations access the live private session through injected capabilities. */
-export function createAccountAccess(readPayload: () => MemoryVaultPayload | null, save: () => Promise<void>, resetAutoLock: () => void) {
+export function createAccountAccess(readPayload: () => MemoryVaultPayload | null, save: () => Promise<void>, resetAutoLock: () => void, invalidateSession: () => void) {
 
   /**
    * Get the active account's pubkey from the unlocked session
@@ -32,22 +33,19 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
     if (!_decrypted) return null;
     const acct = _decrypted.accounts.find(a => a.id === _decrypted!.activeAccountId);
     if (!acct) return null;
-    const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...safe } = acct;
-    return safe;
+    return toSafeAccount(acct);
   }
 
   /**
-   * Get the active account including walletConfig (for background wallet handlers).
-   * Unlike getActiveAccount() which omits walletConfig from its return type,
-   * this includes it for use in wallet/WebLN handler code.
+   * Background-only wallet capability; never exposes remote signer credentials.
+   * The returned config is detached from the private session.
    */
   function getActiveAccountWithWallet(): SafeAccountWithWallet | null {
     const _decrypted = readPayload();
     if (!_decrypted) return null;
     const acct = _decrypted.accounts.find(a => a.id === _decrypted!.activeAccountId);
     if (!acct) return null;
-    const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...safe } = acct;
-    return safe;
+    return { ...toSafeAccount(acct), ...(acct.walletConfig ? { walletConfig: structuredClone(acct.walletConfig) } : {}) };
   }
 
   /**
@@ -104,18 +102,31 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
   }
 
   /**
-   * Get an account by ID (full object including nip46Config, but not privkey)
-   * @param accountId
-   * @returns Safe account without privkey, or null
+   * Get public account metadata by ID; credentials are never included.
    */
   function getAccountById(accountId: string): SafeAccount | null {
     const _decrypted = readPayload();
     if (!_decrypted || !accountId) return null;
     const acct = _decrypted.accounts.find(a => a.id === accountId);
     if (!acct) return null;
-    // Return a copy without key bytes for safety
-    const { privkeyBytes, mnemonicBytes, pqPublic, pqKemSecretBytes, pqDsaSecretBytes, ...safe } = acct;
-    return safe;
+    return toSafeAccount(acct);
+  }
+
+  /** Background-only remote signer credentials; never expose through UI/page RPCs. */
+  function getAccountForRemoteSigning(accountId: string): BackgroundRemoteSignerAccount | null {
+    const account = readPayload()?.accounts.find(a => a.id === accountId);
+    if (!account || account.type !== 'nip46' || !account.nip46Config) return null;
+    const config = account.nip46Config;
+    return {
+      ...toSafeAccount(account),
+      nip46Config: {
+        bunkerUrl: config.bunkerUrl,
+        relay: config.relay,
+        secret: config.secret,
+        ...(config.localPrivkey !== undefined ? { localPrivkey: config.localPrivkey } : {}),
+        ...(config.localPubkey !== undefined ? { localPubkey: config.localPubkey } : {}),
+      },
+    };
   }
 
   /**
@@ -155,6 +166,7 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
   async function removeAccount(accountId: string): Promise<void> {
     const _decrypted = readPayload();
     if (!_decrypted) throw new Error('Vault is locked');
+    invalidateSession();
     _decrypted.accounts = _decrypted.accounts.filter(a => a.id !== accountId);
     if (_decrypted.activeAccountId === accountId) {
       _decrypted.activeAccountId = _decrypted.accounts[0]?.id || null;
@@ -171,6 +183,7 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
     if (!_decrypted) throw new Error('Vault is locked');
     const acct = _decrypted.accounts.find(a => a.id === accountId);
     if (!acct) throw new Error('Account not found');
+    if (_decrypted.activeAccountId !== accountId) invalidateSession();
     _decrypted.activeAccountId = accountId;
     await save();
   }
@@ -183,6 +196,7 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
   function clearActiveAccount(): void {
     const _decrypted = readPayload();
     if (_decrypted) {
+      if (_decrypted.activeAccountId !== null) invalidateSession();
       _decrypted.activeAccountId = null;
     }
   }
@@ -213,6 +227,7 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
     if (!_decrypted) throw new Error('Vault is locked');
     const acct = _decrypted.accounts.find(a => a.id === accountId);
     if (!acct) throw new Error('Account not found');
+    invalidateSession();
     if (walletConfig === null) {
       delete acct.walletConfig;
     } else {
@@ -220,5 +235,5 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
     }
     await save();
   }
-  return { getActivePubkey, getActiveAccountId, getActiveAccount, getActiveAccountWithWallet, getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, listAccounts, addAccount, removeAccount, setActiveAccount, clearActiveAccount, updateAccountNip46Keys, updateAccountWalletConfig };
+  return { getActivePubkey, getActiveAccountId, getActiveAccount, getActiveAccountWithWallet, getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, getAccountForRemoteSigning, listAccounts, addAccount, removeAccount, setActiveAccount, clearActiveAccount, updateAccountNip46Keys, updateAccountWalletConfig };
 }

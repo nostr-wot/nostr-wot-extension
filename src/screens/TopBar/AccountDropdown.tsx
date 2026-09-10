@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { useAccount } from '@context/AccountContext';
@@ -9,12 +8,12 @@ import IconWarning from '@assets/IconWarning.tsx';
 import IconClose from '@assets/IconClose.tsx';
 import IconPlus from '@assets/IconPlus.tsx';
 import Avatar from '@components/Avatar';
-import { ButtonSecondary, ButtonDanger } from '@components/Button';
+import { ButtonSecondary } from '@components/Button';
 import IconButton from '@components/IconButton';
 import Modal from '@components/Modal';
-import Container from '@components/Container';
+import ConfirmDialog from '@components/ConfirmDialog';
 import StatusNotice from '@components/StatusNotice';
-import Text from '@components/Text';
+import FieldDisplay from '@components/FieldDisplay';
 
 interface AccountDropdownProps {
   onClose: () => void;
@@ -24,42 +23,29 @@ interface AccountDropdownProps {
 export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdownProps) {
   const { accounts, activeId, profileCache, switchAccount, reload } = useAccount();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const [removing, setRemoving] = useState<boolean>(false);
   const confirmAccount = confirmId ? (accounts || []).find((a) => a.id === confirmId) : null;
   const isWriteAccount = confirmAccount && !confirmAccount.readOnly && confirmAccount.type !== 'npub';
 
   const handleRemove = async () => {
-    if (!confirmId) return;
+    if (!confirmId || removing) return;
     setRemoving(true);
+    setError('');
     try {
-      try { await rpc('vault_removeAccount', { accountId: confirmId }); } catch {}
-      // Clean up local accounts array
-      const data: any = await browser.storage.local.get(['accounts', 'activeAccountId']);
-      const remaining = (data.accounts || []).filter((a: any) => a.id !== confirmId);
-      const updates: Record<string, any> = { accounts: remaining };
-      if (data.activeAccountId === confirmId) {
-        updates.activeAccountId = remaining[0]?.id || null;
-      }
-      // Clear synced pubkey BEFORE updating local accounts so the migration
-      // code in AccountContext.load() doesn't re-create the account
-      if (remaining.length === 0) {
-        await browser.storage.sync.remove('myPubkey');
-      } else if (updates.activeAccountId) {
-        const newActive = remaining.find((a: any) => a.id === updates.activeAccountId);
-        if (newActive?.pubkey) {
-          await browser.storage.sync.set({ myPubkey: newActive.pubkey });
-        }
-      }
-      await browser.storage.local.set(updates);
+      await rpc('vault_removeAccount', { accountId: confirmId });
+      await reload();
       setConfirmId(null);
       onClose();
-      reload();
-    } catch {}
-    setRemoving(false);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t('common.error'));
+    } finally {
+      setRemoving(false);
+    }
   };
 
   return (
-    <Modal title={t('account.choose')} onClose={onClose} maxWidth={360}
+    <><Modal title={t('account.choose')} onClose={confirmAccount ? () => {} : onClose} maxWidth={360}
       footer={<ButtonSecondary onClick={onAddAccount}><IconPlus size={16} />{t('account.addAccount')}</ButtonSecondary>}>
       <div className="flex flex-col gap-3">
         {(accounts || []).map((account) => {
@@ -70,33 +56,21 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
           return <AccountPickerRow key={account.id} name={name || truncateNpub(account.pubkey)}
             subtitle={cached?.nip05 || truncateNpub(account.pubkey)} picture={cached?.picture}
             readOnly={!!account.readOnly || account.type === 'npub'} selected={isActive}
-            onSelect={() => { void switchAccount(account.id); onClose(); }} onRemove={() => setConfirmId(account.id)} />;
+            onSelect={() => { void switchAccount(account.id); onClose(); }} onRemove={() => { setError(''); setConfirmId(account.id); }} />;
         })}
       </div>
 
-      {confirmAccount && (
-        <div className="py-7 px-7 border-t border-card-border">
-          <div className="text-md font-semibold text-heading mb-3">
-            {t('account.removeTitle', { name: profileCache[confirmAccount.pubkey]?.name || confirmAccount.name || '' })}
-          </div>
-          <Text variant="secondary" as="div" className="text-sm mb-2">
-            {t('account.removeWarning')}
-          </Text>
-          {isWriteAccount && (
-            <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-5">
-              {t('account.removeKeyWarning')}
-            </StatusNotice>
-          )}
-          <Container variant="row" gap={4} className="justify-end">
-            <ButtonSecondary small onClick={() => setConfirmId(null)}>{t('common.cancel')}</ButtonSecondary>
-            <ButtonDanger small onClick={handleRemove} disabled={removing}>
-              {removing ? t('common.removing') : t('common.remove')}
-            </ButtonDanger>
-          </Container>
-        </div>
-      )}
-
     </Modal>
+    {confirmAccount && <ConfirmDialog
+      title={t('account.removeTitle', { name: profileCache[confirmAccount.pubkey]?.name || confirmAccount.name || '' })}
+      message={<>{t('account.removeWarning')}{isWriteAccount &&
+        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>{t(confirmAccount.type === 'generated' ? 'account.removeSeedWarning' : 'account.removeKeyWarning')}</StatusNotice>}
+        {confirmAccount.derivationPath && <FieldDisplay mono label={t('wizard.derivationPath')} value={confirmAccount.derivationPath} />}
+      </>}
+      danger busy={removing} error={error} confirmLabel={t('common.remove')}
+      onConfirm={handleRemove} onCancel={() => setConfirmId(null)}
+    />}
+    </>
   );
 }
 

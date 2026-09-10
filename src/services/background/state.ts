@@ -24,7 +24,7 @@ export const config: ExtConfig = {
 // ── Shared types ──
 
 /** Account entry shape stored in browser.storage.local.accounts */
-export type LocalAccountEntry = Pick<SafeAccount, 'id' | 'name' | 'pubkey' | 'type' | 'readOnly'>;
+export type LocalAccountEntry = Pick<SafeAccount, 'id' | 'name' | 'pubkey' | 'type' | 'readOnly' | 'derivationPath' | 'derivationIndex'>;
 
 // ── Profile Cache ──
 

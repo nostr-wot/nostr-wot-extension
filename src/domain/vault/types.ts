@@ -12,6 +12,7 @@ export interface MemoryAccount extends Omit<Account, 'privkey' | 'mnemonic' | 'p
 
 /** Vault payload with Uint8Array keys — in-memory only */
 export interface MemoryVaultPayload {
+  cacheKeyBytes?: Uint8Array;
   accounts: MemoryAccount[];
   activeAccountId: string | null;
 }
@@ -19,6 +20,8 @@ export interface MemoryVaultPayload {
 // ── Vault ──
 
 export interface VaultPayload {
+  /** Random private-cache key, protected by vault encryption. */
+  cacheKey?: string;
   accounts: Account[];
   activeAccountId: string | null;
 }

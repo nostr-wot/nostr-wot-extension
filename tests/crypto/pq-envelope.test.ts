@@ -64,3 +64,15 @@ describe('post-quantum envelope', () => {
     assert.strictEqual(new Set(sizes).size, 1);
   });
 });
+
+it('rejects oversized envelopes before detection or decryption decodes them', () => {
+  const original = globalThis.atob;
+  let decoded = false;
+  globalThis.atob = () => { decoded = true; throw new Error('decoder reached'); };
+  try {
+    const payload = 'AQ'.padEnd(100_000, 'A');
+    assert.equal(isPqEnvelope(payload), false);
+    assert.throws(() => pqDecrypt(payload, new Uint8Array(3168), conv(), ALICE, BOB), /Decryption failed/);
+  } finally { globalThis.atob = original; }
+  assert.equal(decoded, false);
+});

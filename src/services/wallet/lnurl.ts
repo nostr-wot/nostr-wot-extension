@@ -208,7 +208,7 @@ export async function requestInvoice(
   comment?: string,
   fetchFn: FetchFn = globalThis.fetch.bind(globalThis),
 ): Promise<ResolvedInvoice> {
-  if (!Number.isFinite(amountSats) || !Number.isInteger(amountSats) || amountSats <= 0) {
+  if (!Number.isSafeInteger(amountSats * 1000) || !Number.isInteger(amountSats) || amountSats <= 0) {
     throw new Error('LNURL: amount must be a positive whole number of sats');
   }
 
@@ -245,9 +245,9 @@ export async function requestInvoice(
   if (decoded.amountSats === null) {
     throw new Error('LNURL: callback returned an amountless invoice');
   }
-  if (Math.round(decoded.amountSats) !== amountSats) {
+  if (decoded.amountMsats !== amountMsats) {
     throw new Error(
-      `LNURL: invoice is for ${Math.round(decoded.amountSats)} sats, not the ${amountSats} sats requested`,
+      `LNURL: invoice is for ${decoded.amountSats} sats, not the ${amountSats} sats requested`,
     );
   }
 

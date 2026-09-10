@@ -31,7 +31,7 @@ inject.ts
 
 When `content.ts` forwards a NIP-07 request, it transforms:
 - `method: 'signEvent'` becomes `method: 'nip07_signEvent'`
-- `params` gets `origin: window.location.hostname` merged in (via object spread, no mutation)
+- `params` gets `origin: window.location.origin` merged in (via object spread, no mutation)
 
 This allows `background.ts` to distinguish page-origin NIP-07 calls from internal extension calls.
 
@@ -41,7 +41,7 @@ This allows `background.ts` to distinguish page-origin NIP-07 calls from interna
 
 When `content.ts` forwards a WebLN request, it transforms:
 - `method: 'sendPayment'` becomes `method: 'webln_sendPayment'`
-- `params` gets `origin: window.location.hostname` merged in (via object spread, no mutation)
+- `params` gets `origin: window.location.origin` merged in (via object spread, no mutation)
 
 This allows `background.ts` to distinguish page-origin WebLN calls from internal extension calls. The same pattern is used for NIP-07 (see above).
 
@@ -248,11 +248,11 @@ Wallet presence and balance/history reads wait for startup unlock. `wallet_hasCo
 
 Wallet settings reads (threshold, NWC URI, Lightning Address) wait for the startup unlock gate. The popup loads independent fields through WalletContext on first settings access, retains them across panel navigation, and explicitly refreshes on request; HTTP lookup failures remain errors.
 
-The in-popup approval queue is account-wide, grouping all origins for the selected account by website and permission with readable event kinds. Opening a group displays all pending items with expandable details and shared decisions. New arrivals update the list through existing queue notifications. “Approve shown” resolves a captured set of IDs concurrently, waits for all responses and refreshes after partial failures. Single/batch background resolution denies foreign identities, and signEvent checks claimed authors and account continuity before crypto.
+The in-popup approval queue is account-wide, grouping all origins for the selected account by website and permission with readable event kinds. Opening a group displays all pending items with expandable details and shared decisions. New arrivals update the list through existing queue notifications. “Approve once” / “Approve all” resolves a captured set of displayed IDs concurrently without remembering permission, waits for all responses and refreshes after partial failures. A separate “Always allow” action saves the origin/kind permission for future requests and explains that scope. Single/batch background resolution denies foreign identities, and signEvent checks claimed authors and account continuity before crypto.
 
 The content bridge multiplexes concurrent NIP-07/WebLN calls on one port per channel. The background echoes each internal request ID on success and failure; the bridge maps it back to the page request ID. Replies may finish out of order. Calls are not held behind an earlier approval, so all received requests can reach the approval list together. Disconnect rejects every outstanding call; no signing or payment request is automatically replayed. After updating this bridge, reload existing website tabs as well as the extension to replace their injected content scripts.
 
-Automatic popup opening first checks for an existing popup context (runtime.getContexts, or extension.getViews on older browsers). Requests caused by an account-switch page refresh update the open approval UI without reopening the native popup. The originating-tab check still applies and popup context metadata is refreshed.
+Automatic popup opening first checks for an existing popup context (runtime.getContexts, or extension.getViews on older browsers). Incoming requests update the open approval UI without reopening the native popup. The originating-tab check still applies and popup context metadata is refreshed.
 
 ### WebLN capability and invoice compatibility
 
@@ -281,3 +281,75 @@ Approval resolution, unlock waiters and account-switch rejection are owned by
 Remote work is tracked by the queue and delegated to `remoteSigner.ts`.
 Internal activity review imports `decryptForAccount` from `localDecryption.ts`.
 The wire method names and request/response formats are unchanged.
+
+Account removal is authoritative in vault_removeAccount: private accounts require an unlocked vault; watch-only accounts can be removed while locked. The handler updates local accounts and the synced active public key. UI failures remain visible without performing a second independent storage deletion.
+
+
+onboarding_generateSubAccount accepts an optional derivationPath. It prefers the
+active generated account's seed, otherwise the first stored seed. Omitted paths
+use the next index in the existing sequence. Custom paths are validated and
+canonicalized before BIP-32 derivation; existing public keys are rejected.
+Only a public preview, recovery path and seed account name are returned. The
+private key and mnemonic remain in pending onboarding storage until addToVault.
+The saved account and local public projection retain the canonical recovery path.
+
+The addToVault request accepts an optional name override, trimmed and limited to
+100 characters. Blank names retain the generated name. Keys and derivation paths
+come from the pending background account, never from the name override.
+
+Account switching commits the background identity and refreshes the active website
+because many clients cache their own selected account and ignore account-change
+notifications. It also invalidates old-account approvals and broadcasts the existing
+nostr:accountChanged event only to connected, identity-enabled sites.
+
+A signEvent with an explicit author different from the extension's selected public
+key is rejected before permissions, prompting, or signing (including remote signers).
+It writes a bounded unread metadata summary to local signerRejections: ID, time,
+origin, kind, requested/active public keys and reason. No content, tags or private
+keys are copied into this summary. The latest 100 summaries survive popup and
+service-worker restarts. A storage failure never permits the signature.
+signer_getRejections and signer_acknowledgeRejections are internal extension-only
+RPCs. Acknowledgement removes only displayed IDs, preserving concurrent arrivals.
+Unread rejection count has red badge priority over the yellow pending count; all
+badge writes reread current storage in one serialized writer. Queue cleanup does
+not erase unread rejection notices. Rejections alone never open the native popup.
+
+NIP-04/NIP-44 pubkey parameters identify the peer, not a claimed local account.
+They cannot be used to infer a foreign-account mismatch. Unsigned events without
+an author likewise do not disclose which identity the website has selected.
+
+Account-switch reloads first send `NOSTR_RELOAD_PAGE` to the active tab's top-frame
+content script. Only a same-extension sender with an extension-page URL is accepted.
+The bridge acknowledges before scheduling `location.reload()`, so navigation does
+not discard the acknowledgement. Missing bridges or acknowledgements fall back to
+`tabs.reload`.
+This routing is under native Chrome popup-lifetime investigation; passing bridge
+and React tests does not establish that the browser preserves its action popup.
+
+Before triggering an account-switch reload, the popup awaits the privileged
+`scheduleAccountSwitchPopupRecovery` RPC. On Chrome, the background arms one
+100 ms timer so losing the originating popup does not cancel recovery. The attempt
+only runs if the original tab is still active in its focused browser window;
+a newer request replaces the pending timer. It calls `action.openPopup` once and
+leaves an existing native popup to Chrome's own guard. It does not use context
+existence as a visibility test, close a popup, focus a window, or retry a refusal.
+Recovery errors do not block the website refresh. Chrome may still refuse if it
+considers a hidden popup active. Temporary popup tracing and its Settings controls
+have been removed; startup clears the old session trace.
+
+### Audit remediation: request lifetime boundaries
+
+Page methods share a 64-per-origin / 256-global in-flight budget across the port and
+runtime transports. Reservations survive port disconnect until work actually settles.
+Queue limits include unlock and remote in-flight entries, while actionable prompts
+retain their separate five-per-origin limit. Vault locking revokes pending approvals
+and unlock waiters and invalidates setup continuations. Remote cancellation suppresses
+local delivery; it does not recall a request already sent to a bunker.
+
+Signing/decryption and wallet handlers bind continuations to an account and vault
+revision. They validate that capability immediately before secret use or payment
+dispatch; crypto results are checked again before release. Switching back to the same
+account cannot revive the earlier request. Payment permission reads/writes and the
+threshold all use the captured account, including account-specific deny rules.
+
+Wallet snapshots are read through the internal `wallet_readDisplayCache` RPC. Only background code decrypts the cache; while locked, it returns provider presence without financial fields. Activity reads require unlock. See [private-cache.md](private-cache.md).

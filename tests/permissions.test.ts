@@ -389,3 +389,80 @@ describe('permissions -- setupNewAccountPermissions (wizard fresh vs copy)', () 
     assert.strictEqual(await permissions.check('example.com', 'signEvent', 1, 'B'), 'ask');
   });
 });
+
+import { test } from 'node:test';
+import { getDomainFromUrl } from '../src/utils/url.ts';
+import { originMatchesActiveTab } from '../src/domain/site/originMatchesActiveTab.ts';
+import browser from '../src/lib/browser.ts';
+import { isDomainAllowed, isWeblnAllowed } from '../src/services/background/domain-handlers.ts';
+
+test('page identity includes scheme and non-default port, with opaque URLs rejected', () => {
+  assert.equal(getDomainFromUrl('https://EXAMPLE.com:443/path'), 'https://example.com');
+  assert.equal(getDomainFromUrl('http://localhost:3000/path'), 'http://localhost:3000');
+  for (const url of ['data:text/plain,x', 'file:///tmp/x', 'about:blank', 'invalid']) assert.equal(getDomainFromUrl(url), null);
+  assert.equal(originMatchesActiveTab('http://localhost:4000', 'http://localhost:3000'), false);
+  assert.equal(originMatchesActiveTab('https://localhost:3000', 'http://localhost:3000'), false);
+  assert.equal(originMatchesActiveTab('http://localhost:3000/a', 'http://localhost:3000'), true);
+});
+
+test('legacy hostname consent and account rules continue without renewed consent', async () => {
+  resetMockStorage();
+  await browser.storage.local.set({allowedDomains:['localhost'], weblnAllowedDomains:['localhost']});
+  await permissions.setUseGlobalDefaults(false);
+  await permissions.save('localhost', 'getPublicKey', null, 'allow', 'A');
+  await permissions.save('localhost', 'signEvent', 1, 'deny', 'A');
+  await permissions.save('localhost', 'webln_sendPayment', null, 'allow', 'A');
+  for (const origin of ['http://localhost:3000', 'http://localhost:4000', 'https://localhost']) {
+    assert.equal(await isDomainAllowed(origin), true);
+    assert.equal(await isWeblnAllowed(origin), true);
+    assert.equal(await permissions.check(origin, 'getPublicKey', undefined, 'A'), 'allow');
+    assert.equal(await permissions.check(origin, 'signEvent', 1, 'A'), 'deny');
+    assert.equal(await permissions.check(origin, 'webln_sendPayment', undefined, 'A'), 'allow');
+    assert.equal(await permissions.check(origin, 'getPublicKey', undefined, 'B'), 'ask');
+  }
+  await permissions.save('http://localhost:3000', 'signEvent', 1, 'allow', 'A');
+  assert.equal(await permissions.check('http://localhost:3000', 'signEvent', 1, 'A'), 'allow');
+  assert.equal(await permissions.check('http://sub.localhost:3000', 'getPublicKey', undefined, 'A'), 'ask');
+});
+
+test('new grants remain origin isolated and disconnect revokes applicable legacy grants', async () => {
+  resetMockStorage();
+  const { addAllowedDomain, addWeblnAllowedDomain, removeAllowedDomain } = await import('../src/services/background/domain-handlers.ts');
+  await addAllowedDomain('http://localhost:3000');
+  await addWeblnAllowedDomain('http://localhost:3000');
+  await permissions.save('http://localhost:3000', 'getPublicKey', null, 'allow');
+  assert.equal(await isDomainAllowed('http://localhost:4000'), false);
+  assert.equal(await isWeblnAllowed('http://localhost:4000'), false);
+  assert.equal(await permissions.check('http://localhost:4000', 'getPublicKey'), 'ask');
+  await addAllowedDomain('localhost');
+  await addWeblnAllowedDomain('localhost');
+  await permissions.save('localhost', 'getPublicKey', null, 'allow');
+  await removeAllowedDomain('http://localhost:3000');
+  for (const origin of ['http://localhost:3000','http://localhost:4000']) {
+    assert.equal(await isDomainAllowed(origin), false);
+    assert.equal(await isWeblnAllowed(origin), false);
+    assert.equal(await permissions.check(origin, 'getPublicKey'), 'ask');
+  }
+});
+
+
+test('explicit inherited rule edits apply only to that origin and bucket, and clear removes fallback', async () => {
+  resetMockStorage();
+  await permissions.setUseGlobalDefaults(false);
+  await permissions.saveDirect('legacy.test', 'getPublicKey', 'deny', 'A');
+  await permissions.saveDirect('legacy.test', 'getPublicKey', 'deny', 'B');
+  await permissions.saveDirect('legacy.test', 'webln_getBalance', 'allow', 'A');
+  await permissions.saveDirect('https://legacy.test', 'getPublicKey', 'allow', 'A');
+  assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'A'), 'allow');
+  assert.equal((await permissions.getForDomain('https://legacy.test', 'A')).getPublicKey, 'allow');
+  assert.equal(await permissions.check('https://legacy.test:8443', 'getPublicKey', undefined, 'A'), 'deny');
+  assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'B'), 'deny');
+  await permissions.saveDirect('https://legacy.test', 'webln_getBalance', 'ask', 'A');
+  assert.equal(await permissions.check('https://legacy.test', 'webln_getBalance', undefined, 'A'), 'ask');
+  await permissions.saveDirect('legacy.test', '*', 'deny', 'A');
+  assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'A'), 'deny', 'separate broader denial is not edited');
+  await permissions.clear('https://legacy.test', 'A');
+  assert.deepEqual(await permissions.getForDomain('https://legacy.test', 'A'), {});
+  assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'A'), 'ask');
+  assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'B'), 'deny');
+});

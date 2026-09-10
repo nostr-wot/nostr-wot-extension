@@ -415,7 +415,7 @@ Successful crypto activity now saves ciphertext only (128 KiB maximum per operat
 
 ### Wallet display snapshots
 
-Account-scoped `walletDisplay_` keys in local extension storage hold non-secret display metadata outside the encrypted vault: provider type, last balance, timestamp, and up to 50 transaction summaries (payment hash, amount, fee, memo, status, time). Invoices, preimages, API keys, NWC URIs and other credentials are excluded by an explicit field allowlist. The existing lock overlay continues to gate the UI; these snapshots cannot authorize payments or prove vault unlock. Disconnect/replacement clears old details, account removal erases its snapshot, and vault destruction erases all snapshots. Revision-guarded serialized writes prevent pre-removal reads from repopulating them.
+Account-scoped `walletDisplay_` records now use authenticated AES-256-GCM envelopes. Their balance, timestamps and transaction summaries (hash, amount, fee, memo, status, time) are encrypted with a random cache key protected by the vault. Only provider presence remains public. Credentials, invoices and preimages remain excluded from display summaries. Activity records and payment replay results are also encrypted. The storage key is authenticated as associated data, preventing cross-account record substitution. Legacy financial/activity records migrate on unlock; reads fail closed on invalid ciphertext. Cache encryption is blocked until a newly generated key is durably saved in the vault. Password changes preserve it. Lock clears decrypted UI state; account removal clears its display cache, and vault destruction removes encrypted records. Payment retry markers survive lock, with encrypted results, so losing access cannot trigger another payment. JavaScript strings cannot be reliably erased; this protects stored data rather than a compromised running process. Never-lock mode still permits automatic local decryption. See [private cache design](private-cache.md).
 
 Approval queue identity checks: requests are bound to an account ID. The extension popup displays pending requests from all websites for that account, never treating a website filter as an account boundary. Foreign account/author entries are rejected (remote-signer and unlock waits use their respective cancellation methods). Individual and permission-batch resolution recheck account identity in the background. signEvent rejects a supplied foreign author before permission checks and rechecks the account/public key before signing. Recipient keys in encryption/decryption requests are not author keys. Bulk approval acts only on a snapshot of displayed request IDs.
 
@@ -433,3 +433,90 @@ in place. Signer queue/account rejection lives in `approvalQueue.ts`, while loca
 classic/PQ decryption lives in `localDecryption.ts`.
 
 Wallet operations enforce lock state through `vault.requireUnlocked()`: it waits for the registered startup auto-unlock, then rejects if the vault remains locked. This never unlocks a password-protected vault on its own. Current failed UI vault reads still fail closed; only responses from retired reads are discarded.
+
+
+### Custom derivation paths
+
+BIP-32 paths are validated in both the UI and privileged generation handler:
+hardened markers are normalized, indices must be 0..2147483647, and depth is
+limited to 255. Derivation reuses @scure/bip32 and temporary seed/key bytes are
+zeroed. Validation follows [BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki).
+Network hints use the [SLIP-44 registry](https://github.com/satoshilabs/slips/blob/master/slip-0044.md)
+and Bitcoin purpose conventions; a recognized prefix does not promise wallet compatibility.
+
+Existing accounts without path metadata retain their numeric PQ selector.
+Paths in the extension's existing m/44'/1237'/0'/0/index sequence map to that same
+numeric selector, preserving existing keys. Other paths use the canonical full
+path under a separate path/ selector in the HKDF info string. This prevents
+different paths sharing a last child index from reusing PQ keys. This custom-path
+extension is documented in the local PQ draft; recovery in another implementation
+requires that convention or an exported PQ key file. Status, export and decryption
+all use the same selector. Classic and PQ recovery require the seed and exact path.
+
+Removing a seed-derived account does not remove its seed from other derived
+accounts, which each retain the mnemonic in the encrypted vault. Removing all
+accounts carrying that seed removes its stored account copies from this extension;
+it does not revoke identities or erase external backups.
+
+### September 2026 audit remediation (A1–A7)
+
+Every signing/crypto operation captures an account ID and vault session revision.
+Lock, account changes (including A → B → A), account removal and wallet configuration
+replacement invalidate old revisions. Local operations check immediately before key
+use and before returning asynchronous results. Remote signer continuations also
+check before dispatch after connection. Requests waiting for an initial unlock can
+continue; a newer explicit lock cancels them. Session invalidation disposes wallet providers and remote signers. Vault lock
+notifications also revoke approvals for both timed and manual locks.
+
+Vault lifecycle writes share a mutex. Unlock/create/re-encryption validate their
+revision before installing decrypted state, so an earlier operation cannot undo a
+newer lock. Destruction waits for preceding storage writes before removing the vault.
+A session revision is an in-memory cancellation capability, never a secret or a
+persisted substitute for the vault key.
+
+WebLN checks and remembered rules use the same captured account as the payment,
+threshold and approval. An explicit account-specific deny wins. The final dispatch
+checks account/session and provider identity; stale connection or LNURL resolution
+cannot spend from a previous wallet. The configured threshold is both a **per-invoice limit** and a **rolling 24-hour automatic-payment budget** shared across origins. Failed or uncertain reservations still count; explicit approvals can exceed the automatic allowance. Payments already dispatched to a backend cannot be recalled.
+
+Authenticated wallet/provisioning requests require HTTPS (only explicit localhost or
+127.0.0.1 HTTP is permitted for development), reject redirects, and use a 15-second
+whole-request deadline and 1 MiB streaming response limit. Validation occurs before
+challenge signing or any provisioning request. LNbits/NWC disposal is permanent;
+retained references cannot reconnect or spend, and disposal clears retained key
+material and cancels pending work. JavaScript string copies cannot be reliably zeroed.
+
+Page RPC work is bounded to 64 outstanding requests per origin and 256 globally,
+shared across ports, tabs and runtime messages. Capacity is released on actual
+settlement rather than disconnect, so reconnecting cannot evade the bound. Queue
+tracking has the same overall bounds; the existing five actionable prompts per
+origin remains. Unlock markers remain individually cancellable, with bounded
+pollers/timers. Canceled remote UI requests continue occupying remote capacity until
+the underlying bunker operation settles.
+
+Canonical event input is capped at 1 MiB UTF-8 JSON, 10,000 tags and 1,024 values per
+tag. Crypto plaintext is capped at 65,535 UTF-8 bytes; ciphertext has a 131,072-character
+ingress cap and algorithm-specific encoded limits before decoding. Activity retention
+is capped at 256 KiB per entry, 4 MiB total and 2,000 entries, in addition to the
+200-per-domain limit. Activity and wallet display records use a separate encrypted store whose key is protected by the vault; these retention limits apply to their decrypted contents.
+
+### Follow-up hardening
+
+Safe account RPC responses use an explicit metadata allowlist, excluding wallet and remote-signer credentials; only dedicated background accessors retrieve them. Page permissions bind to scheme, hostname and port, and existing hostname grants retain their prior scope and continue without reconnection or reapproval. LNURL payment policy requires exact integer-msat equality and adds no metadata-hash requirement beyond current LUD-06; description-only invoices remain supported. GitHub Actions are pinned to verified commits and use contents:read. See [payment policy](payment-hardening.md), [origin migration](origin-permissions.md), and [safe account data](safe-account-data.md).
+
+### Password-encrypted PQ key import
+
+PQ key import accepts both plain key files and the password-encrypted export envelope.
+Selecting or pasting an encrypted file reveals a password field. Decryption reuses
+the AES-GCM backup implementation; authentication failures leave the file available
+for retry and do not call the import RPC. The decrypted key file then passes through
+the existing privileged key-pair validation. Neither the password nor decrypted
+contents are persisted by the import form; both fields clear on success.
+
+The account wizard also accepts this encrypted envelope for seed/private-key
+backups, from a selected file or pasted text. After authenticated decryption it
+uses the existing mnemonic/private-key validators. PQ-only JSON produces guidance
+to restore the keys in Settings after creating/importing the classical account;
+it cannot create a Nostr identity. A nested ncryptsec prompts for its own password.
+The wizard clears imported text and the password after successful validation and
+ignores retired async results after unmount.

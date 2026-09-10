@@ -13,14 +13,14 @@ export default function HowItWorks({ onClose }: { onClose: () => void }) {
       zIndex={720}
       footer={<Button onClick={onClose}>{t('common.gotIt')}</Button>}
     >
-      <ol className="mb-4 pl-9">
-        <Text variant="body" as="li" className="text-sm leading-loose mb-6">{t('pqc.howStep1')}</Text>
-        <Text variant="body" as="li" className="text-sm leading-loose mb-6">{t('pqc.howStep2')}</Text>
-        <Text variant="body" as="li" className="text-sm leading-loose mb-6">{t('pqc.howStep3')}</Text>
+      <ol className="pl-9 flex flex-col gap-6">
+        <Text variant="body" as="li" className="text-sm leading-loose">{t('pqc.howStep1')}</Text>
+        <Text variant="body" as="li" className="text-sm leading-loose">{t('pqc.howStep2')}</Text>
+        <Text variant="body" as="li" className="text-sm leading-loose">{t('pqc.howStep3')}</Text>
       </ol>
-      <Text variant="secondary" as="p" className="text-sm leading-loose mb-4">{t('pqc.howLimit')}</Text>
+      <Text variant="secondary" as="p" className="text-sm leading-loose">{t('pqc.howLimit')}</Text>
       <a
-        className="inline-flex items-center gap-2.5 mt-5 text-xs text-muted cursor-pointer hover:text-brand"
+        className="inline-flex items-center gap-2.5 text-xs text-muted cursor-pointer hover:text-brand"
         href={GUIDE_URL}
         target="_blank"
         rel="noreferrer noopener"

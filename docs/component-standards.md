@@ -474,7 +474,7 @@ Wallet settings uses the existing account context for independent lazy reads, ke
 
 Wallet settings owns a flex-1/min-h-0 overflow-y-auto body inside OverlayPanel; its header and refresh icon remain outside that scroller. Address and connection copy actions reuse IconButton, IconCopy and useCopy, with accessible labels and clipboard feedback.
 
-HomeWalletLayout keeps account-level wallet content outside the current-site notice branch. Loading, restricted pages and unconnected sites must not hide a configured wallet.
+HomeWalletLayout displays the home wallet summary only when the current site is confirmed connected. Loading, errors, restricted pages and unconnected sites hide it. The account wallet remains accessible through Settings → Wallet.
 
 The approval sheet always groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
 
@@ -582,3 +582,36 @@ cache while retrying. A prior locked read must not leave a permanent error after
 unlock. Wallet operations use `vault.requireUnlocked()` to await startup auto-unlock
 before enforcing the real lock state. Retired vault status reads cannot overwrite
 newer state, including on a failed read; current failures remain fail-closed.
+
+Approval review always makes one-time approval primary: “Approve once” for one request and “Approve all” for multiple displayed requests. This snapshots only the displayed IDs and never saves permissions. A separate outlined “Always allow {human-readable kind}” action explains that it saves permission for future requests of that type from that site. It is available for one group or in group details; it never creates a blanket rule across mixed groups. Remembered rules retain the configured account/global scope. Remote in-flight groups have no local approval action.
+
+Wallet account changes reset only a keyed, nonvisual resource controller. The context provider and popup children stay mounted so a saved sub-account can advance the wizard. Account snapshots are scoped by ID to prevent displaying the previous account’s wallet.
+
+Account removal uses a later sibling ConfirmDialog at the shared modal layer, above the scrollable picker. Do not override it with a sheet-level z-index: that places confirmation behind the picker. Escape closes only the confirmation. The background owns removal and storage cleanup; failed removal keeps the dialog open with an error and never deletes the UI account optimistically.
+
+Shared Modal bodies separate top-level sections with gap-6 inside the scroll area. Footers use gap-4 in both stacked and equal-width row layouts. ConfirmDialog uses the row layout and separates rich message blocks with gap-6. Keep related fields inside their own Container; avoid adding outer margins to compensate for missing dialog spacing.
+
+
+Sub-account creation preselects the next standard derivation path and lets the user
+edit it inside a collapsed Advanced disclosure. An optional editable account name
+stays outside Advanced and survives preview updates; blank names use the generated
+default. Both npub and hexadecimal public keys appear automatically. Valid path
+edits refresh after 350 ms, serialize pending requests, and discard stale replies.
+Path edits invalidate the public-key preview; Continue stays disabled until a
+successful current preview. Previewing never saves an account. The selected seed account is named in the UI. Validation
+is shared with the background, and errors leave the editor usable. Known hardened
+network prefixes are identified as conventions, not wallet support; unknown valid
+paths remain usable. Seed-derived removal warnings explain same-seed/same-path
+recovery and that removing one identity leaves the other seed accounts intact.
+
+Unread foreign-author rejections appear in a shared Modal on popup open, with
+website, readable kind, shortened requested/selected public keys, time and an
+explanation that nothing was signed. Close explicitly acknowledges the displayed
+IDs; failed acknowledgement leaves the notice visible. New arrivals update the
+notice via the shared storage watcher without opening a new browser popup.
+
+Wallet settings uses ProfileAddressButton to compare the current Lightning
+Address with the selected account's profile cache. The existing storage hook
+updates it after publication, and the account public key scopes its lifetime.
+
+WalletContext reads encrypted snapshots through the background RPC rather than importing vault/storage crypto into the UI. Lock notifications invalidate pending UI loads and clear balances, history and settings; activity/menu detail overlays close so selected records are not retained on screen. Unlocked refresh continues showing its previous snapshot next to loading indicators.

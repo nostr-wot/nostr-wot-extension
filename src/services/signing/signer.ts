@@ -1,3 +1,5 @@
+import { captureAccountSession, assertAccountSession } from './accountSession.ts';
+import { recordSigningRejection } from './rejections.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
 import * as vault from '../vault/vault.ts';
 import * as permissions from '../permissions/permissions.ts';
@@ -94,12 +96,18 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
  * Handle signEvent request
  */
 export async function handleSignEvent(event: UnsignedEvent, origin: string): Promise<SignedEvent> {
+  const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
   const requestedPubkey = await getActivePublicKey();
   const requestedAccountId = accountId ?? vault.getActiveAccountId();
-  if (event.pubkey && event.pubkey !== requestedPubkey) throw new Error('Event author does not match active account');
+  if (event.pubkey && event.pubkey !== requestedPubkey) {
+    await recordSigningRejection({ origin, kind: event.kind, requestedPubkey: event.pubkey, activePubkey: requestedPubkey })
+      .catch(() => {}); // Storage failure must never turn a rejection into signing.
+    throw new Error('Event author does not match active account');
+  }
 
   if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
+  const session = captureAccountSession(accountId ?? vault.getActiveAccountId(), revision);
 
   // Local permissions apply to ALL account types: an explicit per-origin 'deny'
   // must block even for NIP-46 accounts, BEFORE anything is routed to the
@@ -145,9 +153,12 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     }
     if (vault.isLocked()) throw new Error('Vault is locked');
     if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
-    const acct = vault.getAccountById(accountId!);
+    assertAccountSession(session);
+    const acct = vault.getAccountById(session.accountId);
     if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
-    return await runNip46Request(acct, 'signEvent', event, origin) as SignedEvent;
+    const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
+    assertAccountSession(session);
+    return result;
   }
 
   // Local signing -- wait for vault unlock if needed
@@ -158,11 +169,14 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   if (vault.isLocked()) throw new Error('Vault is locked');
 
   if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
-  const privkey = vault.getPrivkey(accountId ?? undefined);
+  assertAccountSession(session);
+  const privkey = vault.getPrivkey(session.accountId);
   if (!privkey) throw new Error('No private key for active account');
 
   try {
-    return await cryptoSignEvent(event, privkey);
+    const result = await cryptoSignEvent(event, privkey);
+    assertAccountSession(session);
+    return result;
   } finally {
     privkey.fill(0);
   }
@@ -195,9 +209,11 @@ async function handleCryptoRequest(
    */
   remoteSignerUnsupported?: string,
 ): Promise<string> {
+  const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
 
   if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
+  const session = captureAccountSession(accountId ?? vault.getActiveAccountId(), revision);
 
   // Local permissions apply to ALL account types: an explicit per-origin 'deny'
   // blocks even NIP-46 accounts before anything reaches the remote signer.
@@ -225,9 +241,12 @@ async function handleCryptoRequest(
       await waitForVaultUnlock(origin, method, accountId);
     }
     if (vault.isLocked()) throw new Error('Vault is locked');
-    const acct = vault.getAccountById(accountId!);
+    assertAccountSession(session);
+    const acct = vault.getAccountById(session.accountId);
     if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
-    return await runNip46Request(acct, method, nip46Data, origin) as string;
+    const result = await runNip46Request(acct, method, nip46Data, origin, session) as string;
+    assertAccountSession(session);
+    return result;
   }
 
   if (vault.isLocked()) {
@@ -235,10 +254,13 @@ async function handleCryptoRequest(
   }
   if (vault.isLocked()) throw new Error('Vault is locked');
 
-  const privkey = vault.getPrivkey(accountId ?? undefined);
+  assertAccountSession(session);
+  const privkey = vault.getPrivkey(session.accountId);
   if (!privkey) throw new Error('No private key for active account');
   try {
-    return await cryptoFn(payload, privkey, hexToBytes(theirPubkey), accountId ?? undefined);
+    const result = await cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId);
+    assertAccountSession(session);
+    return result;
   } finally {
     privkey.fill(0);
   }
@@ -288,11 +310,13 @@ export async function handleNip44Encrypt(
     { pubkey: theirPubkey, plaintext },
     async (payload, privkey, theirPubkeyBytes, accountId) => {
       const { keys, pubkey } = await activePqKeys(accountId);
+      let conv: Uint8Array | null = null;
       try {
         const kem = base64ToArray(opts.recipientKemKey);
-        const conv = getConversationKey(privkey, theirPubkeyBytes);
+        conv = getConversationKey(privkey, theirPubkeyBytes);
         return pqEncrypt(payload, kem, conv, pubkey, theirPubkey);
       } finally {
+        conv?.fill(0);
         keys.kem.secretKey.fill(0);
         keys.dsa.secretKey.fill(0);
       }

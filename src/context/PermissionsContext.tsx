@@ -1,3 +1,4 @@
+import { sitePermissionBucket } from '@domain/site/siteScope.ts';
 import { useCallback, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
@@ -99,7 +100,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
   /** Get permissions for a specific bucket (accountId or '_default') */
   const getForBucket = useCallback((domain: string, accountId?: string | null): Record<string, string> => {
     const bucket = accountId || '_default';
-    return rawPerms[domain]?.[bucket] || {};
+    return sitePermissionBucket(rawPerms, domain, bucket);
   }, [rawPerms]);
 
   /** Get all domains that have permissions for a specific bucket */

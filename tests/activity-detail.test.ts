@@ -196,7 +196,7 @@ it('approval group details include every event in collapsed rows with one decisi
  assert.match(html,/first pending body/);assert.match(html,/second pending body/);
  assert.equal((html.match(/data-approval-request=/g)||[]).length,2);
  assert.doesNotMatch(html,/<details[^>]*data-approval-request[^>]*open/);
- assert.equal((html.match(/approval.approveShown/g)||[]).length,1);
+ assert.equal((html.match(/approval.alwaysAllowLabel/g)||[]).length,1);
 });
 
 it('remote signer groups also show every pending item without local approval actions', async () => {
@@ -205,5 +205,15 @@ it('remote signer groups also show every pending item without local approval act
  {id:'b',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote second',tags:[]}}];
  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:requests[0],requests,nip46InFlight:true}));
  assert.match(html,/remote.test/);assert.match(html,/remote first/);assert.match(html,/remote second/);
- assert.doesNotMatch(html,/approval.approveShown|approval.alwaysAllowLabel/);
+ assert.doesNotMatch(html,/approval.alwaysAllowLabel|approval.alwaysAllowLabel/);
+});
+
+it('approval details offer the same bulk action for one or many requests of one kind', async () => {
+  const { default: EventDetailModal } = await import('../src/components/EventDetailModal');
+  const request = {id:'one',type:'signEvent',origin:'site.test',event:{kind:1,content:'Review me',tags:[]}};
+  for (const requests of [undefined,[request],[request,{...request,id:'two'}]]) {
+    const html=renderToStaticMarkup(createElement(EventDetailModal,{request,requests,onApprove(){},busy:true}));
+    assert.match(html,/disabled=""[^>]*>approval.alwaysAllowLabel<\/button>/);
+    assert.match(html, requests && requests.length > 1 ? />approval.approveShown</ : />approval.approveOnce</);
+  }
 });

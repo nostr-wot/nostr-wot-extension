@@ -328,3 +328,41 @@ describe('account type coverage', () => {
     assert.ok(acct.nip46Config);
   });
 });
+
+describe('custom account derivation paths', () => {
+  it('validates and canonicalizes paths before deriving keys', async () => {
+    const { normalizeDerivationPath, standardDerivationIndex } = await import('../src/domain/accounts/derivation.ts');
+    assert.equal(normalizeDerivationPath(" m/44h/1237H/0'/0/0007 "), "m/44'/1237'/0'/0/7");
+    assert.equal(standardDerivationIndex("m/44'/1237'/0'/0/7"),7);
+    assert.equal(standardDerivationIndex("m/44'/1237'/7'/0/0"),null);
+    for(const path of ['', 'x/1','m//1','m/-1','m/1.2','m/2147483648',"m/2147483648'",'m/'+Array(256).fill('1').join('/')]) {
+      assert.equal(normalizeDerivationPath(path),null,path);
+    }
+  });
+  it('restores identical keys at the same custom path and preserves standard keys', async () => {
+    const {createFromMnemonicAtPath}=await import('../src/domain/accounts/creation.ts');
+    const a=await createFromMnemonicAtPath(VALID_MNEMONIC,"m/44'/1237'/8'/0/2");
+    const b=await createFromMnemonicAtPath(VALID_MNEMONIC,"m/44h/1237h/8h/0/2");
+    assert.equal(a.pubkey,b.pubkey);
+    assert.equal(a.derivationPath,"m/44'/1237'/8'/0/2");
+    assert.equal(a.derivationIndex,undefined);
+    const standard=await createFromMnemonicAtPath(VALID_MNEMONIC,"m/44'/1237'/0'/0/2");
+    assert.equal(standard.pubkey,(await createFromMnemonicAtIndex(VALID_MNEMONIC,2)).pubkey);
+    assert.equal(standard.derivationIndex,2);
+    await assert.rejects(createFromMnemonicAtPath(VALID_MNEMONIC,'m/nope'),/path/i);
+    await assert.rejects(createFromMnemonicAtIndex(VALID_MNEMONIC,-1),/index/i);
+  });
+});
+
+it('recognizes registered network prefixes without calling unknown paths invalid', async () => {
+  const {identifyDerivationPath}=await import('../src/domain/accounts/derivation.ts');
+  for (const [path,network] of [
+    ["m/44'/0'/0'/0/0",'Bitcoin'],["m/84'/0'/0'/0/0",'Bitcoin'],["m/86'/1'/0'/0/0",'Bitcoin testnet'],
+    ["m/44'/60'/0'/0/0",'Ethereum'],["m/44'/501'/0'/0'",'Solana'],
+    ["m/44'/2'/0'/0/0",'Litecoin'],["m/44'/3'/0'/0/0",'Dogecoin'],["m/44'/1237'/0'/0/1",'Nostr']
+  ]) assert.equal(identifyDerivationPath(path)?.network,network);
+  assert.equal(identifyDerivationPath('m/44/60/0/0/0'),null,'unhardened coin type is not BIP44');
+  assert.equal(identifyDerivationPath("m/84'/60'/0'/0/0"),null,'Bitcoin purpose must not imply Ethereum');
+  assert.equal(identifyDerivationPath("m/44'/999999'/0'/0/0"),null);
+  assert.equal(identifyDerivationPath('invalid'),null);
+});

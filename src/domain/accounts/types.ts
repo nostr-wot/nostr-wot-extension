@@ -41,19 +41,19 @@ export interface Account {
   readOnly: boolean;
   createdAt: number;
   derivationIndex?: number;
+  /** Canonical BIP-32 path required to restore this identity from its seed. */
+  derivationPath?: string;
   walletConfig?: WalletConfig;
   /** Imported post-quantum keys. Absent when the account derives them from its seed. */
   pqKeys?: PqImportedKeys | null;
 }
 
-/**
- * Account without secret material — safe to expose.
- *
- * `pqKeys` is omitted for the same reason as `privkey`: it carries ML-KEM and ML-DSA
- * SECRET keys. Every account list the UI receives is a SafeAccount, so leaving it in
- * would hand those secrets to the popup on every render.
- */
-export type SafeAccount = Omit<Account, 'privkey' | 'mnemonic' | 'walletConfig' | 'pqKeys'>;
+/** Explicit public metadata allowlist. New Account fields are private by default. */
+export type SafeAccount = Pick<Account,
+  'id' | 'name' | 'type' | 'pubkey' | 'readOnly' | 'createdAt' | 'derivationIndex' | 'derivationPath'>;
 
-/** Account without private key but with walletConfig — for background wallet handlers */
-export type SafeAccountWithWallet = Omit<Account, 'privkey' | 'mnemonic' | 'pqKeys'>;
+/** Background-only wallet capability. Never return this through a UI/page RPC. */
+export type SafeAccountWithWallet = SafeAccount & Pick<Account, 'walletConfig'>;
+
+/** Background-only remote signer capability; includes connection secrets. */
+export type BackgroundRemoteSignerAccount = SafeAccount & { nip46Config: Nip46Config };

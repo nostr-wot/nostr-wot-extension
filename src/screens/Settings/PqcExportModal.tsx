@@ -61,7 +61,7 @@ const handleExport = async (encrypted: boolean) => {
         onClose={onClose}
         zIndex={720}
       >
-        <Text variant="secondary" as="p" className="text-sm my-4 mb-6">{t('pqc.exportDesc')}</Text>
+        <Text variant="secondary" as="p" className="text-sm">{t('pqc.exportDesc')}</Text>
         <StatusNotice
           tone="warn"
           icon={<IconWarning size={18} />}
@@ -69,8 +69,8 @@ const handleExport = async (encrypted: boolean) => {
           info={t('pqc.exportWarn')}
         />
 
-        <SectionLabel className="mb-6 mt-4 font-normal leading-loose">{t('key.encryptionPassword')}</SectionLabel>
-        <Container gap={4} className="mb-4">
+        <Container gap={4}>
+          <SectionLabel inline className="font-normal leading-loose">{t('key.encryptionPassword')}</SectionLabel>
           <PasswordPairFields
             pair={exportPair}
             confirmPlaceholder={t('key.confirmPassword')}
@@ -81,7 +81,7 @@ const handleExport = async (encrypted: boolean) => {
 
         <FormError>{exportError}</FormError>
 
-        <Container gap={4} className="mt-7">
+        <Container gap={4}>
           <Button onClick={() => handleExport(true)} disabled={exportBusy || !exportPair.ready}>
             {exportBusy ? t('common.loading') : t('key.downloadEncrypted')}
           </Button>

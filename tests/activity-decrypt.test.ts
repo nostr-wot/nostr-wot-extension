@@ -9,7 +9,8 @@ import { hexToBytes } from '../src/lib/crypto/utils.ts';
 import { handlers } from '../src/services/background/activity-handlers.ts';
 import { activityEntryKey, type ActivityEntry } from '../src/domain/activity/activity.ts';
 
-beforeEach(async () => { resetMockStorage(); await vault.destroy(); });
+import { readPrivateCache } from '../src/services/storage/private-cache.ts';
+beforeEach(async () => { resetMockStorage(); await vault.destroy(); await vault.create('', {accounts:[], activeAccountId:null}); });
 const ownerKey = '11'.repeat(32), peerKey = '22'.repeat(32);
 
 for (const [scheme, encrypt] of [['nip04', nip04Encrypt], ['nip44', nip44Encrypt]] as const) {
@@ -105,7 +106,7 @@ it('successful crypto requests retain ciphertext, never the plaintext result or 
     const result = await nip07.get(`nip07_${scheme}Decrypt`)!({origin: 'site.test', pubkey: peer.pubkey, ciphertext});
     assert.equal(result, 'never persist this');
     await new Promise(resolve => setTimeout(resolve, 10));
-    const log = (await browser.storage.local.get('activityLog')).activityLog as ActivityEntry[];
+    const log = (await readPrivateCache<ActivityEntry[]>('activityLog'))!;
     assert.equal(log[0].ciphertext, ciphertext);
     assert.equal(log[1].ciphertext, ciphertext);
     assert.equal(log[0].pubkey, owner.pubkey);
@@ -124,7 +125,7 @@ it('stores the canonical activity record with a timestamp and nullable account',
   const start = Date.now();
   await logActivity({ method: 'signEvent', decision: 'approved', pubkey: null,
     domain: 'site.test', kind: 1, event: { kind: 1, content: 'public', tags: [['p', 'abc']] } });
-  const log = (await browser.storage.local.get('activityLog')).activityLog as ActivityEntry[];
+  const log = (await readPrivateCache<ActivityEntry[]>('activityLog'))!;
   assert.equal(log.length, 1);
   assert.ok(log[0].timestamp >= start);
   assert.equal(log[0].pubkey, null);
@@ -143,7 +144,7 @@ it('filtered clearing removes exactly the entries selected by the shared UI rule
     await browser.storage.local.set({ activityLog: log });
     const selected = new Set(filterActivityEntries(log, { account: 'owner', domain: 'site.test', type, pubkeyQuery: 'BC' }));
     await handlers.get('clearActivityLog')!({ accountPubkey: 'owner', domain: 'site.test', typeFilter: type, pubkeyFilter: 'BC' });
-    assert.deepEqual((await browser.storage.local.get('activityLog')).activityLog, log.filter(e => !selected.has(e)));
+    assert.deepEqual(await readPrivateCache('activityLog'), log.filter(e => !selected.has(e)));
   }
 });
 
@@ -153,7 +154,36 @@ it('caps activity per domain and drops oversized ciphertext', async () => {
   const entries: ActivityEntry[] = Array.from({ length: ACTIVITY_LOG_MAX_PER_DOMAIN }, (_, timestamp) => ({ method: 'getPublicKey', decision: 'approved', domain: 'site.test', timestamp }));
   await browser.storage.local.set({ activityLog: entries });
   await logActivity({ method: 'nip44Decrypt', decision: 'approved', domain: 'site.test', ciphertext: 'a'.repeat(ACTIVITY_MAX_CIPHERTEXT_LENGTH + 1) });
-  const log = (await browser.storage.local.get('activityLog')).activityLog as ActivityEntry[];
+  const log = (await readPrivateCache<ActivityEntry[]>('activityLog'))!;
   assert.equal(log.length, ACTIVITY_LOG_MAX_PER_DOMAIN);
   assert.equal(log[0].ciphertext, undefined);
+});
+
+it('PQ review restores a custom-path account without falling back to index zero', async () => {
+  const { createFromMnemonicAtPath } = await import('../src/domain/accounts/creation.ts');
+  const { mnemonicToSeed } = await import('../src/lib/crypto/bip39.ts');
+  const { derivePqKeys, pqEncrypt } = await import('../src/lib/crypto/pq.ts');
+  const { getConversationKey } = await import('../src/lib/crypto/nip44.ts');
+  const mnemonic = 'what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade';
+  const owner = await createFromMnemonicAtPath(mnemonic, "m/44'/1237'/8'/0/1", 'PQ owner');
+  const peer = await importNsec(peerKey, 'Current account');
+  await vault.create('', { accounts: [owner,peer], activeAccountId: peer.id });
+  const seed = await mnemonicToSeed(mnemonic);
+  const keys = derivePqKeys(seed, owner.derivationPath!);
+  const conversation = getConversationKey(hexToBytes(peerKey), hexToBytes(owner.pubkey));
+  const ciphertext = pqEncrypt('hybrid message', keys.kem.publicKey, conversation, peer.pubkey, owner.pubkey);
+  seed.fill(0); conversation.fill(0); keys.kem.secretKey.fill(0); keys.dsa.secretKey.fill(0);
+  const entry: ActivityEntry = { method: 'nip44Decrypt', timestamp: 1, decision: 'approved', pubkey: owner.pubkey, theirPubkey: peer.pubkey, ciphertext };
+  await browser.storage.local.set({ activityLog: [entry] });
+  assert.deepEqual(await handlers.get('activity_decrypt')!({entryKey: activityEntryKey(entry)}), {plaintext: 'hybrid message'});
+});
+
+it('activity retention is globally bounded by bytes and drops oversized event bodies', async () => {
+  const {logActivity} = await import('../src/services/background/activity-handlers.ts');
+  const entries: ActivityEntry[] = Array.from({length:50}, (_,i)=>({method:'signEvent',decision:'approved',domain:`site${i}.test`,timestamp:i,event:{content:'x'.repeat(100_000)}}));
+  await browser.storage.local.set({activityLog:entries});
+  await logActivity({method:'signEvent',decision:'approved',domain:'new.test',event:{content:'€'.repeat(100_000)}});
+  const log = (await readPrivateCache<ActivityEntry[]>('activityLog'))!;
+  assert.equal(log[0].event,undefined);
+  assert.ok(new TextEncoder().encode(JSON.stringify(log)).length <= 4*1024*1024);
 });

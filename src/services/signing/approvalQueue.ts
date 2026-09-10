@@ -1,3 +1,4 @@
+import { updateSignerBadge } from './rejections.ts';
 import * as vault from '../vault/vault.ts';
 import browser from '@lib/browser.ts';
 import type { RequestDecision, PendingRequest } from '@domain/signing/types.ts';
@@ -6,10 +7,11 @@ import type { SafeAccount } from '@domain/accounts/types.ts';
 import { requestMatchesAccount } from '@domain/permissions/approval.ts';
 import { openPopupForActiveTab } from '../browser/openPopupForActiveTab.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
-import { SIGNER_REQUEST_TIMEOUT_MS, MAX_PENDING_PER_ORIGIN } from '@constants/signing.ts';
+import { SIGNER_REQUEST_TIMEOUT_MS, MAX_PENDING_PER_ORIGIN, MAX_IN_FLIGHT_PER_ORIGIN, MAX_IN_FLIGHT_GLOBAL } from '@constants/signing.ts';
 import { VAULT_POLL_INTERVAL_MS } from '@constants/vault.ts';
 import { getActiveAccountInfo, getActivePublicKey, clearGetPubkeyCooldown } from './identity.ts';
 import { handleNip46Request } from './remoteSigner.ts';
+import { assertAccountSession, type AccountSession } from './accountSession.ts';
 
 // In-memory resolvers for pending requests (keyed by request ID)
 const _pendingResolvers: Map<string, (decision: RequestDecision) => void> = new Map();
@@ -26,12 +28,40 @@ const _lock = new AsyncLock();
 
 // NIP-46 abort controllers (keyed by nip46 request ID)
 const _nip46Aborts: Map<string, AbortController> = new Map();
+let lockRevision = 0;
+vault.onLock(() => {
+  lockRevision++;
+  // Revoke in-memory work synchronously; cleanup only these captured IDs so a
+  // newly arriving locked-vault request cannot be removed by a late storage write.
+  const ids = new Set([..._pendingResolvers.keys(), ..._unlockWaiters.keys(), ..._nip46Aborts.keys()]);
+  for (const resolve of _pendingResolvers.values()) resolve({ allow: false, remember: false, reason: 'Vault locked' });
+  _pendingResolvers.clear();
+  for (const timer of _timeoutTimers.values()) clearTimeout(timer);
+  _timeoutTimers.clear();
+  for (const waiter of _unlockWaiters.values()) waiter.reject(new Error('Vault locked'));
+  for (const controller of _nip46Aborts.values()) controller.abort();
+  if (ids.size) void _lock.run(async () => {
+    const data = await browser.storage.session.get('signerPending');
+    const pending = (data.signerPending || []) as PendingRequest[];
+    await browser.storage.session.set({ signerPending: pending.filter(r => !ids.has(r.id)) });
+    await updateSignerBadge();
+    browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
+  }).catch(() => {});
+});
+
+function assertQueueCapacity(pending: PendingRequest[], origin: string): void {
+  if (pending.length >= MAX_IN_FLIGHT_GLOBAL || pending.filter(r => r.origin === origin).length >= MAX_IN_FLIGHT_PER_ORIGIN) {
+    throw new Error('Too many pending requests');
+  }
+}
+
 
 function raceAbort<T>(signal: AbortSignal, promise: Promise<T>): Promise<T> {
   if (signal.aborted) return Promise.reject(new Error('Cancelled by user'));
   return new Promise((resolve, reject) => {
-    signal.addEventListener('abort', () => reject(new Error('Cancelled by user')), { once: true });
-    promise.then(resolve, reject);
+    const aborted = () => reject(new Error('Cancelled by user'));
+    signal.addEventListener('abort', aborted, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', aborted));
   });
 }
 
@@ -75,6 +105,7 @@ interface QueueRequestInput {
 }
 
 export async function queueRequest(request: QueueRequestInput): Promise<RequestDecision> {
+  const revision = lockRevision;
   const id = `req_${crypto.randomUUID()}`;
   const {accountId: activeAccountId} = await getActiveAccountInfo();
   const entry: PendingRequest = { id, ...request, accountId: request.accountId ?? activeAccountId ?? vault.getActiveAccountId(), timestamp: Date.now() };
@@ -84,6 +115,7 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
+    if (revision !== lockRevision) throw new Error('Vault locked');
     // Per-origin cap: reject when the origin already has too many actionable
     // (user-facing) prompts pending. In-flight NIP-46 tracking entries and
     // unlock markers don't count — they need no user action.
@@ -94,11 +126,12 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
       limitExceeded = true;
       return;
     }
+    assertQueueCapacity(pending, request.origin);
     pending.push(entry);
     await browser.storage.session.set({ signerPending: pending });
     // Don't update badge for NIP-46 in-flight (no user action needed)
     if (!request.nip46InFlight) {
-      await updateBadge(pending.filter(r => !r.nip46InFlight).length);
+      await updateSignerBadge();
     }
   });
   if (limitExceeded) {
@@ -112,6 +145,8 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
   if (!request.nip46InFlight) {
     await openPopupForActiveTab(request.origin);
   }
+
+  if (revision !== lockRevision) { await removePendingFromStorage(id); throw new Error('Vault locked'); }
 
   // Return promise that resolves when popup decides (not used for nip46InFlight)
   return new Promise((resolve, reject) => {
@@ -138,6 +173,7 @@ async function queueNip46InFlight(request: QueueRequestInput): Promise<string> {
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
+    assertQueueCapacity(pending, request.origin);
     pending.push(entry);
     await browser.storage.session.set({ signerPending: pending });
     // No badge update for in-flight entries
@@ -168,24 +204,12 @@ export async function cancelNip46InFlight(reqId: string): Promise<void> {
   await removeNip46InFlight(reqId);
 }
 
-async function updateBadge(count: number): Promise<void> {
-  try {
-    const text = count > 0 ? String(count) : '';
-    await browser.action.setBadgeText({ text });
-    if (count > 0) {
-      await browser.action.setBadgeBackgroundColor({ color: '#f59e0b' });
-    }
-  } catch (e) {
-    console.warn('[SIGNER] updateBadge failed:', (e as Error).message);
-  }
-}
-
 async function removePendingFromStorage(id: string): Promise<void> {
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = ((data.signerPending as PendingRequest[] | undefined) || []).filter((r: PendingRequest) => r.id !== id);
     await browser.storage.session.set({ signerPending: pending });
-    await updateBadge(pending.filter(r => !r.nip46InFlight).length);
+    await updateSignerBadge();
   });
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
@@ -246,7 +270,7 @@ export async function resolveBatch(origin: string, permKey: string, decision: Re
     }
     const remaining = pending.filter(r => !match(r));
     await browser.storage.session.set({ signerPending: remaining });
-    await updateBadge(remaining.filter(r => !r.nip46InFlight).length);
+    await updateSignerBadge();
   });
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
@@ -289,7 +313,7 @@ export async function onVaultUnlocked(): Promise<void> {
       hadWaiters = true;
       const remaining = pending.filter(r => !r.waitingForUnlock);
       await browser.storage.session.set({ signerPending: remaining });
-      await updateBadge(remaining.filter(r => !r.nip46InFlight).length);
+      await updateSignerBadge();
     }
   });
   if (hadWaiters) {
@@ -309,7 +333,7 @@ export async function cleanupStale(): Promise<void> {
   clearGetPubkeyCooldown();
   await _lock.run(async () => {
     await browser.storage.session.set({ signerPending: [] });
-    await updateBadge(0);
+    await updateSignerBadge();
   });
   // Every other mutation of `signerPending` broadcasts; this one did not, and it
   // is the one that empties the queue. A popup open across a worker restart —
@@ -334,6 +358,8 @@ export async function rejectPendingForAccount(accountId: string): Promise<void> 
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
     const forAccount = pending.filter(r => r.accountId === accountId);
     for (const req of forAccount) {
+      _unlockWaiters.get(req.id)?.reject(new Error('Account switched'));
+      _nip46Aborts.get(req.id)?.abort();
       const resolver = _pendingResolvers.get(req.id);
       if (resolver) {
         resolver({ allow: false, reason: 'Account switched' });
@@ -344,7 +370,7 @@ export async function rejectPendingForAccount(accountId: string): Promise<void> 
     }
     const remaining = pending.filter(r => r.accountId !== accountId);
     await browser.storage.session.set({ signerPending: remaining });
-    await updateBadge(remaining.filter(r => !r.nip46InFlight).length);
+    await updateSignerBadge();
   });
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
@@ -364,7 +390,7 @@ export async function cancelAllUnlockWaiters(): Promise<void> {
     const pending: PendingRequest[] = ((data.signerPending as PendingRequest[] | undefined) || [])
       .filter((r: PendingRequest) => !r.waitingForUnlock);
     await browser.storage.session.set({ signerPending: pending });
-    await updateBadge(pending.filter(r => !r.nip46InFlight).length);
+    await updateSignerBadge();
   });
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
@@ -398,6 +424,7 @@ export async function waitForVaultUnlock(origin: string, type: string, accountId
   await vault.whenStartupUnlockSettled();
   if (!vault.isLocked()) return;
 
+  const revision = lockRevision;
   const markerId = `unlock_${crypto.randomUUID()}`;
   const marker: PendingRequest = {
     id: markerId,
@@ -413,6 +440,8 @@ export async function waitForVaultUnlock(origin: string, type: string, accountId
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
+    if (revision !== lockRevision) throw new Error('Vault locked');
+    assertQueueCapacity(pending, origin);
     pending.push(marker);
     await browser.storage.session.set({ signerPending: pending });
   });
@@ -424,6 +453,8 @@ export async function waitForVaultUnlock(origin: string, type: string, accountId
   await openPopupForActiveTab(origin);
 
   try {
+    if (revision !== lockRevision) throw new Error('Vault locked');
+    if (!vault.isLocked()) return;
     // Wait for unlock via direct callback OR polling fallback
     await new Promise<void>((resolve, reject) => {
       // Primary: resolved by onVaultUnlocked() or cancelled by cancelUnlockWaiter()
@@ -459,16 +490,44 @@ export async function waitForVaultUnlock(origin: string, type: string, accountId
       const data = await browser.storage.session.get('signerPending');
       const pending: PendingRequest[] = ((data.signerPending as PendingRequest[] | undefined) || []).filter((r: PendingRequest) => r.id !== markerId);
       await browser.storage.session.set({ signerPending: pending });
-      await updateBadge(pending.filter(r => !r.nip46InFlight).length);
+      await updateSignerBadge();
     });
     browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
   }
 }
+// Canceled UI tracking must not free capacity for work still retained by the
+// bunker client: remote requests already transmitted cannot be recalled.
+const remoteCounts = new Map<string, number>();
+let remoteCount = 0;
 /** Track and cancel remote work without exposing the abort registry. */
-export async function runNip46Request(acct: SafeAccount, method: string, data: unknown, origin: string): Promise<SignedEvent | string> {
-  const id = await queueNip46InFlight({ type: method, origin, accountId: acct.id });
+export async function runNip46Request(acct: SafeAccount, method: string, data: unknown, origin: string, session?: AccountSession): Promise<SignedEvent | string> {
+  if (session) assertAccountSession(session);
+  const count = remoteCounts.get(origin) || 0;
+  if (count >= MAX_IN_FLIGHT_PER_ORIGIN || remoteCount >= MAX_IN_FLIGHT_GLOBAL) throw new Error('Too many remote requests');
+  remoteCounts.set(origin, count + 1);
+  remoteCount++;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    remoteCount--;
+    const remaining = (remoteCounts.get(origin) || 1) - 1;
+    if (remaining) remoteCounts.set(origin, remaining);
+    else remoteCounts.delete(origin);
+  };
+  const revision = lockRevision;
+  let id: string;
+  try { id = await queueNip46InFlight({ type: method, origin, accountId: acct.id }); }
+  catch (error) { release(); throw error; }
   const ac = new AbortController();
   _nip46Aborts.set(id, ac);
-  try { return await raceAbort(ac.signal, handleNip46Request(acct, method, data, origin)); }
-  finally { _nip46Aborts.delete(id); await removeNip46InFlight(id); }
+  try {
+    if (revision !== lockRevision) { release(); throw new Error('Vault locked'); }
+    if (session) {
+      try { assertAccountSession(session); }
+      catch (error) { release(); throw error; }
+    }
+    const work = handleNip46Request(acct, method, data, origin).finally(release);
+    return await raceAbort(ac.signal, work);
+  } finally { _nip46Aborts.delete(id); await removeNip46InFlight(id); }
 }

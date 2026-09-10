@@ -11,6 +11,30 @@ const TEST_PASSWORD = 'testpassword123';
 const TEST_PRIVKEY_HEX = 'b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';
 const TEST_PUBKEY_HEX = 'dff1d77f2a671c5f36183726db2341be58feae1da2deced843240f7b502ba659';
 
+describe('audit A5: vault lifecycle cancellation', () => {
+  for (const operation of ['lock', 'destroy'] as const) {
+    it(`a pending unlock cannot undo ${operation}`, async () => {
+      resetMockStorage(); vault.lock();
+      await vault.create(TEST_PASSWORD, makePayload());
+      const original = browserMock.storage.local.get;
+      let entered!: () => void, release!: () => void;
+      const started = new Promise<void>(r => { entered = r; });
+      const gate = new Promise<void>(r => { release = r; });
+      browserMock.storage.local.get = async (...args) => {
+        const result = await original(...args); entered(); await gate; return result;
+      };
+      try {
+        const unlocking = vault.unlock(TEST_PASSWORD);
+        await started;
+        const cancellation = operation === 'destroy' ? vault.destroy() : vault.lock();
+        release(); await unlocking; await cancellation;
+        assert.equal(vault.isLocked(), true);
+        if (operation === 'destroy') assert.equal(await vault.exists(), false);
+      } finally { release(); browserMock.storage.local.get = original; vault.lock(); }
+    });
+  }
+});
+
 function makePayload(privkey: string = TEST_PRIVKEY_HEX, pubkey: string = TEST_PUBKEY_HEX): VaultPayload {
   return {
     accounts: [{

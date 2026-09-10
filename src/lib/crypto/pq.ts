@@ -1,3 +1,4 @@
+import { normalizeDerivationPath, standardDerivationIndex } from '@domain/accounts/derivation.ts';
 import {
   PQ_PROFILE,
   ALG_KEM,
@@ -15,6 +16,8 @@ import {
   TAG_BYTES,
   HEADER_BYTES,
   MAX_PLAINTEXT_BYTES,
+  PQ_MAX_ENCODED_LENGTH,
+  PQ_MAX_ENVELOPE_BYTES,
 } from '@constants/crypto/pq.ts';
 
 /**
@@ -76,13 +79,26 @@ function deriveSeed(seed: Uint8Array, info: string, length: number): Uint8Array 
 }
 
 /** `info` string for the ML-KEM seed at a given NIP-06 account index. */
-export function kemInfo(account: number = 0): string {
-  return `${PQ_PROFILE}/${ALG_KEM}/${account}`;
+export function kemInfo(account: number | string = 0): string {
+  return `${PQ_PROFILE}/${ALG_KEM}/${derivationSelector(account)}`;
 }
 
 /** `info` string for the ML-DSA seed at a given NIP-06 account index. */
-export function dsaInfo(account: number = 0): string {
-  return `${PQ_PROFILE}/${ALG_DSA}/${account}`;
+export function dsaInfo(account: number | string = 0): string {
+  return `${PQ_PROFILE}/${ALG_DSA}/${derivationSelector(account)}`;
+}
+
+// Standard paths retain the published numeric derivation. Custom paths use a
+// separate, full-path namespace; never collapse them to their last child index.
+function derivationSelector(account: number | string): string {
+  if (typeof account === 'number') {
+    if (!Number.isSafeInteger(account) || account < 0) throw new Error('Invalid account index');
+    return String(account);
+  }
+  const path = normalizeDerivationPath(account);
+  if (!path) throw new Error('Invalid derivation path');
+  const index = standardDerivationIndex(path);
+  return index === null ? `path/${path}` : String(index);
 }
 
 /**
@@ -92,12 +108,9 @@ export function dsaInfo(account: number = 0): string {
  * @param account - NIP-06 account index, so PQ keys track the secp256k1 key
  * @returns ML-KEM and ML-DSA key pairs
  */
-export function derivePqKeys(seed: Uint8Array, account: number = 0): PqKeys {
+export function derivePqKeys(seed: Uint8Array, account: number | string = 0): PqKeys {
   if (!(seed instanceof Uint8Array) || seed.length === 0) {
     throw new Error('Invalid seed');
-  }
-  if (!Number.isInteger(account) || account < 0) {
-    throw new Error('Invalid account index');
   }
 
   const kemSeed = deriveSeed(seed, kemInfo(account), KEM_SEED_BYTES);
@@ -414,7 +427,9 @@ export function hybridKey(sharedSecret: Uint8Array, conversationKey: Uint8Array)
 /** True if this payload is one of our envelopes, so decrypt can route without being told. */
 export function isPqEnvelope(payload: string): boolean {
   try {
+    if (payload.length > PQ_MAX_ENCODED_LENGTH) throw new Error('Payload too long');
     const bytes = _unb64(payload);
+    if (bytes.length > PQ_MAX_ENVELOPE_BYTES) throw new Error('Payload too long');
     return (
       bytes.length >= HEADER_BYTES + TAG_BYTES &&
       bytes[0] === ENVELOPE_VERSION &&
@@ -435,12 +450,14 @@ export function pqEncrypt(
   if (recipientKemKey.length !== KEM_PUBLIC_KEY_BYTES) throw new Error('Invalid ML-KEM public key length');
   if (conversationKey.length !== 32) throw new Error('Invalid conversation key');
 
+  if (plaintext.length > MAX_PLAINTEXT_BYTES) throw new Error('Message too long');
+  const padded = pad(encoder.encode(plaintext));
   const { cipherText: kemCt, sharedSecret } = encapsulate(recipientKemKey);
   const key = hybridKey(sharedSecret, conversationKey);
   const nonce = randomBytes(NONCE_BYTES);
   try {
     const sealed = xchacha20poly1305(key, nonce, associatedData(sender, recipient, kemCt))
-      .encrypt(pad(encoder.encode(plaintext)));
+      .encrypt(padded);
     const out = new Uint8Array(HEADER_BYTES + sealed.length);
     out[0] = ENVELOPE_VERSION;
     out[1] = ALG_MLKEM1024_XCHACHA;
@@ -464,7 +481,9 @@ export function pqDecrypt(
 ): string {
   try {
     if (conversationKey.length !== 32) throw new Error('x');
+    if (payload.length > PQ_MAX_ENCODED_LENGTH) throw new Error('Payload too long');
     const bytes = _unb64(payload);
+    if (bytes.length > PQ_MAX_ENVELOPE_BYTES) throw new Error('Payload too long');
     if (bytes.length < HEADER_BYTES + TAG_BYTES) throw new Error('x');
     if (bytes[0] !== ENVELOPE_VERSION || bytes[1] !== ALG_MLKEM1024_XCHACHA) throw new Error('x');
 

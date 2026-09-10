@@ -203,3 +203,22 @@ describe('relay publication uses the displayed configuration', () => {
     assert.equal((await browser.storage.local.get(cacheKey))[cacheKey],undefined);
   });
 });
+
+describe('NIP-46 session display boundary', () => {
+  afterEach(async () => { await vault.destroy(); });
+  it('returns public session status without connection secrets', async () => {
+    resetMockStorage(); await vault.destroy();
+    await vault.create('testpassword123', {
+      accounts: [{ id: 'remote', name: 'Remote', type: 'nip46', pubkey: '33'.repeat(32), privkey: null, mnemonic: null, readOnly: false, createdAt: 1,
+        nip46Config: { bunkerUrl: 'bunker://remote?secret=private', relay: 'wss://relay.example', secret: 'private', localPrivkey: '22'.repeat(32) } }],
+      activeAccountId: 'remote',
+    });
+    await browser.storage.local.set({ activeAccountId: 'remote' });
+    assert.deepEqual(await handlers.get('nip46_getSessionInfo')!({}), {
+      bunkerPubkey: '33'.repeat(32), relay: 'wss://relay.example', connected: false,
+      accountId: 'remote', accountName: 'Remote',
+    });
+    vault.lock();
+    assert.equal(await handlers.get('nip46_getSessionInfo')!({}), null);
+  });
+});

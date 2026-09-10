@@ -7,6 +7,18 @@ export interface EncryptedBackup {
   ct: string;
 }
 
+/** Identify the password-encrypted export envelope without decrypting its contents. */
+export function isEncryptedBackup(contents: string): boolean {
+  try {
+    const value = JSON.parse(contents);
+    return value?.v === 1 && ['salt', 'iv', 'ct'].every(
+      field => typeof value[field] === 'string' && value[field].length > 0,
+    );
+  } catch {
+    return false;
+  }
+}
+
 function toBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
@@ -64,9 +76,7 @@ export async function encryptBackup(plaintext: string, password: string): Promis
 /**
  * Read a backup file back.
  *
- * Exists so the format can be proven to round-trip. Nothing in the extension
- * imports a backup today — these files are for the user to keep — but a backup
- * format with no decrypt path is a claim nobody has ever checked.
+ * Used by PQ key import to restore password-encrypted exports.
  *
  * @throws if the envelope is malformed, or the password is wrong (AES-GCM's
  *         authentication tag fails, which is indistinguishable from corruption

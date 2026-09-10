@@ -105,6 +105,25 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 
 describe('actual content bridge concurrency', () => {
+  it('runtime messages derive full frame origins and reject opaque senders', async () => {
+    const source = readFileSync(new URL('../background.ts', import.meta.url), 'utf8');
+    const listener = source.slice(source.indexOf('browser.runtime.onMessage.addListener'), source.indexOf('// Port-based handler'));
+    let receive: any;
+    const seen: string[] = [];
+    runInNewContext(ts.transpileModule(listener, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {
+      browser: {runtime:{onMessage:{addListener(fn: any) { receive = fn; }}}},
+      PRIVILEGED_METHODS: new Set(), URL,
+      handlePageRequest: async ({params}: any) => { seen.push(params.origin); return params.origin; },
+    });
+    const call = (sender: any) => new Promise<any>(resolve => receive({method:'webln_enable',params:{origin:'https://forged.test'}},sender,resolve));
+    const response = await call({frameId:2,url:'https://frame.test:8443/path',tab:{url:'https://parent.test'}});
+    assert.equal(response.result, 'https://frame.test:8443');
+    for (const sender of [{frameId:2,tab:{url:'https://parent.test'}}, {url:'https://site.test',origin:'null'}, {url:'garbage'}]) {
+      assert.equal((await call(sender)).error, 'Cannot determine request origin');
+    }
+    assert.deepEqual(seen, ['https://frame.test:8443']);
+  });
+
   it('background echoes IDs for out-of-order results and denied requests', async () => {
     const source = readFileSync(new URL('../background.ts', import.meta.url), 'utf8');
     const listener = source.slice(source.indexOf('browser.runtime.onConnect.addListener'), source.indexOf('// Keep-alive alarm'));
@@ -112,34 +131,46 @@ describe('actual content bridge concurrency', () => {
     let receive: any;
     const replies: any[] = [];
     const completions: Record<string, (value: string) => void> = {};
+    const receivedOrigins: string[] = [];
     runInNewContext(ts.transpileModule(listener, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {
       browser: {runtime:{onConnect:{addListener(fn: any) { connect = fn; }}}},
       forgetTabOrigin() {}, rememberTabOrigin() {}, URL, console,
-      handleRequest: ({id}: any) => new Promise(resolve => { completions[id] = resolve; }),
+      handlePageRequest: ({id, params}: any) => new Promise(resolve => { receivedOrigins.push(params.origin); completions[id] = resolve; }),
     });
-    const port = {name:'nip07',sender:{frameId:0,tab:{id:1,url:'https://site.test'}},
+    const port = {name:'nip07',sender:{frameId:0,tab:{id:1,url:'https://site.test:8443/path'}},
       onDisconnect:{addListener() {}}, onMessage:{addListener(fn: any) { receive = fn; }},
       postMessage: (reply: any) => replies.push(reply)};
     connect(port);
     const first = receive({id:1,method:'nip07_signEvent',params:{}});
     const second = receive({id:2,method:'nip07_signEvent',params:{}});
+    assert.deepEqual(receivedOrigins, ['https://site.test:8443', 'https://site.test:8443']);
     completions[2]('two'); await second;
     completions[1]('one'); await first;
     await receive({id:3,method:'vault_unlock',params:{}});
     assert.deepEqual(replies.map(r => [r.id,r.result || r.error]), [[2,'two'],[1,'one'],[3,'Permission denied']]);
+    port.sender.tab.url = 'data:text/plain,opaque';
+    await receive({id:4,method:'nip07_getPublicKey',params:{origin:'https://trusted.test'}});
+    assert.equal(replies.at(-1).error, 'Cannot determine request origin');
+    port.sender.tab.url = 'not a URL';
+    await receive({id:5,method:'webln_enable'});
+    assert.equal(replies.at(-1).error, 'Cannot determine request origin');
   });
 
   function bridge() {
     const ports: any[] = [];
     const responses: any[] = [];
     let receive: any;
+    let internal: any;
+    const timers: (() => void)[] = [];
+    let reloads = 0;
     const window = {
-      location: { origin: 'https://site.test', hostname: 'site.test', protocol: 'https:' },
+      location: { origin: 'https://site.test', hostname: 'site.test', protocol: 'https:', reload: () => { reloads++; } },
       addEventListener: (_: string, listener: any) => { receive = listener; },
       postMessage: (message: any) => responses.push(message),
     };
     const browser = { runtime: {
-      onMessage: { addListener() {} },
+      id: 'extension-id', getURL: (path: string) => `chrome-extension://extension-id/${path}`,
+      onMessage: { addListener(listener: any) { internal = listener; } },
       connect: ({name}: any) => {
         const port: any = { name, sent: [], postMessage(message: any) { this.sent.push(message); },
           onMessage: { addListener(listener: any) { port.reply = listener; } },
@@ -151,9 +182,43 @@ describe('actual content bridge concurrency', () => {
     } };
     const source = readFileSync(new URL('../content.ts', import.meta.url), 'utf8');
     runInNewContext(ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
-      { window, browser, exports: {}, console });
-    return { ports, responses, send: (id: string, type = 'NIP07_REQUEST', method = 'signEvent') => receive({source:window,data:{type,id,method,params:{}}}) };
+      { window, browser, exports: {}, console, setTimeout: (fn: () => void) => timers.push(fn) });
+    return { ports, responses, internal: (...args: any[]) => internal(...args), reloads: () => reloads, flush: () => timers.splice(0).forEach(fn => fn()), send: (id: string, type = 'NIP07_REQUEST', method = 'signEvent') => receive({source:window,data:{type,id,method,params:{}}}) };
   }
+
+  it('ignores account broadcasts for a different origin after navigation', () => {
+    const b = bridge();
+    b.internal({ type:'NOSTR_ACCOUNT_CHANGED', pubkey:'secret-identity', origin:'https://site.test:8443' }, {}, () => {});
+    assert.equal(b.responses.length, 0);
+    b.internal({ type:'NOSTR_ACCOUNT_CHANGED', pubkey:'own-identity', origin:'https://site.test' }, {}, () => {});
+    assert.equal(b.responses[0].pubkey, 'own-identity');
+  });
+
+  it('forwards the full page origin for both channels', () => {
+    const b = bridge();
+    b.send('nip', 'NIP07_REQUEST', 'getPublicKey');
+    b.send('ln', 'WEBLN_REQUEST', 'enable');
+    assert.deepEqual(b.ports.map(p => p.sent[0].params.origin), ['https://site.test', 'https://site.test']);
+  });
+
+  it('acknowledges an internal page reload before unloading the document', () => {
+    const b = bridge();
+    const replies: any[] = [];
+    b.internal({ type: 'NOSTR_RELOAD_PAGE' }, { id: 'extension-id', url: 'chrome-extension://extension-id/popup.html' }, (reply: any) => replies.push(reply));
+    assert.equal(replies[0]?.ok, true);
+    assert.equal(b.reloads(), 0);
+    b.flush();
+    assert.equal(b.reloads(), 1);
+  });
+
+  it('ignores reload requests from websites and other extensions', () => {
+    const b = bridge();
+    for (const sender of [ {}, { id: 'extension-id', url: 'https://site.test' }, { id: 'other-id', url: 'chrome-extension://extension-id/popup.html' } ]) {
+      b.internal({ type: 'NOSTR_RELOAD_PAGE' }, sender, () => assert.fail('untrusted reload acknowledged'));
+    }
+    b.flush();
+    assert.equal(b.reloads(), 0);
+  });
 
   it('forwards simultaneous requests before any approval and routes out-of-order replies', async () => {
     const b = bridge();
@@ -1678,4 +1743,23 @@ describe('communication: permissions × lock — cross-cutting', () => {
       /Permission denied/
     );
   });
+});
+
+it('page ingress bounds all origins and releases settled requests including failures', async () => {
+  const source = readFileSync(new URL('../background.ts', import.meta.url), 'utf8');
+  const section = source.slice(source.indexOf('// Page request resource budget'), source.indexOf('// ── Message listeners'));
+  const completions: Array<{resolve:(value:unknown)=>void,reject:(error:Error)=>void}> = [];
+  const context: any = {MAX_IN_FLIGHT_PER_ORIGIN:64,MAX_IN_FLIGHT_GLOBAL:256,
+    handleRequest:()=>new Promise((resolve,reject)=>completions.push({resolve,reject}))};
+  runInNewContext(ts.transpileModule(section+'\nglobalThis.dispatch = handlePageRequest;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, context);
+  const dispatch = (origin:string)=>context.dispatch({method:'nip07_getPublicKey',params:{origin}});
+  const first = Array.from({length:64},()=>dispatch('site.test').catch((e:Error)=>e.message));
+  await assert.rejects(dispatch('site.test'),/Too many/);
+  const others = Array.from({length:192},(_,i)=>dispatch(`other${i}.test`));
+  await assert.rejects(dispatch('final.test'),/Too many/);
+  completions[0].reject(new Error('denied')); await first[0];
+  const retry=dispatch('site.test');
+  for(const pending of completions) pending.resolve('ok');
+  await Promise.all([...first,...others,retry]);
+  const after=dispatch('site.test'); completions.at(-1)!.resolve('ok'); assert.equal(await after,'ok');
 });

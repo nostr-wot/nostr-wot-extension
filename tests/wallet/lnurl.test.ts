@@ -1,3 +1,4 @@
+import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
 /**
  * LNURL-pay / Lightning Address tests
  *
@@ -15,15 +16,13 @@ import { bech32 } from '@scure/base';
 import { parseLnurl, parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl, assertPublicHttpsUrl, type LnurlPayParams } from '../../src/domain/wallet/lnurl.ts';
 import { fetchPayParams, requestInvoice } from '../../src/services/wallet/lnurl.ts';
 
-// lnbc2500u = 250,000 sats
-const INVOICE_250K =
-  'lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp';
-
 // Valid bolt11 with no amount in the HRP
 const INVOICE_AMOUNTLESS =
   'lnbc1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq8rkx3yf5tcsyz3d73gafnh3cax9rn449d9p5uxz9ezhhypd0elx87sjle52x86fux2ypatgddc6k63n7erqz25le42c4u4ecky03ylcqca784w';
 
 const METADATA = JSON.stringify([['text/plain', 'Sats for alice'], ['text/identifier', 'alice@example.com']]);
+
+const INVOICE_250K = makeLnurlInvoice(METADATA);
 
 const PAY_PARAMS_BODY = {
   tag: 'payRequest',

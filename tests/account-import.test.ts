@@ -39,3 +39,9 @@ describe('countWords', () => {
     assert.equal(countWords('one'), 1);
   });
 });
+
+it('distinguishes PQ-only JSON from account secrets regardless of whitespace', () => {
+  assert.equal(detectImportType(JSON.stringify({v:'nip-pqc/v1',kem:{},dsa:{}},null,2)), 'pqc');
+  assert.equal(detectImportType('{"kem":{"secret":"x"},"dsa":{"secret":"y"}}'), 'pqc');
+  assert.equal(detectImportType('{ ' + Array(10).fill('word').join(' ') + ' }'), null);
+});

@@ -1,8 +1,14 @@
-import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Input from '@components/Input';
 import Button from '@components/Button';
+import DetailDisclosure from '@components/DetailDisclosure';
+import useSubAccountPreview from '@hooks/useSubAccountPreview.ts';
+import { MAX_ACCOUNT_NAME_LENGTH } from '@constants/accounts.ts';
+import { npubEncode } from '@lib/crypto/bech32.ts';
+import { normalizeDerivationPath, identifyDerivationPath } from '@domain/accounts/derivation.ts';
+import type { SafeAccount } from '@domain/accounts/types.ts';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import FormError from '@components/FormError';
 import Heading from '@components/Heading';
@@ -12,16 +18,18 @@ import Container from '@components/Container';
 import Text from '@components/Text';
 
 interface SubAccountStepProps {
-  onNext: (account: any) => void;
+  onNext: (account: SafeAccount) => void;
 }
 
 export default function SubAccountStep({ onNext }: SubAccountStepProps) {
-  const [account, setAccount] = useState<any>(null);
-  const [derivationIndex, setDerivationIndex] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { account, path, setPath, seedName, loading, error: previewError, needsUnlock, retry } = useSubAccountPreview();
+  const [name, setName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [needsUnlock, setNeedsUnlock] = useState(false);
+  const pending = useRef(false);
+  const validPath = normalizeDerivationPath(path);
+  const knownPath = identifyDerivationPath(path);
+  const displayName = name ?? account?.name ?? '';
   // Through the shared hook, which carries the escalating brute-force lockout.
   // This form called vault_unlock directly, so the add-account path was an
   // unthrottled password oracle while every other unlock in the product was
@@ -33,48 +41,30 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
     loading: unlocking,
     unlock,
   } = useVaultUnlock({
-    onSuccess: () => { void generate(); },
+    onSuccess: () => { void retry(); },
     messages: {
       wrongPassword: t('key.wrongPassword'),
       unlockFailed: t('key.failedUnlock'),
     },
   });
 
-  const generate = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await rpc<{ account: any; derivationIndex: number }>('onboarding_generateSubAccount', {});
-      setAccount(result.account);
-      setDerivationIndex(result.derivationIndex);
-      setNeedsUnlock(false);
-    } catch (e: any) {
-      const msg = e.message || '';
-      if (msg.includes('locked')) {
-        setNeedsUnlock(true);
-      } else {
-        setError(msg || t('wizard.failedGenerate'));
-      }
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => { void generate(); }, []);
-
   const handleContinue = async () => {
-    if (!account) return;
+    if (!account || loading || pending.current || displayName.trim().length > MAX_ACCOUNT_NAME_LENGTH) return;
+    pending.current = true;
     setSaving(true);
     setError('');
     try {
-      await rpc('onboarding_addToVault', { account, upgradeFromReadOnly: null });
-      onNext(account);
+      const namedAccount = { ...account, name: displayName.trim() || account.name };
+      await rpc('onboarding_addToVault', { account: namedAccount, name: namedAccount.name, upgradeFromReadOnly: null });
+      onNext(namedAccount);
     } catch (e: any) {
       setError(e.message || t('wizard.failedCreateVault'));
       setSaving(false);
+      pending.current = false;
     }
   };
 
-  if (loading) {
+  if (loading && !path) {
     return (
       <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.generatingIdentity')}</Heading>
@@ -113,14 +103,6 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
     );
   }
 
-  if (error) {
-    return (
-      <Container className="flex-1">
-        <Heading className="mb-3">{t('common.error')}</Heading>
-        <FormError>{error}</FormError>
-      </Container>
-    );
-  }
 
   return (
     <Container className="flex-1">
@@ -130,29 +112,43 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
       </Text>
 
       <Container gap={4} className="bg-surface border border-card-border rounded-panel py-6 px-7 mb-6">
-        <FieldDisplay className="py-0" label={t('wizard.typeLabel')} value={t('wizard.subAccountType')} />
-        <FieldDisplay
-          className="py-0"
-          mono
-          label={t('wizard.derivationPath')}
-          value={`m/44'/1237'/0'/0/${derivationIndex}`}
-        />
-        {account?.pubkey && (
-          <FieldDisplay
-            className="py-0"
-            mono
-            label={t('wizard.publicKeyLabel')}
-            value={`${account.pubkey.slice(0, 12)}...${account.pubkey.slice(-8)}`}
-          />
-        )}
+        <Container gap={3}>
+          <SectionLabel htmlFor="subaccount-name" inline>{t('wizard.accountName')}</SectionLabel>
+          <Input id="subaccount-name" value={displayName} maxLength={MAX_ACCOUNT_NAME_LENGTH}
+            placeholder={t('wizard.accountNamePlaceholder')} disabled={saving}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setName(event.target.value)} />
+        </Container>
+        {seedName && <FieldDisplay className="py-0" label={t('wizard.sourceSeed')} value={seedName} />}
+        <DetailDisclosure label={t('common.advanced')}>
+          <SectionLabel htmlFor="subaccount-path" inline>{t('wizard.derivationPath')}</SectionLabel>
+          <Input id="subaccount-path" value={path} disabled={saving}
+            aria-describedby="subaccount-path-hint"
+            error={path && !validPath ? t('wizard.invalidDerivationPath') : undefined}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => {
+              setPath(event.target.value);
+              setError('');
+            }} />
+          <Text variant="hint">{t('wizard.customPathHint')}</Text>
+          <Text id="subaccount-path-hint" variant="hint" role="status" aria-live="polite">
+            {validPath && (knownPath
+              ? t(knownPath.network === 'Nostr' ? 'wizard.nostrPathHint' : 'wizard.networkPathHint', knownPath)
+              : t('wizard.unknownPathHint'))}
+          </Text>
+        </DetailDisclosure>
+        {loading && <Text variant="hint" role="status">{t('wizard.updatingPreview')}</Text>}
+        {account?.pubkey && <>
+          <FieldDisplay mono label="npub" value={npubEncode(account.pubkey)} />
+          <FieldDisplay mono label="hex" value={account.pubkey} />
+        </>}
       </Container>
 
+      <FormError>{error || previewError}</FormError>
       <Text variant="muted" className="text-sm mb-4">
         {t('wizard.subAccountHint')}
       </Text>
 
       <Container variant="row" gap={4} stickyFooter>
-        <Button className="flex-1" onClick={handleContinue} disabled={saving}>
+        <Button className="flex-1" onClick={handleContinue} disabled={saving || loading || !account || displayName.trim().length > MAX_ACCOUNT_NAME_LENGTH}>
           {saving ? t('wizard.addingAccount') : t('common.continue')}
         </Button>
       </Container>

@@ -1,3 +1,4 @@
+import { siteScopes, sitePermissionBucket } from '@domain/site/siteScope.ts';
 import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, DM_SIGN_KINDS } from '@constants/permissions.ts';
 /**
  * Signing Permission Policies -- Per-domain, per-account, per-kind
@@ -86,17 +87,7 @@ export function permissionKey(method: string, kind?: number | null): string {
  * @returns "allow" | "deny" | "ask"
  */
 export async function check(domain: string, method: string, kind?: number, accountId?: string): Promise<PermissionDecision> {
-  const perms = await load();
-  if (!perms[domain]) {
-    return 'ask';
-  }
-
-  const useDefaults = await getUseGlobalDefaults();
-  const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-  const data = perms[domain][bucket];
-  if (!data) {
-    return 'ask';
-  }
+  const data = await getForDomain(domain, accountId);
 
   // Deny-wins cascade: consult kind-specific, method-level, and wildcard keys.
   // An explicit 'deny' at ANY consulted level short-circuits to 'deny' — a
@@ -109,7 +100,7 @@ export async function check(domain: string, method: string, kind?: number, accou
 
   for (const key of consulted) {
     if (data[key] === 'deny') {
-      console.warn('[PERMISSIONS] deny:', domain, key, 'bucket:', bucket);
+      console.warn('[PERMISSIONS] deny:', domain, key);
       return 'deny';
     }
   }
@@ -323,14 +314,12 @@ export async function clear(domain?: string, accountId?: string): Promise<void> 
   }
   await _lock.run(async () => {
     const perms = await load();
-    if (!perms[domain]) return;
-
     const useDefaults = await getUseGlobalDefaults();
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-
-    delete perms[domain][bucket];
-    if (Object.keys(perms[domain]).length === 0) {
-      delete perms[domain];
+    for (const scope of siteScopes(domain)) {
+      if (!perms[scope]) continue;
+      delete perms[scope][bucket];
+      if (Object.keys(perms[scope]).length === 0) delete perms[scope];
     }
     await browser.storage.local.set({ [STORAGE_KEY]: perms });
     invalidateCache();
@@ -349,8 +338,7 @@ export async function clearAllForDomain(domain: string): Promise<void> {
   if (!domain) return;
   await _lock.run(async () => {
     const perms = await load();
-    if (!perms[domain]) return;
-    delete perms[domain];
+    for (const scope of siteScopes(domain)) delete perms[scope];
     await browser.storage.local.set({ [STORAGE_KEY]: perms });
     invalidateCache();
   });
@@ -472,10 +460,9 @@ export async function getAll(accountId?: string): Promise<Record<string, Permiss
  */
 export async function getForDomain(domain: string, accountId?: string): Promise<PermissionBucket> {
   const perms = await load();
-  if (!perms[domain]) return {};
   const useDefaults = await getUseGlobalDefaults();
   const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-  return { ...(perms[domain][bucket] || {}) };
+  return sitePermissionBucket(perms, domain, bucket) as PermissionBucket;
 }
 
 /**

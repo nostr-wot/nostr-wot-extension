@@ -6,56 +6,93 @@ import { bytesToHex, hexToBytes, randomBytes } from '@lib/crypto/utils.ts';
 import { getPublicKey } from '@lib/crypto/secp256k1.ts';
 import { BunkerSigner, parseBunkerInput } from 'nostr-tools/nip46';
 
-// NIP-46 client instances (keyed by account ID)
-const _nip46Clients: Map<string, BunkerSigner> = new Map();
+import { captureAccountSession, assertAccountSession, type AccountSession } from './accountSession.ts';
 
-// -- NIP-46 Remote Signer (nostr-tools BunkerSigner) --
+interface RemoteClient {
+  session: AccountSession;
+  signer?: BunkerSigner;
+  secretKey?: Uint8Array;
+  connection: Promise<BunkerSigner>;
+  disposed: boolean;
+  connected: boolean;
+  cancellations: Set<(error: Error) => void>;
+}
 
-async function getNip46Client(acct: SafeAccount): Promise<BunkerSigner> {
-  if (_nip46Clients.has(acct.id)) {
-    return _nip46Clients.get(acct.id)!;
-  }
+const _nip46Clients = new Map<string, RemoteClient>();
+let lockCleanupRegistered = false;
 
-  if (!acct.nip46Config) throw new Error('No NIP-46 config');
+function assertClient(client: RemoteClient): void {
+  if (client.disposed) throw new Error('NIP-46 disconnected');
+  assertAccountSession(client.session);
+}
 
-  // Parse bunker URL to get { pubkey, relays, secret }
-  const bp = await parseBunkerInput(acct.nip46Config.bunkerUrl);
-  if (!bp) throw new Error('Failed to parse bunker URL');
+async function duringSession<T>(client: RemoteClient, operation: () => Promise<T>): Promise<T> {
+  assertClient(client);
+  let cancel!: (error: Error) => void;
+  const canceled = new Promise<never>((_resolve, reject) => { cancel = reject; });
+  client.cancellations.add(cancel);
+  try {
+    const result = await Promise.race([operation(), canceled]);
+    assertClient(client);
+    return result;
+  } finally { client.cancellations.delete(cancel); }
+}
 
-  // Restore persisted keypair or generate a new one
-  let secretKey: Uint8Array;
-  if (acct.nip46Config.localPrivkey) {
-    secretKey = hexToBytes(acct.nip46Config.localPrivkey);
-  } else {
-    secretKey = randomBytes(32);
-    // Persist the new keypair for reconnection after service worker restart
-    const pubkey = bytesToHex(getPublicKey(secretKey));
-    const privkeyHex = bytesToHex(secretKey);
-    try {
-      await vault.updateAccountNip46Keys(acct.id, privkeyHex, pubkey);
-    } catch (e) {
-      console.warn('[NIP-46] failed to persist keypair:', (e as Error).message);
+async function initializeClient(acct: SafeAccount, client: RemoteClient): Promise<BunkerSigner> {
+  try {
+    const remoteAccount = vault.getAccountForRemoteSigning(acct.id);
+    if (!remoteAccount) throw new Error('No NIP-46 config');
+    const { nip46Config } = remoteAccount;
+    const bp = await parseBunkerInput(nip46Config.bunkerUrl);
+    assertClient(client);
+    if (!bp) throw new Error('Failed to parse bunker URL');
+    const secretKey = nip46Config.localPrivkey
+      ? hexToBytes(nip46Config.localPrivkey) : randomBytes(32);
+    client.secretKey = secretKey;
+    if (!nip46Config.localPrivkey) {
+      await vault.updateAccountNip46Keys(acct.id, bytesToHex(secretKey), bytesToHex(getPublicKey(secretKey)));
+      assertClient(client);
     }
+    const signer = BunkerSigner.fromBunker(secretKey, bp, {
+      onauth(url: string) {
+        try { assertClient(client); } catch { return; }
+        if (!url.startsWith('https://')) {
+          console.warn('[NIP-46] rejected non-HTTPS auth URL');
+          return;
+        }
+        void browser.tabs.create({ url });
+      },
+    });
+    client.signer = signer;
+    await duringSession(client, () => signer.connect());
+    assertClient(client);
+    client.connected = true;
+    return signer;
+  } catch (error) {
+    if (_nip46Clients.get(acct.id) === client) disconnectNip46(acct.id);
+    throw error;
   }
+}
 
-  // Create BunkerSigner with auth_url handler (critical for nsec.app)
-  const signer = BunkerSigner.fromBunker(secretKey, bp, {
-    onauth(url: string) {
-      // E2: Only allow https:// auth URLs to prevent javascript:/data: injection
-      if (!url.startsWith('https://')) {
-        console.warn('[NIP-46] rejected non-HTTPS auth_url:', url);
-        return;
-      }
-      console.debug('[NIP-46] auth_url received, opening:', url);
-      void browser.tabs.create({ url });
-    }
-  });
-
-  // Send "connect" RPC to establish session
-  await signer.connect();
-
-  _nip46Clients.set(acct.id, signer);
-  return signer;
+async function getNip46Client(acct: SafeAccount, session: AccountSession): Promise<RemoteClient> {
+  assertAccountSession(session);
+  // Register lazily: vault and signer modules share initialization dependencies.
+  if (!lockCleanupRegistered) {
+    vault.onSessionInvalidated(() => { for (const id of _nip46Clients.keys()) disconnectNip46(id); });
+    lockCleanupRegistered = true;
+  }
+  let client = _nip46Clients.get(acct.id);
+  if (client && client.session.revision !== session.revision) {
+    disconnectNip46(acct.id); client = undefined;
+  }
+  if (!client) {
+    client = { session, disposed: false, connected: false, cancellations: new Set(), connection: undefined as unknown as Promise<BunkerSigner> };
+    _nip46Clients.set(acct.id, client);
+    client.connection = initializeClient(acct, client);
+  }
+  await client.connection;
+  assertClient(client);
+  return client;
 }
 
 /**
@@ -63,9 +100,13 @@ async function getNip46Client(acct: SafeAccount): Promise<BunkerSigner> {
  * NIP-46 ephemeral keys live in memory for the session lifetime (held by BunkerSigner).
  */
 export async function handleNip46Request(acct: SafeAccount, method: string, data: unknown, _origin: string): Promise<SignedEvent | string> {
-  const signer = await getNip46Client(acct);
-
-  switch (method) {
+  const session = captureAccountSession(acct.id);
+  assertAccountSession(session);
+  const client = await getNip46Client(acct, session);
+  assertAccountSession(session);
+  return duringSession(client, async () => {
+    const signer = client.signer!;
+    switch (method) {
     case 'signEvent':
       return signer.signEvent(data as UnsignedEvent);
     case 'nip04Encrypt': {
@@ -86,14 +127,18 @@ export async function handleNip46Request(acct: SafeAccount, method: string, data
     }
     default:
       throw new Error(`Unsupported NIP-46 method: ${method}`);
-  }
+    }
+  });
 }
 
 /**
  * Check if a NIP-46 client is currently connected
  */
 export function isNip46Connected(accountId: string): boolean {
-  return _nip46Clients.has(accountId);
+  const client = _nip46Clients.get(accountId);
+  if (!client?.connected) return false;
+  try { assertClient(client); return true; }
+  catch { disconnectNip46(accountId); return false; }
 }
 
 /**
@@ -101,8 +146,11 @@ export function isNip46Connected(accountId: string): boolean {
  */
 export function disconnectNip46(accountId: string): void {
   const client = _nip46Clients.get(accountId);
-  if (client) {
-    client.close().catch(() => {});
-    _nip46Clients.delete(accountId);
-  }
+  if (!client) return;
+  _nip46Clients.delete(accountId);
+  client.disposed = true;
+  for (const cancel of client.cancellations) cancel(new Error('NIP-46 disconnected'));
+  client.cancellations.clear();
+  void client.signer?.close().catch(() => {});
+  client.secretKey?.fill(0);
 }

@@ -5,6 +5,7 @@
  */
 
 import { describe, it, beforeEach } from 'node:test';
+import './security-audit-regressions.ts';
 import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import browserMock from './helpers/browser-mock.ts';
@@ -680,3 +681,5 @@ describe('security: vault KDF work factor', () => {
     assert.strictEqual(await vault.unlock('wrong-password-here'), false);
   });
 });
+
+import "./private-cache-regressions.ts";

@@ -1,3 +1,4 @@
+import { AsyncLock } from '@utils/asyncLock.ts';
 import { iterationsFor, deriveKey, encrypt, decrypt } from './encryption.ts';
 import { toMemoryAccount, toStoragePayload } from './serialization.ts';
 import { createAccountAccess } from './accountAccess.ts';
@@ -40,6 +41,47 @@ import { arrayToBase64, base64ToArray } from '../../lib/crypto/utils.ts';
 import browser from '@lib/browser.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 
+// All writes share one lane; synchronous invalidation always wins over queued work.
+const mutations = new AsyncLock();
+let sessionRevision = 0;
+const destroyListeners = new Set<() => Promise<void>>();
+export function onDestroy(listener: () => Promise<void>): () => void {
+  destroyListeners.add(listener);
+  return () => { destroyListeners.delete(listener); };
+}
+const unlockListeners = new Set<() => Promise<void>>();
+export function onUnlock(listener: () => Promise<void>): () => void {
+  unlockListeners.add(listener);
+  return () => { unlockListeners.delete(listener); };
+}
+async function notifyUnlocked(): Promise<void> {
+  for (const listener of unlockListeners) {
+    try { await listener(); } catch { console.warn('[Vault] Private cache migration deferred'); }
+  }
+}
+
+const lockListeners = new Set<() => void>();
+const sessionListeners = new Set<() => void>();
+export function getSessionRevision(): number { return sessionRevision; }
+export function onLock(listener: () => void): () => void {
+  lockListeners.add(listener);
+  return () => { lockListeners.delete(listener); };
+}
+export function onSessionInvalidated(listener: () => void): () => void {
+  sessionListeners.add(listener);
+  return () => { sessionListeners.delete(listener); };
+}
+function invalidateSession(): void {
+  sessionRevision++;
+  for (const listener of sessionListeners) {
+    try { listener(); } catch { /* Revocation must continue for other holders. */ }
+  }
+}
+function assertRevision(revision: number): void {
+  if (revision !== sessionRevision) throw new Error('Vault session changed');
+}
+
+let cacheKeyReady = false;
 let _cryptoKey: CryptoKey | null = null;
 let _decrypted: MemoryVaultPayload | null = null;
 let _autoLockTimer: ReturnType<typeof setTimeout> | null = null;
@@ -56,6 +98,8 @@ let _kdfIterations: number = PBKDF2_ITERATIONS;
  */
 function zeroDecryptedKeys(): void {
   if (!_decrypted) return;
+  cacheKeyReady = false;
+  _decrypted.cacheKeyBytes?.fill(0);
   for (const acct of _decrypted.accounts) {
     if (acct.privkeyBytes) acct.privkeyBytes.fill(0);
     if (acct.mnemonicBytes) acct.mnemonicBytes.fill(0);
@@ -122,37 +166,49 @@ function clearKeepAlive(): void {
  * @param payload - { accounts: [...], activeAccountId: string }
  */
 export async function create(password: string, payload: VaultPayload): Promise<void> {
-  // Enforce minimum password length when lockable (non-empty password)
-  if (password.length > 0 && password.length < 8) {
-    throw new Error('Password must be at least 8 characters');
-  }
-  const salt = crypto.getRandomValues(new Uint8Array(32));
-  const iterations = iterationsFor(password);
-  const key = await deriveKey(password, salt, iterations);
-  const json = JSON.stringify(payload);
-  const { iv, ciphertext } = await encrypt(key, json);
-
-  await browser.storage.local.set({
-    [STORAGE_KEY]: {
-      version: VAULT_VERSION,
-      iterations,
-      salt: arrayToBase64(salt),
-      iv: arrayToBase64(iv),
-      ciphertext: arrayToBase64(ciphertext)
+  invalidateSession();
+  const revision = sessionRevision;
+  return mutations.run(async () => {
+    assertRevision(revision);
+    // Enforce minimum password length when lockable (non-empty password)
+    if (password.length > 0 && password.length < 8) {
+      throw new Error('Password must be at least 8 characters');
     }
-  });
+    cacheKeyReady = false;
+    const salt = crypto.getRandomValues(new Uint8Array(32));
+    const iterations = iterationsFor(password);
+    const key = await deriveKey(password, salt, iterations);
+    const cacheKey = payload.cacheKey || (_decrypted?.cacheKeyBytes ? arrayToBase64(_decrypted.cacheKeyBytes) : arrayToBase64(crypto.getRandomValues(new Uint8Array(32))));
+    const json = JSON.stringify({ ...payload, cacheKey });
+    const { iv, ciphertext } = await encrypt(key, json);
 
-  _cryptoKey = key;
-  _kdfIterations = iterations;
-  // Password-change / lock-mode transitions call create() while already
-  // unlocked: zero the old key buffers before dropping the reference.
-  zeroDecryptedKeys();
-  _decrypted = {
-    accounts: payload.accounts.map(toMemoryAccount),
-    activeAccountId: payload.activeAccountId,
-  };
-  resetAutoLock();
-  armKeepAlive();
+    assertRevision(revision);
+    await browser.storage.local.set({
+      [STORAGE_KEY]: {
+        version: VAULT_VERSION,
+        iterations,
+        salt: arrayToBase64(salt),
+        iv: arrayToBase64(iv),
+        ciphertext: arrayToBase64(ciphertext)
+      }
+    });
+
+    assertRevision(revision);
+    _cryptoKey = key;
+    _kdfIterations = iterations;
+    // Password-change / lock-mode transitions call create() while already
+    // unlocked: zero the old key buffers before dropping the reference.
+    zeroDecryptedKeys();
+    _decrypted = {
+      cacheKeyBytes: base64ToArray(cacheKey),
+      accounts: payload.accounts.map(toMemoryAccount),
+      activeAccountId: payload.activeAccountId,
+    };
+    cacheKeyReady = true;
+    resetAutoLock();
+    armKeepAlive();
+    await notifyUnlocked();
+  });
 }
 
 /**
@@ -161,63 +217,79 @@ export async function create(password: string, payload: VaultPayload): Promise<v
  * @returns true if unlock succeeded
  */
 export async function unlock(password: string): Promise<boolean> {
-  const data = await browser.storage.local.get(STORAGE_KEY);
-  const vault = data[STORAGE_KEY] as
-    { salt: string; iv: string; ciphertext: string; iterations?: number } | undefined;
-  if (!vault) throw new Error('No vault found');
+  const revision = sessionRevision;
+  return mutations.run(async () => {
+    if (revision !== sessionRevision) return false;
+    const data = await browser.storage.local.get(STORAGE_KEY);
+    const vault = data[STORAGE_KEY] as
+      { salt: string; iv: string; ciphertext: string; iterations?: number } | undefined;
+    if (!vault) throw new Error('No vault found');
 
-  const salt = base64ToArray(vault.salt);
-  const iv = base64ToArray(vault.iv);
-  const ciphertext = base64ToArray(vault.ciphertext);
+    const salt = base64ToArray(vault.salt);
+    const iv = base64ToArray(vault.iv);
+    const ciphertext = base64ToArray(vault.ciphertext);
 
-  // Records written before the work factor was raised carry no `iterations` field;
-  // they were all written at the legacy count. Reading it from the record means the
-  // migration costs no extra KDF work and no guessing.
-  const storedIterations = typeof vault.iterations === 'number'
-    ? vault.iterations
-    : PBKDF2_ITERATIONS_LEGACY;
-  const key = await deriveKey(password, salt, storedIterations);
+    // Records written before the work factor was raised carry no `iterations` field;
+    // they were all written at the legacy count. Reading it from the record means the
+    // migration costs no extra KDF work and no guessing.
+    const storedIterations = typeof vault.iterations === 'number'
+      ? vault.iterations
+      : PBKDF2_ITERATIONS_LEGACY;
+    const key = await deriveKey(password, salt, storedIterations);
 
-  try {
-    const json = await decrypt(key, iv, ciphertext);
-    const parsed = JSON.parse(json) as VaultPayload;
-    // Password re-verification while already unlocked (e.g. change-password
-    // flow) replaces _decrypted: zero the old buffers first. Only done AFTER a
-    // successful decrypt — a failed unlock must not wipe the current session.
-    zeroDecryptedKeys();
-    _decrypted = {
-      accounts: parsed.accounts.map(toMemoryAccount),
-      activeAccountId: parsed.activeAccountId,
-    };
-    _cryptoKey = key;
-    _kdfIterations = storedIterations;
-    resetAutoLock();
-    armKeepAlive();
+    try {
+      const json = await decrypt(key, iv, ciphertext);
+      assertRevision(revision);
+      const parsed = JSON.parse(json) as VaultPayload;
+      // Password re-verification while already unlocked (e.g. change-password
+      // flow) replaces _decrypted: zero the old buffers first. Only done AFTER a
+      // successful decrypt — a failed unlock must not wipe the current session.
+      zeroDecryptedKeys();
+      _decrypted = {
+        cacheKeyBytes: parsed.cacheKey ? base64ToArray(parsed.cacheKey) : crypto.getRandomValues(new Uint8Array(32)),
+        accounts: parsed.accounts.map(toMemoryAccount),
+        activeAccountId: parsed.activeAccountId,
+      };
+      _cryptoKey = key;
+      _kdfIterations = storedIterations;
+      resetAutoLock();
+      armKeepAlive();
 
-    // Announce the unlock, not just the lock. On a "Never lock" vault the
-    // background auto-unlocks on every cold start, and a popup that opened
-    // during that window was told "locked" with no way to ever hear the
-    // correction — so it hid the wallet card and every locked-gated action for
-    // as long as it stayed open.
-    noteLockStateChanged();
+      // Announce the unlock, not just the lock. On a "Never lock" vault the
+      // background auto-unlocks on every cold start, and a popup that opened
+      // during that window was told "locked" with no way to ever hear the
+      // correction — so it hid the wallet card and every locked-gated action for
+      // as long as it stayed open.
 
-    // Transparent upgrade: the password is in hand exactly once, here. Re-encrypting
-    // now is the only moment we can raise the work factor without asking the user for
-    // anything. reEncrypt() replaces _cryptoKey and _kdfIterations.
-    const target = iterationsFor(password);
-    if (storedIterations < target) {
-      try {
-        await reEncrypt(password);
-      } catch (e) {
-        // A failed upgrade must never cost the user their unlocked session — the
-        // vault is already open and the old record is still valid.
-        console.warn('[VAULT] KDF upgrade failed, keeping existing record:', (e as Error).message);
+
+      // Transparent upgrade: the password is in hand exactly once, here. Re-encrypting
+      // now is the only moment we can raise the work factor without asking the user for
+      // anything. reEncrypt() replaces _cryptoKey and _kdfIterations.
+      const target = iterationsFor(password);
+      if (storedIterations < target) {
+        try {
+          await reEncryptNow(password, revision);
+        } catch (e) {
+          // A failed upgrade must never cost the user their unlocked session — the
+          // vault is already open and the old record is still valid.
+          console.warn('[VAULT] KDF upgrade failed, keeping existing record:', (e as Error).message);
+        }
       }
+      if (!parsed.cacheKey) {
+        try { await saveNow(revision); } catch (error) {
+          if (revision === sessionRevision) lock();
+          throw error;
+        }
+      }
+      cacheKeyReady = true;
+      await notifyUnlocked();
+      assertRevision(revision);
+      noteLockStateChanged();
+      return true;
+    } catch {
+      return false;
     }
-    return true;
-  } catch {
-    return false;
-  }
+  });
 }
 
 /**
@@ -246,6 +318,7 @@ export async function restoreAutoLockSetting(): Promise<void> {
  * Lock the vault -- clear decrypted data from memory
  */
 export function lock(): void {
+  invalidateSession();
   zeroDecryptedKeys();
   _decrypted = null;
   _cryptoKey = null;
@@ -264,6 +337,9 @@ export function lock(): void {
   //
   // Fire-and-forget: locking must not depend on a storage write succeeding.
   noteLockStateChanged();
+  for (const listener of lockListeners) {
+    try { listener(); } catch { /* One cleanup must not prevent another. */ }
+  }
 }
 
 /**
@@ -322,7 +398,10 @@ export function whenStartupUnlockSettled(): Promise<void> {
  */
 export async function destroy(): Promise<void> {
   lock();
-  await browser.storage.local.remove(STORAGE_KEY);
+  await mutations.run(async () => {
+    await browser.storage.local.remove(STORAGE_KEY);
+    for (const listener of destroyListeners) await listener();
+  });
 }
 
 /**
@@ -359,6 +438,12 @@ export function setAutoLockTimeout(ms: number): void {
  * @param newPassword - new vault password
  */
 export async function reEncrypt(newPassword: string): Promise<void> {
+  const revision = sessionRevision;
+  return mutations.run(() => reEncryptNow(newPassword, revision));
+}
+
+async function reEncryptNow(newPassword: string, revision: number): Promise<void> {
+  assertRevision(revision);
   if (!_cryptoKey || !_decrypted) throw new Error('Vault is locked');
   if (newPassword.length > 0 && newPassword.length < 8) {
     throw new Error('Password must be at least 8 characters');
@@ -367,9 +452,11 @@ export async function reEncrypt(newPassword: string): Promise<void> {
   const salt = crypto.getRandomValues(new Uint8Array(32));
   const iterations = iterationsFor(newPassword);
   const newKey = await deriveKey(newPassword, salt, iterations);
+  assertRevision(revision);
   const json = JSON.stringify(toStoragePayload(_decrypted));
   const { iv, ciphertext } = await encrypt(newKey, json);
 
+  assertRevision(revision);
   await browser.storage.local.set({
     [STORAGE_KEY]: {
       version: VAULT_VERSION,
@@ -380,6 +467,7 @@ export async function reEncrypt(newPassword: string): Promise<void> {
     }
   });
 
+  assertRevision(revision);
   _cryptoKey = newKey;
   _kdfIterations = iterations;
   resetAutoLock();
@@ -389,41 +477,63 @@ export async function reEncrypt(newPassword: string): Promise<void> {
  * Re-encrypt and save vault to storage
  */
 async function save(): Promise<void> {
-  if (!_cryptoKey || !_decrypted) throw new Error('Vault is locked');
+  const revision = sessionRevision;
+  return mutations.run(() => saveNow(revision));
+}
 
-  const data = await browser.storage.local.get(STORAGE_KEY);
-  const vault = data[STORAGE_KEY] as { salt: string };
-  const salt = base64ToArray(vault.salt);
+async function saveNow(revision: number): Promise<void> {
+    assertRevision(revision);
+    if (!_cryptoKey || !_decrypted) throw new Error('Vault is locked');
 
-  const json = JSON.stringify(toStoragePayload(_decrypted));
-  const { iv, ciphertext } = await encrypt(_cryptoKey, json);
+    const data = await browser.storage.local.get(STORAGE_KEY);
+    const vault = data[STORAGE_KEY] as { salt: string };
+    const salt = base64ToArray(vault.salt);
 
-  // _kdfIterations, not the constant: this writes the record back under the key already
-  // in memory, which may still be a legacy-count key if the upgrade has not run.
-  await browser.storage.local.set({
-    [STORAGE_KEY]: {
-      version: VAULT_VERSION,
-      iterations: _kdfIterations,
-      salt: arrayToBase64(salt),
-      iv: arrayToBase64(iv),
-      ciphertext: arrayToBase64(ciphertext)
-    }
-  });
+    assertRevision(revision);
+    const json = JSON.stringify(toStoragePayload(_decrypted));
+    const { iv, ciphertext } = await encrypt(_cryptoKey, json);
 
-  resetAutoLock();
+    // _kdfIterations, not the constant: this writes the record back under the key already
+    // in memory, which may still be a legacy-count key if the upgrade has not run.
+    assertRevision(revision);
+    await browser.storage.local.set({
+      [STORAGE_KEY]: {
+        version: VAULT_VERSION,
+        iterations: _kdfIterations,
+        salt: arrayToBase64(salt),
+        iv: arrayToBase64(iv),
+        ciphertext: arrayToBase64(ciphertext)
+      }
+    });
+
+    resetAutoLock();
 }
 
 export const { setImportedPqKeys, clearImportedPqKeys, withImportedPqKeys, hasImportedPqKeys } = createImportedKeyAccess(() => _decrypted, save);
 
 export const {
   getActivePubkey, getActiveAccountId, getActiveAccount, getActiveAccountWithWallet,
-  getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, listAccounts,
+  getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, getAccountForRemoteSigning, listAccounts,
   addAccount, removeAccount, setActiveAccount, clearActiveAccount,
   updateAccountNip46Keys, updateAccountWalletConfig,
-} = createAccountAccess(() => _decrypted, save, resetAutoLock);
+} = createAccountAccess(() => _decrypted, save, resetAutoLock, invalidateSession);
 
 /** Wait through automatic startup recovery, then enforce the actual lock state. */
 export async function requireUnlocked(): Promise<void> {
   await whenStartupUnlockSettled();
   if (isLocked()) throw new Error('Vault is locked');
+}
+
+/** Execute private-cache cryptography without exposing the key to RPC/UI callers. */
+export async function withCacheKey<T>(operation: (key: CryptoKey) => Promise<T>): Promise<T> {
+  if (!cacheKeyReady || !_decrypted?.cacheKeyBytes || !_cryptoKey) throw new Error('Vault is locked');
+  const revision = sessionRevision;
+  const bytes = _decrypted.cacheKeyBytes.slice();
+  try {
+    const key = await crypto.subtle.importKey('raw', bytes as BufferSource, 'AES-GCM', false, ['encrypt', 'decrypt']);
+    assertRevision(revision);
+    const result = await operation(key);
+    assertRevision(revision);
+    return result;
+  } finally { bytes.fill(0); }
 }

@@ -6,6 +6,7 @@
 import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
 
 import type { FetchFn } from '@services/http/types.ts';
+import { secureWalletUrl, walletHttp } from '@services/http/wallet.ts';
 
 export interface LnbitsConfig {
   instanceUrl: string;
@@ -16,7 +17,8 @@ export class LnbitsProvider implements WalletProvider {
   readonly type = 'lnbits' as const;
 
   private readonly instanceUrl: string;
-  private readonly adminKey: string;
+  private adminKey: string;
+  private readonly lifetime = new AbortController();
   private readonly fetchFn: FetchFn;
   private _connected = false;
 
@@ -26,22 +28,13 @@ export class LnbitsProvider implements WalletProvider {
     this.fetchFn = fetchFn ?? globalThis.fetch.bind(globalThis);
   }
 
-  /**
-   * Refuses to send the admin key over anything but HTTPS. Plain HTTP is only
-   * allowed for local development targets (localhost / 127.0.0.1).
-   */
-  private assertSecureUrl(): void {
-    if (this.instanceUrl.startsWith('https://')) return;
-    if (this.instanceUrl.startsWith('http://')) {
-      let hostname = '';
-      try { hostname = new URL(this.instanceUrl).hostname; } catch { /* fall through to throw */ }
-      if (hostname === 'localhost' || hostname === '127.0.0.1') return;
-    }
-    throw new Error('LNbits: refusing to send admin key over insecure connection — use https://');
+  private assertAvailable(): void {
+    if (this.lifetime.signal.aborted) throw new Error('LNbits provider disconnected');
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    this.assertSecureUrl();
+    this.assertAvailable();
+    secureWalletUrl(this.instanceUrl);
     const url = `${this.instanceUrl}${path}`;
     const init: RequestInit = {
       method,
@@ -53,11 +46,9 @@ export class LnbitsProvider implements WalletProvider {
     if (body !== undefined) {
       init.body = JSON.stringify(body);
     }
-    const res = await this.fetchFn(url, init);
-    if (!res.ok) {
-      throw new Error(`LNbits API error: ${res.status}`);
-    }
-    return (await res.json()) as T;
+    const result = await walletHttp<T>(url, init, this.fetchFn, 'LNbits API error', { signal: this.lifetime.signal });
+    this.assertAvailable();
+    return result;
   }
 
   async getInfo(): Promise<WalletProviderInfo> {
@@ -132,17 +123,21 @@ export class LnbitsProvider implements WalletProvider {
         amountPaid: Math.round(Math.abs(msats) / 1000),
       };
     } catch {
+      this.assertAvailable();
       return { paid: false };
     }
   }
 
   async connect(): Promise<void> {
     await this.getBalance();
+    this.assertAvailable();
     this._connected = true;
   }
 
   disconnect(): void {
     this._connected = false;
+    this.adminKey = '';
+    this.lifetime.abort(new Error('LNbits provider disconnected'));
   }
 
   isConnected(): boolean {

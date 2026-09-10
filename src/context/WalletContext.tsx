@@ -1,6 +1,7 @@
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { readWalletDisplayCache, walletDisplayKey, type WalletDisplayCache } from '@services/wallet/display-cache.ts';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { walletDisplayKey, type WalletDisplayCache } from '@domain/wallet/display-cache.ts';
+const readWalletDisplayCache = (accountId: string) => rpc<WalletDisplayCache | null>('wallet_readDisplayCache', { accountId });
 import type { Transaction } from '@domain/wallet/types.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -76,10 +77,30 @@ interface WalletProviderProps {
  */
 export function WalletProvider({ children }: WalletProviderProps) {
   const { active } = useAccount();
-  return <AccountWalletProvider key={active?.id || 'none'} accountId={active?.id || ''} enabled={!!active?.id}>{children}</AccountWalletProvider>;
+  return <AccountWalletProvider accountId={active?.id || ''} enabled={!!active?.id}>{children}</AccountWalletProvider>;
 }
 
 export function AccountWalletProvider({ children, enabled, accountId = '' }: WalletProviderProps & { enabled: boolean; accountId?: string }) {
+  const [snapshot, setSnapshot] = useState<{ accountId: string; value: WalletContextValue } | null>(null);
+  const publish = useCallback((value: WalletContextValue) => setSnapshot({ accountId, value }), [accountId]);
+  return <WalletContext.Provider value={snapshot?.accountId === accountId ? snapshot.value : EMPTY_WALLET}>
+    <WalletAccountState key={accountId} accountId={accountId} enabled={enabled} publish={publish} />
+    {children}
+  </WalletContext.Provider>;
+}
+
+const EMPTY_WALLET: WalletContextValue = {
+  configType: null, settings: {}, settingsLoading: true, settingsError: '',
+  configReadFailed: false, configLoading: true, cachedTransactions: [],
+  balance: null, balanceLoading: true, balanceError: '',
+  ensureSettings() {}, patchSettings() {}, markDisconnected() {},
+  async refreshSettings() {}, async refreshConfig() {}, async refreshBalance() {},
+};
+
+/** Reset account resources without remounting the popup or its in-progress wizard. */
+function WalletAccountState({ enabled, accountId, publish }: {
+  enabled: boolean; accountId: string; publish: (value: WalletContextValue) => void;
+}) {
   const intent = useRef(0);
   const settingsRevision = useRef(0);
   const [settingsRequested, setSettingsRequested] = useState(false);
@@ -89,7 +110,7 @@ export function AccountWalletProvider({ children, enabled, accountId = '' }: Wal
   } = useAsyncResource<ConfigData>(
     { configType: null },
     {
-      // The parent keys this resource and its consumers on the account id.
+      // Only this resource controller is keyed on the account id.
       enabled,
       load: async (patch, isCurrent) => {
         const generation = intent.current;
@@ -155,6 +176,11 @@ export function AccountWalletProvider({ children, enabled, accountId = '' }: Wal
   // A read made while locked may have failed without changing configType. The
   // unchanged provider type cannot trigger the resources' dependency effects.
   useStorageWatch([{ area: 'local', keys: [LOCK_STATE_KEY] }], () => {
+    intent.current++;
+    settingsRevision.current++;
+    patchConfig({ cachedBalance: undefined, cachedTransactions: [] });
+    patchBalance({ balance: null });
+    patchSettingsData({alias:undefined,threshold:undefined,nwcUri:undefined,address:undefined});
     if (!enabled) return;
     void refreshConfig();
     if (typeof configData.configType === 'string') {
@@ -163,7 +189,7 @@ export function AccountWalletProvider({ children, enabled, accountId = '' }: Wal
     }
   });
 
-  const value: WalletContextValue = {
+  const value = useMemo<WalletContextValue>(() => ({
     configType: configData.configType,
     settings: settingsResource.data,
     settingsLoading: settingsResource.loading || !settingsRequested,
@@ -180,9 +206,12 @@ export function AccountWalletProvider({ children, enabled, accountId = '' }: Wal
     refreshConfig,
     refreshBalance,
     markDisconnected,
-  };
+  }), [configData, settingsResource.data, settingsResource.loading, settingsResource.error,
+    settingsResource.refresh, settingsRequested, ensureSettings, patchSettings, configError,
+    configLoading, balanceData, balanceLoading, balanceError, refreshConfig, refreshBalance, markDisconnected]);
 
-  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
+  useLayoutEffect(() => publish(value), [publish, value]);
+  return null;
 }
 
 export { useWallet };

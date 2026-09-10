@@ -76,8 +76,8 @@ Runs in the **ISOLATED** world. Acts as a bidirectional message bridge between t
 - Forwards valid requests concurrently over one persistent port per channel (`browser.runtime.connect`), correlating replies by internal request ID so approvals do not serialize delivery.
 - Posts responses back to the page as `NIP07_RESPONSE` or `WEBLN_RESPONSE`.
 - **HTTPS enforcement**: NIP-07 and WebLN methods are blocked on `http:` origins except `localhost`, `127.0.0.1`, and `[::1]`.
-- **NIP-07 prefixing**: Adds `nip07_` prefix and `origin` (hostname) to all NIP-07 requests before forwarding.
-- **WebLN prefixing**: Adds `webln_` prefix and `origin` (hostname) to all WebLN requests before forwarding.
+- **NIP-07 prefixing**: Adds `nip07_` prefix and `origin` (scheme, hostname and port) to all NIP-07 requests before forwarding.
+- **WebLN prefixing**: Adds `webln_` prefix and `origin` (scheme, hostname and port) to all WebLN requests before forwarding.
 - Guards against double injection with `window.__nostrWotContentInjected`.
 
 ### 2.3 Inject Script -- `inject.ts`
@@ -257,3 +257,6 @@ Activity storage and UI use `ActivityEntry` from `src/domain/activity/activity.t
   reads and sharing cooldowns; `remoteSigner.ts` owns NIP-46 clients;
   `localDecryption.ts` owns classic/PQ local decryption and PQ key acquisition.
   Consumers import queue, identity, remote and decryption APIs from their owners.
+
+Website permission keys and backward-compatible legacy hostname grants are specified in
+[Website permission origins](origin-permissions.md).

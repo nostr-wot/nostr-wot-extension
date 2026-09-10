@@ -1,16 +1,16 @@
 /**
  * Pure predicate (no browser dependency): should the action popup open for a
- * request from `origin` (a hostname), given the URL of the tab the user is
+ * request from `origin` (a origin), given the URL of the tab the user is
  * currently looking at?
  *
- * Only true when the active tab's hostname exactly matches the origin. This is
+ * Only true when the active tab's origin exactly matches the origin. This is
  * what keeps a background/inactive tab making nostr requests — or one polling
  * repeatedly — from popping the popup open in the user's face.
  */
 export function originMatchesActiveTab(activeTabUrl: string | undefined | null, origin: string): boolean {
   if (!activeTabUrl || !origin) return false;
   try {
-    return new URL(activeTabUrl).hostname === origin;
+    return ['http:', 'https:'].includes(new URL(activeTabUrl).protocol) && new URL(activeTabUrl).origin === origin;
   } catch {
     return false;
   }
@@ -31,15 +31,15 @@ export interface ActiveTabInfo {
  * host permission for that tab; content-script `matches` do not count — they are
  * scriptable hosts, which is what Chrome's "On all sites" display reflects, and they
  * grant nothing to the tabs API. So on a site the user has not connected yet the active
- * tab arrives with `url: undefined`, the hostname comparison fails closed, and the
+ * tab arrives with `url: undefined`, the origin comparison fails closed, and the
  * connect popup never opens — the site's first `window.nostr` call produced silence.
  *
  * The tab id is never stripped, and it is the better signal anyway: it identifies the
- * tab that actually asked rather than merely a tab sharing its hostname. The hostname
+ * tab that actually asked rather than merely a tab sharing its origin. The origin
  * comparison remains as the fallback for callers that have no tab id.
  *
  * @param activeTab - the tab the user is looking at, as returned by tabs.query
- * @param origin - hostname the request came from
+ * @param origin - origin the request came from
  * @param requestingTabId - id of the tab that made the request, when known
  */
 export function requestIsFromActiveTab(

@@ -249,3 +249,72 @@ Profile-image tests cover shared image/profile rendering, object-URL disposal an
 Vault and signer suites exercise the composed vault account/PQ operations and import extracted signing queue/identity/decryption functions from their owners. Button tests cover named presets and registration checks require implementation entrypoints at `Component/index.tsx`.
 
 Wallet background regressions exercise the real handler during a deferred startup unlock and after a genuine lock. Vault-state tests verify that retired successful and failed reads cannot overwrite a newer unlocked state.
+
+Mounted React lifecycle and interaction regressions use jsdom in wallet-ui.test.ts. jsdom and its TypeScript declarations are development-only; they are not extension runtime dependencies. Coverage includes wizard continuity through account switching, nested deletion confirmation and approval callback selection.
+
+Custom derivation tests cover path normalization and bounds, network-prefix recognition, standard-key compatibility, duplicate rejection, seed selection, persisted paths, removal/recovery, UI preview invalidation, and path-specific PQ status/export/decryption with pinned public-key vectors.
+
+Mounted sub-account tests cover automatic npub/hex previews, collapsed Advanced,
+manual name persistence, serialized path requests, stale responses, failure retry
+suppression, and preventing saves while the current preview is unavailable.
+
+The mounted wallet UI test switches accounts repeatedly and checks that selection
+updates and the current tab is queried for refresh without remounting popup content.
+
+Rejection regressions in signer.test.ts cover automatic rejection despite standing
+permission, concurrent writes, bounded metadata retention, no content retention,
+red badge priority, acknowledgement races, worker cleanup, RPC input validation
+and malformed event authors. wallet-ui.test.ts covers summary rendering and failed/
+successful acknowledgement. Native Chrome popup focus/closure still requires
+manual verification; mocked tests do not prove browser-window behavior.
+
+Home balance visibility tests cover connected, disconnected, loading, restricted
+and error states; only confirmed connection renders the home wallet summary.
+
+### Account-switch popup recovery
+
+The account switch arms one background reopen attempt after 100 ms, immediately
+before triggering the page reload. Module tests cover the delay, native refusal
+without retry, successful opening, superseded timers and tab/window activity guards.
+The mounted account-provider test covers recovery registration and page reload
+routing/fallback. Chrome manual testing confirmed closing followed by reopening;
+this is recovery, not prevention of the underlying native closure.
+Temporary diagnostics UI, lifecycle listeners and trace collection are removed.
+
+Wallet profile-address tests cover a matching cached lud16, a different or missing
+address, publication cache updates, reopening and account isolation.
+
+### September 2026 security audit regressions
+
+`tests/security-hardening.test.ts` imports `tests/security-audit-regressions.ts`, so
+both the local full suite and existing GitHub module-test step exercise the real
+payment/signing handlers against mocked wallets. These are negative regression tests:
+account switches (including A → B → A), lock and provider replacement must reject
+stale work; account-specific deny overrides auto-approval and remembered decisions
+stay in the correct account bucket. A normal authorized payment still succeeds.
+
+`tests/vault.test.ts` exercises lock/destroy while unlock is suspended. Transport,
+response-size, timeout and disposal cases live in the LNbits/provision/NWC suites;
+redirect testing uses two loopback origins and synthetic API keys. Queue/ingress and
+early-payload bounds are covered by signer, communication and crypto tests, including
+capacity retained for canceled remote requests until actual settlement.
+
+These tests never use live credentials or real payments. Node loopback tests are not
+a substitute for native Chrome/Firefox integration verification.
+
+### Additional privacy and payment hardening
+
+- `tests/wallet/automatic-payment-budget.test.ts`: concurrent, persistent rolling automatic-payment reservations and conservative failure accounting.
+- `tests/wallet/payment-hardening.test.ts`: exact milli-satoshi amount and metadata commitment checks.
+- `tests/private-cache-regressions.ts` (imported by security-hardening.test.ts): encryption at rest, tampering/record swapping, locked access, password changes, legacy migration, deletion and encrypted payment retries.
+- Existing account, communication and domain tests cover explicit safe metadata projections and full-origin permission boundaries.
+
+PQ backup tests cover envelope detection and authenticated decryption. The mounted
+profile-images suite covers encrypted file selection, password gating, wrong-password
+retry, successful form clearing and unchanged plaintext imports.
+
+Account import tests distinguish PQ-only JSON from mnemonic input. Mounted import
+tests cover encrypted seed restoration, wrong-password retry, PQ-only rejection,
+nested ncryptsec password separation and plain private-key file import.
+
+Mounted approval tests in `tests/wallet-ui.test.ts` verify that one-time sheet approval resolves displayed IDs with `remember:false` and never saves a standing rule; the separate Always allow action saves the exact origin, permission and account. Detail tests verify one-time versus remembered callbacks and disabled actions.

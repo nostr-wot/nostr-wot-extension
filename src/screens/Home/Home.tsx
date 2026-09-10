@@ -208,7 +208,7 @@ export default function Home({ menuOpen }: HomeProps) {
   }
 
   return (
-    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice}>
+    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice} siteConnected={siteState === 'connected'}>
       {pendingCount > 0 && (
         <Card className="flex items-center py-5 px-7 bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)] cursor-default">
           <Container variant="row" gap={4}>
@@ -261,7 +261,7 @@ export default function Home({ menuOpen }: HomeProps) {
   );
 }
 
-/** Wallet access belongs to the account, independently of the current website. */
-export function HomeWalletLayout({wallet,siteNotice,children}: {wallet:ReactNode;siteNotice:ReactNode;children?:ReactNode}) {
-  return <>{wallet}{siteNotice ?? children}</>;
+/** Hide the home balance until site consent is known; the wallet menu stays available. */
+export function HomeWalletLayout({wallet,siteNotice,siteConnected,children}: {wallet:ReactNode;siteNotice:ReactNode;siteConnected:boolean;children?:ReactNode}) {
+  return <>{siteConnected && wallet}{siteNotice ?? children}</>;
 }

@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
 import type { VaultPayload } from '../src/domain/vault/types.ts';
-import type { Account } from '../src/domain/accounts/types.ts';
+import type { Account, SafeAccount } from '../src/domain/accounts/types.ts';
 import type { WalletConfig } from '../src/domain/wallet/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
@@ -168,5 +168,102 @@ describe('vault -- wallet config storage', () => {
     const acct = vault.getActiveAccountWithWallet();
     assert.ok(acct);
     assert.strictEqual(acct!.walletConfig, undefined);
+  });
+});
+
+describe('vault -- explicit public account boundary', () => {
+  beforeEach(() => { resetMockStorage(); vault.lock(); });
+
+  it('safe accessors return only public metadata even with every nested credential present', async () => {
+    await vault.create(TEST_PASSWORD, makePayload({
+      type: 'nip46',
+      mnemonic: 'synthetic secret seed words',
+      derivationIndex: 2,
+      derivationPath: "m/44'/1237'/2'/0/0",
+      nip46Config: { bunkerUrl: 'bunker://remote?secret=bunker-secret', relay: 'wss://relay.example', secret: 'bunker-secret', localPrivkey: '22'.repeat(32) },
+      walletConfig: LNBITS_CONFIG,
+      pqKeys: { profile: 'test', kem: { public: 'public', secret: 'c2VjcmV0' }, dsa: { public: 'public', secret: 'c2VjcmV0' }, importedAt: 1 },
+      futureSecret: { nested: 'must never escape' },
+    } as Partial<Account>));
+    const expected = {
+      id: 'acct1', name: 'Test', type: 'nip46', pubkey: TEST_PUBKEY_HEX,
+      readOnly: false, createdAt: 1000000, derivationIndex: 2,
+      derivationPath: "m/44'/1237'/2'/0/0",
+    };
+    assert.deepEqual(vault.getActiveAccount(), expected);
+    assert.deepEqual(vault.getAccountById('acct1'), expected);
+    assert.deepEqual(vault.getActiveAccountWithWallet(), { ...expected, walletConfig: LNBITS_CONFIG });
+    assert.deepEqual(vault.listAccounts(), [{ id: 'acct1', name: 'Test', type: 'nip46', pubkey: TEST_PUBKEY_HEX, readOnly: false, createdAt: 1000000 }]);
+  });
+
+  it('wallet credential access returns a detached copy and safe reads remain credential-free', async () => {
+    await vault.create(TEST_PASSWORD, makePayload({ walletConfig: LNBITS_CONFIG }));
+    const account = vault.getActiveAccountWithWallet()!;
+    assert.ok(account.walletConfig?.type === 'lnbits');
+    const originalKey = account.walletConfig.adminKey;
+    account.walletConfig.adminKey = 'modified';
+    const reread = vault.getActiveAccountWithWallet()!.walletConfig;
+    assert.ok(reread?.type === 'lnbits');
+    assert.equal(reread.adminKey, originalKey);
+    assert.equal('walletConfig' in vault.getActiveAccount()!, false);
+  });
+});
+
+// A new secret-bearing field cannot silently become part of the public contract.
+const publicTypeHasNoSecrets: Extract<keyof SafeAccount,
+  'privkey' | 'mnemonic' | 'walletConfig' | 'nip46Config' | 'pqKeys'> extends never ? true : false = true;
+
+describe('vault -- background remote signing capability', () => {
+  beforeEach(() => { resetMockStorage(); vault.lock(); });
+
+  it('returns detached NIP-46 credentials without wallet or unrelated secrets', async () => {
+    assert.equal(publicTypeHasNoSecrets, true);
+    const nip46Config = { bunkerUrl: 'bunker://remote?secret=credential', relay: 'wss://relay.example', secret: 'credential', localPrivkey: '22'.repeat(32), localPubkey: '33'.repeat(32) };
+    await vault.create(TEST_PASSWORD, makePayload({ type: 'nip46', nip46Config, walletConfig: LNBITS_CONFIG }));
+    const remote = vault.getAccountForRemoteSigning('acct1')!;
+    assert.deepEqual(remote, { ...vault.getActiveAccount(), nip46Config });
+    remote.nip46Config.localPrivkey = 'changed';
+    assert.equal(vault.getAccountForRemoteSigning('acct1')!.nip46Config.localPrivkey, '22'.repeat(32));
+    assert.equal(vault.getAccountForRemoteSigning('missing'), null);
+    vault.lock();
+    assert.equal(vault.getAccountForRemoteSigning('acct1'), null);
+  });
+
+  it('refuses non-remote accounts and missing remote configuration', async () => {
+    await vault.create(TEST_PASSWORD, makePayload());
+    assert.equal(vault.getAccountForRemoteSigning('acct1'), null);
+    await vault.addAccount(makeAccount({ id: 'remote', type: 'nip46', nip46Config: null }));
+    assert.equal(vault.getAccountForRemoteSigning('remote'), null);
+  });
+});
+
+describe('onboarding -- public account response allowlist', () => {
+  beforeEach(() => { resetMockStorage(); vault.lock(); });
+  it('all import and generation responses use the public metadata boundary', async () => {
+    const onboarding = await import('../src/services/background/onboarding-handlers.ts');
+    const vaultHandlers = await import('../src/services/background/vault-handlers.ts');
+    const { ncryptsecEncode } = await import('../src/lib/crypto/nip49.ts');
+    const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const encrypted = await ncryptsecEncode(TEST_PRIVKEY_HEX, TEST_PASSWORD);
+    const cases: Array<[string, Record<string, unknown>]> = [
+      ['onboarding_validateNsec', { input: TEST_PRIVKEY_HEX }],
+      ['onboarding_validateNpub', { input: TEST_PUBKEY_HEX }],
+      ['onboarding_validateMnemonic', { mnemonic }],
+      ['onboarding_connectNip46', { bunkerUrl: `bunker://${TEST_PUBKEY_HEX}?relay=wss://relay.example&secret=private` }],
+      ['onboarding_validateNcryptsec', { ncryptsec: encrypted, password: TEST_PASSWORD }],
+      ['onboarding_generateAccount', {}],
+      ['vault_importNcryptsec', { ncryptsec: encrypted, password: TEST_PASSWORD }],
+    ];
+    const publicKeys = ['id', 'name', 'type', 'pubkey', 'readOnly', 'createdAt', 'derivationIndex', 'derivationPath'];
+    try {
+      for (const [method, params] of cases) {
+        resetMockStorage(); onboarding.__simulateServiceWorkerRestart();
+        const handler = onboarding.handlers.get(method) || vaultHandlers.handlers.get(method)!;
+        const response = await handler(params) as { account: Record<string, unknown>; mnemonic?: string };
+        assert.ok(response.account.id, method);
+        assert.deepEqual(Object.keys(response.account).filter(key => !publicKeys.includes(key)), [], method);
+        if (method === 'onboarding_generateAccount') assert.equal(response.mnemonic?.split(' ').length, 24);
+      }
+    } finally { onboarding.__simulateServiceWorkerRestart(); }
   });
 });

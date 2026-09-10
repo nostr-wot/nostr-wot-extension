@@ -1,4 +1,6 @@
-import { type ReactNode } from 'react';
+import useStorageWatch from '@hooks/useStorageWatch.ts';
+import { LOCK_STATE_KEY } from '@constants/vault.ts';
+import { useRef, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
@@ -39,19 +41,27 @@ interface ActivityProviderProps {
  * folder, for consistency, even though this one still has a single consumer.
  */
 export function ActivityProvider({ visible, children }: ActivityProviderProps) {
-  const { data, loading, error, refresh } = useAsyncResource<ActivityData>(
+  const revision = useRef(0);
+  const { data, loading, error, refresh, patch } = useAsyncResource<ActivityData>(
     { log: [] },
     {
       // `enabled` alone is `visible`'s dependency-array entry — no separate
       // `deps` needed, since re-opening the overlay is exactly `visible`
       // flipping false→true, the same transition `enabled` already tracks.
       enabled: visible,
-      load: async (patch) => {
+      load: async (patch, isCurrent) => {
+        const run = revision.current;
         const log = await rpc<ActivityEntry[]>('getActivityLog') || [];
-        patch({ log });
+        if (run === revision.current && isCurrent()) patch({ log });
       },
     },
   );
+
+  useStorageWatch([{area:'local', keys:[LOCK_STATE_KEY]}], () => {
+    revision.current++;
+    patch({log:[]});
+    if (visible) void refresh();
+  });
 
   const value: ActivityContextValue = { log: data.log, loading, loadFailed: !!error, refresh };
 

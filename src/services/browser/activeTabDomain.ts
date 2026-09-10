@@ -24,7 +24,7 @@ import { type PopupContext } from '@services/browser/openPopupForActiveTab.ts';
 import { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
 
 export interface ActiveTabDomain {
-  /** The hostname, or null when it genuinely cannot be determined. */
+  /** The full web origin (scheme, host, port), or null when it genuinely cannot be determined. */
   domain: string | null;
   /** True when the active tab is a browser page the extension does not operate on. */
   restricted: boolean;
@@ -55,14 +55,14 @@ export async function resolveActiveTabDomain(): Promise<ActiveTabDomain> {
       Date.now() - ctx.at < POPUP_CONTEXT_TTL_MS &&
       (ctx.tabId == null || tab.id == null || ctx.tabId === tab.id)
     ) {
-      return { domain: ctx.origin, restricted: false };
+      return { domain: getDomainFromUrl(ctx.origin), restricted: false };
     }
   } catch { /* fall through */ }
 
   // Otherwise ask the background which origin this tab has been talking to us as.
   try {
     const origin = await rpc<string | null>('getTabOrigin', { tabId: tab.id });
-    return { domain: origin || null, restricted: false };
+    return { domain: origin ? getDomainFromUrl(origin) : null, restricted: false };
   } catch {
     return { domain: null, restricted: false };
   }

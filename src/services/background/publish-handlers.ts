@@ -217,7 +217,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['nip46_getSessionInfo', async () => {
         const nip46Data = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
         const nip46Acct = nip46Data.activeAccountId
-            ? vault.getAccountById(nip46Data.activeAccountId)
+            ? vault.getAccountForRemoteSigning(nip46Data.activeAccountId)
             : null;
         if (!nip46Acct || nip46Acct.type !== 'nip46') return null;
 

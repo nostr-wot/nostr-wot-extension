@@ -1110,3 +1110,95 @@ describe('NwcProvider', () => {
     });
   });
 });
+
+describe('NWC permanent disposal', () => {
+  beforeEach(() => { MockWebSocket.reset(); (globalThis as any).WebSocket = MockWebSocket; });
+  afterEach(() => { globalThis.WebSocket = OriginalWebSocket; });
+
+  it('disconnect before open rejects connection and closes late socket without subscription', async () => {
+    const provider = createProvider();
+    const connecting = provider.connect();
+    const ws = latestWs();
+    provider.disconnect();
+    ws.simulateOpen();
+    await assert.rejects(connecting, /disconnect/);
+    assert.equal(provider.isConnected(), false);
+    assert.equal(ws.sentMessages.length, 0);
+    assert.equal(ws.readyState, MockWebSocket.CLOSED);
+  });
+
+  it('rejects reconnect and lookup after explicit disposal', async () => {
+    const provider = createProvider();
+    provider.disconnect();
+    const reconnect = provider.connect();
+    if (MockWebSocket.instances.length) latestWs().simulateOpen();
+    await assert.rejects(reconnect, /disconnect/);
+    await assert.rejects(provider.lookupInvoice('hash'), /disconnect/);
+    assert.equal(MockWebSocket.instances.length, 0);
+  });
+
+  it('does not sign or send after disconnect during encryption', async () => {
+    let finish!: (value: string) => void;
+    let signatures = 0;
+    const provider = createProvider({
+      encrypt: () => new Promise(resolve => { finish = resolve; }),
+      signEvent: async () => { signatures++; throw new Error('unexpected signing'); },
+    });
+    const connecting = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connecting;
+    const payment = provider.payInvoice('invoice');
+    provider.disconnect(); finish('encrypted');
+    await assert.rejects(payment, /disconnect/);
+    assert.equal(signatures, 0);
+    assert.equal(ws.sentMessages.length, 1);
+  });
+
+  it('does not send after disconnect during signing', async () => {
+    let finish!: (value: SignedEvent) => void;
+    const provider = createProvider({ signEvent: () => new Promise(resolve => { finish = resolve; }) });
+    const connecting = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connecting;
+    const payment = provider.payInvoice('invoice'); await flushAsync();
+    provider.disconnect(); finish({ id: 'late' } as SignedEvent);
+    await assert.rejects(payment, /disconnect/);
+    assert.equal(ws.sentMessages.length, 1);
+  });
+
+  it('zeroes secret bytes and promptly rejects encryption still waiting on a dependency', async () => {
+    const secret = new Uint8Array(32).fill(12);
+    const provider = new NwcProvider({ connectionString: CONNECTION_STRING }, secret,
+      createMockDeps({ encrypt: () => new Promise(() => {}) }));
+    const connecting = provider.connect(); latestWs().simulateOpen(); await connecting;
+    const request = provider.payInvoice('invoice');
+    provider.disconnect();
+    await assert.rejects(request, /disconnect/);
+    assert.ok(secret.every(byte => byte === 0));
+  });
+
+  it('does not release a response that was decrypting when disconnected', async () => {
+    let finish!: (value: string) => void;
+    const provider = createProvider({ decrypt: () => new Promise(resolve => { finish = resolve; }) });
+    const connecting = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connecting;
+    const request = provider.getBalance(); await flushAsync();
+    const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, '{}')); await flushAsync();
+    provider.disconnect();
+    finish('{"result":{"balance":1000}}');
+    await assert.rejects(request, /disconnect/);
+  });
+
+  it('shares concurrent connection attempts', async () => {
+    const provider = createProvider();
+    const first = provider.connect(); const second = provider.connect();
+    assert.equal(MockWebSocket.instances.length, 1);
+    latestWs().simulateOpen(); await Promise.all([first, second]);
+    provider.disconnect();
+  });
+
+  it('allows network reconnection while retaining a live credential', async () => {
+    const provider = createProvider();
+    const first = provider.connect(); latestWs().simulateOpen(); await first;
+    latestWs().close();
+    const second = provider.connect(); latestWs().simulateOpen(); await second;
+    assert.equal(provider.isConnected(), true);
+    provider.disconnect();
+  });
+});

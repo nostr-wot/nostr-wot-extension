@@ -1,3 +1,4 @@
+import RejectionNotice from '@screens/Approval/RejectionNotice';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import browser from '@lib/browser.ts';
 import { rpcNotify } from '@services/rpc.ts';
@@ -88,6 +89,10 @@ function PopupInner() {
   // Auto-show unlock screen when vault is locked
   const vaultLockScreen = vault.exists && vault.locked && vault.autoLockEnabled;
 
+  useEffect(() => {
+    if (vaultLockScreen && (activeOverlay === 'activity' || activeOverlay === 'menu')) setActiveOverlay(null);
+  }, [vaultLockScreen, activeOverlay]);
+
   const handleWizardComplete = () => {
     setActiveOverlay(null);
     account.reload();
@@ -134,6 +139,8 @@ function PopupInner() {
           onRequestUnlock={handleRequestUnlock}
           onUnlockWaitersChange={setUnlockWaiters}
         />
+
+        <RejectionNotice />
 
         <MenuOverlay
           visible={activeOverlay === 'menu'}

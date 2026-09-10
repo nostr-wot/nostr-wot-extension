@@ -18,6 +18,7 @@ import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
 import { clearWalletProviders } from '../wallet/index.ts';
 import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
+import { toSafeAccount } from '../../domain/accounts/account.ts';
 import type { Account } from '../../domain/accounts/types.ts';
 import type { VaultPayload } from '../../domain/vault/types.ts';
 
@@ -169,16 +170,28 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['vault_removeAccount', async (params) => {
         const removedId = params.accountId as string;
-        await vault.removeAccount(removedId);
+        const rmLocalData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
+        const localAccounts = (rmLocalData.accounts || []) as Array<{ id: string; pubkey: string; readOnly?: boolean; type?: string }>;
+        const removed = localAccounts.find(account => account.id === removedId);
+        // Watch-only identities can exist without an unlocked vault.
+        if (!removed?.readOnly && removed?.type !== 'npub') {
+            await vault.requireUnlocked();
+            await vault.removeAccount(removedId);
+        } else if (!vault.isLocked()) {
+            await vault.removeAccount(removedId);
+        }
         await clearWalletDisplayCaches(removedId);
         await signerPermissions.clearForAccount(removedId);
-        await syncActivePubkey();
-        const rmLocalData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
-        const rmAccts = ((rmLocalData.accounts as Array<{ id: string }>) || []).filter(a => a.id !== removedId);
+        const rmAccts = localAccounts.filter(a => a.id !== removedId);
         const updates: Record<string, unknown> = { accounts: rmAccts };
         if (rmLocalData.activeAccountId === removedId) {
             updates.activeAccountId = vault.getActiveAccountId() || (rmAccts[0] as { id: string })?.id || null;
         }
+        const nextActiveId = updates.activeAccountId ?? rmLocalData.activeAccountId;
+        const nextPubkey = rmAccts.find(account => account.id === nextActiveId)?.pubkey;
+        config.myPubkey = nextPubkey || '';
+        if (nextPubkey) await browser.storage.sync.set({ myPubkey: nextPubkey });
+        else await browser.storage.sync.remove('myPubkey');
         await browser.storage.local.set(updates);
         if (rmLocalData.activeAccountId === removedId) {
             // Removing the active account changes the active identity — same
@@ -262,7 +275,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_importNcryptsec', async (params) => {
         const privkeyHex = await ncryptsecDecode(params.ncryptsec as string, params.password as string);
         const acct = await accounts.importNsec(privkeyHex, params.name as string);
-        const { privkey, mnemonic, ...safeAcct } = acct;
+        const safeAcct = toSafeAccount(acct);
         return { account: safeAcct, pubkey: acct.pubkey };
     }],
 

@@ -223,3 +223,60 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
   });
 
 });
+
+test('remote signer rejects stale connection and cached dispatch continuations', async t => {
+  for (const boundary of ['switch', 'lock', 'disconnect'] as const) await t.test(boundary, async t => {
+    resetMockStorage(); vault.lock();
+    await vault.create('password', { activeAccountId: 'remote-race', accounts: [{
+      id: 'remote-race', name: 'Remote', type: 'nip46', pubkey, privkey: null, mnemonic: null, readOnly: false, createdAt: 1,
+      nip46Config: { bunkerUrl: `bunker://${pubkey}?relay=wss://relay.example`, relay: 'wss://relay.example', secret: null, localPrivkey: Buffer.from(clientKey).toString('hex') },
+    }] });
+    let finish!: () => void;
+    let dispatched = 0;
+    let closed = 0;
+    t.mock.method(BunkerSigner, 'fromBunker', () => ({
+      connect: () => new Promise<void>(resolve => { finish = resolve; }),
+      close: async () => { closed++; },
+      nip44Encrypt: async () => { dispatched++; return 'ciphertext'; },
+    }));
+    const request = signerRemoteSigner.handleNip46Request(vault.getActiveAccount()!, 'nip44Encrypt', {pubkey: peer, plaintext:'private'}, origin);
+    await until(() => !!finish);
+    const rejected = assert.rejects(request, /locked|switched|session|disconnect/i);
+    if (boundary === 'switch') vault.clearActiveAccount();
+    else if (boundary === 'lock') vault.lock();
+    else signerRemoteSigner.disconnectNip46('remote-race');
+    finish();
+    await rejected;
+    assert.equal(dispatched, 0);
+    assert.equal(signerRemoteSigner.isNip46Connected('remote-race'), false);
+    assert.ok(closed > 0);
+    signerRemoteSigner.disconnectNip46('remote-race'); vault.lock();
+  });
+});
+
+test('remote cached methods stop at the dispatch boundary after lock', async t => {
+  for (const method of ['signEvent', 'nip04Encrypt', 'nip04Decrypt', 'nip44Encrypt', 'nip44Decrypt']) await t.test(method, async t => {
+    resetMockStorage(); vault.lock();
+    await vault.create('password', { activeAccountId: 'remote-cache', accounts: [{
+      id: 'remote-cache', name: 'Remote', type: 'nip46', pubkey, privkey: null, mnemonic: null, readOnly: false, createdAt: 1,
+      nip46Config: { bunkerUrl: `bunker://${pubkey}?relay=wss://relay.example`, relay: 'wss://relay.example', secret: null, localPrivkey: Buffer.from(clientKey).toString('hex') },
+    }] });
+    let dispatched = 0;
+    let closed = 0;
+    const dispatch = async () => { dispatched++; return 'result'; };
+    t.mock.method(BunkerSigner, 'fromBunker', () => ({
+      connect: async () => {}, close: async () => { closed++; },
+      signEvent: dispatch, nip04Encrypt: dispatch, nip04Decrypt: dispatch, nip44Encrypt: dispatch, nip44Decrypt: dispatch,
+    }));
+    const acct = vault.getActiveAccount()!;
+    const data = { pubkey: peer, plaintext: 'private', ciphertext: 'ciphertext' };
+    await signerRemoteSigner.handleNip46Request(acct, method, data, origin);
+    assert.equal(signerRemoteSigner.isNip46Connected(acct.id), true);
+    const request = signerRemoteSigner.handleNip46Request(acct, method, data, origin);
+    vault.lock();
+    await assert.rejects(request, /locked|disconnect|session/i);
+    assert.equal(dispatched, 1);
+    assert.equal(closed, 1);
+    assert.equal(signerRemoteSigner.isNip46Connected(acct.id), false);
+  });
+});

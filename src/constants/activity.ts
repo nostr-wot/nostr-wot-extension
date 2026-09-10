@@ -54,3 +54,7 @@ export const TYPE_LABEL_KEYS: Record<string, string> = {
 
 /** Maximum retained ciphertext string length; never stores plaintext. */
 export const ACTIVITY_MAX_CIPHERTEXT_LENGTH = 131072;
+
+/** Serialized UTF-8 budgets, including JSON punctuation and metadata. */
+export const ACTIVITY_ENTRY_MAX_BYTES = 256 * 1024;
+export const ACTIVITY_LOG_MAX_BYTES = 4 * 1024 * 1024;

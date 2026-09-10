@@ -1,0 +1,47 @@
+Remediation verification — 2026-09-10 — 0.7.0 working tree
+
+./tests/run.sh: exit 0; 1591 passed, 0 failed.
+Groups: crypto 215, wallet providers 242, pure unit/UI 259, browser-mocked modules/integration 875.
+The full suite runs npm run build first; build passed.
+npm run typecheck: exit 0.
+npm run lint: exit 0, 0 errors and 10 existing hook dependency warnings.
+git diff --check: exit 0.
+Chrome and Firefox package scripts: exit 0; both manifests are 0.7.0.
+All JavaScript files in both store archives match the restored main dist build.
+No native installed-browser exploit test, real payment or production credential was used.
+The historical reproduce.mjs asserts vulnerable behavior; use the full suite for negative regressions.
+No version bump, commit, push or publication was performed.
+
+TAP summaries:
+# tests 215
+# suites 50
+# pass 215
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1936.858167
+# tests 242
+# suites 57
+# pass 242
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 871.434333
+# tests 259
+# suites 59
+# pass 259
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1240.53125
+# tests 875
+# suites 162
+# pass 875
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 122636.807583

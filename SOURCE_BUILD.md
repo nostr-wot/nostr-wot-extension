@@ -25,5 +25,10 @@ and .gitignore in place: Tailwind also scans repository text when generating CSS
 React without minification. Runtime network calls exchange data, not remote
 executable code.
 
-See REVIEWER-NOTES.txt in the source archive and docs/deployment.md for the
-consent declarations and network destinations.
+See docs/deployment.md for the consent declarations and network destinations.
+See docs/audits/2026-09-10/README.md for the security audit and remediation scope.
+
+Release verification compares the complete file list and bytes of both rebuilt
+archives, including manifests, HTML, JavaScript, CSS, icons and locales. ZIP
+timestamps are excluded from the comparison. SHA256SUMS is supplied separately
+from the source ZIP to avoid a self-referential archive checksum.

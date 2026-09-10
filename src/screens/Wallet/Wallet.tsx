@@ -91,6 +91,8 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   }, [fetchFiltered]);
 
   useStorageWatch([{ area: 'local', keys: [LOCK_STATE_KEY] }], () => {
+    txRun.current++;
+    setTransactions([]);
     void fetchFiltered(0, [], { direction: txDirection, dateFrom: txDateFrom, dateTo: txDateTo });
   });
 

@@ -1,0 +1,48 @@
+Follow-up hardening verification — 2026-09-10 — 0.7.0 working tree
+
+./tests/run.sh: exit 0; 1627 tests passed, 0 failed.
+Groups: [215, 242, 260, 910] (crypto, wallet, pure unit/UI, browser-mocked modules/integration).
+Build passed (suite invokes npm run build).
+npm run typecheck: exit 0.
+npm run lint: exit 0; 0 errors, 10 pre-existing hook warnings.
+git diff --check: passed.
+Chrome/Firefox packaging: passed; version 0.7.0, all packaged JS matches final dist.
+Manifest browser permissions unchanged: storage, activeTab, alarms. No host permissions added.
+Existing legacy site grants and edits preserved; no reconnect/reapproval required.
+No extra LNURL metadata-hash policy. Current LUD-06 exact-amount validation retained.
+Native installed-browser verification was not performed. No real payments or production credentials used.
+No commit, push, version bump or publication performed.
+
+TAP summaries:
+# tests 215
+# suites 50
+# pass 215
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1958.603583
+# tests 242
+# suites 57
+# pass 242
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 887.967583
+# tests 260
+# suites 59
+# pass 260
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1281.946208
+# tests 910
+# suites 167
+# pass 910
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 122908.826583

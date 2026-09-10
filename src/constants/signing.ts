@@ -32,3 +32,19 @@ export const NIP07_SIGNING_METHODS = new Set([
     'nip07_signEvent', 'nip07_nip04Encrypt', 'nip07_nip04Decrypt',
     'nip07_nip44Encrypt', 'nip07_nip44Decrypt'
 ]);
+
+/** Bound locally retained unread rejection summaries; never store event content. */
+export const SIGNER_REJECTIONS_KEY = 'signerRejections';
+export const MAX_SIGNER_REJECTIONS = 100;
+export const SIGNER_BADGE_PENDING_COLOR = '#f59e0b';
+export const SIGNER_BADGE_REJECTED_COLOR = '#dc2626';
+
+/** Includes approval, unlock, remote work and permission/connect waits. */
+export const MAX_IN_FLIGHT_PER_ORIGIN = 64;
+export const MAX_IN_FLIGHT_GLOBAL = 256;
+/** Full event JSON bytes, including tags; accommodates large contact lists. */
+export const MAX_EVENT_BYTES = 1024 * 1024;
+export const MAX_EVENT_TAGS = 10_000;
+export const MAX_TAG_VALUES = 1024;
+export const MAX_CRYPTO_PLAINTEXT_BYTES = 65535;
+export const MAX_CRYPTO_CIPHERTEXT_LENGTH = 131072;

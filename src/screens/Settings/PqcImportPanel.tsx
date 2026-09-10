@@ -7,6 +7,8 @@ import { type PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
 import { usePqc } from '@context/PqcContext';
 import FormError from '@components/FormError';
 import Textarea from '@components/Textarea';
+import Input from '@components/Input';
+import { decryptBackup, isEncryptedBackup } from '@lib/crypto/keyBackup.ts';
 
 import Container from '@components/Container';
 import Text from '@components/Text';
@@ -16,18 +18,23 @@ export default function PqcImportPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { applyStatus } = usePqc();
   const [text, setText] = useState<string>('');
+  const [password, setPassword] = useState('');
+  const encrypted = isEncryptedBackup(text);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
 
   const submit = async (keyfile: string) => {
+    if (busy || (isEncryptedBackup(keyfile) && !password)) return;
     setError('');
     setBusy(true);
     try {
+      if (isEncryptedBackup(keyfile)) keyfile = await decryptBackup(keyfile, password);
       // Optimistic: `pqc_importKeys` already returns the new status, so
       // updating the shared context with it directly saves the round trip a
       // `refresh()` would otherwise repeat.
       applyStatus(await rpc<PqcStatus>('pqc_importKeys', { keyfile }));
       setText('');
+      setPassword('');
     } catch (e: any) {
       setError(e?.message || t('common.error'));
     } finally {
@@ -40,7 +47,11 @@ export default function PqcImportPanel() {
     e.target.value = '';
     if (!file) return;
     try {
-      await submit(await file.text());
+      const contents = await file.text();
+      setPassword('');
+      setError('');
+      if (isEncryptedBackup(contents)) setText(contents);
+      else await submit(contents);
     } catch {
       setError(t('pqc.importFileUnreadable'));
     }
@@ -58,12 +69,24 @@ export default function PqcImportPanel() {
         value={text}
         spellCheck={false}
         placeholder={t('pqc.importPastePlaceholder')}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => { setText(e.target.value); setPassword(''); setError(''); }}
         disabled={busy}
       />
 
+      {encrypted && (
+        <Input
+          type="password"
+          showToggle
+          label={t('key.encryptionPassword')}
+          autoComplete="off"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          disabled={busy}
+        />
+      )}
+
       <Container variant="row" gap={5} className="flex-wrap">
-        <Button onClick={() => submit(text)} disabled={busy || !text.trim()}>
+        <Button onClick={() => submit(text)} disabled={busy || !text.trim() || (encrypted && !password)}>
           {busy ? t('pqc.importing') : t('pqc.importSubmit')}
         </Button>
         <ButtonSecondary onClick={() => fileRef.current?.click()} disabled={busy}>{t('pqc.importChooseFile')}</ButtonSecondary>

@@ -109,7 +109,7 @@ if (window.__nostrWotContentInjected) {
             port.postMessage({
                 id: requestId,
                 method: portName + '_' + method,
-                params: { ...(params as Record<string, unknown>), origin: window.location.hostname },
+                params: { ...(params as Record<string, unknown>), origin: window.location.origin },
             });
         } catch {
             state.inflight.delete(requestId);
@@ -175,9 +175,14 @@ if (window.__nostrWotContentInjected) {
     });
 
     // Listen for messages from extension (popup/background)
-    browser.runtime.onMessage.addListener((request: Record<string, unknown>) => {
+    browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender: chrome.runtime.MessageSender, sendResponse: (response: unknown) => void) => {
+        if (request.type === 'NOSTR_RELOAD_PAGE' && sender.id === browser.runtime.id && sender.url?.startsWith(browser.runtime.getURL(''))) {
+            sendResponse({ ok: true });
+            setTimeout(() => window.location.reload(), 0);
+            return;
+        }
         // Forward account change events to page
-        if (request.type === 'NOSTR_ACCOUNT_CHANGED') {
+        if (request.type === 'NOSTR_ACCOUNT_CHANGED' && request.origin === window.location.origin) {
             window.postMessage({ type: 'NOSTR_ACCOUNT_CHANGED', pubkey: request.pubkey }, window.location.origin);
             return;
         }

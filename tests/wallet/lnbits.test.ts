@@ -325,3 +325,92 @@ it('requests non-pending history from LNbits before pagination, newest first',as
  assert.equal(query.get('status[ne]'),'pending'); assert.equal(query.get('limit'),'50'); assert.equal(query.get('offset'),'100');
  assert.equal(query.get('sortby'),'time'); assert.equal(query.get('direction'),'desc');
 });
+
+describe('LNbits credential lifetime', () => {
+  it('refuses redirects before forwarding credentials', async () => {
+    const { createServer } = await import('node:http');
+    let leaked = false;
+    const destination = createServer((_req, res) => { leaked = true; res.end('{"balance":0}'); });
+    await new Promise<void>(resolve => destination.listen(0, '127.0.0.1', resolve));
+    const destinationPort = (destination.address() as { port: number }).port;
+    const server = createServer((_req, res) => {
+      res.writeHead(302, { Location: `http://127.0.0.1:${destinationPort}/stolen` }); res.end();
+    });
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address() as { port: number };
+    try {
+      const provider = new LnbitsProvider({ instanceUrl: `http://127.0.0.1:${address.port}`, adminKey: 'synthetic' });
+      await assert.rejects(provider.getBalance());
+      assert.equal(leaked, false);
+    } finally {
+      server.closeAllConnections(); destination.closeAllConnections();
+      await Promise.all([server, destination].map(s => new Promise<void>(resolve => s.close(() => resolve()))));
+    }
+  });
+
+  it('disconnect permanently revokes all operations and reconnect', async () => {
+    let requests = 0;
+    const provider = new LnbitsProvider({ instanceUrl: 'https://wallet.test', adminKey: 'synthetic' }, async () => {
+      requests++; return new Response('{"balance":0}');
+    });
+    await provider.connect();
+    provider.disconnect();
+    for (const operation of [() => provider.connect(), () => provider.getBalance(), () => provider.payInvoice('invoice'), () => provider.lookupInvoice('hash')]) {
+      await assert.rejects(operation, /disconnect|disposed/i);
+    }
+    assert.equal(requests, 1);
+  });
+
+  it('disconnect aborts an in-flight connection and cannot resurrect it', async () => {
+    let signal: AbortSignal | undefined;
+    let finish!: (response: Response) => void;
+    const provider = new LnbitsProvider({ instanceUrl: 'https://wallet.test', adminKey: 'synthetic' }, async (_url, init) => {
+      signal = init?.signal ?? undefined;
+      return new Promise(resolve => { finish = resolve; });
+    });
+    const connecting = provider.connect();
+    provider.disconnect();
+    finish(new Response('{"balance":0}'));
+    await assert.rejects(connecting, /disconnect|disposed/i);
+    assert.equal(signal?.aborted, true);
+    assert.equal(provider.isConnected(), false);
+  });
+});
+
+describe('bounded wallet HTTP responses', () => {
+  it('rejects declared and streamed oversized bodies and cancels the stream', async () => {
+    const { walletHttp } = await import('../../src/services/http/wallet.ts');
+    for (const declared of [true, false]) {
+      let canceled = false;
+      const response = new Response(new ReadableStream({
+        start(controller) { controller.enqueue(new TextEncoder().encode('a'.repeat(100))); },
+        cancel() { canceled = true; },
+      }), { headers: declared ? { 'content-length': '100' } : {} });
+      await assert.rejects(walletHttp('https://wallet.test', {}, async () => response, 'HTTP', { maxBytes: 32 }), /too large/);
+      assert.equal(canceled, true);
+    }
+  });
+  it('bounds fetch and body stalls and aborts transport', async () => {
+    const { walletHttp } = await import('../../src/services/http/wallet.ts');
+    for (const stage of ['fetch', 'body']) {
+      let signal: AbortSignal | undefined;
+      await assert.rejects(walletHttp('https://wallet.test', {}, async (_url, init) => {
+        signal = init?.signal ?? undefined;
+        return stage === 'fetch' ? new Promise<Response>(() => {}) : new Response(new ReadableStream());
+      }, 'HTTP', { timeoutMs: 5 }), /timed out/);
+      assert.equal(signal?.aborted, true);
+    }
+  });
+  it('rejects redirects regardless of destination and never requests a follow-up URL', async () => {
+    for (const destination of ['https://wallet.test/other', 'https://thief.test/', 'http://wallet.test/']) {
+      let calls = 0;
+      const provider = new LnbitsProvider({ instanceUrl: 'https://wallet.test', adminKey: 'synthetic' }, async (_url, init) => {
+        calls++;
+        assert.equal(init?.redirect, 'error');
+        return new Response('', { status: 302, headers: { Location: destination } });
+      });
+      await assert.rejects(provider.getBalance(), /redirect/i);
+      assert.equal(calls, 1);
+    }
+  });
+});

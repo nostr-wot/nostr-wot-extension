@@ -1,3 +1,5 @@
+import { siteScopes, hasSiteScope } from '@domain/site/siteScope.ts';
+import { scheduleAccountSwitchPopupRecovery } from '../browser/accountSwitchPopupRecovery.ts';
 import {
   DISMISS_DURATION_KEY,
   SESSION_DISMISSED_KEY,
@@ -46,7 +48,7 @@ export async function getAllowedDomains(): Promise<string[]> {
 
 export async function isDomainAllowed(domain: string): Promise<boolean> {
     const domains = await getAllowedDomains();
-    return domains.includes(domain);
+    return hasSiteScope(domains, domain);
 }
 
 export async function addAllowedDomain(domain: string): Promise<boolean> {
@@ -63,7 +65,7 @@ export async function addAllowedDomain(domain: string): Promise<boolean> {
 
 export async function removeAllowedDomain(domain: string): Promise<boolean> {
     const domains = await getAllowedDomains();
-    const filtered = domains.filter(d => d !== domain);
+    const filtered = domains.filter(d => !siteScopes(domain).includes(d));
     await browser.storage.local.set({ allowedDomains: filtered });
     invalidateDomainCache();
     // Disconnecting a site revokes its WebLN consent too — a re-connected
@@ -91,7 +93,7 @@ export async function getWeblnAllowedDomains(): Promise<string[]> {
 
 export async function isWeblnAllowed(domain: string): Promise<boolean> {
     const domains = await getWeblnAllowedDomains();
-    return domains.includes(domain);
+    return hasSiteScope(domains, domain);
 }
 
 export async function addWeblnAllowedDomain(domain: string): Promise<boolean> {
@@ -106,7 +108,7 @@ export async function addWeblnAllowedDomain(domain: string): Promise<boolean> {
 
 export async function removeWeblnAllowedDomain(domain: string): Promise<boolean> {
     const domains = await getWeblnAllowedDomains();
-    const filtered = domains.filter(d => d !== domain);
+    const filtered = domains.filter(d => !siteScopes(domain).includes(d));
     await browser.storage.local.set({ weblnAllowedDomains: filtered });
     invalidateWeblnDomainCache();
     return true;
@@ -198,15 +200,18 @@ export async function getDismissedDomains(): Promise<Array<{ domain: string; unt
 }
 
 export async function isDomainDismissed(domain: string): Promise<boolean> {
-    if ((await getSessionDismissed()).includes(domain)) return true;
+    if (hasSiteScope(await getSessionDismissed(), domain)) return true;
     const dismissals = await getDismissals();
-    const entry = dismissals[domain];
-    if (!entry) return false;
-    if (entry.until === 'never') return true;
-    if (entry.until === 'session') return false; // recorded in the session store; browser restarted
-    if (entry.until > Date.now()) return true;
-    await removeDismissedDomain(domain);
-    return false;
+    let live = false;
+    let expired = false;
+    for (const scope of siteScopes(domain)) {
+        const entry = dismissals[scope];
+        if (!entry) continue;
+        if (entry.until === 'never' || (typeof entry.until === 'number' && entry.until > Date.now())) live = true;
+        else if (typeof entry.until === 'number') { delete dismissals[scope]; expired = true; }
+    }
+    if (expired) await browser.storage.local.set({ dismissedDomains: dismissals });
+    return live;
 }
 
 /**
@@ -243,14 +248,10 @@ export async function addDismissedDomain(domain: string, permanent = false): Pro
 
 export async function removeDismissedDomain(domain: string): Promise<void> {
     const dismissals = await getDismissals();
-    if (dismissals[domain]) {
-        delete dismissals[domain];
-        await browser.storage.local.set({ dismissedDomains: dismissals });
-    }
+    for (const scope of siteScopes(domain)) delete dismissals[scope];
+    await browser.storage.local.set({ dismissedDomains: dismissals });
     const session = await getSessionDismissed();
-    if (session.includes(domain)) {
-        await browser.storage.session.set({ [SESSION_DISMISSED_KEY]: session.filter(d => d !== domain) });
-    }
+    await browser.storage.session.set({ [SESSION_DISMISSED_KEY]: session.filter(d => !siteScopes(domain).includes(d)) });
 }
 
 // ── Connecting a site ──
@@ -442,7 +443,7 @@ export async function broadcastAccountChanged(pubkey: string): Promise<void> {
             // in background tabs, defeating the getPublicKey consent gate.
             if (!(await isDomainAllowed(domain))) continue;
             if (await isIdentityDisabled(domain)) continue;
-            browser.tabs.sendMessage(tabId, { type: 'NOSTR_ACCOUNT_CHANGED', pubkey }).catch(() => {});
+            browser.tabs.sendMessage(tabId, { type: 'NOSTR_ACCOUNT_CHANGED', pubkey, origin: domain }).catch(() => {});
         }
     } catch (e: unknown) {
         console.warn('[BG] broadcastAccountChanged failed:', (e as Error).message);
@@ -467,14 +468,14 @@ export async function isActiveAccountReadOnly(): Promise<boolean> {
 
 export async function isIdentityDisabled(domain: string): Promise<boolean> {
     const data = await browser.storage.local.get('identityDisabledSites') as Record<string, string[]>;
-    return (data.identityDisabledSites || []).includes(domain);
+    return hasSiteScope(data.identityDisabledSites || [], domain);
 }
 
 async function setIdentityDisabled(domain: string, disabled: boolean): Promise<boolean> {
     const data = await browser.storage.local.get('identityDisabledSites') as Record<string, string[]>;
     const sites = new Set(data.identityDisabledSites || []);
     if (disabled) sites.add(domain);
-    else sites.delete(domain);
+    else for (const scope of siteScopes(domain)) sites.delete(scope);
     await browser.storage.local.set({ identityDisabledSites: [...sites] });
     return true;
 }
@@ -486,6 +487,10 @@ async function setIdentityDisabled(domain: string, disabled: boolean): Promise<b
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
+    ['scheduleAccountSwitchPopupRecovery', async (params) => {
+        await scheduleAccountSwitchPopupRecovery(params.tabId);
+        return { ok: true };
+    }],
     ['getAllowedDomains', async () => getAllowedDomains()],
     ['isDomainAllowed', async (params) => isDomainAllowed(params.domain as string)],
     ['isDomainDismissed', async (params) => isDomainDismissed(params.domain as string)],

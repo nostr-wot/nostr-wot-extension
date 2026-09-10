@@ -1,4 +1,4 @@
-import { NIP44_VERSION } from '@constants/crypto/nip44.ts';
+import { NIP44_VERSION, NIP44_MAX_ENCODED_LENGTH } from '@constants/crypto/nip44.ts';
 /**
  * NIP-44 v2 — Versioned Encryption (ChaCha20 + HMAC-SHA256)
  *
@@ -27,6 +27,7 @@ function calcPaddedLen(unpaddedLen: number): number {
 }
 
 function pad(plaintext: string): Uint8Array {
+  if (plaintext.length > 65535) throw new Error('Plaintext too long or empty');
   const unpadded = new TextEncoder().encode(plaintext);
   const unpaddedLen = unpadded.length;
   if (unpaddedLen < 1 || unpaddedLen > 65535) {
@@ -117,6 +118,7 @@ export async function nip44Encrypt(plaintext: string, privkey: Uint8Array, their
 }
 
 export async function nip44Decrypt(data: string, privkey: Uint8Array, theirPubkey: Uint8Array): Promise<string> {
+  if (data.length > NIP44_MAX_ENCODED_LENGTH) throw new Error('Payload too long');
   const raw = base64ToArray(data);
   if (raw.length < 99) throw new Error('Payload too short');
   // Spec max: 1 (version) + 32 (nonce) + 2 + 65536 (padded) + 32 (mac) = 65603

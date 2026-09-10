@@ -65,7 +65,7 @@ export async function activePqKeys(accountId?: string) {
   }
   const seed = await mnemonicToSeed(acct.mnemonic);
   try {
-    return { keys: derivePqKeys(seed, acct.derivationIndex ?? 0), pubkey: acct.pubkey };
+    return { keys: derivePqKeys(seed, acct.derivationPath ?? acct.derivationIndex ?? 0), pubkey: acct.pubkey };
   } finally {
     seed.fill(0);
   }

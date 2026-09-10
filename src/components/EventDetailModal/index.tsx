@@ -7,6 +7,7 @@ import EventPreview from '@components/EventPreview';
 import SiteIcon from '@components/SiteIcon';
 import ActivityGroupDetail from './ActivityGroupDetail';
 import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
+import Text from '@components/Text';
 import type { ActivityEntry } from '@domain/activity/activity.ts';
 
 const CLS = {
@@ -181,20 +182,21 @@ export default function EventDetailModal({
         {isApproval && (
           <div className={CLS.actions}>
             <div className={CLS.actionsRow}>
-              <ButtonDanger small disabled={busy} onClick={onAlwaysDeny}>
-                {t('approval.alwaysDenyLabel', { label: title })}
-              </ButtonDanger>
-              <ButtonSecondary small disabled={busy} onClick={onDeny}>
+              <ButtonSecondary small disabled={busy || !onDeny} onClick={onDeny}>
                 {t('approval.deny')}
               </ButtonSecondary>
+              <Button small disabled={busy || !onApprove} onClick={onApprove}>
+                {t(requests && requests.length > 1 ? 'approval.approveShown' : 'approval.approveOnce')}
+              </Button>
             </div>
+            <Text variant="muted">{t('approval.rememberHint')}</Text>
             <div className={CLS.actionsRow}>
-              <ButtonSecondary small disabled={busy} onClick={onAlwaysAllow}>
+              <ButtonDanger small outline disabled={busy || !onAlwaysDeny} onClick={onAlwaysDeny}>
+                {t('approval.alwaysDenyLabel', { label: title })}
+              </ButtonDanger>
+              <ButtonSecondary small outline disabled={busy || !onAlwaysAllow} onClick={onAlwaysAllow}>
                 {t('approval.alwaysAllowLabel', { label: title })}
               </ButtonSecondary>
-              <Button small disabled={busy} onClick={onApprove}>
-                {requests && requests.length > 1 ? `${t('approval.approveShown')} (${requests.length})` : t('approval.allow')}
-              </Button>
             </div>
           </div>
         )}

@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,10 +21,10 @@ jobs:
         node-version: [22, 24]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node-version }}
 
@@ -41,7 +44,7 @@ jobs:
       # Mirrors the browser-mocked group in tests/run.sh. It had drifted: several suites
       # that run locally were never gated here, including the post-quantum handlers.
       - name: Run module tests
-        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/nostr-connect-integration.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/wallet/payment-integration.test.ts tests/wallet/payment-intents.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts tests/profile-read.test.ts tests/profile-images.test.ts tests/wallet-ui.test.ts tests/relay-list.test.ts tests/relay-cache.test.ts tests/activity.test.ts tests/activity-decrypt.test.ts tests/activity-detail.test.ts tests/favicon.test.ts tests/vault-auto-unlock.test.ts tests/password-pair.test.ts tests/password-pair-fields.test.ts tests/vault-lock-race.test.ts
+        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/nostr-connect-integration.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/wallet/payment-integration.test.ts tests/wallet/payment-intents.test.ts tests/wallet/automatic-payment-budget.test.ts tests/wallet/payment-hardening.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts tests/profile-read.test.ts tests/profile-images.test.ts tests/wallet-ui.test.ts tests/relay-list.test.ts tests/relay-cache.test.ts tests/activity.test.ts tests/activity-decrypt.test.ts tests/activity-detail.test.ts tests/favicon.test.ts tests/vault-auto-unlock.test.ts tests/password-pair.test.ts tests/password-pair-fields.test.ts tests/vault-lock-race.test.ts
         timeout-minutes: 5
 
       - name: Run remaining unit tests

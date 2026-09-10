@@ -4,6 +4,58 @@ import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
 import * as signerPermissions from '../src/services/permissions/permissions.ts';
 import { getAllowedDomains, isDomainAllowed, addAllowedDomain, removeAllowedDomain, getDismissedDomains, isDomainDismissed, addDismissedDomain, getWeblnAllowedDomains, isWeblnAllowed, addWeblnAllowedDomain, removeWeblnAllowedDomain, broadcastAccountChanged, waitForDomainAllowed, waitForConnectDecision, rememberTabOrigin, forgetTabOrigin, __getTabOrigins, releaseLegacyHostGrants, removeDismissedDomain, getDismissDuration, setDismissDuration, connectDomain, handlers } from '../src/services/background/domain-handlers.ts';
 
+it('account-switch recovery makes one delayed native attempt on the same focused tab', async t => {
+  const recover = handlers.get('scheduleAccountSwitchPopupRecovery');
+  assert.ok(recover);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let activeId = 7;
+  let focused = true;
+  t.mock.method(browserMock.tabs, 'query', async () => [{ id: activeId, windowId: 3 }]);
+  const getWindow = Object.getOwnPropertyDescriptor(browserMock.windows, 'get');
+  Object.defineProperty(browserMock.windows, 'get', { configurable: true, value: async () => ({ id: 3, focused }) });
+  const open = t.mock.method(browserMock.action, 'openPopup', async () => { throw new Error('Popup already open'); });
+  const settle = () => new Promise(resolve => setImmediate(resolve));
+  try {
+    await assert.rejects(() => recover({ tabId: '7' }), /Invalid tab/);
+    await recover({ tabId: 7 });
+    t.mock.timers.tick(99);
+    await settle();
+    assert.equal(open.mock.callCount(), 0);
+    t.mock.timers.tick(1);
+    await settle();
+    assert.deepEqual(open.mock.calls[0].arguments, [{ windowId: 3 }]);
+    t.mock.timers.tick(5000);
+    await settle();
+    assert.equal(open.mock.callCount(), 1, 'native refusal must not cause a reopen loop');
+
+    await recover({ tabId: 7 });
+    activeId = 8;
+    t.mock.timers.tick(100);
+    await settle();
+    assert.equal(open.mock.callCount(), 1, 'do not reopen over a different tab');
+    activeId = 7;
+    await recover({ tabId: 7 });
+    focused = false;
+    t.mock.timers.tick(100);
+    await settle();
+    assert.equal(open.mock.callCount(), 1, 'do not bring an inactive window forward');
+    focused = true;
+    await recover({ tabId: 7 });
+    await recover({ tabId: 7 });
+    open.mock.mockImplementation(async () => {});
+    t.mock.timers.tick(100);
+    await settle();
+    assert.equal(open.mock.callCount(), 2, 'a newer switch replaces the old timer');
+    await recover({ tabId: 99 });
+    t.mock.timers.tick(100);
+    await settle();
+    assert.equal(open.mock.callCount(), 2, 'an inactive requested tab cannot arm recovery');
+  } finally {
+    if (getWindow) Object.defineProperty(browserMock.windows, 'get', getWindow);
+    else Reflect.deleteProperty(browserMock.windows, 'get');
+  }
+});
+
 describe('broadcastAccountChanged -- only notifies connected origins', () => {
   beforeEach(() => { resetMockStorage(); __getTabOrigins().clear(); });
 
@@ -163,12 +215,12 @@ describe('connect gate -- waiting for the user decision', () => {
 
     try {
       const waits = [
-        waitForConnectDecision('site.com'),
-        waitForConnectDecision('site.com'),
-        waitForConnectDecision('site.com'),
+        waitForConnectDecision('https://site.com'),
+        waitForConnectDecision('https://site.com'),
+        waitForConnectDecision('https://site.com'),
       ];
       await new Promise<void>(r => { const t = setTimeout(r, 50); t.unref?.(); });
-      await addAllowedDomain('site.com');
+      await addAllowedDomain('https://site.com');
 
       assert.deepStrictEqual(await Promise.all(waits), [true, true, true]);
       assert.strictEqual(popupOpens, 1, 'three concurrent calls must open the popup once');
@@ -186,15 +238,15 @@ describe('connect gate -- waiting for the user decision', () => {
     (browserMock.action as Record<string, unknown>).openPopup = () => { popupOpens++; return Promise.resolve(); };
 
     try {
-      const first = waitForConnectDecision('site.com');
+      const first = waitForConnectDecision('https://site.com');
       await new Promise<void>(r => { const t = setTimeout(r, 50); t.unref?.(); });
-      await addDismissedDomain('site.com');
+      await addDismissedDomain('https://site.com');
       assert.strictEqual(await first, false);
 
       // Gate released — a later call is a fresh decision, not a stale cached one
-      const second = waitForConnectDecision('site.com');
+      const second = waitForConnectDecision('https://site.com');
       await new Promise<void>(r => { const t = setTimeout(r, 50); t.unref?.(); });
-      await addAllowedDomain('site.com');
+      await addAllowedDomain('https://site.com');
       assert.strictEqual(await second, true);
       assert.strictEqual(popupOpens, 2);
     } finally {
@@ -375,6 +427,7 @@ describe('broadcastAccountChanged uses the port registry, not tab.url', () => {
     assert.deepStrictEqual(sent.map(s => s.tabId), [1]);
     assert.strictEqual(sent[0].msg.type, 'NOSTR_ACCOUNT_CHANGED');
     assert.strictEqual(sent[0].msg.pubkey, 'pubkey-hex');
+    assert.strictEqual(sent[0].msg.origin, 'connected.example');
   });
 
   it('never notifies a site the user has not connected', async () => {
@@ -527,4 +580,18 @@ describe('dismissal lifetimes', () => {
   it('defaults to seven days', async () => {
     assert.strictEqual(await getDismissDuration(), 604_800_000);
   });
+});
+
+it('legacy dismissal and disabled identity apply to existing origin scopes and can be cleared', async () => {
+  resetMockStorage();
+  await addDismissedDomain('legacy.test', true);
+  assert.equal(await isDomainDismissed('https://legacy.test:8443'), true);
+  assert.equal(await isDomainDismissed('https://sub.legacy.test'), false);
+  await removeDismissedDomain('https://legacy.test:8443');
+  assert.equal(await isDomainDismissed('https://legacy.test:8443'), false);
+  await browserMock.storage.local.set({identityDisabledSites:['legacy.test']});
+  const { isIdentityDisabled } = await import('../src/services/background/domain-handlers.ts');
+  assert.equal(await isIdentityDisabled('https://legacy.test:8443'), true);
+  await connectDomain('https://legacy.test:8443');
+  assert.equal(await isIdentityDisabled('https://legacy.test:8443'), false);
 });

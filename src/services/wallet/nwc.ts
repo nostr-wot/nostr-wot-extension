@@ -68,6 +68,9 @@ export class NwcProvider implements WalletProvider {
 
   private ws: WebSocket | null = null;
   private _connected = false;
+  private disposed = false;
+  private connecting: Promise<void> | null = null;
+  private readonly cancellations = new Set<(error: Error) => void>();
   private readonly pending = new Map<string, PendingNwcRequest>();
 
   constructor(config: NwcConfig, secret: Uint8Array, deps: NwcCryptoDeps) {
@@ -164,6 +167,7 @@ export class NwcProvider implements WalletProvider {
         amountPaid: Math.round(amountMsats / 1000),
       };
     } catch {
+      this.assertAvailable();
       return { paid: false };
     }
   }
@@ -200,39 +204,57 @@ export class NwcProvider implements WalletProvider {
   }
 
   async connect(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    this.assertAvailable();
+    if (this.isConnected()) return;
+    if (this.connecting) return this.connecting;
+    const connection = new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(this.relay);
-
+      this.ws = ws;
+      this.cancellations.add(reject);
+      const finish = (error?: Error) => {
+        this.cancellations.delete(reject);
+        if (error) reject(error); else resolve();
+      };
       ws.onopen = () => {
-        this.ws = ws;
-        this._connected = true;
-
-        // Subscribe to NWC response events (kind 23195) from the wallet
-        const pubkeyHex = this.getPubkeyHex();
-        const sub = JSON.stringify([
-          'REQ',
-          'nwc-sub',
-          { kinds: [23195], authors: [this.walletPubkey], '#p': [pubkeyHex] },
-        ]);
-        ws.send(sub);
-        resolve();
+        if (this.disposed || this.ws !== ws) {
+          ws.close(); finish(new Error('NWC disconnected')); return;
+        }
+        try {
+          const pubkeyHex = this.getPubkeyHex();
+          ws.send(JSON.stringify([
+            'REQ', 'nwc-sub',
+            { kinds: [23195], authors: [this.walletPubkey], '#p': [pubkeyHex] },
+          ]));
+          this._connected = true;
+          finish();
+        } catch (error) {
+          finish(error instanceof Error ? error : new Error(String(error)));
+          ws.close();
+        }
       };
-
       ws.onerror = () => {
-        reject(new Error('NWC WebSocket connection failed'));
+        finish(new Error('NWC WebSocket connection failed'));
+        ws.close();
       };
-
       ws.onmessage = (event) => {
-        void this.handleMessage(event.data as string);
+        if (!this.disposed && this.ws === ws) void this.handleMessage(event.data as string);
       };
-
       ws.onclose = () => {
-        this._connected = false;
+        finish(new Error('NWC disconnected'));
+        if (this.ws === ws) {
+          this.ws = null;
+          this._connected = false;
+        }
       };
     });
+    this.connecting = connection;
+    try { await connection; } finally { if (this.connecting === connection) this.connecting = null; }
   }
 
   disconnect(): void {
+    this.disposed = true;
+    for (const cancel of this.cancellations) cancel(new Error('NWC disconnected'));
+    this.cancellations.clear();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -260,15 +282,34 @@ export class NwcProvider implements WalletProvider {
     return typeof pubkey === 'string' ? pubkey : bytesToHex(pubkey);
   }
 
+  private assertAvailable(): void {
+    if (this.disposed) throw new Error('NWC disconnected (NWC not connected)');
+  }
+
+  private assertSocket(ws: WebSocket): void {
+    this.assertAvailable();
+    if (this.ws !== ws || ws.readyState !== WebSocket.OPEN) throw new Error('NWC not connected');
+  }
+
   private async sendRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new Error('NWC not connected');
-    }
+    this.assertAvailable();
+    let cancel!: (error: Error) => void;
+    const canceled = new Promise<never>((_resolve, reject) => { cancel = reject; });
+    this.cancellations.add(cancel);
+    try { return await Promise.race([this.performRequest(method, params), canceled]); }
+    finally { this.cancellations.delete(cancel); }
+  }
+
+  private async performRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
+    this.assertAvailable();
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN) throw new Error('NWC not connected');
 
     const content = NwcProvider.buildRequestContent(method, params);
     const walletPubkeyBytes = hexToBytes(this.walletPubkey);
     const encrypted = await this.deps.encrypt(content, this.secret, walletPubkeyBytes);
 
+    this.assertSocket(ws);
     const pubkeyHex = this.getPubkeyHex();
 
     const unsignedEvent: UnsignedEvent = {
@@ -280,6 +321,7 @@ export class NwcProvider implements WalletProvider {
     };
 
     const signed = await this.deps.signEvent(unsignedEvent, this.secret);
+    this.assertSocket(ws);
 
     return new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -289,11 +331,16 @@ export class NwcProvider implements WalletProvider {
 
       this.pending.set(signed.id, { resolve, reject, timer });
 
-      this.ws!.send(JSON.stringify(['EVENT', signed]));
+      try { ws.send(JSON.stringify(['EVENT', signed])); }
+      catch (error) {
+        clearTimeout(timer); this.pending.delete(signed.id);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      }
     });
   }
 
   private async handleMessage(raw: string): Promise<void> {
+    if (this.disposed) return;
     let parsed: unknown[];
     try {
       parsed = JSON.parse(raw) as unknown[];
@@ -315,7 +362,7 @@ export class NwcProvider implements WalletProvider {
     // schnorr signature before correlating with a pending request, so a
     // malicious relay can't forge responses.
     const verify = this.deps.verifyEvent ?? verifyEventNip01;
-    if (!(await verify(event))) return;
+    if (!(await verify(event)) || this.disposed) return;
 
     // Find the 'e' tag that references the original request
     const eTag = event.tags?.find((t) => t[0] === 'e');
@@ -334,6 +381,8 @@ export class NwcProvider implements WalletProvider {
       // the real response (or the timeout) can still settle the request.
       return;
     }
+
+    if (this.disposed || this.pending.get(requestId) !== entry) return;
 
     // Only a verified, decryptable response consumes the pending request.
     clearTimeout(entry.timer);

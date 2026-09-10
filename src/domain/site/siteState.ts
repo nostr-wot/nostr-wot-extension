@@ -1,3 +1,4 @@
+import { hasSiteScope } from './siteScope.ts';
 /**
  * Pure decision helper for a site's connection status.
  *
@@ -40,5 +41,5 @@ export function resolveSiteState(
   // would show the Connect card to an already-connected site, and answering 'connected'
   // would be worse.
   if (allowedDomains === null) return 'error';
-  return allowedDomains.includes(domain) ? 'connected' : 'notConnected';
+  return hasSiteScope(allowedDomains, domain) ? 'connected' : 'notConnected';
 }

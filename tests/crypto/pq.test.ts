@@ -182,3 +182,20 @@ describe('ML-KEM encapsulation', () => {
     assert.throws(() => encapsulate(new Uint8Array(100)), /Invalid ML-KEM public key length/);
   });
 });
+
+it('custom paths have reproducible, distinct PQ keys while standard paths keep existing keys', () => {
+  const seed=new Uint8Array(64).fill(17);
+  const custom=derivePqKeys(seed,"m/44'/1237'/8'/0/1");
+  const restored=derivePqKeys(seed,"m/44h/1237h/8h/0/1");
+  const other=derivePqKeys(seed,"m/44'/1237'/9'/0/1");
+  const standard=derivePqKeys(seed,1);
+  assert.equal(bytesToHex(sha256(custom.kem.publicKey)),'7de89e83829d580236fbb7ab3d582a47c97e3278acc6feb8867991f8d0f874f0');
+  assert.equal(bytesToHex(sha256(custom.dsa.publicKey)),'6325b57bd13a06ad7ddbb75cc61d12d1b09e0595a6066a2f19a063a96ba502d5');
+  assert.deepEqual(custom.kem.publicKey,restored.kem.publicKey);
+  assert.deepEqual(custom.dsa.publicKey,restored.dsa.publicKey);
+  assert.notDeepEqual(custom.kem.publicKey,other.kem.publicKey);
+  assert.notDeepEqual(custom.kem.publicKey,standard.kem.publicKey);
+  assert.deepEqual(derivePqKeys(seed,"m/44'/1237'/0'/0/1").kem.publicKey,standard.kem.publicKey);
+  assert.equal(kemInfo("m/44'/1237'/8'/0/1"),"nip-pqc/v1/ml-kem-1024/path/m/44'/1237'/8'/0/1");
+  assert.throws(()=>derivePqKeys(seed,'bad path'),/path/i);
+});

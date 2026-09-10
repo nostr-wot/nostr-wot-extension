@@ -187,3 +187,68 @@ describe('onboarding_createVault refuses to replace a vault that holds accounts'
     assert.strictEqual(vault.listAccounts().length, 1);
   });
 });
+
+
+it('watch-only account removal works while locked and preserves the remaining identity', async () => {
+  resetMockStorage();
+  vault.lock();
+  const a = {id:'watch-a',pubkey:'11'.repeat(32),type:'npub',readOnly:true};
+  const b = {id:'watch-b',pubkey:'22'.repeat(32),type:'npub',readOnly:true};
+  await browserMock.storage.local.set({accounts:[a,b],activeAccountId:a.id});
+  await removeAccount({accountId:b.id});
+  assert.deepEqual((await browserMock.storage.local.get('accounts')).accounts,[a]);
+  assert.equal((await browserMock.storage.sync.get('myPubkey')).myPubkey,a.pubkey);
+  await removeAccount({accountId:a.id});
+  assert.deepEqual((await browserMock.storage.local.get('accounts')).accounts,[]);
+  assert.equal((await browserMock.storage.sync.get('myPubkey')).myPubkey,undefined);
+});
+
+it('a locked private account removal fails without changing the account list', async () => {
+  resetMockStorage();
+  vault.lock();
+  const account = {id:'private',pubkey:'33'.repeat(32),type:'generated'};
+  await browserMock.storage.local.set({accounts:[account],activeAccountId:account.id});
+  await assert.rejects(removeAccount({accountId:account.id}),/locked/i);
+  assert.deepEqual((await browserMock.storage.local.get('accounts')).accounts,[account]);
+});
+
+it('custom sub-accounts retain recovery paths, reject duplicates and restore after removal', async () => {
+  resetMockStorage();vault.lock();
+  const first=await onboardNewAccount();
+  const generate=onboarding.handlers.get('onboarding_generateSubAccount')!;
+  const add=onboarding.handlers.get('onboarding_addToVault')!;
+  const path="m/44'/1237'/4'/0/9";
+  const preview=await generate({derivationPath:path}) as any;
+  assert.equal(preview.derivationPath,path);
+  assert.equal(preview.account.mnemonic,undefined);
+  assert.equal(preview.account.privkey,undefined);
+  await assert.rejects(add({account:preview.account,name:3}),/name/i);
+  await assert.rejects(add({account:preview.account,name:'x'.repeat(101)}),/name/i);
+  await add({account:preview.account,name:'  Work identity  '});
+  const stored=(await browserMock.storage.local.get('accounts')).accounts.find((a:any)=>a.id===preview.account.id);
+  assert.equal(stored.derivationPath,path);
+  assert.equal(stored.name,'Work identity');
+  assert.equal(vault.getAccountById(preview.account.id)?.name,'Work identity');
+  await vault.lock();await vault.unlock(TEST_PASSWORD);
+  assert.equal(vault.getAccountById(preview.account.id)?.derivationPath,path);
+  await assert.rejects(generate({derivationPath:path}),/already exists/);
+  await assert.rejects(generate({derivationPath:'m/2147483648'}),/path/i);
+  await removeAccount({accountId:preview.account.id});
+  const restored=await generate({derivationPath:path}) as any;
+  assert.equal(restored.account.pubkey,preview.account.pubkey);
+  await add({account:restored.account});
+  await removeAccount({accountId:first.account.id});
+  const root=await generate({derivationPath:"m/44'/1237'/0'/0/0"}) as any;
+  assert.equal(root.account.pubkey,first.account.pubkey,'remaining sub-account retains the seed');
+});
+
+it('sub-account preview uses the active seed when multiple seeds are stored', async () => {
+  resetMockStorage();vault.lock();
+  await onboardNewAccount();
+  const second=await gen({}) as GenerateResult;
+  await onboarding.handlers.get('onboarding_addToVault')!({account:second.account});
+  const path="m/44'/1237'/2'/0/3";
+  const preview=await onboarding.handlers.get('onboarding_generateSubAccount')!({derivationPath:path}) as any;
+  const {createFromMnemonicAtPath}=await import('../src/domain/accounts/creation.ts');
+  assert.equal(preview.account.pubkey,(await createFromMnemonicAtPath(second.mnemonic,path)).pubkey);
+});

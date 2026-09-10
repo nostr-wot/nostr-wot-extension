@@ -1,4 +1,4 @@
-import { TAG_PAYMENT_HASH, TAG_DESCRIPTION, TAG_EXPIRY, MULTIPLIERS } from '@constants/bolt11.ts';
+import { TAG_PAYMENT_HASH, TAG_DESCRIPTION, TAG_EXPIRY } from '@constants/bolt11.ts';
 /**
  * Lightweight BOLT11 invoice decoder
  *
@@ -14,6 +14,8 @@ import { bech32Decode, convertBits } from '../../lib/crypto/bech32.ts';
 
 export interface DecodedInvoice {
   amountSats: number | null;
+  amountMsats: number | null;
+  descriptionHash: string | null;
   description: string | null;
   expiry: number;           // seconds, default 3600
   paymentHash: string | null;
@@ -26,43 +28,19 @@ export interface DecodedInvoice {
  * HRP format: ln{network}{amount}{multiplier}
  * Examples: lnbc1m, lnbc2500u, lnbc100n, lnbc (no amount)
  */
-function parseAmount(hrp: string): { amountSats: number | null; network: string } {
-  // Strip 'ln' prefix
-  const afterLn = hrp.slice(2);
-
-  // Detect network prefix
-  let network: string;
-  let rest: string;
-  if (afterLn.startsWith('bcrt')) {
-    network = 'bcrt';
-    rest = afterLn.slice(4);
-  } else if (afterLn.startsWith('bc')) {
-    network = 'bc';
-    rest = afterLn.slice(2);
-  } else if (afterLn.startsWith('tb')) {
-    network = 'tb';
-    rest = afterLn.slice(2);
-  } else {
-    network = afterLn.slice(0, 2);
-    rest = afterLn.slice(2);
-  }
-
-  if (!rest) return { amountSats: null, network };
-
-  // Last char might be a multiplier
-  const lastChar = rest[rest.length - 1];
-  const multiplier = MULTIPLIERS[lastChar];
-
-  if (multiplier !== undefined) {
-    const num = parseFloat(rest.slice(0, -1));
-    if (isNaN(num)) return { amountSats: null, network };
-    return { amountSats: Math.round(num * multiplier), network };
-  }
-
-  // No multiplier — amount is in BTC
-  const num = parseFloat(rest);
-  if (isNaN(num)) return { amountSats: null, network };
-  return { amountSats: Math.round(num * 100_000_000), network };
+function parseAmount(hrp: string): { amountSats: number | null; amountMsats: number | null; network: string } | null {
+  const match = /^ln(bcrt|bc|tb)(?:([0-9]+)([munp]?))?$/.exec(hrp);
+  if (!match) return null;
+  const network = match[1];
+  if (!match[2]) return { amountSats: null, amountMsats: null, network };
+  // Convert directly to integer millisatoshis; 10 pBTC = 1 msat.
+  const factors: Record<string, bigint> = { '': 100_000_000_000n, m: 100_000_000n, u: 100_000n, n: 100n };
+  const value = BigInt(match[2]);
+  if (match[3] === 'p' && value % 10n !== 0n) return null;
+  const msats = match[3] === 'p' ? value / 10n : value * factors[match[3]];
+  if (msats <= 0n || msats > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  const amountMsats = Number(msats);
+  return { amountSats: amountMsats / 1000, amountMsats, network };
 }
 
 /**
@@ -99,7 +77,9 @@ function wordsToHex(words: number[]): string {
  * Returns null if the invoice is invalid or not a Lightning invoice.
  */
 export function decodeBolt11(invoice: string): DecodedInvoice | null {
-  const lower = invoice.trim().toLowerCase();
+  const trimmed = invoice.trim();
+  if (trimmed !== trimmed.toLowerCase() && trimmed !== trimmed.toUpperCase()) return null;
+  const lower = trimmed.toLowerCase();
   if (!lower.startsWith('lnbc') && !lower.startsWith('lntb') && !lower.startsWith('lnbcrt')) {
     return null;
   }
@@ -107,11 +87,13 @@ export function decodeBolt11(invoice: string): DecodedInvoice | null {
   const decoded = bech32Decode(lower);
   if (!decoded) return null;
 
-  const { amountSats, network } = parseAmount(decoded.hrp);
+  const amount = parseAmount(decoded.hrp);
+  if (!amount) return null;
+  const { amountSats, amountMsats, network } = amount;
   const words = decoded.data;
 
-  // First 7 bytes = 35 five-bit words = timestamp
-  if (words.length < 35) return null;
+  // Timestamp is seven 5-bit words; signature needs another 104 words.
+  if (words.length < 111) return null;
   const timestamp = wordsToInt(words.slice(0, 7));
 
   // Parse tagged fields (after timestamp, before signature)
@@ -120,21 +102,27 @@ export function decodeBolt11(invoice: string): DecodedInvoice | null {
   let i = 7;
 
   let description: string | null = null;
+  let descriptionHash: string | null = null;
   let expiry = 3600; // default
   let paymentHash: string | null = null;
 
   while (i < dataEnd) {
-    if (i + 3 > dataEnd) break;
+    if (i + 3 > dataEnd) return null;
 
     const tag = words[i];
     const dataLength = words[i + 1] * 32 + words[i + 2];
     i += 3;
 
-    if (i + dataLength > dataEnd) break;
+    if (i + dataLength > dataEnd) return null;
 
     const fieldWords = words.slice(i, i + dataLength);
 
     switch (tag) {
+      case 23: // BOLT11 h tag
+        if (descriptionHash !== null || dataLength !== 52) return null;
+        descriptionHash = wordsToHex(fieldWords);
+        if (descriptionHash.length !== 64) return null;
+        break;
       case TAG_DESCRIPTION:
         description = wordsToUtf8(fieldWords);
         break;
@@ -149,5 +137,5 @@ export function decodeBolt11(invoice: string): DecodedInvoice | null {
     i += dataLength;
   }
 
-  return { amountSats, description, expiry, paymentHash, network, timestamp };
+  return { amountSats, amountMsats, descriptionHash, description, expiry, paymentHash, network, timestamp };
 }

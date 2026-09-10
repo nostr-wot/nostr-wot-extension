@@ -32,6 +32,8 @@ import {
  * @module services/wallet/payment-intents
  */
 
+import { sealPrivateValue, openPrivateValue, isPrivateEnvelope } from '../storage/private-cache.ts';
+import * as vault from '../vault/vault.ts';
 import browser from '../../lib/browser.ts';
 import { AsyncLock } from '../../utils/asyncLock.ts';
 import { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
@@ -114,7 +116,10 @@ export async function runPaymentOnce<T>(
     return null;
   });
 
-  if (existing?.status === 'done') return existing.result as T;
+  if (existing?.status === 'done') {
+    if (!isPrivateEnvelope(existing.result)) throw new Error(PAYMENT_IN_FLIGHT);
+    return openPrivateValue<T>(`${STORE_KEY}/${intentId}`, existing.result);
+  }
   if (existing?.status === 'in-flight') {
     throw new Error(PAYMENT_IN_FLIGHT);
   }
@@ -133,8 +138,24 @@ export async function runPaymentOnce<T>(
 
   await _lock.run(async () => {
     const store = await readStoreLocked();
-    store[intentId] = { status: 'done', result, at: Date.now() };
+    const encrypted = await sealPrivateValue(`${STORE_KEY}/${intentId}`, result);
+    store[intentId] = { status: 'done', result: encrypted, at: Date.now() };
     await writeStoreLocked(store);
   });
   return result;
 }
+
+// Old session results may contain preimages. Protect them on the next unlock.
+vault.onUnlock(async () => {
+  await _lock.run(async () => {
+    const store = await readStoreLocked();
+    for (const [id, record] of Object.entries(store)) {
+      if (record.status === 'done' && !isPrivateEnvelope(record.result)) {
+        record.result = await sealPrivateValue(`${STORE_KEY}/${id}`, record.result);
+      }
+    }
+    await writeStoreLocked(store);
+  });
+});
+
+vault.onDestroy(async () => { await _lock.run(() => browser.storage.session.remove(STORE_KEY)); });

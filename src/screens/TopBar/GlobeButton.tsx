@@ -1,3 +1,4 @@
+import { hasSiteScope } from '@domain/site/siteScope.ts';
 import { useState, useEffect, useRef } from 'react';
 import { rpc, rpcNotify } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -45,7 +46,7 @@ export default function GlobeButton() {
   // such stall, so the value can come straight from useBrowserStorage, which
   // already re-reads on the write this button's own connect/disconnect makes.
   const allowedDomains = useBrowserStorage<string[]>('allowedDomains', [], 'local');
-  const connected = domain ? allowedDomains.includes(domain) : null;
+  const connected = domain ? hasSiteScope(allowedDomains, domain) : null;
 
   useOutsideClick(ref, () => setOpen(false), open);
 

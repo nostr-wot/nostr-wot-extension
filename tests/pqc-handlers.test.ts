@@ -395,3 +395,20 @@ it('acknowledged PQ publication immediately updates the shared status and retain
     assert.equal((await browserMock.storage.local.get(key))[key].id,result.eventId);
   } finally { globalThis.WebSocket=original; await vault.destroy(); }
 });
+
+it('custom-path status and exports use the same path-specific post-quantum keys', async () => {
+  const {createFromMnemonicAtPath}=await import('../src/domain/accounts/creation.ts');
+  const {mnemonicToSeed}=await import('../src/lib/crypto/bip39.ts');
+  const account=await createFromMnemonicAtPath(M24,"m/44'/1237'/8'/0/2");
+  await vaultWith(account);
+  const seed=await mnemonicToSeed(M24);
+  const keys=derivePqKeys(seed,account.derivationPath!);
+  try {
+    const status=await getStatus();
+    const exported=await handlers.get('pqc_exportKeys')!({}) as {keyfile:string};
+    const file=JSON.parse(exported.keyfile);
+    assert.equal(status.keys.kem,Buffer.from(keys.kem.publicKey).toString('base64'));
+    assert.equal(file.kem.public,status.keys.kem);
+    assert.equal(file.dsa.public,status.keys.dsa);
+  } finally {seed.fill(0);keys.kem.secretKey.fill(0);keys.dsa.secretKey.fill(0);}
+});

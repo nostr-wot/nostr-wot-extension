@@ -43,7 +43,7 @@ src/services/wallet/
   lnbits-provision.ts   # Auto-provisioning via challenge-response
   lnurl.ts              # LNURL-pay / Lightning Address resolution (LUD-16, LUD-06)
   payment-intents.ts    # At-most-once payment tracking across popup teardown
-  display-cache.ts      # Persisted, account-scoped safe wallet display data
+  display-cache.ts      # Account-scoped encrypted wallet display data
 
 src/screens/Wallet/
   Wallet.tsx           # Composition: balance card, action row, which dialog is open
@@ -360,19 +360,19 @@ hold**:
 
 - the BOLT11 invoice amount decoded successfully and is greater than `0`, AND
 - a threshold is set (`> 0`), AND
-- the invoice amount is at or below the threshold.
+- the invoice amount is at or below the threshold, AND
+- its reservation plus all automatic reservations in the preceding 24 hours fits the same account threshold.
 
 The cap applies **regardless of a remembered "allow"**: a saved `'allow'`
 permission means "don't ask again for amounts within my threshold", never
 "unlimited". In every other case the interactive approval prompt is required,
 even when the saved permission is `'allow'`:
 
-- amount above the threshold,
+- amount above the threshold or exhausted 24-hour allowance,
 - no threshold set (default `0` = always prompt),
 - the invoice amount could not be decoded (unknown/zero amount).
 
-Net effect: a site can never drain the wallet from a remembered allow —
-amounts above the threshold and undecodable amounts always prompt.
+The allowance is shared across sites and reserved durably before dispatch. Failed or uncertain payments still count because a timeout may occur after settlement. This bounds automatic spending; explicitly approved payments can exceed the allowance.
 
 ### 7.4 Payment Approval
 
@@ -499,7 +499,7 @@ Client: user clicks "Zap 1000 sats"
 
 ### Wallet display cache
 
-`wallet/display-cache.ts` keeps account-specific `storage.local` snapshots of provider presence, the last successful balance and up to 50 recent history rows. `WalletContext` hydrates these before checking live data. The shared `WalletBalance` keeps the amount visible beside its refresh indicator; transaction refresh keeps existing rows visible. Failed checks preserve the snapshot and offer retry. A locked vault is an error/unknown presence check, never a successful “no wallet” response.
+`wallet/display-cache.ts` keeps account-specific `storage.local` snapshots of provider presence, the last successful balance and up to 50 recent history rows. `WalletContext` hydrates these through the internal background cache RPC while unlocked, before checking live data. Only provider presence is available while locked. The shared `WalletBalance` keeps the amount visible beside its refresh indicator; transaction refresh keeps existing rows visible. Failed checks preserve the snapshot and offer retry. A locked vault is an error/unknown presence check, never a successful “no wallet” response.
 
 Only successful background reads update display snapshots. No cache notification initiates another network request. Explicit disconnect writes an empty disconnected snapshot; wallet replacement clears the old balance/history. Account removal and vault destruction erase the applicable cache. Serialized writes and revision checks prevent older in-flight responses from restoring removed data. Cached data is display-only; every operation still requires the live unlocked vault and provider.
 
@@ -507,7 +507,7 @@ Deposit and Send use a 340px maximum width with labelled inputs and a consistent
 
 Wallet settings scrolls within the available popup height. Header refresh reloads alias, connection details, approval limit and Lightning Address (not balance/history). “Release address” releases the username through the provider and retains its confirmation; “Disconnect” removes the extension’s saved connection without deleting the provider wallet or funds. Copy actions are icons beside their values/labels.
 
-Home wallet visibility is independent of the active website connection: the wallet summary remains above loading, restricted-page and unconnected-site notices. Existing account eligibility and vault lock gates still apply.
+The home wallet summary is visible only after the active site is confirmed connected, and remains hidden while site status is loading, unknown, restricted or disconnected. This is popup display policy, separate from WebLN consent: website balance requests still require WebLN authorization. Settings → Wallet remains accessible independently of the site; existing account eligibility and vault lock gates still apply.
 
 ## Website discovery and supported payment paths
 
@@ -544,3 +544,41 @@ cache while retrying. A prior locked read must not leave a permanent error after
 unlock. Wallet operations use `vault.requireUnlocked()` to await startup auto-unlock
 before enforcing the real lock state. Retired vault status reads cannot overwrite
 newer state, including on a failed read; current failures remain fail-closed.
+
+Wallet settings compares its Lightning Address with the selected account's cached
+kind:0 `lud16`. A match shows a disabled “Added to Profile” button. The control uses
+the shared storage hook and the profile cache updated by successful publication,
+so reopening settings retains the status. A different/missing address keeps “Add
+to Profile” available. This display check performs no extra relay queries; publishing
+still requires the existing fresh read/merge and relay acknowledgement flow.
+
+The wallet settings connection card uses a single “Connected to …” heading
+instead of the generated wallet alias and stacked provider/status labels. Its
+Disconnect explanation and action sit at the bottom of that same card, ahead of
+auto-approval and Lightning Address settings.
+
+### Payment authorization and transport lifetimes
+
+A payment retains one account/session/provider identity through connection, permission
+lookup, threshold lookup, approval and dispatch. Account-specific denials and saved
+payment permissions use that same account ID. Locking, switching account or replacing
+or disconnecting a wallet invalidates the operation; LNURL resolution is checked again
+before payment dispatch. A threshold permits individual invoices only, not a total
+spending budget.
+
+Both wallet providers are disposable: explicit disconnect is permanent and a later
+connection uses a fresh instance. NWC network interruptions can reconnect when the
+provider has not been disposed. Vault lock clears providers even when triggered by the
+auto-lock timer. Already-transmitted payments cannot be canceled by local disposal.
+
+LNbits and provisioning/address requests share HTTPS validation, redirect refusal, a
+15-second deadline and a 1 MiB streamed response cap. Only localhost and 127.0.0.1 may
+use HTTP for development. Provisioning validates challenge/response shapes before
+using them; malformed or insecure endpoints cannot trigger signing. Redirecting wallet
+instances must be configured using their canonical URL.
+
+### Privacy and automatic payment policy update
+
+Wallet display data is encrypted at rest and read through a background-only RPC. Unlocked UI still hydrates its cache before network refresh; lock removes balances, transactions and settings from UI state. Provider presence can remain visible. Payment replay results (including preimages) are encrypted, while non-sensitive intent markers remain available to prevent duplicate sends.
+
+The configured auto-approval threshold now limits both individual invoices and the total automatically approved amount over the preceding 24 hours, across every origin for the account. Reservations persist encrypted before dispatch and remain counted after errors/timeouts. Exceeding either limit requires explicit approval. LNURL validation checks the exact msat amount without introducing a nonstandard metadata-hash requirement. See [payment-hardening.md](payment-hardening.md).

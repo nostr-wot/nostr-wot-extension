@@ -55,3 +55,16 @@ describe('resolveSiteState', () => {
     assert.strictEqual(resolveSiteState(null, DOMAIN), 'error');
   });
 });
+
+import { siteScopes, sitePermissionBucket } from '../src/domain/site/siteScope.ts';
+it('legacy connection scope remains visible while new connections are origin isolated', () => {
+  assert.equal(resolveSiteState(['legacy.test'], 'https://legacy.test:8443'), 'connected');
+  assert.equal(resolveSiteState(['https://new.test'], 'https://new.test:8443'), 'notConnected');
+  assert.deepEqual(siteScopes('https://legacy.test:8443'), ['https://legacy.test:8443', 'legacy.test']);
+  assert.deepEqual(siteScopes('data:text/plain,x'), ['data:text/plain,x']);
+  assert.deepEqual(siteScopes('https://legacy.test/path'), ['https://legacy.test/path']);
+  assert.deepEqual(sitePermissionBucket({
+    'legacy.test': { A: {getPublicKey:'allow', signEvent:'deny'}, B:{getPublicKey:'deny'} },
+    'https://legacy.test': { A: {signEvent:'allow', webln_getBalance:'allow'} },
+  }, 'https://legacy.test', 'A'), {getPublicKey:'allow', signEvent:'allow', webln_getBalance:'allow'});
+});

@@ -16,7 +16,15 @@ type IconRecord = { url: string; fetchedAt: number };
  * Where the image service disallows CORS, use its original URL and the browser's
  * HTTP image cache. Never request additional host permissions just for an icon. */
 export function getCachedFavicon(rawDomain: string): Promise<string | null> {
-  const domain = rawDomain.trim().toLowerCase();
+  let domain = rawDomain.trim().toLowerCase();
+  // Origin keys remain intact everywhere security-relevant. Icons are cosmetic.
+  if (/^https?:\/\//.test(domain)) {
+    try {
+      const parsed = new URL(domain);
+      if (parsed.origin !== domain) return Promise.resolve(null);
+      domain = parsed.hostname;
+    } catch { return Promise.resolve(null); }
+  }
   if (!domain || !/^[a-z0-9.-]+(?::\d+)?$/.test(domain)) return Promise.resolve(null);
   const existing = pending.get(domain);
   if (existing) return existing;

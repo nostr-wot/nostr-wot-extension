@@ -41,6 +41,7 @@ export function toStorageAccount(acct: MemoryAccount): Account {
 export function toStoragePayload(mem: MemoryVaultPayload): VaultPayload {
   return {
     accounts: mem.accounts.map(toStorageAccount),
+    ...(mem.cacheKeyBytes && { cacheKey: arrayToBase64(mem.cacheKeyBytes) }),
     activeAccountId: mem.activeAccountId,
   };
 }

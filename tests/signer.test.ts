@@ -9,6 +9,7 @@ import * as signerIdentity from '../src/services/signing/identity.ts';
 import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import * as onboarding from '../src/services/background/onboarding-handlers.ts';
 import { addAllowedDomain, removeAllowedDomain } from '../src/services/background/domain-handlers.ts';
+import { POPUP_CONTEXT_KEY } from '../src/constants/browser.ts';
 import type { VaultPayload } from '../src/domain/vault/types.ts';
 
 const TEST_PASSWORD = 'testpassword123';
@@ -1483,7 +1484,7 @@ describe('signer -- cold-start auto-unlock', () => {
     await vault.create('', makePayload());
     await browserMock.storage.local.set({activeAccountId:'acct1',accounts:[{id:'acct1',type:'nsec',pubkey:TEST_PUBKEY_HEX}]});
     await browserMock.storage.sync.set({myPubkey:TEST_PUBKEY_HEX});
-    await permissions.save('test.com', 'signEvent', 1, 'allow');
+    await permissions.save('https://test.com', 'signEvent', 1, 'allow');
     vault.lock(); // the cold start itself: in-memory key is gone
 
     const origQuery = browserMock.tabs.query;
@@ -1502,7 +1503,7 @@ describe('signer -- cold-start auto-unlock', () => {
 
       const signed: any = await signer.handleSignEvent(
         { kind: 1, content: 'hello', tags: [], created_at: Math.floor(Date.now() / 1000) },
-        'test.com'
+        'https://test.com'
       );
 
       assert.ok(signed.sig, 'request still signs once the auto-unlock lands');
@@ -1517,7 +1518,7 @@ describe('signer -- cold-start auto-unlock', () => {
 
   it('still opens the unlock popup when no startup auto-unlock is in flight', async () => {
     await setupVault();
-    await permissions.save('test.com', 'signEvent', 1, 'allow');
+    await permissions.save('https://test.com', 'signEvent', 1, 'allow');
     vault.lock();
 
     const origQuery = browserMock.tabs.query;
@@ -1529,7 +1530,7 @@ describe('signer -- cold-start auto-unlock', () => {
     try {
       const signPromise: Promise<any> = signer.handleSignEvent(
         { kind: 1, content: 'hello', tags: [], created_at: Math.floor(Date.now() / 1000) },
-        'test.com'
+        'https://test.com'
       );
 
       await new Promise<void>(r => setTimeout(r, 50));
@@ -1657,10 +1658,13 @@ it('incoming requests reuse an already-visible popup after an account switch ref
     runtime.getContexts = async () => [{contextType:'POPUP'}];
     browserMock.tabs.query = async () => [{id:7,url:'https://switch.test'}] as any;
     browserMock.action.openPopup = async () => { opens++; };
-    await openPopupForActiveTab('switch.test');
+    await openPopupForActiveTab('https://switch.test');
     assert.equal(opens, 0, 'do not reopen the visible native popup');
+    const context = (await browserMock.storage.session.get(POPUP_CONTEXT_KEY))[POPUP_CONTEXT_KEY] as { origin: string; tabId: number };
+    assert.equal(context.origin, 'https://switch.test', 'request reached popup reuse handling');
+    assert.equal(context.tabId, 7);
     runtime.getContexts = async () => [];
-    await openPopupForActiveTab('switch.test');
+    await openPopupForActiveTab('https://switch.test');
     assert.equal(opens, 1, 'still opens when there is no popup');
   } finally {
     runtime.getContexts = previousContexts;
@@ -1682,10 +1686,13 @@ it('visible-popup detection supports browsers with extension.getViews', async ()
     api.extension = { getViews: () => [{}] };
     api.tabs.query = async () => [{id:7,url:'https://switch.test'}];
     api.action.openPopup = async () => { opens++; };
-    await openPopupForActiveTab('switch.test');
+    await openPopupForActiveTab('https://switch.test');
     assert.equal(opens, 0);
+    const context = (await browserMock.storage.session.get(POPUP_CONTEXT_KEY))[POPUP_CONTEXT_KEY] as { origin: string; tabId: number };
+    assert.equal(context.origin, 'https://switch.test', 'request reached extension.getViews handling');
+    assert.equal(context.tabId, 7);
     api.extension.getViews = () => [];
-    await openPopupForActiveTab('switch.test');
+    await openPopupForActiveTab('https://switch.test');
     assert.equal(opens, 1);
   } finally {
     api.runtime.getContexts = previousContexts;
@@ -1693,4 +1700,120 @@ it('visible-popup detection supports browsers with extension.getViews', async ()
     api.tabs.query = previousQuery;
     api.action.openPopup = previousOpen;
   }
+});
+
+it('foreign-author requests persist unread rejection metadata without opening approvals', async t => {
+  const { getSigningRejections, acknowledgeSigningRejections, updateSignerBadge, recordSigningRejection } = await import('../src/services/signing/rejections.ts');
+  const { MAX_SIGNER_REJECTIONS, SIGNER_BADGE_REJECTED_COLOR, SIGNER_BADGE_PENDING_COLOR } = await import('../src/constants/signing.ts');
+  resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale(); await setupVault();
+  let text='',color='',opens=0;
+  t.mock.method(browserMock.action,'setBadgeText',async (value:{text:string})=>{text=value.text;});
+  t.mock.method(browserMock.action,'setBadgeBackgroundColor',async (value:{color:string})=>{color=value.color;});
+  t.mock.method(browserMock.action,'openPopup',async()=>{opens++;});
+  await permissions.save('foreign.test','signEvent',null,'allow');
+  await Promise.all(Array.from({length:3},()=>assert.rejects(
+    signer.handleSignEvent({pubkey:THEIR_PUBKEY_HEX,kind:1,content:'private content',tags:[],created_at:1},'foreign.test'),/author/)));
+  const {handlers,validateNip07Params}=await import('../src/services/background/nip07-handlers.ts');
+  assert.throws(()=>validateNip07Params('nip07_signEvent',{event:{kind:1,content:'',pubkey:{}}}),/author/);
+  assert.throws(()=>validateNip07Params('nip07_signEvent',{event:{kind:1,content:'',pubkey:'x'.repeat(1000)}}),/author/);
+  validateNip07Params('nip07_signEvent',{event:{kind:1,content:'',pubkey:TEST_PUBKEY_HEX}});
+  const shown=await handlers.get('signer_getRejections')!({});
+  assert.deepEqual(shown,await getSigningRejections());
+  await assert.rejects(handlers.get('signer_acknowledgeRejections')!({ids:[3]}),/Invalid/);
+  assert.equal(shown.length,3);
+  assert.equal(new Set(shown.map((r:{id:string})=>r.id)).size,3);
+  assert.equal(shown[0].reason,'accountMismatch');
+  assert.equal(shown[0].requestedPubkey,THEIR_PUBKEY_HEX);
+  assert.equal(shown[0].activePubkey,TEST_PUBKEY_HEX);
+  assert.equal(JSON.stringify(shown).includes('private content'),false);
+  assert.equal((await signerApprovalQueue.getPending()).length,0);
+  assert.equal(opens,0);
+  assert.equal(text,'3'); assert.equal(color,SIGNER_BADGE_REJECTED_COLOR);
+  await signerApprovalQueue.cleanupStale();
+  assert.equal((await getSigningRejections()).length,3,'worker cleanup preserves unread notices');
+  await recordSigningRejection({origin:'later.test',kind:7,requestedPubkey:THEIR_PUBKEY_HEX,activePubkey:TEST_PUBKEY_HEX});
+  await handlers.get('signer_acknowledgeRejections')!({ids:shown.map((r:{id:string})=>r.id)});
+  assert.equal((await getSigningRejections()).length,1,'acknowledgement preserves new arrivals');
+  await browserMock.storage.session.set({signerPending:[{id:'pending',needsPermission:true}]});
+  await updateSignerBadge(); assert.equal(color,SIGNER_BADGE_REJECTED_COLOR);
+  await acknowledgeSigningRejections((await getSigningRejections()).map(r=>r.id));
+  assert.equal(text,'1'); assert.equal(color,SIGNER_BADGE_PENDING_COLOR);
+  await browserMock.storage.session.set({signerPending:[]});
+  await updateSignerBadge(); assert.equal(text,'');
+  await Promise.all(Array.from({length:MAX_SIGNER_REJECTIONS+2},()=>recordSigningRejection({origin:'spam.test',kind:1,requestedPubkey:THEIR_PUBKEY_HEX,activePubkey:null})));
+  assert.equal((await getSigningRejections()).length,MAX_SIGNER_REJECTIONS);
+  await acknowledgeSigningRejections((await getSigningRejections()).map(r=>r.id));
+});
+
+it('rejects oversized events, tags and crypto inputs before signer work', async () => {
+  const {validateNip07Params: validate} = await import('../src/services/background/nip07-handlers.ts');
+  assert.throws(() => validate('nip07_signEvent', {event:{kind:1,content:'x'.repeat(1_048_577)}}), /large|long|limit/i);
+  assert.throws(() => validate('nip07_signEvent', {event:{kind:1,content:'',tags:Array.from({length:10001},()=>['p','a'])}}), /large|long|limit/i);
+  assert.throws(() => validate('nip07_nip44Encrypt', {pubkey:TEST_PUBKEY_HEX,plaintext:'€'.repeat(30000)}), /large|long|limit/i);
+  assert.throws(() => validate('nip07_nip44Decrypt', {pubkey:TEST_PUBKEY_HEX,ciphertext:'A'.repeat(131073)}), /large|long|limit/i);
+  validate('nip07_signEvent', {event:{kind:3,content:'',tags:Array.from({length:5000},()=>['p',TEST_PUBKEY_HEX])}});
+});
+
+it('bounds unlock tracking and releases capacity after cancellation', async () => {
+  resetMockStorage(); await signerApprovalQueue.cleanupStale(); vault.lock();
+  const promises = Array.from({length:65}, () => signerApprovalQueue.waitForVaultUnlock('bounded.test','signEvent','acct1').then(()=>'resolved', e=>e.message));
+  await new Promise(resolve=>setTimeout(resolve,100));
+  const pending = await signerApprovalQueue.getPending();
+  await signerApprovalQueue.cancelAllUnlockWaiters();
+  const results = await Promise.all(promises);
+  assert.equal(pending.length,64);
+  assert.equal(results.filter(result=>/Too many/.test(result)).length,1);
+  const retry = signerApprovalQueue.waitForVaultUnlock('bounded.test','signEvent','acct1').catch(e=>e.message);
+  await new Promise(resolve=>setTimeout(resolve,50));
+  assert.equal((await signerApprovalQueue.getPending()).length,1);
+  await signerApprovalQueue.cancelAllUnlockWaiters(); await retry;
+});
+
+it('vault lock cancels actionable requests and unlock waiters without orphan markers', async () => {
+  resetMockStorage(); await signerApprovalQueue.cleanupStale(); await setupVault();
+  const approval = signerApprovalQueue.queueRequest({type:'signEvent',origin:'lock.test',accountId:'acct1'});
+  await new Promise(resolve=>setTimeout(resolve,30));
+  vault.lock();
+  assert.equal((await approval).allow,false);
+  const unlock = signerApprovalQueue.waitForVaultUnlock('lock.test','signEvent','acct1').catch(e=>e.message);
+  await new Promise(resolve=>setTimeout(resolve,30));
+  vault.lock();
+  assert.match(await unlock,/locked/i);
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal((await signerApprovalQueue.getPending()).length,0);
+});
+
+it('remote tracking respects the global queue bound before contacting a bunker', async () => {
+  resetMockStorage(); await signerApprovalQueue.cleanupStale();
+  await browserMock.storage.session.set({signerPending:Array.from({length:256},(_,i)=>({id:`existing${i}`,origin:`site${i}`,nip46InFlight:true}))});
+  await assert.rejects(signerApprovalQueue.runNip46Request({id:'remote',nip46Config:null} as any,'signEvent',{},'new.test'),/Too many pending/);
+  await signerApprovalQueue.cleanupStale();
+});
+
+it('canceled bunker requests retain capacity until the underlying remote work settles', async () => {
+  const {readFileSync} = await import('node:fs');
+  const {runInNewContext} = await import('node:vm');
+  const {default:ts} = await import('typescript');
+  const source=readFileSync(new URL('../src/services/signing/approvalQueue.ts',import.meta.url),'utf8');
+  const remote=source.slice(source.indexOf('// Canceled UI tracking'));
+  const aborts=new Map<string,AbortController>();
+  const completions:Array<(value:string)=>void>=[];
+  let ids=0;
+  const context:any={exports:{},MAX_IN_FLIGHT_PER_ORIGIN:64,MAX_IN_FLIGHT_GLOBAL:256,lockRevision:0,AbortController,
+    _nip46Aborts:aborts,
+    queueNip46InFlight:async()=>String(++ids), removeNip46InFlight:async()=>{},
+    handleNip46Request:()=>new Promise(resolve=>completions.push(resolve)),
+    raceAbort:(signal:AbortSignal,work:Promise<unknown>)=>Promise.race([work,new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new Error('cancelled'))))]),
+  };
+  runInNewContext(ts.transpileModule(remote,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText,context);
+  const run=()=>context.exports.runNip46Request({id:'remote'},'signEvent',{},'site.test');
+  const pending=Array.from({length:64},()=>run().catch((error:Error)=>error.message));
+  await new Promise(resolve=>setImmediate(resolve));
+  for(const controller of aborts.values()) controller.abort();
+  await Promise.all(pending);
+  await assert.rejects(run(),/Too many remote/);
+  completions[0]('signed'); await new Promise(resolve=>setImmediate(resolve));
+  const retry=run(); await new Promise(resolve=>setImmediate(resolve));
+  for(const complete of completions) complete('signed');
+  assert.equal(await retry,'signed');
 });

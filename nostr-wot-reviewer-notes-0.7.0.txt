@@ -54,3 +54,14 @@ Latest updates:
 - Account-scoped mute editing guards late responses and preserves encrypted content.
 - Shared component directory entrypoints and focused vault/signing service modules.
 - NIP-07 and WebLN page timeouts use canonical build-time constants.
+
+Security and recovery updates:
+- Vault-protected encryption for cached wallet, activity and payment data.
+- Account/session isolation and bounded signing/payment requests.
+- Encrypted seed/PQ backup import and separate one-time versus standing approval.
+
+Reproducibility: extract the attached source ZIP into an empty directory, run
+npm ci, then both package commands above. Compare all extracted package files
+byte for byte; ZIP metadata timestamps can differ. See SOURCE_BUILD.md.
+Native Chrome smoke coverage and remaining browser verification scope are recorded
+in docs/audits/2026-09-10/native-browser-verification.md.

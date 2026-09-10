@@ -245,3 +245,115 @@ it('lifecycle hooks start without render-time I/O and mute edits start unavailab
   }
   renderToStaticMarkup(createElement(Probe));
 });
+
+it('PQ import decrypts uploaded backups, retries wrong passwords, and still imports plain files', async t => {
+  const {JSDOM}=await import('jsdom');
+  const {act}=await import('react');
+  const {default:browser}=await import('./helpers/browser-mock');
+  const {encryptBackup}=await import('../src/lib/crypto/keyBackup');
+  const dom=new JSDOM('<div id="root"></div>');
+  const previous=new Map(['window','document','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+  Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
+  const {createRoot}=await import('react-dom/client');
+  const calls:string[]=[];
+  t.mock.method(browser.runtime,'sendMessage',async (message:any)=>{
+    if(message.method==='pqc_importKeys') calls.push(message.params.keyfile);
+    return {result:{pubkey:'test',canDerive:false}};
+  });
+  const root=createRoot(dom.window.document.getElementById('root')!);
+  const plain=JSON.stringify({v:'nip-pqc/v1',kem:{},dsa:{}});
+  const encrypted=await encryptBackup(plain,'export password');
+  const button=()=>Array.from(dom.window.document.querySelectorAll('button')).find(b=>b.textContent==='pqc.importSubmit')!;
+  const upload=async(contents:string)=>act(async()=>{
+    const input=dom.window.document.querySelector<HTMLInputElement>('input[type=file]')!;
+    Object.defineProperty(input,'files',{value:[{text:async()=>contents}],configurable:true});
+    input.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+  });
+  const password=async(value:string)=>act(async()=>{
+    const input=dom.window.document.querySelector<HTMLInputElement>('#account-import-password, input[type=password]:not(#account-import-key)')!;
+    Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value')!.set!.call(input,value);
+    input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+  });
+  const submit=async()=>act(async()=>{
+    button().click();
+    await new Promise(resolve=>setTimeout(resolve,250));
+  });
+  try {
+    await act(async()=>root.render(createElement(AccountProvider,null,createElement(PqcProvider,null,createElement(PqcImportPanel)))));
+    await upload(encrypted);
+    assert.equal(calls.length,0);
+    assert.equal(button().disabled,true);
+    await password('wrong');
+    await submit();
+    assert.equal(calls.length,0);
+    assert.match(dom.window.document.body.textContent!,/Wrong password/);
+    await password('export password');
+    await submit();
+    assert.deepEqual(calls,[plain]);
+    assert.equal(dom.window.document.querySelector('input[type=password]'),null);
+    assert.equal(dom.window.document.querySelector('textarea')!.value,'');
+    await upload(plain);
+    assert.deepEqual(calls,[plain,plain]);
+
+    const {default:ImportStep}=await import('../src/screens/Wizard/ImportStep');
+    const validations:{method:string;params:any}[]=[];
+    const advanced:any[]=[];
+    t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+      if(message.method.startsWith('onboarding_validate')) validations.push(message);
+      return {result:message.method==='onboarding_checkExistingSeed'
+        ? {hasSeed:false}
+        : {account:{id:'imported'},upgradeFromReadOnly:'readonly'}};
+    });
+    await act(async()=>root.render(createElement(ImportStep,{onNext:(...args:any[])=>advanced.push(args)})));
+    const wizardSubmit=()=>Array.from(dom.window.document.querySelectorAll('button')).find(b=>['common.continue','wizard.decryptContinue'].includes(b.textContent!))!;
+    const importWizard=async()=>act(async()=>{
+      wizardSubmit().click();
+      await new Promise(resolve=>setTimeout(resolve,250));
+    });
+    const seed='abandon '.repeat(11)+'about';
+    await upload(await encryptBackup(seed,'export password'));
+    assert.equal(wizardSubmit().disabled,true);
+    await password('wrong');
+    await importWizard();
+    assert.equal(validations.length,0);
+    assert.match(dom.window.document.body.textContent!,/Wrong password/);
+    await password('export password');
+    await importWizard();
+    assert.equal(validations[0].method,'onboarding_validateMnemonic');
+    assert.equal(validations[0].params.mnemonic,seed);
+    assert.deepEqual(advanced[0],[{id:'imported'},'readonly']);
+    assert.equal(dom.window.document.querySelector<HTMLInputElement>('#account-import-key')!.value,'');
+
+    await upload(encrypted);
+    await password('export password');
+    await importWizard();
+    assert.equal(validations.length,1,'PQ-only backups never reach account validation');
+    assert.match(dom.window.document.body.textContent!,/wizard.pqKeyRequiresAccount/);
+    await upload(plain);
+    assert.equal(wizardSubmit().disabled,true);
+    assert.match(dom.window.document.body.textContent!,/wizard.pqKeyRequiresAccount/);
+
+    await upload(await encryptBackup('ncryptsec1candidate','outer password'));
+    await password('outer password');
+    await importWizard();
+    assert.equal(validations.length,1,'nested ncryptsec requests its separate password');
+    assert.equal(dom.window.document.querySelector<HTMLInputElement>('#account-import-password')!.value,'');
+    await password('inner password');
+    await importWizard();
+    assert.equal(validations[1].method,'onboarding_validateNcryptsec');
+    assert.equal(validations[1].params.password,'inner password');
+
+    await upload('ab'.repeat(32));
+    await importWizard();
+    assert.equal(validations[2].method,'onboarding_validateNsec');
+    assert.equal(validations[2].params.input,'ab'.repeat(32));
+
+  } finally {
+    await act(async()=>root.unmount());
+    dom.window.close();
+    for(const [key,descriptor] of previous) {
+      if(descriptor) Object.defineProperty(globalThis,key,descriptor);
+      else Reflect.deleteProperty(globalThis,key);
+    }
+  }
+});

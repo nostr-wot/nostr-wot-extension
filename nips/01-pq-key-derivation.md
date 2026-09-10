@@ -63,10 +63,19 @@ cost of a second backup. Draft 02 records which of the two happened, in the
 
 ## Derivation
 
-Let `seed` be the 64-byte BIP-39 seed from `mnemonicToSeed(mnemonic, "")`, and
-`account` the NIP-06 account index of the secp256k1 key (the `a` in
-`m/44'/1237'/a'/0/0`), so the two halves stay aligned when a user holds several
-identities in one mnemonic.
+Let `seed` be the 64-byte BIP-39 seed from `mnemonicToSeed(mnemonic, "")`.
+`account` is a recovery selector. Existing numeric selectors are preserved:
+the extension's historical sequence `m/44'/1237'/0'/0/a` uses decimal `a`.
+(The earlier draft described the account-hardened path `m/44'/1237'/a'/0/0`;
+that did not match the shipped extension for nonzero indices.)
+
+For custom paths outside that historical sequence, this implementation extends
+the selector to `path/<canonical BIP-32 path>`, for example
+`path/m/44'/1237'/8'/0/1`. Canonical paths use lowercase `m`, decimal indices
+without leading zeros and apostrophes for hardened children. The full path,
+including every hardened marker, is required for recovery. Other clients must
+implement this extension or import the exported keys; numeric selectors and
+existing test vectors remain unchanged.
 
 ```
 PROFILE = "nip-pqc/v1"
@@ -80,7 +89,7 @@ dsa_seed = HKDF-Expand(SHA-256, PRK, info = PROFILE || "/ml-dsa-87/"   || accoun
 (dsa_pk, dsa_sk) = ML-DSA-87.KeyGen(dsa_seed)       # 32 bytes: xi
 ```
 
-`account` is the decimal integer with no padding, so index 0 gives
+A numeric `account` is the decimal integer with no padding, so index 0 gives
 `nip-pqc/v1/ml-kem-1024/0`.
 
 The salt is empty because the BIP-39 seed is already uniformly high-entropy;
@@ -108,8 +117,8 @@ malformed or truncated attestation.
 `PROFILE` is `nip-pqc/v1`. It appears in every `info` string, in the
 attestation's `v` tag (draft 02) and in the envelope's associated data (draft 03).
 
-Any change to the derivation, the algorithms, or the parameter sets MUST bump the
-profile. A reader that does not recognise a profile MUST treat the keys as
+Any change that alters keys for an existing recovery selector, or changes the algorithms or parameter sets, MUST bump the
+profile. New selector namespaces must be disjoint from existing selectors and specified byte for byte. A reader that does not recognise a profile MUST treat the keys as
 unusable rather than guessing, because the failure mode of guessing is encrypting
 to a key the recipient cannot decrypt with.
 

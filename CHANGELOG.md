@@ -8,6 +8,33 @@ have had.
 
 ## 0.7.0 — pending store publication
 
+- Consolidate the latest security, account recovery, PQ backup and approval fixes into refreshed Chrome/Firefox upload packages, with a clean-source rebuild comparison.
+
+- Restore encrypted seed backups through the account-import wizard using a file or pasted JSON; explain where to restore PQ-only files.
+
+- Restore password-encrypted PQ key exports directly through key import, with password retry and existing key-pair validation.
+
+- Encrypt wallet display data, activity history and payment replay results with a vault-protected cache key; migrate old records on unlock and hide private UI data on lock.
+- Use explicit public account metadata allowlists, exact-origin permissions for new website grants while preserving existing connections and approval rules, a shared 24-hour automatic-payment budget, and stricter LNURL invoice validation.
+- Pin CI actions to verified commits and restrict workflow permissions.
+
+- Addressed security audit A1–A7: bind payment/signing authorization to account and vault session; honor account-specific payment denials; cancel stale operations after lock, switch or wallet replacement; reject credential-bearing redirects and insecure provisioning; enforce request and payload limits.
+- Dispose LNbits/NWC providers on lock or disconnect, prevent late connections from reviving them, and serialize vault lifecycle writes so a pending unlock cannot undo a newer lock.
+- Added adversarial regression tests using synthetic accounts and local wallet/relay servers.
+
+- Hide the home wallet balance on unconnected sites and while site connection status is loading or unavailable; the wallet remains accessible in Settings.
+
+- Restore website refresh on account switch for clients that cache identities. Foreign-author signing requests are rejected automatically and retained as unread summaries, with a red toolbar counter until acknowledged.
+
+
+- Sub-account previews show npub and hex automatically. Names are editable, and custom derivation paths live under Advanced. Stale or failed previews cannot enable Continue.
+
+- Seed-derived account removal explains seed/path recovery. Sub-account creation supports validated custom paths, public-key previews and recognized network-prefix hints. Existing standard keys remain unchanged.
+- Standardized popup body and action spacing, including deletion confirmations and post-quantum dialogs.
+- Make “Approve once” / “Approve all” approve only displayed requests; offer a separate “Always allow” action with an explicit explanation of future site permissions.
+- Preserve the add-account wizard when a newly derived account becomes active.
+- Show account deletion in a separate confirmation dialog; display failures without hiding accounts.
+
 - Fixed premature wallet lock errors during startup, refreshed wallet data after unlock, and discarded stale vault-status responses.
 
 - Split vault/signing services by responsibility, share the HTTP transport type, and use component directory entrypoints with named button presets.

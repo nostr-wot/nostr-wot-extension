@@ -16,8 +16,10 @@ import assert from 'node:assert/strict';
 import browserMock, { resetMockStorage } from '../helpers/browser-mock.ts';
 import { runPaymentOnce } from '../../src/services/wallet/payment-intents.ts';
 
-beforeEach(() => {
-  resetMockStorage();
+import * as vault from '../../src/services/vault/vault.ts';
+beforeEach(async () => {
+  resetMockStorage(); vault.lock();
+  await vault.create('', { accounts: [], activeAccountId: null });
 });
 
 describe('runPaymentOnce', () => {

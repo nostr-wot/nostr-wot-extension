@@ -1,3 +1,4 @@
+import { hasSiteScope } from '@domain/site/siteScope.ts';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
@@ -58,7 +59,7 @@ export default function useSiteState(active: Account | null) {
 
       const identityDisabledSet = new Set<string>(identityDisabled || []);
 
-      setIdentityEnabled(!identityDisabledSet.has(d));
+      setIdentityEnabled(!hasSiteScope([...identityDisabledSet], d));
 
       setSiteState(state);
     } catch {

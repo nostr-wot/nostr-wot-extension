@@ -42,13 +42,13 @@ describe('resolveActiveTabDomain', () => {
 
   it('uses the URL when the browser gives us one', async () => {
     activeTab({ id: 3, url: 'https://example.com/feed' });
-    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'example.com', restricted: false });
+    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'https://example.com', restricted: false });
   });
 
   it('asks the background when the URL is withheld', async () => {
     activeTab({ id: 3 });                       // no url — the real shape without host permissions
-    backgroundKnows({ 3: 'example.com' });
-    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'example.com', restricted: false });
+    backgroundKnows({ 3: 'https://example.com' });
+    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'https://example.com', restricted: false });
   });
 
   it('reports a browser page as restricted, not as a site', async () => {
@@ -58,7 +58,7 @@ describe('resolveActiveTabDomain', () => {
 
   it('returns null when neither source knows — callers must fail closed', async () => {
     activeTab({ id: 9 });
-    backgroundKnows({ 3: 'example.com' });      // a different tab
+    backgroundKnows({ 3: 'https://example.com' });      // a different tab
     assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: null, restricted: false });
   });
 
@@ -68,27 +68,27 @@ describe('resolveActiveTabDomain', () => {
     // said so. Without this the popup showed "Navigate to a website to connect" and the
     // user had to close and reopen it by hand.
     activeTab({ id: 3 });
-    openedFor({ origin: 'asking.example', tabId: 3, at: Date.now() });
-    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'asking.example', restricted: false });
+    openedFor({ origin: 'https://asking.example', tabId: 3, at: Date.now() });
+    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'https://asking.example', restricted: false });
   });
 
   it('ignores a popup context left for a different tab', async () => {
     activeTab({ id: 9 });
-    openedFor({ origin: 'asking.example', tabId: 3, at: Date.now() });
+    openedFor({ origin: 'https://asking.example', tabId: 3, at: Date.now() });
     assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: null, restricted: false });
   });
 
   it('ignores a stale popup context', async () => {
     activeTab({ id: 3 });
-    openedFor({ origin: 'asking.example', tabId: 3, at: Date.now() - 120_000 });
+    openedFor({ origin: 'https://asking.example', tabId: 3, at: Date.now() - 120_000 });
     assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: null, restricted: false },
       'an old context must not mislabel a popup the user opened later by hand');
   });
 
   it('prefers the real URL over the popup context', async () => {
     activeTab({ id: 3, url: 'https://actual.example/x' });
-    openedFor({ origin: 'stale.example', tabId: 3, at: Date.now() });
-    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'actual.example', restricted: false });
+    openedFor({ origin: 'https://stale.example', tabId: 3, at: Date.now() });
+    assert.deepStrictEqual(await resolveActiveTabDomain(), { domain: 'https://actual.example', restricted: false });
   });
 
   it('survives there being no active tab', async () => {

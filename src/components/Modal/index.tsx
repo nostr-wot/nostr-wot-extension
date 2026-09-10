@@ -3,6 +3,7 @@ import { t } from '@services/i18n/i18n.ts';
 import IconClose from '@assets/IconClose.tsx';
 import IconButton from '@components/IconButton';
 import { cn } from '@utils/cn.ts';
+import Container from '@components/Container';
 
 // rgba(0,0,0,0.45) is a one-off, distinct from both --scrim (0.4) and
 // --scrim-heavy (0.6) — kept exact rather than snapped to a neighbour.
@@ -22,7 +23,8 @@ const BACKDROP =
 const CARD =
   'flex flex-col w-full max-h-full max-w-[var(--modal-max-width)] border border-card-border rounded-xl ' +
   '[background:var(--bg-page)] shadow-modal outline-none animate-card-in';
-const FOOTER_ROW = 'flex gap-4 [&>*]:flex-1';
+const FOOTER_ROW = 'flex gap-4 [&>*]:flex-1 [&>*]:min-w-0';
+const FOOTER_STACK = 'flex flex-col gap-4 [&>*]:w-full';
 const HEADER = 'flex items-center justify-between gap-4 px-7 py-6 border-b border-card-border';
 const TITLE = 'text-lg font-bold text-heading';
 const BODY = 'flex-1 min-h-0 overflow-y-auto p-7';
@@ -123,13 +125,10 @@ export default function Modal({
             </IconButton>
           </div>
         )}
-        <div className={BODY}>{children}</div>
-        {/* footerRow: equal side-by-side actions. Otherwise, a single action
-            fills the footer -- computed here rather than via the old
-            `.footer:not(.footerRow) > *` selector, since the component
-            already knows which case it is in. */}
+        <div className={BODY}><Container gap={6}>{children}</Container></div>
+        {/* Both action layouts own their spacing; callers need no margins. */}
         {footer && (
-          <div className={cn(FOOTER_SHELL, footerRow ? FOOTER_ROW : '[&>*]:w-full')}>{footer}</div>
+          <div className={cn(FOOTER_SHELL, footerRow ? FOOTER_ROW : FOOTER_STACK)}>{footer}</div>
         )}
       </div>
     </div>

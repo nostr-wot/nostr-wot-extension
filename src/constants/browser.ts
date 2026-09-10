@@ -15,3 +15,6 @@ export const POPUP_CONTEXT_TTL_MS = 60_000;
 export const RESTRICTED_URL_PREFIXES = ['chrome://', 'edge://', 'about:', 'moz-extension://', 'chrome-extension://'];
 
 export const FAVICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** One background recovery attempt after an account-switch reload. */
+export const ACCOUNT_SWITCH_POPUP_RECOVERY_MS = 100;

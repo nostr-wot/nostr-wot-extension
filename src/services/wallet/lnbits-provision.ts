@@ -14,14 +14,27 @@
 
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 
-interface ProvisionResponse {
-  id: string;
-  name: string;
-  adminkey: string;
-  inkey: string;
-  balance_msat: number;
-  user: string;
-  nwcUri?: string;
+import { secureWalletUrl, walletHttp } from '@services/http/wallet.ts';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function nonemptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= 4096;
+}
+
+async function fetchChallenge(baseUrl: string, fetchFn: typeof fetch): Promise<string> {
+  const data = await walletHttp<unknown>(`${baseUrl}/api/provision/challenge`, {}, fetchFn, 'Challenge request failed');
+  if (!isRecord(data) || !nonemptyString(data.challenge)) throw new Error('Invalid provisioning challenge');
+  return data.challenge;
+}
+
+function parseAddress(data: unknown): string | null {
+  if (!isRecord(data) || !(data.address === null || (nonemptyString(data.address) && /^[^@\s]+@[^@\s]+$/.test(data.address)))) {
+    throw new Error('Invalid Lightning Address response');
+  }
+  return data.address;
 }
 
 /**
@@ -39,29 +52,24 @@ export async function provisionLnbitsWallet(
   signFn: (challenge: string) => Promise<SignedEvent>,
   fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
 ): Promise<{ adminKey: string; walletId: string; nwcUri?: string }> {
-  const baseUrl = instanceUrl.replace(/\/+$/, '');
+  const baseUrl = secureWalletUrl(instanceUrl);
 
-  // Step 1: Fetch challenge
-  const challengeRes = await fetchFn(`${baseUrl}/api/provision/challenge`);
-  if (!challengeRes.ok) {
-    throw new Error(`Challenge request failed: ${challengeRes.status}`);
-  }
-  const { challenge } = (await challengeRes.json()) as { challenge: string };
+  const challenge = await fetchChallenge(baseUrl, fetchFn);
 
   // Step 2: Sign the challenge
   const signedEvent = await signFn(challenge);
 
   // Step 3: Provision with signed event
-  const res = await fetchFn(`${baseUrl}/api/provision`, {
+  const data = await walletHttp<unknown>(`${baseUrl}/api/provision`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: walletName, event: signedEvent }),
-  });
-  if (!res.ok) {
-    throw new Error(`Wallet provisioning failed: ${res.status}`);
+  }, fetchFn, 'Wallet provisioning failed');
+  if (!isRecord(data) || !nonemptyString(data.adminkey) || !nonemptyString(data.id)
+      || (data.nwcUri !== undefined && (!nonemptyString(data.nwcUri) || !data.nwcUri.startsWith('nostr+walletconnect://')))) {
+    throw new Error('Invalid wallet provisioning response');
   }
-  const data = (await res.json()) as ProvisionResponse;
-  return { adminKey: data.adminkey, walletId: data.id, nwcUri: data.nwcUri };
+  return { adminKey: data.adminkey, walletId: data.id, nwcUri: data.nwcUri as string | undefined };
 }
 
 /**
@@ -75,21 +83,17 @@ export async function claimLightningAddress(
   signFn: (challenge: string) => Promise<SignedEvent>,
   fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
 ): Promise<{ address: string }> {
-  const baseUrl = instanceUrl.replace(/\/+$/, '');
-  const challengeRes = await fetchFn(`${baseUrl}/api/provision/challenge`);
-  if (!challengeRes.ok) throw new Error(`Challenge request failed: ${challengeRes.status}`);
-  const { challenge } = (await challengeRes.json()) as { challenge: string };
+  const baseUrl = secureWalletUrl(instanceUrl);
+  const challenge = await fetchChallenge(baseUrl, fetchFn);
   const signedEvent = await signFn(challenge);
-  const res = await fetchFn(`${baseUrl}/api/claim-username`, {
+  const data = await walletHttp<unknown>(`${baseUrl}/api/claim-username`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ event: signedEvent, username }),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as Record<string, string>).error || `Claim failed: ${res.status}`);
-  }
-  return (await res.json()) as { address: string };
+  }, fetchFn, 'Claim failed', { serverError: true });
+  const address = parseAddress(data);
+  if (address === null) throw new Error('Invalid Lightning Address claim response');
+  return { address };
 }
 
 /**
@@ -100,11 +104,9 @@ export async function getLightningAddress(
   pubkey: string,
   fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
 ): Promise<string | null> {
-  const baseUrl = instanceUrl.replace(/\/+$/, '');
-  const res = await fetchFn(`${baseUrl}/api/lightning-address?pubkey=${pubkey}`);
-  if (!res.ok) throw new Error(`Lightning Address lookup failed: ${res.status}`);
-  const data = (await res.json()) as { address: string | null };
-  return data.address;
+  const baseUrl = secureWalletUrl(instanceUrl);
+  const data = await walletHttp<unknown>(`${baseUrl}/api/lightning-address?pubkey=${encodeURIComponent(pubkey)}`, {}, fetchFn, 'Lightning Address lookup failed');
+  return parseAddress(data);
 }
 
 /**
@@ -115,15 +117,12 @@ export async function releaseLightningAddress(
   signFn: (challenge: string) => Promise<SignedEvent>,
   fetchFn: typeof fetch = globalThis.fetch.bind(globalThis),
 ): Promise<void> {
-  const baseUrl = instanceUrl.replace(/\/+$/, '');
-  const challengeRes = await fetchFn(`${baseUrl}/api/provision/challenge`);
-  if (!challengeRes.ok) throw new Error(`Challenge request failed: ${challengeRes.status}`);
-  const { challenge } = (await challengeRes.json()) as { challenge: string };
+  const baseUrl = secureWalletUrl(instanceUrl);
+  const challenge = await fetchChallenge(baseUrl, fetchFn);
   const signedEvent = await signFn(challenge);
-  const res = await fetchFn(`${baseUrl}/api/release-username`, {
+  await walletHttp<void>(`${baseUrl}/api/release-username`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ event: signedEvent }),
-  });
-  if (!res.ok) throw new Error(`Release failed: ${res.status}`);
+  }, fetchFn, 'Release failed', { empty: true });
 }

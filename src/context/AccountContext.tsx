@@ -102,11 +102,19 @@ export function AccountProvider({ children }: AccountProviderProps) {
     // Do not render an identity whose background switch has not completed:
     // account-scoped readers would query the old account and discard the reply.
     await commitAccountSwitch(accountId, id => rpc('switchAccount', { accountId: id }), id => patchAccount({ activeId: id }));
-    // Reload active tab so injected NIP-07 content reflects the new identity
+    // Many clients cache their selected identity and ignore account-change events.
     try {
-      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.id) void browser.tabs.reload(tabs[0].id);
-    } catch { /* ignore — fails on chrome:// pages */ }
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id !== undefined) {
+        // Register outside the popup before navigation can destroy its timers.
+        // Recovery failure must never prevent the website adopting the new account.
+        await rpc('scheduleAccountSwitchPopupRecovery', { tabId: tab.id }).catch(() => {});
+        try {
+          const response = await browser.tabs.sendMessage(tab.id, { type: 'NOSTR_RELOAD_PAGE' }, { frameId: 0 });
+          if (!response?.ok) await browser.tabs.reload(tab.id);
+        } catch { await browser.tabs.reload(tab.id); }
+      }
+    } catch { /* Restricted or closed tab. */ }
   }, [accounts, patchAccount]);
 
   const reload = useCallback(() => { void refresh(); }, [refresh]);

@@ -1,3 +1,4 @@
+import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bech32 } from '@scure/base';
@@ -121,7 +122,7 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
     const originalFetch=globalThis.fetch;const urls:string[]=[];
     globalThis.fetch=(async(input:any,init?:RequestInit)=>{
       const url=String(input);if(!url.startsWith('https://recipient.example/'))return originalFetch(input,init);
-      urls.push(url);return new Response(JSON.stringify(url.includes('/.well-known/')?{tag:'payRequest',callback:'https://recipient.example/callback',minSendable:1000,maxSendable:500000000,metadata:'[["text/plain","Donation"]]',commentAllowed:100}:{pr:invoice}));
+      urls.push(url);return new Response(JSON.stringify(url.includes('/.well-known/')?{tag:'payRequest',callback:'https://recipient.example/callback',minSendable:1000,maxSendable:500000000,metadata:'[["text/plain","Donation"]]',commentAllowed:100}:{pr:makeLnurlInvoice('[["text/plain","Donation"]]')}));
     }) as typeof fetch;
     try {
       const resolved=await call('wallet_resolveLightningAddress',{address:recipient});assert.equal(resolved.minSats,1);

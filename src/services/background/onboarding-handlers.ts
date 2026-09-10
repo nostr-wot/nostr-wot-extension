@@ -1,3 +1,4 @@
+import { MAX_ACCOUNT_NAME_LENGTH } from '@constants/accounts.ts';
 import { NIP46_RELAYS } from '@constants/relays.ts';
 import {
   NC_TTL_MS,
@@ -23,6 +24,7 @@ import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { syncActivePubkey } from './vault-handlers.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
 import * as signerApprovalQueue from '../signing/approvalQueue.ts';
+import { toSafeAccount } from '../../domain/accounts/account.ts';
 import type { Account } from '../../domain/accounts/types.ts';
 
 // ── NostrConnect sessions ──
@@ -407,7 +409,7 @@ export async function checkDuplicateAccount(pubkey: string): Promise<{ upgradeFr
 export const handlers = new Map<string, HandlerFn>([
     ['onboarding_validateNsec', async (params) => {
         const acct = await accounts.importNsec(params.input as string);
-        const { privkey, mnemonic, ...safeAcct } = acct;
+        const safeAcct = toSafeAccount(acct);
         const dup = await checkDuplicateAccount(acct.pubkey);
         await setPendingOnboardingAccount(acct);
         return {
@@ -421,7 +423,7 @@ export const handlers = new Map<string, HandlerFn>([
     ['onboarding_validateNcryptsec', async (params) => {
         const privkeyHex = await ncryptsecDecode(params.ncryptsec as string, params.password as string);
         const acct = await accounts.importNsec(privkeyHex, params.name as string);
-        const { privkey: _pk, mnemonic: _mn, ...safeAcct } = acct;
+        const safeAcct = toSafeAccount(acct);
         const dup = await checkDuplicateAccount(acct.pubkey);
         await setPendingOnboardingAccount(acct);
         return {
@@ -444,7 +446,7 @@ export const handlers = new Map<string, HandlerFn>([
         const acct = hasSeed
             ? await accounts.importFromMnemonicDerived(mnemonic)
             : await accounts.createFromMnemonic(mnemonic, 'Imported');
-        const { privkey, mnemonic: _mn, ...safeAcct } = acct;
+        const safeAcct = toSafeAccount(acct);
         const dup = await checkDuplicateAccount(acct.pubkey);
         await setPendingOnboardingAccount(acct);
         return {
@@ -458,13 +460,13 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['onboarding_validateNpub', async (params) => {
         const acct = accounts.importNpub(params.input as string);
-        return { account: acct, pubkey: acct.pubkey };
+        return { account: toSafeAccount(acct), pubkey: acct.pubkey };
     }],
 
     ['onboarding_connectNip46', async (params) => {
         const acct = accounts.connectNip46(params.bunkerUrl as string);
         await setPendingOnboardingAccount(acct);
-        const { nip46Config: _n46, privkey: _pk, mnemonic: _mn, ...safeNip46 } = acct;
+        const safeNip46 = toSafeAccount(acct);
         return { account: safeNip46 };
     }],
 
@@ -595,7 +597,7 @@ export const handlers = new Map<string, HandlerFn>([
             _nostrConnectSessions.delete(sessionId);
             await deleteNcSession(sessionId);
             await setPendingOnboardingAccount(acct);
-            const { nip46Config: _n46, privkey: _pk, mnemonic: _mn, ...safeNc } = acct;
+            const safeNc = toSafeAccount(acct);
             return { connected: true, account: safeNc };
         }
         if (session.error) {
@@ -621,7 +623,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['onboarding_generateAccount', async () => {
         const { account: acct, mnemonic } = await accounts.generateNewAccount();
-        const { privkey, ...safeAcct } = acct;
+        const safeAcct = toSafeAccount(acct);
         await setPendingOnboardingAccount(acct);
         return { account: safeAcct, mnemonic };
     }],
@@ -638,9 +640,10 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['onboarding_generateSubAccount', async (params) => {
-        if (vault.isLocked()) throw new Error('Vault is locked');
+        await vault.requireUnlocked();
         const payload = vault.getDecryptedPayload();
-        const seedAccount = payload.accounts.find(a => a.type === 'generated' && a.mnemonic);
+        const seedAccount = payload.accounts.find(a => a.id === payload.activeAccountId && a.type === 'generated' && a.mnemonic)
+            || payload.accounts.find(a => a.type === 'generated' && a.mnemonic);
         if (!seedAccount || !seedAccount.mnemonic) {
             throw new Error('No existing seed account found');
         }
@@ -648,14 +651,16 @@ export const handlers = new Map<string, HandlerFn>([
             .filter(a => a.type === 'generated' && a.mnemonic === seedAccount.mnemonic)
             .reduce((max, a) => Math.max(max, a.derivationIndex ?? 0), 0);
         const nextIndex = maxIndex + 1;
-        const subAcct = await accounts.createFromMnemonicAtIndex(
-            seedAccount.mnemonic,
-            nextIndex,
-            (params.name as string) || undefined
-        );
-        const { privkey: _pk, ...safeSubAcct } = subAcct;
+        const subAcct = params.derivationPath !== undefined
+            ? await accounts.createFromMnemonicAtPath(seedAccount.mnemonic, params.derivationPath as string, (params.name as string) || undefined)
+            : await accounts.createFromMnemonicAtIndex(seedAccount.mnemonic, nextIndex, (params.name as string) || undefined);
+        if (payload.accounts.some(account => account.pubkey === subAcct.pubkey)) {
+            throw new Error('An account with this derivation path already exists');
+        }
+        const safeSubAcct = toSafeAccount(subAcct);
         await setPendingOnboardingAccount(subAcct);
-        return { account: safeSubAcct, derivationIndex: nextIndex };
+        return { account: safeSubAcct, derivationIndex: subAcct.derivationIndex, derivationPath: subAcct.derivationPath, seedName: seedAccount.name };
+
     }],
 
     ['onboarding_exportNcryptsec', async (params) => {
@@ -755,6 +760,8 @@ export const handlers = new Map<string, HandlerFn>([
                 name: fullAccount.name || 'Account',
                 pubkey: fullAccount.pubkey,
                 type: fullAccount.type || 'generated',
+                derivationPath: fullAccount.derivationPath,
+                derivationIndex: fullAccount.derivationIndex,
                 readOnly: !fullAccount.privkey && fullAccount.type !== 'nip46'
             });
         } else {
@@ -772,9 +779,15 @@ export const handlers = new Map<string, HandlerFn>([
         const prevActiveAdd = ((await browser.storage.local.get(['activeAccountId'])) as Record<string, string>).activeAccountId;
 
         const pendingAcctAdd = await getPendingOnboardingAccount();
-        const fullAccountAdd = pendingAcctAdd && pendingAcctAdd.id === (params.account as Record<string, string>).id
+        let fullAccountAdd = pendingAcctAdd && pendingAcctAdd.id === (params.account as Record<string, string>).id
             ? pendingAcctAdd
             : params.account as Account;
+        if (params.name !== undefined) {
+            if (typeof params.name !== 'string' || params.name.trim().length > MAX_ACCOUNT_NAME_LENGTH) {
+                throw new Error('Invalid account name');
+            }
+            fullAccountAdd = { ...fullAccountAdd, name: params.name.trim() || fullAccountAdd.name };
+        }
         if (!fullAccountAdd.privkey && fullAccountAdd.type !== 'npub' && fullAccountAdd.type !== 'nip46') {
             throw new Error('Cannot add account: private key was lost. Please re-import.');
         }
@@ -795,6 +808,8 @@ export const handlers = new Map<string, HandlerFn>([
                 name: fullAccountAdd.name || 'Account',
                 pubkey: fullAccountAdd.pubkey,
                 type: fullAccountAdd.type || 'generated',
+                derivationPath: fullAccountAdd.derivationPath,
+                derivationIndex: fullAccountAdd.derivationIndex,
                 readOnly: !fullAccountAdd.privkey && fullAccountAdd.type !== 'nip46'
             });
         } else {

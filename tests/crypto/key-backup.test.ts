@@ -12,7 +12,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { encryptBackup, decryptBackup } from '../../src/lib/crypto/keyBackup.ts';
+import { encryptBackup, decryptBackup, isEncryptedBackup } from '../../src/lib/crypto/keyBackup.ts';
 
 const SEED = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
 const PASSWORD = 'correct horse battery staple';
@@ -72,4 +72,12 @@ describe('keyBackup', () => {
       /Not a backup file/,
     );
   });
+});
+
+it('detects encrypted exports without confusing plain PQ files or malformed input', async () => {
+  assert.equal(isEncryptedBackup(await encryptBackup('keyfile', PASSWORD)), true);
+  for (const input of ['null', '{}', 'invalid', '{"v":"nip-pqc/v1"}',
+    '{"v":1,"salt":2,"iv":"x","ct":"x"}', '{"v":1,"salt":"x","iv":"x"}']) {
+    assert.equal(isEncryptedBackup(input), false);
+  }
 });

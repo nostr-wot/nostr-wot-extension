@@ -55,6 +55,7 @@ export default function ConfirmDialog({
       onClose={busy ? () => {} : onCancel}
       dismissOnBackdrop={false}
       zIndex={zIndex}
+      footerRow
       footer={
         <>
           <ButtonSecondary small onClick={onCancel} disabled={busy}>
@@ -71,7 +72,7 @@ export default function ConfirmDialog({
         </>
       }
     >
-      <Text variant="body" as="div" className="leading-loose">{message}</Text>
+      <Text variant="body" as="div" className="leading-loose flex flex-col gap-6">{message}</Text>
       <FormError>{error}</FormError>
     </Modal>
   );

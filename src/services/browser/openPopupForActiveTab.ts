@@ -41,7 +41,9 @@ export async function openPopupForActiveTab(origin: string, requestingTabId?: nu
     // not invoke the native popup-opening lifecycle again while it is visible.
     if (browser.runtime.getContexts) {
       const contexts = await browser.runtime.getContexts({ contextTypes: ['POPUP'] });
-      if (contexts.length > 0) return;
+      if (contexts.length > 0) {
+        return;
+      }
     } else if (browser.extension?.getViews?.({ type: 'popup' }).length) {
       return;
     }

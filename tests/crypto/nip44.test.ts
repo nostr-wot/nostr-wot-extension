@@ -145,3 +145,12 @@ describe('nip44Encrypt / nip44Decrypt', () => {
     );
   });
 });
+
+it('rejects oversized encoded ciphertext before decoding', async () => {
+  const original = globalThis.atob;
+  let decoded = false;
+  globalThis.atob = () => { decoded = true; throw new Error('decoder reached'); };
+  try { await assert.rejects(nip44Decrypt('A'.repeat(100_000), BOB_PRIVKEY, ALICE_PUBKEY), /Payload too long/); }
+  finally { globalThis.atob = original; }
+  assert.equal(decoded, false);
+});

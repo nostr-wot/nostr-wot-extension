@@ -1,3 +1,5 @@
+import { MAX_EVENT_BYTES, MAX_EVENT_TAGS, MAX_TAG_VALUES, MAX_CRYPTO_PLAINTEXT_BYTES, MAX_CRYPTO_CIPHERTEXT_LENGTH } from '@constants/signing.ts';
+import { getSigningRejections, acknowledgeSigningRejections } from '../signing/rejections.ts';
 /**
  * NIP-07 signer + permission management handlers.
  * @module services/background/nip07-handlers
@@ -24,12 +26,22 @@ export function validateNip07Params(method: string, params: Record<string, unkno
         if (typeof e.kind !== 'number' || !Number.isInteger(e.kind) || e.kind < 0)
             throw new Error('Invalid event kind');
         if (typeof e.content !== 'string') throw new Error('Invalid event content');
+        if (e.content.length > MAX_EVENT_BYTES) throw new Error('Event too large');
+        if (e.pubkey !== undefined && (typeof e.pubkey !== 'string' || !/^[0-9a-f]{64}$/.test(e.pubkey))) throw new Error('Invalid event author');
         // Validate tags is an array of string arrays
         if (e.tags !== undefined) {
             if (!Array.isArray(e.tags)) throw new Error('Invalid event tags: must be an array');
+            if (e.tags.length > MAX_EVENT_TAGS) throw new Error('Event tag limit exceeded');
+            let tagBytes = 0;
             for (const tag of e.tags as unknown[]) {
-                if (!Array.isArray(tag) || !tag.every(v => typeof v === 'string'))
-                    throw new Error('Invalid event tags: each tag must be an array of strings');
+                if (!Array.isArray(tag) || tag.length > MAX_TAG_VALUES || !tag.every(v => typeof v === 'string'))
+                    throw new Error('Invalid event tags: each tag must be a bounded array of strings');
+                tagBytes += 2 + tag.length * 3;
+                if (tagBytes > MAX_EVENT_BYTES) throw new Error('Event tags too large');
+                for (const value of tag as string[]) {
+                    tagBytes += value.length;
+                    if (tagBytes > MAX_EVENT_BYTES) throw new Error('Event tags too large');
+                }
             }
         }
         // Validate created_at is a reasonable timestamp
@@ -41,11 +53,16 @@ export function validateNip07Params(method: string, params: Record<string, unkno
             if (e.created_at > maxFuture)
                 throw new Error('Invalid event created_at: too far in the future');
         }
+        // Bound the canonical event before serializing; discard unrelated page fields.
+        const canonical = {kind:e.kind,content:e.content,tags:e.tags,pubkey:e.pubkey,created_at:e.created_at};
+        if (new TextEncoder().encode(JSON.stringify(canonical)).length > MAX_EVENT_BYTES) throw new Error('Event too large');
+        params.event = canonical;
     }
     if (method === 'nip07_nip04Encrypt' || method === 'nip07_nip44Encrypt') {
         if (typeof params.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(params.pubkey))
             throw new Error('Invalid pubkey');
         if (typeof params.plaintext !== 'string') throw new Error('Invalid plaintext');
+        if (params.plaintext.length > MAX_CRYPTO_PLAINTEXT_BYTES || new TextEncoder().encode(params.plaintext).length > MAX_CRYPTO_PLAINTEXT_BYTES) throw new Error('Plaintext too long');
 
         // Optional post-quantum options. Validated here rather than deeper in, because
         // the ML-KEM key is 1568 bytes and would fail the 64-hex checks these handlers
@@ -55,16 +72,17 @@ export function validateNip07Params(method: string, params: Record<string, unkno
             const opts = params.opts as Record<string, unknown>;
             if (typeof opts !== 'object' || opts === null) throw new Error('Invalid options');
             if (opts.scheme !== 'pq') throw new Error('Unsupported scheme');
-            if (typeof opts.recipientKemKey !== 'string' || !/^[A-Za-z0-9+/]+=*$/.test(opts.recipientKemKey))
-                throw new Error('Invalid recipientKemKey');
-            // 1568 raw bytes base64-encode to 2092 characters.
+            if (typeof opts.recipientKemKey !== 'string') throw new Error('Invalid recipientKemKey');
+            // Reject length before scanning or decoding key material.
             if (opts.recipientKemKey.length !== 2092) throw new Error('Invalid recipientKemKey length');
+            if (!/^[A-Za-z0-9+/]+=*$/.test(opts.recipientKemKey)) throw new Error('Invalid recipientKemKey');
         }
     }
     if (method === 'nip07_nip04Decrypt' || method === 'nip07_nip44Decrypt') {
         if (typeof params.pubkey !== 'string' || !/^[0-9a-f]{64}$/i.test(params.pubkey))
             throw new Error('Invalid pubkey');
         if (typeof params.ciphertext !== 'string') throw new Error('Invalid ciphertext');
+        if (params.ciphertext.length > MAX_CRYPTO_CIPHERTEXT_LENGTH) throw new Error('Ciphertext too long');
     }
 }
 
@@ -201,6 +219,13 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     // ── Signer pending request management ──
+
+    ['signer_getRejections', async () => getSigningRejections()],
+    ['signer_acknowledgeRejections', async (params) => {
+        if (!Array.isArray(params.ids) || !params.ids.every(id => typeof id === 'string')) throw new Error('Invalid rejection IDs');
+        await acknowledgeSigningRejections(params.ids as string[]);
+        return { ok: true };
+    }],
 
     ['signer_getPending', async () => signerApprovalQueue.getPending()],
 

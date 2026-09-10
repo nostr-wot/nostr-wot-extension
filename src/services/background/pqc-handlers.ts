@@ -100,7 +100,7 @@ async function activeKeysForExport(): Promise<{
   }
   const seed = await mnemonicToSeed(acct.mnemonic);
   try {
-    return { keys: derivePqKeys(seed, acct.derivationIndex ?? 0), source: 'derived' as const };
+    return { keys: derivePqKeys(seed, acct.derivationPath ?? acct.derivationIndex ?? 0), source: 'derived' as const };
   } finally {
     seed.fill(0);
   }
@@ -171,7 +171,7 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
 
     const seed = await mnemonicToSeed(acct.mnemonic);
     try {
-      const { kem, dsa } = derivePqKeys(seed, acct.derivationIndex ?? 0);
+      const { kem, dsa } = derivePqKeys(seed, acct.derivationPath ?? acct.derivationIndex ?? 0);
       const kemB64 = arrayToBase64(kem.publicKey);
       const dsaB64 = arrayToBase64(dsa.publicKey);
       const pop = signPop(popMessage(acct.pubkey, kemB64, dsaB64), dsa.secretKey);
