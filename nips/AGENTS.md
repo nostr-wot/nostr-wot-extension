@@ -1,3 +1,3 @@
-# Proposal formatting
+# Proposal shortcuts
 
-Write each prose paragraph on a single source line. Do not hard-wrap prose at a fixed column width. Preserve meaningful line breaks in code blocks, tables and lists.
+Canonical proposals live in https://github.com/nostr-wot/nostr-pqc/tree/main/nip-drafts. Keep these files as compatibility pointers; edit the proposals in that repository. Keep prose paragraphs on single source lines.
