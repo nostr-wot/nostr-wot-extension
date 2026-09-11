@@ -28,12 +28,10 @@ key = HKDF-Expand(SHA-256, PRK, info = "nip-pqc/v1/hybrid", L = 32)
 
 An implementation of **this profile** MUST NOT use either input alone.
 
-That is a statement about `nip-pqc/v1`, not a position on where Nostr should end
-up. Replacing the classic key exchange outright is the better destination, and it
-is one no single client can reach: it needs relays, signers and every other client
-to move together. Hybrid is what can be deployed unilaterally in the meantime,
-and it closes harvest-now-decrypt-later, which is the half of the problem that
-cannot be fixed retroactively and therefore cannot wait for that coordination.
+That is a property of this profile. Future encryption suites can be adopted by
+participating senders, recipients and signers without teaching opaque relays to
+decrypt. Event-signature migration is a separate coordination problem; see
+[draft 05](05-relay-crypto-agility.md).
 
 Being incremental costs little. Lattice cryptography is young by comparison with
 elliptic curves, and if ML-KEM is broken tomorrow the hybrid degrades to exactly
@@ -162,3 +160,10 @@ this particular signer will.
 `lib/crypto/pq.ts` in this repository, and
 [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq),
 which is the normative one for the wire format.
+
+## Relay migration
+
+[Draft 05](05-relay-crypto-agility.md) preserves these bytes and specifies transport
+and discovery boundaries. The two-byte prefix is local to this envelope, not an
+allocated NIP-44 version. Legacy relays can carry it; legacy recipients cannot
+necessarily decrypt it.
