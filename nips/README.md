@@ -1,6 +1,6 @@
 # NIP proposals
 
-Draft specifications for the post-quantum work this extension implements.
+Draft specifications for implemented post-quantum messaging and proposed relay migration.
 
 Nostr has no post-quantum story yet. This extension shipped one anyway, because
 harvest-now-decrypt-later is the half of the problem that has to be fixed *before*
@@ -22,7 +22,10 @@ detail that a second implementation can interoperate without reading our source.
 | [03 — NIP-44 post-quantum envelope](03-pq-nip44-envelope.md) | The hybrid ML-KEM + NIP-44 payload format | NIP-44, 02 |
 | [04 — Signer capability](04-nip07-encryption-capability.md) | `window.nostr.nip44.schemes`, so a client can ask a signer instead of guessing | NIP-07, 03 |
 
-Read them in order. Each one assumes the one before it.
+| [05 - Relay crypto-agility](05-relay-crypto-agility.md) | Compact envelope selectors, opaque transport, NIP-11 discovery and relay policy | NIP-01, NIP-11, NIP-17, 03 |
+| [06 - Hybrid event authentication](06-hybrid-event-authentication.md) | Candidate dual-signature public events, trust pinning and downgrade handling | NIP-01, 02, 05 |
+
+Drafts 01-04 describe existing work. Drafts 05-06 propose the next migration stage.
 
 ## Status
 
@@ -32,7 +35,7 @@ numbers in the filenames are reading order, nothing more. The one number that is
 claimed in the wild is the event kind `10203`, which is in use on relays today
 and would need to change if it collides with something in flight.
 
-Everything here is implemented and running:
+Implementation status (05-06 are proposals, not shipped capabilities):
 
 | Draft | Implementation |
 |---|---|
@@ -40,32 +43,28 @@ Everything here is implemented and running:
 | 03 | `lib/crypto/pq.ts` (envelope section), [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq) |
 | 04 | `inject.ts`, `services/signing/signer.ts`, [`@nostr-wot/signers`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/signers) |
 
+Drafts 05-06 have no implementation or independent interoperability results yet.
+
 A second implementation exists in [Obelisk](https://github.com/obelisk-app/obelisk),
 which consumes all four through the SDK rather than reimplementing them. That is
 one and a half implementations, not two, and it is not enough to call any of this
 settled.
 
-## What these drafts deliberately do not do
+## Migration boundaries
 
-**They do not make Nostr post-quantum.** Event signatures are still secp256k1,
-and that is a protocol-wide change no client can make alone. What is protected
-here is message *confidentiality* against an adversary recording traffic now.
-Authenticity, identity and the attestation binding itself all still rest on
-secp256k1. Draft 02 says where that bites.
+Start with message confidentiality using the existing compact envelope. Relays
+can carry it without understanding its encryption; legacy recipients still need
+an upgraded decryptor. The classical outer gift wrap also means metadata is not
+post-quantum protected. Draft 05 makes these boundaries explicit.
 
-**They do not replace NIP-44, yet.** The post-quantum key is mixed *with* the
-classic conversation key rather than instead of it, and that is a sequencing
-decision rather than a principle. Replacing the classic key exchange outright is
-the right destination and needs relays, signers and every client to move
-together. Hybrid is what one implementation can deploy on its own, and it closes
-harvest-now-decrypt-later, which is the half that cannot be fixed retroactively
-and so cannot wait for that coordination. It also means that if ML-KEM turns out
-to be broken, the result is exactly NIP-44, which is where we started.
+Event authentication needs separate verifier support and durable trusted key
+bindings. Draft 06 explores an additive public proof while retaining NIP-01's
+outer fields. It is not a completed protocol-wide identity migration. Encryption
+and signature suite identifiers have separate namespaces and purposes.
 
-**They do not cover metadata.** Who talks to whom is NIP-17's problem, and
-NIP-17 is not affected by any of this. See
-[Obelisk's notes](https://github.com/obelisk-app/obelisk/blob/main/docs/dm-metadata-privacy.md)
-on how easy that guarantee is to throw away by accident.
+No new byte is imposed on every Nostr event. Draft 03 already has a version byte
+and an algorithm byte, and keeps its existing wire format. New signatures add
+substantial proof bytes only to events that opt in.
 
 ## Feedback
 
