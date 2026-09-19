@@ -1,0 +1,30 @@
+Nostr WoT 0.7.1 — Mozilla reviewer notes
+
+Build from the attached nostr-wot-source-0.7.1.zip in an empty directory using Node 22 or 24 and npm:
+  npm ci
+  npm run package:firefox
+For Chrome: npm run package:chrome
+Tests: ./tests/run.sh
+
+Release build: Node 22.23.2 / npm 10.9.8. The source includes the lockfile and integration tests. See SOURCE_BUILD.md. Keep the included documentation and .gitignore: Tailwind scans repository text for CSS generation. No private credentials are needed to build.
+
+Reproducibility
+The source rebuild matched all 29 extracted files byte for byte in each browser package. Compare extracted files; ZIP timestamps may differ. Firefox packaging uses background scripts and retains consent metadata. Chrome packaging removes Firefox-specific settings. The Firefox command restores the normal unpacked dist/ build afterward.
+
+Consent
+Minimum Firefox versions are desktop 140 and Android 142, which support built-in data consent. Required categories are financialAndPaymentInfo, personallyIdentifyingInfo, authenticationInfo, personalCommunications and browsingActivity. Firefox presents required categories on installation and newly required categories on update. Users can decline or disable/remove the extension.
+
+Data flows
+- Payments: configured LNbits servers, LNURL endpoints and NWC wallet relays.
+- Identity, profile, mute and relay information: configured Nostr relays. Profile/cover uploads: blossom.primal.net.
+- Authentication: wallet API credentials and provisioning data sent to the configured wallet service.
+- Communications: event/message content sent encrypted to the selected NIP-46 signer through its relay. Local signing/decryption stays local.
+- Browsing domains: Google's favicon service receives site domains to retrieve icons.
+No telemetry or remote executable code is fetched. See docs/deployment.md for disclosures.
+
+Security and testing
+Cached wallet, activity and payment data is encrypted with a vault-protected key. Signing/payment work is bound to the account and vault session. Approval separates current requests from future permissions. The source includes Nostr Connect, NWC and WebLN integration tests using synthetic accounts and local services.
+
+Native Chrome smoke coverage and remaining browser verification scope are documented in docs/audits/2026-09-10/native-browser-verification.md.
+
+This patch corrects NIP-46 user/connection key separation and relay persistence. Native Amber signing-request delivery remains unverified. See docs/remote-signer-compatibility.md.

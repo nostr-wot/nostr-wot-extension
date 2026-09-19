@@ -11,10 +11,10 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.7.0 is pending store publication. All fixes remain under 0.7.0 until the
-owner explicitly requests a new publish. The briefly prepared 0.7.1 is folded
-into this version. Rebuild the same version’s packages and notes as changes
-accumulate; keep the GitHub release as a draft.
+0.7.0 was published on GitHub. The owner requested a new 0.7.1 patch release
+for remote-signer identity/linking fixes. Publish its GitHub release and attach
+Chrome, Firefox and reproducible source archives. Browser-store submission is
+separate; do not infer store approval from GitHub publication.
 
 ## Before any store
 

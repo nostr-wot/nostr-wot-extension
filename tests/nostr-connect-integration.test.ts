@@ -13,6 +13,7 @@ import * as signer from '../src/services/signing/signer.ts';
 import * as signerRemoteSigner from '../src/services/signing/remoteSigner.ts';
 import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
+import * as onboarding from '../src/services/background/onboarding-handlers.ts';
 
 const remoteKey = new Uint8Array(32).fill(7);
 const clientKey = new Uint8Array(32).fill(8);
@@ -33,7 +34,7 @@ async function until(check: () => boolean | Promise<boolean>) {
 
 // A loopback-only relay/bunker. Actual BunkerSigner performs encryption,
 // subscription management, signature verification and response correlation.
-async function fixture() {
+async function fixture(userKey = remoteKey, authUrl?: string) {
   const server = new WebSocketServer({ host: '127.0.0.1', port: 0 });
   await once(server, 'listening');
   const address = server.address();
@@ -66,15 +67,20 @@ async function fixture() {
       const req = {...decoded,author:id.pubkey} as Request;
       requests.push(req);
       socket.send(JSON.stringify(['OK',id.id,true,'']));
-      if (req.method === 'connect') response(req.author,{id:req.id,result:'ack'});
+      if (req.method === 'connect') {
+        if (authUrl) {
+          response(req.author,{id:req.id,result:'auth_url',error:authUrl});
+          setTimeout(()=>response(req.author,{id:req.id,result:'ack'}),20);
+        } else response(req.author,{id:req.id,result:'ack'});
+      }
       if (req.method === 'switch_relays') response(req.author,{id:req.id,result:JSON.stringify([url])});
-      if (req.method === 'get_public_key') response(req.author,{id:req.id,result:pubkey});
+      if (req.method === 'get_public_key') response(req.author,{id:req.id,result:getPublicKey(userKey)});
     });
   });
   return { url, requests, response, subscriptions,
     async approve(req: Request) {
       let result: string;
-      if(req.method==='sign_event') result=JSON.stringify(finalizeEvent(JSON.parse(req.params[0]),remoteKey));
+      if(req.method==='sign_event') result=JSON.stringify(finalizeEvent(JSON.parse(req.params[0]),userKey));
       else if(req.method==='nip04_encrypt') result=await nip04.encrypt(remoteKey,req.params[0],req.params[1]);
       else if(req.method==='nip04_decrypt') result=await nip04.decrypt(remoteKey,req.params[0],req.params[1]);
       else if(req.method==='nip44_encrypt') result=nip44.v2.encrypt(req.params[1],nip44.v2.utils.getConversationKey(remoteKey,req.params[0]));
@@ -279,4 +285,110 @@ test('remote cached methods stop at the dispatch boundary after lock', async t =
     assert.equal(closed, 1);
     assert.equal(signerRemoteSigner.isNip46Connected(acct.id), false);
   });
+});
+
+// Amber and hosted bunkers may use a connection key distinct from the user's key.
+for (const distinct of [false, true]) for (const flow of ['bunker', 'qr'] as const) test(`Nostr Connect ${flow}: resolve ${distinct ? 'distinct' : 'shared'} user identity before saving`, {timeout: 15000}, async t => {
+  const relay = await fixture(distinct ? peerKey : remoteKey);
+  const pool = new SimplePool();
+  resetMockStorage(); vault.lock();
+  onboarding.__simulateServiceWorkerRestart();
+  onboarding.__setNip46Deps({
+    createNostrConnectURI: params => createNostrConnectURI({...params, relays:['ws://127.0.0.1:1', relay.url]}),
+    BunkerSigner: {
+      fromURI: (key: Uint8Array, uri: string, opts: object, signal: AbortSignal) => BunkerSigner.fromURI(key, uri, {...opts, pool}, signal),
+      fromBunker: (key: Uint8Array, bp: Parameters<typeof BunkerSigner.fromBunker>[1], opts: object) => BunkerSigner.fromBunker(key, bp, {...opts, pool}),
+    } as unknown as typeof BunkerSigner,
+  });
+  t.after(async () => {
+    onboarding.__setNip46Deps(); onboarding.__simulateServiceWorkerRestart();
+    pool.destroy(); vault.lock(); await relay.close();
+  });
+  let account: {id:string;pubkey:string; type:string};
+  if (flow === 'bunker') {
+    const result = await onboarding.handlers.get('onboarding_connectNip46')!({bunkerUrl:`bunker://${pubkey}?relay=${encodeURIComponent(relay.url)}&secret=pairing-secret`}) as {account:typeof account};
+    account = result.account;
+  } else {
+    const init = await onboarding.handlers.get('onboarding_initNostrConnect')!({}) as {sessionId:string;nostrconnectUri:string};
+    const uri = new URL(init.nostrconnectUri);
+    await until(()=>[...relay.subscriptions.values()].some(sub=>[...sub.values()].some(f=>(f['#p'] as string[])?.includes(uri.hostname))));
+    relay.response(uri.hostname,{id:'connect',result:uri.searchParams.get('secret')});
+    let result: {connected?:boolean;account?:typeof account} = {};
+    await until(async()=>{result = await onboarding.handlers.get('onboarding_pollNostrConnect')!({sessionId:init.sessionId}) as typeof result;return !!result.connected;});
+    account = result.account!;
+  }
+  assert.equal(account.pubkey, distinct ? peer : pubkey, 'account identity must come from get_public_key, not the transport event author');
+  assert.equal(account.type, 'nip46');
+  assert.ok(relay.requests.some(r=>r.method==='get_public_key'));
+  assert.equal('nip46Config' in account, false, 'connection credentials must remain background-only');
+  await onboarding.handlers.get('onboarding_createVault')!({account,password:'integration-password'});
+  const stored = vault.getAccountForRemoteSigning(account.id)!;
+  const pointer = new URL(stored.nip46Config.bunkerUrl);
+  assert.equal(pointer.hostname, pubkey, 'retain transport identity for reconnect');
+  assert.deepEqual(pointer.searchParams.getAll('relay'), [relay.url], 'retain the signer-selected relays');
+  if (flow === 'bunker') {
+    const connect = relay.requests.find(r=>r.method==='connect')!;
+    assert.deepEqual(connect.params,[pubkey,'pairing-secret']);
+  }
+  const start = relay.requests.length;
+  const pending = signer.handleSignEvent({...event,pubkey:account.pubkey},origin);
+  try {
+    await until(()=>relay.requests.slice(start).some(r=>r.method==='sign_event'));
+    const req = relay.requests.slice(start).find(r=>r.method==='sign_event')!;
+    await relay.approve(req);
+    const signed = await pending;
+    assert.equal(signed.pubkey,account.pubkey);
+    assert.ok(verifyEvent(signed));
+    assert.equal(req.author,getPublicKey(Buffer.from(stored.nip46Config.localPrivkey!, 'hex')), 'reuse pairing identity');
+  } finally { signerRemoteSigner.disconnectNip46(account.id); }
+});
+
+test('remote account resolution preserves multiple relays and pairing credentials', async () => {
+  const { resolveRemoteAccount } = await import('../src/services/signing/remoteAccount.ts');
+  let closed = false;
+  const remote = {
+    bp: { pubkey, relays: ['wss://one.example', 'wss://two.example'], secret: 'token+/=?' },
+    getPublicKey: async () => peer,
+    close: async () => { closed = true; },
+  } as unknown as BunkerSigner;
+  const account = await resolveRemoteAccount(remote, clientKey);
+  assert.equal(account.pubkey, peer);
+  const uri = new URL(account.nip46Config!.bunkerUrl);
+  assert.equal(uri.hostname, pubkey);
+  assert.deepEqual(uri.searchParams.getAll('relay'), ['wss://one.example', 'wss://two.example']);
+  assert.equal(uri.searchParams.get('secret'), 'token+/=?');
+  assert.equal(closed, true);
+});
+
+for (const failure of ['invalid identity', 'denied', 'timeout']) test(`remote account resolution: ${failure} cannot create an account`, async t => {
+  const { resolveRemoteAccount } = await import('../src/services/signing/remoteAccount.ts');
+  let closed = false;
+  if (failure === 'timeout') t.mock.timers.enable({ apis: ['setTimeout'] });
+  const remote = {
+    bp: { pubkey, relays: ['wss://one.example'], secret: null },
+    getPublicKey: () => failure === 'denied' ? Promise.reject(new Error('User denied'))
+      : failure === 'timeout' ? new Promise<string>(() => {}) : Promise.resolve('not-a-public-key'),
+    close: async () => { closed = true; },
+  } as unknown as BunkerSigner;
+  const rejected = assert.rejects(resolveRemoteAccount(remote, clientKey), failure === 'denied' ? /User denied/ : failure === 'timeout' ? /timed out/ : /invalid public key/);
+  if (failure === 'timeout') t.mock.timers.tick(120_000);
+  await rejected;
+  assert.equal(closed, true);
+});
+
+for (const authUrl of ['https://signer.example/login', 'http://signer.example/login']) test(`bunker onboarding auth challenge: ${authUrl}`, {timeout:10000}, async t => {
+  const relay = await fixture(peerKey, authUrl);
+  const pool = new SimplePool();
+  const opened: string[] = [];
+  const tabs = browser.tabs as unknown as {create:(args:{url:string})=>Promise<{id:number}>};
+  const originalCreate = tabs.create;
+  tabs.create = (async ({url}: {url:string}) => { opened.push(url); return {id:1}; }) as typeof originalCreate;
+  resetMockStorage(); onboarding.__simulateServiceWorkerRestart();
+  onboarding.__setNip46Deps({ BunkerSigner: {
+    fromBunker: (key: Uint8Array, bp: Parameters<typeof BunkerSigner.fromBunker>[1], opts: object) => BunkerSigner.fromBunker(key,bp,{...opts,pool}),
+  } as unknown as typeof BunkerSigner });
+  t.after(async()=>{tabs.create=originalCreate;onboarding.__setNip46Deps();onboarding.__simulateServiceWorkerRestart();pool.destroy();await relay.close();});
+  const result = await onboarding.handlers.get('onboarding_connectNip46')!({bunkerUrl:`bunker://${pubkey}?relay=${encodeURIComponent(relay.url)}`}) as {account:{pubkey:string}};
+  assert.equal(result.account.pubkey,peer);
+  assert.deepEqual(opened,authUrl.startsWith('https://') ? [authUrl] : []);
 });

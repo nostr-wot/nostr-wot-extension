@@ -245,6 +245,9 @@ describe('onboarding -- public account response allowlist', () => {
     const { ncryptsecEncode } = await import('../src/lib/crypto/nip49.ts');
     const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
     const encrypted = await ncryptsecEncode(TEST_PRIVKEY_HEX, TEST_PASSWORD);
+    onboarding.__setNip46Deps({ BunkerSigner: {
+      fromBunker: (_key: unknown, bp: unknown) => ({ bp, connect: async () => {}, getPublicKey: async () => TEST_PUBKEY_HEX, close: async () => {} }),
+    } as any });
     const cases: Array<[string, Record<string, unknown>]> = [
       ['onboarding_validateNsec', { input: TEST_PRIVKEY_HEX }],
       ['onboarding_validateNpub', { input: TEST_PUBKEY_HEX }],
@@ -264,6 +267,6 @@ describe('onboarding -- public account response allowlist', () => {
         assert.deepEqual(Object.keys(response.account).filter(key => !publicKeys.includes(key)), [], method);
         if (method === 'onboarding_generateAccount') assert.equal(response.mnemonic?.split(' ').length, 24);
       }
-    } finally { onboarding.__simulateServiceWorkerRestart(); }
+    } finally { onboarding.__setNip46Deps(); onboarding.__simulateServiceWorkerRestart(); }
   });
 });

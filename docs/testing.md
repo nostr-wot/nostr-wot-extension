@@ -318,3 +318,12 @@ tests cover encrypted seed restoration, wrong-password retry, PQ-only rejection,
 nested ncryptsec password separation and plain private-key file import.
 
 Mounted approval tests in `tests/wallet-ui.test.ts` verify that one-time sheet approval resolves displayed IDs with `remember:false` and never saves a standing rule; the separate Always allow action saves the exact origin, permission and account. Detail tests verify one-time versus remembered callbacks and disabled actions.
+
+### Remote signer compatibility matrix
+
+See [remote signer compatibility](remote-signer-compatibility.md) for supported
+connection alternatives and explicit gaps. The real-protocol suite now exercises
+both production onboarding handlers, shared versus distinct transport/user keys,
+QR relay fallback and selection, pairing-secret/client-key persistence, and signing
+after saving to the vault. Identity resolution failure/timeout cannot create an
+account. These fixtures do not certify native Amber or other provider applications.

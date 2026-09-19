@@ -1,0 +1,8 @@
+Nostr WoT 0.7.1
+
+- Fix QR and bunker-link onboarding for remote signers that use a connection key different from the user's Nostr identity. The extension now asks the signer for the actual user public key before saving the account.
+- Preserve the signer's selected relays, pairing credentials and client identity for subsequent signing and reconnection.
+- Reject invalid remote identities, bound connection waits and close temporary signer subscriptions after success or failure.
+- Expand integration tests for separate/shared keys, QR relay fallback, vault persistence, signing after linking, authentication challenges, rejection and timeouts.
+
+Previously misidentified remote accounts need to be reconnected. Native delivery of signing requests in Amber remains unverified; this release does not claim to resolve the reported missing-request issue. Android NIP-55, legacy NIP-04 transport and provider discovery are outside this fix.

@@ -223,3 +223,13 @@ covers all four, plus the requirement that classic NIP-44 still reaches the bunk
 
 None of these refusals ever downgrades. A caller that asked for post-quantum either gets
 post-quantum or gets an error.
+
+### Remote identity resolution
+
+Both bunker-link and QR onboarding query `get_public_key` before returning an
+account. `remoteAccount.ts` separates that user identity from `signer.bp.pubkey`,
+which remains the encrypted transport recipient. It retains all current relays,
+the pairing secret and client key for reconnection. Resolution has a bounded wait
+and closes the temporary signer subscription on success or failure. QR polling
+reports connected only once this resolution completes. See
+[remote signer compatibility](remote-signer-compatibility.md) for tests and gaps.

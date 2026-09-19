@@ -19,19 +19,21 @@ import { npubEncode } from '../../lib/crypto/bech32.ts';
 import { bytesToHex, hexToBytes, randomBytes, randomHex } from '../../lib/crypto/utils.ts';
 import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
-import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
+import { BunkerSigner, createNostrConnectURI, parseBunkerInput } from 'nostr-tools/nip46';
 import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
 import { syncActivePubkey } from './vault-handlers.ts';
 import { broadcastAccountChanged } from './domain-handlers.ts';
 import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import { toSafeAccount } from '../../domain/accounts/account.ts';
 import type { Account } from '../../domain/accounts/types.ts';
+import { resolveRemoteAccount } from '../signing/remoteAccount.ts';
 
 // ── NostrConnect sessions ──
 
 interface NostrConnectSession {
     signerPromise: Promise<BunkerSigner>;
     signer: BunkerSigner | null;
+    account?: Account;
     secretKey: Uint8Array;
     localPubkey: string;
     relays: string[];
@@ -204,7 +206,10 @@ function ensureLiveSession(persisted: PersistedNcSession): NostrConnectSession {
         abortController.signal
     );
     session.signerPromise
-        .then(signer => {
+        .then(async signer => {
+            const account = await resolveRemoteAccount(signer, session.secretKey);
+            if (session.abortController.signal.aborted) return;
+            session.account = account;
             session.signer = signer;
             updateNcSessionStatus(persisted.sessionId, {
                 status: 'connected',
@@ -464,10 +469,21 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['onboarding_connectNip46', async (params) => {
-        const acct = accounts.connectNip46(params.bunkerUrl as string);
-        await setPendingOnboardingAccount(acct);
-        const safeNip46 = toSafeAccount(acct);
-        return { account: safeNip46 };
+        const input = (params.bunkerUrl as string).trim();
+        if (!input.startsWith('bunker://')) throw new Error('Invalid bunker URL');
+        const pointer = await parseBunkerInput(input);
+        if (!pointer || !pointer.relays.length) throw new Error('Invalid bunker URL: missing relay');
+        const secretKey = randomBytes(32);
+        try {
+            const signer = _nip46Deps.BunkerSigner.fromBunker(secretKey, pointer, {
+                onauth(url: string) {
+                    if (url.startsWith('https://')) void browser.tabs.create({ url });
+                },
+            });
+            const acct = await resolveRemoteAccount(signer, secretKey, true);
+            await setPendingOnboardingAccount(acct);
+            return { account: toSafeAccount(acct) };
+        } finally { secretKey.fill(0); }
     }],
 
     ['onboarding_initNostrConnect', async () => {
@@ -548,7 +564,10 @@ export const handlers = new Map<string, HandlerFn>([
             abortController.signal
         );
         session.signerPromise
-            .then(signer => {
+            .then(async signer => {
+                const account = await resolveRemoteAccount(signer, session.secretKey);
+                if (session.abortController.signal.aborted) return;
+                session.account = account;
                 session.signer = signer;
                 updateNcSessionStatus(sessionId, {
                     status: 'connected',
@@ -587,13 +606,7 @@ export const handlers = new Map<string, HandlerFn>([
         const session = ensureLiveSession(persisted);
 
         if (session.signer) {
-            const signerPk = session.signer.bp.pubkey;
-            const primaryRelay = session.relays[0];
-            const localPrivkeyHex = bytesToHex(session.secretKey);
-            const acct = accounts.connectNostrConnect(
-                signerPk, primaryRelay,
-                localPrivkeyHex, session.localPubkey
-            );
+            const acct = session.account!;
             _nostrConnectSessions.delete(sessionId);
             await deleteNcSession(sessionId);
             await setPendingOnboardingAccount(acct);

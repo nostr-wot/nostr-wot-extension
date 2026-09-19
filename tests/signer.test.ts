@@ -1325,7 +1325,7 @@ describe('onboarding -- nostrconnect persisted session', () => {
     fromURI(_sk: Uint8Array, _uri: string, _opts: unknown, signal?: AbortSignal): Promise<any> {
       fromUriCalls++;
       if (nextBehavior === 'resolve') {
-        return Promise.resolve({ bp: { pubkey: SIGNER_PUBKEY }, close: () => Promise.resolve() });
+        return Promise.resolve({ bp: { pubkey: SIGNER_PUBKEY, relays: ['wss://relay.test'], secret: null }, getPublicKey: async () => SIGNER_PUBKEY, close: () => Promise.resolve() });
       }
       if (nextBehavior === 'reject') {
         return Promise.reject(new Error(rejectMessage));

@@ -6,7 +6,27 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
-## 0.7.0 — pending store publication
+## 0.7.1 — 2026-09-19
+
+### Fixed
+
+- Resolve the Nostr user identity with `get_public_key` during QR and bunker-link onboarding instead of assuming it is the remote signer's connection key. This supports signers using separate per-connection keys, including Amber-style sessions.
+- Retain the signer's current relay list, pairing credentials and client identity for subsequent signing and reconnection.
+- Bound identity resolution and close temporary signer subscriptions on success or failure; reject invalid identities before saving an account.
+
+### Tests and compatibility
+
+- Add production onboarding integration coverage for shared/separate identities, QR relay fallback, relay selection, vault persistence, subsequent signing, authentication challenges, rejection and timeouts.
+- Document supported paths and remaining native/provider coverage in `docs/remote-signer-compatibility.md`.
+- Native delivery of signing requests in Amber remains unverified; the reported missing-request issue is not claimed resolved. Previously misidentified accounts need reconnection.
+
+### Store release notes
+
+- Fix remote-signer linking when connection keys differ from the user's Nostr identity.
+- Preserve relay and pairing information for signing after linking.
+- Improve connection failure handling and expand remote-signing compatibility tests.
+
+## 0.7.0 — GitHub release 2026-09-10
 
 - Consolidate the latest security, account recovery, PQ backup and approval fixes into refreshed Chrome/Firefox upload packages, with a clean-source rebuild comparison.
 
