@@ -107,6 +107,7 @@
   "security.enterCurrentPassword": "Bitte gib dein aktuelles Passwort ein",
   "security.currentPassword": "Aktuelles Passwort",
   "security.neverLockWarning": "Wenn die automatische Sperre deaktiviert ist, bleiben deine Schlüssel entschlüsselt im Speicher. Jeder mit Zugriff auf deinen Browser kann sie verwenden.",
+  "account.remote": "remote",
   "account.readOnly": "Nur Lesen",
   "account.remove": "Konto entfernen",
   "account.addAccount": "Konto hinzufügen",

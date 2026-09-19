@@ -7,6 +7,7 @@ import { useVault } from '@context/VaultContext';
 import Avatar from '@components/Avatar';
 import IconButton from '@components/IconButton';
 import Container from '@components/Container';
+import AccountLabel from './AccountLabel';
 
 interface AccountBarProps {
   dropdownOpen: boolean;
@@ -15,7 +16,7 @@ interface AccountBarProps {
 }
 
 export default function AccountBar({ dropdownOpen, onToggleDropdown, onCopy }: AccountBarProps) {
-  const { displayName, displaySub, avatarUrl, initial, isReadOnly, active } = useAccount();
+  const { displayName, displaySub, avatarUrl, initial, isReadOnly, isNip46, active } = useAccount();
   const vault = useVault();
 
   const fallbackText = !active ? '+' : isReadOnly ? '\u{1F441}' : initial;
@@ -32,14 +33,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown, onCopy }: A
           />
         </div>
         <Container className="flex-1 min-w-0">
-          <Container variant="row" gap={3} className="min-w-0">
-            <span className="font-semibold text-md text-heading whitespace-nowrap overflow-hidden text-ellipsis">{displayName}</span>
-            {isReadOnly && (
-              <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-muted bg-brand-tint-active py-px px-2.5 rounded-xs shrink-0 leading-normal">
-                {t('account.readOnly')}
-              </span>
-            )}
-          </Container>
+          <AccountLabel name={displayName} remote={isNip46} readOnly={isReadOnly} />
           <span className="text-xs text-muted font-mono whitespace-nowrap overflow-hidden text-ellipsis">{displaySub}</span>
         </Container>
         <IconChevronDown className={`text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />

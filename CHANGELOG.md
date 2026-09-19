@@ -6,6 +6,12 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.7.2 — 2026-09-19
+
+- Show Nostr Connect accounts with their profile name and image, or a shortened npub fallback, in the top bar and account selector.
+- Add a non-interactive `remote` badge using shared account presentation.
+- Support profile `display_name` consistently and add regression tests.
+
 ## 0.7.1 — 2026-09-19
 
 ### Fixed

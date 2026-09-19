@@ -106,6 +106,7 @@
   "security.enterCurrentPassword": "Inserisci la tua password attuale",
   "security.currentPassword": "Password attuale",
   "security.neverLockWarning": "Disabilitare il blocco automatico significa che le tue chiavi restano decrittate in memoria. Chiunque abbia accesso al tuo browser puo usarle.",
+  "account.remote": "remote",
   "account.readOnly": "Sola lettura",
   "account.remove": "Rimuovi account",
   "account.addAccount": "Aggiungi account",

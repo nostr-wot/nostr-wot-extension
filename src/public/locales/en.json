@@ -106,6 +106,7 @@
   "security.enterCurrentPassword": "Please enter your current password",
   "security.currentPassword": "Current password",
   "security.neverLockWarning": "Disabling auto-lock means your keys stay decrypted in memory. Anyone with access to your browser can use them.",
+  "account.remote": "remote",
   "account.readOnly": "Read-only",
   "account.remove": "Remove account",
   "account.addAccount": "Add Account",

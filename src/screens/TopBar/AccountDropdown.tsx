@@ -3,7 +3,8 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { useAccount } from '@context/AccountContext';
 import { getInitial } from '@utils/format/text.ts';
-import { truncateNpub } from '@domain/nostr/display.ts';
+import { accountDisplay } from '@domain/accounts/display.ts';
+import AccountLabel from './AccountLabel';
 import IconWarning from '@assets/IconWarning.tsx';
 import IconClose from '@assets/IconClose.tsx';
 import IconPlus from '@assets/IconPlus.tsx';
@@ -50,11 +51,11 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
       <div className="flex flex-col gap-3">
         {(accounts || []).map((account) => {
           const cached = profileCache[account.pubkey];
-          const name = cached?.name || account.name;
+          const display = accountDisplay(account, cached);
           const isActive = account.id === activeId;
 
-          return <AccountPickerRow key={account.id} name={name || truncateNpub(account.pubkey)}
-            subtitle={cached?.nip05 || truncateNpub(account.pubkey)} picture={cached?.picture}
+          return <AccountPickerRow key={account.id} name={display.name}
+            subtitle={display.subtitle} picture={display.picture || undefined} remote={account.type === 'nip46'}
             readOnly={!!account.readOnly || account.type === 'npub'} selected={isActive}
             onSelect={() => { void switchAccount(account.id); onClose(); }} onRemove={() => { setError(''); setConfirmId(account.id); }} />;
         })}
@@ -74,8 +75,8 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
   );
 }
 
-export function AccountPickerRow({ name, subtitle, picture, selected, readOnly, onSelect, onRemove }: {
-  name: string; subtitle: string; picture?: string; selected: boolean; readOnly: boolean;
+export function AccountPickerRow({ name, subtitle, picture, selected, readOnly, remote = false, onSelect, onRemove }: {
+  name: string; subtitle: string; picture?: string; selected: boolean; readOnly: boolean; remote?: boolean;
   onSelect: () => void; onRemove: () => void;
 }) {
   return <div className={`flex items-center gap-4 rounded-md p-5 border ${selected ? 'bg-brand-light border-brand' : 'border-card-border bg-transparent'}`}>
@@ -85,9 +86,8 @@ export function AccountPickerRow({ name, subtitle, picture, selected, readOnly, 
         <Avatar src={picture} fallback={getInitial(name)} imgClassName="w-full h-full object-cover" />
       </div>
       <div className="flex flex-col gap-2 flex-1 min-w-0">
-        <span className="text-md font-semibold text-heading truncate">{name}</span>
+        <AccountLabel name={name} remote={remote} readOnly={readOnly} />
         <span className="text-xs text-menu-subtitle truncate">{subtitle}</span>
-        {readOnly && <span className="text-xs text-muted">{t('account.readOnly')}</span>}
       </div>
       {selected && <span className="text-brand font-semibold" aria-label={t('account.selected')}>✓</span>}
     </button>

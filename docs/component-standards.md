@@ -615,3 +615,8 @@ Address with the selected account's profile cache. The existing storage hook
 updates it after publication, and the account public key scopes its lifetime.
 
 WalletContext reads encrypted snapshots through the background RPC rather than importing vault/storage crypto into the UI. Lock notifications invalidate pending UI loads and clear balances, history and settings; activity/menu detail overlays close so selected records are not retained on screen. Unlocked refresh continues showing its previous snapshot next to loading indicators.
+
+The top bar and account picker share `accountDisplay` for profile names (including
+`display_name`), pictures and npub fallback. Remote accounts use profile identity
+rather than their connection label and share a non-interactive `remote` badge
+through `AccountLabel`; badge markup must not nest a button inside a selector.

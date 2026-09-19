@@ -11,10 +11,8 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.7.0 was published on GitHub. The owner requested a new 0.7.1 patch release
-for remote-signer identity/linking fixes. Publish its GitHub release and attach
-Chrome, Firefox and reproducible source archives. Browser-store submission is
-separate; do not infer store approval from GitHub publication.
+0.7.2 packages the remote-account profile display fix. GitHub publication is
+separate from browser-store submission and approval.
 
 ## Before any store
 

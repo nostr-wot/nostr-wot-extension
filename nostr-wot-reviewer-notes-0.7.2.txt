@@ -1,0 +1,21 @@
+Nostr WoT 0.7.2 — Firefox build verification
+
+Requires Node.js 22.23.2, npm 10.9.8, and zip/unzip on macOS or Linux.
+
+1. Extract nostr-wot-source-0.7.2.zip into an empty directory. Keep all included files, including documentation and .gitignore (Tailwind scans them).
+2. In that directory, run:
+
+npm ci
+npm run package:firefox
+
+Output: nostr-wot-firefox.zip.
+
+3. Place the submitted nostr-wot-firefox-0.7.2.zip in that directory and compare:
+
+unzip -q nostr-wot-firefox.zip -d rebuilt
+unzip -q nostr-wot-firefox-0.7.2.zip -d submitted
+diff -qr rebuilt submitted
+
+No output and exit code 0 mean every extracted file matches. Compare file contents, not ZIP hashes: archive timestamps can differ. Our clean rebuild matched all 29 files byte for byte.
+
+No credentials or private build steps are required. npm ci needs internet access to download dependencies. See SOURCE_BUILD.md for Chrome instructions.

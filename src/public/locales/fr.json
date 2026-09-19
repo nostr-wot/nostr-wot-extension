@@ -106,6 +106,7 @@
   "security.enterCurrentPassword": "Veuillez entrer votre mot de passe actuel",
   "security.currentPassword": "Mot de passe actuel",
   "security.neverLockWarning": "Désactiver le verrouillage automatique signifie que vos clés restent déchiffrées en mémoire. Toute personne ayant accès à votre navigateur peut les utiliser.",
+  "account.remote": "remote",
   "account.readOnly": "Lecture seule",
   "account.remove": "Supprimer le compte",
   "account.addAccount": "Ajouter un compte",

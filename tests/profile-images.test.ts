@@ -357,3 +357,31 @@ it('PQ import decrypts uploaded backups, retries wrong passwords, and still impo
     }
   }
 });
+
+import { accountDisplay } from '../src/domain/accounts/display';
+import AccountLabel from '../src/screens/TopBar/AccountLabel';
+it('remote accounts reuse profile identity and fall back to npub, never a connection label', () => {
+  const remote = { type: 'nip46' as const, name: 'Nostr Connect', pubkey: '11'.repeat(32) };
+  const profile = { display_name: 'Alice', picture: 'https://example.com/alice.png', nip05: 'alice@example.com' };
+  const display = accountDisplay(remote, profile);
+  assert.equal(display.name, 'Alice');
+  assert.equal(display.picture, profile.picture);
+  assert.equal(display.subtitle, profile.nip05);
+  assert.equal(display.initial, 'A');
+  assert.match(accountDisplay(remote).name, /^npub/);
+  assert.equal(accountDisplay({...remote, type:'nsec', name:'My account'}).name, 'My account');
+  assert.equal(accountDisplay(remote, {...profile, name:'alice'}).name, 'alice');
+  const html = renderToStaticMarkup(createElement(AccountPickerRow, {
+    name:display.name, subtitle:display.subtitle, picture:display.picture!, remote:true,
+    selected:true, readOnly:false, onSelect(){}, onRemove(){},
+  }));
+  assert.match(html, /Alice/);
+  assert.match(html, /alice.png/);
+  assert.match(html, /account.remote/);
+  assert.equal((html.match(/<button/g) || []).length, 2, 'badge must not add a nested button');
+});
+it('the shared topbar and picker label only badges remote or read-only accounts', () => {
+  assert.match(renderToStaticMarkup(createElement(AccountLabel,{name:'Alice',remote:true})), /account.remote/);
+  assert.match(renderToStaticMarkup(createElement(AccountLabel,{name:'Alice',readOnly:true})), /account.readOnly/);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(AccountLabel,{name:'Alice'})), /account.remote|account.readOnly/);
+});

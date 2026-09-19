@@ -106,6 +106,7 @@
   "security.enterCurrentPassword": "Por favor digite sua senha atual",
   "security.currentPassword": "Senha atual",
   "security.neverLockWarning": "Desativar o bloqueio automático significa que suas chaves permanecem descriptografadas na memória. Qualquer pessoa com acesso ao seu navegador pode usá-las.",
+  "account.remote": "remote",
   "account.readOnly": "Somente leitura",
   "account.remove": "Remover conta",
   "account.addAccount": "Adicionar Conta",
