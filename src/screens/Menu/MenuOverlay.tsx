@@ -1,3 +1,4 @@
+import WotHowItWorks from '@screens/Settings/WotHowItWorks';
 import { useState, useEffect, useRef, ReactNode } from 'react';
 import { t, getSupportedLanguages, getLanguage } from '@services/i18n/i18n.ts';
 import IconLock from '@assets/IconLock.tsx';
@@ -16,6 +17,7 @@ import PqcSection, { type PqcSectionHandle } from '@screens/Settings/PqcSection'
 import PermissionsSection, { type PermissionsSectionHandle } from '@screens/Settings/PermissionsSection';
 import SecuritySection from '@screens/Settings/SecuritySection';
 import NetworkSection from '@screens/Settings/NetworkSection';
+import WotSection from '@screens/Settings/WotSection';
 import WalletSection from '@screens/Wallet/WalletSection';
 import KeyActionModal from '@screens/Vault/KeyActionModal';
 import ListRow from '@components/ListRow';
@@ -40,6 +42,7 @@ interface MenuItem {
 }
 
 export default function MenuOverlay({ visible, onClose, initialSection }: MenuOverlayProps) {
+  const [wotInfoOpen, setWotInfoOpen] = useState(false);
   const [navStack, setNavStack] = useState<string[]>([]);
   const [keyAction, setKeyAction] = useState<string | null>(null); // 'nsec' | 'ncryptsec' | 'changePassword'
   const [langModalOpen, setLangModalOpen] = useState<boolean>(false);
@@ -56,6 +59,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       setNavStack([initialSection]);
     } else if (!visible) {
       setNavStack([]);
+      setWotInfoOpen(false);
     }
   }, [visible, initialSection]);
 
@@ -89,9 +93,11 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       desc: t('menu.relaysDesc'),
       icon: <IconGlobe />,
     },
+    { id: 'experimental-wot', label: t('wot.title'), desc: t('wot.menuDesc'), icon: <IconGlobe /> },
   ];
 
   const sectionTitles: Record<string, string> = {
+    'experimental-wot': t('wot.title'),
     security: t('settings.security'),
     network: t('network.relays'),
     wallet: t('wallet.title'),
@@ -183,6 +189,8 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         return <PermissionsSection ref={permsSectionRef} onDetailChange={setPermDetailDomain} />;
       case 'wallet':
         return <WalletSection />;
+      case 'experimental-wot':
+        return <WotSection />;
       case 'network':
         return <NetworkSection />;
       default:
@@ -206,8 +214,9 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         >
           <IconInfo size={16} />
         </IconButton>
-      ) : undefined}
+      ) : currentSection === 'experimental-wot' ? <IconButton size="large" title={t('wot.howTitle')} aria-label={t('wot.howTitle')} onClick={() => setWotInfoOpen(true)}><IconInfo size={16}/></IconButton> : undefined}
     >
+      {currentSection === 'experimental-wot' && wotInfoOpen && <WotHowItWorks onClose={() => setWotInfoOpen(false)}/>}
       <Container className="flex-1 min-h-0">
                 {/* `backwards`, carried by the registered animation, is load-bearing.
             `both` would keep the final transform: translateX(0) permanently, and

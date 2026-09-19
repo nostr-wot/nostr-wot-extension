@@ -4,7 +4,9 @@
 
 The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NIP-07 Identity Provider** (signer), an encrypted key vault, profile and NIP-51 mute-list editing, NIP-65 relay-list management, and a built-in **WebLN Lightning wallet**. It targets Chrome and Firefox, built with Vite + TypeScript + React.
 
-> The legacy Web-of-Trust trust-graph subsystem (oracles, follow-graph sync, trust scoring, page-injected trust badges, the `window.nostr.wot` page API, and the IndexedDB engine `lib/storage.ts` that backed them) has been removed.
+> The Web-of-Trust API returns in 0.8.0 as a menu-only, opt-in experiment.
+> See [Web of Trust](wot.md) for modes, disclosure, limits and API compatibility.
+> Page badges and the legacy IndexedDB engine remain removed. Automatic refresh requires a separate opt-in.
 
 ---
 

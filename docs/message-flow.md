@@ -49,11 +49,10 @@ This allows `background.ts` to distinguish page-origin WebLN calls from internal
 
 ## 3. Rate Limiting
 
-There is no request rate limiting. The only rate-limited methods were the
-removed trust-graph computations (page-facing relay-query channel + background
-`checkRateLimit`), all of which have been deleted. NIP-07 and WebLN methods are
-gated by the user-facing permission system (per-domain connect + per-method
-approval prompts) instead.
+Page requests share per-origin and global in-flight limits. NIP-07 and WebLN
+also use their permission flows. Experimental WoT requests use the same resource
+budget plus bounded batches, cached oracle queries and manual or explicitly enabled automatic local sync.
+
 
 ---
 
@@ -353,3 +352,19 @@ account cannot revive the earlier request. Payment permission reads/writes and t
 threshold all use the captured account, including account-specific deny rules.
 
 Wallet snapshots are read through the internal `wallet_readDisplayCache` RPC. Only background code decrypts the cache; while locked, it returns provider presence without financial fields. Activity reads require unlock. See [private-cache.md](private-cache.md).
+
+
+## Experimental WoT channel (0.8.0)
+
+`WOT_REQUEST` / `WOT_RESPONSE` uses the same persistent-port bridge as NIP-07,
+with an explicit method allowlist and `wot_` prefix. Background listeners derive
+the origin from the browser sender and enforce HTTPS, feature opt-in, site
+connection and identity consent. `experimentalWot_*` configuration/sync RPCs are
+privileged and cannot cross the page port. A storage-driven availability message
+adds/removes `window.nostr.wot`; spoofing that page notification cannot grant
+background access. See [WoT](wot.md).
+
+The privileged `experimentalWot_getTrustScore` RPC serves the menu's public-key
+lookup through `queryWot('getTrustScore', ...)`, preserving opt-in, account context,
+saved query mode and mute/scoring rules. It does not route through website approval
+because its callers are trusted extension pages. Page access remains unchanged.

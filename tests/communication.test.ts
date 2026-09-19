@@ -166,9 +166,9 @@ describe('actual content bridge concurrency', () => {
     const window = {
       location: { origin: 'https://site.test', hostname: 'site.test', protocol: 'https:', reload: () => { reloads++; } },
       addEventListener: (_: string, listener: any) => { receive = listener; },
-      postMessage: (message: any) => responses.push(message),
+      postMessage: (message: any) => { if(message.type !== 'WOT_AVAILABILITY') responses.push(message); },
     };
-    const browser = { runtime: {
+    const browser = { storage: {local:{get:async()=>({})},onChanged:{addListener(){}}}, runtime: {
       id: 'extension-id', getURL: (path: string) => `chrome-extension://extension-id/${path}`,
       onMessage: { addListener(listener: any) { internal = listener; } },
       connect: ({name}: any) => {
@@ -192,6 +192,19 @@ describe('actual content bridge concurrency', () => {
     assert.equal(b.responses.length, 0);
     b.internal({ type:'NOSTR_ACCOUNT_CHANGED', pubkey:'own-identity', origin:'https://site.test' }, {}, () => {});
     assert.equal(b.responses[0].pubkey, 'own-identity');
+  });
+
+  it('routes WoT over its own port and refuses configuration or sync from a page', () => {
+    const b = bridge();
+    b.send('wot', 'WOT_REQUEST', 'getDistance');
+    assert.equal(b.ports[0].name, 'wot');
+    assert.equal(b.ports[0].sent[0].method, 'wot_getDistance');
+    assert.equal(b.ports[0].sent[0].params.origin, 'https://site.test');
+    b.send('forged', 'WOT_REQUEST', 'experimentalWot_save');
+    assert.equal(b.responses.at(-1).error, 'Method not allowed');
+    b.send('sync', 'WOT_REQUEST', 'syncGraph');
+    assert.equal(b.responses.at(-1).error, 'Method not allowed');
+    assert.equal(b.ports[0].sent.length, 1);
   });
 
   it('forwards the full page origin for both channels', () => {

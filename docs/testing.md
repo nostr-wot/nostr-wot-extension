@@ -327,3 +327,52 @@ both production onboarding handlers, shared versus distinct transport/user keys,
 QR relay fallback and selection, pairing-secret/client-key persistence, and signing
 after saving to the vault. Identity resolution failure/timeout cannot create an
 account. These fixtures do not certify native Amber or other provider applications.
+
+`tests/wot.test.ts` covers the 0.8.0 opt-in WoT API, local/remote/hybrid queries,
+consent, graph bounds, oracle validation/cancellation, signed relay sync and
+actual MAIN-world injection. It is registered in the full suite and CI.
+
+
+`tests/wot-sync.test.ts` covers automatic refresh additions/removals, empty lists,
+stale versions, mute/unmute, account isolation, disabled alarms, busy/retry behavior,
+interruption/progress throttling, storage inventory, compact snapshot roundtrips
+and batch traversal reuse. Configurable edge/profile limits are tested through sync and mounted settings, including resetting to Unlimited. Mounted WoT tests cover information/progress panels,
+scoring validation, automatic-sync settings and preservation of unsaved edits.
+
+Run the opt-in live benchmark (public relay requests, isolated mock browser storage):
+
+```sh
+node --import tsx --import ./tests/helpers/register-mocks.ts tests/wot-benchmark.ts <npub>
+```
+
+It reports wall-clock sync time up to depth 2 by default (pass a third CLI argument of 3 for three hops), local encoding/decoding and 100-target
+lookup time, graph sizes, truncation and relay traffic. Socket durations overlap
+and are cumulative, so do not subtract them from wall time. Live results depend
+on relay availability and limits; this is not a deterministic CI performance gate.
+
+WoT regressions additionally verify >1,000-entry follow lists, a custom per-profile
+cap and its removal, plus diamond/cyclic graphs queried once per author per relay.
+A second sync intentionally checks again for edits. Mounted settings tests cover
+validation, saving and clearing all three graph-size caps.
+
+A held-open automatic sync regression verifies that repeated alarm ticks do not
+queue more crawls. Page RPC instrumentation verifies only one graph storage read
+across authorization, query execution and final identity validation.
+
+### Optimized WoT storage and menu
+
+- `tests/wot-numeric.test.ts`: numeric traversal caching, mute invalidation, large graphs and snapshot encoding.
+- `tests/wot-relay-transport.test.ts`: pooled relay subscriptions, verification, cancellation and replaceable ordering.
+- `tests/wot-storage.test.ts`: IndexedDB snapshots, atomic pointer publication, quota/abort recovery, legacy migration, orphan cleanup and metadata-only progress reads.
+- `tests/wot.test.ts`: dedicated sync screen/scoring modal, Save-gated automatic-sync persistence and accessible settings icon, npub/hex score validation, muted zero scores, missing results, retries and stale-result suppression.
+
+`node tests/wot-native-storage.mjs` runs an opt-in native Chrome IndexedDB
+roundtrip with a disposable profile and a >40 MiB graph. It uses an isolated HTTP
+origin and a small browser-storage shim, not the packaged extension worker.
+
+Daily scheduler tests verify the 1,440-minute interval, migration of existing five-minute alarms, preservation of valid scheduled alarms, and no extra sync on account/settings changes.
+
+WoT menu regressions cover automatic application/reset of valid scoring, invalid
+values retaining saved scores, a single scoring-dialog title, and configuration
+tooltips. `tests/button.test.ts` covers shared Input hint accessibility and label
+association.

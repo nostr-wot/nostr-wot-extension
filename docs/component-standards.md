@@ -620,3 +620,30 @@ The top bar and account picker share `accountDisplay` for profile names (includi
 `display_name`), pictures and npub fallback. Remote accounts use profile identity
 rather than their connection label and share a non-interactive `remote` badge
 through `AccountLabel`; badge markup must not nest a button inside a selector.
+
+Experimental WoT settings are menu-only and reuse Container, Toggle, Select,
+Input, Button, FieldDisplay, StatusNotice and FormError. Account changes remount
+only the settings form; useAsyncResource and useStorageWatch refresh its snapshot.
+
+Experimental WoT settings reuse `Card`, icon-card `Tabs`, `ChipGroup` and `Modal`. The entry notice stores its optional dismissal separately from feature consent; dismissing a notice never enables the API.
+
+
+Experimental WoT splits information, scoring, sync progress and database inventory
+into focused settings panels using shared Modal, Card, Input, Toggle and button
+components. Progress uses a polite status region. Draft settings reset only when
+saved settings change, not when a background progress update returns a new object.
+
+The WoT main screen keeps automatic syncing and progress in one card. Mode, hops,
+limits, databases, explanations and sync/resync/clear actions live in a dedicated
+`OverlayPanel` screen with a scrolling body and pinned Save action. Scoring has
+an npub/hex lookup card with a shared settings `IconButton` at the top right,
+opening a smaller `Modal`. Sync settings use a draft/save flow, including the automatic-sync switch; dismissal
+discards unsaved edits. Scoring uses a single-title modal and applies valid edits
+automatically, without a Save footer. Lookup uses shared
+public-key validation, RPC scoring and `useAsyncResource` for loading, retry and
+stale-response protection.
+
+`Input` accepts an optional `hint` rendered by the existing focusable `InfoTooltip`
+next to its associated label. WoT configuration uses these hints instead of
+repeating explanatory paragraphs. The sync screen uses the existing page-gradient
+background token, matching the other settings surfaces.

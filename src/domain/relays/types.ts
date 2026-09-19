@@ -21,8 +21,13 @@ export type LiveEvent =
   | { type: 'exhausted' };
 
 export interface LiveQueryOptions {
+  /** Dedicated graph storage supplies its own verified public-list cache. */
+  skipLocalCache?: boolean;
   closeOnExhaust?: boolean;
   cache?: boolean;
+  signal?: AbortSignal;
+  /** Override the relay deadline for deterministic transport tests. */
+  _timeoutMs?: number;
   /** Injected for testing — defaults to `(url) => new WebSocket(url)` */
   _createSocket?: (url: string) => WebSocket;
 }

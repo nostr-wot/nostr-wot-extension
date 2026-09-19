@@ -228,3 +228,10 @@ it('named button presets preserve standard styling and native behavior', () => {
     assert.equal(Preset({...props,variant:'primary'} as never).props.variant,variant);
   }
 });
+
+it('input hints reuse a focusable info tooltip beside the associated label', () => {
+  const html = renderToStaticMarkup(createElement(Input, { id: 'limit', label: 'Limit', hint: 'Leave empty for unlimited.' }));
+  assert.match(html, /for="limit"/);
+  assert.match(html, /tabindex="0" role="note" aria-label="Leave empty for unlimited\."/);
+  assert.doesNotMatch(html, /<input[^>]* hint=/);
+});

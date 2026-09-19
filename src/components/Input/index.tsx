@@ -1,3 +1,4 @@
+import InfoTooltip from '@components/InfoTooltip';
 import React, { useState, useId } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import { cn } from '@utils/cn.ts';
@@ -10,6 +11,7 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   center?: boolean;
   showToggle?: boolean;
   label?: string;
+  hint?: string;
   error?: string;
   className?: string;
 }
@@ -29,6 +31,7 @@ export default function Input({
   center = false,
   showToggle = false,
   label,
+  hint,
   error,
   className = '',
   id,
@@ -69,7 +72,7 @@ export default function Input({
 
   return (
     <Container gap={2} className="w-full min-w-0">
-      {label && <label htmlFor={inputId} className="text-sm font-semibold text-secondary">{label}</label>}
+      {label && <Container variant="row" gap={1}><label htmlFor={inputId} className="text-sm font-semibold text-secondary">{label}</label>{hint && <InfoTooltip text={hint}/>}</Container>}
       {input}
       {error && <div id={errorId} role="alert" className="text-xs text-error">{error}</div>}
     </Container>

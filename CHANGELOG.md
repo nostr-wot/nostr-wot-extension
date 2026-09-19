@@ -6,6 +6,31 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.0 — unreleased
+
+- Apply valid scoring edits automatically, simplify its popup, and move sync configuration help into shared input tooltips.
+
+- Use a dedicated sync settings screen, Save-gated daily automatic syncing, and a scoring settings gear; add npub/hex score lookup and a scoring customization popup using shared controls and query logic.
+- Store large graphs in IndexedDB with atomic summary pointers, reuse numeric traversal indexes and pooled relay connections, and cache verified public lists for incremental automatic sync.
+
+- Skip overlapping automatic sync ticks and avoid redundant graph loads during query authorization.
+
+- Make WoT relationship, fetched-profile and follows-per-profile limits configurable, all defaulting to Unlimited.
+- Deduplicate pending graph profiles as they are discovered and maintain sync progress counts incrementally; test repeated paths and cycles.
+
+- Add WoT information popup, live sync progress, per-account storage inventory and configurable scoring.
+- Add opt-in automatic refresh with follow removal/addition, mute and stale-list regression coverage.
+- Compact graph storage with numeric identity references and reuse one traversal per query batch; add an opt-in live profile benchmark.
+
+- Distinguish discovered people from loaded follow lists, report unavailable lists, and clarify hop-depth and resync controls.
+
+- Restore icon-based WoT mode cards, add a dismissible entry notice, and provide recovery for outdated background workers.
+
+- Apply account mutes to experimental WoT scores and paths, with private-list availability warnings.
+- Restore `window.nostr.wot` as an experimental, menu-only opt-in with local, remote-oracle and hybrid modes.
+- Add manual bounded graph sync, account-scoped snapshots, oracle validation/cache and existing site/identity consent gates.
+- Reuse shared settings components and organize graph, query and transport logic by domain and service.
+
 ## 0.7.2 — 2026-09-19
 
 - Show Nostr Connect accounts with their profile name and image, or a shortened npub fallback, in the top bar and account selector.

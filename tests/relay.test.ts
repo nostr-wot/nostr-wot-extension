@@ -63,7 +63,8 @@ class MockWebSocket {
     });
   }
 
-  send(_data: string) {}
+  subId = '';
+  send(data: string) { this.subId = JSON.parse(data)[1]; }
 
   close() {
     this._closed = true;
@@ -72,6 +73,7 @@ class MockWebSocket {
 
   /** Test helper: simulate receiving a message from the relay */
   _receive(data: unknown) {
+    if (Array.isArray(data) && data[1] === 'lq000000000000') data[1] = this.subId;
     this.onmessage?.({ data: JSON.stringify(data) } as MessageEvent);
   }
 

@@ -173,3 +173,10 @@ categories. Minimum versions are desktop 140 and Android 142. Verify install
 and upgrade prompts; no data permission is declared as `none`. Store acceptance
 still depends on Mozilla's review. Keep store privacy disclosures consistent with
 the transmission tables above.
+
+## 0.8.0 development
+
+The experimental WoT API is under development after the 0.7.2 release. Do not
+publish 0.8.0 until requested. Oracle mode introduces user-configured HTTPS
+requests containing public identity and relationship queries; menu opt-in
+discloses these flows. Existing Firefox identity-data consent still applies.
