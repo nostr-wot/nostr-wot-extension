@@ -15,7 +15,7 @@ test('WoT graph counts shortest paths, handles cycles, limits hops and preserves
 });
 test('experimental settings default off and reject unsafe modes, URLs and resource limits', () => {
     assert.equal(validateWotSettings({}).enabled, false);
-    assert.throws(() => validateWotSettings({ enabled: true, mode: 'remote' }), /oracle/i);
+    assert.throws(() => validateWotSettings({ enabled: true, mode: 'remote', oracleUrl: '' }), /oracle/i);
     assert.throws(() => validateWotSettings({ mode: 'surprise' as never }), /mode/i);
     assert.throws(() => validateWotSettings({ maxHops: 50 }), /hops/i);
     for (const oracleUrl of ['http://example.com', 'https://user:pass@example.com', 'https://example.com/?x=1'])
@@ -355,6 +355,8 @@ test('WoT settings interact through RPC, show the notice, and persist its dismis
         assert.equal(button('common.save'), undefined);
         assert.equal(button('wot.resync'), undefined);
         assert.doesNotMatch(dom.window.document.body.textContent!, /wot.depthHint/);
+        assert.equal(dom.window.document.querySelector('input[aria-label="wot.autoSync"]'), null);
+        await act(async () => { button('wot.syncSettings').click(); });
         await click('input[aria-label="wot.autoSync"]');
         assert.equal((await getWotSettings()).autoSync, false);
         await act(async () => button('common.save').click());
@@ -362,11 +364,10 @@ test('WoT settings interact through RPC, show the notice, and persist its dismis
         await click('input[aria-label="wot.autoSync"]');
         await act(async () => button('common.save').click());
         assert.equal((await getWotSettings()).autoSync, false);
-        await act(async () => { button('wot.syncSettings').click(); });
-        assert.ok(dom.window.document.querySelector('[role="note"][aria-label="wot.depthHint"]'));
-        assert.ok(dom.window.document.querySelector('[role="note"][aria-label="wot.edgeLimitHint"]'));
-        assert.ok(dom.window.document.querySelector('[role="note"][aria-label="wot.authorLimitHint"]'));
-        assert.ok(dom.window.document.querySelector('[role="note"][aria-label="wot.followsLimitHint"]'));
+        assert.ok(dom.window.document.querySelector('[role="button"][aria-label="wot.depthHint"]'));
+        assert.ok(dom.window.document.querySelector('[role="button"][aria-label="wot.edgeLimitHint"]'));
+        assert.ok(dom.window.document.querySelector('[role="button"][aria-label="wot.authorLimitHint"]'));
+        assert.ok(dom.window.document.querySelector('[role="button"][aria-label="wot.followsLimitHint"]'));
         assert.match(dom.window.document.body.textContent!, /wot.databases/);
         await act(async () => { button('3').click(); });
         assert.ok(button('common.save'));
@@ -433,9 +434,12 @@ test('WoT settings interact through RPC, show the notice, and persist its dismis
         await click('button[aria-label="common.close"]');
         await act(async () => button('wot.syncSettings').click());
         assert.equal(dom.window.document.querySelector('[role="dialog"]'), null, 'sync settings use a full screen, not a dialog');
-        assert.ok(button('wot.resync'));
+        await act(async () => { while (pendingRpc.size) await Promise.all([...pendingRpc]); });
+        assert.ok(dom.window.document.querySelector('table button[aria-label^="wot.resync:"]'));
         assert.match(dom.window.document.body.textContent!, /wot.syncNotice/);
-        await act(async () => { button('wot.clear').click(); });
+        await click('table button[aria-label^="common.remove:"]');
+        assert.ok(dom.window.document.querySelector('[role="dialog"]'));
+        await act(async () => { button('common.remove').click(); });
         await act(async () => { while(pendingRpc.size) await Promise.all([...pendingRpc]); });
         assert.ok(button('wot.sync'));
         assert.equal(button('wot.resync'), undefined);
@@ -528,10 +532,13 @@ test('WoT information and live progress use shared accessible panels', () => {
     assert.match(info, /wot.howPrivacy/);
     const menu = readFileSync(new URL('../src/screens/Menu/MenuOverlay.tsx', import.meta.url), 'utf8');
     assert.match(menu, /aria-label=\{t\('wot.howTitle'\)\}/);
-    const html = renderToStaticMarkup(createElement(WotSyncPanel, {state:{settings:validateWotSettings({}),hasLocalGraph:false,syncing:true,updatedAt:null,authors:0,truncated:false,progress:{accountId:'a',phase:'fetching',running:true,depth:2,authors:50,people:300,lists:40,startedAt:1,updatedAt:2}},autoSync:false,onAutoSync(){},busy:false}));
+    const html = renderToStaticMarkup(createElement(WotSyncPanel, {state:{settings:validateWotSettings({}),hasLocalGraph:false,syncing:true,updatedAt:null,authors:0,truncated:false,progress:{accountId:'a',phase:'fetching',running:true,depth:2,depthCompleted:50,depthTotal:100,authors:50,people:300,lists:40,startedAt:1,updatedAt:2}}}));
     assert.match(html, /aria-live="polite"/);
     assert.match(html, /wot.currentHop/);
     assert.match(html, /300/);
+    assert.match(html, /50%/);
+    assert.equal(html.split('wot.people').length - 1, 1);
+    assert.doesNotMatch(html, /wot.autoSync/);
 });
 
 
@@ -570,7 +577,10 @@ test('score search validates npubs, handles zero/missing/errors and discards lat
     Object.defineProperties(globalThis, { window: { value: dom.window, configurable: true }, document: { value: dom.window.document, configurable: true }, IS_REACT_ACT_ENVIRONMENT: { value: true, configurable: true } });
     const { createRoot } = await import('react-dom/client');
     const requests: { params: any; resolve: (value: unknown) => void }[] = [];
-    t.mock.method(browser.runtime, 'sendMessage', (message: any) => new Promise(resolve => { requests.push({params: message.params, resolve}); }));
+    const profiles: { params: any; resolve: (value: unknown) => void }[] = [];
+    t.mock.method(browser.runtime, 'sendMessage', (message: any) => new Promise(resolve => {
+        (message.method === 'getProfileMetadata' ? profiles : requests).push({params: message.params, resolve});
+    }));
     const root = createRoot(dom.window.document.getElementById('root')!);
     let settingsOpened = false;
     const render = (revision = 'one', disabled = false) => act(async () => root.render(createElement(WotScoreLookup, { revision, disabled, onSettings: () => { settingsOpened = true; } })));
@@ -581,6 +591,7 @@ test('score search validates npubs, handles zero/missing/errors and discards lat
         input.dispatchEvent(new dom.window.Event('input', {bubbles: true}));
     });
     const calculate = () => act(async () => button('wot.calculateScore').click());
+    const explanation = (score: number | null) => ({ score, details: null, source: score === 0 ? 'muted' : 'none', maxHops: 2, baseScore: null, appliedBonus: null, knownMutes: 0, muteStatus: 'ready', graph: null });
     try {
         await render();
         assert.equal(button('wot.calculateScore').disabled, true);
@@ -590,27 +601,45 @@ test('score search validates npubs, handles zero/missing/errors and discards lat
         await enter(npubEncode(d));
         await calculate();
         assert.equal(requests[0].params.target, d);
-        assert.match(dom.window.document.body.textContent!, /wot.calculating/);
+        assert.equal(profiles[0].params.pubkey, d);
+        assert.ok(dom.window.document.querySelector('[role="dialog"]'));
+        assert.equal(dom.window.document.querySelector('[role="dialog"]')!.parentElement!.parentElement, dom.window.document.getElementById('root'));
+        assert.match(dom.window.document.querySelector('[role="dialog"]')!.textContent!, /npub1/);
+        await act(async () => dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key: 'Escape', bubbles: true})));
+        assert.equal(dom.window.document.querySelector('[role="dialog"]'), null);
+        assert.equal(dom.window.document.querySelector('input')!.value, npubEncode(d));
         await enter(npubEncode(b));
         await calculate();
-        await act(async () => requests[0].resolve({result: 0.65}));
+        await act(async () => requests[0].resolve({result: explanation(0.65)}));
         assert.doesNotMatch(dom.window.document.body.textContent!, /65 \/ 100/);
-        await act(async () => requests[1].resolve({result: 0}));
+        await act(async () => profiles[0].resolve({result: {name: 'Stale profile'}}));
+        assert.doesNotMatch(dom.window.document.body.textContent!, /Stale profile/);
+        await act(async () => profiles[1].resolve({result: {name: 'Alice', picture: 'https://example.com/avatar.png', about: 'Hello'}}));
+        const dialog = dom.window.document.querySelector('[role="dialog"]')!;
+        assert.match(dialog.textContent!, /Alice/);
+        assert.doesNotMatch(dialog.textContent!, /Hello|npub1/);
+        assert.equal(dialog.querySelector('button[aria-label="wot.lookupPubkey"]'),null);
+        assert.equal(dialog.querySelector('img')?.getAttribute('src'), 'https://example.com/avatar.png');
+        await act(async () => requests[1].resolve({result: explanation(0)}));
         assert.match(dom.window.document.body.textContent!, /0 \/ 100/);
         await render('two');
         assert.equal(dom.window.document.querySelector('input')!.value, npubEncode(b));
-        await act(async () => requests[2].resolve({result: null}));
+        await act(async () => profiles[2].resolve({error: 'Profile unavailable'}));
+        assert.match(dom.window.document.querySelector('[role="dialog"]')!.textContent!, /npub1/);
+        await act(async () => requests[2].resolve({result: explanation(null)}));
         assert.match(dom.window.document.body.textContent!, /wot.scoreUnavailable/);
         await enter(c);
         await calculate();
         await act(async () => requests[3].resolve({error: 'Oracle unavailable'}));
         assert.match(dom.window.document.body.textContent!, /Oracle unavailable/);
         await act(async () => button('common.retry').click());
-        await act(async () => requests[4].resolve({result: 0.5}));
+        await act(async () => requests[4].resolve({result: explanation(0.5)}));
         assert.match(dom.window.document.body.textContent!, /50 \/ 100/);
         await calculate();
         assert.equal(requests.length, 6, 'explicit recalculation queries the same key again');
-        await act(async () => requests[5].resolve({result: 0.5}));
+        await act(async () => requests[5].resolve({result: explanation(0.5)}));
+        await act(async () => dom.window.document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="common.close"]')!.click());
+        assert.equal(dom.window.document.querySelector('[role="dialog"]'), null);
         await act(async () => dom.window.document.querySelector<HTMLElement>('button[aria-label="wot.scoringSettings"]')!.click());
         assert.equal(settingsOpened, true);
         await render('two', true);
@@ -619,5 +648,121 @@ test('score search validates npubs, handles zero/missing/errors and discards lat
     } finally {
         await act(async () => root.unmount()); dom.window.close();
         for (const [key, descriptor] of globals) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete (globalThis as any)[key]; }
+    }
+});
+
+
+test('oracle defaults to Mapping Bitcoin, upgrades blank settings and preserves custom endpoints', async () => {
+    const { WOT_SETTINGS_KEY, WOT_DEFAULTS } = await import('../src/constants/wot.ts');
+    const defaults = await getWotSettings();
+    assert.equal(defaults.oracleUrl, 'https://wot-oracle.mappingbitcoin.com');
+    assert.equal(defaults.enabled, false);
+    assert.equal(defaults.mode, 'local');
+    assert.equal(validateWotSettings({ enabled: true, mode: 'remote' }).oracleUrl, defaults.oracleUrl);
+    await browser.storage.local.set({ [WOT_SETTINGS_KEY]: { ...WOT_DEFAULTS, enabled: true, oracleUrl: '' } });
+    assert.equal((await getWotSettings()).oracleUrl, defaults.oracleUrl);
+    assert.equal((await getWotSettings()).enabled, true);
+    await saveWotSettings({ ...WOT_DEFAULTS, oracleUrl: 'https://custom.example/' });
+    assert.equal((await getWotSettings()).oracleUrl, 'https://custom.example');
+});
+
+
+test('score explanations reuse paths, weights and mute exclusions without exposing private diagnostics to sites', async () => {
+    await setup();
+    const lookup = handlers.get('experimentalWot_getScoreExplanation')!;
+    const first = await lookup({ target: d }) as import('../src/domain/wot/types.ts').WotScoreExplanation;
+    assert.deepEqual(first.details, { hops: 2, paths: 2, score: 0.65 });
+    assert.equal(first.source, 'local');
+    assert.equal(first.baseScore, 0.5);
+    assert.ok(Math.abs(first.appliedBonus! - 0.15) < 1e-10);
+    assert.equal(first.graph?.edges, 5);
+    assert.equal(first.muteStatus, 'unavailable');
+    await seedRelayCache(MUTE_LIST_CACHE, a, muteList([b]));
+    const filtered = await lookup({ target: d }) as typeof first;
+    assert.equal(filtered.knownMutes, 1);
+    assert.equal(filtered.muteStatus, 'ready');
+    assert.equal(filtered.details?.paths, 1);
+    assert.equal(filtered.appliedBonus, 0);
+    const muted = await lookup({ target: b }) as typeof first;
+    assert.equal(muted.score, 0);
+    assert.equal(muted.source, 'muted');
+    assert.equal(muted.details, null);
+    const missing = await lookup({ target: '55'.repeat(32) }) as typeof first;
+    assert.equal(missing.score, null);
+    assert.equal(missing.source, 'none');
+    await assert.rejects(handleWotRequest('wot_getScoreExplanation', { origin: 'https://site.test', target: d }), /Unknown/);
+});
+
+test('score explanations identify oracle evidence and render the complete local breakdown', async () => {
+    await setup('remote');
+    globalThis.fetch = async () => new Response(JSON.stringify({ hops: 2, paths: 2 }), { status: 200 });
+    const info = await queryWot('getScoreExplanation', { target: d }) as import('../src/domain/wot/types.ts').WotScoreExplanation;
+    assert.equal(info.source, 'oracle');
+    assert.equal(info.graph, null);
+    assert.equal(info.score, 0.65);
+    const { default: Breakdown } = await import('../src/screens/Settings/WotScoreBreakdown');
+    const html = renderToStaticMarkup(createElement(Breakdown, { result: { ...info, source: 'local', graph: {edges: 5, people: 3, missingFollowLists: 1, truncated: false} } }));
+    for (const label of ['hops', 'paths', 'base', 'bonus', 'mutesUnavailable'])
+        assert.match(html, new RegExp('wot.explanation.' + label));
+    assert.doesNotMatch(html, /wot.explanation.(edges|people|graphHint|incomplete)/);
+    assert.match(html, /text-success[^>]*>\+50</);
+    assert.match(html, /text-success[^>]*>\+15</);
+    assert.match(html, /text-menu-subtitle/);
+    assert.doesNotMatch(renderToStaticMarkup(createElement(Breakdown, {result: {...info, muteStatus: 'ready', knownMutes: 0}})), /wot.explanation.noMutes/);
+    const mutedHtml = renderToStaticMarkup(createElement(Breakdown, {result: {...info, score: 0, details: null, source:'muted'}}));
+    assert.match(mutedHtml, /text-error/);
+    assert.match(mutedHtml, /−/);
+    const negativeHtml = renderToStaticMarkup(createElement(Breakdown, {result: {...info, appliedBonus: -0.1}}));
+    assert.match(negativeHtml, /text-error[^>]*>−10</);
+    for (const [muteStatus, knownMutes, label] of [['ready', 1, 'mutesExcluded'], ['private-unavailable', 1, 'privateUnavailable']] as const) {
+        assert.match(renderToStaticMarkup(createElement(Breakdown, { result: {...info, muteStatus, knownMutes} })), new RegExp('wot.explanation.' + label));
+    }
+});
+
+test('database table targets row actions, confirms deletion and separates shared cache', async t => {
+    const { JSDOM } = await import('jsdom');
+    const { act } = await import('react');
+    const { default: Databases } = await import('../src/screens/Settings/WotDatabases');
+    const dom = new JSDOM('<div id="root"></div>');
+    const globals = new Map(['window','document','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+    Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
+    const { createRoot } = await import('react-dom/client');
+    const root=createRoot(dom.window.document.getElementById('root')!);
+    let databases=[{accountId:'b',name:'Bob',pubkey:b,bytes:100,estimated:true,people:2,authors:1,updatedAt:1,canSync:true,truncated:false,missingFollowLists:0}];
+    let sharedCache={records:3,bytes:50};
+    const actions: any[]=[];
+    t.mock.method(browser.runtime,'sendMessage',async (message:any)=>{
+        if(message.method==='experimentalWot_getDatabases')return {result:{databases,accounts:databases.length,bytes:databases.length*100,estimated:true,sharedCache}};
+        actions.push(message);
+        if(message.method==='experimentalWot_clear')databases=[];
+        if(message.method==='experimentalWot_clearCache')sharedCache={records:0,bytes:0};
+        return {result:{}};
+    });
+    const click=(label:string)=>act(async()=>{
+        const element=[...dom.window.document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===label || b.textContent===label)!;
+        element.click();
+    });
+    try {
+        await act(async()=>root.render(createElement(Databases,{canSync:true})));
+        assert.equal(dom.window.document.querySelectorAll('tbody tr').length,2);
+        await click('wot.resync: Bob');
+        assert.equal(actions[0].method,'experimentalWot_sync');
+        assert.equal(actions[0].params.accountId,'b');
+        await click('common.remove: Bob');
+        await click('common.cancel');
+        assert.equal(actions.length,1);
+        await click('common.remove: Bob');
+        await click('common.remove');
+        assert.equal(actions[1].method,'experimentalWot_clear');
+        assert.equal(actions[1].params.accountId,'b');
+        assert.equal(dom.window.document.querySelectorAll('tbody tr').length,1);
+        await click('common.remove: wot.sharedCache');
+        assert.match(dom.window.document.querySelector('[role="dialog"]')!.textContent!,/wot.deleteCacheHint/);
+        await click('common.remove');
+        assert.equal(actions[2].method,'experimentalWot_clearCache');
+        assert.equal(dom.window.document.querySelectorAll('tbody tr').length,0);
+    } finally {
+        await act(async()=>root.unmount());dom.window.close();
+        for(const [key,descriptor] of globals){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete (globalThis as any)[key];}
     }
 });

@@ -16,7 +16,7 @@ export const config: ExtConfig = {
 };
 ```
 
-`DEFAULT_RELAYS` (in `src/services/background/state.ts`):
+`DEFAULT_RELAYS` (in `src/constants/relays.ts`):
 
 ```js
 ['wss://nos.lol', 'wss://relay.damus.io', 'wss://nostr-01.yakihonne.com']
@@ -27,16 +27,24 @@ user's own read/write relays (NIP-65) take precedence over these defaults when
 publishing; the defaults are a fallback for accounts that have not configured a
 relay list yet.
 
-> The earlier Mode system (`local` / `remote` / `hybrid`), the remote oracle URL,
-> `maxHops`, `timeout`, and the trust `scoring` config have all been removed
-> along with the trust-graph subsystem. There is no `browser.storage.sync.mode`
-> anymore.
+Experimental WoT configuration is separate from legacy sync settings: `browser.storage.local.experimentalWot`, validated by `src/domain/wot/validation.ts`, with defaults in `src/constants/wot.ts`.
+
+| Setting | Default |
+| --- | --- |
+| Enabled / automatic sync | Both false; automatic sync runs daily when enabled |
+| Query mode | `local` (also `remote` and `hybrid`) |
+| Oracle | `https://wot-oracle.mappingbitcoin.com` |
+| Maximum hops | 2; configurable from 1 to 3 |
+| Maximum relationships / authors / follows per profile | `null` (Unlimited) |
+| Scoring | `WOT_SCORING` distance weights and path bonuses |
+
+Sync settings are saved explicitly; valid scoring changes apply immediately. Existing custom oracle URLs are retained; missing or blank URLs adopt the default. Changing configuration cancels in-flight work. Legacy `browser.storage.sync.mode` does not enable this feature. See [WoT](wot.md) and its [API proposals](../nips/wot/README.md).
 
 ---
 
 ## 2. Relay List (NIP-65)
 
-The user's read/write relay list is edited in the popup (Relays card) and published as a replaceable `kind:10002` event via `publishRelayList` (`src/services/background/publish-handlers.ts`). The handler reads the CSV stored under `browser.storage.sync.relays`, trims each entry, and drops empty ones — there is no further normalization (no lowercasing, no trailing-slash stripping). A `normalizeRelayUrl` helper (`lib/relayUtils.ts`) existed for this once, but it was part of the NIP-65 relay-discovery/outbox engine removed with the Web-of-Trust trust-graph subsystem (see the note above); nothing calls it today.
+The user's read/write relay list is edited in the popup and published as replaceable kind:10002 events via `src/services/background/publish-handlers.ts`. Publication and configured CSV parsing reuse helpers in `src/domain/relays/relayList.ts`. Experimental WoT sync reads the configured relays; it does not replace the user's own published relay configuration.
 
 ---
 

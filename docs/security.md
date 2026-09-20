@@ -531,3 +531,5 @@ revocation prevent stale results. Public graph snapshots are account-scoped;
 automatic refresh requires separate consent and runs only for the active account. See [WoT](wot.md) for limits and storage behavior.
 
 Experimental WoT locally decrypts the active account’s private mute list when available. It does not persist or transmit the plaintext list. Score queries can reveal mute decisions indirectly; the opt-in notice discloses this. See `wot.md` for incomplete-list and oracle-path limitations.
+
+The popup-only score explanation and database inventory/management RPCs are not part of the website WoT surface. Per-type remembered approval choices reuse existing origin, permission and account/global scoping; clicking an ordinary Approve/Reject action never saves a standing rule. See [the 0.8.0 audit](audits/2026-09-20.md) and [WoT proposal privacy semantics](../nips/wot/02-scoring-and-data.md).

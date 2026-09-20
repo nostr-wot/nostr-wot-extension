@@ -1,5 +1,8 @@
-# NIP drafts have moved
+# Protocol proposals
 
-This document is maintained in [nostr-pqc/nip-drafts/README.md](https://github.com/nostr-wot/nostr-pqc/blob/main/nip-drafts/README.md).
+These are experimental proposals, not accepted Nostr standards.
 
-[Browse all drafts](https://github.com/nostr-wot/nostr-pqc/tree/main/nip-drafts), including the [complexity, sizing and interoperability audit](https://github.com/nostr-wot/nostr-pqc/blob/main/nip-drafts/AUDIT.md). This file remains as a compatibility shortcut for existing links.
+- [Post-quantum cryptography](pqc/README.md): shortcuts to the canonical drafts in `nostr-pqc`.
+- [Web of Trust](wot/README.md): the optional `window.nostr.wot` browser API and its relationship/scoring semantics.
+
+For extension setup, syncing and storage controls, see the [WoT guide](../docs/wot.md).

@@ -4,6 +4,8 @@ export interface WotScoring {
     maxPathBonus: number;
 }
 export interface WotSyncProgress {
+    depthCompleted?: number;
+    depthTotal?: number;
     accountId: string;
     phase: 'fetching' | 'complete' | 'failed' | 'cancelled';
     running: boolean;
@@ -16,6 +18,9 @@ export interface WotSyncProgress {
     error?: string;
 }
 export interface WotDatabase {
+    canSync: boolean;
+    truncated: boolean;
+    missingFollowLists: number;
     accountId: string;
     name: string;
     pubkey: string;
@@ -66,6 +71,7 @@ export interface WotDetails {
     score: number;
 }
 export interface WotState {
+    databaseProgress?: WotSyncProgress | null;
     nodes?: number;
     edges?: number;
     progress?: WotSyncProgress | null;
@@ -103,4 +109,17 @@ export interface WotApi {
     getPath(target: string): Promise<string[] | null>;
     getRelayList(pubkey: string): Promise<unknown>;
     getRelayPool(): Promise<unknown>;
+}
+
+/** Private popup diagnostics; never exposed through the website WoT API. */
+export interface WotScoreExplanation {
+    score: number | null;
+    details: WotDetails | null;
+    source: 'local' | 'oracle' | 'muted' | 'none';
+    maxHops: number;
+    baseScore: number | null;
+    appliedBonus: number | null;
+    knownMutes: number;
+    muteStatus: NonNullable<WotState['muteStatus']>;
+    graph: { edges: number; people: number; missingFollowLists: number; truncated: boolean } | null;
 }

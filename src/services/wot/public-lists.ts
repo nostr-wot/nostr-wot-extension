@@ -1,5 +1,5 @@
 import type { WotGraph } from '@domain/wot/types.ts';
-import { databaseRead, databaseReadMany, databaseWrite } from './database.ts';
+import { databaseRead, databaseReadMany, databaseWrite, databaseKeys } from './database.ts';
 
 /** Verified public data only; private mute payloads never enter this shared cache. */
 export interface PublicLists {
@@ -34,4 +34,9 @@ export async function savePublicLists(records: PublicLists[], signal?: AbortSign
         return {...data,bytes};
     });
     await databaseWrite('lists',[...records.map(record=>[record.pubkey,record] as [string,unknown]),['__summary__',summary]],[],signal);
+}
+
+/** Account snapshots live in a separate store and are never removed here. */
+export async function clearPublicLists(): Promise<void> {
+    await databaseWrite('lists', [], await databaseKeys('lists'));
 }

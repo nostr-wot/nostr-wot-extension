@@ -16,7 +16,7 @@ export const WOT_SYNC_BATCH_SIZE = 50;
 export const WOT_MAX_SYNC_RELAYS = 6;
 export const WOT_MAX_RELAYS_PER_AUTHOR = 30;
 
-export const WOT_DEFAULTS: WotSettings = { maxEdges: null, maxAuthors: null, maxFollows: null, enabled: false, autoSync: false, scoring: WOT_SCORING, mode: 'local', oracleUrl: '', maxHops: 2 };
+export const WOT_DEFAULTS: WotSettings = { maxEdges: null, maxAuthors: null, maxFollows: null, enabled: false, autoSync: false, scoring: WOT_SCORING, mode: 'local', oracleUrl: 'https://wot-oracle.mappingbitcoin.com', maxHops: 2 };
 export const WOT_AUTO_SYNC_ALARM = 'experimental-wot-auto-sync';
 export const WOT_AUTO_SYNC_MINUTES = 24 * 60;
 export const WOT_PROGRESS_INTERVAL_MS = 750;

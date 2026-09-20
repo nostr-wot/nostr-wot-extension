@@ -60,7 +60,9 @@ Switch between multiple identities. Each account has its own permissions, wallet
 - Disable identity on specific sites
 - Manage signing permissions per domain. Permissions can be **shared across all accounts** (the default) or **isolated per account**.
 
-> **Note:** Earlier versions shipped an experimental Web-of-Trust trust-graph layer (oracles, follow-graph sync, trust scoring, a page-injected `window.nostr.wot` API, and trust badges). That subsystem has been removed. The extension now injects only the standard NIP-07 `window.nostr` and WebLN `window.webln` providers; relay data is read via `window.nostr.getRelays()`.
+### Experimental Web of Trust
+
+Version 0.8.0 restores `window.nostr.wot` as a menu-only opt-in, disabled by default. Choose local, remote or hybrid queries; sync follow graphs manually or daily, apply account mutes, customize scores, inspect an npub’s calculation and manage account databases. Websites need existing connection and identity permissions. See the [feature guide](docs/wot.md) and [WoT proposals](nips/wot/README.md).
 
 ---
 
@@ -123,7 +125,7 @@ window.nostr.nip44.encrypt(pubkey, text, { scheme: 'pq', recipientKemKey })
 Decryption needs no flag: the envelope is self-describing. A request the active account
 cannot perform is refused with a reason, never answered classically.
 
-None of this is a standard yet. The drafts are in [`nips/`](nips/README.md), written so a
+None of this is a standard yet. The drafts are in [`nips/`](nips/pqc/README.md), written so a
 second implementation can interoperate without reading this source, and feedback on them is
 more useful now than after another client ships.
 

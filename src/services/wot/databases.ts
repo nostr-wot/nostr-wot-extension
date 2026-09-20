@@ -17,7 +17,7 @@ export async function getWotDatabases(): Promise<WotDatabaseSummary> {
         if (!summary) continue;
         const accountId = key.slice(WOT_GRAPH_PREFIX.length);
         const account = accounts.find(a=>a.id===accountId && a.pubkey===summary.root);
-        databases.push({accountId,pubkey:summary.root,name:account ? accountDisplay(account).name : truncateNpub(summary.root),bytes:summary.bytes,estimated:true,people:summary.people,authors:summary.authors,updatedAt:summary.updatedAt});
+        databases.push({canSync:!!account,truncated:summary.truncated,missingFollowLists:summary.missingFollowLists,accountId,pubkey:summary.root,name:account ? accountDisplay(account).name : truncateNpub(summary.root),bytes:summary.bytes,estimated:true,people:summary.people,authors:summary.authors,updatedAt:summary.updatedAt});
     }
     return { sharedCache: await publicListSummary(), databases, accounts: new Set(databases.map(d => d.accountId)).size, bytes: databases.reduce((sum, d) => sum + d.bytes, 0), estimated: databases.some(d => d.estimated) };
 }

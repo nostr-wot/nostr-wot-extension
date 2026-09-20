@@ -16,23 +16,21 @@ import { wotContext } from './state.ts';
 let running: Promise<WotGraph> | null = null;
 export function isWotSyncing(): boolean { return running !== null; }
 /** Bounded snapshot refresh shared by manual and explicitly enabled automatic sync. */
-export function syncWotGraph(options: { incremental?: boolean } = {}): Promise<WotGraph> {
+export function syncWotGraph(options: { incremental?: boolean; accountId?: string } = {}): Promise<WotGraph> {
     if (running)
         return Promise.reject(new Error('WoT sync already running'));
-    running = sync(options.incremental === true).then(async graph => {
-        running = null;
+    running = sync(options.incremental === true, options.accountId).then(async graph => {
         await reportWotProgress({ running: false, phase: 'complete' }, true);
         return graph;
     }, async error => {
-        running = null;
         await reportWotProgress({ running: false, phase: error?.name === 'AbortError' || /WoT settings or account changed/.test(error?.message || '') ? 'cancelled' : 'failed', error: (error as Error).message }, true).catch(() => {});
         throw error;
-    });
+    }).finally(() => { running = null; });
     return running;
 }
-async function sync(incremental: boolean): Promise<WotGraph> {
-    const { account, settings, signal, key, graph: previous } = await wotContext();
-    await reportWotProgress({ accountId: account.id, phase: 'fetching', running: true, depth: 0, authors: 0, people: 0, lists: 0, error: undefined, startedAt: Date.now() }, true);
+async function sync(incremental: boolean, accountId?: string): Promise<WotGraph> {
+    const { account, settings, signal, key, graph: previous } = await wotContext(true, accountId);
+    await reportWotProgress({ accountId: account.id, phase: 'fetching', running: true, depth: 0, authors: 0, people: 0, lists: 0, depthCompleted: 0, depthTotal: 1, error: undefined, startedAt: Date.now() }, true);
     const stored = await browser.storage.sync.get('relays');
     const relays = configuredRelayUrls(stored.relays).slice(0, WOT_MAX_SYNC_RELAYS);
     if (!relays.length)
@@ -57,7 +55,7 @@ async function sync(incremental: boolean): Promise<WotGraph> {
         frontier = new Set();
         for (let i = 0; i < authors.length; i += WOT_SYNC_BATCH_SIZE) {
             signal.throwIfAborted();
-            await reportWotProgress({ depth: depth + 1, authors: visited.size }, true);
+            await reportWotProgress({ depth: depth + 1, authors: visited.size, depthCompleted: i, depthTotal: authors.length }, true);
             let exhausted = false, invalidMute = false;
             const batch = authors.slice(i, i + WOT_SYNC_BATCH_SIZE), allowed = new Set(batch), events = new Map<string, SignedEvent>();
             const records = new Map((await readPublicListBatch(batch)).map((record,index)=>[batch[index],record]));
@@ -154,7 +152,7 @@ async function sync(incremental: boolean): Promise<WotGraph> {
                 if ((requested.has(pubkey) || !cached) && (record.follows || record.relays || record.checkedAt)) saved.push(record);
             }
             await savePublicLists(saved, signal);
-            await reportWotProgress({ authors: visited.size, people: people.size - 1, lists }, true);
+            await reportWotProgress({ authors: visited.size, people: people.size - 1, lists, depthCompleted: Math.min(i + batch.length, authors.length), depthTotal: authors.length }, true);
         }
         if (visited.size >= maxAuthors || edges >= maxEdges) {
             graph.truncated = true;

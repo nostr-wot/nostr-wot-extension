@@ -232,6 +232,65 @@ it('named button presets preserve standard styling and native behavior', () => {
 it('input hints reuse a focusable info tooltip beside the associated label', () => {
   const html = renderToStaticMarkup(createElement(Input, { id: 'limit', label: 'Limit', hint: 'Leave empty for unlimited.' }));
   assert.match(html, /for="limit"/);
-  assert.match(html, /tabindex="0" role="note" aria-label="Leave empty for unlimited\."/);
+  assert.match(html, /tabindex="0" role="button" aria-label="Leave empty for unlimited\."/);
   assert.doesNotMatch(html, /<input[^>]* hint=/);
+});
+
+it('shared help opens on click/focus, stays within the viewport and dismisses without triggering its parent', async () => {
+  const { JSDOM } = await import('jsdom');
+  const { act } = await import('react');
+  const { default: InfoTooltip } = await import('../src/components/InfoTooltip');
+  const dom = new JSDOM('<div id="root"></div>');
+  const globals = new Map(['window', 'document', 'IS_REACT_ACT_ENVIRONMENT'].map(k => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
+  Object.defineProperties(globalThis, {window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
+  Object.defineProperties(dom.window.HTMLElement.prototype, {
+    showPopover: {value:function(this: HTMLElement) { this.dataset.open = 'true'; }, configurable:true},
+    hidePopover: {value:function(this: HTMLElement) { delete this.dataset.open; }, configurable:true},
+  });
+  const { createRoot } = await import('react-dom/client');
+  const root = createRoot(dom.window.document.getElementById('root')!);
+  let parentClicks = 0, parentKeys = 0;
+  try {
+    await act(async () => root.render(createElement('div', {onClick:()=>{parentClicks++;},onKeyDown:()=>{parentKeys++;}},createElement(InfoTooltip,{text:'Explanation'}))));
+    const trigger = dom.window.document.querySelector<HTMLElement>('[role=button]')!;
+    const tip = dom.window.document.querySelector<HTMLElement>('[role=tooltip]')!;
+    Object.defineProperty(dom.window, 'innerWidth', {value:320, configurable:true});
+    Object.defineProperty(dom.window, 'innerHeight', {value:200, configurable:true});
+    trigger.getBoundingClientRect = () => ({left:300,top:2,bottom:18,width:16} as DOMRect);
+    tip.getBoundingClientRect = () => ({height:70} as DOMRect);
+    await act(async () => trigger.click());
+    assert.equal(parentClicks, 0);
+    assert.equal(tip.dataset.open, 'true');
+    assert.equal(trigger.getAttribute('aria-describedby'), tip.id);
+    assert.equal(tip.style.left, '72px');
+    assert.equal(tip.style.top, '24px', 'flips below a trigger near the top edge');
+    await act(async () => trigger.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+    assert.equal(parentKeys, 0);
+    assert.equal(trigger.getAttribute('aria-expanded'), 'false');
+    await act(async () => trigger.focus());
+    assert.equal(tip.dataset.open, 'true');
+    await act(async () => dom.window.document.body.dispatchEvent(new dom.window.MouseEvent('mousedown',{bubbles:true})));
+    assert.equal(tip.dataset.open, undefined);
+    await act(async () => trigger.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true})));
+    assert.equal(tip.dataset.open, 'true');
+    await act(async () => dom.window.document.dispatchEvent(new dom.window.Event('scroll')));
+    assert.equal(tip.dataset.open, undefined);
+    await act(async () => root.unmount());
+  } finally {
+    dom.window.close();
+    for (const [key, value] of globals) { if (value) Object.defineProperty(globalThis,key,value);else delete (globalThis as any)[key]; }
+  }
+});
+
+
+it('split button segments keep standard tones and join only their inner corners', () => {
+  for (const variant of ['primary', 'danger'] as const) {
+    const start = renderToStaticMarkup(createElement(Button, {variant, segment:'start'}, 'Action'));
+    const end = renderToStaticMarkup(createElement(Button, {variant, segment:'end', 'aria-label':'More actions'}, 'Arrow'));
+    assert.match(start, /rounded-r-none/);
+    assert.match(end, /rounded-l-none/);
+    assert.match(end, /border-l-current\/20/);
+    assert.match(end, /aria-label="More actions"/);
+  }
+  assert.doesNotMatch(renderToStaticMarkup(createElement(Button, null, 'Normal')), /rounded-[lr]-none/);
 });

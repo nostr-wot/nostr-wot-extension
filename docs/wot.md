@@ -3,13 +3,13 @@
 Enable **Menu → Web of Trust (experimental)** to expose `window.nostr.wot`.
 It is disabled on installation and upgrade, including for users of the retired
 WoT implementation. There is no wizard step or trust-badge injection. Automatic refresh is separately opt-in. Disabling removes our page API and rejects retained references.
-On entry, a notice explains that scores describe follow/mute relationships, not safety or endorsement. **Don’t show again** persists the dismissal on this device; the same notice remains at the bottom of the screen. The sync card contains automatic syncing, progress and graph counts. **Sync settings**
-opens a dedicated screen containing mode, hops, limits, database inventory, the
+On entry, a notice explains that scores describe follow/mute relationships, not safety or endorsement. **Don’t show again** persists the dismissal on this device; the same notice remains at the bottom of the screen. The sync card shows one status dot and one set of graph counts. **Sync settings**
+opens a dedicated screen containing automatic syncing, mode, hops, limits, a database table, the
 sync/mute explanation, and sync/resync/clear actions. Save appears only after
 sync configuration edits, including automatic-sync changes. Configuration descriptions
 are available in info tooltips beside their labels. Back discards unsaved settings edits.
 
-The scoring card accepts npub or hex public keys and displays the saved query
+The scoring card accepts npub or hex public keys and opens a popup showing the saved query
 mode's score on a 0–100 scale (the API remains 0–1). Muted accounts score zero;
 missing results are shown as unavailable. The gear icon at the top right opens a separate scoring
 popup for weights and bonuses. Valid scoring edits apply automatically; invalid
@@ -23,7 +23,7 @@ Listen for `nostr:wotChanged` to detect availability changes after page load.
 ## Modes and consent
 
 - **Local:** query a snapshot downloaded by pressing **Sync local graph**.
-- **Remote oracle:** query the HTTPS oracle explicitly entered in the menu.
+- **Remote oracle:** query the HTTPS oracle configured in the menu.
 - **Hybrid:** use local answers, querying that oracle on local misses.
 
 Enabling explains that connected sites with identity access may query follow
@@ -32,7 +32,9 @@ and getPublicKey permissions. The page cannot enable/configure the feature or
 start a sync. HTTPS is required, except loopback development pages. Oracles receive
 the active public key and queried public keys; the menu discloses this before
 opt-in. Oracle responses are assertions by that server, not verified Nostr events.
-No oracle is preselected or contacted while disabled. The server must allow
+The default oracle is `https://wot-oracle.mappingbitcoin.com`. Existing custom
+URLs are preserved; previously blank URLs adopt this default. Local mode remains
+the default, and no oracle is contacted while the feature is disabled. The server must allow
 browser cross-origin requests (CORS); this feature adds no broad host permissions.
 
 ## Page API
@@ -69,8 +71,7 @@ reflect incomplete relay coverage, an unsynced author, or these limits, not an
 absence of relationships. Offline refresh failures preserve the previous snapshot.
 
 Snapshots contain public follow/relay lists in IndexedDB, with small account-scoped
-summary pointers in `storage.local`, checked against the active pubkey. **Clear local graph** deletes the current
-account's snapshot. Disabling preserves it for later use. No private keys are stored.
+summary pointers in `storage.local`, checked against the active pubkey. The database table’s delete action removes the selected account’s snapshot. Disabling preserves it for later use. No private keys are stored.
 Oracle replies are cached in worker memory for 60 seconds; concurrent identical
 queries share a request. Requests have a 10-second timeout, a 1 MiB response limit,
 no cookies/referrer and no redirects. Settings/account changes invalidate in-flight
@@ -87,8 +88,7 @@ work; permission revocation is checked before returning results.
 `tests/wot.test.ts` covers graph cycles/paths, modes, limits, consent, oracle
 validation, cancellation, signed relay sync and the actual injected API. The
 communication suite verifies the content/background origin and privilege boundary.
-Native browser/oracle-provider interoperability still requires manual validation;
-0.8.0 is development work, not a published release.
+Native UI and IndexedDB checks use isolated Chrome fixtures; these do not establish live oracle-provider interoperability. See the [API and scoring proposals](../nips/wot/README.md) and [release audit](audits/2026-09-20.md) for scope and remaining limits.
 
 ## Mutes and scoring
 
@@ -190,3 +190,36 @@ Automatic alarm ticks are coalesced before starting and dropped while a sync is
 already running, so a long crawl does not create a backlog of repeated refreshes.
 Account/settings changes still reconcile the scheduler. Website authorization and
 final identity checks read metadata only; each page query loads the graph once.
+
+
+The npub score result explains the same calculation used by website queries:
+shortest-path hops (one follow edge per hop), number of shortest paths, distance
+points and the applied path bonus after caps. It identifies local versus oracle
+evidence and shows the search depth. Paths can share edges. Graph-wide totals are omitted from the score popup.
+Mute-list availability distinguishes confirmed empty lists from unreadable private mutes. A muted target scores zero; a missing path remains
+unavailable. Positive point contributions show a green plus; mute suppression
+is red with a minus, describing an override to zero rather than an invented
+numeric deduction. Explanations use the shared purple subtitle token. These private diagnostics use the
+internal `experimentalWot_getScoreExplanation` RPC and are not exposed to websites.
+
+Calculating a score opens the shared scrollable modal. Profile metadata loads
+independently through the existing cached/coalesced profile reader and renders
+with ProfileSummary (name and picture only) when available. The shortened npub and copy action are shown only as a fallback when profile
+name/image information is missing or fails. Closing keeps the search input;
+late score/profile replies cannot populate a later result.
+
+The sync status percentage measures completed authors in the **current hop**,
+not the overall crawl; later frontiers are unknown until follow lists arrive.
+Completed syncs no longer repeat the live progress counters.
+
+The database table lists every saved account snapshot with status, estimated
+size, resync and confirmed delete actions, plus the shared public-list cache.
+Account-targeted resync uses the existing sync engine without switching the
+active identity. Settings/account changes still cancel it, and only one crawl
+can run at a time. Snapshots whose accounts were removed remain deletable but
+cannot be resynced. Deleting a snapshot preserves accounts and keys.
+Shared-cache resync runs a full sync for the active account; deleting that cache
+preserves all saved account snapshots. Removal is blocked while syncing.
+
+A confirmed empty mute list adds no notice to score results. Mute information
+appears only when exclusions exist or availability limits the calculation.

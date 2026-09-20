@@ -11,7 +11,7 @@ The popup also lets the user edit their kind:0 profile, manage their own NIP-51 
 
 > **0.8.0 experimental:** `window.nostr.wot` is restored behind menu-only opt-in,
 > with local, remote-oracle and hybrid queries. It is off by default. See [WoT](wot.md).
-> The old IndexedDB engine and page badges remain removed. Automatic refresh is separately opt-in.
+> A new IndexedDB snapshot service stores compact graphs; page badges remain removed. Automatic refresh is separately opt-in.
 
 The extension targets Chrome and Firefox, using a service worker on Chrome and a background script on Firefox (declared side by side in `manifest.json`).
 

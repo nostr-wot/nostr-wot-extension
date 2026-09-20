@@ -131,7 +131,7 @@ it('activity filters use a compact dialog and scrim with scrolling content and p
   assert.match(html, /overflow-y-auto/);
   assert.match(html, /common.close/);
   assert.match(html, /activity.pubkeyFilterHint/);
-  assert.match(html, /tabindex="0" role="note"/);
+  assert.match(html, /tabindex="0" role="button"/);
   assert.doesNotMatch(html, /activity.showProtocols|activity.hideProtocols/);
   assert.doesNotMatch(html, /activity.clearFilters/);
   assert.match(renderToStaticMarkup(createElement(ActivityFiltersDialog, {...props,activeFilterCount:1,pubkeyFilter:'peer'})), /activity.clearFilters/);

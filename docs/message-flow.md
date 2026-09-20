@@ -191,7 +191,7 @@ gate so an origin cannot use it to probe the account type. `tests/signer-pq-refu
 covers this, including that classic NIP-44 still routes to the bunker untouched.
 
 The full wire formats and the reasoning behind them are written up as draft
-specifications in [`nips/`](../nips/README.md).
+specifications in [`nips/`](../nips/pqc/README.md).
 
 ## 6. Channel Isolation
 
@@ -368,3 +368,17 @@ The privileged `experimentalWot_getTrustScore` RPC serves the menu's public-key
 lookup through `queryWot('getTrustScore', ...)`, preserving opt-in, account context,
 saved query mode and mute/scoring rules. It does not route through website approval
 because its callers are trusted extension pages. Page access remains unchanged.
+
+The popup-only `experimentalWot_getScoreExplanation` RPC reuses the WoT query
+context, traversal and final account/settings/mute revision checks. Its mute
+counts and local snapshot diagnostics are not part of the page API; the website
+handler explicitly rejects `wot_getScoreExplanation`.
+
+Internal WoT sync/clear handlers accept an optional accountId to operate on a
+database row without changing the active identity. Sync resolves it against
+saved accounts, retaining generation-based cancellation. Clear removes only
+the prefixed WoT snapshot. The internal clearCache RPC removes the public-list
+store independently of account snapshots. Neither delete operation runs during
+an active crawl.
+
+The proposed public contract is documented in [nips/wot](../nips/wot/README.md). Pending approvals expose per-group remembered actions in compact menus; choosing one resolves and saves only that origin/permission group, preserving the existing account/global scope.

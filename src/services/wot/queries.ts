@@ -1,3 +1,4 @@
+import type { WotScoreExplanation } from '@domain/wot/types.ts';
 import { WOT_CACHE_MS, WOT_ORACLE_TIMEOUT_MS, WOT_QUERY_TIMEOUT_MS, WOT_ORACLE_CONCURRENCY, WOT_MAX_CACHE_ENTRIES } from '@constants/wot.ts';
 import { readWotMutes } from './mutes.ts';
 import { graphLookup, graphPath, graphStats, trustScore } from '@domain/wot/graph.ts';
@@ -83,6 +84,29 @@ export async function queryWot(method: string, params: Record<string, unknown>):
         case 'getDistance':
             result = (await details(wotPubkey(params.target)))?.hops ?? null;
             break;
+        case 'getScoreExplanation': {
+            const target = wotPubkey(params.target);
+            const info = await details(target);
+            const targetMuted = muted.has(target);
+            const localInfo = local && graph && !targetMuted
+                ? (lookup ??= graphLookup(graph, maxHops, muted, settings.scoring))(target) : null;
+            const baseScore = info ? trustScore(info.hops, 1, settings.scoring) : null;
+            result = {
+                score: targetMuted ? 0 : info?.score ?? null,
+                details: info,
+                source: targetMuted ? 'muted' : localInfo ? 'local' : info ? 'oracle' : 'none',
+                maxHops,
+                baseScore,
+                appliedBonus: info && baseScore !== null ? info.score - baseScore : null,
+                knownMutes: muted.size,
+                muteStatus: mutes.status,
+                graph: local && graph ? {
+                    edges: graphStats(graph).edges, people: graphStats(graph).people,
+                    missingFollowLists: graph.missingFollowLists ?? 0, truncated: graph.truncated,
+                } : null,
+            } satisfies WotScoreExplanation;
+            break;
+        }
         case 'getTrustScore':
             result = muted.has(wotPubkey(params.target)) ? 0 : (await details(wotPubkey(params.target)))?.score ?? null;
             break;

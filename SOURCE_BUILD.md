@@ -1,6 +1,6 @@
-# Build instructions — Nostr WoT 0.7.2
+# Build instructions — Nostr WoT 0.8.0
 
-Use the attached `nostr-wot-source-0.7.2.zip`, which includes the release's
+Use the attached `nostr-wot-source-0.8.0.zip`, which includes the release's
 working source and lockfile. Use that archive to reproduce the packaged release;
 do not use an older GitHub tag or assume the latest main matches its contents.
 

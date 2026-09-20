@@ -190,7 +190,7 @@ The log is capped at 200 entries (newest first, oldest trimmed).
 switches it to the hybrid ML-KEM-1024 envelope. `nip44Decrypt` takes no flag: the envelope
 is self-describing, so `handleNip44Decrypt` routes on the payload. The mechanics are in
 [Message Flow §5c](message-flow.md#5c-post-quantum-via-nip-44-no-new-namespace); the wire
-formats are specified in [`nips/`](../nips/README.md).
+formats are specified in [`nips/`](../nips/pqc/README.md).
 
 Two things matter at the signer level.
 

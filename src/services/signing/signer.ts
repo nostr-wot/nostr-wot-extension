@@ -202,7 +202,7 @@ async function handleCryptoRequest(
    * would receive classic ciphertext in response to a post-quantum request with no way
    * to tell the difference. That silent downgrade is the exact failure the opt-in and
    * the `schemes` marker exist to prevent, and it cannot be caught in `cryptoFn`, which
-   * a remote-signer account never reaches. See `nips/04-nip07-encryption-capability.md`.
+   * a remote-signer account never reaches. See `nips/pqc/04-nip07-encryption-capability.md`.
    *
    * Checked after the permission gate, so an origin cannot probe the active account's
    * type without first being allowed to make the call at all.

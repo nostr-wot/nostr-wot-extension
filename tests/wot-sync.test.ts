@@ -55,6 +55,8 @@ test('automatic sync applies additions, removals, mutes, unmuting and account is
         assert.ok(progress.some(p => p.running && p.depth === 1));
         assert.ok(progress.some(p => p.running && p.depth === 2));
         assert.equal(progress.at(-1).phase, 'complete');
+        assert.ok(progress.some(p => p.running && p.depthTotal > 0 && p.depthCompleted === p.depthTotal));
+        assert.ok(progress.filter(p => p.depthTotal !== undefined).every(p => p.depthCompleted >= 0 && p.depthCompleted <= p.depthTotal));
         assert.equal(progress.at(-1).people, 2);
         relaySocket([root, await event(1,3,11,[c,d])]);
         await tick();
@@ -398,4 +400,90 @@ test('daily scheduler replaces old five-minute alarms and does not sync on setti
         assert.equal(creations, 1, 'valid daily alarm must retain its scheduled time');
         assert.equal(syncs, 0);
     } finally { await controller.stop(); }
+});
+
+test('database actions resync and remove a chosen account without switching the active identity', async () => {
+    const { handlers } = await import('../src/services/background/wot-handlers.ts');
+    const { readSnapshot, commitSnapshot } = await import('../src/services/wot/snapshots.ts');
+    await account();
+    await commitSnapshot(WOT_GRAPH_PREFIX + 'a', {root:a,follows:{[a]:[d]},relays:{},updatedAt:1,truncated:false});
+    const traffic = relaySocket([await event(1,3,1,[c]), await event(2,3,1,[])]);
+    await handlers.get('experimentalWot_sync')!({accountId:'b'});
+    assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
+    assert.deepEqual((await readSnapshot(WOT_GRAPH_PREFIX+'a'))?.follows[a],[d]);
+    assert.deepEqual((await readSnapshot(WOT_GRAPH_PREFIX+'b'))?.follows[b],[c]);
+    assert.ok(traffic().requests.flat().includes(b));
+    const inventory = await getWotDatabases();
+    assert.equal(inventory.databases.find(db=>db.accountId==='b')?.canSync,true);
+    await handlers.get('experimentalWot_clear')!({accountId:'b'});
+    assert.equal(await readSnapshot(WOT_GRAPH_PREFIX+'b'),null);
+    assert.ok(await readSnapshot(WOT_GRAPH_PREFIX+'a'));
+    assert.equal(((await browser.storage.local.get('accounts')).accounts as unknown[]).length,2);
+    await assert.rejects(handlers.get('experimentalWot_sync')!({accountId:'unknown'}),/account/);
+    await assert.rejects(handlers.get('experimentalWot_clear')!({accountId:123}),/Invalid account/);
+    await assert.rejects(handlers.get('experimentalWot_clear')!({accountId:'unknown'}),/not found/);
+});
+
+test('orphaned snapshot is visible and deletable but cannot be resynced', async () => {
+    const { handlers } = await import('../src/services/background/wot-handlers.ts');
+    const { commitSnapshot } = await import('../src/services/wot/snapshots.ts');
+    await account();
+    await commitSnapshot(WOT_GRAPH_PREFIX+'removed',{root:c,follows:{[c]:[d]},relays:{},updatedAt:1,truncated:true,missingFollowLists:2});
+    const row=(await getWotDatabases()).databases.find(db=>db.accountId==='removed')!;
+    assert.equal(row.canSync,false);
+    assert.equal(row.truncated,true);
+    assert.equal(row.missingFollowLists,2);
+    await handlers.get('experimentalWot_clear')!({accountId:'removed'});
+    assert.equal((await getWotDatabases()).databases.length,0);
+});
+
+test('hop percentage follows completed frontier work and status distinguishes missing, partial and failed data', async () => {
+    const { wotHopPercent,wotSyncStatus } = await import('../src/domain/wot/syncStatus.ts');
+    const base={accountId:'a',phase:'fetching' as const,running:true,depth:2,authors:5,people:10,lists:5,startedAt:1,updatedAt:2};
+    assert.equal(wotHopPercent(),0);
+    assert.equal(wotHopPercent({...base,depthCompleted:1,depthTotal:4}),25);
+    assert.equal(wotHopPercent({...base,depthCompleted:100,depthTotal:4}),100);
+    assert.equal(wotHopPercent({...base,depthCompleted:-1,depthTotal:4}),0);
+    assert.equal(wotSyncStatus(true,false,base).tone,'syncing');
+    assert.equal(wotSyncStatus(true,false,{...base,running:false,phase:'failed'}).tone,'unreachable');
+    assert.equal(wotSyncStatus(false,false).label,'wot.notSynced');
+    assert.equal(wotSyncStatus(true,true).label,'wot.partial');
+    assert.equal(wotSyncStatus(true,false,{...base,running:false,phase:'complete'}).label,'wot.syncComplete');
+});
+
+test('shared cache deletion preserves account snapshots and resets cache accounting', async () => {
+    const { handlers } = await import('../src/services/background/wot-handlers.ts');
+    const { savePublicLists, publicListSummary, readPublicLists } = await import('../src/services/wot/public-lists.ts');
+    const { commitSnapshot, readSnapshot } = await import('../src/services/wot/snapshots.ts');
+    await account();
+    await commitSnapshot(WOT_GRAPH_PREFIX+'a',{root:a,follows:{[a]:[b]},relays:{},updatedAt:1,truncated:false});
+    await savePublicLists([{pubkey:a,scope:'test',checkedAt:1,fullCheckedAt:1,follows:[b]}]);
+    assert.equal((await publicListSummary()).records,1);
+    await handlers.get('experimentalWot_clearCache')!({});
+    assert.equal(await readPublicLists(a),undefined);
+    assert.deepEqual(await publicListSummary(),{records:0,bytes:0});
+    assert.deepEqual((await readSnapshot(WOT_GRAPH_PREFIX+'a'))?.follows[a],[b]);
+});
+
+
+test('sync keeps its single-flight guard until final progress is persisted', async t => {
+    await account();
+    relaySocket([await event(0,3,10,[b]), await event(1,3,10,[])]);
+    const {syncWotGraph,isWotSyncing} = await import('../src/services/wot/sync.ts');
+    const originalSet = browser.storage.local.set.bind(browser.storage.local);
+    let release!: () => void;
+    let reached!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const entered = new Promise<void>(resolve => { reached = resolve; });
+    t.mock.method(browser.storage.local,'set',async (values: Record<string, any>) => {
+        if (values[WOT_SYNC_STATUS_KEY]?.phase === 'complete') { reached(); await held; }
+        return originalSet(values);
+    });
+    const work = syncWotGraph();
+    try {
+        await entered;
+        assert.equal(isWotSyncing(), true);
+        await assert.rejects(syncWotGraph(), /already running/);
+    } finally { release(); await work; }
+    assert.equal(isWotSyncing(), false);
 });

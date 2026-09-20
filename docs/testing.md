@@ -376,3 +376,35 @@ WoT menu regressions cover automatic application/reset of valid scoring, invalid
 values retaining saved scores, a single scoring-dialog title, and configuration
 tooltips. `tests/button.test.ts` covers shared Input hint accessibility and label
 association.
+
+Shared tooltip interaction tests in `tests/button.test.ts` cover click/focus and
+keyboard opening, Escape/outside/scroll dismissal, parent-event isolation and
+viewport positioning. jsdom stubs only the native popover methods. A native
+headless Chrome check of all six actual WoT sync-setting tooltips confirmed
+`:popover-open`, viewport bounds and hit-test visibility outside the scrolling
+container, using built CSS and fixture settings.
+
+Score explanation regressions cover local shortest-path counts and points,
+muted targets and intermediates, missing paths, oracle source attribution,
+private diagnostic rejection for websites, and rendering of signed/color-coded score contributions and ready/unavailable/private-unavailable mute states. Mounted search
+tests exercise the explanation RPC with stale responses, retries and zero scores.
+
+Mounted WoT lookup tests also cover result-modal opening, Escape/close dismissal,
+preserved input, profile name/image presentation, npub fallback on profile
+failure, independent score loading, and stale profile responses after dismissal.
+
+WoT sync UI regressions cover automatic-sync controls inside settings, one set
+of main-card counts, status dots and bounded per-hop percentages. Database
+integration tests resync a non-active account, preserve the active identity,
+remove only the selected snapshot, and separate shared-cache deletion. Mounted
+table tests exercise row targeting and cancel/confirm actions. Orphan snapshots
+remain visible/deletable with resync disabled.
+
+Account copy-menu interactions cover both exact clipboard encodings, initial and
+arrow-key focus, Escape/outside/focus-away dismissal, successful closure,
+clipboard failure feedback and reset on account change. WoT result tests assert
+that confirmed empty mute lists produce no notice.
+
+Approval sheet interaction tests cover the top action row and both compact arrow menus: one-time approval/rejection never saves permissions, while remembered allow/deny saves only the selected type’s website, permission and account scope, including when multiple types are pending. Shared action-menu keyboard, dismissal and clipboard failure behavior is covered by the account-copy menu tests.
+
+Sync finalization regression: a delayed completion-status write must keep the single-flight guard held, rejecting another sync until persistence finishes.

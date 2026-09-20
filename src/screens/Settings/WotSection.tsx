@@ -73,11 +73,11 @@ export function WotSettingsForm({ accountId, pubkey }: {
         catch { return; }
         void action('experimentalWot_save', { ...resource.data.settings, scoring });
     }
-    async function sync() {
+    async function sync(accountId?: string) {
         setSyncing(true);
         setError('');
         try {
-            resource.patch(await rpc<WotState>('experimentalWot_sync'));
+            resource.patch(await rpc<WotState>('experimentalWot_sync', { accountId }));
         }
         catch (e) {
             setError((e as Error).message);
@@ -101,10 +101,9 @@ export function WotSettingsForm({ accountId, pubkey }: {
     </Container></Card>
     <FormError>{staleBackground ? t('wot.reloadRequired') : error || resource.error || (dirty ? validation : '')}</FormError>
     {staleBackground ? <ButtonSecondary onClick={() => browser.runtime.reload()}>{t('wot.reloadExtension')}</ButtonSecondary> : resource.error && <ButtonSecondary onClick={() => { void resource.refresh(); }}>{t('common.retry')}</ButtonSecondary>}
-    <WotSyncPanel state={{ ...resource.data, syncing: syncBusy }} autoSync={draft.autoSync} onAutoSync={autoSync => setDraft({ ...draft, autoSync })} busy={busy || unavailable} onSettings={() => setPanel('sync')}/>
-    {!panel && saveButton}
+    <WotSyncPanel state={{ ...resource.data, syncing: syncBusy }} onSettings={() => setPanel('sync')}/>
     <WotScoreLookup revision={JSON.stringify([accountId, savedSettings, resource.data.updatedAt, resource.data.muteStatus])} disabled={!resource.data.settings.enabled || !accountId || !!resource.error} onSettings={() => setPanel('scoring')}/>
-    {panel === 'sync' && <WotSyncScreen draft={draft} setDraft={setDraft} state={{ ...resource.data, syncing: syncBusy }} disabled={busy || syncBusy || unavailable} canSync={resource.data.settings.enabled && !!accountId && !dirty} onSync={() => { void sync(); }} onClear={() => { void action('experimentalWot_clear'); }} onBack={closeSettings} footer={saveButton} error={error || (dirty ? validation : '')}/>}
+    {panel === 'sync' && <WotSyncScreen draft={draft} setDraft={setDraft} state={{ ...resource.data, syncing: syncBusy }} disabled={busy || syncBusy || unavailable} canSync={resource.data.settings.enabled && !!accountId && !dirty} onSync={() => { void sync(); }} onBack={closeSettings} footer={saveButton} error={error || (dirty ? validation : '')}/>}
     {panel === 'scoring' && <Modal title={t('wot.scoring')} onClose={closeSettings}>
       <WotScoringPanel value={draft.scoring} onChange={applyScoring} disabled={busy || syncBusy || unavailable}/>
       <FormError>{error || (dirty ? validation : '')}</FormError>
