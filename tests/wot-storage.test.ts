@@ -74,3 +74,22 @@ test('crash recovery removes abandoned stages but preserves committed generation
     assert.deepEqual(await databaseKeys('snapshots'),[summary.revision]);
     assert.deepEqual(await readSnapshot(key),graph);
 });
+
+test('follow guard uses synced public lists offline without undoing newer signed removals',async()=>{
+ const {savePublicLists}=await import('../src/services/wot/public-lists.ts');
+ const {followReplacementCount,rememberSignedFollowList}=await import('../src/services/signing/followListGuard.ts');
+ const {signEvent}=await import('../src/lib/crypto/nip01.ts');
+ const {relaySocket}=await import('./helpers/wot-relay.ts');
+ const secret=new Uint8Array(32).fill(1);
+ const event=await signEvent({kind:3,content:'',tags:[['p',a]],created_at:20},secret);
+ const socket=globalThis.WebSocket;
+ try {
+  const stats=relaySocket([],true);
+  await savePublicLists([{pubkey:event.pubkey,scope:'test',checkedAt:1,fullCheckedAt:1,follows:[a,b],followVersion:{createdAt:10,id:'a'}}]);
+  assert.equal(await followReplacementCount(event,event.pubkey),2);
+  assert.equal(stats().calls,0,'synced evidence needs no relay round trip');
+  assert.equal(await followReplacementCount(event,a),undefined,'records are scoped to the author');
+  await rememberSignedFollowList(event);
+  assert.equal(await followReplacementCount(event,event.pubkey),undefined,'older graph does not override a newer signed list');
+ } finally {globalThis.WebSocket=socket;}
+});

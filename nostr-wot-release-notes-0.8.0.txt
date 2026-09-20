@@ -7,4 +7,7 @@ Nostr WoT 0.8.0
 - Improve sync progress, settings tooltips, account-copy menus and per-type Always allow/reject choices in pending approvals.
 - Add WoT API/scoring proposals and reorganize protocol documentation into PQC and WoT sections.
 
+- Protect known follow lists against accidental replacement with zero or one contact. Show warnings on pending cards and in details, require a separate confirmation, and avoid repeating identical warnings.
+- Reuse the compact approve/reject buttons and per-type Always menus in event details.
+
 Experimental scores describe follow/mute relationships, not safety or endorsement. Live oracle-provider interoperability has not been exhaustively verified.

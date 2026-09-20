@@ -997,5 +997,9 @@
   "wot.deleteCacheHint": "Delete shared public-list cache? Your saved account graphs and keys are kept. Future syncs download the lists again.",
   "approval.approveOptions": "Approval options",
   "approval.rejectOptions": "Rejection options",
-  "approval.rememberDenyHint": "Immer ablehnen blockiert zukünftige Anfragen dieses Typs von dieser Website."
+  "approval.rememberDenyHint": "Immer ablehnen blockiert zukünftige Anfragen dieses Typs von dieser Website.",
+  "approval.followReplacementTitle": "Achtung: Folgeliste ersetzen?",
+  "approval.followReplacementWarning": "{origin} versucht, deine letzte bekannte Liste mit {count} gefolgten Konten durch {newCount} Kontakte zu ersetzen. Die Veröffentlichung entfernt alle Konten, die in der neuen Liste fehlen.",
+  "approval.followReplacementQuestion": "Bist du wirklich sicher? Abbrechen lässt dich die Anfrage prüfen. Immer erlauben überspringt diese Warnung nicht.",
+  "approval.followReplacementConfirm": "Ja, meine Folgeliste ersetzen"
 }

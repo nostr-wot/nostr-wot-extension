@@ -27,7 +27,7 @@ it('remote approval details and cancellation are separate, named button actions'
     onClick() { opened++; }, onCancel() { cancelled++; },
   };
   const tree = ApprovalCard(props);
-  const [row, cancel] = tree.props.children.props.children;
+  const [row, cancel] = tree.props.children[0].props.children;
   row.props.onClick();
   cancel.props.onClick();
   assert.equal(opened, 1);

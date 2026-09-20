@@ -90,6 +90,8 @@ export async function onActiveAccountChanged(
 // -- Pending Request Queue --
 
 interface QueueRequestInput {
+  followReplacementCount?: number;
+  followReplacementNewCount?: number;
   type: string;
   origin: string;
   pubkey?: string;
@@ -222,6 +224,7 @@ async function removePendingFromStorage(id: string): Promise<void> {
 export async function resolveRequest(id: string, decision: RequestDecision): Promise<void> {
   if (decision.allow) {
     const request = (await getPending()).find(request => request.id === id);
+    if (request?.followReplacementCount && !decision.confirmFollowReplacement) throw new Error('Follow-list replacement requires explicit confirmation');
     const {accountId} = await getActiveAccountInfo();
     const idNow = accountId ?? vault.getActiveAccountId();
     const pubkey = await getActivePublicKey();
@@ -250,7 +253,7 @@ export async function resolveRequest(id: string, decision: RequestDecision): Pro
  * @param decision - { allow: boolean, remember: boolean }
  */
 export async function resolveBatch(origin: string, permKey: string, decision: RequestDecision): Promise<void> {
-  const match = (r: PendingRequest) => r.origin === origin && r.permKey === permKey;
+  const match = (r: PendingRequest) => r.origin === origin && r.permKey === permKey && !(decision.allow && r.followReplacementCount);
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];

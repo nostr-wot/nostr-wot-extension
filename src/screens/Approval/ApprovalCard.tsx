@@ -1,3 +1,4 @@
+import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { ApprovalGroup } from '@domain/permissions/approval.ts';
@@ -47,6 +48,7 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
           <IconClose size={16} aria-hidden="true" />
         </IconButton>}
       </Container>
+      {!isNip46 && <FollowReplacementNotice requests={group.requests}/>}
     </Card>
   );
 }

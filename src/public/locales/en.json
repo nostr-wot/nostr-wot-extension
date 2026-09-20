@@ -997,5 +997,9 @@
   "wot.deleteCacheHint": "Delete shared public-list cache? Your saved account graphs and keys are kept. Future syncs download the lists again.",
   "approval.approveOptions": "Approval options",
   "approval.rejectOptions": "Rejection options",
-  "approval.rememberDenyHint": "Always reject blocks future requests of this type from this site."
+  "approval.rememberDenyHint": "Always reject blocks future requests of this type from this site.",
+  "approval.followReplacementTitle": "Danger: replace your follow list?",
+  "approval.followReplacementWarning": "{origin} is trying to replace your last known list of {count} follows with {newCount} contacts. Publishing this removes follows missing from the new list.",
+  "approval.followReplacementQuestion": "Are you really sure? Cancel to review the request. Always allow does not skip this warning.",
+  "approval.followReplacementConfirm": "Yes, replace my follows"
 }

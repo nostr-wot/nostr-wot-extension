@@ -1,3 +1,4 @@
+import type { PendingRequest } from '../src/domain/signing/types';
 import {it} from 'node:test';
 import assert from 'node:assert/strict';
 import {createElement} from 'react';
@@ -268,10 +269,11 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
       request:{type:'signEvent',permKey:'signEvent:1',event:{kind:1}},
       onAlwaysAllow(){always++;},onApprove(){once++;}
     })));
-    const buttons=Array.from(dom.window.document.querySelectorAll('button'));
-    await act(async()=>buttons.find(button=>button.textContent==='approval.alwaysAllowLabel')!.click());
+    assert.doesNotMatch(dom.window.document.body.textContent!,/approval.alwaysAllowLabel/);
+    await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.approveOptions"]')!.click());
+    await act(async()=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent==='approval.alwaysAllowLabel')!.click());
     assert.equal(always,1);assert.equal(once,0);
-    await act(async()=>buttons.find(button=>button.textContent==='approval.approveOnce')!.click());
+    await act(async()=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent==='approval.approveOnce')!.click());
     assert.equal(always,1);assert.equal(once,1);
     const {default:SubAccountStep}=await import('../src/screens/Wizard/SubAccountStep');
     const paths: Array<string | undefined>=[];
@@ -489,7 +491,7 @@ it('approval sheet separates current-request approval from remembered permission
   Object.defineProperty(browser.runtime,'onMessage',{configurable:true,value:{addListener(){},removeListener(){}}});
   const account={id:'approval-test',type:'imported',pubkey:'11'.repeat(32),name:'Test'};
   await browser.storage.local.set({accounts:[account],activeAccountId:account.id,profileCache:{}});
-  let pending=[{id:'one',accountId:account.id,origin:'https://site.test',type:'signEvent',permKey:'signEvent:1',needsPermission:true,event:{kind:1,pubkey:account.pubkey,content:'test',tags:[]}}];
+  let pending: Array<Omit<PendingRequest, 'timestamp'>>=[{id:'one',accountId:account.id,origin:'https://site.test',type:'signEvent',permKey:'signEvent:1',needsPermission:true,event:{kind:1,pubkey:account.pubkey,content:'test',tags:[]}}];
   const calls: Array<{method:string;params?:any}> = [];
   t.mock.method(browser.runtime,'sendMessage',async(message:{method:string;params?:any})=>{
     calls.push(message);
@@ -542,6 +544,34 @@ it('approval sheet separates current-request approval from remembered permission
       }
     }
 
+    for (const always of [false, true]) {
+      await act(async()=>root.render(null));
+      calls.length=0;
+      pending=[{id:'danger',accountId:account.id,origin:'https://site.test',type:'signEvent',permKey:'signEvent:3',needsPermission:true,event:{kind:3,pubkey:account.pubkey,content:'',tags:[]},followReplacementCount:500,followReplacementNewCount:0}];
+      pending=[pending[0],{...pending[0],id:'danger2'},{...pending[0],id:'danger3'}];
+      await act(async()=>root.render(render()));
+      assert.match(dom.window.document.body.textContent!,/approval.followReplacementWarning/,'warning is visible without opening details');
+      const approve = async () => {
+        if (always) {
+          await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.approveOptions"]')!.click());
+          await act(async()=>button('approval.alwaysAllowLabel')!.click());
+        } else await act(async()=>button('approval.approveShown')!.click());
+      };
+      await approve();
+      assert.ok(button('approval.followReplacementConfirm'),'a separate confirmation is required');
+      const confirmation=button('approval.followReplacementConfirm')!.closest('[role="dialog"]')!;
+      assert.equal((confirmation.textContent!.match(/approval.followReplacementWarning/g)||[]).length,1,'identical warnings appear once in the confirmation');
+      assert.match(dom.window.document.body.textContent!,/approval.followReplacementWarning/);
+      assert.equal(calls.some(c=>c.method==='signer_resolve'||c.method==='signer_savePermission'),false);
+      await act(async()=>button('common.cancel')!.click());
+      assert.equal(calls.some(c=>c.method==='signer_resolve'),false,'cancel leaves the request unsigned');
+      await approve();
+      await act(async()=>button('approval.followReplacementConfirm')!.click());
+      assert.deepEqual(calls.find(c=>c.method==='signer_resolve')?.params,{id:'danger',decision:{allow:true,remember:false,confirmFollowReplacement:true}});
+      assert.equal(calls.some(c=>c.method==='signer_savePermission'),always);
+      assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params.id),['danger','danger2','danger3'],'all displayed requests still receive explicit confirmation');
+    }
+
     for (const allow of [true, false]) {
       await act(async()=>root.render(null));
       calls.length = 0;
@@ -562,4 +592,16 @@ it('approval sheet separates current-request approval from remembered permission
     Object.defineProperty(browser.runtime,'onMessage',{configurable:true,value:originalMessages});
     for(const [key,descriptor] of previous) {if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
   }
+});
+
+it('pending cards show dangerous reductions even after an ordinary first request, without repeating identical warnings',async()=>{
+ const {default:ApprovalCard}=await import('../src/screens/Approval/ApprovalCard');
+ const normal={id:'normal',type:'signEvent',origin:'site.test',timestamp:1};
+ const dangerous={...normal,id:'danger',followReplacementCount:546,followReplacementNewCount:0};
+ const group={origin:'site.test',method:'signEvent',permKey:'signEvent:3',requests:[normal,dangerous,{...dangerous,id:'duplicate'}]};
+ const html=renderToStaticMarkup(createElement(ApprovalCard,{group,onClick(){}}));
+ assert.equal((html.match(/approval.followReplacementWarning/g)||[]).length,1);
+ assert.match(html,/text-error/);
+ const safe=renderToStaticMarkup(createElement(ApprovalCard,{group:{...group,requests:[normal]},onClick(){}}));
+ assert.doesNotMatch(safe,/approval.followReplacementWarning/);
 });

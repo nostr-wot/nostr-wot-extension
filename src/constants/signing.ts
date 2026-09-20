@@ -48,3 +48,6 @@ export const MAX_EVENT_TAGS = 10_000;
 export const MAX_TAG_VALUES = 1024;
 export const MAX_CRYPTO_PLAINTEXT_BYTES = 65535;
 export const MAX_CRYPTO_CIPHERTEXT_LENGTH = 131072;
+
+/** Last signed kind:3, kept separately from verified published relay data. */
+export const SIGNED_FOLLOW_LIST_PREFIX = 'signedFollowList_';

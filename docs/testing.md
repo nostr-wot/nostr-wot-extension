@@ -408,3 +408,17 @@ that confirmed empty mute lists produce no notice.
 Approval sheet interaction tests cover the top action row and both compact arrow menus: one-time approval/rejection never saves permissions, while remembered allow/deny saves only the selected type’s website, permission and account scope, including when multiple types are pending. Shared action-menu keyboard, dismissal and clipboard failure behavior is covered by the account-copy menu tests.
 
 Sync finalization regression: a delayed completion-status write must keep the single-flight guard held, rejecting another sync until persistence finishes.
+
+Follow-list signing coverage in `tests/signer.test.ts` validates and signs 5,001 contact tags through saved-permission, one-time and grouped approval paths for Primal/Coracle origins, checks exact payload preservation and verifies signatures. It also verifies that intentional removals are not silently merged back. This is an extension signing regression test, not a live-client publication test.
+
+Follow-list guard regressions also cover unique-contact counting, signed evidence,
+relay discovery and outage fallback, identity isolation, old-event ordering,
+saved-permission and remote-account rejection, and batch-bypass prevention.
+The mounted approval-sheet test exercises cancellation and explicit confirmation
+through both one-time and always-allow controls.
+
+Follow replacement checks also consult the author’s versioned public follow list in the WoT sync database, respecting newer signed changes. Event details show detected dangerous reductions before approval and reuse the shared split buttons, with Always choices behind the arrows.
+
+Empty kind:3 lists (including client-only tags) require confirmation when any previous follows are known. Warnings display both the previous and proposed counts, including zero. Tests cover local and remote accounts, ordinary/batch approval bypasses, and clearing the last follow.
+
+Approval UI tests verify that grouped duplicate reductions render a single warning on the pending card and confirmation dialog, while confirmation still resolves each displayed request individually.

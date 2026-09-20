@@ -1,3 +1,4 @@
+import { followCount, followReplacementCount, rememberSignedFollowList } from './followListGuard.ts';
 import { captureAccountSession, assertAccountSession } from './accountSession.ts';
 import { recordSigningRejection } from './rejections.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
@@ -115,12 +116,15 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   const decision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
   if (decision === 'deny') throw new Error('Permission denied');
 
-  // NIP-46 accounts skip the local 'ask' prompt — the remote signer (bunker)
-  // runs its own approval flow for 'ask'/'allow'.
-  if (accountType !== 'nip46' && decision === 'ask') {
+  // NIP-46 normally delegates approval to the remote signer. Dangerous
+  // follow-list replacements require local confirmation for every account type.
+  const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
+  if (replacementCount || (accountType !== 'nip46' && decision === 'ask')) {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'signEvent',
+      followReplacementCount: replacementCount,
+      followReplacementNewCount: replacementCount ? followCount(event) : undefined,
       // Store the FULL content and FULL tags for every kind — the approval
       // prompt must show exactly what will be signed, so a site cannot hide
       // payload in long content or in tags of non-contact-list kinds.
@@ -133,6 +137,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       accountId,
     });
     if (!approved.allow) throw new Error(approved.reason || 'User denied signing');
+    if (replacementCount && !approved.confirmFollowReplacement) throw new Error('Follow-list replacement requires explicit confirmation');
     if ((await getActivePublicKey()) !== requestedPubkey || ((await getActiveAccountInfo()).accountId ?? vault.getActiveAccountId()) !== requestedAccountId) throw new Error('Account switched');
 
     // Save permission and batch-resolve remaining requests if user chose "remember"
@@ -158,6 +163,8 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
     const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
     assertAccountSession(session);
+    await rememberSignedFollowList(result);
+    assertAccountSession(session);
     return result;
   }
 
@@ -175,6 +182,8 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   try {
     const result = await cryptoSignEvent(event, privkey);
+    assertAccountSession(session);
+    await rememberSignedFollowList(result);
     assertAccountSession(session);
     return result;
   } finally {

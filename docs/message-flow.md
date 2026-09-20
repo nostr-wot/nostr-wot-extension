@@ -382,3 +382,19 @@ store independently of account snapshots. Neither delete operation runs during
 an active crawl.
 
 The proposed public contract is documented in [nips/wot](../nips/wot/README.md). Pending approvals expose per-group remembered actions in compact menus; choosing one resolves and saves only that origin/permission group, preserving the existing account/global scope.
+
+### Empty/singleton follow-list replacement guard
+
+`handleSignEvent` checks kind:3 empty/singleton replacements before local signing or
+remote dispatch. A known reduction from multiple follows attaches
+`followReplacementCount` to the normal pending approval. `ApprovalOverlay` reuses
+`ConfirmDialog` for a danger notice showing origin and old/new counts. Approving
+that dialog sends `confirmFollowReplacement` only for those displayed IDs.
+`resolveRequest` refuses an unconfirmed approval; `resolveBatch` leaves dangerous
+requests pending even when an allow permission is remembered.
+
+Follow replacement checks also consult the author’s versioned public follow list in the WoT sync database, respecting newer signed changes. Event details show detected dangerous reductions before approval and reuse the shared split buttons, with Always choices behind the arrows.
+
+Empty kind:3 lists (including client-only tags) require confirmation when any previous follows are known. Warnings display both the previous and proposed counts, including zero. Tests cover local and remote accounts, ordinary/batch approval bypasses, and clearing the last follow.
+
+The pending-request cards and event details share `FollowReplacementNotice`; identical reductions within a group and in the second confirmation are shown once, while every displayed request ID remains individually confirmed. Clicking Approve or Always allow still opens the separate danger confirmation, and Cancel sends no approval.

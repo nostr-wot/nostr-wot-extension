@@ -6,8 +6,9 @@ import OverlayPanel from '@components/OverlayPanel';
 import EventPreview from '@components/EventPreview';
 import SiteIcon from '@components/SiteIcon';
 import ActivityGroupDetail from './ActivityGroupDetail';
-import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
-import Text from '@components/Text';
+import { ButtonDanger } from '@components/Button';
+import ApprovalActions from '@components/ApprovalActions';
+import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import type { ActivityEntry } from '@domain/activity/activity.ts';
 
 const CLS = {
@@ -23,7 +24,6 @@ const CLS = {
   // flex-shrink-0: never scroll away with the body -- the user must always
   // be able to decide.
   actions: 'flex flex-col gap-4 pt-6 border-t border-card-border mt-2 shrink-0',
-  actionsRow: 'flex gap-4 [&>*]:flex-1',
   nip46Pending: 'flex items-center gap-5 px-7 py-6 bg-brand-light rounded-panel text-md font-medium text-brand-hover',
   nip46Spinner: 'w-4 h-4 rounded-full border-2 border-brand-light border-t-brand animate-spin shrink-0',
 };
@@ -40,6 +40,8 @@ interface ActivityGroup {
  *  type error. */
 interface ApprovalRequest {
   id?: string;
+  followReplacementCount?: number;
+  followReplacementNewCount?: number;
   type: string;
   /** Nullable: the canonical PendingRequest has it as `string | null`, and
    *  narrowing it here made every call site a type error. */
@@ -136,6 +138,8 @@ export default function EventDetailModal({
             </div>
           )}
 
+          <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
+
           {/* Event content */}
           {request && requests && requests.length > 1 ? (
             <div className="flex flex-col gap-4">
@@ -181,23 +185,10 @@ export default function EventDetailModal({
         {/* Approval action buttons */}
         {isApproval && (
           <div className={CLS.actions}>
-            <div className={CLS.actionsRow}>
-              <ButtonSecondary small disabled={busy || !onDeny} onClick={onDeny}>
-                {t('approval.deny')}
-              </ButtonSecondary>
-              <Button small disabled={busy || !onApprove} onClick={onApprove}>
-                {t(requests && requests.length > 1 ? 'approval.approveShown' : 'approval.approveOnce')}
-              </Button>
-            </div>
-            <Text variant="muted">{t('approval.rememberHint')}</Text>
-            <div className={CLS.actionsRow}>
-              <ButtonDanger small outline disabled={busy || !onAlwaysDeny} onClick={onAlwaysDeny}>
-                {t('approval.alwaysDenyLabel', { label: title })}
-              </ButtonDanger>
-              <ButtonSecondary small outline disabled={busy || !onAlwaysAllow} onClick={onAlwaysAllow}>
-                {t('approval.alwaysAllowLabel', { label: title })}
-              </ButtonSecondary>
-            </div>
+            <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
+              onApprove={onApprove} onReject={onDeny}
+              choices={[{value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny}]}/>
+
           </div>
         )}
       </div>

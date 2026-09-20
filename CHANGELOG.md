@@ -26,6 +26,11 @@ have had.
 - Consolidate sync settings in their own screen, apply valid scoring edits immediately, and remove repeated or irrelevant result information.
 - Organize protocol documentation into `nips/pqc/` and `nips/wot/`, with browser API and scoring proposals and updated feature/security/build guidance.
 
+### Fixed
+
+- Reuse shared approval/rejection split buttons in event details, with remembered choices behind the arrows. Show follow-list danger notices on pending cards and in details before approval and include synced WoT follow history in the check.
+- Warn before signing a follow-list update that would replace known follows with zero or one contact. Require explicit confirmation even with saved approval or a remote signer; preserve intentional changes after confirmation.
+
 ### Verification
 
 - Regression coverage includes site/account isolation, permission revocation, mute handling, follow additions/removals, cancellation, storage, oracle validation and approval-menu scoping.
@@ -39,6 +44,7 @@ have had.
 - Reduce graph storage and repeated relay work with numeric references, shared public-list caching and pooled connections.
 - Improve sync progress, settings tooltips, account-copy menus and per-type Always allow/reject choices in pending approvals.
 - Add WoT API/scoring proposals and reorganize protocol documentation into PQC and WoT sections.
+- Protect known follow lists against accidental replacement with zero or one contact, with visible warnings and a separate confirmation. Reuse compact approval menus in event details and show identical warnings once.
 
 Experimental scores describe follow/mute relationships, not safety or endorsement. Live oracle-provider interoperability has not been exhaustively verified.
 

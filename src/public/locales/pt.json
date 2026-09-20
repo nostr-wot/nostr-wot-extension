@@ -997,5 +997,9 @@
   "wot.deleteCacheHint": "Delete shared public-list cache? Your saved account graphs and keys are kept. Future syncs download the lists again.",
   "approval.approveOptions": "Approval options",
   "approval.rejectOptions": "Rejection options",
-  "approval.rememberDenyHint": "Rejeitar sempre bloqueia futuras solicitações deste tipo deste site."
+  "approval.rememberDenyHint": "Rejeitar sempre bloqueia futuras solicitações deste tipo deste site.",
+  "approval.followReplacementTitle": "Perigo: substituir sua lista de seguidos?",
+  "approval.followReplacementWarning": "{origin} está tentando substituir sua última lista conhecida de {count} seguidos por {newCount} contatos. A publicação remove os seguidos ausentes da nova lista.",
+  "approval.followReplacementQuestion": "Tem certeza? Cancele para revisar a solicitação. Permitir sempre não ignora este aviso.",
+  "approval.followReplacementConfirm": "Sim, substituir meus seguidos"
 }

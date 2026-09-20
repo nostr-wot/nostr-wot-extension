@@ -196,7 +196,8 @@ it('approval group details include every event in collapsed rows with one decisi
  assert.match(html,/first pending body/);assert.match(html,/second pending body/);
  assert.equal((html.match(/data-approval-request=/g)||[]).length,2);
  assert.doesNotMatch(html,/<details[^>]*data-approval-request[^>]*open/);
- assert.equal((html.match(/approval.alwaysAllowLabel/g)||[]).length,1);
+ assert.doesNotMatch(html,/approval.alwaysAllowLabel/);
+ assert.match(html,/aria-label="approval.approveOptions"/);
 });
 
 it('remote signer groups also show every pending item without local approval actions', async () => {
@@ -213,7 +214,16 @@ it('approval details offer the same bulk action for one or many requests of one 
   const request = {id:'one',type:'signEvent',origin:'site.test',event:{kind:1,content:'Review me',tags:[]}};
   for (const requests of [undefined,[request],[request,{...request,id:'two'}]]) {
     const html=renderToStaticMarkup(createElement(EventDetailModal,{request,requests,onApprove(){},busy:true}));
-    assert.match(html,/disabled=""[^>]*>approval.alwaysAllowLabel<\/button>/);
+    assert.match(html,/aria-label="approval.approveOptions"/);
+    assert.doesNotMatch(html,/approval.alwaysAllowLabel/);
     assert.match(html, requests && requests.length > 1 ? />approval.approveShown</ : />approval.approveOnce</);
   }
 });
+
+ it('dangerous follow replacements are visible before approving in event details',async()=>{
+  const {default:EventDetailModal}=await import('../src/components/EventDetailModal');
+  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:{id:'r',type:'signEvent',origin:'site.test',followReplacementCount:20,event:{kind:3,tags:[['p','11'.repeat(32)]]}}}));
+  assert.match(html,/approval.followReplacementTitle/);
+  assert.match(html,/approval.followReplacementWarning/);
+  assert.match(html,/text-error/);
+ });

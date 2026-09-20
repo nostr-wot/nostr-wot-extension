@@ -1,4 +1,7 @@
-import ApprovalActions from './ApprovalActions';
+import FollowReplacementNotice from '@components/FollowReplacementNotice';
+import ConfirmDialog from '@components/ConfirmDialog';
+import ApprovalActions from '@components/ApprovalActions';
+import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -19,6 +22,7 @@ interface ApprovalOverlayProps {
 }
 
 export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange }: ApprovalOverlayProps) {
+  const [confirmation, setConfirmation] = useState<{ requests: PendingRequest[]; action: () => Promise<void> } | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string>('');
   const permissions = usePermissions();
@@ -50,21 +54,33 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
   // --- Group actions ---
 
-  const handleApprove = (group: ApprovalGroup) => runAction(async () => {
-    await resolveDisplayedRequests(group.requests, id => rpc('signer_resolve', { id, decision: { allow: true, remember: false } }));
+  const confirmApproval = async (requests: PendingRequest[], action: () => Promise<void>) => {
+    const risky = requests.filter(request => request.followReplacementCount);
+    if (risky.length) setConfirmation({ requests: risky, action });
+    else await runAction(action);
+  };
+
+  const approveRequests = (requests: PendingRequest[]) => resolveDisplayedRequests(requests, id => {
+    const request = requests.find(request => request.id === id);
+    return rpc('signer_resolve', { id, decision: { allow: true, remember: false,
+      ...(request?.followReplacementCount ? { confirmFollowReplacement: true } : {}),
+    } });
   });
 
-  const handleApproveShown = () => runAction(async () => {
+  const handleApprove = (group: ApprovalGroup) => confirmApproval(group.requests, async () => {
+    await approveRequests(group.requests);
+  });
+
+  const handleApproveShown = async () => {
     const shown = groups.flatMap(group => group.requests);
-    await resolveDisplayedRequests(shown, id => rpc('signer_resolve', {id,decision:{allow:true,remember:false}}));
-  });
+    await confirmApproval(shown, async () => { await approveRequests(shown); });
+  };
 
-  // Resolve first, then remember. The old order granted a standing permission
-  // and only then tried to resolve the queue, so a failure between the two left
-  // the site permanently allowed with its requests still hanging — the worst of
-  // both outcomes. This way a failure costs the user one more prompt, nothing more.
-  const handleAlwaysAllow = (group: ApprovalGroup) => runAction(async () => {
+  const handleAlwaysAllow = (group: ApprovalGroup) => confirmApproval(group.requests, async () => {
     const accountId = group.requests[0]?.accountId || active?.id || null;
+    // Confirm only the exact requests displayed. Batch approval deliberately
+    // leaves other dangerous replacements pending, including new arrivals.
+    await approveRequests(group.requests.filter(request => request.followReplacementCount));
     await rpc('signer_resolveBatch', {
       origin: group.origin,
       permKey: group.permKey,
@@ -109,7 +125,13 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
         </Container>
-        <ApprovalActions groups={groups} busy={busy} onApprove={handleApproveShown} onReject={handleRejectAll} onAlwaysAllow={handleAlwaysAllow} onAlwaysDeny={handleAlwaysDeny}/>
+        <div className="mb-6"><ApprovalActions requestCount={groups.reduce((n, group) => n + group.requests.length, 0)} busy={busy}
+          onApprove={handleApproveShown} onReject={handleRejectAll}
+          choices={groups.map(group => ({
+            value: JSON.stringify([group.requests[0]?.accountId, group.origin, group.permKey]),
+            label: formatPermissionLabel(group.permKey, group.requests[0]?.event),
+            onAlwaysAllow: () => handleAlwaysAllow(group), onAlwaysDeny: () => handleAlwaysDeny(group),
+          }))}/></div>
         <FormError className="py-3 px-6 text-center">{actionError}</FormError>
         {groups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
           <Text variant="muted" as="div" className="pt-2 px-6 pb-4 text-center">
@@ -154,6 +176,22 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           onAlwaysDeny={() => handleAlwaysDeny(selectedGroup)}
           onClose={() => setSelectedGroup(null)}
           zIndex={510}
+        />
+      )}
+
+      {confirmation && (
+        <ConfirmDialog
+          title={t('approval.followReplacementTitle')}
+          danger
+          busy={busy}
+          zIndex={600}
+          confirmLabel={t('approval.followReplacementConfirm')}
+          message={<>
+            <FollowReplacementNotice requests={confirmation.requests} showTitle={false}/>
+            <Text variant="secondary">{t('approval.followReplacementQuestion')}</Text>
+          </>}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => { const action = confirmation.action; setConfirmation(null); void runAction(action); }}
         />
       )}
 

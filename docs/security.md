@@ -533,3 +533,24 @@ automatic refresh requires separate consent and runs only for the active account
 Experimental WoT locally decrypts the active account’s private mute list when available. It does not persist or transmit the plaintext list. Score queries can reveal mute decisions indirectly; the opt-in notice discloses this. See `wot.md` for incomplete-list and oracle-path limitations.
 
 The popup-only score explanation and database inventory/management RPCs are not part of the website WoT surface. Per-type remembered approval choices reuse existing origin, permission and account/global scoping; clicking an ordinary Approve/Reject action never saves a standing rule. See [the 0.8.0 audit](audits/2026-09-20.md) and [WoT proposal privacy semantics](../nips/wot/02-scoring-and-data.md).
+
+## Follow-list replacement confirmation
+
+Before signing a kind:3 event containing zero or one unique valid `p` public keys,
+the signer checks the account's verified cached follow list and last locally signed
+list. If neither shows a larger list, it queries configured relays (defaults when
+none are configured), using the existing bounded, signature-verified relay reader.
+A previously known count greater than the proposed count requires a separate danger confirmation,
+including for saved allow permissions and NIP-46 accounts before remote dispatch.
+Batch approval never confirms these requests; confirmation is bound to individually
+displayed request IDs. Cancel leaves requests pending; Reject denies signing.
+
+The last signed kind:3 is retained per public key separately from published-event
+cache, since signing is not publication. The guard does not merge or edit tags:
+explicitly confirmed removals remain possible. This is protection against a known
+list collapsing to one, not comprehensive contact-list recovery: with no verified
+history and unavailable relays, an earlier follow count cannot be inferred. Replacement lists with more than one contact are outside this specific guard.
+
+Follow replacement checks also consult the author’s versioned public follow list in the WoT sync database, respecting newer signed changes. Event details show detected dangerous reductions before approval and reuse the shared split buttons, with Always choices behind the arrows.
+
+Empty kind:3 lists (including client-only tags) require confirmation when any previous follows are known. Warnings display both the previous and proposed counts, including zero. Tests cover local and remote accounts, ordinary/batch approval bypasses, and clearing the last follow.

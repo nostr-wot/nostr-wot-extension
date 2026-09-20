@@ -22,11 +22,14 @@ export interface PendingRequest {
   nip46InFlight?: boolean;
   accountId?: string | null;
   walletAmount?: number;
+  followReplacementCount?: number;
+  followReplacementNewCount?: number;
   timestamp: number;
 }
 
 export interface RequestDecision {
   allow: boolean;
+  confirmFollowReplacement?: boolean;
   remember?: boolean;
   rememberKind?: boolean;
   reason?: string;

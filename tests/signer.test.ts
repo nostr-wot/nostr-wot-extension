@@ -1817,3 +1817,117 @@ it('canceled bunker requests retain capacity until the underlying remote work se
   for(const complete of completions) complete('signed');
   assert.equal(await retry,'signed');
 });
+
+it('follow-list signing preserves every contact for Primal and Coracle approval paths', async () => {
+  const { validateNip07Params } = await import('../src/services/background/nip07-handlers.ts');
+  const { verifyEvent } = await import('../src/lib/crypto/nip01.ts');
+  resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale(); await setupVault();
+  const existing = Array.from({length:5000}, (_, i) => ['p', (i + 1).toString(16).padStart(64, '0'), 'wss://relay.test', `person-${i}`]);
+  const added = ['p', THEIR_PUBKEY_HEX];
+  let createdAt = 1_700_000_000;
+  for (const origin of ['https://primal.net', 'https://coracle.social']) {
+    for (const approval of ['saved', 'once', 'group'] as const) {
+      await permissions.save(origin, 'signEvent', 3, approval === 'saved' ? 'allow' : 'ask');
+      const input = {kind:3, pubkey:TEST_PUBKEY_HEX, content:'{"wss://relay.test":{"read":true,"write":true}}', tags:[...existing,added], created_at:++createdAt};
+      const params: Record<string, unknown> = {event: structuredClone(input)};
+      validateNip07Params('nip07_signEvent', params);
+      const work = signer.handleSignEvent(params.event as typeof input, origin);
+      if (approval !== 'saved') {
+        let pending = await signerApprovalQueue.getPending();
+        for (let i=0; i<100 && !pending.length; i++) {
+          await new Promise(resolve=>setTimeout(resolve,5));
+          pending = await signerApprovalQueue.getPending();
+        }
+        assert.equal(pending.length,1);
+        assert.deepEqual(pending[0].event?.tags,input.tags,'approval receives the complete follow list');
+        // Allow queue registration to finish before exercising the decision path.
+        await new Promise(resolve=>setTimeout(resolve,10));
+        if (approval === 'once') await signerApprovalQueue.resolveRequest(pending[0].id,{allow:true,remember:false});
+        else await signerApprovalQueue.resolveBatch(origin,'signEvent:3',{allow:true,remember:false});
+      }
+      const signed = await work;
+      assert.deepEqual(signed.tags,input.tags,'adding a person must retain all previous contacts');
+      assert.equal(signed.content,input.content);
+      assert.equal(await verifyEvent(signed),true);
+    }
+    // The signer must also respect an intentional removal, rather than merging old contacts.
+    await permissions.save(origin,'signEvent',3,'allow');
+    const removal = signer.handleSignEvent({kind:3,content:'',tags:[added],created_at:++createdAt},origin);
+    let pending = await signerApprovalQueue.getPending();
+    for (let i=0; i<100 && !pending.length; i++) {
+      await new Promise(resolve=>setTimeout(resolve,5));
+      pending = await signerApprovalQueue.getPending();
+    }
+    assert.equal(pending[0]?.followReplacementCount,5001);
+    await new Promise(resolve=>setTimeout(resolve,10));
+    await assert.rejects(signerApprovalQueue.resolveRequest(pending[0].id,{allow:true}),/explicit confirmation/);
+    await signerApprovalQueue.resolveBatch(origin,'signEvent:3',{allow:true,confirmFollowReplacement:true});
+    assert.equal((await signerApprovalQueue.getPending()).length,1,'batch approval cannot confirm a destructive replacement');
+    await signerApprovalQueue.resolveRequest(pending[0].id,{allow:true,confirmFollowReplacement:true});
+    const removed = await removal;
+    assert.deepEqual(removed.tags,[added]);
+  }
+});
+
+it('follow replacement guard counts unique people, verifies evidence and queries relays only for singleton lists', async () => {
+  const { followCount, followReplacementCount, rememberSignedFollowList } = await import('../src/services/signing/followListGuard.ts');
+  const { signEvent } = await import('../src/lib/crypto/nip01.ts');
+  const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+  const { relaySocket } = await import('./helpers/wot-relay.ts');
+  const { SIGNED_FOLLOW_LIST_PREFIX } = await import('../src/constants/signing.ts');
+  resetMockStorage();
+  const socket = globalThis.WebSocket;
+  const input = {kind:3,content:'',created_at:1,tags:[['p',THEIR_PUBKEY_HEX]]};
+  const previous = await signEvent({...input,tags:[...input.tags,['p',TEST_PUBKEY_HEX]]},hexToBytes(TEST_PRIVKEY_HEX));
+  try {
+    assert.equal(followCount({...input,tags:[...input.tags,['p',THEIR_PUBKEY_HEX.toUpperCase()],['p','invalid'],['e',TEST_PUBKEY_HEX]]}),1);
+    let stats = relaySocket([previous]);
+    assert.equal(await followReplacementCount({...input,kind:1},TEST_PUBKEY_HEX),undefined);
+    assert.equal(await followReplacementCount(previous,TEST_PUBKEY_HEX),undefined);
+    assert.equal(stats().calls,0);
+    assert.equal(await followReplacementCount({...input,tags:[['client','Primal Web']]},TEST_PUBKEY_HEX),2,'empty contact lists also require confirmation');
+    assert.equal(await followReplacementCount(input,TEST_PUBKEY_HEX),2,'loads the published list with WoT disabled');
+    assert.ok(stats().calls>0);
+    stats = relaySocket([],true);
+    assert.equal(await followReplacementCount(input,TEST_PUBKEY_HEX),2,'cached evidence survives an outage');
+    assert.equal(stats().calls,0);
+    resetMockStorage();
+    await rememberSignedFollowList(previous);
+    assert.equal(await followReplacementCount(input,TEST_PUBKEY_HEX),2);
+    assert.equal(await followReplacementCount(input,THEIR_PUBKEY_HEX),undefined,'another identity does not inherit follows');
+    await browserMock.storage.local.set({[SIGNED_FOLLOW_LIST_PREFIX+TEST_PUBKEY_HEX]:{...previous,sig:'00'.repeat(64)}});
+    assert.equal(await followReplacementCount(input,TEST_PUBKEY_HEX),undefined,'forged evidence is ignored');
+    await rememberSignedFollowList({...previous,sig:'00'.repeat(64)});
+    const single=await signEvent({...input,created_at:2},hexToBytes(TEST_PRIVKEY_HEX));
+    await rememberSignedFollowList(single);
+    assert.equal(await followReplacementCount({...input,tags:[]},TEST_PUBKEY_HEX),1,'clearing the last remaining follow also warns');
+    await rememberSignedFollowList(previous); // Older signed requests must not undo the newer baseline.
+    assert.equal(await followReplacementCount(input,TEST_PUBKEY_HEX),undefined,'a confirmed singleton does not keep triggering from signed evidence');
+  } finally { globalThis.WebSocket=socket; }
+});
+
+it('dangerous follow replacements can be rejected for local and remote accounts before signing', async () => {
+  const { rememberSignedFollowList } = await import('../src/services/signing/followListGuard.ts');
+  const { signEvent } = await import('../src/lib/crypto/nip01.ts');
+  const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+  for (const remote of [false,true]) for (const empty of [false,true]) {
+    resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale(); await setupVault();
+    if (remote) await browserMock.storage.local.set({accounts:[{id:'acct1',pubkey:TEST_PUBKEY_HEX,type:'nip46'}]});
+    const input={kind:3,content:'',created_at:1,tags:[['p',THEIR_PUBKEY_HEX]]};
+    await rememberSignedFollowList(await signEvent({...input,tags:[...input.tags,['p',TEST_PUBKEY_HEX]]},hexToBytes(TEST_PRIVKEY_HEX)));
+    await permissions.save('https://primal.net','signEvent',3,'allow');
+    const work=signer.handleSignEvent(empty ? {...input,tags:[['client','Primal Web']]} : input,'https://primal.net');
+    const rejected=assert.rejects(work,/User denied signing/);
+    let pending=await signerApprovalQueue.getPending();
+    for (let i=0;i<100 && !pending.length;i++) { await new Promise(resolve=>setTimeout(resolve,5)); pending=await signerApprovalQueue.getPending(); }
+    assert.equal(pending[0]?.followReplacementCount,2);
+    assert.equal(pending[0]?.followReplacementNewCount,empty ? 0 : 1);
+    await assert.rejects(signerApprovalQueue.resolveRequest(pending[0].id,{allow:true}),/explicit confirmation/);
+    await signerApprovalQueue.resolveBatch('https://primal.net','signEvent:3',{allow:true});
+    assert.equal((await signerApprovalQueue.getPending()).length,1);
+    assert.equal(pending[0]?.nip46InFlight,undefined,'remote signer is not contacted before confirmation');
+    await new Promise(resolve=>setTimeout(resolve,10));
+    await signerApprovalQueue.resolveRequest(pending[0].id,{allow:false});
+    await rejected;
+  }
+});
