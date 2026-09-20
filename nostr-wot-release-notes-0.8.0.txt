@@ -1,0 +1,10 @@
+Nostr WoT 0.8.0
+
+- Restore experimental Web of Trust as an optional menu feature, disabled by default. Connected sites with identity access can query window.nostr.wot.
+- Choose local, remote or hybrid queries, with configurable hops and limits, optional daily sync, and account-specific database management.
+- Apply account mutes to trust paths and scores. Look up an npub or hex key and see the calculation with available profile information.
+- Reduce graph storage and repeated relay work with numeric references, shared public-list caching and pooled connections.
+- Improve sync progress, settings tooltips, account-copy menus and per-type Always allow/reject choices in pending approvals.
+- Add WoT API/scoring proposals and reorganize protocol documentation into PQC and WoT sections.
+
+Experimental scores describe follow/mute relationships, not safety or endorsement. Live oracle-provider interoperability has not been exhaustively verified.

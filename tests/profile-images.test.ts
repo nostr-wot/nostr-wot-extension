@@ -139,7 +139,7 @@ it('the PQ overview leaves the decorative key icon out of the heading', () => {
 });
 
 import AccountDropdown, { AccountPickerRow } from '../src/screens/TopBar/AccountDropdown';
-import AccountCopyDialog from '../src/screens/TopBar/AccountCopyDialog';
+import AccountCopyMenu from '../src/screens/TopBar/AccountCopyMenu';
 import AccountBar from '../src/screens/TopBar/AccountBar';
 import { VaultProvider } from '../src/context/VaultContext';
 it('account picker uses a dimmed dialog and a persistent Add account footer', () => {
@@ -158,11 +158,12 @@ it('account rows show the selected account and omit edit/copy actions', () => {
   assert.match(renderToStaticMarkup(createElement(AccountPickerRow,{...props,selected:false,readOnly:true})),/aria-pressed="false"/);
 });
 it('copy remains available beside the account switcher and offers both public key formats', () => {
-  const bar=renderToStaticMarkup(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(AccountBar,{dropdownOpen:false,onToggleDropdown(){},onCopy(){}}))));
+  const bar=renderToStaticMarkup(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(AccountBar,{dropdownOpen:false,onToggleDropdown(){}}))));
   assert.match(bar,/aria-haspopup="dialog"/);
   assert.ok(bar.indexOf('aria-haspopup="dialog"') < bar.indexOf('aria-label="common.copy"'));
-  const html=renderToStaticMarkup(createElement(AccountCopyDialog,{pubkey:'11'.repeat(32),onClose(){}}));
-  assert.match(html,/>npub</); assert.match(html,/>hex</);
+  const html=renderToStaticMarkup(createElement(AccountCopyMenu,{pubkey:'11'.repeat(32)}));
+  assert.match(html,/aria-haspopup="menu"/);
+  assert.doesNotMatch(html,/role="dialog"/);
 });
 
 import { commitAccountSwitch } from '../src/context/AccountContext';
@@ -384,4 +385,60 @@ it('the shared topbar and picker label only badges remote or read-only accounts'
   assert.match(renderToStaticMarkup(createElement(AccountLabel,{name:'Alice',remote:true})), /account.remote/);
   assert.match(renderToStaticMarkup(createElement(AccountLabel,{name:'Alice',readOnly:true})), /account.readOnly/);
   assert.doesNotMatch(renderToStaticMarkup(createElement(AccountLabel,{name:'Alice'})), /account.remote|account.readOnly/);
+});
+
+it('account copy menu offers exact formats, keyboard dismissal and clipboard feedback without a dialog', async () => {
+  const { JSDOM } = await import('jsdom');
+  const { act } = await import('react');
+  const { npubEncode } = await import('../src/lib/crypto/bech32.ts');
+  const dom = new JSDOM('<div id="root"></div><button id="outside">Outside</button>');
+  const globals = new Map(['window','document','navigator','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+  const written: string[]=[];
+  let fail=false;
+  Object.defineProperties(globalThis,{
+    window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},
+    navigator:{value:{clipboard:{writeText:async(value:string)=>{if(fail)throw Error('Denied');written.push(value);}}},configurable:true},
+    IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}
+  });
+  const { createRoot } = await import('react-dom/client');
+  const root=createRoot(dom.window.document.getElementById('root')!);
+  const pubkey='11'.repeat(32);
+  const trigger=()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!;
+  const key=(value:string)=>act(async()=>{dom.window.document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:value,bubbles:true}));});
+  try {
+    await act(async()=>root.render(createElement(AccountCopyMenu,{pubkey})));
+    await act(async()=>{trigger().focus();trigger().click();});
+    assert.equal(dom.window.document.querySelector('[role="dialog"]'),null);
+    assert.deepEqual([...dom.window.document.querySelectorAll('[role="menuitem"]')].map(el=>el.textContent),['hex','npub']);
+    assert.equal(dom.window.document.activeElement!.textContent,'hex');
+    await key('ArrowDown');
+    assert.equal(dom.window.document.activeElement!.textContent,'npub');
+    await act(async()=>{(dom.window.document.activeElement as HTMLButtonElement).click();});
+    assert.deepEqual(written,[npubEncode(pubkey)]);
+    assert.equal(dom.window.document.querySelector('[role="menu"]'),null);
+    assert.equal(dom.window.document.activeElement,trigger());
+    assert.match(dom.window.document.body.textContent!,/common.copied/);
+    await act(async()=>trigger().click());
+    await act(async()=>{dom.window.document.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click();});
+    assert.deepEqual(written,[npubEncode(pubkey),pubkey]);
+    await act(async()=>trigger().click());
+    await key('Escape');
+    assert.equal(dom.window.document.querySelector('[role="menu"]'),null);
+    await act(async()=>trigger().click());
+    await act(async()=>{dom.window.document.getElementById('outside')!.dispatchEvent(new dom.window.MouseEvent('mousedown',{bubbles:true}));});
+    assert.equal(dom.window.document.querySelector('[role="menu"]'),null);
+    await act(async()=>trigger().click());
+    await act(async()=>dom.window.document.getElementById('outside')!.focus());
+    assert.equal(dom.window.document.querySelector('[role="menu"]'),null);
+    fail=true;
+    await act(async()=>trigger().click());
+    await act(async()=>{dom.window.document.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click();});
+    assert.ok(dom.window.document.querySelector('[role="menu"]'));
+    assert.match(dom.window.document.querySelector('[role="alert"]')!.textContent!,/common.error/);
+    await act(async()=>root.render(createElement(AccountCopyMenu,{key:'new',pubkey:'22'.repeat(32)})));
+    assert.equal(dom.window.document.querySelector('[role="menu"]'),null);
+  } finally {
+    await act(async()=>root.unmount());dom.window.close();
+    for(const [name,descriptor] of globals){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete (globalThis as any)[name];}
+  }
 });

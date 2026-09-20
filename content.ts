@@ -59,6 +59,7 @@ if (window.__nostrWotContentInjected) {
     const portStates: Record<string, PortState> = {
         nip07: { port: null, inflight: new Map() },
         webln: { port: null, inflight: new Map() },
+        wot: { port: null, inflight: new Map() },
     };
 
     function postResponse(responseType: string, id: string, result: unknown, error: unknown): void {
@@ -117,9 +118,30 @@ if (window.__nostrWotContentInjected) {
         }
     }
 
+    const WOT_ALLOWED_METHODS = ['getDistance','isInMyWoT','getTrustScore','getDetails','getConfig','getDistanceBatch','getTrustScoreBatch','filterByWoT','getStatus','getFollows','getCommonFollows','getStats','getPath','getRelayList','getRelayPool'];
+    async function publishWotState() {
+        const state = await browser.storage.local.get('experimentalWot');
+        window.postMessage({type:'WOT_AVAILABILITY',enabled:(state.experimentalWot as {enabled?:boolean}|undefined)?.enabled === true},window.location.origin);
+    }
+    // Both scripts start at document_start; handshake also handles either load order.
+    void publishWotState().catch(() => {});
+    browser.storage.onChanged.addListener((changes,area) => {
+        if(area === 'local' && changes.experimentalWot) void publishWotState().catch(() => {});
+    });
+
     // Bridge between page and extension
     window.addEventListener('message', async (event: MessageEvent) => {
         if (event.source !== window) return;
+
+        if(event.data?.type === 'WOT_DISCOVER') { void publishWotState().catch(() => {}); return; }
+        if(event.data?.type === 'WOT_REQUEST') {
+            const {id,method,params}=event.data;
+            if(window.location.protocol !== 'https:' && !LOCALHOST_HOSTS.includes(window.location.hostname)) {
+                postResponse('WOT_RESPONSE',id,null,'WoT requires HTTPS'); return;
+            }
+            if(!WOT_ALLOWED_METHODS.includes(method)) { postResponse('WOT_RESPONSE',id,null,'Method not allowed'); return; }
+            forwardViaPort('wot','WOT_RESPONSE',id,method,params);return;
+        }
 
         // ── NIP-07 requests ──
         if (event.data?.type === 'NIP07_REQUEST') {

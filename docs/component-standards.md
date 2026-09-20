@@ -6,13 +6,13 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **53**; the inventory below is checked against the component folders by the test suite.
+All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **54**; the inventory below is checked against the component folders by the test suite.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
 **Content** — `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
 **Feedback** — `Spinner`, `ScreenReaderStatus`.
 
@@ -464,7 +464,7 @@ Activity filters use the shared `Modal` with a dimmed backdrop, a content-sized 
 
 Activity type filters use plain operation categories without the protocol-details toggle. The pubkey tooltip explains matching the peer key and event `p` tags (including partial hexadecimal matches), distinct from selecting the signing account. Group detail keeps shared app, minute/time range, kind, account, recipient and status above a scrolling list of compact action/content/tag previews. It omits an account already selected outside and shortens displayed keys in the middle, with full values in tooltips. Differing accounts/recipients/statuses remain on their individual rows. Selecting a row opens a smaller shared Modal over a dimmed backdrop with exact time, kind-specific details and expandable JSON. Encrypted messages reuse the guarded “Reveal message” action inside that dialog; closing unmounts the plaintext.
 
-The top-bar account selector opens a shared Modal as a sibling of the positioned top bar, so its dimmed backdrop covers the entire popup. Account rows show the selected state explicitly and preserve the removal confirmation; Add account stays in the footer. Editing is reached from Home. The copy icon sits immediately after the switching chevron and opens npub/hex choices using the shared `useCopy` feedback.
+The top-bar account selector opens a shared Modal as a sibling of the positioned top bar, so its dimmed backdrop covers the entire popup. Account rows show the selected state explicitly and preserve the removal confirmation; Add account stays in the footer. Editing is reached from Home. The copy icon sits immediately after the switching chevron and opens a small anchored Hex/npub action menu using shared `IconButton`, `ButtonSecondary`, `useOutsideClick` and `useCopy` feedback. It has no modal backdrop, supports keyboard navigation and returns focus after selection or Escape.
 
 Menu subtitles share `--menu-subtitle`, the existing wizard purple at 55% opacity, through `text-menu-subtitle`. ListRow, ActionTile, account choices and the home PQ card reuse it; navigation icons use `text-brand` and `bg-brand-light`, including enabled/stale PQ states. Status dots retain semantic colors. PQ context watches only the selected account’s publication cache, retains verified evidence on failed refreshes, and clears it on account/key changes. Account switching waits for background completion before changing the UI identity.
 
@@ -583,7 +583,7 @@ unlock. Wallet operations use `vault.requireUnlocked()` to await startup auto-un
 before enforcing the real lock state. Retired vault status reads cannot overwrite
 newer state, including on a failed read; current failures remain fail-closed.
 
-Approval review always makes one-time approval primary: “Approve once” for one request and “Approve all” for multiple displayed requests. This snapshots only the displayed IDs and never saves permissions. A separate outlined “Always allow {human-readable kind}” action explains that it saves permission for future requests of that type from that site. It is available for one group or in group details; it never creates a blanket rule across mixed groups. Remembered rules retain the configured account/global scope. Remote in-flight groups have no local approval action.
+Approval review always makes one-time approval primary: “Approve once” for one request and “Approve all” for multiple displayed requests. This snapshots only the displayed IDs and never saves permissions. The top of the sheet contains compact Approve and Reject split buttons. Each arrow menu matches its button’s width and lists a remembered action for each pending request type. Their arrows open shared `ActionMenu` menus for “Always allow {human-readable kind}” and “Always reject {human-readable kind}”; these save future permissions for that site and type. The main Reject action only rejects displayed requests. Each menu choice targets only its selected group; it never creates a blanket rule across mixed groups. Remembered rules retain the configured account/global scope. Remote in-flight groups have no local approval action.
 
 Wallet account changes reset only a keyed, nonvisual resource controller. The context provider and popup children stay mounted so a saved sub-account can advance the wizard. Account snapshots are scoped by ID to prevent displaying the previous account’s wallet.
 
@@ -620,3 +620,40 @@ The top bar and account picker share `accountDisplay` for profile names (includi
 `display_name`), pictures and npub fallback. Remote accounts use profile identity
 rather than their connection label and share a non-interactive `remote` badge
 through `AccountLabel`; badge markup must not nest a button inside a selector.
+
+Experimental WoT settings are menu-only and reuse Container, Toggle, Select,
+Input, Button, FieldDisplay, StatusNotice and FormError. Account changes remount
+only the settings form; useAsyncResource and useStorageWatch refresh its snapshot.
+
+Experimental WoT settings reuse `Card`, icon-card `Tabs`, `ChipGroup` and `Modal`. The entry notice stores its optional dismissal separately from feature consent; dismissing a notice never enables the API.
+
+
+Experimental WoT splits information, scoring, sync progress and database inventory
+into focused settings panels using shared Modal, Card, Input, Toggle and button
+components. Progress uses a polite status region. Draft settings reset only when
+saved settings change, not when a background progress update returns a new object.
+
+The WoT main screen keeps automatic syncing and progress in one card. Mode, hops,
+limits, databases, explanations and sync/resync/clear actions live in a dedicated
+`OverlayPanel` screen with a scrolling body and pinned Save action. Scoring has
+an npub/hex lookup card with a shared settings `IconButton` at the top right,
+opening a smaller `Modal`. Sync settings use a draft/save flow, including the automatic-sync switch; dismissal
+discards unsaved edits. Scoring uses a single-title modal and applies valid edits
+automatically, without a Save footer. Lookup uses shared
+public-key validation, RPC scoring and `useAsyncResource` for loading, retry and
+stale-response protection.
+
+`Input` accepts an optional `hint` rendered by the existing focusable `InfoTooltip`
+next to its associated label. WoT configuration uses these hints instead of
+repeating explanatory paragraphs. The sync screen uses the existing page-gradient
+background token, matching the other settings surfaces.
+
+`InfoTooltip` owns its interaction and positioning everywhere it is reused. It
+opens on hover, focus, click, Enter or Space; clicking again, Escape, blur,
+outside clicks or container scrolling dismiss it. Its native manual-popover
+bubble renders in the browser top layer, outside ancestor overflow clipping, and
+clamps/flips within the viewport. It reuses `useOutsideClick` and `IconInfo`.
+The trigger remains a span with button semantics because some callers place it
+inside an existing row button; activation does not trigger that parent action.
+
+Split actions use Button’s `segment="start"` / `segment="end"` presets for joined corners and a divider, with `ActionMenu` for the secondary choices. Callers keep only layout classes.

@@ -6,6 +6,42 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.0 — 2026-09-20
+
+### Added
+
+- Restore experimental `window.nostr.wot` through menu-only opt-in, disabled by default, behind existing website connection and identity permissions.
+- Support local, remote and hybrid queries with the MappingBitcoin oracle as the configurable default endpoint.
+- Add manual and opt-in daily graph sync, configurable hops and unlimited-by-default relationship, author and follows-per-profile limits.
+- Apply account mutes to paths and scores, with explicit private-mute availability states and configurable distance weights/path bonuses.
+- Add npub/hex score lookup with profile information and a popup explaining only the calculation, including signed color-coded contributions.
+- Add account database and shared-cache inventory, storage estimates, status dots, per-hop progress and confirmed delete/resync actions.
+
+### Improved
+
+- Store graphs with numeric identity references in IndexedDB; reuse traversal indexes, verified public lists and pooled relay connections.
+- Deduplicate repeated profiles and prevent overlapping automatic or manual syncs, including the final progress-write phase.
+- Keep pending approval buttons at the top with compact per-type Always allow/reject menus; one-time actions do not save permissions.
+- Replace the account-copy dialog with an anchored Hex/npub menu and repair shared settings tooltips in scrolling panels.
+- Consolidate sync settings in their own screen, apply valid scoring edits immediately, and remove repeated or irrelevant result information.
+- Organize protocol documentation into `nips/pqc/` and `nips/wot/`, with browser API and scoring proposals and updated feature/security/build guidance.
+
+### Verification
+
+- Regression coverage includes site/account isolation, permission revocation, mute handling, follow additions/removals, cancellation, storage, oracle validation and approval-menu scoping.
+- See [release audit](docs/audits/2026-09-20.md) for verification scope and remaining native/provider limitations.
+
+### Store release notes
+
+- Restore experimental Web of Trust as an optional menu feature, disabled by default. Connected sites with identity access can query window.nostr.wot.
+- Choose local, remote or hybrid queries, with configurable hops and limits, optional daily sync, and account-specific database management.
+- Apply account mutes to trust paths and scores. Look up an npub or hex key and see the calculation with available profile information.
+- Reduce graph storage and repeated relay work with numeric references, shared public-list caching and pooled connections.
+- Improve sync progress, settings tooltips, account-copy menus and per-type Always allow/reject choices in pending approvals.
+- Add WoT API/scoring proposals and reorganize protocol documentation into PQC and WoT sections.
+
+Experimental scores describe follow/mute relationships, not safety or endorsement. Live oracle-provider interoperability has not been exhaustively verified.
+
 ## 0.7.2 — 2026-09-19
 
 - Show Nostr Connect accounts with their profile name and image, or a shortened npub fallback, in the top bar and account selector.
@@ -13,6 +49,7 @@ have had.
 - Support profile `display_name` consistently and add regression tests.
 
 ## 0.7.1 — 2026-09-19
+
 
 ### Fixed
 

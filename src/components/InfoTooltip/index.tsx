@@ -1,34 +1,63 @@
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import IconInfo from '@assets/IconInfo.tsx';
+import useOutsideClick from '@hooks/useOutsideClick.ts';
 
 interface InfoTooltipProps {
   text: string;
   size?: number;
 }
 
-// `group-hover`/`group-focus`/`group-focus-within` replace the old
-// `.wrap:hover .bubble` descendant rules — Tailwind's own mechanism for
-// "reveal this on the parent's state", no custom selector needed.
-const WRAP = 'relative inline-flex items-center cursor-help text-muted ml-2 align-middle outline-none group';
-const BUBBLE =
-  // bg-page-solid, not bg-card: the old rule read the opaque --bg-card alias
-  // (--bg-page-solid), and --card-bg (what bg-card maps to) is a translucent
-  // brand tint — the wrong one would have made the bubble see-through again,
-  // the exact failure mode theme.css's own comment on --bg-card warns about.
-  'hidden absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 bg-page-solid border border-card-border ' +
-  'rounded-sm px-5 py-3 text-xs font-normal text-body leading-normal w-max max-w-[240px] whitespace-normal ' +
-  'text-left z-raised shadow-[0_2px_8px_rgba(0,0,0,0.12)] pointer-events-none ' +
-  'group-hover:block group-focus:block group-focus-within:block';
+const WRAP = 'inline-flex items-center cursor-help text-muted ml-2 align-middle outline-none focus-visible:shadow-focus';
+const BUBBLE = 'fixed m-0 bg-page-solid border border-card-border rounded-sm px-5 py-3 ' +
+  'text-xs font-normal text-body leading-normal whitespace-normal text-left overflow-y-auto ' +
+  'shadow-[0_2px_8px_rgba(0,0,0,0.12)]';
 
-/**
- * Small "(i)" icon that reveals an explanatory bubble on hover or keyboard
- * focus. Reusable across the popup wherever a control needs a short "what is
- * this?" hint.
- */
+/** Shared help bubble. The native popover layer escapes scrolling/stacking containers. */
 export default function InfoTooltip({ text, size = 13 }: InfoTooltipProps) {
-  return (
-    <span className={WRAP} tabIndex={0} role="note" aria-label={text}>
-      <IconInfo size={size} />
-      <span className={BUBBLE}>{text}</span>
-    </span>
-  );
+  const id = useId();
+  const trigger = useRef<HTMLSpanElement>(null);
+  const bubble = useRef<HTMLSpanElement>(null);
+  const pinned = useRef(false);
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => { pinned.current = false; setOpen(false); }, []);
+  useOutsideClick(trigger, close, open);
+
+  useLayoutEffect(() => {
+    const tip = bubble.current;
+    if (!open || !tip || !trigger.current) return;
+    tip.showPopover();
+    function position() {
+      const anchor = trigger.current!.getBoundingClientRect();
+      const width = Math.min(240, window.innerWidth - 16);
+      tip!.style.width = `${width}px`;
+      tip!.style.maxHeight = `${window.innerHeight - 16}px`;
+      const height = tip!.getBoundingClientRect().height;
+      tip!.style.left = `${Math.max(8, Math.min(anchor.left + anchor.width / 2 - width / 2, window.innerWidth - width - 8))}px`;
+      const top = anchor.top - height - 6 >= 8 ? anchor.top - height - 6 : anchor.bottom + 6;
+      tip!.style.top = `${Math.max(8, Math.min(top, window.innerHeight - height - 8))}px`;
+    }
+    position();
+    window.addEventListener('resize', position);
+    const onScroll = (event: Event) => { if (!tip.contains(event.target as Node)) close(); };
+    document.addEventListener('scroll', onScroll, true);
+    return () => {
+      tip.hidePopover();
+      window.removeEventListener('resize', position);
+      document.removeEventListener('scroll', onScroll, true);
+    };
+  }, [open, text, close]);
+
+  return <span ref={trigger} className={WRAP} tabIndex={0} role="button" aria-label={text}
+    aria-expanded={open} aria-controls={id} aria-describedby={open ? id : undefined}
+    onMouseEnter={() => setOpen(true)}
+    onMouseLeave={() => { if (!pinned.current && document.activeElement !== trigger.current) setOpen(false); }}
+    onFocus={() => setOpen(true)} onBlur={close}
+    onClick={event => { event.preventDefault(); event.stopPropagation(); pinned.current = !pinned.current; setOpen(pinned.current); }}
+    onKeyDown={event => {
+      if (event.key === 'Escape') { event.stopPropagation(); close(); }
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); pinned.current = !pinned.current; setOpen(pinned.current); }
+    }}>
+    <IconInfo size={size}/>
+    <span ref={bubble} id={id} role="tooltip" popover="manual" className={BUBBLE} style={{ inset: 'auto', boxSizing: 'border-box' }}>{text}</span>
+  </span>;
 }

@@ -87,13 +87,17 @@ Tests use Node.js native `node:test` module with browser API mocks in `tests/hel
 ### 1. Fork and Branch
 
 ```bash
-git checkout -b feature/my-change
+git checkout -b feat/my-change
 ```
 
 Use these branch name prefixes:
-- `feature/` — new functionality
+- `feat/` — new functionality
 - `fix/` — bug fixes
 - `docs/` — documentation
+
+Use short, descriptive kebab-case branch names. Follow the existing plain-language
+commit subjects: describe the change directly, without agent names or co-author
+attributions.
 
 ### 2. Make Changes
 

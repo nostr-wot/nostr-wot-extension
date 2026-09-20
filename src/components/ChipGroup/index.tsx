@@ -7,15 +7,17 @@ interface ChipGroupProps<T extends string | number> {
   value: T;
   onChange: (value: T) => void;
   className?: string;
+  disabled?: boolean;
 }
 
-export default function ChipGroup<T extends string | number>({ options, value, onChange, className = '' }: ChipGroupProps<T>) {
+export default function ChipGroup<T extends string | number>({ options, value, onChange, disabled = false, className = '' }: ChipGroupProps<T>) {
   return (
     <div className={cn('flex gap-3 flex-wrap', className)}>
       {options.map((opt) => (
         <Chip
           key={String(opt.value)}
           selected={value === opt.value}
+          disabled={disabled}
           onClick={() => onChange(opt.value)}
         >
           {opt.label}

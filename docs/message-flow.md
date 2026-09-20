@@ -49,11 +49,10 @@ This allows `background.ts` to distinguish page-origin WebLN calls from internal
 
 ## 3. Rate Limiting
 
-There is no request rate limiting. The only rate-limited methods were the
-removed trust-graph computations (page-facing relay-query channel + background
-`checkRateLimit`), all of which have been deleted. NIP-07 and WebLN methods are
-gated by the user-facing permission system (per-domain connect + per-method
-approval prompts) instead.
+Page requests share per-origin and global in-flight limits. NIP-07 and WebLN
+also use their permission flows. Experimental WoT requests use the same resource
+budget plus bounded batches, cached oracle queries and manual or explicitly enabled automatic local sync.
+
 
 ---
 
@@ -192,7 +191,7 @@ gate so an origin cannot use it to probe the account type. `tests/signer-pq-refu
 covers this, including that classic NIP-44 still routes to the bunker untouched.
 
 The full wire formats and the reasoning behind them are written up as draft
-specifications in [`nips/`](../nips/README.md).
+specifications in [`nips/`](../nips/pqc/README.md).
 
 ## 6. Channel Isolation
 
@@ -353,3 +352,33 @@ account cannot revive the earlier request. Payment permission reads/writes and t
 threshold all use the captured account, including account-specific deny rules.
 
 Wallet snapshots are read through the internal `wallet_readDisplayCache` RPC. Only background code decrypts the cache; while locked, it returns provider presence without financial fields. Activity reads require unlock. See [private-cache.md](private-cache.md).
+
+
+## Experimental WoT channel (0.8.0)
+
+`WOT_REQUEST` / `WOT_RESPONSE` uses the same persistent-port bridge as NIP-07,
+with an explicit method allowlist and `wot_` prefix. Background listeners derive
+the origin from the browser sender and enforce HTTPS, feature opt-in, site
+connection and identity consent. `experimentalWot_*` configuration/sync RPCs are
+privileged and cannot cross the page port. A storage-driven availability message
+adds/removes `window.nostr.wot`; spoofing that page notification cannot grant
+background access. See [WoT](wot.md).
+
+The privileged `experimentalWot_getTrustScore` RPC serves the menu's public-key
+lookup through `queryWot('getTrustScore', ...)`, preserving opt-in, account context,
+saved query mode and mute/scoring rules. It does not route through website approval
+because its callers are trusted extension pages. Page access remains unchanged.
+
+The popup-only `experimentalWot_getScoreExplanation` RPC reuses the WoT query
+context, traversal and final account/settings/mute revision checks. Its mute
+counts and local snapshot diagnostics are not part of the page API; the website
+handler explicitly rejects `wot_getScoreExplanation`.
+
+Internal WoT sync/clear handlers accept an optional accountId to operate on a
+database row without changing the active identity. Sync resolves it against
+saved accounts, retaining generation-based cancellation. Clear removes only
+the prefixed WoT snapshot. The internal clearCache RPC removes the public-list
+store independently of account snapshots. Neither delete operation runs during
+an active crawl.
+
+The proposed public contract is documented in [nips/wot](../nips/wot/README.md). Pending approvals expose per-group remembered actions in compact menus; choosing one resolves and saves only that origin/permission group, preserving the existing account/global scope.

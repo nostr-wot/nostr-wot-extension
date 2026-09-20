@@ -14,6 +14,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
    */
   outline?: boolean;
   small?: boolean;
+  /** Joined halves of a split action; appearance stays owned by Button. */
+  segment?: 'start' | 'end';
   className?: string;
   children?: React.ReactNode;
 }
@@ -52,6 +54,7 @@ export function Button({
   variant = 'primary',
   outline = false,
   small = false,
+  segment,
   className = '',
   children,
   ...rest
@@ -60,6 +63,8 @@ export function Button({
     BASE,
     SIZE[small ? 'small' : 'default'],
     outline ? OUTLINE[variant] : ['border-0', FILLED[variant]],
+    segment === 'start' && 'rounded-r-none',
+    segment === 'end' && 'rounded-l-none border-l border-l-current/20',
     className,
   );
 

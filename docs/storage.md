@@ -1,15 +1,11 @@
 # Storage Layer
 
-The extension persists state through `browser.storage` (the WebExtension storage
-API), not a custom database. There is **no IndexedDB layer** anymore — the
-former `lib/storage.ts` (an IndexedDB follow-graph / relay-list engine left over
-from the removed Web-of-Trust subsystem) has been deleted. It held no live data:
-nothing wrote to it after the trust-graph sync was removed.
-
-Persisted state lives in three places:
+The extension stores vaults, settings and account metadata through `browser.storage`. Experimental WoT uses a dedicated IndexedDB database, `nostr-wot-graphs-v1`, for public graph snapshots and shared verified follow/relay lists. The retired legacy graph engine is not reused.
 
 | Area | Backing store | Notes |
 |------|---------------|-------|
+| Experimental WoT graph snapshots and public-list cache | IndexedDB | Packed numeric references; separate snapshot and shared-list stores |
+| Experimental WoT settings, progress, inventory and snapshot summary pointers | `browser.storage.local` | Account-scoped graph pointers; small metadata only |
 | Encrypted vault (keys, mnemonics, imported post-quantum keys, wallet configs) | `browser.storage.local` (`keyVault`) | AES-256-GCM + PBKDF2, see [Security](security.md) |
 | Config (`myPubkey`, `relays`) | `browser.storage.sync` | Synced across the user's browsers |
 | Accounts list, active account, domain allowlists, profile cache | `browser.storage.local` | Plaintext metadata (no secrets) |
@@ -55,3 +51,9 @@ type WalletConfig =
 | `walletThreshold_{accountId}` | `number` (sats) | Per-account payment auto-approve threshold. Payments at or below this amount skip the approval prompt. Default: `0` (all payments require approval). |
 
 Managed by privileged methods `wallet_setAutoApproveThreshold` and `wallet_getAutoApproveThreshold`.
+
+## Experimental WoT snapshots
+
+`src/services/wot/snapshots.ts` commits the large payload before publishing its summary pointer and serializes mutations. Failed writes retain the prior completed snapshot; abandoned generations are cleaned up. Legacy experimental local-storage snapshots migrate when read. Account identity must match the snapshot root before queries use it.
+
+The settings database table exposes estimated payload sizes and resync/delete actions per account. Deleting the shared public-list cache preserves snapshots; deleting a snapshot preserves identity keys and accounts. Removal is blocked while sync is running. Disabling WoT preserves stored graphs. Private decrypted mute entries are not saved in either graph store. See [WoT storage and sync](wot.md).

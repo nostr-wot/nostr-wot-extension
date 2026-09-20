@@ -19,7 +19,7 @@ import { nip44Decrypt, getConversationKey } from '@lib/crypto/nip44.ts';
  * advertises what this signer accepts, not what the selected account can do, so a caller
  * that correctly detected `pq` support can still land here — and the only way it can tell
  * the user what to change is if we say which of the four it hit. See
- * `nips/04-nip07-encryption-capability.md`.
+ * `nips/pqc/04-nip07-encryption-capability.md`.
  *
  * These strings reach the page, so they disclose the shape of the active account. That is
  * a deliberate and narrow trade: it happens only after the user has approved an encryption

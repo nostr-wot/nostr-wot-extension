@@ -520,3 +520,16 @@ to restore the keys in Settings after creating/importing the classical account;
 it cannot create a Nostr identity. A nested ncryptsec prompts for its own password.
 The wizard clears imported text and the password after successful validation and
 ignores retired async results after unmount.
+
+### Experimental WoT (0.8.0)
+
+WoT is opt-in and off by default, including upgrades. Queries require existing
+site/identity consent and obey page-request budgets. Only menu RPCs configure
+or sync it. Oracle settings disclose public-key transmission; HTTPS, no redirects,
+no cookies, bounded bodies and timeouts apply. Account/settings changes and site
+revocation prevent stale results. Public graph snapshots are account-scoped;
+automatic refresh requires separate consent and runs only for the active account. See [WoT](wot.md) for limits and storage behavior.
+
+Experimental WoT locally decrypts the active account’s private mute list when available. It does not persist or transmit the plaintext list. Score queries can reveal mute decisions indirectly; the opt-in notice discloses this. See `wot.md` for incomplete-list and oracle-path limitations.
+
+The popup-only score explanation and database inventory/management RPCs are not part of the website WoT surface. Per-type remembered approval choices reuse existing origin, permission and account/global scoping; clicking an ordinary Approve/Reject action never saves a standing rule. See [the 0.8.0 audit](audits/2026-09-20.md) and [WoT proposal privacy semantics](../nips/wot/02-scoring-and-data.md).

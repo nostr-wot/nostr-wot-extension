@@ -1,4 +1,5 @@
 import { NIP07_SIGNING_METHODS, MAX_IN_FLIGHT_PER_ORIGIN, MAX_IN_FLIGHT_GLOBAL } from '@constants/signing.ts';
+import { installWotAutoSync } from './src/services/wot/automatic.ts';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 
 import browser from './src/lib/browser.ts';
@@ -36,10 +37,12 @@ import { handlers as nip07Handlers, validateNip07Params } from './src/services/b
 import { handlers as onboardingHandlers, cleanupExpiredPendingOnboarding } from './src/services/background/onboarding-handlers.ts';
 import { handlers as pqcHandlers } from './src/services/background/pqc-handlers.ts';
 
+import { handlers as wotHandlers, handleWotRequest } from './src/services/background/wot-handlers.ts';
+
 // ── Assemble handler map ──
 
 const allHandlers = new Map<string, HandlerFn>();
-const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers];
+const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers, wotHandlers];
 for (const group of handlerGroups) {
     for (const [method, fn] of group) {
         if (allHandlers.has(method)) {
@@ -56,7 +59,7 @@ allHandlers.set('configUpdated', async () => {
 });
 
 // Auto-derive PRIVILEGED_METHODS from all handler maps (no manual allowlist needed)
-const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers];
+const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers, wotHandlers];
 setPrivilegedMethods(buildPrivilegedMethods(...privilegedHandlerGroups));
 // Also add configUpdated and other locally-defined handlers
 PRIVILEGED_METHODS.add('configUpdated');
@@ -100,6 +103,7 @@ async function handleRequest(
     { method, params }: { method: string; params: Record<string, unknown> },
     requestingTabId?: number,
 ): Promise<unknown> {
+    if (method.startsWith('wot_')) return handleWotRequest(method, params);
     // NIP-07: validate params and gate behind domain allowlist
     if (method.startsWith('nip07_')) {
         validateNip07Params(method, params);
@@ -195,7 +199,7 @@ async function handleRequest(
 const pageRequestsByOrigin = new Map<string, number>();
 let pageRequestCount = 0;
 async function handlePageRequest(request: {method: string; params: Record<string, unknown>}, tabId?: number): Promise<unknown> {
-    if (!request.method?.startsWith('nip07_') && !request.method?.startsWith('webln_')) return handleRequest(request, tabId);
+    if (!request.method?.startsWith('nip07_') && !request.method?.startsWith('webln_') && !request.method?.startsWith('wot_')) return handleRequest(request, tabId);
     const origin = request.params?.origin as string;
     const count = pageRequestsByOrigin.get(origin) || 0;
     if (count >= MAX_IN_FLIGHT_PER_ORIGIN || pageRequestCount >= MAX_IN_FLIGHT_GLOBAL) throw new Error('Too many in-flight requests');
@@ -227,7 +231,7 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
     }
 
     // Defense-in-depth: derive NIP-07 origin from browser-verified sender info
-    if (method?.startsWith('nip07_') || method?.startsWith('webln_')) {
+    if (method?.startsWith('nip07_') || method?.startsWith('webln_') || method?.startsWith('wot_')) {
         const originUrl = sender.url || (sender.frameId === 0 ? sender.tab?.url : undefined);
         if (!originUrl) {
             sendResponse({ error: 'Cannot determine request origin' });
@@ -258,7 +262,7 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
 
 // Port-based handler for NIP-07 and WebLN requests from content scripts
 browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
-    if (port.name !== 'nip07' && port.name !== 'webln') return;
+    if (port.name !== 'nip07' && port.name !== 'webln' && port.name !== 'wot') return;
 
     port.onDisconnect.addListener(() => forgetTabOrigin(port.sender?.tab?.id));
 
@@ -270,13 +274,13 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
         // Privileged methods (vault_/signer_/wallet_/...) are for internal
         // extension pages via onMessage only — mirror that gate here so the
         // port can never reach them even if content.ts regresses.
-        if (!method?.startsWith('nip07_') && !method?.startsWith('webln_')) {
+        if (!method?.startsWith('nip07_') && !method?.startsWith('webln_') && !method?.startsWith('wot_')) {
             try { port.postMessage({ id: request.id, error: 'Permission denied' }); } catch {}
             return;
         }
 
         // Defense-in-depth: derive origin from browser-verified sender info
-        if (method?.startsWith('nip07_') || method?.startsWith('webln_')) {
+        if (method?.startsWith('nip07_') || method?.startsWith('webln_') || method?.startsWith('wot_')) {
             const originUrl = port.sender?.url || (port.sender?.frameId === 0 ? port.sender?.tab?.url : undefined);
             if (!originUrl) {
                 try { port.postMessage({ id: request.id, error: 'Cannot determine request origin' }); } catch {}
@@ -393,3 +397,5 @@ void vault.beginStartupUnlock(async () => {
 
 // Remove the temporary diagnostic record retained by development builds.
 void browser.storage.session.remove('accountSwitchTrace').catch(() => {});
+
+installWotAutoSync();

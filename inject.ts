@@ -7,6 +7,8 @@
  * @see https://github.com/nostr-protocol/nips/blob/master/07.md — NIP-07: window.nostr capability for web browsers
  */
 
+import type { WotApi } from './src/domain/wot/types.ts';
+
 export {}; // make this a module for declare global
 
 // Replaced by Vite from src/constants/signing.ts; never browser globals.
@@ -71,6 +73,7 @@ interface WebLNProvider {
 }
 
 interface NostrProvider {
+    wot?: WotApi;
     getPublicKey: () => Promise<string>;
     signEvent: (event: Record<string, unknown>) => Promise<SignedEvent>;
     getRelays: () => Promise<Record<string, { read: boolean; write: boolean }>>;
@@ -129,6 +132,7 @@ declare global {
         return { call, handleResponse };
     }
 
+    const wot = createChannel('WOT_REQUEST', 'WOT_RESPONSE', __NIP07_CALL_TIMEOUT_MS__);
     const nip07 = createChannel('NIP07_REQUEST', 'NIP07_RESPONSE', __NIP07_CALL_TIMEOUT_MS__);
     const webln = createChannel('WEBLN_REQUEST', 'WEBLN_RESPONSE', __WEBLN_CALL_TIMEOUT_MS__);
 
@@ -137,6 +141,13 @@ declare global {
         if (event.source !== window) return;
 
         // Route responses to the correct channel
+        if(event.data?.type === 'WOT_AVAILABILITY') {
+            if(event.data.enabled === true) window.nostr.wot = wotApi;
+            else if(window.nostr.wot === wotApi) delete window.nostr.wot;
+            window.dispatchEvent(new CustomEvent('nostr:wotChanged',{detail:{enabled:event.data.enabled === true}}));
+            return;
+        }
+        wot.handleResponse(event);
         nip07.handleResponse(event);
         webln.handleResponse(event);
 
@@ -152,6 +163,25 @@ declare global {
     // ── Expose APIs ──
 
     window.nostr = window.nostr || {} as NostrProvider;
+
+    const wotApi: WotApi = {
+        getDistance: target => wot.call('getDistance',{target}) as Promise<number|null>,
+        isInMyWoT: (target,maxHops) => wot.call('isInMyWoT',{target,maxHops}) as Promise<boolean>,
+        getTrustScore: target => wot.call('getTrustScore',{target}) as Promise<number|null>,
+        getDetails: target => wot.call('getDetails',{target}) as ReturnType<WotApi['getDetails']>,
+        getConfig: () => wot.call('getConfig',{}),
+        getDistanceBatch: (targets,options) => wot.call('getDistanceBatch',{targets,...(typeof options==='boolean'?{includePaths:options}:options||{})}),
+        getTrustScoreBatch: targets => wot.call('getTrustScoreBatch',{targets}) as Promise<Record<string,number|null>>,
+        filterByWoT: (pubkeys,maxHops) => wot.call('filterByWoT',{pubkeys,maxHops}) as Promise<string[]>,
+        getStatus: () => wot.call('getStatus',{}),
+        getFollows: pubkey => wot.call('getFollows',{pubkey}) as Promise<string[]>,
+        getCommonFollows: pubkey => wot.call('getCommonFollows',{pubkey}) as Promise<string[]>,
+        getStats: () => wot.call('getStats',{}),
+        getPath: target => wot.call('getPath',{target}) as Promise<string[]|null>,
+        getRelayList: pubkey => wot.call('getRelayList',{pubkey}),
+        getRelayPool: () => wot.call('getRelayPool',{}),
+    };
+    window.postMessage({type:'WOT_DISCOVER'},window.location.origin);
 
     // NIP-07 signer methods
     window.nostr.getPublicKey = () => nip07.call('getPublicKey', {}) as Promise<string>;

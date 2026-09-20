@@ -1,4 +1,4 @@
-import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
+import ApprovalActions from './ApprovalActions';
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -9,7 +9,6 @@ import useApprovalQueue from '@hooks/useApprovalQueue.ts';
 import EventDetailModal from '@components/EventDetailModal';
 import { usePermissions } from '@context/PermissionsContext';
 import { useAccount } from '@context/AccountContext';
-import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
 import Container from '@components/Container';
 import Text from '@components/Text';
 import FormError from '@components/FormError';
@@ -109,27 +108,8 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
               of the four variants. */}
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
-          <Container variant="row" gap={3} className="ml-auto">
-            {groups.length > 0 && (
-              <Button small disabled={busy} onClick={handleApproveShown}>
-                {t(groups.length === 1 && groups[0].requests.length === 1 ? 'approval.approveOnce' : 'approval.approveShown')}
-              </Button>
-            )}
-            {groups.length > 0 && (
-              <ButtonDanger small outline disabled={busy} onClick={handleRejectAll}>
-                {t('approval.rejectAll')}
-              </ButtonDanger>
-            )}
-          </Container>
         </Container>
-        {groups.length === 1 && (
-          <Container gap={3} className="mb-4">
-            <ButtonSecondary small outline disabled={busy} onClick={() => handleAlwaysAllow(groups[0])}>
-              {t('approval.alwaysAllowLabel', { label: formatPermissionLabel(groups[0].permKey, groups[0].requests[0]?.event ?? undefined) })}
-            </ButtonSecondary>
-            <Text variant="muted">{t('approval.rememberHint')}</Text>
-          </Container>
-        )}
+        <ApprovalActions groups={groups} busy={busy} onApprove={handleApproveShown} onReject={handleRejectAll} onAlwaysAllow={handleAlwaysAllow} onAlwaysDeny={handleAlwaysDeny}/>
         <FormError className="py-3 px-6 text-center">{actionError}</FormError>
         {groups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
           <Text variant="muted" as="div" className="pt-2 px-6 pb-4 text-center">

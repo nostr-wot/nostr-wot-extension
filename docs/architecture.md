@@ -9,7 +9,9 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides:
 
 The popup also lets the user edit their kind:0 profile, manage their own NIP-51 `kind:10000` mute list, and edit their NIP-65 read/write relay list.
 
-> **Removed:** the Web-of-Trust trust-graph subsystem -- remote oracles, follow-graph sync, trust scoring, page-injected trust badges, the `window.nostr.wot` page API, and the IndexedDB storage engine (`lib/storage.ts`) that backed them -- no longer exists.
+> **0.8.0 experimental:** `window.nostr.wot` is restored behind menu-only opt-in,
+> with local, remote-oracle and hybrid queries. It is off by default. See [WoT](wot.md).
+> A new IndexedDB snapshot service stores compact graphs; page badges remain removed. Automatic refresh is separately opt-in.
 
 The extension targets Chrome and Firefox, using a service worker on Chrome and a background script on Firefox (declared side by side in `manifest.json`).
 

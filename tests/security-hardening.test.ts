@@ -75,9 +75,10 @@ describe('security: NIP-04 error normalization', () => {
 
     const encrypted = await nip04Encrypt('hello', privkey, theirPubkey);
 
-    // Corrupt the ciphertext by changing the base64 data
+    // A non-block-sized ciphertext deterministically fails CBC decryption.
+    // Random corruption can accidentally produce valid padding (CBC is unauthenticated).
     const [ctBase64, ivPart] = encrypted.split('?iv=');
-    const corrupted = 'AAAA' + ctBase64.slice(4) + '?iv=' + ivPart;
+    const corrupted = Buffer.from(Buffer.from(ctBase64, 'base64').subarray(1)).toString('base64') + '?iv=' + ivPart;
 
     try {
       await nip04Decrypt(corrupted, theirPrivkey, getPublicKey(privkey));

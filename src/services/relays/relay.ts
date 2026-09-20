@@ -20,6 +20,15 @@ export function isReplaceable(kind: number): boolean {
     (kind >= 30000 && kind <= 39999);
 }
 
+/** NIP-01 replacement ordering, shared by transport and graph ingestion. */
+export function isNewerReplaceable(
+  candidate: Pick<SignedEvent, 'created_at' | 'id'>,
+  current: Pick<SignedEvent, 'created_at' | 'id'>,
+): boolean {
+  return candidate.created_at > current.created_at ||
+    (candidate.created_at === current.created_at && candidate.id < current.id);
+}
+
 export function replaceableKey(kind: number, pubkey: string): string {
   return `nostr_r_${kind}_${pubkey}`;
 }
@@ -100,10 +109,14 @@ export async function* liveQuery(
   options: LiveQueryOptions = {},
 ): AsyncGenerator<LiveEvent> {
   const seenIds = new Set<string>();
+  // Exact serialized signed payload, never an untrusted claimed ID. Keep only
+  // in-flight work; accepted IDs provide the bounded-by-results dedup thereafter.
+  const verifying = new Map<string, Promise<boolean>>();
+  let stopped = false;
+  const cleanup: (() => void)[] = [];
   const bestReplaceable = new Map<string, { event: SignedEvent; emittedId: string }>();
   let eoseCount = 0;
   const totalRelays = relays.length;
-  const sockets: WebSocket[] = [];
   const queue = createAsyncQueue<LiveEvent | { type: '_done' }>();
   const createSocket = options._createSocket || ((url: string) => new WebSocket(url));
 
@@ -115,14 +128,23 @@ export async function* liveQuery(
 
   async function processEvent(event: SignedEvent, relay: string) {
     // Dedup by event ID
-    if (seenIds.has(event.id)) return;
+    if (stopped || seenIds.has(event.id)) return;
 
     // Drop forged events: relays are untrusted, so every inbound event must
     // pass schnorr signature + id verification before it is accepted,
     // yielded, or cached. Verify BEFORE marking the id as seen so a forged
     // event can't shadow a later legitimate one with the same id.
-    if (!(await verifyEvent(event))) return;
-
+    const payload = JSON.stringify([event.id, event.sig, event.pubkey,
+      event.created_at, event.kind, event.tags, event.content]);
+    let verification = verifying.get(payload);
+    if (!verification) {
+      verification = verifyEvent(event);
+      verifying.set(payload, verification);
+      void verification.finally(() => {
+        if (verifying.get(payload) === verification) verifying.delete(payload);
+      });
+    }
+    if (!(await verification) || stopped || seenIds.has(event.id)) return;
     seenIds.add(event.id);
 
     // Kind 5 deletion
@@ -140,7 +162,7 @@ export async function* liveQuery(
       const existing = bestReplaceable.get(rKey);
 
       if (existing) {
-        if (event.created_at > existing.event.created_at) {
+        if (isNewerReplaceable(event, existing.event)) {
           const supersedes = existing.emittedId;
           bestReplaceable.set(rKey, { event, emittedId: event.id });
           queue.push({ type: 'update', event, supersedes });
@@ -159,10 +181,19 @@ export async function* liveQuery(
     }
   }
 
+  const abort = () => {
+    stopped = true;
+    for (const dispose of cleanup) dispose();
+    queue.push({ type: '_done' });
+  };
+  options.signal?.addEventListener('abort', abort, { once: true });
   try {
+    if (options.signal?.aborted) return;
     // Phase 1: Local cache
-    const cached = await readLocalCache(filters);
+    const cached = options.skipLocalCache ? [] : await readLocalCache(filters);
+    if (stopped) return;
     for (const event of cached) {
+      if (stopped) return;
       seenIds.add(event.id);
       if (isReplaceable(event.kind)) {
         const rKey = replaceableKey(event.kind, event.pubkey);
@@ -171,6 +202,7 @@ export async function* liveQuery(
       yield { type: 'event', event, source: 'local' };
     }
 
+    if (stopped) return;
     // Phase 2: Relay connections
     if (totalRelays === 0) {
       yield { type: 'exhausted' };
@@ -188,82 +220,75 @@ export async function* liveQuery(
         checkExhausted();
         continue;
       }
-      sockets.push(ws);
 
-      // Count this relay toward exhaustion EXACTLY once, whichever terminal
-      // signal arrives first: EOSE, error, close-without-EOSE, send failure,
-      // or the failsafe timer. Previously ws.onclose only cleared the timer —
-      // a relay that closed its socket without sending EOSE (server-initiated
-      // clean close, e.g. rate-limit/policy, fires `close` but NOT `error`)
-      // was never counted, so 'exhausted' never fired and closeOnExhaust
-      // consumers (e.g. the onboarding follow-suggestions check) hung forever.
       let settled = false;
+      let accepting = true;
+      let msgChain: Promise<void> = Promise.resolve();
       const settleRelay = () => {
-        if (settled) return;
+        if (settled || stopped) return;
         settled = true;
         clearTimeout(timer);
         eoseCount++;
         checkExhausted();
       };
-
-      const timer = setTimeout(() => {
+      // Stop receiving first, then drain events already accepted for verification.
+      // Errors/close/timeouts must obey the same ordering as EOSE.
+      const finish = () => {
+        if (!accepting) return;
+        accepting = false;
+        clearTimeout(timer);
         try { ws.close(); } catch { /* ignore */ }
-        settleRelay();
-      }, RELAY_TIMEOUT_MS);
-
+        void msgChain.then(settleRelay);
+      };
+      const timer = setTimeout(finish, options._timeoutMs ?? RELAY_TIMEOUT_MS);
+      cleanup.push(() => {
+        accepting = false;
+        clearTimeout(timer);
+        ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
+        try { ws.close(); } catch { /* ignore */ }
+      });
       ws.onopen = () => {
+        if (!accepting || stopped) return;
+        try { ws.send(JSON.stringify(['REQ', subId, ...filters])); }
+        catch { finish(); }
+      };
+      ws.onmessage = (msg: MessageEvent) => {
+        if (!accepting || stopped) return;
+        let data: unknown[];
         try {
-          ws.send(JSON.stringify(['REQ', subId, ...filters]));
-        } catch {
-          settleRelay();
+          const parsed: unknown = JSON.parse(typeof msg.data === 'string' ? msg.data : '');
+          if (!Array.isArray(parsed) || parsed[1] !== subId) return;
+          data = parsed;
+        } catch { return; }
+        if (data[0] === 'EVENT' && data[2]) {
+          msgChain = msgChain.then(async () => {
+            try { await processEvent(data[2] as SignedEvent, relay); }
+            catch { /* malformed event */ }
+          });
+        } else if (data[0] === 'EOSE' || data[0] === 'CLOSED') {
+          if (data[0] === 'EOSE') {
+            msgChain = msgChain.then(() => {
+              if (!stopped) queue.push({ type: 'eose', relay });
+            });
+          }
+          finish();
         }
       };
-
-      // Serialize message handling per socket: processEvent awaits async
-      // signature verification, so chain messages to keep relay ordering
-      // (EVENT before EOSE) — otherwise EOSE could exhaust the query while
-      // an event is still being verified.
-      let msgChain: Promise<void> = Promise.resolve();
-      ws.onmessage = (msg: MessageEvent) => {
-        msgChain = msgChain.then(async () => {
-          try {
-            const data = JSON.parse(typeof msg.data === 'string' ? msg.data : '');
-            if (!Array.isArray(data)) return;
-
-            if (data[0] === 'EVENT' && data[2]) {
-              await processEvent(data[2] as SignedEvent, relay);
-            } else if (data[0] === 'EOSE') {
-              queue.push({ type: 'eose', relay });
-              try { ws.close(); } catch { /* ignore */ }
-              settleRelay();
-            }
-          } catch { /* malformed message — ignore */ }
-        });
-      };
-
-      ws.onerror = () => {
-        settleRelay();
-      };
-
-      // A close without a prior EOSE/error (server-initiated clean close)
-      // must still count the relay, or the query never exhausts.
-      ws.onclose = () => {
-        settleRelay();
-      };
+      ws.onerror = finish;
+      ws.onclose = finish;
     }
 
     // Consume queue
-    while (true) {
+    while (!stopped) {
       const item = await queue.pull();
-      if ('type' in item && item.type === '_done') return;
+      if (stopped || item.type === '_done') return;
       const liveEvent = item as LiveEvent;
       yield liveEvent;
       if (liveEvent.type === 'exhausted' && options.closeOnExhaust) return;
     }
   } finally {
-    // Cleanup: close all open sockets
-    for (const ws of sockets) {
-      try { ws.close(); } catch { /* ignore */ }
-    }
+    stopped = true;
+    options.signal?.removeEventListener('abort', abort);
+    for (const dispose of cleanup) dispose();
   }
 }

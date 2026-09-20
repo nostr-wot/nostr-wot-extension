@@ -1,0 +1,26 @@
+import type { WotSettings, WotScoring } from '@domain/wot/types.ts';
+export const WOT_NOTICE_DISMISSED_KEY = 'experimentalWotNoticeDismissed';
+export const WOT_SETTINGS_KEY = 'experimentalWot';
+export const WOT_SYNC_STATUS_KEY = 'experimentalWotSync';
+export const WOT_GRAPH_PREFIX = 'experimentalWotGraph:';
+export const WOT_MAX_HOPS = 3;
+export const WOT_MAX_TARGETS = 100;
+export const WOT_ORACLE_TIMEOUT_MS = 10000;
+export const WOT_CACHE_MS = 60000;
+export const WOT_SCORING: WotScoring = { distanceWeights: { 1: 1, 2: 0.5, 3: 0.25, 4: 0.1 }, pathBonus: { 2: 0.15, 3: 0.1, 4: 0.05 }, maxPathBonus: 0.5 };
+export const WOT_QUERY_TIMEOUT_MS = 60000;
+export const WOT_ORACLE_CONCURRENCY = 4;
+export const WOT_MAX_CACHE_ENTRIES = 256;
+export const WOT_MAX_RESPONSE_BYTES = 1024 * 1024;
+export const WOT_SYNC_BATCH_SIZE = 50;
+export const WOT_MAX_SYNC_RELAYS = 6;
+export const WOT_MAX_RELAYS_PER_AUTHOR = 30;
+
+export const WOT_DEFAULTS: WotSettings = { maxEdges: null, maxAuthors: null, maxFollows: null, enabled: false, autoSync: false, scoring: WOT_SCORING, mode: 'local', oracleUrl: 'https://wot-oracle.mappingbitcoin.com', maxHops: 2 };
+export const WOT_AUTO_SYNC_ALARM = 'experimental-wot-auto-sync';
+export const WOT_AUTO_SYNC_MINUTES = 24 * 60;
+export const WOT_PROGRESS_INTERVAL_MS = 750;
+export const WOT_DATABASE_NAME = 'nostr-wot-graphs-v1';
+export const WOT_INVENTORY_KEY = 'experimentalWotInventory';
+export const WOT_LIST_FRESH_MS = 5 * 60_000;
+export const WOT_FULL_REFRESH_MS = 24 * 60 * 60_000;

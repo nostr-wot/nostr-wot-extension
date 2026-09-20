@@ -6,7 +6,7 @@
  * still make a request the active account cannot answer. What must never happen is that
  * such a request comes back as ordinary NIP-44 ciphertext, because the caller has no way
  * to tell the two apart and would show the user a post-quantum badge over a classic
- * message. See nips/04-nip07-encryption-capability.md.
+ * message. See nips/pqc/04-nip07-encryption-capability.md.
  *
  * The NIP-46 case is the dangerous one and the reason this file exists. Remote-signer
  * accounts are routed to the bunker inside handleCryptoRequest and never reach the

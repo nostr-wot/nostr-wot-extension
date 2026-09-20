@@ -11,7 +11,7 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.7.2 packages the remote-account profile display fix. GitHub publication is
+0.8.0 packages the opt-in experimental WoT API, graph sync/scoring controls and approval-menu improvements. GitHub publication is
 separate from browser-store submission and approval.
 
 ## Before any store
@@ -21,9 +21,7 @@ separate from browser-store submission and approval.
 3. `npm run build` — must succeed with no errors.
 4. `./tests/run.sh` — the module group may appear to hang after it finishes
    (open handles in the browser mock); that is known and not a failure.
-5. Load `dist/` unpacked and click through the popup once. The suite cannot see
-   the UI: there is no component test framework, and two visual changes were
-   rolled back last month because they shipped unverified.
+5. Load `dist/` unpacked and click through the popup once. Mounted React tests cover interactions, but cannot replace native layout checks. Record whether a browser check used the installed extension or an isolated fixture.
 
 ---
 
@@ -160,7 +158,7 @@ Release notes for each store live in `CHANGELOG.md` under the version, in a
 `### Store release notes` block — short, user-facing, and free of the internal
 detail the rest of the entry carries.
 
-## Reproduce the 0.7.0 packages
+## Reproduce the release packages
 
 Use supported Node 22 or 24, run `npm ci`, then `npm run package:chrome`
 and `npm run package:firefox`. The Chrome ZIP removes Firefox-specific settings;
@@ -173,3 +171,9 @@ categories. Minimum versions are desktop 140 and Android 142. Verify install
 and upgrade prompts; no data permission is declared as `none`. Store acceptance
 still depends on Mozilla's review. Keep store privacy disclosures consistent with
 the transmission tables above.
+
+## 0.8.0 experimental WoT
+
+The experimental WoT API is opt-in in 0.8.0. Release and reviewer notes are kept below 3,000 characters including spaces. Oracle mode introduces user-configured HTTPS
+requests containing public identity and relationship queries; menu opt-in
+discloses these flows. Existing Firefox identity-data consent still applies.

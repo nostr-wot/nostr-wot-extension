@@ -1,7 +1,7 @@
 import { t } from '@services/i18n/i18n.ts';
 import IconChevronDown from '@assets/IconChevronDown.tsx';
 import IconLockOpen from '@assets/IconLockOpen.tsx';
-import IconCopy from '@assets/IconCopy.tsx';
+import AccountCopyMenu from './AccountCopyMenu';
 import { useAccount } from '@context/AccountContext';
 import { useVault } from '@context/VaultContext';
 import Avatar from '@components/Avatar';
@@ -12,10 +12,9 @@ import AccountLabel from './AccountLabel';
 interface AccountBarProps {
   dropdownOpen: boolean;
   onToggleDropdown: () => void;
-  onCopy: () => void;
 }
 
-export default function AccountBar({ dropdownOpen, onToggleDropdown, onCopy }: AccountBarProps) {
+export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBarProps) {
   const { displayName, displaySub, avatarUrl, initial, isReadOnly, isNip46, active } = useAccount();
   const vault = useVault();
 
@@ -39,7 +38,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown, onCopy }: A
         <IconChevronDown className={`text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      <IconButton onClick={onCopy} disabled={!active} title={t('common.copy')} aria-label={t('common.copy')}><IconCopy size={16} /></IconButton>
+      <AccountCopyMenu key={active?.id || 'none'} pubkey={active?.pubkey}/>
       {vault.exists && !isReadOnly && vault.autoLockEnabled && !vault.locked && (
         <IconButton
           tone="brand"
