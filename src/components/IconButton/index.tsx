@@ -27,8 +27,8 @@ const BASE =
  * not on the order they're written here, and that race is not worth having.
  */
 const TONE: Record<NonNullable<IconButtonProps['tone']>, string> = {
-  muted: 'text-muted enabled:hover:bg-card enabled:hover:text-heading',
-  brand: 'text-brand enabled:hover:bg-card enabled:hover:text-brand-hover',
+  muted: 'text-muted enabled:hover:bg-hover enabled:hover:text-heading',
+  brand: 'text-brand enabled:hover:bg-hover enabled:hover:text-brand-hover',
   danger: 'text-muted enabled:hover:bg-error-tint enabled:hover:text-error',
 };
 

@@ -34,7 +34,7 @@ const BASE =
   'px-5 py-2 border rounded-sm bg-transparent font-[inherit] text-xs font-semibold ' +
   'cursor-pointer transition-all disabled:opacity-50 disabled:cursor-default';
 
-const UNSELECTED = 'border-card-border text-secondary hover:bg-card';
+const UNSELECTED = 'border-card-border text-secondary hover:bg-hover';
 
 /** Toned selections, where the colour carries the meaning rather than just
  *  marking which one is on: allow is not merely "selected", it is allow. */

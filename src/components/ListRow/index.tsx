@@ -61,7 +61,7 @@ const VARIANT: Record<NonNullable<ListRowProps['variant']>, string> = {
     'transition-colors hover:bg-brand-tint-hover active:bg-card-active',
   standalone:
     'py-8 px-7 border border-card-border bg-glass-heavy rounded-lg shadow-card ' +
-    'transition-all hover:bg-elevated hover:translate-x-2 hover:shadow-card-hover',
+    'transition-all hover:bg-hover hover:translate-x-2 hover:shadow-card-hover',
 };
 
 export default function ListRow({

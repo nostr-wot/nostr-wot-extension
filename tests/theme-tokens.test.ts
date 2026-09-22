@@ -372,7 +372,7 @@ describe('dark palette readability', () => {
     const crypta = { ...shared, ...tokens(blocks[1][1]) };
     for (const palette of [dark, crypta]) {
       for (const foreground of ['--text-heading', '--text-body', '--text-secondary', '--text-muted', '--menu-subtitle', '--brand', '--brand-hover', '--error', '--success', '--warning', '--info']) {
-        for (const background of ['--bg-page-solid', '--bg-elevated', '--input-bg']) {
+        for (const background of ['--bg-page-solid', '--bg-elevated', '--input-bg', '--surface-hover']) {
           const a = luminance(palette[foreground]);
           const b = luminance(palette[background]);
           assert.ok((Math.max(a,b) + 0.05) / (Math.min(a,b) + 0.05) >= 4.5, `${foreground} on ${background}`);
@@ -381,6 +381,15 @@ describe('dark palette readability', () => {
       const a = luminance(palette['--brand']);
       const b = luminance(palette['--text-on-brand']);
       assert.ok((a + 0.05) / (b + 0.05) >= 4.5);
+    }
+  });
+  it('makes dark hover surfaces visibly lighter than popup backgrounds', () => {
+    for (const theme of ['dark', 'lacrypta']) {
+      const blocks = [...css.matchAll(new RegExp(':root\\[data-theme="' + theme + '"\\]\\s*\\{([^}]+)\\}', 'g'))];
+      const palette = Object.assign({}, ...blocks.map(block => tokens(block[1])));
+      const background = luminance(palette['--bg-elevated']);
+      const hover = luminance(palette['--surface-hover']);
+      assert.ok((hover + 0.05) / (background + 0.05) >= 1.25, `${theme} hover blends into popup`);
     }
   });
   it('keeps QR modules dark regardless of inherited text color', async () => {

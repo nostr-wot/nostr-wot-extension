@@ -21,7 +21,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
   const fallbackText = !active ? '+' : isReadOnly ? '\u{1F441}' : initial;
 
   return (
-    <Container variant="row" gap={2} className="relative flex-1 min-w-0 bg-transparent rounded-lg py-4 px-5 transition-colors hover:bg-card">
+    <Container variant="row" gap={2} className="relative flex-1 min-w-0 bg-transparent rounded-lg py-4 px-5 transition-colors hover:bg-hover">
       <button className="flex items-center gap-5 flex-1 cursor-pointer min-w-0 bg-transparent border-none p-0 text-left" onClick={onToggleDropdown} aria-haspopup="dialog" aria-expanded={dropdownOpen}>
         <div className="w-18 h-18 rounded-full overflow-hidden shrink-0">
           <Avatar

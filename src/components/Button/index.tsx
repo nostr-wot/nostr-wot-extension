@@ -37,7 +37,7 @@ const SIZE: Record<'default' | 'small', string> = {
 const FILLED: Record<ButtonVariant, string> = {
   primary:
     'bg-brand text-on-brand enabled:hover:bg-brand-hover enabled:active:bg-brand-hover',
-  secondary: 'bg-brand-light text-brand-hover enabled:hover:bg-[rgba(99,102,241,0.18)]',
+  secondary: 'bg-brand-light text-brand-hover enabled:hover:bg-button-secondary-hover',
   danger: 'bg-[rgba(220,38,38,0.1)] text-error enabled:hover:bg-[rgba(220,38,38,0.18)]',
 };
 
@@ -45,8 +45,8 @@ const FILLED: Record<ButtonVariant, string> = {
  *  pair rather than reusing `--card-border` / `--text-secondary`, because a
  *  danger outline still has to read as danger. */
 const OUTLINE: Record<ButtonVariant, string> = {
-  primary: 'bg-transparent border border-card-border text-secondary enabled:hover:bg-card enabled:hover:text-heading',
-  secondary: 'bg-transparent border border-card-border text-secondary enabled:hover:bg-card enabled:hover:text-heading',
+  primary: 'bg-transparent border border-card-border text-secondary enabled:hover:bg-hover enabled:hover:text-heading',
+  secondary: 'bg-transparent border border-card-border text-secondary enabled:hover:bg-hover enabled:hover:text-heading',
   danger: 'bg-transparent border border-error-tint text-error enabled:hover:bg-error-tint enabled:hover:text-error',
 };
 

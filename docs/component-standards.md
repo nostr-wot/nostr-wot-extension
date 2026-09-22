@@ -663,7 +663,10 @@ Split actions use Button’s `segment="start"` / `segment="end"` presets for joi
 Settings → Appearance and language reuses Card and ChipGroup for Light, Dark, System and La Crypta.
 The choice saves immediately in extension-local storage, independently of accounts
 and vault state. Light remains the default. Dark follows nostr-wot.com’s gray-950
-canvas, gray-900 cards, gray-800 raised surfaces, neutral text and indigo accents.
+canvas, near-black popups, gray-900 cards, neutral text and indigo accents.
+Hover surfaces use a separate lighter gray-800 token (`bg-hover`), never the
+popup background token. Secondary buttons use `bg-button-secondary-hover` so
+La Crypta retains its lime tint rather than inheriting hardcoded indigo.
 Small accent labels use indigo-400 to retain AA contrast on raised surfaces.
 System follows OS changes; La Crypta
 uses the near-black, lime and orange palette from lacrypta.ar. The shared appearance
