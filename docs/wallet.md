@@ -107,12 +107,13 @@ interface WalletProvider {
   service, the signature verifies (`verifyEvent`), and the content decrypts;
   the pending request is only consumed by such a response (see
   `docs/security.md` §13)
-- The provider factory injects shared NIP-04 encryption and NIP-01 signing after validating connection key formats.
+- The provider factory injects shared NIP-04/NIP-44 encryption and NIP-01 signing after validating connection key formats.
 - Cold startup constructs and caches NWC providers directly; removal clears the instance so reconnect creates fresh key bytes from the stored configuration.
 - Setup probes an uncached candidate with `get_info` before persisting a replacement; failure or vault lock retains the previous configuration and disposes the candidate.
 - Connections and published requests have a 60-second deadline. Socket close rejects outstanding work; reconnect never replays it.
 - Responses require the matching `result_type`, validated fields and 32-byte hex hashes/preimages. Lookup errors propagate except `NOT_FOUND`, which reports unpaid.
-- Compatibility is legacy NIP-04 and the first supplied relay. NIP-44 negotiation and relay failover are not implemented. See [NWC audit](nwc-audit.md) for coverage and limits.
+- Signed kind-13194 discovery prefers NIP-44 v2 and supports NIP-44-only wallets; no info/encryption tag falls back to NIP-04. Explicit unsupported schemes fail. Discovery is bounded to 1.5 seconds and late advertisements are ignored.
+- Up to five distinct URI relays can be tried sequentially within one 60-second connection budget, before publication only. A published payment is never replayed on another relay. See [NWC audit](nwc-audit.md) and [provider compatibility](nwc-compatibility.md).
 
 ### 4.2 LNbits Provider (`lnbits.ts`)
 

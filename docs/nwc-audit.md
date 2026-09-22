@@ -10,15 +10,22 @@ production secret or real payment was used.
 
 The implementation supports `get_info`, `get_balance`, `make_invoice`,
 `lookup_invoice`, `list_transactions` and `pay_invoice` using kind 23194/23195,
-NIP-01 signatures and **legacy NIP-04 encryption**. It selects the first `relay`
-parameter. This is not a claim of complete modern NWC compatibility.
+NIP-01 signatures and negotiated **NIP-44 v2 or legacy NIP-04 encryption**.
+A bounded signed kind-13194 read selects the newest wallet advertisement before
+EOSE, preferring NIP-44 v2. Missing info/encryption tags use NIP-04; an explicitly
+unsupported scheme fails. Up to five distinct URI relays are tried sequentially
+before request publication, within one 60-second connection budget. This is not a
+claim of complete NWC extension coverage or live provider certification.
 
 The [official NIP-47](https://github.com/nostr-protocol/nips/blob/master/47.md)
 was checked during the audit: responses must identify the requested method;
 amounts use millisatoshis; multiple relays and NIP-44 negotiation are specified.
-The extension does not negotiate kind-13194 encryption capabilities, support
-NIP-44-only wallets, fail over between relay URLs, or implement optional NWC
-extensions. NIP-04-compatible wallets are the tested compatibility target.
+The extension supports both cipher modes, including NIP-44-only advertisements.
+It does not implement optional NWC extensions or replay a published request on
+another relay. Capability discovery waits at most 1.5 seconds; advertisements
+arriving after discovery finishes cannot change the selected cipher. See the
+[provider compatibility matrix](nwc-compatibility.md) for vendor-specific setup
+and observed response shapes.
 
 ## Confirmed defects and fixes
 
@@ -60,7 +67,8 @@ extensions. NIP-04-compatible wallets are the tested compatibility target.
 |---|---|
 | URI and factory | URI fields/first relay, malformed keys, per-account cache, uncached construction via setup, removal/reconstruction |
 | Connection lifetime | Open/error/remote close, shared attempts, silent handshake deadline, late open, disposal during connect/encrypt/sign/decrypt, credential zeroing |
-| Wire protocol | Independent nostr-tools wallet verifies extension signatures and decrypts requests; extension verifies wallet signatures and NIP-04 replies |
+| Wire protocol | Independent nostr-tools wallet verifies extension signatures and decrypts requests; all six methods round-trip with NIP-04 and NIP-44 v2 |
+| Negotiation/failover | Newest signed info, forged/wrong-author info rejection, bounded discovery, late info ignored, unsupported scheme refusal, URI relay cap, connection fallback without payment replay |
 | Authentication | Wrong author, forged signature, undecryptable content, malformed tags, verifier exception, unrelated request ID, wrong result method |
 | Balance/info | Alias and granted methods, millisatoshi conversion, malformed values, backend-aware WebLN capabilities without identity disclosure |
 | Receiving | Invoice amount/memo conversion, unsafe amounts, invoice/hash validation, pending/paid/not-found lookup, propagated errors |
@@ -86,15 +94,15 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet
 npm run typecheck
 ```
 
-The combined provider/factory/production-payment/intent run passed **136 tests,
+The initial combined provider/factory/production-payment/intent run passed **136 tests,
 0 failures** using:
 
 ```sh
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts tests/wallet/payment-integration.test.ts tests/wallet/payment-intents.test.ts
 ```
 
-Final verification: `./tests/run.sh` passed **1,767 tests, 0 failures, 0 skipped**
-(216 crypto, 267 wallet protocol, 268 UI/helpers, 1,016 module tests). Its production
+Final verification: `./tests/run.sh` passed **1,782 tests, 0 failures, 0 skipped**
+(216 crypto, 281 wallet protocol, 268 UI/helpers, 1,017 module tests). Its production
 build succeeded; `npm run typecheck` and `git diff --check` also passed.
 
 These tests establish the covered local behaviors; they do not certify
@@ -104,6 +112,8 @@ Lightning settlement, native QR scanning or store packages.
 Payment success validates response provenance, method and preimage shape; it does
 not independently hash the preimage against the BOLT11 payment hash or verify a
 Lightning node's settlement. The wallet remains the settlement authority.
+Alby nullable aliases/settlement times and LNbits nullable optional fields/signed
+history fees are normalized; required monetary fields and hashes remain validated.
 Display values retain the existing nearest-whole-satoshi rounding. Relay negative
 publication acknowledgements are not separately interpreted; missing wallet
 responses expire at the request deadline. Local connection success alone is a
@@ -113,3 +123,9 @@ Unknown-intent markers live in browser session storage, surviving worker restart
 but not a full browser-session reset. Closing and reopening the Send dialog
 starts a new user flow; neither that nor a new intent is automatically reconciled
 against wallet history. The warning directs the user to check history first.
+
+
+Modern compatibility follow-up: `npm run test:nwc` passed **118 tests, 0 failures**
+after adding encrypted six-method fixtures, capability discovery, and safe
+pre-publication relay fallback. `npm run typecheck` also passed. No real wallet
+credentials or payment activity were needed for these regressions.

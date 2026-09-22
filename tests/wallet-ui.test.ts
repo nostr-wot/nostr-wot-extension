@@ -112,6 +112,7 @@ it('wallet settings owns a bounded scroll region and explains its refresh and di
  assert.match(html,/flex-1 min-h-0 overflow-y-auto/);
  assert.match(html,/wallet.refreshSettingsHint/);assert.match(html,/wallet.disconnectHint/);
  assert.match(html,/wallet.connectedTo/);
+ assert.match(html,/wallet.connectionHelpTitle/);
  assert.ok(html.indexOf('common.disconnect') < html.indexOf('wallet.autoApprove'), 'disconnect belongs below the connection heading, before other settings');
 });
 it('wallet copy controls use named SVG icons without rendering connection credentials',async()=>{
@@ -649,7 +650,28 @@ it('NWC setup validates locally, preserves failures and connects once with the t
   });
   try {
     await ui.act(async () => ui.root.render(createElement(WalletSetup, { onConnected() { connected++; } })));
+    const advanced = () => Array.from(ui.dom.window.document.querySelectorAll('button')).find(button => button.textContent?.startsWith('wallet.advancedSettings'))!;
+    assert.equal(ui.dom.window.document.querySelector('input'), null);
+    await ui.act(async () => advanced().click());
+    assert.ok(ui.dom.window.document.querySelector('input'), 'advanced instance URL expands');
+    await ui.act(async () => advanced().click());
+    assert.equal(ui.dom.window.document.querySelector('input'), null, 'advanced instance URL collapses');
+    const guides = Array.from(ui.dom.window.document.querySelectorAll('nav a'));
+    assert.equal(guides.length, 3, 'setup provides the NWC and native LNbits guides');
+    for (const guide of guides) {
+      assert.match(guide.getAttribute('href')!, /^https:\/\/(guides\.getalby\.com|docs\.lnbits\.com)\//);
+      assert.equal(guide.getAttribute('target'), '_blank');
+      assert.match(guide.getAttribute('rel')!, /noopener/);
+    }
+    await ui.act(async () => ui.button('LNbits').click());
+    const adminKey = ui.dom.window.document.querySelector<HTMLInputElement>('input[type="password"]')!;
+    const adminLabel = Array.from(ui.dom.window.document.querySelectorAll('label')).find(label => label.textContent === 'wallet.adminKey')!;
+    assert.equal(adminLabel.control, adminKey);
+    assert.equal(ui.dom.window.document.getElementById(adminKey.getAttribute('aria-describedby')!)!.textContent, 'wallet.lnbitsAdminKeyHint');
     await ui.act(async () => ui.button('NWC').click());
+    const connectionLabel = Array.from(ui.dom.window.document.querySelectorAll('label')).find(label => label.textContent === 'wallet.nwcUri')!;
+    assert.equal(connectionLabel.control, ui.dom.window.document.querySelector('input'), 'NWC connection has an associated label');
+    assert.match(ui.dom.window.document.body.textContent!, /wallet.nwcSetupHint/);
     assert.equal(ui.button('common.connect').disabled, true);
     await ui.edit('https://not-a-wallet.test');
     await ui.act(async () => ui.button('common.connect').click());

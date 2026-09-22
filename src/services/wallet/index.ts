@@ -4,7 +4,7 @@
  * Creates and caches WalletProvider instances keyed by account ID.
  * Pattern mirrors `_nip46Clients` map in `services/signing/signer.ts`.
  *
- * NWC providers receive the shared signing and NIP-04 crypto implementation
+ * NWC providers receive the shared signing and NIP-04/NIP-44 crypto implementations
  * here, so cold startup and reconnect use the same construction path.
  *
  * @module services/wallet/index
@@ -14,6 +14,7 @@ import type { WalletConfig, WalletProvider } from '../../domain/wallet/types.ts'
 import { LnbitsProvider } from './lnbits.ts';
 import { NwcProvider } from './nwc.ts';
 import { nip04Encrypt, nip04Decrypt } from '../../lib/crypto/nip04.ts';
+import { nip44Encrypt, nip44Decrypt } from '../../lib/crypto/nip44.ts';
 import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { hexToBytes } from '../../lib/crypto/utils.ts';
@@ -71,6 +72,8 @@ export function createWalletProvider(config: WalletConfig): WalletProvider | nul
     const provider = new NwcProvider(config, hexToBytes(parsed.secret), {
       encrypt: nip04Encrypt,
       decrypt: nip04Decrypt,
+      encryptNip44: nip44Encrypt,
+      decryptNip44: nip44Decrypt,
       getPubkey: getPublicKey,
       signEvent,
     });

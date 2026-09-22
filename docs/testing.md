@@ -434,7 +434,7 @@ The [NWC audit](nwc-audit.md) maps each wallet flow to its regression coverage a
 records compatibility limits. Provider tests cover handshake/request deadlines,
 remote close, late replies, malformed result fields and tags, result-type binding,
 lookup errors and pending/failed history. The shared loopback fixture exercises
-real NIP-04/signatures; production payment handlers exercise NWC setup, balance,
+real NIP-04/NIP-44 signatures/encryption; production payment handlers exercise NWC setup, balance,
 deposit, lookup, history, consent, approval, deny, vault lock and reconstruction.
 A dropped LNURL payment response retains the same intent and proves that replay
 never fetches another invoice. Unknown markers do not expire into a second send.
@@ -445,3 +445,12 @@ automatic closure and late replies after unmount. Unknown payment outcomes use a
 localized message and prevent another send within the same dialog. Real setup
 handler regressions verify `get_info` authorization before replacing saved config,
 preservation after failure/lock and persistence of a successful connection.
+
+
+NWC protocol integration also covers all six methods with NIP-44-only,
+dual-cipher, NIP-04 and missing-info peers. Discovery verifies signed kind-13194
+advertisements, chooses the newest supported scheme before EOSE and refuses
+explicit unsupported modes. Lifecycle tests bound silent discovery, discard late
+info, cancel on disposal, and try a second URI relay after a refused connection
+without replaying published payments. Provider fixtures normalize Alby nullable
+alias/settlement fields and LNbits signed fees/nullable optional values.

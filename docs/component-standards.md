@@ -672,3 +672,11 @@ updates open documents on storage changes. Palettes live in theme.css; use seman
 surface/text/status tokens, including for loading screens and decorative backgrounds.
 The language row opens the shared LanguagePicker dialog from this screen; the menu footer only shows the extension version.
 QR modules stay dark on a white background in every palette so they remain scannable.
+
+Wallet setup and settings share `WalletConnectionHelp`, a flat Card composed of
+Container, Text and IconInfo. It explains Quick Setup, NWC and direct LNbits
+connections and links to the providers' official guides. Setup separates its
+heading, tabs and form with explicit gaps; settings cards use p-8 and gap-6,
+with gap-7 between cards inside the existing bounded scroll region. The LNbits
+wallet Admin API key stays masked by the shared Input; its associated description
+explains API info, spending authority and the distinction from a login password.

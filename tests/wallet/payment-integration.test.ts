@@ -201,6 +201,26 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
     assert.deepEqual(await payment, { preimage: 'abababababababababababababababababababababababababababababababab' });
     assert.equal(wallet.requests.length, start + 1);
   });
+  await t.test('YakiHonne published WebLN consumer pattern receives an approved preimage', async () => {
+    // Mirrors useLightningWallets.js: enable, sendPayment, then map preimage.
+    // This tests the consumer contract, not YakiHonne's hosted wallet backend.
+    const consumer = async () => {
+      await webln.enable();
+      const result = await webln.sendPayment(invoice);
+      return { status: Boolean(result.preimage), preImage: result.preimage };
+    };
+    const start = wallet.requests.length;
+    const payment = consumer();
+    const approval = await pending();
+    assert.equal(wallet.requests.length, start);
+    await signerApprovalQueue.resolveRequest(approval.id, { allow: true });
+    await until(() => wallet.requests.length > start);
+    assert.equal(wallet.requests[start].method, 'pay_invoice');
+    const preimage = 'ab'.repeat(32);
+    await wallet.response(wallet.requests[start], { preimage });
+    assert.deepEqual(await payment, { status: true, preImage: preimage });
+    assert.equal(wallet.requests.length, start + 1);
+  });
   await t.test('account-specific deny overrides automatic threshold without publishing', async () => {
     await call('wallet_setAutoApproveThreshold', { threshold: 1000000 });
     await permissions.save(origin, 'webln_sendPayment', null, 'deny', accountId);

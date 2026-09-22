@@ -1,6 +1,7 @@
+import { finalizeEvent } from 'nostr-tools/pure';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localWallet, until, walletPubkey, clientPubkey, clientKey } from '../helpers/nwc-wallet.ts';
+import { localWallet, until, walletPubkey, clientPubkey, clientKey, walletKey } from '../helpers/nwc-wallet.ts';
 import { getWalletProvider, clearWalletProviders, removeWalletProvider } from '../../src/services/wallet/index.ts';
 
 test('NWC integration through the wallet factory', {timeout:20000}, async t => {
@@ -88,4 +89,78 @@ test('NWC integration through the wallet factory', {timeout:20000}, async t => {
     await provider.connect();const next=wallet.requests.length;const balance=provider.getBalance();
     await until(()=>wallet.requests.length>next);await wallet.response(wallet.requests[next],{balance:2000});assert.deepEqual(await balance,{balance:2});
   });
+});
+
+
+for (const advertised of ['nip44_v2 nip04', 'nip44_v2', 'nip04', undefined]) {
+  test(`NWC encryption negotiation: ${advertised ?? 'legacy without info'}`, { timeout: 10000 }, async t => {
+    const wallet = await localWallet({ encryption: advertised });
+    const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+    const provider = getWalletProvider(`cipher-${advertised}`, config)!;
+    t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+    await provider.connect();
+    assert.equal(wallet.infoFilters.length, 1);
+    assert.deepEqual(wallet.infoFilters[0].authors, [walletPubkey]);
+    const balance = provider.getBalance();
+    await until(() => wallet.requests.length === 1);
+    assert.equal(wallet.requests[0].encryption, advertised?.includes('nip44_v2') ? 'nip44_v2' : 'nip04');
+    await wallet.response(wallet.requests[0], { balance: 1000 });
+    assert.deepEqual(await balance, { balance: 1 });
+    for (const [method, invoke, result] of [
+      ['get_info', () => provider.getInfo(), { alias: 'NWC peer', methods: ['pay_invoice'] }],
+      ['make_invoice', () => provider.makeInvoice(2, 'memo'), { invoice: 'synthetic-invoice', payment_hash: 'ab'.repeat(32) }],
+      ['lookup_invoice', () => provider.lookupInvoice('ab'.repeat(32)), { amount: 2000, settled_at: null }],
+      ['list_transactions', () => provider.listTransactions(), { transactions: [] }],
+      ['pay_invoice', () => provider.payInvoice('synthetic-invoice'), { preimage: 'cd'.repeat(32) }],
+    ] as const) {
+      const count = wallet.requests.length;
+      const request = invoke();
+      await until(() => wallet.requests.length > count);
+      assert.equal(wallet.requests[count].method, method);
+      assert.equal(wallet.requests[count].encryption, advertised?.includes('nip44_v2') ? 'nip44_v2' : 'nip04');
+      await wallet.response(wallet.requests[count], result);
+      await request;
+    }
+  });
+}
+
+test('NWC discovery verifies authors/signatures and selects the newest info before EOSE', { timeout: 10000 }, async t => {
+  const event = (created_at: number, encryption: string, key = walletKey) => finalizeEvent({ kind: 13194, created_at, tags: [['encryption', encryption]], content: 'get_balance' }, key);
+  const valid = event(2, 'nip44_v2');
+  const forged = { ...event(4, 'nip04'), sig: '0'.repeat(128) };
+  const wallet = await localWallet({ infoEvents: [valid, event(1, 'nip04'), forged, event(5, 'nip04', new Uint8Array(32).fill(23))] });
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  const provider = getWalletProvider('cipher-hostile-info', config)!;
+  t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+  await provider.connect();
+  const balance = provider.getBalance(); await until(() => wallet.requests.length === 1);
+  assert.equal(wallet.requests[0].encryption, 'nip44_v2');
+  await wallet.response(wallet.requests[0], { balance: 2000 });
+  assert.deepEqual(await balance, { balance: 2 });
+});
+
+test('NWC falls back between URI relays before publication without replaying a payment', { timeout: 10000 }, async t => {
+  const unavailable = await localWallet(); const unavailableRelay = unavailable.relay; await unavailable.close();
+  const wallet = await localWallet({ encryption: 'nip44_v2' });
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(unavailableRelay)}&relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  const provider = getWalletProvider('relay-fallback', config)!;
+  t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+  await provider.connect();
+  const rejected = assert.rejects(provider.payInvoice('synthetic-invoice'), /PAYMENT_OUTCOME_UNKNOWN/);
+  await until(() => wallet.requests.length === 1);
+  wallet.dropConnections(); await rejected;
+  await provider.connect();
+  await until(() => wallet.filters.length === 2);
+  assert.equal(wallet.requests.length, 1, 'reconnection does not replay the published payment');
+});
+
+test('NWC refuses explicit unsupported encryption instead of downgrading via another relay', { timeout: 10000 }, async t => {
+  const unsupported = await localWallet({ encryption: 'future_cipher' });
+  const legacy = await localWallet();
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(unsupported.relay)}&relay=${encodeURIComponent(legacy.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  const provider = getWalletProvider('unsupported-encryption', config)!;
+  t.after(async () => { clearWalletProviders(); await unsupported.close(); await legacy.close(); });
+  await assert.rejects(provider.connect(), /Unsupported NWC encryption/);
+  assert.equal(legacy.infoFilters.length, 0);
+  assert.equal(unsupported.requests.length, 0);
 });

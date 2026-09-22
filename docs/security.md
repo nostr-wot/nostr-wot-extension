@@ -317,7 +317,11 @@ with an invalid payload rejects the request rather than reporting success.
 Published payments without a trustworthy final outcome raise
 `PAYMENT_OUTCOME_UNKNOWN`; LNURL intent replay remains blocked with a persistent
 unknown marker. Neither socket reconnection nor timeout retries a payment.
-See [NWC audit](nwc-audit.md) for the legacy NIP-04 compatibility scope and limits.
+Capability discovery verifies wallet authors/signatures, uses the newest info
+event before EOSE, and prefers NIP-44 v2. Missing info permits legacy NIP-04;
+explicit unsupported schemes do not silently downgrade. Late info cannot change
+the selected cipher. Sequential relay fallback is limited to connection setup,
+never a published payment. See [NWC audit](nwc-audit.md) for coverage and limits.
 
 ---
 

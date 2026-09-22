@@ -2,6 +2,10 @@ import type { TxFilters } from '@domain/wallet/txFilter.ts';
 
 /** NWC wallet request timeout (1 minute) */
 export const NWC_REQUEST_TIMEOUT_MS = 60_000;
+/** Finite capability discovery before a legacy wallet request. */
+export const NWC_INFO_TIMEOUT_MS = 1_500;
+/** Bound URI-driven sequential connection attempts. */
+export const NWC_MAX_RELAYS = 5;
 
 export const DEFAULT_LNBITS_URL = 'https://zaps.nostr-wot.com';
 

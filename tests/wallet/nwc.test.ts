@@ -1351,3 +1351,85 @@ describe('NWC audited transport boundaries', () => {
     assert.equal(ws.sentMessages.length, 2);
   });
 });
+
+describe('NWC provider interoperability fixtures', () => {
+  let provider: NwcProvider;
+  beforeEach(() => { MockWebSocket.reset(); (globalThis as any).WebSocket = MockWebSocket; provider = createProvider(); });
+  afterEach(() => { provider.disconnect(); globalThis.WebSocket = OriginalWebSocket; });
+  async function reply<T>(method: string, call: () => Promise<T>, result: object): Promise<T> {
+    const connection = provider.connect(); latestWs().simulateOpen(); await connection;
+    const pending = call();
+    // Install rejection observation immediately; assertions below still inspect it.
+    const outcome = pending.then(value => ({ value }), error => ({ error }));
+    await flushAsync();
+    const frame = latestWs().sentMessages.map(raw => JSON.parse(raw)).find(frame => frame[0] === 'EVENT');
+    assert.ok(frame);
+    latestWs().simulateMessage(buildResponseMessage(frame[1].id, JSON.stringify({ result_type: method, result })));
+    const resolved = await outcome;
+    if ('error' in resolved) throw resolved.error;
+    return resolved.value;
+  }
+  it('accepts Alby Hub get_info with hidden alias and granted payment methods', async () => {
+    assert.deepEqual(await reply('get_info', () => provider.getInfo(), { alias: null, methods: ['pay_invoice', 'get_info'] }),
+      { alias: undefined, methods: ['pay_invoice', 'get_info'] });
+  });
+  it('accepts LNbits and Alby nullable settlement time for unpaid invoices', async () => {
+    assert.deepEqual(await reply('lookup_invoice', () => provider.lookupInvoice('ab'.repeat(32)), { amount: 21000, settled_at: null }),
+      { paid: false, amountPaid: 21 });
+  });
+  it('normalizes LNbits outgoing negative fees and nullable optional history fields', async () => {
+    const [tx] = await reply('list_transactions', () => provider.listTransactions(), { transactions: [{
+      type: 'outgoing', amount: 21000, fees_paid: -2000, description: null,
+      invoice: null, preimage: null, payment_hash: 'ab'.repeat(32),
+      created_at: 1700000000, settled_at: 1700000001,
+    }] });
+    assert.deepEqual(tx, { paymentHash: 'ab'.repeat(32), bolt11: undefined, amount: -21, fee: 2,
+      memo: undefined, status: 'settled', createdAt: 1700000001, preimage: undefined });
+  });
+});
+
+describe('NWC capability discovery lifecycle', () => {
+  let provider: NwcProvider;
+  beforeEach(() => {
+    MockWebSocket.reset(); (globalThis as any).WebSocket = MockWebSocket;
+    provider = createProvider({ encryptNip44: async plaintext => `nip44:${plaintext}`, decryptNip44: async content => content.replace('nip44:', '') });
+  });
+  afterEach(() => { provider.disconnect(); mock.timers.reset(); globalThis.WebSocket = OriginalWebSocket; });
+
+  it('bounds silent discovery and ignores a late advertisement after legacy fallback', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    const connecting = provider.connect(); const ws = latestWs(); ws.simulateOpen();
+    assert.equal(provider.isConnected(), false);
+    mock.timers.tick(1501); await connecting;
+    ws.simulateMessage(JSON.stringify(['EVENT', 'nwc-info', { kind: 13194, pubkey: WALLET_PUBKEY, created_at: 1, tags: [['encryption', 'nip44_v2']], content: 'get_balance' }]));
+    const balance = provider.getBalance(); await flushAsync();
+    const request = JSON.parse(ws.sentMessages.at(-1)!)[1];
+    assert.ok(request.content.startsWith('encrypted:'));
+    ws.simulateMessage(buildResponseMessage(request.id, JSON.stringify({ result_type: 'get_balance', result: { balance: 1000 } })));
+    assert.deepEqual(await balance, { balance: 1 });
+  });
+
+  it('disposal during discovery prevents subscriptions and request publication', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    const rejected = assert.rejects(provider.connect(), /disconnected/); const ws = latestWs(); ws.simulateOpen();
+    provider.disconnect(); mock.timers.tick(1501); await rejected;
+    ws.simulateMessage(JSON.stringify(['EOSE', 'nwc-info'])); await flushAsync();
+    assert.equal(ws.sentMessages.length, 1);
+    assert.equal(provider.isConnected(), false);
+  });
+
+  it('socket error after publication promptly marks payment outcome unknown', async () => {
+    const connecting = provider.connect(); const ws = latestWs(); ws.simulateOpen();
+    ws.simulateMessage(JSON.stringify(['EOSE', 'nwc-info'])); await connecting;
+    let error: Error | undefined;
+    const request = provider.payInvoice('invoice').catch(e => { error = e; });
+    await flushAsync(); ws.simulateError(); await flushAsync();
+    assert.equal(error?.message, 'PAYMENT_OUTCOME_UNKNOWN');
+    await request;
+  });
+
+  it('rejects URI relay lists above the bounded connection budget', () => {
+    const relays = Array.from({ length: 6 }, (_, i) => `relay=wss://relay${i}.example`).join('&');
+    assert.throws(() => NwcProvider.parseConnectionString(`nostr+walletconnect://${WALLET_PUBKEY}?${relays}&secret=${SECRET_HEX}`), /at most 5 relays/);
+  });
+});
