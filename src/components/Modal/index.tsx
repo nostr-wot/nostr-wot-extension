@@ -13,7 +13,7 @@ import Container from '@components/Container';
 // rather than snapping to the static z-modal token.
 const BACKDROP =
   'absolute inset-0 flex items-center justify-center p-8 bg-[rgba(0,0,0,0.45)] z-[var(--modal-z)] ' +
-  'animate-backdrop-in';
+  'animate-backdrop-in backdrop-blur-[4px]';
 // [background:var(--bg-page)]: --bg-page is a gradient, and the bg-page
 // *utility* only ever sets background-color — a gradient there is an invalid
 // declaration and silently drops. The arbitrary property keeps the full
