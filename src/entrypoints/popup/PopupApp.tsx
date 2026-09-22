@@ -122,7 +122,7 @@ function PopupInner() {
           style={{ backgroundImage: `url(${screenshot})` }}
         />
       )}
-      <TopoBg className="relative z-1 bg-[rgba(255,255,255,0.92)] border border-[rgba(99,102,241,0.15)] rounded-xl h-[calc(600px-16px)] p-8 flex flex-col overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+      <TopoBg className="relative z-1 bg-glass-heavy border border-[rgba(99,102,241,0.15)] rounded-xl h-[calc(600px-16px)] p-8 flex flex-col overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
         <Splash visible={splashVisible} />
         <TopBar
           onMenuOpen={() => setActiveOverlay('menu')}

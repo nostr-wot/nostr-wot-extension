@@ -2,10 +2,7 @@ import TopoBg from '../TopoBg';
 import PulseLogo from '../PulseLogo';
 import { cn } from '@utils/cn.ts';
 
-// rgba(255,255,255,0.88) is a one-off, distinct from both --surface-glass
-// (0.85) and --surface-glass-heavy (0.95). The [transition:...] arbitrary
-// property keeps the exact `opacity 0.4s ease` -- Tailwind's own
-// transition-opacity utility would pull in the house-default 0.15s instead.
+// Uses the shared glass surface so loading respects the selected palette.
 //
 // `absolute inset-0` used to need an unlayered CSS Modules rule to outrank
 // TopoBg's own `relative` (unlayered CSS always beats layered utility CSS at
@@ -16,7 +13,7 @@ import { cn } from '@utils/cn.ts';
 // reaches the DOM: cn() drops TopoBg's `relative` in favour of this `absolute`
 // because both belong to the same `position` group.
 const SPLASH_BASE =
-  'absolute inset-0 z-splash flex flex-col items-center justify-center bg-[rgba(255,255,255,0.88)] ' +
+  'absolute inset-0 z-splash flex flex-col items-center justify-center bg-glass-heavy ' +
   'backdrop-blur-[16px] [transition:opacity_0.4s_ease]';
 const FADE_OUT = 'opacity-0 pointer-events-none';
 

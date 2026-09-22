@@ -1001,5 +1001,14 @@
   "approval.followReplacementTitle": "Peligro: ¿reemplazar tu lista de seguidos?",
   "approval.followReplacementWarning": "{origin} intenta reemplazar tu última lista conocida de {count} seguidos por {newCount} contactos. Publicarla elimina los seguidos que no estén en la nueva lista.",
   "approval.followReplacementQuestion": "¿Estás seguro? Cancela para revisar la solicitud. Permitir siempre no omite esta advertencia.",
-  "approval.followReplacementConfirm": "Sí, reemplazar mis seguidos"
+  "approval.followReplacementConfirm": "Sí, reemplazar mis seguidos",
+  "theme.title": "Tema",
+  "appearance.menuDesc": "Elige el tema y el idioma",
+  "theme.description": "Los cambios se aplican inmediatamente a todas las ventanas de la extensión.",
+  "theme.light": "Claro",
+  "theme.dark": "Oscuro",
+  "theme.system": "Sistema",
+  "theme.saveError": "No se pudo guardar el tema. Inténtalo de nuevo.",
+  "theme.lacrypta": "La Crypta",
+  "appearance.title": "Apariencia e idioma"
 }

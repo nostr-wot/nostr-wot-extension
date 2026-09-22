@@ -1001,5 +1001,14 @@
   "approval.followReplacementTitle": "Danger: replace your follow list?",
   "approval.followReplacementWarning": "{origin} is trying to replace your last known list of {count} follows with {newCount} contacts. Publishing this removes follows missing from the new list.",
   "approval.followReplacementQuestion": "Are you really sure? Cancel to review the request. Always allow does not skip this warning.",
-  "approval.followReplacementConfirm": "Yes, replace my follows"
+  "approval.followReplacementConfirm": "Yes, replace my follows",
+  "theme.title": "Theme",
+  "appearance.menuDesc": "Choose your theme and language",
+  "theme.description": "Changes apply immediately to all extension windows.",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
+  "theme.system": "System",
+  "theme.saveError": "Could not save the theme. Please try again.",
+  "theme.lacrypta": "La Crypta",
+  "appearance.title": "Appearance and language"
 }

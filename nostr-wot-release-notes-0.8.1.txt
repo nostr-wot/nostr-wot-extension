@@ -1,0 +1,7 @@
+Nostr WoT 0.8.1
+
+- New Appearance and language settings with Light, Dark, System and La Crypta themes.
+- Your theme saves immediately and applies across extension windows. System mode follows your device's appearance.
+- Find the language selector inside Appearance and language instead of the menu footer.
+- Improved dark-mode colors for forms, cards, menus, loading screens and approval interfaces.
+- QR codes remain readable in every theme.

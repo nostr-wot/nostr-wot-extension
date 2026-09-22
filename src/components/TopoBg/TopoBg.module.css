@@ -14,7 +14,7 @@
   inset: -60px;
   z-index: 0;
   pointer-events: none;
-  background-color: white;
+  background-color: var(--bg-page-solid);
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke-width='1.5'%3E%3Cellipse cx='300' cy='300' rx='55' ry='50' stroke='var(--card-active)'/%3E%3Cellipse cx='300' cy='300' rx='100' ry='85' stroke='var(--brand-light)'/%3E%3Cellipse cx='300' cy='300' rx='155' ry='130' stroke='var(--brand-tint-active)'/%3E%3Cellipse cx='300' cy='300' rx='220' ry='185' stroke='var(--card-bg)'/%3E%3Cellipse cx='300' cy='300' rx='290' ry='245' stroke='rgba(99,102,241,0.05)'/%3E%3Cellipse cx='120' cy='120' rx='70' ry='55' stroke='rgba(99,102,241,0.09)'/%3E%3Cellipse cx='120' cy='120' rx='130' ry='100' stroke='rgba(99,102,241,0.07)'/%3E%3Cellipse cx='120' cy='120' rx='200' ry='160' stroke='rgba(99,102,241,0.05)'/%3E%3Cellipse cx='500' cy='470' rx='65' ry='50' stroke='rgba(99,102,241,0.09)'/%3E%3Cellipse cx='500' cy='470' rx='120' ry='90' stroke='rgba(99,102,241,0.07)'/%3E%3Cellipse cx='500' cy='470' rx='190' ry='145' stroke='rgba(99,102,241,0.05)'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 600px 600px;

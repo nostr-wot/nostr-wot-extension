@@ -35,7 +35,7 @@
          a forced repaint (e.g. switching tabs), leaving the popup blank on open.
          An opaque base guarantees a painted frame. The screenshot backdrop still
          overlays this. #f8f8fc == theme --bg-html. */
-      background: #f8f8fc;
+      background: var(--bg-html, #f8f8fc);
     }
     #root {
       width: 100%;

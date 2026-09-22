@@ -1001,5 +1001,14 @@
   "approval.followReplacementTitle": "Pericolo: sostituire la lista dei seguiti?",
   "approval.followReplacementWarning": "{origin} sta tentando di sostituire la tua ultima lista nota di {count} seguiti con {newCount} contatti. La pubblicazione rimuove i seguiti assenti dalla nuova lista.",
   "approval.followReplacementQuestion": "Sei sicuro? Annulla per esaminare la richiesta. Consenti sempre non salta questo avviso.",
-  "approval.followReplacementConfirm": "Sì, sostituisci i miei seguiti"
+  "approval.followReplacementConfirm": "Sì, sostituisci i miei seguiti",
+  "theme.title": "Tema",
+  "appearance.menuDesc": "Scegli il tema e la lingua",
+  "theme.description": "Le modifiche si applicano subito a tutte le finestre dell’estensione.",
+  "theme.light": "Chiaro",
+  "theme.dark": "Scuro",
+  "theme.system": "Sistema",
+  "theme.saveError": "Impossibile salvare il tema. Riprova.",
+  "theme.lacrypta": "La Crypta",
+  "appearance.title": "Aspetto e lingua"
 }

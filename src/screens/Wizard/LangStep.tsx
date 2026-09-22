@@ -68,7 +68,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
         </Container>
         <div className="h-px bg-card-border mx-12" />
         <Container gap={6} className="pt-10 px-8 pb-4 items-center">
-          <Card variant="flat" className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-[rgba(255,255,255,0.5)] cursor-pointer transition-colors hover:border-brand">
+          <Card variant="flat" className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-glass-heavy cursor-pointer transition-colors hover:border-brand">
             <span className="flex-1 text-lg font-semibold text-heading">{lang.flag} {lang.native}</span>
           </Card>
           <Button
@@ -97,7 +97,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
         <Card
           as="button"
           variant="flat"
-          className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-[rgba(255,255,255,0.5)] cursor-pointer transition-colors hover:border-brand"
+          className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-glass-heavy cursor-pointer transition-colors hover:border-brand"
           onClick={() => setModalOpen(true)}
         >
           {selected ? (

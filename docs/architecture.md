@@ -262,3 +262,13 @@ Activity storage and UI use `ActivityEntry` from `src/domain/activity/activity.t
 
 Website permission keys and backward-compatible legacy hostname grants are specified in
 [Website permission origins](origin-permissions.md).
+
+### UI appearance
+
+`src/services/appearance/theme.ts` initializes the saved `appearanceTheme` before
+React mounts in each extension entrypoint. This non-sensitive preference uses
+`storage.local`; storage events update already-open windows and OS changes update
+System mode. `src/domain/appearance/theme.ts` validates and resolves preferences;
+`src/constants/appearance.ts` defines the options and storage key. CSS variables in
+`theme.css` own Light, Dark and La Crypta palettes; AppearanceSection uses existing
+settings controls. No background RPC, site permission or account migration is needed.

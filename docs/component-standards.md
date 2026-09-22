@@ -33,7 +33,7 @@ The recurring failure is not that a primitive is missing, it is that a feature h
 
 **Every clickable list row is a `ListRow`.** `NavRow`, `NavItem` and the permissions screen's `.permRow` were three implementations of `[leading] [title / subtitle] [chevron]`, which is why the chevron was brand coloured in two of them and muted in the third, and why only one ellipsised a long subtitle. Chrome is the variant: `grouped` is a bare row for a bordered container (a `Card`, or a rounded scroll list) to own the edge, siblings separated by a hairline; `standalone` carries its own card chrome.
 
-Three row-shaped things are deliberately *not* `ListRow`, and the reasoning is worth keeping because each looks like a candidate: the menu footer's language trigger is an auto-width pill with a chevron pointing **down**, so it is a dropdown trigger; the top bar's account rows carry hover-revealed edit/copy/remove buttons, so the row is a container of controls rather than one control; and the wizard's follow suggestions are a multi-**select** list with a checkmark. That last one stays hand-rolled only until there is a second multi-select list — **a variant with a single caller is a guess about what the second caller will need**, and guessing is how `NavRow` and `NavItem` became two things.
+Two row-shaped things are deliberately *not* `ListRow`: the top bar's account rows carry hover-revealed edit/copy/remove buttons, so the row is a container of controls rather than one control; and the wizard's follow suggestions are a multi-**select** list with a checkmark. That last one stays hand-rolled only until there is a second multi-select list — **a variant with a single caller is a guess about what the second caller will need**, and guessing is how `NavRow` and `NavItem` became two things.
 
 **`Heading`, `SectionLabel` and `FieldDisplay` are the three pieces of a form or summary screen**, and each replaced a pattern that had been copied rather than shared. `text-3xl font-bold text-heading` was written out at fourteen call sites — every wizard step title — with four more sizes alongside it that had no name, so a new screen picked whichever one it was copied from. `Heading`'s level chooses the size **and** the element, because a title rendered as a `<span>` is invisible to anything navigating by heading; that was live in the wizard's own step header. `SectionLabel` had the same three declarations at a dozen sites with the spacing below varying between nothing, `mb-1` and `mb-3` — and it renders a real `<label>`, so **give it `htmlFor`** whenever there is a field to point at.
 
@@ -657,3 +657,15 @@ The trigger remains a span with button semantics because some callers place it
 inside an existing row button; activation does not trigger that parent action.
 
 Split actions use Button’s `segment="start"` / `segment="end"` presets for joined corners and a divider, with `ActionMenu` for the secondary choices. Callers keep only layout classes.
+
+### Appearance
+
+Settings → Appearance and language reuses Card and ChipGroup for Light, Dark, System and La Crypta.
+The choice saves immediately in extension-local storage, independently of accounts
+and vault state. Light remains the default. System follows OS changes; La Crypta
+uses the near-black, lime and orange palette from lacrypta.ar. The shared appearance
+service initializes before rendering popup, onboarding and approval windows and
+updates open documents on storage changes. Palettes live in theme.css; use semantic
+surface/text/status tokens, including for loading screens and decorative backgrounds.
+The language row opens the shared LanguagePicker dialog from this screen; the menu footer only shows the extension version.
+QR modules stay dark on a white background in every palette so they remain scannable.

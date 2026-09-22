@@ -58,7 +58,7 @@ export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStep
             <Card
               as="button"
               variant="raised"
-              className={`flex items-center gap-7 w-full p-8 mb-0 cursor-pointer text-left transition-all hover:bg-glass-heavy hover:translate-x-2 ${m.primary ? 'border-brand bg-[rgba(255,255,255,0.92)] shadow-[0_4px_20px_rgba(99,102,241,0.14)]' : ''}`}
+              className={`flex items-center gap-7 w-full p-8 mb-0 cursor-pointer text-left transition-all hover:bg-glass-heavy hover:translate-x-2 ${m.primary ? 'border-brand bg-glass-heavy shadow-[0_4px_20px_rgba(99,102,241,0.14)]' : ''}`}
               onClick={() => onSelect(m.id)}
             >
               <div className="w-18 h-18 rounded-panel bg-brand-light text-brand flex items-center justify-center shrink-0">{m.icon}</div>

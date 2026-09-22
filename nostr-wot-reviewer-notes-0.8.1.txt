@@ -1,0 +1,17 @@
+Nostr WoT 0.8.1 — Firefox build verification
+
+Use Node.js 22.23.2, npm 10.9.8 and zip/unzip.
+
+1. Extract nostr-wot-source-0.8.1.zip into an empty folder, keeping all files (including documentation and .gitignore).
+2. Run:
+
+npm ci
+npm run package:firefox
+
+3. Compare with the submitted archive:
+
+unzip -q nostr-wot-firefox.zip -d rebuilt
+unzip -q nostr-wot-firefox-0.8.1.zip -d submitted
+diff -qr rebuilt submitted
+
+No output and exit code 0 mean every extracted file matches. Compare extracted contents, not ZIP checksums; timestamps can differ. No credentials or private steps are needed. npm ci downloads locked dependencies. Chrome uses npm run package:chrome. See SOURCE_BUILD.md.

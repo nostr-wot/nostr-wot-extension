@@ -40,7 +40,7 @@ export default function QrCode({ value, size = 200, className }: QrCodeProps) {
     <div className={className}>
       <svg xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
         <rect width={size} height={size} fill="#fff" />
-        <g fill="currentColor">
+        <g fill="#171722">
           {cells.map((c) => (
             <rect key={c.key} x={c.x} y={c.y} width={c.size} height={c.size} />
           ))}

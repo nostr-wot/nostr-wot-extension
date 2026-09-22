@@ -17,9 +17,7 @@ import { cn } from '@utils/cn.ts';
  * hairline. `standalone` carries its own card chrome and is meant to stand on
  * its own with space around it.
  *
- * Not everything that looks vaguely row-shaped belongs here. The language
- * trigger in the menu footer is an auto-width pill with a chevron-DOWN, which
- * is a dropdown trigger rather than a list row. The account rows in the top-bar
+ * Not everything that looks vaguely row-shaped belongs here. The account rows in the top-bar
  * dropdown carry their own hover-revealed edit/copy/remove buttons, so the row
  * is a container of controls rather than one control. And the follow
  * suggestions in the wizard are a multi-SELECT list with a checkmark, which is

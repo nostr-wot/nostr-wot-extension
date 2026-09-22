@@ -281,3 +281,88 @@ body {
   background: var(--bg-html);
   position: relative;
 }
+
+/* Shared by the popup, approval window and onboarding. Keep native controls
+   and all portals on the same palette by setting the theme on the root. */
+:root { color-scheme: light; }
+:root[data-theme="dark"],
+:root[data-theme="lacrypta"] {
+  color-scheme: dark;
+  --bg-page: linear-gradient(45deg, #171722, #202033);
+  --bg-page-solid: #1c1c2a;
+  --bg-html: #12121c;
+  --text-heading: #f3f1ff;
+  --text-body: #dedbea;
+  --text-secondary: #b9b5cd;
+  --text-muted: #a29cb9;
+  --menu-subtitle: #b5adf5;
+  --brand: #b3a7ff;
+  --brand-hover: #c8bfff;
+  --text-on-brand: #201936;
+  --brand-light: rgba(179, 167, 255, 0.14);
+  --card-bg: rgba(179, 167, 255, 0.07);
+  --card-border: rgba(179, 167, 255, 0.24);
+  --card-active: rgba(179, 167, 255, 0.18);
+  --brand-tint-hover: rgba(179, 167, 255, 0.09);
+  --brand-tint-active: rgba(179, 167, 255, 0.16);
+  --bg-sunken: rgba(0, 0, 0, 0.2);
+  --input-bg: #292839;
+  --control-border: #706785;
+  --bg-elevated: #252434;
+  --surface-glass: rgba(28, 28, 42, 0.95);
+  --surface-glass-heavy: rgba(28, 28, 42, 0.98);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --scrim-heavy: rgba(0, 0, 0, 0.75);
+  --divider: rgba(179, 167, 255, 0.15);
+  --success: #6ee7b7;
+  --success-strong: #6ee7b7;
+  --error: #ff909b;
+  --warning: #fcd17a;
+  --warning-strong: #fcd17a;
+  --info: #93c5fd;
+  --success-tint: rgba(110, 231, 183, 0.12);
+  --error-tint: rgba(255, 144, 155, 0.12);
+  --error-tint-hover: rgba(255, 144, 155, 0.08);
+  --warning-tint: rgba(252, 209, 122, 0.1);
+  --warning-tint-heavy: rgba(252, 209, 122, 0.15);
+  --info-tint: rgba(147, 197, 253, 0.12);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --focus-ring: 0 0 0 3px rgba(179, 167, 255, 0.5);
+}
+
+/* La Crypta: palette from https://lacrypta.ar/ (September 2026).
+   Reuses dark-mode semantics; lime replaces purple for interactive elements. */
+:root[data-theme="lacrypta"] {
+  --bg-page: linear-gradient(45deg, #090908, #171710);
+  --bg-page-solid: #11110f;
+  --bg-html: #090908;
+  --bg-elevated: #22221c;
+  --input-bg: #25251e;
+  --text-heading: #f5f0e6;
+  --text-body: #e5e1d7;
+  --text-secondary: #bfbeb0;
+  --text-muted: #a6a698;
+  --brand: #c7ff5b;
+  --brand-hover: #dcff9d;
+  --menu-subtitle: #c7dc9f;
+  --text-on-brand: #11110f;
+  --brand-light: rgba(199, 255, 91, 0.12);
+  --card-bg: rgba(199, 255, 91, 0.05);
+  --card-border: rgba(199, 255, 91, 0.2);
+  --card-active: rgba(199, 255, 91, 0.16);
+  --brand-tint-hover: rgba(199, 255, 91, 0.08);
+  --brand-tint-active: rgba(199, 255, 91, 0.12);
+  --control-border: #6b7059;
+  --surface-glass: rgba(17, 17, 15, 0.95);
+  --surface-glass-heavy: rgba(17, 17, 15, 0.98);
+  --divider: rgba(199, 255, 91, 0.14);
+  --warning: #ffb267;
+  --warning-strong: #ffb267;
+  --warning-bright: #ff7a1a;
+  --warning-tint: rgba(255, 122, 26, 0.1);
+  --warning-tint-heavy: rgba(255, 122, 26, 0.15);
+  --focus-ring: 0 0 0 3px rgba(199, 255, 91, 0.5);
+}

@@ -1,6 +1,8 @@
+import AppearanceSection from '@screens/Settings/AppearanceSection';
+import IconSettings from '@assets/IconSettings.tsx';
 import WotHowItWorks from '@screens/Settings/WotHowItWorks';
 import { useState, useEffect, useRef, ReactNode } from 'react';
-import { t, getSupportedLanguages, getLanguage } from '@services/i18n/i18n.ts';
+import { t } from '@services/i18n/i18n.ts';
 import IconLock from '@assets/IconLock.tsx';
 import IconShield from '@assets/IconShield.tsx';
 import IconGlobe from '@assets/IconGlobe.tsx';
@@ -11,8 +13,6 @@ import IconInfo from '@assets/IconInfo.tsx';
 import { version as appVersion } from '../../../package.json';
 import OverlayPanel from '@components/OverlayPanel';
 import MenuSection from './MenuSection';
-import LanguagePicker from './LanguagePicker';
-import type { Language } from '@domain/i18n/language.ts';
 import PqcSection, { type PqcSectionHandle } from '@screens/Settings/PqcSection';
 import PermissionsSection, { type PermissionsSectionHandle } from '@screens/Settings/PermissionsSection';
 import SecuritySection from '@screens/Settings/SecuritySection';
@@ -45,14 +45,12 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   const [wotInfoOpen, setWotInfoOpen] = useState(false);
   const [navStack, setNavStack] = useState<string[]>([]);
   const [keyAction, setKeyAction] = useState<string | null>(null); // 'nsec' | 'ncryptsec' | 'changePassword'
-  const [langModalOpen, setLangModalOpen] = useState<boolean>(false);
   const [permDetailDomain, setPermDetailDomain] = useState<string | null>(null);
   const pqcSectionRef = useRef<PqcSectionHandle>(null);
   const permsSectionRef = useRef<PermissionsSectionHandle>(null);
   const vault = useVault();
   const { isReadOnly, isNip46, active } = useAccount();
   const { shouldRender, animating } = useAnimatedVisible(visible);
-  const languages: Language[] = getSupportedLanguages();
 
   useEffect(() => {
     if (visible && initialSection) {
@@ -94,10 +92,12 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       icon: <IconGlobe />,
     },
     { id: 'experimental-wot', label: t('wot.title'), desc: t('wot.menuDesc'), icon: <IconGlobe /> },
+    { id: 'appearance', label: t('appearance.title'), desc: t('appearance.menuDesc'), icon: <IconSettings /> },
   ];
 
   const sectionTitles: Record<string, string> = {
     'experimental-wot': t('wot.title'),
+    appearance: t('appearance.title'),
     security: t('settings.security'),
     network: t('network.relays'),
     wallet: t('wallet.title'),
@@ -127,12 +127,10 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     pushSection(id);
   };
 
-  const openLangPicker = () => setLangModalOpen(true);
-
-  const currentLang = languages.find((l: Language) => l.code === getLanguage()) || languages[0];
-
   const renderSection = (): ReactNode => {
     switch (currentSection) {
+      case 'appearance':
+        return <AppearanceSection />;
       case 'security':
         return (
           <MenuSection>
@@ -257,18 +255,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         </div>
 
         <Container className="mt-auto items-center pt-6 shrink-0">
-          {!currentSection && (
-            <button
-              className="inline-flex items-center gap-4 py-4 px-6 mb-6 border border-card-border bg-[rgba(255,255,255,0.6)] rounded-[20px] cursor-pointer transition-all font-[inherit] hover:bg-[rgba(255,255,255,0.9)] hover:border-brand"
-              onClick={openLangPicker}
-            >
-              <span className="text-2xl leading-none">{currentLang.flag}</span>
-              <span className="text-md font-medium text-heading whitespace-nowrap">{currentLang.native}</span>
-              <svg className="shrink-0 text-muted" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-          )}
           <Container variant="row" gap={4} className="justify-center py-4 opacity-50">
             <img src="/icons/icon-base.svg" className="w-8 h-8" alt="" />
             <Text variant="secondary" as="span" className="text-xs font-semibold">Nostr WoT Extension</Text>
@@ -276,8 +262,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
           </Container>
         </Container>
       </Container>
-
-      {langModalOpen && <LanguagePicker onClose={() => setLangModalOpen(false)} />}
 
       {keyAction && (
         <KeyActionModal

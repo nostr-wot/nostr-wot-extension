@@ -422,3 +422,7 @@ Follow replacement checks also consult the author’s versioned public follow li
 Empty kind:3 lists (including client-only tags) require confirmation when any previous follows are known. Warnings display both the previous and proposed counts, including zero. Tests cover local and remote accounts, ordinary/batch approval bypasses, and clearing the last follow.
 
 Approval UI tests verify that grouped duplicate reductions render a single warning on the pending card and confirmation dialog, while confirmation still resolves each displayed request individually.
+
+Appearance regressions live in `tests/theme-tokens.test.ts`: preference validation,
+OS and cross-window updates, failed storage reads/writes, mounted theme selection,
+AA text contrast for dark palettes, and QR foreground independence from theme text.

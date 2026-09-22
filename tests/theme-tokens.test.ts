@@ -254,3 +254,139 @@ describe('theme contrast', () => {
     );
   });
 });
+
+// Preference behavior is independent of the active account and vault.
+describe('theme preferences', () => {
+  it('validates saved values and resolves the system preference', async () => {
+    const { themePreference, resolveTheme } = await import('../src/domain/appearance/theme.ts');
+    assert.equal(themePreference(undefined), 'light');
+    assert.equal(themePreference('invalid'), 'light');
+    assert.equal(themePreference('dark'), 'dark');
+    assert.equal(themePreference('lacrypta'), 'lacrypta');
+    assert.equal(resolveTheme('lacrypta', false), 'lacrypta');
+    assert.equal(resolveTheme('system', true), 'dark');
+    assert.equal(resolveTheme('system', false), 'light');
+    assert.equal(resolveTheme('light', true), 'light');
+    assert.equal(resolveTheme('dark', false), 'dark');
+  });
+
+  it('applies persisted themes, OS changes and cross-window changes; survives read failure', async () => {
+    const { JSDOM } = await import('jsdom');
+    const dom = new JSDOM('<html></html>');
+    const globals = globalThis as any;
+    const previous = { window: globals.window, document: globals.document, chrome: globals.chrome };
+    const listeners: Array<(changes: any, area: string) => void> = [];
+    const mediaListeners: Array<() => void> = [];
+    let stored: unknown = 'dark';
+    let failRead = false;
+    let failWrite = false;
+    const media = { matches: false, addEventListener: (_: string, fn: () => void) => mediaListeners.push(fn) };
+    globals.window = dom.window;
+    globals.document = dom.window.document;
+    globals.window.matchMedia = () => media;
+    globals.chrome = { storage: {
+      session: {},
+      onChanged: { addListener: (fn: any) => listeners.push(fn), removeListener: (fn: any) => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); } },
+      local: {
+        get: async () => { if (failRead) throw new Error('offline'); return { appearanceTheme: stored }; },
+        set: async (value: any) => {
+          if (failWrite) throw new Error('quota');
+          stored = value.appearanceTheme;
+          listeners.forEach(fn => fn({ appearanceTheme: { newValue: stored } }, 'local'));
+        },
+      },
+    } };
+    try {
+      const { initTheme, saveTheme } = await import('../src/services/appearance/theme.ts');
+      await initTheme();
+      const root = dom.window.document.documentElement;
+      assert.equal(root.dataset.theme, 'dark');
+      await saveTheme('system');
+      assert.equal(root.dataset.theme, 'light');
+      media.matches = true;
+      mediaListeners.forEach(fn => fn());
+      assert.equal(root.dataset.theme, 'dark');
+      listeners.forEach(fn => fn({ appearanceTheme: { newValue: 'light' } }, 'sync'));
+      assert.equal(root.dataset.theme, 'dark');
+      listeners.forEach(fn => fn({ appearanceTheme: { newValue: 'light' } }, 'local'));
+      assert.equal(root.dataset.theme, 'light');
+      failWrite = true;
+      await assert.rejects(saveTheme('dark'), /quota/);
+      assert.equal(root.dataset.theme, 'light');
+      failRead = true;
+      await initTheme();
+      assert.equal(root.dataset.theme, 'light');
+      failWrite = false;
+      const { createRoot } = await import('react-dom/client');
+      const { createElement, act } = await import('react');
+      const { default: AppearanceSection } = await import('../src/screens/Settings/AppearanceSection.tsx');
+      const mount = dom.window.document.createElement('div');
+      dom.window.document.body.append(mount);
+      const app = createRoot(mount);
+      globals.IS_REACT_ACT_ENVIRONMENT = true;
+      try {
+        await act(async () => app.render(createElement(AppearanceSection)));
+        const languageButton = [...mount.querySelectorAll('button')].find(b => b.textContent?.includes('settings.language'))!;
+        assert.ok(languageButton);
+        await act(async () => languageButton.click());
+        assert.ok(mount.querySelector('[role="dialog"]'), 'language picker opens inside appearance settings');
+        await act(async () => dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+        assert.equal(mount.querySelector('[role="dialog"]'), null);
+        const button = () => [...mount.querySelectorAll('button')].find(b => b.textContent === 'theme.lacrypta')!;
+        await act(async () => button().click());
+        assert.equal(stored, 'lacrypta');
+        assert.equal(root.dataset.theme, 'lacrypta');
+        assert.equal(button().getAttribute('aria-pressed'), 'true');
+        failWrite = true;
+        await act(async () => [...mount.querySelectorAll('button')].find(b => b.textContent === 'theme.light')!.click());
+        assert.equal(mount.querySelector('[role="alert"]')?.textContent, 'theme.saveError');
+        assert.equal(button().getAttribute('aria-pressed'), 'true');
+      } finally {
+        await act(async () => app.unmount());
+        delete globals.IS_REACT_ACT_ENVIRONMENT;
+      }
+    } finally {
+      Object.assign(globals, previous);
+      dom.window.close();
+    }
+  });
+});
+
+describe('dark palette readability', () => {
+  const css = readFileSync(THEME, 'utf8');
+  function tokens(block: string) {
+    return Object.fromEntries([...block.matchAll(/(--[\w-]+):\s*(#[\da-f]{6});/g)].map(m => [m[1], m[2]]));
+  }
+  function luminance(hex: string) {
+    const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+  }
+  it('keeps text, status and button labels at AA contrast in both dark palettes', () => {
+    const blocks = [...css.matchAll(/:root\[data-theme="lacrypta"\]\s*\{([^}]+)\}/g)];
+    assert.equal(blocks.length, 2);
+    const dark = tokens(blocks[0][1]);
+    const crypta = { ...dark, ...tokens(blocks[1][1]) };
+    for (const palette of [dark, crypta]) {
+      for (const foreground of ['--text-heading', '--text-body', '--text-secondary', '--text-muted', '--menu-subtitle', '--brand', '--brand-hover', '--error', '--success', '--warning', '--info']) {
+        for (const background of ['--bg-page-solid', '--bg-elevated', '--input-bg']) {
+          const a = luminance(palette[foreground]);
+          const b = luminance(palette[background]);
+          assert.ok((Math.max(a,b) + 0.05) / (Math.min(a,b) + 0.05) >= 4.5, `${foreground} on ${background}`);
+        }
+      }
+      const a = luminance(palette['--brand']);
+      const b = luminance(palette['--text-on-brand']);
+      assert.ok((a + 0.05) / (b + 0.05) >= 4.5);
+    }
+  });
+  it('keeps QR modules dark regardless of inherited text color', async () => {
+    const { createElement } = await import('react');
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { default: QrCode } = await import('../src/components/QrCode/index.tsx');
+    const html = renderToStaticMarkup(createElement(QrCode, { value: 'nostr:test' }));
+    assert.match(html, /fill="#fff"/);
+    assert.match(html, /<g fill="#171722"/);
+    assert.doesNotMatch(html, /currentColor/);
+  });
+});

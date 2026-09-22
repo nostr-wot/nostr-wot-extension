@@ -6,6 +6,32 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.1 — 2026-09-23
+
+### Added
+
+- Add Appearance and language settings with Light, Dark, System and La Crypta themes.
+- Save appearance locally and apply it across popup, onboarding and approval windows; System mode follows operating-system changes.
+
+### Improved
+
+- Move the language selector into Appearance and language, reusing the existing language picker.
+- Apply shared dark surfaces and readable text/status colors to cards, menus, inputs, loading screens and wizard panels.
+- Add a La Crypta palette inspired by lacrypta.ar: near-black surfaces, lime green and orange accents.
+
+### Fixed
+
+- Remove hard-coded white surfaces that prevented consistent dark mode.
+- Keep QR codes dark on white regardless of the selected theme.
+
+### Store release notes
+
+- New Appearance and language settings with Light, Dark, System and La Crypta themes.
+- Your theme saves immediately and applies across extension windows. System mode follows your device's appearance.
+- Find the language selector inside Appearance and language instead of the menu footer.
+- Improved dark-mode colors for forms, cards, menus, loading screens and approval interfaces.
+- QR codes remain readable in every theme.
+
 ## 0.8.0 — 2026-09-20
 
 ### Added

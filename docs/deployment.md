@@ -11,7 +11,7 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.8.0 packages the opt-in experimental WoT API, graph sync/scoring controls, shared approval menus and explicit confirmation for dangerous empty/singleton follow-list replacements. GitHub publication is
+0.8.1 adds Appearance and language settings with Light, Dark, System and La Crypta themes, shared dark surfaces and theme-independent QR rendering. GitHub publication is
 separate from browser-store submission and approval.
 
 ## Before any store
