@@ -699,6 +699,7 @@
   "wallet.pay": "Pagar",
   "wallet.paymentSent": "Pago enviado",
   "wallet.paymentInFlight": "Ese pago ya se está enviando.",
+  "wallet.paymentOutcomeUnknown": "No se conoce el resultado del pago. Revisa el historial de tu cartera antes de iniciar otro pago. Los pagos adicionales en este diálogo están bloqueados.",
   "wallet.checkFailed": "No se pudo comprobar tu monedero. Inténtalo de nuevo.",
   "wallet.paymentReceived": "¡Pago recibido!",
   "wallet.transactions": "Transacciones",

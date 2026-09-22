@@ -48,12 +48,18 @@ export function getWalletProvider(
     return cached;
   }
 
+  const provider = createWalletProvider(config);
+  if (provider) _providers.set(accountId, provider);
+  return provider;
+}
+
+/** Construct an uncached provider for validating credentials before saving them. */
+export function createWalletProvider(config: WalletConfig): WalletProvider | null {
   if (config.type === 'lnbits') {
     const provider = new LnbitsProvider({
       instanceUrl: config.instanceUrl,
       adminKey: config.adminKey,
     });
-    _providers.set(accountId, provider);
     return provider;
   }
 
@@ -68,7 +74,6 @@ export function getWalletProvider(
       getPubkey: getPublicKey,
       signEvent,
     });
-    _providers.set(accountId, provider);
     return provider;
   }
 

@@ -456,12 +456,12 @@ describe('NwcProvider', () => {
       // Respond
       const response = buildResponseMessage(
         sentEvent.id,
-        JSON.stringify({ result_type: 'pay_invoice', result: { preimage: 'abc123preimage' } }),
+        JSON.stringify({ result_type: 'pay_invoice', result: { preimage: 'abababababababababababababababababababababababababababababababab' } }),
       );
       ws.simulateMessage(response);
 
       const result = await payPromise;
-      assert.equal(result.preimage, 'abc123preimage');
+      assert.equal(result.preimage, 'abababababababababababababababababababababababababababababababab');
     });
 
     it('makeInvoice() sends make_invoice request with amount in msats and description', async () => {
@@ -481,14 +481,14 @@ describe('NwcProvider', () => {
         sentEvent.id,
         JSON.stringify({
           result_type: 'make_invoice',
-          result: { invoice: 'lnbc50u1...', payment_hash: 'hash123' },
+          result: { invoice: 'lnbc50u1...', payment_hash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' },
         }),
       );
       ws.simulateMessage(response);
 
       const result = await invoicePromise;
       assert.equal(result.bolt11, 'lnbc50u1...');
-      assert.equal(result.paymentHash, 'hash123');
+      assert.equal(result.paymentHash, 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd');
     });
 
     it('makeInvoice() omits description when memo is undefined', async () => {
@@ -508,7 +508,7 @@ describe('NwcProvider', () => {
         sentEvent.id,
         JSON.stringify({
           result_type: 'make_invoice',
-          result: { invoice: 'lnbc10u1...', payment_hash: 'hash456' },
+          result: { invoice: 'lnbc10u1...', payment_hash: 'efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef' },
         }),
       );
       ws.simulateMessage(response);
@@ -1200,5 +1200,154 @@ describe('NWC permanent disposal', () => {
     const second = provider.connect(); latestWs().simulateOpen(); await second;
     assert.equal(provider.isConnected(), true);
     provider.disconnect();
+  });
+});
+
+describe('NWC audited transport boundaries', () => {
+  let provider: NwcProvider;
+  beforeEach(() => { MockWebSocket.reset(); (globalThis as any).WebSocket = MockWebSocket; provider = createProvider(); });
+  afterEach(() => { provider.disconnect(); mock.timers.reset(); globalThis.WebSocket = OriginalWebSocket; });
+
+  it('bounds a silent socket handshake and permits a fresh connection', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    let error: Error | undefined;
+    const connection = provider.connect().catch(e => { error = e; });
+    const abandoned = latestWs();
+    mock.timers.tick(60_001); await flushAsync();
+    assert.match(error?.message ?? '', /connection timed out/);
+    await connection;
+    assert.equal(abandoned.readyState, MockWebSocket.CLOSED);
+    const next = provider.connect(); latestWs().simulateOpen(); await next;
+    abandoned.simulateOpen();
+    assert.equal(abandoned.sentMessages.length, 0);
+    assert.equal(provider.isConnected(), true);
+  });
+
+  it('rejects published payments promptly on remote close without replay on reconnect', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    let error: Error | undefined;
+    const payment = provider.payInvoice('ambiguous-invoice').catch(e => { error = e; });
+    await flushAsync(); ws.close(); await flushAsync();
+    assert.equal(error?.message, 'PAYMENT_OUTCOME_UNKNOWN');
+    assert.match(String(error?.cause), /disconnected/);
+    await payment;
+    const next = provider.connect(); const fresh = latestWs(); fresh.simulateOpen(); await next;
+    assert.equal(ws.sentMessages.filter(raw => JSON.parse(raw)[0] === 'EVENT').length, 1);
+    assert.equal(fresh.sentMessages.filter(raw => JSON.parse(raw)[0] === 'EVENT').length, 0);
+  });
+
+  it('rejects a mismatched result_type instead of returning false payment success', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const rejected = assert.rejects(provider.payInvoice('invoice'), (error: Error) => error.message === 'PAYMENT_OUTCOME_UNKNOWN' && /result_type/.test(String(error.cause)));
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'get_balance', result: { balance: 1000 } })));
+    await rejected;
+  });
+
+  it('rejects missing payment result rather than returning an undefined preimage', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const rejected = assert.rejects(provider.payInvoice('invoice'), (error: Error) => error.message === 'PAYMENT_OUTCOME_UNKNOWN' && /result/.test(String(error.cause)));
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'pay_invoice', result: null })));
+    await rejected;
+  });
+
+  for (const [method, invoke, result] of [
+    ['get_balance', (p: NwcProvider) => p.getBalance(), { balance: '1000' }],
+    ['get_balance', (p: NwcProvider) => p.getBalance(), { balance: -1 }],
+    ['pay_invoice', (p: NwcProvider) => p.payInvoice('invoice'), {}],
+    ['pay_invoice', (p: NwcProvider) => p.payInvoice('invoice'), { preimage: 'x' }],
+    ['make_invoice', (p: NwcProvider) => p.makeInvoice(1), { invoice: 'invoice', payment_hash: 'x' }],
+    ['list_transactions', (p: NwcProvider) => p.listTransactions(), {}],
+    ['make_invoice', (p: NwcProvider) => p.makeInvoice(1), { payment_hash: 'hash' }],
+    ['get_info', (p: NwcProvider) => p.getInfo(), { methods: 'pay_invoice' }],
+    ['list_transactions', (p: NwcProvider) => p.listTransactions(), { transactions: [{ type: 'incoming', amount: '1000' }] }],
+    ['lookup_invoice', (p: NwcProvider) => p.lookupInvoice('hash'), { settled_at: 1, amount: '1000' }],
+  ] as const) it(`rejects malformed ${method} result ${JSON.stringify(result)}`, async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const rejected = assert.rejects(invoke(provider), /Invalid NWC|PAYMENT_OUTCOME_UNKNOWN/);
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: method, result })));
+    await rejected;
+  });
+
+  it('reports lookup failure while retaining NOT_FOUND as unpaid', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    for (const code of ['UNAUTHORIZED', 'INTERNAL', 'NOT_FOUND']) {
+      const lookup = provider.lookupInvoice('hash');
+      const expected = code === 'NOT_FOUND' ? lookup : assert.rejects(lookup, new RegExp(code));
+      await flushAsync(); const id = JSON.parse(ws.sentMessages.at(-1)!)[1].id;
+      ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'lookup_invoice', error: { code, message: 'lookup refused' } })));
+      if (code === 'NOT_FOUND') assert.deepEqual(await expected, { paid: false }); else await expected;
+    }
+  });
+
+  it('rejects unsafe invoice amounts before encryption or publication', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    for (const amount of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER]) {
+      const request = assert.rejects(provider.makeInvoice(amount), /amount/);
+      // Force a reply on old code so failure is immediate rather than timing out.
+      await flushAsync();
+      if (ws.sentMessages.length > 1) {
+        ws.simulateMessage(buildResponseMessage(JSON.parse(ws.sentMessages.at(-1)!)[1].id,
+          JSON.stringify({ result_type: 'make_invoice', result: { invoice: 'invoice', payment_hash: 'hash' } })));
+      }
+      await request;
+    }
+    assert.equal(ws.sentMessages.length, 1);
+  });
+
+  for (const [method, invoke] of [
+    ['get_info', (p: NwcProvider) => p.getInfo()],
+    ['get_balance', (p: NwcProvider) => p.getBalance()],
+    ['pay_invoice', (p: NwcProvider) => p.payInvoice('invoice')],
+    ['make_invoice', (p: NwcProvider) => p.makeInvoice(1)],
+    ['lookup_invoice', (p: NwcProvider) => p.lookupInvoice('hash')],
+    ['list_transactions', (p: NwcProvider) => p.listTransactions()],
+  ] as const) it(`propagates authorization failure from ${method} without retry`, async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const rejected = assert.rejects(invoke(provider), /UNAUTHORIZED/);
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: method, error: { code: 'UNAUTHORIZED', message: 'Revoked connection' } })));
+    await rejected;
+    assert.equal(ws.sentMessages.length, 2);
+  });
+
+  it('ignores malformed tags and verification exceptions without consuming a pending response', async () => {
+    provider = createProvider({ verifyEvent: async event => { if (event.sig === 'throw') throw new Error('verifier failure'); return true; } });
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const balance = provider.getBalance(); await flushAsync();
+    const id = JSON.parse(ws.sentMessages[1])[1].id;
+    const valid = buildResponseMessage(id, JSON.stringify({ result_type: 'get_balance', result: { balance: 1000 } }));
+    for (const tags of [null, 'not-an-array', [null]]) {
+      const message = JSON.parse(valid); message[2].tags = tags;
+      ws.simulateMessage(JSON.stringify(message)); await flushAsync();
+    }
+    const invalid = JSON.parse(valid); invalid[2].sig = 'throw';
+    ws.simulateMessage(JSON.stringify(invalid)); await flushAsync();
+    ws.simulateMessage(valid);
+    assert.deepEqual(await balance, { balance: 1 });
+  });
+
+  it('preserves pending and failed history rows without labeling them settled', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const history = provider.listTransactions(); await flushAsync();
+    const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'list_transactions', result: { transactions: [
+      { type: 'incoming', state: 'pending', amount: 1000, created_at: 1700000000, payment_hash: 'ab'.repeat(32) },
+      { type: 'outgoing', state: 'failed', amount: 1000, created_at: 1700000000, payment_hash: 'cd'.repeat(32) },
+    ] } })));
+    assert.deepEqual((await history).map(tx => tx.status), ['pending', 'failed']);
+  });
+
+  it('payment timeout sends exactly once and a late response cannot revive it', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const rejected = assert.rejects(provider.payInvoice('invoice'), (error: Error) => error.message === 'PAYMENT_OUTCOME_UNKNOWN' && /timed out: pay_invoice/.test(String(error.cause)));
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    mock.timers.tick(60_001); await rejected;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'pay_invoice', result: { preimage: 'late' } })));
+    await flushAsync();
+    assert.equal(ws.sentMessages.length, 2);
   });
 });

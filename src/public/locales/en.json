@@ -699,6 +699,7 @@
   "wallet.pay": "Pay",
   "wallet.paymentSent": "Payment sent!",
   "wallet.paymentInFlight": "That payment is already being sent.",
+  "wallet.paymentOutcomeUnknown": "The payment outcome is unknown. Check your wallet history before starting another payment. Further payments in this dialog are blocked.",
   "wallet.checkFailed": "Could not check your wallet. Try again.",
   "wallet.paymentReceived": "Payment received!",
   "wallet.transactions": "Transactions",

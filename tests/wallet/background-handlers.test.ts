@@ -1692,3 +1692,41 @@ it('wallet mutations wait for startup unlock and still reject a genuinely locked
   await assert.rejects(() => actual.get('wallet_disconnect')!({}), /Vault is locked/);
   await vault.destroy();
 });
+
+it('NWC setup authenticates before replacing the saved wallet and cancels on lock', { timeout: 15000 }, async t => {
+  const { localWallet, until, walletPubkey, clientKey } = await import('../helpers/nwc-wallet.ts');
+  const { handlers: actual } = await import('../../src/services/background/wallet-handlers.ts');
+  const peer = await localWallet();
+  await vault.destroy();
+  await vault.create(TEST_PASSWORD, makePayloadWithWallet());
+  const previous = getWalletProvider('acct1', TEST_WALLET_CONFIG);
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(peer.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  t.after(async () => { await vault.destroy(); clearWalletProviders(); await peer.close(); });
+
+  const denied = actual.get('wallet_connect')!({ walletConfig: config }).then(value => ({ value }), error => ({ error }));
+  await until(() => peer.requests.length === 1);
+  assert.equal(peer.requests[0].method, 'get_info');
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, TEST_WALLET_CONFIG);
+  await peer.response(peer.requests[0], {}, { error: { code: 'UNAUTHORIZED', message: 'Revoked connection' } });
+  const deniedResult = await denied;
+  assert.ok('error' in deniedResult);
+  assert.match(String(deniedResult.error), /UNAUTHORIZED/);
+  assert.equal(getWalletProvider('acct1', TEST_WALLET_CONFIG), previous);
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, TEST_WALLET_CONFIG);
+
+  const locked = actual.get('wallet_connect')!({ walletConfig: config }).then(value => ({ value }), error => ({ error }));
+  await until(() => peer.requests.length === 2);
+  vault.lock();
+  assert.ok('error' in await locked);
+  await vault.unlock(TEST_PASSWORD);
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, TEST_WALLET_CONFIG);
+
+  const accepted = actual.get('wallet_connect')!({ walletConfig: config });
+  await until(() => peer.requests.length === 3);
+  await peer.response(peer.requests[2], { alias: 'Verified wallet', methods: ['pay_invoice'] });
+  assert.equal(await accepted, true);
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, config);
+  vault.lock(); await vault.unlock(TEST_PASSWORD);
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, config);
+  assert.deepEqual(peer.errors, []);
+});

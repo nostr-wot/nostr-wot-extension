@@ -699,6 +699,7 @@
   "wallet.pay": "Pagar",
   "wallet.paymentSent": "Pagamento enviado",
   "wallet.paymentInFlight": "Esse pagamento já está sendo enviado.",
+  "wallet.paymentOutcomeUnknown": "O resultado do pagamento é desconhecido. Verifique o histórico da sua carteira antes de iniciar outro pagamento. Outros pagamentos nesta janela estão bloqueados.",
   "wallet.checkFailed": "Não foi possível verificar sua carteira. Tente novamente.",
   "wallet.paymentReceived": "Pagamento recebido!",
   "wallet.transactions": "Transações",

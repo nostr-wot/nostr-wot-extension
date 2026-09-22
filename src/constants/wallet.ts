@@ -53,6 +53,9 @@ export const PAYMENT_INTENT_STUCK_TTL_MS = 24 * 60 * 60 * 1000;
  */
 export const PAYMENT_IN_FLIGHT = 'PAYMENT_IN_FLIGHT';
 
+/** Published payment without a trustworthy final response; never automatically retry. */
+export const PAYMENT_OUTCOME_UNKNOWN = 'PAYMENT_OUTCOME_UNKNOWN';
+
 export const EMPTY_TX_FILTERS: TxFilters = { direction: 'all', dateFrom: '', dateTo: '' };
 
 export const PROVIDER_LABELS: Record<string, string> = {

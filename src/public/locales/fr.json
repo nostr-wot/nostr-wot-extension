@@ -699,6 +699,7 @@
   "wallet.pay": "Payer",
   "wallet.paymentSent": "Paiement envoyé",
   "wallet.paymentInFlight": "Ce paiement est déjà en cours d'envoi.",
+  "wallet.paymentOutcomeUnknown": "Le résultat du paiement est inconnu. Consultez l’historique de votre portefeuille avant de lancer un autre paiement. Les paiements supplémentaires dans cette fenêtre sont bloqués.",
   "wallet.checkFailed": "Impossible de vérifier votre portefeuille. Réessayez.",
   "wallet.paymentReceived": "Paiement reçu !",
   "wallet.transactions": "Transactions",

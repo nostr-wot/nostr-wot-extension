@@ -426,3 +426,22 @@ Approval UI tests verify that grouped duplicate reductions render a single warni
 Appearance regressions live in `tests/theme-tokens.test.ts`: preference validation,
 OS and cross-window updates, failed storage reads/writes, mounted theme selection,
 AA text contrast for dark palettes, and QR foreground independence from theme text.
+
+
+### NWC audit coverage
+
+The [NWC audit](nwc-audit.md) maps each wallet flow to its regression coverage and
+records compatibility limits. Provider tests cover handshake/request deadlines,
+remote close, late replies, malformed result fields and tags, result-type binding,
+lookup errors and pending/failed history. The shared loopback fixture exercises
+real NIP-04/signatures; production payment handlers exercise NWC setup, balance,
+deposit, lookup, history, consent, approval, deny, vault lock and reconstruction.
+A dropped LNURL payment response retains the same intent and proves that replay
+never fetches another invoice. Unknown markers do not expire into a second send.
+
+Mounted wallet tests cover NWC setup errors/retry, send guards and close controls,
+whole-sat receive validation, polling failure recovery, single paid callbacks,
+automatic closure and late replies after unmount. Unknown payment outcomes use a
+localized message and prevent another send within the same dialog. Real setup
+handler regressions verify `get_info` authorization before replacing saved config,
+preservation after failure/lock and persistence of a successful connection.

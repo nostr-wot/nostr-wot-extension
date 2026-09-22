@@ -45,7 +45,7 @@ describe('classifyDay', () => {
 
 import { formatTimeAgo, formatTxDate } from '../src/services/i18n/timeLabels.ts';
 import { paymentErrorMessage, invoiceExpiryLabel } from '../src/services/i18n/paymentLabels.ts';
-import { PAYMENT_IN_FLIGHT } from '../src/constants/wallet.ts';
+import { PAYMENT_IN_FLIGHT, PAYMENT_OUTCOME_UNKNOWN } from '../src/constants/wallet.ts';
 import { formatSats } from '../src/domain/wallet/display.ts';
 import { truncateNpub } from '../src/domain/nostr/display.ts';
 import { npubEncode } from '../src/lib/crypto/bech32.ts';
@@ -65,6 +65,7 @@ it('translated relative dates preserve milliseconds versus transaction seconds',
 it('payment labels preserve actionable provider errors and expiry states', (ctx) => {
   ctx.mock.method(Date, 'now', () => NOW.getTime());
   assert.equal(paymentErrorMessage(new Error(PAYMENT_IN_FLIGHT)), 'wallet.paymentInFlight');
+  assert.equal(paymentErrorMessage(new Error(PAYMENT_OUTCOME_UNKNOWN)), 'wallet.paymentOutcomeUnknown');
   assert.equal(paymentErrorMessage(new Error('Provider unavailable')), 'Provider unavailable');
   assert.equal(paymentErrorMessage(null), '');
   const timestamp = NOW.getTime() / 1000;

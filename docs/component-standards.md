@@ -662,7 +662,10 @@ Split actions use Button’s `segment="start"` / `segment="end"` presets for joi
 
 Settings → Appearance and language reuses Card and ChipGroup for Light, Dark, System and La Crypta.
 The choice saves immediately in extension-local storage, independently of accounts
-and vault state. Light remains the default. System follows OS changes; La Crypta
+and vault state. Light remains the default. Dark follows nostr-wot.com’s gray-950
+canvas, gray-900 cards, gray-800 raised surfaces, neutral text and indigo accents.
+Small accent labels use indigo-400 to retain AA contrast on raised surfaces.
+System follows OS changes; La Crypta
 uses the near-black, lime and orange palette from lacrypta.ar. The shared appearance
 service initializes before rendering popup, onboarding and approval windows and
 updates open documents on storage changes. Palettes live in theme.css; use semantic

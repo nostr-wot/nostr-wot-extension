@@ -1,3 +1,4 @@
+import { PaymentOutcomeUnknownError } from './payment-errors.ts';
 import { NWC_REQUEST_TIMEOUT_MS } from '@constants/wallet.ts';
 /**
  * NWC (Nostr Wallet Connect, NIP-47) wallet provider
@@ -43,6 +44,7 @@ export interface NwcConfig {
 // ── Pending request tracking ──
 
 interface PendingNwcRequest {
+  method: string;
   resolve: (result: unknown) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -54,6 +56,24 @@ interface NwcResponseContent {
   result_type: string;
   error?: { code: string; message: string };
   result?: Record<string, unknown>;
+}
+
+class NwcRequestError extends Error {
+  constructor(readonly code: string, message: string) {
+    super(`NWC error (${code}): ${message}`);
+  }
+}
+
+function requireMsats(value: unknown): asserts value is number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error('Invalid NWC amount');
+}
+
+function requireText(value: unknown): asserts value is string {
+  if (typeof value !== 'string' || !value) throw new Error('Invalid NWC result string');
+}
+
+function requireHex32(value: unknown): asserts value is string {
+  if (typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value)) throw new Error('Invalid NWC result: expected 32-byte hex');
 }
 
 // ── Provider ──
@@ -121,6 +141,10 @@ export class NwcProvider implements WalletProvider {
       alias?: string;
       methods?: string[];
     };
+    if ((result.alias !== undefined && typeof result.alias !== 'string') ||
+        (result.methods !== undefined && (!Array.isArray(result.methods) || result.methods.some(method => typeof method !== 'string')))) {
+      throw new Error('Invalid NWC info result');
+    }
     return {
       alias: result.alias,
       methods: result.methods ?? [],
@@ -129,6 +153,7 @@ export class NwcProvider implements WalletProvider {
 
   async getBalance(): Promise<{ balance: number }> {
     const result = (await this.sendRequest('get_balance', {})) as { balance: number };
+    requireMsats(result.balance);
     return { balance: Math.round(result.balance / 1000) };
   }
 
@@ -136,6 +161,9 @@ export class NwcProvider implements WalletProvider {
     const result = (await this.sendRequest('pay_invoice', { invoice: bolt11 })) as {
       preimage: string;
     };
+    try { requireHex32(result.preimage); } catch (error) {
+      throw new PaymentOutcomeUnknownError((error as Error).message);
+    }
     return { preimage: result.preimage };
   }
 
@@ -143,6 +171,9 @@ export class NwcProvider implements WalletProvider {
     amount: number,
     memo?: string,
   ): Promise<{ bolt11: string; paymentHash: string }> {
+    if (!Number.isSafeInteger(amount) || amount <= 0 || !Number.isSafeInteger(amount * 1000)) {
+      throw new Error('Invalid invoice amount: expected positive whole sats within the millisatoshi range');
+    }
     // NIP-47 make_invoice takes millisatoshis; our interface takes sats.
     const params: Record<string, unknown> = { amount: amount * 1000 };
     if (memo !== undefined) {
@@ -152,6 +183,8 @@ export class NwcProvider implements WalletProvider {
       invoice: string;
       payment_hash: string;
     };
+    requireText(result.invoice);
+    requireHex32(result.payment_hash);
     return { bolt11: result.invoice, paymentHash: result.payment_hash };
   }
 
@@ -160,15 +193,20 @@ export class NwcProvider implements WalletProvider {
       const result = (await this.sendRequest('lookup_invoice', {
         payment_hash: paymentHash,
       })) as { settled_at?: number; amount?: number };
+      requireMsats(result.amount);
+      if (result.settled_at !== undefined && (!Number.isSafeInteger(result.settled_at) || result.settled_at < 0)) {
+        throw new Error('Invalid NWC settlement time');
+      }
       const settledAt = result.settled_at ?? 0;
       const amountMsats = result.amount ?? 0;
       return {
         paid: settledAt > 0,
         amountPaid: Math.round(amountMsats / 1000),
       };
-    } catch {
+    } catch (error) {
       this.assertAvailable();
-      return { paid: false };
+      if (error instanceof NwcRequestError && error.code === 'NOT_FOUND') return { paid: false };
+      throw error;
     }
   }
 
@@ -179,6 +217,7 @@ export class NwcProvider implements WalletProvider {
       unpaid: false,
     }) as { transactions?: Array<{
       type: string;
+      state?: string;
       invoice: string;
       amount: number;      // msats
       fees_paid: number;   // msats
@@ -189,18 +228,33 @@ export class NwcProvider implements WalletProvider {
       preimage: string;
     }> };
 
-    return (result.transactions ?? []).map(tx => ({
-      paymentHash: tx.payment_hash,
-      bolt11: tx.invoice,
-      amount: tx.type === 'incoming'
-        ? Math.round(tx.amount / 1000)
-        : -Math.round(tx.amount / 1000),
-      fee: Math.round((tx.fees_paid || 0) / 1000),
-      memo: tx.description || undefined,
-      status: 'settled' as const,
-      createdAt: tx.settled_at || tx.created_at,
-      preimage: tx.preimage || undefined,
-    }));
+    if (!Array.isArray(result.transactions)) throw new Error('Invalid NWC transactions');
+    return result.transactions.map(tx => {
+      if (!tx || (tx.type !== 'incoming' && tx.type !== 'outgoing')) throw new Error('Invalid NWC transaction');
+      for (const value of [tx.invoice, tx.description]) {
+        if (value !== undefined && typeof value !== 'string') throw new Error('Invalid NWC transaction text');
+      }
+      if (tx.preimage) requireHex32(tx.preimage);
+      requireMsats(tx.amount);
+      if (tx.fees_paid !== undefined) requireMsats(tx.fees_paid);
+      requireHex32(tx.payment_hash);
+      const timestamp = tx.settled_at || tx.created_at;
+      if (!Number.isSafeInteger(timestamp) || timestamp < 0) throw new Error('Invalid NWC transaction time');
+      return {
+        paymentHash: tx.payment_hash,
+        bolt11: tx.invoice,
+        amount: tx.type === 'incoming'
+          ? Math.round(tx.amount / 1000)
+          : -Math.round(tx.amount / 1000),
+        fee: Math.round((tx.fees_paid || 0) / 1000),
+        memo: tx.description || undefined,
+        status: tx.state === 'failed' ? 'failed' as const
+          : tx.state === 'pending' || tx.state === 'accepted' || !tx.settled_at ? 'pending' as const
+          : 'settled' as const,
+        createdAt: tx.settled_at || tx.created_at,
+        preimage: tx.preimage || undefined,
+      };
+    });
   }
 
   async connect(): Promise<void> {
@@ -210,11 +264,17 @@ export class NwcProvider implements WalletProvider {
     const connection = new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(this.relay);
       this.ws = ws;
-      this.cancellations.add(reject);
       const finish = (error?: Error) => {
-        this.cancellations.delete(reject);
+        clearTimeout(timer);
+        this.cancellations.delete(finish);
         if (error) reject(error); else resolve();
       };
+      const timer = setTimeout(() => {
+        finish(new Error('NWC connection timed out'));
+        if (this.ws === ws) { this.ws = null; this._connected = false; }
+        ws.close();
+      }, NWC_REQUEST_TIMEOUT_MS);
+      this.cancellations.add(finish);
       ws.onopen = () => {
         if (this.disposed || this.ws !== ws) {
           ws.close(); finish(new Error('NWC disconnected')); return;
@@ -244,6 +304,7 @@ export class NwcProvider implements WalletProvider {
         if (this.ws === ws) {
           this.ws = null;
           this._connected = false;
+          this.rejectRequests(new Error('NWC disconnected; payment outcome may be unknown'));
         }
       };
     });
@@ -263,10 +324,15 @@ export class NwcProvider implements WalletProvider {
     // E3: Zero secret key material on disconnect
     this.secret.fill(0);
 
-    // Reject all in-flight requests
+    this.rejectRequests(new Error('NWC disconnected; payment outcome may be unknown'));
+  }
+
+  private rejectRequests(error: Error): void {
+    for (const cancel of this.cancellations) cancel(error);
+    this.cancellations.clear();
     for (const [id, entry] of this.pending) {
       clearTimeout(entry.timer);
-      entry.reject(new Error('NWC disconnected'));
+      entry.reject(error);
       this.pending.delete(id);
     }
   }
@@ -293,14 +359,21 @@ export class NwcProvider implements WalletProvider {
 
   private async sendRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
     this.assertAvailable();
+    let dispatched = false;
     let cancel!: (error: Error) => void;
     const canceled = new Promise<never>((_resolve, reject) => { cancel = reject; });
     this.cancellations.add(cancel);
-    try { return await Promise.race([this.performRequest(method, params), canceled]); }
+    try { return await Promise.race([this.performRequest(method, params, () => { dispatched = true; }), canceled]); }
+    catch (error) {
+      if (method === 'pay_invoice' && dispatched && !(error instanceof NwcRequestError)) {
+        throw new PaymentOutcomeUnknownError(error instanceof Error ? error.message : String(error));
+      }
+      throw error;
+    }
     finally { this.cancellations.delete(cancel); }
   }
 
-  private async performRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
+  private async performRequest(method: string, params: Record<string, unknown>, onDispatched: () => void): Promise<unknown> {
     this.assertAvailable();
     const ws = this.ws;
     if (!ws || ws.readyState !== WebSocket.OPEN) throw new Error('NWC not connected');
@@ -329,9 +402,9 @@ export class NwcProvider implements WalletProvider {
         reject(new Error(`NWC request timed out: ${method}`));
       }, NWC_REQUEST_TIMEOUT_MS);
 
-      this.pending.set(signed.id, { resolve, reject, timer });
+      this.pending.set(signed.id, { method, resolve, reject, timer });
 
-      try { ws.send(JSON.stringify(['EVENT', signed])); }
+      try { ws.send(JSON.stringify(['EVENT', signed])); onDispatched(); }
       catch (error) {
         clearTimeout(timer); this.pending.delete(signed.id);
         reject(error instanceof Error ? error : new Error(String(error)));
@@ -353,7 +426,8 @@ export class NwcProvider implements WalletProvider {
     }
 
     const event = parsed[2] as SignedEvent;
-    if (event.kind !== 23195) return;
+    if (!event || event.kind !== 23195 || typeof event.content !== 'string' ||
+        !Array.isArray(event.tags) || event.tags.some(tag => !Array.isArray(tag) || tag.some(value => typeof value !== 'string'))) return;
 
     // S-19: Verify the response actually came from the wallet service
     if (event.pubkey !== this.walletPubkey) return;
@@ -362,7 +436,8 @@ export class NwcProvider implements WalletProvider {
     // schnorr signature before correlating with a pending request, so a
     // malicious relay can't forge responses.
     const verify = this.deps.verifyEvent ?? verifyEventNip01;
-    if (!(await verify(event)) || this.disposed) return;
+    try { if (!(await verify(event)) || this.disposed) return; }
+    catch { return; }
 
     // Find the 'e' tag that references the original request
     const eTag = event.tags?.find((t) => t[0] === 'e');
@@ -391,10 +466,15 @@ export class NwcProvider implements WalletProvider {
     try {
       const content = JSON.parse(decrypted) as NwcResponseContent;
 
+      if (!content || content.result_type !== entry.method) throw new Error('Invalid NWC result_type');
       if (content.error) {
-        entry.reject(new Error(`NWC error (${content.error.code}): ${content.error.message}`));
+        if (typeof content.error.code !== 'string' || typeof content.error.message !== 'string') throw new Error('Invalid NWC error result');
+        entry.reject(new NwcRequestError(content.error.code, content.error.message));
       } else {
-        entry.resolve(content.result ?? {});
+        if (!content.result || typeof content.result !== 'object' || Array.isArray(content.result)) {
+          throw new Error('Invalid NWC result');
+        }
+        entry.resolve(content.result);
       }
     } catch (err) {
       entry.reject(err instanceof Error ? err : new Error(String(err)));

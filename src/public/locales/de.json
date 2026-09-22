@@ -699,6 +699,7 @@
   "wallet.pay": "Bezahlen",
   "wallet.paymentSent": "Zahlung gesendet",
   "wallet.paymentInFlight": "Diese Zahlung wird bereits gesendet.",
+  "wallet.paymentOutcomeUnknown": "Der Ausgang der Zahlung ist unbekannt. Prüfe deinen Wallet-Verlauf, bevor du eine weitere Zahlung startest. Weitere Zahlungen in diesem Dialog sind gesperrt.",
   "wallet.checkFailed": "Deine Wallet konnte nicht geprüft werden. Versuche es erneut.",
   "wallet.paymentReceived": "Zahlung erhalten!",
   "wallet.transactions": "Transaktionen",

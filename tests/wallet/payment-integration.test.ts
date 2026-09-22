@@ -1,3 +1,5 @@
+import { localWallet, until, walletPubkey, clientKey } from '../helpers/nwc-wallet.ts';
+import * as permissions from '../../src/services/permissions/permissions.ts';
 import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -134,5 +136,121 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
       await assert.rejects(call('wallet_payToLightningAddress',{...params,amountSats:10,intentId:`wrong-amount-${recipient}`}),/not the 10/);
       assert.equal(requests.filter(x=>x.body.out).length,count+1);
     }finally{globalThis.fetch=originalFetch;}
+  });
+});
+
+
+test('NWC production wallet and WebLN handlers over a signed loopback relay', { timeout: 20000 }, async t => {
+  const wallet = await localWallet();
+  resetMockStorage(); vault.lock(); clearWalletProviders();
+  t.after(async () => { clearWalletProviders(); vault.lock(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+  const accountId = 'nwc-handler-account';
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  await vault.create('test-password', { activeAccountId: accountId, accounts: [{ id: accountId, name: 'NWC', type: 'nsec', pubkey, privkey: Buffer.from(key).toString('hex'), mnemonic: null, nip46Config: null, readOnly: false, createdAt: 1 }] });
+  await browser.storage.local.set({ activeAccountId: accountId, accounts: [{ id: accountId, type: 'nsec', pubkey }] });
+  await browser.storage.sync.set({ myPubkey: pubkey });
+
+  async function exchange(operation: () => Promise<any>, method: string, result: object, params?: object) {
+    const start = wallet.requests.length;
+    const request = operation();
+    await until(() => wallet.requests.length > start);
+    const received = wallet.requests[start];
+    assert.equal(received.method, method);
+    if (params) assert.deepEqual(received.params, params);
+    await wallet.response(received, result);
+    return request;
+  }
+
+  await t.test('setup persists NWC and connects through the production factory', async () => {
+    assert.equal(await call('wallet_hasConfig'), false);
+    assert.equal(await exchange(() => call('wallet_connect', { walletConfig: config }), 'get_info', { alias: 'Verified NWC', methods: ['get_balance'] }), true);
+    assert.equal(await call('wallet_hasConfig'), 'nwc');
+    assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, config);
+    assert.equal((await exchange(() => call('wallet_getInfo'), 'get_info', { alias: 'Local NWC', methods: ['get_balance'] })).alias, 'Local NWC');
+  });
+  await t.test('internal balance, deposit, lookup and history use correct protocol amounts', async () => {
+    assert.deepEqual(await exchange(() => call('wallet_getBalance'), 'get_balance', { balance: 15000 }), { balance: 15 });
+    assert.deepEqual(await exchange(() => call('wallet_makeInvoice', { amount: 3, memo: 'Deposit' }), 'make_invoice', { invoice, payment_hash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' }, { amount: 3000, description: 'Deposit' }), { bolt11: invoice, paymentHash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' });
+    assert.deepEqual(await exchange(() => call('wallet_checkInvoice', { paymentHash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' }), 'lookup_invoice', { amount: 3000, settled_at: 1700000000 }, { payment_hash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' }), { paid: true, amountPaid: 3 });
+    assert.deepEqual(await exchange(() => call('wallet_getTransactions', { limit: 10, offset: 2 }), 'list_transactions', { transactions: [] }, { limit: 10, offset: 2, unpaid: false }), []);
+    assert.deepEqual(await exchange(() => call('wallet_payInvoice', { bolt11: invoice }), 'pay_invoice', { preimage: 'abababababababababababababababababababababababababababababababab' }, { invoice }), { preimage: 'abababababababababababababababababababababababababababababababab' });
+  });
+  const webln = page().window.webln;
+  await t.test('WebLN requires consent and exposes only granted NWC methods', async () => {
+    const enabling = webln.enable();
+    await signerApprovalQueue.resolveRequest((await pending()).id, { allow: true });
+    await enabling;
+    const info = await exchange(() => webln.getInfo(), 'get_info', { alias: 'Restricted', methods: ['get_balance'] });
+    assert.deepEqual(info.methods, ['getInfo', 'getBalance']);
+    assert.equal(info.node.pubkey, '');
+    assert.deepEqual(await exchange(() => webln.getBalance(), 'get_balance', { balance: 2000 }), { balance: 2 });
+    assert.deepEqual(await exchange(() => webln.makeInvoice({ amount: 4, defaultMemo: 'WebLN' }), 'make_invoice', { invoice, payment_hash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' }, { amount: 4000, description: 'WebLN' }), { paymentRequest: invoice });
+  });
+  await t.test('WebLN rejection does not publish; approval publishes once', async () => {
+    const start = wallet.requests.length;
+    const rejected = assert.rejects(webln.sendPayment(invoice), /denied/);
+    await signerApprovalQueue.resolveRequest((await pending()).id, { allow: false }); await rejected;
+    assert.equal(wallet.requests.length, start);
+    const payment = webln.sendPayment(invoice);
+    const approval = await pending(); assert.equal(approval.walletAmount, 250000);
+    assert.equal(wallet.requests.length, start);
+    await signerApprovalQueue.resolveRequest(approval.id, { allow: true });
+    await until(() => wallet.requests.length > start);
+    assert.equal(wallet.requests[start].method, 'pay_invoice');
+    await wallet.response(wallet.requests[start], { preimage: 'abababababababababababababababababababababababababababababababab' });
+    assert.deepEqual(await payment, { preimage: 'abababababababababababababababababababababababababababababababab' });
+    assert.equal(wallet.requests.length, start + 1);
+  });
+  await t.test('account-specific deny overrides automatic threshold without publishing', async () => {
+    await call('wallet_setAutoApproveThreshold', { threshold: 1000000 });
+    await permissions.save(origin, 'webln_sendPayment', null, 'deny', accountId);
+    const start = wallet.requests.length;
+    await assert.rejects(webln.sendPayment(invoice), /Permission denied/);
+    assert.equal(wallet.requests.length, start);
+  });
+  await t.test('locking revokes pending NWC work and unlocking reconstructs its connection', async () => {
+    const start = wallet.requests.length;
+    const rejected = assert.rejects(call('wallet_getBalance'), /disconnected/);
+    await until(() => wallet.requests.length > start);
+    const old = getWalletProvider(accountId, config)!;
+    vault.lock(); await rejected;
+    assert.equal(old.isConnected(), false);
+    await assert.rejects(call('wallet_getBalance'), /locked/i);
+    await vault.unlock('test-password');
+    assert.deepEqual(await exchange(() => call('wallet_getBalance'), 'get_balance', { balance: 3000 }), { balance: 3 });
+    assert.notEqual(getWalletProvider(accountId, config), old);
+  });
+  await t.test('ambiguous Lightning Address payment retains its intent without requesting another invoice', async () => {
+    const originalFetch = globalThis.fetch;
+    let resolutions = 0;
+    globalThis.fetch = (async (input: any, init?: RequestInit) => {
+      const url = String(input);
+      if (!url.startsWith('https://recipient.example/')) return originalFetch(input, init);
+      resolutions++;
+      return new Response(JSON.stringify(url.includes('/.well-known/')
+        ? { tag: 'payRequest', callback: 'https://recipient.example/callback', minSendable: 1000, maxSendable: 500000000, metadata: '[["text/plain","Donation"]]' }
+        : { pr: makeLnurlInvoice('[["text/plain","Donation"]]') }));
+    }) as typeof fetch;
+    try {
+      const start = wallet.requests.length;
+      const payments = wallet.requests.filter(req => req.method === 'pay_invoice').length;
+      const params = { address: 'alice@recipient.example', amountSats: 250000, intentId: 'nwc-ambiguous' };
+      const rejected = assert.rejects(call('wallet_payToLightningAddress', params), /unknown/i);
+      await until(() => wallet.requests.length > start);
+      assert.equal(wallet.requests[start].method, 'pay_invoice');
+      wallet.dropConnections(); await rejected;
+      assert.equal(resolutions, 2);
+      // getConnectedProvider reconnects first, but the durable intent must stop
+      // the operation before resolving the address or minting another invoice.
+      await assert.rejects(call('wallet_payToLightningAddress', params), /unknown/i);
+      await assert.rejects(call('wallet_payToLightningAddress', params), /unknown/i);
+      assert.equal(resolutions, 2);
+      assert.equal(wallet.requests.filter(req => req.method === 'pay_invoice').length, payments + 1);
+    } finally { globalThis.fetch = originalFetch; }
+  });
+  await t.test('disconnect removes the credential and rejects later calls', async () => {
+    assert.equal(await call('wallet_disconnect'), true);
+    assert.equal(await call('wallet_hasConfig'), false);
+    await assert.rejects(call('wallet_getInfo'), /No wallet configured/);
   });
 });

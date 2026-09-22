@@ -365,8 +365,11 @@ describe('dark palette readability', () => {
   it('keeps text, status and button labels at AA contrast in both dark palettes', () => {
     const blocks = [...css.matchAll(/:root\[data-theme="lacrypta"\]\s*\{([^}]+)\}/g)];
     assert.equal(blocks.length, 2);
-    const dark = tokens(blocks[0][1]);
-    const crypta = { ...dark, ...tokens(blocks[1][1]) };
+    const shared = tokens(blocks[0][1]);
+    const darkOverride = /:root\[data-theme="dark"\]\s*\{([^}]+)\}/.exec(css);
+    assert.ok(darkOverride);
+    const dark = { ...shared, ...tokens(darkOverride[1]) };
+    const crypta = { ...shared, ...tokens(blocks[1][1]) };
     for (const palette of [dark, crypta]) {
       for (const foreground of ['--text-heading', '--text-body', '--text-secondary', '--text-muted', '--menu-subtitle', '--brand', '--brand-hover', '--error', '--success', '--warning', '--info']) {
         for (const background of ['--bg-page-solid', '--bg-elevated', '--input-bg']) {
