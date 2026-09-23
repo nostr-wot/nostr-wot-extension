@@ -93,7 +93,7 @@ export default function TransactionList({
             <Container key={tx.paymentHash} variant="row" gap={4} className="py-4 border-b border-card-border">
               <span className="flex items-center justify-center w-16 h-16 rounded-md bg-brand-light text-brand shrink-0"><span className={tx.amount < 0 ? 'rotate-180' : ''}><IconDownload size={16}/></span></span>
               <div className="flex-1 min-w-0">
-                <Text variant="body" as="div" className="text-sm overflow-hidden text-ellipsis whitespace-nowrap">
+                <Text variant="body" as="div" className="text-sm whitespace-pre-wrap break-words">
                   {isPlaceholderMemo(tx.memo)
                     ? (tx.status === 'pending' ? t('wallet.txRequested') : tx.amount >= 0 ? t('wallet.txReceived') : t('wallet.txSent'))
                     : tx.memo}

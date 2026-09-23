@@ -598,3 +598,39 @@ request a fresh invoice on replay. Definite wallet rejections and pre-publicatio
 failures remain retryable. The marker is metadata only; it contains no invoice or
 preimage. A deliberately new intent can still pay again, so inspect wallet history
 before starting another payment. See [NWC audit](nwc-audit.md).
+
+### Payment notes and receipts (0.8.2)
+
+Outgoing LNURL comments are saved before dispatch, keyed by invoice payment hash,
+and merged into outgoing provider history. This preserves the sender's own note
+when the provider returns a placeholder description. LNbits `extra.comment` and
+NWC `metadata.comment` are also displayed when returned as nonempty strings.
+Notes wrap in history and remain searchable. Older comments cannot be recovered
+when neither the provider nor this extension retained them.
+
+Notes and WebLN success receipts use the existing encrypted private-cache store,
+scoped to the account, with at most 500 notes (1,000 characters each) and 20 unread
+receipts. Replacing/disconnecting a wallet, removing an account or destroying the
+vault erases its records. Notes are metadata, never settlement evidence. A saved
+note does not create a history row; the provider supplies transaction status.
+
+A WebLN success receipt is created only after `payInvoice` succeeds, for both
+interactive and automatic approvals. The unlocked popup shows the site, known
+amount and timestamp, and Close acknowledges that receipt only. Closing the popup
+does not lose unread receipts; they appear on reopening for the same account.
+A receipt-storage failure cannot change a successful payment into a failed RPC.
+No success receipt is emitted for rejection, failure or uncertain settlement.
+The new privileged `wallet_getPaymentNotices` and
+`wallet_acknowledgePaymentNotices` methods never expose this history to websites.
+
+Deposit shows the connected wallet's reusable Lightning Address, QR and Copy
+control alongside invoice creation. It reuses the account-scoped settings lookup:
+LNbits provisioning servers provide the address; NWC connections can supply the
+optional `lud16` parameter. It never substitutes the user's Nostr profile address,
+which may belong to a different wallet. Missing/unsupported addresses and failed
+lookups are distinct and neither blocks invoice creation. New copy is translated
+in every extension locale. The QR encodes `lightning:<address>`.
+
+LNbits HTTP 200 responses with pending/unknown status or missing preimage are not
+settled payments. They raise `PAYMENT_OUTCOME_UNKNOWN`, suppress success receipts
+and retain the LNURL intent's no-replay protection. Explicit failed status rejects.

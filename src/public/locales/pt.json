@@ -726,6 +726,8 @@
   "wallet.filterClear": "Limpar",
   "wallet.filterApply": "Aplicar",
   "wallet.settings": "Configurações",
+  "wallet.receiveAddressUnavailable": "Esta carteira não forneceu um endereço Lightning reutilizável. Crie uma fatura abaixo para receber um pagamento.",
+  "wallet.receiveAddressFailed": "Não foi possível carregar o endereço de recebimento. Você ainda pode criar uma fatura.",
   "wallet.depositDesc": "Gere uma fatura Lightning para receber sats na sua carteira.",
   "wallet.sendDesc": "Cole uma fatura Lightning, um endereço Lightning ou um LNURL para enviar um pagamento.",
   "wallet.invoiceAmount": "Valor",

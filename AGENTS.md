@@ -2,12 +2,12 @@
 
 ## Pending store release
 
-Keep all current changes consolidated in **0.7.0**, including package/manifest
-versions, changelog, release notes and upload archives. Neither 0.7.0 nor the
-briefly prepared 0.7.1 has been properly published to the stores. Do not bump
-the version or publish a release until the user explicitly requests a new
-publish. Regenerate the 0.7.0 artifacts as fixes accumulate; keep GitHub releases
-as drafts in the meantime.
+Keep all current changes consolidated in **0.8.2**, including package/manifest
+versions, changelog, release notes and upload archives. The user is preparing the
+first store submission of this version and explicitly requested replacing its
+GitHub release/packages with the latest fixes. Do not bump the version or publish
+a different release until the user explicitly requests it. Generated publishing
+notes and checksums stay outside the tracked repository.
 
 **Anything you need to see in the browser must be built in the main clone.** The
 browser loads this extension unpacked from the main clone's `dist/`. A worktree builds

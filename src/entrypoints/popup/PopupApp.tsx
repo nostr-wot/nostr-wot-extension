@@ -1,3 +1,4 @@
+import PaymentSuccessNotice from '@screens/Wallet/PaymentSuccessNotice';
 import RejectionNotice from '@screens/Approval/RejectionNotice';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import browser from '@lib/browser.ts';
@@ -141,6 +142,7 @@ function PopupInner() {
         />
 
         <RejectionNotice />
+        {!vault.locked && account.active?.id && <PaymentSuccessNotice key={account.active.id} accountId={account.active.id} />}
 
         <MenuOverlay
           visible={activeOverlay === 'menu'}

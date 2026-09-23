@@ -6,12 +6,6 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
-## Unreleased
-
-### Fixed
-
-- Keep first-use wallet help inside the popup when focus moves into the dialog during the menu slide-in animation.
-
 ## 0.8.2 — 2026-09-23
 
 ### Improved
@@ -23,14 +17,18 @@ have had.
 
 ### Fixed
 
+- Keep first-use wallet help inside the popup during the menu slide-in animation.
+- Preserve outgoing payment notes in encrypted local history and show LNbits/NWC comment metadata with wrapping (#26).
+- Show confirmed WebLN payment receipts and the connected wallet's reusable Lightning Address with QR/copy in Deposit (#27).
 - Validate candidate wallets before persisting their credentials; preserve existing connections on failed validation.
 - Validate NWC response provenance, methods and fields, accepting documented Alby/LNbits nullable fields and signed fees.
 - Preserve transaction state, propagate lookup failures, and prevent ambiguous payment intents from creating another invoice or replaying a payment.
+- Treat LNbits pending HTTP 200 payment responses as unknown outcomes, never confirmed success.
 - Reject fractional receive amounts and prevent send-dialog closure during payments.
 
 ### Verification
 
-- 1,788 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
+- 1,798 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
 - Popup-width component previews cover light/dark setup, expanded settings, permission menus, hover colors and dialog blur. No live-wallet payment certification is claimed.
 
 ### Store release notes
@@ -42,6 +40,8 @@ have had.
 - Validate wallet connections before saving them and handle connection failures more reliably.
 - Show uncertain payment outcomes clearly and prevent automatic replay of the same payment intent.
 - Improved invoice amount validation, payment-dialog behavior and transaction status handling.
+- Fixed the first-use wallet help dialog appearing outside the popup.
+- Display payment notes in history, show a success receipt after confirmed WebLN payments, and add receiving-address QR/copy controls to Deposit.
 
 ## 0.8.1 — 2026-09-23
 

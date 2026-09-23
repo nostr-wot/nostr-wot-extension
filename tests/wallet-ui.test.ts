@@ -1019,3 +1019,61 @@ it('modal entry and focus restoration preserve the animated popup scroll positio
     assert.equal(moves.mock.calls.at(-1)!.arguments[0]?.preventScroll, true, 'restoring the opener must not shift the popup');
   } finally { moves.mock.restore(); await ui.cleanup(); }
 });
+
+it('Deposit exposes the wallet address with QR/copy while retaining invoice creation', async () => {
+  const {default:Deposit}=await import('../src/screens/Wallet/DepositDialog');
+  const render=(extra:object)=>renderToStaticMarkup(createElement(Deposit,{onClose(){},onPaid(){},...extra}));
+  const html=render({address:'alice@example.com'});
+  assert.match(html,/alice@example.com/);assert.match(html,/wallet.lightningAddress/);
+  assert.match(html,/aria-label="common.copy"/);assert.match(html,/<svg/);
+  assert.match(html,/wallet.createInvoice/);assert.match(html,/type="number"/);
+  assert.doesNotMatch(html,/wallet.receiveAddressUnavailable/);
+  assert.match(render({address:null}),/wallet.receiveAddressUnavailable/);
+  assert.match(render({addressError:'offline'}),/wallet.receiveAddressFailed/);
+  assert.match(render({addressError:'offline'}),/common.retry/);
+  assert.doesNotMatch(render({addressLoading:true}),/wallet.receiveAddressUnavailable/);
+});
+
+it('confirmed WebLN receipt identifies the site and amount without inventing an unknown amount', async () => {
+  const {PaymentReceipt}=await import('../src/screens/Wallet/PaymentSuccessNotice');
+  const notice={id:'id',origin:'shop.example',amount:21,timestamp:1700000000000};
+  const html=renderToStaticMarkup(createElement(PaymentReceipt,{notice}));
+  assert.match(html,/wallet.paymentSent/);assert.match(html,/shop.example/);assert.match(html,/21 sats/);assert.match(html,/role="status"/);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(PaymentReceipt,{notice:{...notice,amount:0}})),/0 sats/);
+  const txHtml=renderToStaticMarkup(createElement(TransactionList,{...props,transactions:[{paymentHash:'note',amount:-1,status:'settled',createdAt:1,memo:'Lunch with friends'}]}));
+  assert.match(txHtml,/Lunch with friends/);assert.match(txHtml,/whitespace-pre-wrap break-words/);
+});
+
+it('WebLN receipt acknowledgement keeps later arrivals and reopening restores unread receipts', async t => {
+  const {JSDOM}=await import('jsdom');
+  const {act}=await import('react');
+  const {default:browser}=await import('./helpers/browser-mock');
+  const {default:Notice}=await import('../src/screens/Wallet/PaymentSuccessNotice');
+  const dom=new JSDOM('<div id="root"></div>');
+  const previous=new Map(['window','document','IS_REACT_ACT_ENVIRONMENT'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
+  const {createRoot}=await import('react-dom/client');
+  const root=createRoot(dom.window.document.getElementById('root')!);
+  let items=[{id:'one',origin:'first.example',amount:21,timestamp:1}];
+  t.mock.method(browser.runtime,'sendMessage',async(message:{method:string;params:{accountId:string;ids?:string[]}})=>{
+    assert.equal(message.params.accountId,'account');
+    if(message.method==='wallet_acknowledgePaymentNotices'){
+      items.push({id:'two',origin:'second.example',amount:42,timestamp:2});
+      items=items.filter(item=>!message.params.ids?.includes(item.id));
+    }
+    return {result:message.method==='wallet_getPaymentNotices'?[...items]:true};
+  });
+  try {
+    await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
+    assert.match(dom.window.document.body.textContent!,/first.example/);
+    await act(async()=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='common.close')!.click());
+    assert.doesNotMatch(dom.window.document.body.textContent!,/first.example/);
+    assert.match(dom.window.document.body.textContent!,/second.example/);
+    await act(async()=>root.render(null));
+    await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
+    assert.match(dom.window.document.body.textContent!,/second.example/);
+  } finally {
+    await act(async()=>root.unmount());dom.window.close();
+    for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
+  }
+});

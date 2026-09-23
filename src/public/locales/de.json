@@ -726,6 +726,8 @@
   "wallet.filterClear": "Zurücksetzen",
   "wallet.filterApply": "Anwenden",
   "wallet.settings": "Einstellungen",
+  "wallet.receiveAddressUnavailable": "Diese Wallet hat keine wiederverwendbare Lightning-Adresse bereitgestellt. Erstelle unten eine Rechnung, um eine Zahlung zu empfangen.",
+  "wallet.receiveAddressFailed": "Die Empfangsadresse konnte nicht geladen werden. Du kannst trotzdem eine Rechnung erstellen.",
   "wallet.depositDesc": "Erstelle eine Lightning-Rechnung um Sats in dein Wallet zu erhalten.",
   "wallet.sendDesc": "Füge eine Lightning-Rechnung, eine Lightning-Adresse oder eine LNURL ein, um eine Zahlung zu senden.",
   "wallet.invoiceAmount": "Betrag",
