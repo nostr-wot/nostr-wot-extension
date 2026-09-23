@@ -1,3 +1,5 @@
+import { listAppConnections, createAppConnection, copyAppConnection, revokeAppConnection } from '../wallet/app-connections.ts';
+import type { ConnectionDraft } from '@domain/wallet/app-connections.ts';
 /**
  * Wallet and WebLN handlers.
  * @module services/background/wallet-handlers
@@ -63,6 +65,15 @@ export function createNip98SignFn(acctId: string, endpointUrl: string): (challen
             privkeyBytes.fill(0);
         }
     };
+}
+
+async function connectionWallet(params: Record<string, unknown>) {
+    await vault.requireUnlocked();
+    if (params.accountId !== vault.getActiveAccountWithWallet()?.id) throw new Error('Account switched');
+    const {acct,assertCurrent}=await getConnectedProvider();
+    if (params.accountId !== acct.id) throw new Error('Account switched');
+    if (acct.walletConfig?.type !== 'lnbits') throw new Error('LNbits wallet required');
+    return {id:acct.id,config:acct.walletConfig,assertCurrent};
 }
 
 // ── Handler Map ──
@@ -420,6 +431,23 @@ export const handlers = new Map<string, HandlerFn>([
         return true;
     }],
 
+    ['wallet_listAppConnections', async params => {
+        const w=await connectionWallet(params);
+        return listAppConnections(w.id,w.config,w.assertCurrent);
+    }],
+    ['wallet_createAppConnection', async params => {
+        if (typeof params.requestId !== 'string') throw new Error('Request ID required');
+        const w=await connectionWallet(params);
+        return createAppConnection(w.id,w.config,params as unknown as ConnectionDraft,w.assertCurrent,params.requestId as string);
+    }],
+    ['wallet_copyAppConnection', async params => {
+        const w=await connectionWallet(params);
+        return copyAppConnection(w.id,w.config,params.pubkey as string,w.assertCurrent);
+    }],
+    ['wallet_revokeAppConnection', async params => {
+        const w=await connectionWallet(params);
+        return revokeAppConnection(w.id,w.config,params.pubkey as string,w.assertCurrent);
+    }],
     ['wallet_getNwcUri', async () => {
         await vault.requireUnlocked();
         const acct = vault.getActiveAccountWithWallet();

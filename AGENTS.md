@@ -203,3 +203,15 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.
 # Build
 npm run build
 ```
+
+## LNbits app connections
+
+The server API lives in [LNbits-proxy](https://github.com/nostr-wot/LNbits-proxy)
+(local sibling `../LNbits-proxy`, governed by its `AGENTS.md`). Do not duplicate proxy
+code in this repository. The client contract is `GET /api/nwc/connections` and
+`PUT`/`DELETE /api/nwc/connections/{clientPubkey}`, authenticated by the wallet's
+Admin API key. See `docs/wallet.md` and the tests in both repositories.
+Generate client secrets locally, persist them encrypted before registration, and
+never send secrets to the proxy. Connections outlive extension disconnect/lock;
+only explicit server revocation removes a grant. Clean local copies on wallet reset.
+Never add AI signer or co-author attribution to commits, PRs or documentation.
