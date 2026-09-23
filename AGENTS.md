@@ -1,13 +1,11 @@
 # Workflow Rules
 
-## Pending store release
+## Release packaging
 
-Keep all current changes consolidated in **0.8.2**, including package/manifest
-versions, changelog, release notes and upload archives. The user is preparing the
-first store submission of this version and explicitly requested replacing its
-GitHub release/packages with the latest fixes. Do not bump the version or publish
-a different release until the user explicitly requests it. Generated publishing
-notes and checksums stay outside the tracked repository.
+The current release is **0.8.3**. Keep package and manifest versions, source-build
+instructions, changelog and upload archives consistent. Generated publishing notes
+and checksums stay outside the tracked repository. Publish new functionality in a
+new version; only replace an existing release when explicitly requested.
 
 **Anything you need to see in the browser must be built in the main clone.** The
 browser loads this extension unpacked from the main clone's `dist/`. A worktree builds
