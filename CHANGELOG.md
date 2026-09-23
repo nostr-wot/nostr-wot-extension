@@ -6,6 +6,12 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## Unreleased
+
+### Fixed
+
+- Keep first-use wallet help inside the popup when focus moves into the dialog during the menu slide-in animation.
+
 ## 0.8.2 — 2026-09-23
 
 ### Improved

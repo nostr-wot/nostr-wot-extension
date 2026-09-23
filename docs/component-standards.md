@@ -31,6 +31,8 @@ The recurring failure is not that a primitive is missing, it is that a feature h
 
 Modal and approval-sheet backdrops apply a subtle 4px blur behind the dialog, retaining their dimming and leaving dialog content sharp.
 
+Dialog entry, focus containment and opener restoration use `preventScroll` so focusing a sliding overlay cannot shift the popup's clipped canvas. Keyboard Tab navigation still scrolls controls into view within the dialog body.
+
 Shared `Modal` contains Tab and Shift+Tab within visible, enabled controls and restores the previous focused element when dismissed. Only the topmost dialog handles keyboard dismissal and focus containment; stacked dialogs respect their z-index and nested dialogs remain above their parent. If the opener has disappeared, focus returns to the remaining dialog. Keep this behavior in the shared component rather than adding competing document listeners in callers.
 
 Shared `Toggle` keeps its native checkbox keyboard interaction and shows a visible focus outline on the track through `peer-focus-visible` styling. The off-state track continues to use `bg-control-border`; labels must supply an accessible name.
