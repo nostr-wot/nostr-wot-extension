@@ -469,3 +469,8 @@ kind:9734 request, creates a description-hash invoice from the returned JSON, pa
 the injected WebLN API, and checks the message in provider history. It also verifies
 mismatched commitments, account isolation, non-zap exclusion and invoice-less history.
 LNbits tests cover historical `extra.nostr`, malformed/oversized data and comment priority.
+
+## App connections for LNbits wallets
+
+`tests/wallet/nwc-connections.test.ts` covers the HTTP contract, encrypted storage, request replay, account/wallet isolation and lost-response recovery. `tests/wallet-ui.test.ts` covers the mounted management screen. The separate LNbits-proxy repository tests the actual server routes.
+See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.

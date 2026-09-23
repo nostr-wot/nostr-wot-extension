@@ -648,3 +648,8 @@ nor its signed request, its invoice hash alone cannot recover the text. Zaps sig
 outside this extension, private zap messages, and clients that reserialize the signed
 JSON differently may still require provider-supplied metadata. No relay scan or new
 network request is made to infer old comments.
+
+## App connections for LNbits wallets
+
+Wallet Settings → App connections manages multiple named NWC grants, limits, expiry, copy/QR and revocation. Existing LNbits wallets use the same flow.
+See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.

@@ -580,3 +580,8 @@ signed request JSON, then the invoice payment hash. It never pairs a comment wit
 payment by amount or timing. The cache remains encrypted/account-scoped and bounded;
 metadata failure cannot change signing success. Provider `nostr` metadata is parsed
 only as bounded plain display text, never as payment proof or executable markup.
+
+## App connections for LNbits wallets
+
+NWC app grants use locally generated, encrypted secrets bound to the account and wallet; privileged RPCs validate the current session. Explicit server revocation is separate from local wallet disconnect.
+See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.

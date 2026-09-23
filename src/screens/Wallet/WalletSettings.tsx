@@ -1,3 +1,4 @@
+import AppConnections from './AppConnections';
 import { PROVIDER_LABELS } from '@constants/wallet.ts';
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
@@ -30,6 +31,7 @@ interface WalletSettingsProps {
 /** Settings read through the shared account context; only editable drafts stay local. */
 export default function WalletSettings({ providerType, onClose, onDisconnected }: WalletSettingsProps) {
   const { active, cachedProfile } = useAccount();
+  const [appsOpen, setAppsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const {settings,settingsLoading,settingsError,ensureSettings,refreshSettings,patchSettings} = useWallet();
   const {threshold,nwcUri,address:lnAddress} = settings;
@@ -155,6 +157,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
 
   return (
     <>
+      {appsOpen && active && <AppConnections key={active.id} accountId={active.id} onClose={() => setAppsOpen(false)} />}
       <WalletConnectionHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500} headerRight={
         <>
@@ -172,6 +175,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
           <Text as="p" className="text-md font-semibold text-heading">
             {t('wallet.connectedTo', { provider: providerType === 'lnbits' ? 'Nostr WoT LNBits' : providerLabel })}
           </Text>
+          {providerType === 'lnbits' && <Button small onClick={() => setAppsOpen(true)}>{t('wallet.appsTitle')}</Button>}
           {nwcUri && (
             <Container variant="row" gap={4} className="justify-between">
               <span className="font-mono text-2xs text-muted overflow-hidden text-ellipsis whitespace-nowrap flex-1" >{t('wallet.nwcUri')}</span>

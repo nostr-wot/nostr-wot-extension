@@ -1077,3 +1077,32 @@ it('WebLN receipt acknowledgement keeps later arrivals and reopening restores un
     for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}
   }
 });
+
+it('app connections list, secret reveal and confirmed revocation use account-scoped RPC', async t => {
+ const {JSDOM}=await import('jsdom');const {act}=await import('react');
+ const {default:browser}=await import('./helpers/browser-mock');
+ const {default:Panel}=await import('../src/screens/Wallet/AppConnections');
+ const dom=new JSDOM('<div id="root"></div>');
+ const previous=new Map(['window','document','IS_REACT_ACT_ENVIRONMENT'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+ Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
+ const {createRoot}=await import('react-dom/client');const root=createRoot(dom.window.document.getElementById('root')!);
+ let rows=[{pubkey:'12'.repeat(32),name:'Primal fixture',expiresAt:2000000000,createdAt:1,lastUsed:0,permissions:['pay'],budgets:[{limitSats:1000,usedSats:20,seconds:86400}],canCopy:true}];let revoked=0;
+ t.mock.method(browser.runtime,'sendMessage',async(message:{method:string;params:{accountId:string;pubkey?:string}})=>{
+  assert.equal(message.params.accountId,'account');
+  if(message.method==='wallet_listAppConnections')return {result:{connections:rows}};
+  if(message.method==='wallet_copyAppConnection')return {result:`nostr+walletconnect://${'34'.repeat(32)}?relay=wss://relay.test&secret=${'56'.repeat(32)}`};
+  if(message.method==='wallet_revokeAppConnection'){revoked++;rows=[];return {result:true};}
+  throw new Error(message.method);
+ });
+ const click=async(label:string)=>act(async()=>{const b=[...dom.window.document.querySelectorAll('button')].find(b=>b.textContent===label);assert.ok(b,label);b.click();});
+ try {
+  await act(async()=>root.render(createElement(Panel,{accountId:'account',onClose(){}})));
+  assert.match(dom.window.document.body.textContent!,/Primal fixture/);
+  await click('wallet.appsShow');assert.ok(dom.window.document.querySelector('svg'));assert.match(dom.window.document.body.textContent!,/wallet.appsSecretHint/);
+  await click('common.close');await click('wallet.appsRevoke');assert.equal(revoked,0);
+  await act(async()=>[...dom.window.document.querySelectorAll('button')].filter(b=>b.textContent==='wallet.appsRevoke').at(-1)!.click());
+  assert.equal(revoked,1);assert.match(dom.window.document.body.textContent!,/wallet.appsEmpty/);
+  await click('wallet.appsNew');assert.equal(dom.window.document.querySelectorAll('input').length,3);
+  assert.ok([...dom.window.document.querySelectorAll('button')].find(b=>b.textContent==='wallet.appsCreate')!.disabled);
+ } finally {await act(async()=>root.unmount());dom.window.close();for(const[k,d]of previous){if(d)Object.defineProperty(globalThis,k,d);else Reflect.deleteProperty(globalThis,k);}}
+});

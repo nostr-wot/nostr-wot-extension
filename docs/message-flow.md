@@ -409,3 +409,8 @@ success. Receipt persistence failure leaves the successful WebLN reply unchanged
 NIP-57 note display bridges signing to payment through the signed request JSON's
 SHA-256 description commitment. WebLN links that stored note to the invoice payment
 hash before dispatch; unrelated invoices never consume a recent message by timing.
+
+## App connections for LNbits wallets
+
+The four privileged wallet_*AppConnection(s) RPCs invoke the LNbits-proxy management API with the wallet Admin API key. Create request IDs preserve idempotency across transport retries.
+See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
