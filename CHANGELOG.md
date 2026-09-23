@@ -6,11 +6,31 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.3 — 2026-09-23
+
+### Added
+- Manage multiple NWC app connections for Nostr WoT LNbits wallets from Wallet Settings.
+- Create a separate connection for each app, with a name, daily spending limit and expiry.
+- View active connections and their budget usage, copy connection strings, display QR codes and revoke access.
+- Use existing Nostr WoT LNbits wallets with compatible NWC apps such as Primal.
+- Localized connection management in all six extension languages.
+
+### Security and reliability
+- Generate connection secrets locally and store them encrypted; secrets are never sent to the proxy.
+- Recover connection registration after interrupted requests without creating duplicate grants.
+- Enforce wallet ownership, spending limits and expiry on the server. Connections remain active until revoked or expired, even when the extension is disconnected.
+
+### Verification
+- 1,804 automated tests pass, including connection lifecycle, wallet isolation and mounted UI tests.
+- Live creation, listing and revocation verified with an empty LNbits wallet, plus a signed NWC get_info exchange over a relay. No real payment was sent.
+
+### Store release notes
+- Connect your Nostr WoT LNbits wallet to NWC-compatible apps using individual connection strings.
+- Set daily spending limits and expiry dates, review active connections, copy or scan their details, and revoke access from Wallet Settings.
+
 ## 0.8.2 — 2026-09-23
 
 ### Improved
-
-- Manage multiple LNbits NWC app connections from Wallet Settings, with names, daily spending limits, expiry, QR/copy and revocation.
 
 - Align dark mode with nostr-wot.com, using near-black popup surfaces, distinct lighter hovers and readable permissions menus; keep La Crypta secondary-button hovers lime.
 - Add subtle 4px backdrop blur to dialogs and approval overlays, contain keyboard focus in the topmost dialog and show toggle focus clearly.
@@ -30,12 +50,11 @@ have had.
 
 ### Verification
 
-- 1,804 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
+- 1,799 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
 - Popup-width component previews cover light/dark setup, expanded settings, permission menus, hover colors and dialog blur. No live-wallet payment certification is claimed.
 
 ### Store release notes
 
-- Create and manage multiple app connections for Nostr WoT LNbits wallets, with spending limits, expiry, copy/QR and revocation.
 - Improved dark-mode menus, permissions, popup backgrounds and hover contrast; corrected La Crypta button hovers.
 - Added subtle background blur behind dialogs and approval popups.
 - Improved wallet setup spacing and first-use help with a Do not show again option, localized website guides that open in background tabs, and a clearer LNbits API-key explanation.
