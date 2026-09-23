@@ -1,32 +1,74 @@
-import { t } from '@services/i18n/i18n.ts';
-import Card from '@components/Card';
+import { useEffect, useState } from 'react';
+import browser from '@lib/browser.ts';
+import { WALLET_HELP_DISMISSED_KEY } from '@constants/wallet.ts';
+import { DEFAULT_LANG, SUPPORTED_LANGUAGES } from '@constants/i18n.ts';
+import { getLanguage, t } from '@services/i18n/i18n.ts';
+import useAsyncResource from '@hooks/useAsyncResource.ts';
+import Modal from '@components/Modal';
+import Button from '@components/Button';
+import LinkButton from '@components/LinkButton';
+import Toggle from '@components/Toggle';
 import Container from '@components/Container';
 import Text from '@components/Text';
-import IconInfo from '@assets/IconInfo.tsx';
+import FormError from '@components/FormError';
 
-/** Shared connection guidance for setup and the connected wallet's settings. */
-export default function WalletConnectionHelp() {
-  const guides = [
-    ['wallet.albyGuide', 'https://guides.getalby.com/user-guide/alby-hub/app-connections'],
-    ['wallet.lnbitsNwcGuide', 'https://docs.lnbits.com/extensions/nwcprovider/'],
-    ['wallet.lnbitsApiGuide', 'https://docs.lnbits.com/api/authentication#finding-your-keys'],
-  ] as const;
+/** First-visit explanation, also reachable from setup and settings info controls. */
+export default function WalletConnectionHelp({ open, onOpenChange }: {
+  open: boolean; onOpenChange: (open: boolean) => void;
+}) {
+  const preference = useAsyncResource({ hidden: false }, { load: async (patch, isCurrent) => {
+    const stored = await browser.storage.local.get(WALLET_HELP_DISMISSED_KEY);
+    if (isCurrent()) patch({ hidden: stored[WALLET_HELP_DISMISSED_KEY] === true });
+  } });
+  const [closed, setClosed] = useState(false);
+  const [dontShow, setDontShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [guideOpened, setGuideOpened] = useState(false);
+  useEffect(() => { setDontShow(preference.data.hidden); }, [preference.data.hidden]);
 
+  async function close() {
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      await browser.storage.local.set({ [WALLET_HELP_DISMISSED_KEY]: dontShow });
+      setClosed(true);
+      onOpenChange(false);
+    } catch (e) { setError((e as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function openGuide(guide: 'alby-hub-nwc' | 'lnbits-wallet-setup', anchor?: string) {
+    setError('');
+    setGuideOpened(false);
+    try {
+      const language = getLanguage();
+      const prefix = language !== DEFAULT_LANG && SUPPORTED_LANGUAGES.some(item => item.code === language) ? `/${language}` : '';
+      const url = `https://nostr-wot.com${prefix}/guides/${guide}${anchor ? `#${anchor}` : ''}`;
+      await browser.tabs.create({ url, active: false });
+      setGuideOpened(true);
+    } catch { setError(t('wallet.guideOpenFailed')); }
+  }
+
+  if (preference.loading || (!open && (preference.data.hidden || closed))) return null;
   return (
-    <Card variant="flat" className="m-0 p-8">
+    <Modal title={t('wallet.connectionHelpTitle')} onClose={() => { void close(); }}
+      footer={<Button disabled={saving} onClick={() => { void close(); }}>{t('common.gotIt')}</Button>}>
       <Container gap={5}>
-        <Container variant="row" gap={3}>
-          <IconInfo size={18} className="shrink-0 text-brand" aria-hidden="true" />
-          <Text as="strong" className="text-sm text-heading">{t('wallet.connectionHelpTitle')}</Text>
-        </Container>
         <Text variant="secondary" className="m-0 text-sm leading-loose">{t('wallet.connectionHelp')}</Text>
         <Container as="nav" gap={4} aria-label={t('wallet.connectionGuides')}>
-          {guides.map(([label, href]) => (
-            <a key={label} className="text-xs text-brand underline underline-offset-2 hover:text-brand-hover"
-              href={href} target="_blank" rel="noreferrer noopener">{t(label)}</a>
-          ))}
+          <LinkButton tone="brand" onClick={() => { void openGuide('alby-hub-nwc'); }}>{t('wallet.albyGuide')}</LinkButton>
+          <LinkButton tone="brand" onClick={() => { void openGuide('lnbits-wallet-setup', 'lnbits-nwc'); }}>{t('wallet.lnbitsNwcGuide')}</LinkButton>
+          <LinkButton tone="brand" onClick={() => { void openGuide('lnbits-wallet-setup', 'lnbits-api'); }}>{t('wallet.lnbitsApiGuide')}</LinkButton>
         </Container>
+        {guideOpened && <Text variant="hint" role="status">{t('wallet.guideOpened')}</Text>}
+        <Container variant="row" gap={4}>
+          <Text className="flex-1">{t('wallet.dontShowAgain')}</Text>
+          <Toggle aria-label={t('wallet.dontShowAgain')} checked={dontShow} disabled={saving} onChange={setDontShow} />
+        </Container>
+        <FormError>{error || preference.error}</FormError>
       </Container>
-    </Card>
+    </Modal>
   );
 }

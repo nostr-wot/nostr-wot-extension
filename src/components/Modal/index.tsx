@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import IconClose from '@assets/IconClose.tsx';
 import IconButton from '@components/IconButton';
@@ -44,7 +44,7 @@ const FOOTER_SHELL = 'shrink-0 px-7 py-6 border-t border-card-border';
  * what makes it feel like a popup rather than another page.
  *
  * Closes on the backdrop, on Escape, and on the close button. Focus moves into the dialog
- * on open so Escape and tabbing work without the user clicking first.
+ * on open. The topmost dialog contains keyboard focus and restores its opener on close.
  */
 
 interface ModalProps {
@@ -64,6 +64,39 @@ interface ModalProps {
   children?: React.ReactNode;
 }
 
+interface OpenModal {
+  card: HTMLDivElement;
+  previousFocus: HTMLElement | null;
+  priority: () => number;
+}
+const openModals: OpenModal[] = [];
+
+/** Match visual stacking, including nested dialogs whose effects mount first. */
+function topModal(): OpenModal | undefined {
+  return openModals.reduce<OpenModal | undefined>((top, modal) => {
+    if (!top) return modal;
+    if (top.card.contains(modal.card)) return modal;
+    if (modal.card.contains(top.card)) return top;
+    if (modal.priority() !== top.priority()) return modal.priority() > top.priority() ? modal : top;
+    // DOCUMENT_POSITION_FOLLOWING: later siblings paint above earlier siblings.
+    return top.card.compareDocumentPosition(modal.card) & 4 ? modal : top;
+  }, undefined);
+}
+
+function tabStops(card: HTMLElement): HTMLElement[] {
+  return Array.from(card.querySelectorAll<HTMLElement>(
+    'a[href], area[href], button, input, select, textarea, iframe, [tabindex], [contenteditable="true"]',
+  )).filter(element => {
+    if (element.tabIndex < 0 || element.matches(':disabled') || element.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+    for (let node: HTMLElement | null = element; node; node = node.parentElement) {
+      const style = card.ownerDocument.defaultView?.getComputedStyle(node);
+      if (style?.display === 'none' || style?.visibility === 'hidden') return false;
+      if (node === card) break;
+    }
+    return true;
+  }).sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity));
+}
+
 export default function Modal({
   title,
   onClose,
@@ -75,6 +108,8 @@ export default function Modal({
   children,
 }: ModalProps) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const zIndexRef = useRef(zIndex);
+  zIndexRef.current = zIndex;
 
   // `onClose` in a ref, and the effect keyed on nothing.
   //
@@ -87,11 +122,57 @@ export default function Modal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  useEffect(() => {
-    cardRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCloseRef.current(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    const doc = card.ownerDocument;
+    const modal: OpenModal = {
+      card,
+      previousFocus: doc.activeElement as HTMLElement | null,
+      priority: () => zIndexRef.current ?? (Number.parseFloat(
+        doc.defaultView?.getComputedStyle(card.parentElement!).getPropertyValue('--modal-z') || '',
+      ) || 700),
+    };
+    // A child may have focused itself before its parent's effect runs.
+    const focusedChild = openModals.find(other => card.contains(other.card) && other.card.contains(doc.activeElement));
+    if (focusedChild) modal.previousFocus = focusedChild.previousFocus;
+    openModals.push(modal);
+    if (topModal() === modal) card.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (topModal() !== modal || e.defaultPrevented) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCloseRef.current();
+      } else if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        const stops = tabStops(card);
+        const index = stops.indexOf(doc.activeElement as HTMLElement);
+        const next = e.shiftKey
+          ? (index <= 0 ? stops.length - 1 : index - 1)
+          : (index + 1) % stops.length;
+        e.preventDefault();
+        (stops[next] ?? card).focus();
+      }
+    };
+    const onFocus = () => {
+      if (topModal() === modal && !card.contains(doc.activeElement)) card.focus();
+    };
+    doc.addEventListener('keydown', onKey);
+    doc.addEventListener('focusin', onFocus);
+    return () => {
+      const wasTop = topModal() === modal;
+      doc.removeEventListener('keydown', onKey);
+      doc.removeEventListener('focusin', onFocus);
+      openModals.splice(openModals.indexOf(modal), 1);
+      // If a parent disappears before its child, preserve the original opener.
+      for (const other of openModals) {
+        if (other.previousFocus && card.contains(other.previousFocus)) other.previousFocus = modal.previousFocus;
+      }
+      if (!wasTop) return;
+      const remaining = topModal();
+      const previous = modal.previousFocus;
+      if (previous?.isConnected && (!remaining || remaining.card.contains(previous))) previous.focus();
+      else if (remaining?.card.isConnected) remaining.card.focus();
+    };
   }, []);
 
   const style = {

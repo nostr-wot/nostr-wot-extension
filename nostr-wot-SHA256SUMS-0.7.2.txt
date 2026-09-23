@@ -1,5 +1,0 @@
-0664517a6133fb5ced3b6be66830ad4bcde362cf39aef915a1ea8b53aece1400  nostr-wot-chrome-0.7.2.zip
-f20d79f0aa4d609c7dd22d6eacbbe44b46f365bb402c1faf5d461bb95807a58b  nostr-wot-firefox-0.7.2.zip
-86316ef09b27d1f0c811807b2027da9840c8dadf9b649bb3a8083c2b0c881b1b  nostr-wot-source-0.7.2.zip
-3e454d9785d0ea5c39eb2a1a900bd7e43f5a113fb500e59687752d81c3059680  nostr-wot-release-notes-0.7.2.txt
-baeb37e4fffc06f3942a9203be0d6f1bbd5283c185ab03cb5a8da64583a1d173  nostr-wot-reviewer-notes-0.7.2.txt

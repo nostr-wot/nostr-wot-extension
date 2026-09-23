@@ -9,6 +9,9 @@ export const NWC_MAX_RELAYS = 5;
 
 export const DEFAULT_LNBITS_URL = 'https://zaps.nostr-wot.com';
 
+/** Optional wallet explanation preference, shared across accounts. */
+export const WALLET_HELP_DISMISSED_KEY = 'walletConnectionHelpDismissed';
+
 /** Cap on the pay-params body, so a hostile server cannot stream forever. */
 export const LNURL_MAX_RESPONSE_BYTES = 64 * 1024;
 

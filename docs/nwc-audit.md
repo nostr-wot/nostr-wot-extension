@@ -101,8 +101,8 @@ The initial combined provider/factory/production-payment/intent run passed **136
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts tests/wallet/payment-integration.test.ts tests/wallet/payment-intents.test.ts
 ```
 
-Final verification: `./tests/run.sh` passed **1,783 tests, 0 failures, 0 skipped**
-(216 crypto, 281 wallet protocol, 269 UI/helpers, 1,017 module tests). Its production
+Final verification: `./tests/run.sh` passed **1,788 tests, 0 failures, 0 skipped**
+(216 crypto, 281 wallet protocol, 269 UI/helpers, 1,022 module tests). Its production
 build succeeded; `npm run typecheck` and `git diff --check` also passed.
 
 These tests establish the covered local behaviors; they do not certify

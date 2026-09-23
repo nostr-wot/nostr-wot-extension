@@ -143,6 +143,7 @@ const mock = {
   },
   tabs: {
     query: () => Promise.resolve([]),
+    create: (_properties: { url: string; active?: boolean }) => Promise.resolve({ id: 1 }),
     sendMessage: () => Promise.resolve(),
   },
   // Mutable in tests: the grant migration reads getAll and calls remove.

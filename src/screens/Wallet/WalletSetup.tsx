@@ -12,6 +12,8 @@ import Tabs from '@components/Tabs';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 import WalletConnectionHelp from './WalletConnectionHelp';
+import IconButton from '@components/IconButton';
+import IconInfo from '@assets/IconInfo.tsx';
 
 interface WalletSetupProps {
   onConnected: () => void;
@@ -20,6 +22,7 @@ interface WalletSetupProps {
 type ProviderTab = 'quick' | 'nwc' | 'lnbits';
 
 export default function WalletSetup({ onConnected }: WalletSetupProps) {
+  const [helpOpen, setHelpOpen] = useState(false);
   const [tab, setTab] = useState<ProviderTab>('quick');
   const [nwcString, setNwcString] = useState<string>('');
   const [lnbitsUrl, setLnbitsUrl] = useState<string>('');
@@ -74,11 +77,15 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
     lnbitsReady;
 
   return (
+    <>
+    <WalletConnectionHelp open={helpOpen} onOpenChange={setHelpOpen} />
     <Container gap={7} className="flex-1 min-h-0 overflow-y-auto py-2">
-      <WalletConnectionHelp />
       <Card className="m-0 p-8 flex flex-col gap-8">
         <Container gap={3}>
-          <SectionLabel className="m-0">{t('wallet.connectWallet')}</SectionLabel>
+          <Container variant="row" className="justify-between">
+            <SectionLabel className="m-0">{t('wallet.connectWallet')}</SectionLabel>
+            <IconButton tone="brand" title={t('wallet.connectionHelpTitle')} aria-label={t('wallet.connectionHelpTitle')} onClick={() => setHelpOpen(true)}><IconInfo size={16} /></IconButton>
+          </Container>
           <SectionHint className="m-0">{t('wallet.connectHint')}</SectionHint>
         </Container>
 
@@ -158,5 +165,6 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
         </Container>
       </Card>
     </Container>
+    </>
   );
 }

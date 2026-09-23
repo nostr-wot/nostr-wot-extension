@@ -650,19 +650,13 @@ it('NWC setup validates locally, preserves failures and connects once with the t
   });
   try {
     await ui.act(async () => ui.root.render(createElement(WalletSetup, { onConnected() { connected++; } })));
+    if (ui.button('common.gotIt')) await ui.act(async () => ui.button('common.gotIt').click());
     const advanced = () => Array.from(ui.dom.window.document.querySelectorAll('button')).find(button => button.textContent?.startsWith('wallet.advancedSettings'))!;
     assert.equal(ui.dom.window.document.querySelector('input'), null);
     await ui.act(async () => advanced().click());
     assert.ok(ui.dom.window.document.querySelector('input'), 'advanced instance URL expands');
     await ui.act(async () => advanced().click());
     assert.equal(ui.dom.window.document.querySelector('input'), null, 'advanced instance URL collapses');
-    const guides = Array.from(ui.dom.window.document.querySelectorAll('nav a'));
-    assert.equal(guides.length, 3, 'setup provides the NWC and native LNbits guides');
-    for (const guide of guides) {
-      assert.match(guide.getAttribute('href')!, /^https:\/\/(guides\.getalby\.com|docs\.lnbits\.com)\//);
-      assert.equal(guide.getAttribute('target'), '_blank');
-      assert.match(guide.getAttribute('rel')!, /noopener/);
-    }
     await ui.act(async () => ui.button('LNbits').click());
     const adminKey = ui.dom.window.document.querySelector<HTMLInputElement>('input[type="password"]')!;
     const adminLabel = Array.from(ui.dom.window.document.querySelectorAll('label')).find(label => label.textContent === 'wallet.adminKey')!;
@@ -848,4 +842,161 @@ it('an ambiguous payment outcome blocks further payments in the current dialog e
     await ui.act(async () => ui.button('common.cancel').click());
     assert.equal(closed, 1, 'user can leave to check wallet history');
   } finally { await ui.cleanup(); t.mock.timers.reset(); }
+});
+
+it('wallet connection help can be dismissed, remembered and reopened while guides open in background tabs', async t => {
+  const { default: WalletSetup } = await import('../src/screens/Wallet/WalletSetup');
+  const { default: browser, resetMockStorage } = await import('./helpers/browser-mock');
+  resetMockStorage();
+  const ui = await mountWalletFlow();
+  const created = t.mock.method(browser.tabs, 'create', async () => ({ id: 7 }));
+  const render = async () => ui.act(async () => ui.root.render(createElement(WalletSetup, { onConnected() {} })));
+  const dialog = () => ui.dom.window.document.querySelector('[role="dialog"]');
+  try {
+    await render();
+    assert.ok(dialog(), 'first visit opens the explanation');
+    await ui.act(async () => ui.button('wallet.albyGuide').click());
+    assert.deepEqual(created.mock.calls[0].arguments, [{ url: 'https://nostr-wot.com/guides/alby-hub-nwc', active: false }]);
+    assert.ok(dialog(), 'opening a guide leaves the help visible');
+    assert.match(dialog()!.textContent!, /wallet.guideOpened/);
+    created.mock.mockImplementation(async () => { throw new Error('Tab creation failed'); });
+    await ui.act(async () => ui.button('wallet.albyGuide').click());
+    assert.match(dialog()!.textContent!, /wallet.guideOpenFailed/);
+    assert.doesNotMatch(dialog()!.textContent!, /wallet.guideOpened/);
+    created.mock.mockImplementation(async () => ({ id: 7 }));
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.equal(dialog(), null);
+    await ui.act(async () => ui.root.render(null));
+    await render();
+    assert.ok(dialog(), 'dismissal without opting out permits the next explanation');
+    await ui.act(async () => ui.dom.window.document.querySelector<HTMLInputElement>('[aria-label="wallet.dontShowAgain"]')!.click());
+    const failedSave = t.mock.method(browser.storage.local, 'set', async () => { throw new Error('Preference write failed'); });
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.ok(dialog(), 'failed persistence keeps the dialog open');
+    assert.match(dialog()!.textContent!, /Preference write failed/);
+    failedSave.mock.restore();
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.equal(dialog(), null);
+    await ui.act(async () => ui.root.render(null));
+    await render();
+    assert.equal(dialog(), null, 'opt-out survives remount');
+    await ui.act(async () => ui.button('NWC').click());
+    await ui.edit('draft-connection');
+    await ui.act(async () => ui.dom.window.document.querySelector<HTMLButtonElement>('[aria-label="wallet.connectionHelpTitle"]')!.click());
+    assert.ok(dialog(), 'info button always reopens help');
+    await ui.act(async () => ui.button('wallet.lnbitsNwcGuide').click());
+    await ui.act(async () => ui.button('wallet.lnbitsApiGuide').click());
+    assert.deepEqual(created.mock.calls.slice(-2).map(call => call.arguments), [
+      [{ url: 'https://nostr-wot.com/guides/lnbits-wallet-setup#lnbits-nwc', active: false }],
+      [{ url: 'https://nostr-wot.com/guides/lnbits-wallet-setup#lnbits-api', active: false }],
+    ]);
+    const { setLanguage } = await import('../src/services/i18n/i18n');
+    t.mock.method(globalThis, 'fetch', async () => new Response('{}'));
+    for (const language of ['en', 'es', 'de', 'fr', 'it', 'pt', 'unsupported']) {
+      await ui.act(async () => { await setLanguage(language); });
+      const prefix = language === 'en' || language === 'unsupported' ? '' : `/${language}`;
+      for (const [label, path] of [
+        ['wallet.albyGuide', 'alby-hub-nwc'],
+        ['wallet.lnbitsNwcGuide', 'lnbits-wallet-setup#lnbits-nwc'],
+        ['wallet.lnbitsApiGuide', 'lnbits-wallet-setup#lnbits-api'],
+      ]) {
+        await ui.act(async () => ui.button(label).click());
+        assert.deepEqual(created.mock.calls.at(-1)!.arguments, [{ url: `https://nostr-wot.com${prefix}/guides/${path}`, active: false }]);
+      }
+    }
+    await ui.act(async () => { await setLanguage('en'); });
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.equal(ui.dom.window.document.querySelector('input')!.value, 'draft-connection', 'help and background guides preserve the connection draft');
+  } finally { await ui.cleanup(); }
+});
+
+it('shared modal contains keyboard focus, skips unavailable controls and restores its opener', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const { default: Toggle } = await import('../src/components/Toggle');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  const tab = (shiftKey = false) => {
+    const event = new ui.dom.window.KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+    ui.dom.window.document.activeElement!.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+  };
+  try {
+    await ui.act(async () => ui.root.render(createElement(Modal, { onClose() {} },
+      createElement('button', { disabled: true }, 'disabled'),
+      createElement('div', { hidden: true }, createElement('button', {}, 'hidden')),
+      createElement('button', {}, 'first'),
+      createElement(Toggle, { 'aria-label': 'remember', checked: false }),
+      createElement('button', {}, 'last'))));
+    const dialog = ui.dom.window.document.querySelector('[role="dialog"]')!;
+    assert.ok(ui.dom.window.document.activeElement === dialog);
+    tab(); assert.ok(ui.dom.window.document.activeElement === ui.button('first'));
+    tab(); assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'remember');
+    tab(); assert.ok(ui.dom.window.document.activeElement === ui.button('last'));
+    tab(); assert.ok(ui.dom.window.document.activeElement === ui.button('first'));
+    tab(true); assert.ok(ui.dom.window.document.activeElement === ui.button('last'));
+    opener.focus(); assert.ok(ui.dom.window.document.activeElement === dialog, 'focus cannot escape to the page');
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
+});
+
+it('only the visually topmost modal handles focus and Escape, including later lower overlays', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  let upperClosed = 0, lowerClosed = 0;
+  const upper = createElement(Modal, { key: 'upper', title: 'upper', zIndex: 1000, onClose() { upperClosed++; } }, createElement('button', {}, 'upper action'));
+  const lower = createElement(Modal, { key: 'lower', title: 'lower', zIndex: 700, onClose() { lowerClosed++; } }, createElement('button', {}, 'lower action'));
+  try {
+    await ui.act(async () => ui.root.render(upper));
+    ui.button('upper action').focus();
+    await ui.act(async () => ui.root.render([upper, lower]));
+    assert.ok(ui.dom.window.document.activeElement === ui.button('upper action'), 'later lower modal must not steal focus');
+    ui.dom.window.document.dispatchEvent(new ui.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(upperClosed, 1); assert.equal(lowerClosed, 0);
+    await ui.act(async () => ui.root.render(lower));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'lower');
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
+});
+
+it('stacked modal restores its parent control, then the original opener', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  const parent = createElement(Modal, { key: 'parent', onClose() {} }, createElement('button', {}, 'child opener'));
+  const child = createElement(Modal, { key: 'child', onClose() {} }, createElement('button', {}, 'child action'));
+  try {
+    await ui.act(async () => ui.root.render(parent)); ui.button('child opener').focus();
+    await ui.act(async () => ui.root.render([parent, child]));
+    await ui.act(async () => ui.root.render(parent));
+    assert.ok(ui.dom.window.document.activeElement === ui.button('child opener'));
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
+});
+
+it('nested modal remains topmost despite child effects mounting before parent effects', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  let parentClosed = 0, childClosed = 0;
+  const render = (child: boolean) => createElement(Modal, { title: 'parent', onClose() { parentClosed++; } },
+    createElement('button', {}, 'parent action'),
+    child ? createElement(Modal, { title: 'child', onClose() { childClosed++; } }, createElement('button', {}, 'child action')) : null);
+  try {
+    await ui.act(async () => ui.root.render(render(true)));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'child');
+    ui.dom.window.document.dispatchEvent(new ui.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(parentClosed, 0); assert.equal(childClosed, 1);
+    await ui.act(async () => ui.root.render(render(false)));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'parent');
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
 });
