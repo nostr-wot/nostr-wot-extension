@@ -26,6 +26,7 @@ function noteInvoice(metadata: string) {
   return bech32.encode(decoded.prefix, [...decoded.words.slice(0, 7), 1, 1, 20, ...hash, ...decoded.words.slice(7)], 2000);
 }
 const origin='zap.example';
+import { signEvent } from '../../src/lib/crypto/nip01.ts';
 import { decodeBolt11 } from '../../src/domain/wallet/bolt11.ts';
 const key=new Uint8Array(32).fill(31), pubkey=getPublicKey(key);
 async function call(method:string,params:Record<string,unknown>={}) { return handlers.get(method)!(params) as Promise<any>; }
@@ -118,10 +119,11 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
     const signing=p.window.nostr.signEvent({kind:9734,created_at:1700000000,tags:[['p',pubkey],['amount','250000000'],['relays','wss://relay.example']],content:'Test zap'});
     const signApproval=await pending();await signerApprovalQueue.resolveRequest(signApproval.id,{allow:true});const signed=await signing;
     assert.ok(verifyEvent(signed));assert.equal(signed.kind,9734);
-    const payment=webln.sendPayment(invoice);const payApproval=await pending();assert.equal(payApproval.walletAmount,250000);
+    const payment=webln.sendPayment(noteInvoice(JSON.stringify(signed)));const payApproval=await pending();assert.equal(payApproval.walletAmount,250000);
     assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
     const count=requests.filter(x=>x.body.out).length;await signerApprovalQueue.resolveRequest(payApproval.id,{allow:true});
     assert.equal((await payment).preimage,'test-preimage');assert.equal(requests.filter(x=>x.body.out).length,count+1);
+    assert.equal((await call('wallet_getTransactions'))[0].memo,'Test zap');
     const notices=await call('wallet_getPaymentNotices');assert.equal(notices.length,1);assert.equal(notices[0].origin,origin);assert.equal(notices[0].amount,250000);
     await call('wallet_acknowledgePaymentNotices',{ids:[notices[0].id]});assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
   });
@@ -331,6 +333,21 @@ test('wallet payment metadata stays private, account scoped and is erased on dis
   assert.deepEqual((await records.applyPaymentNotes('notes-account',rows)).map(tx=>tx.memo),['Private lunch note','Second note']);
   assert.equal((await records.applyPaymentNotes('other',rows))[0].memo,undefined);
   assert.equal((await records.applyPaymentNotes('notes-account',[{...rows[0],amount:1}]))[0].memo,undefined);
+  const zap = await signEvent({kind:9734,created_at:1,tags:[['p',pubkey]],content:'Signed website zap'},key);
+  await records.rememberSignedZapNote('notes-account',zap,current);
+  const zapInvoice=noteInvoice(JSON.stringify(zap));
+  const zapHash=decodeBolt11(zapInvoice)!.paymentHash!;
+  const tx={...rows[0],paymentHash:zapHash,bolt11:zapInvoice};
+  assert.equal((await records.applyPaymentNotes('notes-account',[tx]))[0].memo,'Signed website zap');
+  assert.equal((await records.applyPaymentNotes('other',[tx]))[0].memo,undefined);
+  const unrelated=noteInvoice(JSON.stringify({...zap,content:'Different'}));
+  assert.equal((await records.applyPaymentNotes('notes-account',[{...tx,bolt11:unrelated}]))[0].memo,undefined);
+  await records.linkInvoiceNote('notes-account',unrelated,current);
+  assert.equal((await records.applyPaymentNotes('notes-account',[{...tx,bolt11:undefined}]))[0].memo,undefined);
+  await records.linkInvoiceNote('notes-account',zapInvoice,current);
+  assert.equal((await records.applyPaymentNotes('notes-account',[{...tx,bolt11:undefined}]))[0].memo,'Signed website zap');
+  await records.rememberSignedZapNote('notes-account',{...zap,kind:1,content:'Not a zap'},current);
+  assert.equal((await records.applyPaymentNotes('notes-account',[{...rows[0],paymentHash:'other-hash',bolt11:noteInvoice(JSON.stringify({...zap,kind:1,content:'Not a zap'}))}]))[0].memo,undefined);
   for(let n=0;n<22;n++) await records.recordPaymentSuccess('notes-account','site.example',n,current);
   const notices=await call('wallet_getPaymentNotices');assert.equal(notices.length,20);
   await call('wallet_acknowledgePaymentNotices',{ids:[notices[0].id]});

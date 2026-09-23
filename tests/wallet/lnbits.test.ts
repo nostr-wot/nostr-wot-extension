@@ -433,3 +433,14 @@ it('LNbits HTTP 200 pending or missing settlement evidence never reports payment
   const failed=new LnbitsProvider({instanceUrl:'https://wallet.example',adminKey:'key'},mockFetch({status:'failed',preimage:'premature'}));
   await assert.rejects(failed.payInvoice('invoice'),/LNbits payment failed/);
 });
+
+it('LNbits historical zap metadata exposes the message without requiring a separate comment', async () => {
+  const rows=[
+    {nostr:JSON.stringify({kind:9734,content:'Thanks for the post!'})},
+    {nostr:'invalid JSON'}, {nostr:JSON.stringify({kind:1,content:'Not a zap'})},
+    {nostr:JSON.stringify({kind:9734,content:'Hidden'}),comment:'Explicit comment'},
+    {nostr:JSON.stringify({kind:9734,content:'a'.repeat(70000)})},
+  ].map((extra,n)=>({payment_hash:String(n),amount:-1000,status:'success',time:1,memo:'Original memo',extra}));
+  const provider=new LnbitsProvider({instanceUrl:'https://wallet.example',adminKey:'key'},mockFetch(rows));
+  assert.deepEqual((await provider.listTransactions()).map(tx=>tx.memo),['Thanks for the post!','Original memo','Original memo','Explicit comment','Original memo']);
+});

@@ -1,3 +1,4 @@
+import { transactionMemo } from '@domain/wallet/transaction-memo.ts';
 import { PaymentOutcomeUnknownError } from './payment-errors.ts';
 import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@constants/wallet.ts';
 /**
@@ -232,7 +233,7 @@ export class NwcProvider implements WalletProvider {
       amount: number;      // msats
       fees_paid: number;   // msats
       description: string;
-      metadata?: { comment?: unknown } | null;
+      metadata?: unknown;
       settled_at: number;
       created_at: number;
       payment_hash: string;
@@ -259,7 +260,7 @@ export class NwcProvider implements WalletProvider {
           ? Math.round(tx.amount / 1000)
           : -Math.round(tx.amount / 1000),
         fee: Math.round(Math.abs(tx.fees_paid ?? 0) / 1000),
-        memo: typeof tx.metadata?.comment === 'string' && tx.metadata.comment.trim() ? tx.metadata.comment.slice(0, 1000) : tx.description || undefined,
+        memo: transactionMemo(tx.description, tx.metadata),
         status: tx.state === 'failed' ? 'failed' as const
           : tx.state === 'pending' || tx.state === 'accepted' || !tx.settled_at ? 'pending' as const
           : 'settled' as const,

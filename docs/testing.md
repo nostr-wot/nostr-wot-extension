@@ -463,3 +463,9 @@ cover LNbits/NWC comment metadata. `wallet-ui.test.ts` checks Deposit address,
 QR/copy and invoice controls, missing/error/loading states, wrapped notes and
 receipt site/amount rendering. Browser layout checks use isolated components with
 production CSS at popup dimensions; they are not live-fund payment tests.
+
+The website-zap regression in `wallet/payment-integration.test.ts` now signs a real
+kind:9734 request, creates a description-hash invoice from the returned JSON, pays via
+the injected WebLN API, and checks the message in provider history. It also verifies
+mismatched commitments, account isolation, non-zap exclusion and invoice-less history.
+LNbits tests cover historical `extra.nostr`, malformed/oversized data and comment priority.

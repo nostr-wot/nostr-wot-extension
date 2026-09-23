@@ -574,3 +574,9 @@ disconnect and account removal. Vault destruction erases all records. Reads requ
 unlock; the receipt UI unmounts on lock/account change. Session checks prevent stale
 operations writing after account/session invalidation. Notes are persisted before
 dispatch and do not imply settlement; receipts are written only after success.
+
+Website zap note association uses an exact NIP-57 description-hash commitment to the
+signed request JSON, then the invoice payment hash. It never pairs a comment with a
+payment by amount or timing. The cache remains encrypted/account-scoped and bounded;
+metadata failure cannot change signing success. Provider `nostr` metadata is parsed
+only as bounded plain display text, never as payment proof or executable markup.
