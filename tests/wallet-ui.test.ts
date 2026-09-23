@@ -1000,3 +1000,22 @@ it('nested modal remains topmost despite child effects mounting before parent ef
     assert.ok(ui.dom.window.document.activeElement === opener);
   } finally { await ui.cleanup(); }
 });
+
+it('modal entry and focus restoration preserve the animated popup scroll position', async (t) => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  const focus = ui.dom.window.HTMLElement.prototype.focus;
+  const moves = t.mock.method(ui.dom.window.HTMLElement.prototype, 'focus', function(this: HTMLElement, options?: FocusOptions) {
+    return focus.call(this, options);
+  });
+  try {
+    await ui.act(async () => ui.root.render(createElement(Modal, { title: 'Wallet help', onClose() {} }, 'Help')));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('role'), 'dialog');
+    assert.equal(moves.mock.calls.at(-1)!.arguments[0]?.preventScroll, true, 'initial focus must not scroll an entering overlay');
+    await ui.act(async () => ui.root.render(null));
+    assert.equal(ui.dom.window.document.activeElement, opener);
+    assert.equal(moves.mock.calls.at(-1)!.arguments[0]?.preventScroll, true, 'restoring the opener must not shift the popup');
+  } finally { moves.mock.restore(); await ui.cleanup(); }
+});

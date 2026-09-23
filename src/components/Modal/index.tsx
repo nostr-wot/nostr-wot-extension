@@ -137,7 +137,8 @@ export default function Modal({
     const focusedChild = openModals.find(other => card.contains(other.card) && other.card.contains(doc.activeElement));
     if (focusedChild) modal.previousFocus = focusedChild.previousFocus;
     openModals.push(modal);
-    if (topModal() === modal) card.focus();
+    // Focus during the slide-in must not scroll overflow-hidden popup ancestors.
+    if (topModal() === modal) card.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (topModal() !== modal || e.defaultPrevented) return;
       if (e.key === 'Escape') {
@@ -154,7 +155,7 @@ export default function Modal({
       }
     };
     const onFocus = () => {
-      if (topModal() === modal && !card.contains(doc.activeElement)) card.focus();
+      if (topModal() === modal && !card.contains(doc.activeElement)) card.focus({ preventScroll: true });
     };
     doc.addEventListener('keydown', onKey);
     doc.addEventListener('focusin', onFocus);
@@ -170,8 +171,8 @@ export default function Modal({
       if (!wasTop) return;
       const remaining = topModal();
       const previous = modal.previousFocus;
-      if (previous?.isConnected && (!remaining || remaining.card.contains(previous))) previous.focus();
-      else if (remaining?.card.isConnected) remaining.card.focus();
+      if (previous?.isConnected && (!remaining || remaining.card.contains(previous))) previous.focus({ preventScroll: true });
+      else if (remaining?.card.isConnected) remaining.card.focus({ preventScroll: true });
     };
   }, []);
 
