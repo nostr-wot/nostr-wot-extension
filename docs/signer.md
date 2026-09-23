@@ -233,3 +233,9 @@ the pairing secret and client key for reconnection. Resolution has a bounded wai
 and closes the temporary signer subscription on success or failure. QR polling
 reports connected only once this resolution completes. See
 [remote signer compatibility](remote-signer-compatibility.md) for tests and gaps.
+
+For kind:9734 only, successful local and remote signing retains the zap message in
+the encrypted wallet-note cache, keyed by the exact returned signed JSON's SHA-256.
+Cache failure never rejects an otherwise successful signing result. This is display
+metadata: the signer does not pay or publish the zap, and all WebLN consent and
+payment checks remain independent. See wallet.md for matching and recovery limits.

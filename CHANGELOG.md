@@ -18,7 +18,7 @@ have had.
 ### Fixed
 
 - Keep first-use wallet help inside the popup during the menu slide-in animation.
-- Preserve outgoing payment notes in encrypted local history and show LNbits/NWC comment metadata with wrapping (#26).
+- Preserve outgoing payment notes and signed website-zap messages in encrypted local history; show LNbits/NWC comments and historical LNbits zap metadata with wrapping (#26).
 - Show confirmed WebLN payment receipts and the connected wallet's reusable Lightning Address with QR/copy in Deposit (#27).
 - Validate candidate wallets before persisting their credentials; preserve existing connections on failed validation.
 - Validate NWC response provenance, methods and fields, accepting documented Alby/LNbits nullable fields and signed fees.
@@ -28,7 +28,7 @@ have had.
 
 ### Verification
 
-- 1,798 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
+- 1,799 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
 - Popup-width component previews cover light/dark setup, expanded settings, permission menus, hover colors and dialog blur. No live-wallet payment certification is claimed.
 
 ### Store release notes

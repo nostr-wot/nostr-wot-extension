@@ -1,3 +1,4 @@
+import { rememberSignedZapNote } from '../wallet/payment-records.ts';
 import { followCount, followReplacementCount, rememberSignedFollowList } from './followListGuard.ts';
 import { captureAccountSession, assertAccountSession } from './accountSession.ts';
 import { recordSigningRejection } from './rejections.ts';
@@ -164,6 +165,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
     assertAccountSession(session);
     await rememberSignedFollowList(result);
+    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
     assertAccountSession(session);
     return result;
   }
@@ -184,6 +186,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     const result = await cryptoSignEvent(event, privkey);
     assertAccountSession(session);
     await rememberSignedFollowList(result);
+    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
     assertAccountSession(session);
     return result;
   } finally {

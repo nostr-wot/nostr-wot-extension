@@ -1,3 +1,4 @@
+import { transactionMemo } from '@domain/wallet/transaction-memo.ts';
 /**
  * LNbits wallet provider implementation
  * @module services/wallet/lnbits
@@ -98,7 +99,7 @@ export class LnbitsProvider implements WalletProvider {
       amount: number;       // msats in LNbits
       fee: number;          // msats
       memo: string;
-      extra?: { comment?: unknown } | null;
+      extra?: unknown;
       status: string;
       time: string | number; // ISO 8601 string or unix timestamp
       preimage: string;
@@ -111,7 +112,7 @@ export class LnbitsProvider implements WalletProvider {
         bolt11: p.bolt11,
         amount: Math.round(p.amount / 1000),   // msats → sats
         fee: Math.round((p.fee || 0) / 1000),
-        memo: typeof p.extra?.comment === 'string' && p.extra.comment.trim() ? p.extra.comment.slice(0, 1000) : p.memo || undefined,
+        memo: transactionMemo(p.memo, p.extra),
         status: p.status === 'success' ? 'settled' as const : p.status === 'pending' ? 'pending' as const : 'failed' as const,
         createdAt: typeof p.time === 'string'
           ? Math.floor(new Date(p.time).getTime() / 1000)

@@ -634,3 +634,17 @@ in every extension locale. The QR encodes `lightning:<address>`.
 LNbits HTTP 200 responses with pending/unknown status or missing preimage are not
 settled payments. They raise `PAYMENT_OUTCOME_UNKNOWN`, suppress success receipts
 and retain the LNURL intent's no-replay protection. Explicit failed status rejects.
+
+Website zap messages: after signing a kind:9734 request, the extension retains its
+message under SHA-256 of the exact signed JSON returned to the website. WebLN and
+pasted-invoice payments link it to the payment hash only when the invoice's NIP-57
+description hash matches. Matching never uses amount, recipient or timing alone.
+History also uses that commitment if the provider returns the original invoice.
+These records share the existing encrypted 500-note bound and wallet/account cleanup.
+
+Historical LNbits LNURLp messages in `extra.nostr` (and NWC metadata forwarding that
+field) are decoded as display text. If an old transaction retained neither a message
+nor its signed request, its invoice hash alone cannot recover the text. Zaps signed
+outside this extension, private zap messages, and clients that reserialize the signed
+JSON differently may still require provider-supplied metadata. No relay scan or new
+network request is made to infer old comments.

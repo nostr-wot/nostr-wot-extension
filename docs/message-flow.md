@@ -405,3 +405,7 @@ reads through `wallet_getPaymentNotices`, and acknowledges exact IDs through
 `wallet_acknowledgePaymentNotices`. Both are extension-only RPCs and require the
 current unlocked account. Approval queue removal itself never signals payment
 success. Receipt persistence failure leaves the successful WebLN reply unchanged.
+
+NIP-57 note display bridges signing to payment through the signed request JSON's
+SHA-256 description commitment. WebLN links that stored note to the invoice payment
+hash before dispatch; unrelated invoices never consume a recent message by timing.

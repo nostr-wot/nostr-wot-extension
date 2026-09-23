@@ -3,7 +3,7 @@
  * @module services/background/wallet-handlers
  */
 
-import { applyPaymentNotes, savePaymentNote, recordPaymentSuccess, getPaymentNotices, acknowledgePaymentNotices } from '../wallet/payment-records.ts';
+import { linkInvoiceNote, applyPaymentNotes, savePaymentNote, recordPaymentSuccess, getPaymentNotices, acknowledgePaymentNotices } from '../wallet/payment-records.ts';
 import { parseLightningAddress } from '../../domain/wallet/lnurl.ts';
 import browser from '../../lib/browser.ts';
 import { readWalletDisplayCache, updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
@@ -170,6 +170,8 @@ export const handlers = new Map<string, HandlerFn>([
 
         if (await signerPermissions.check(origin, 'webln_sendPayment', undefined, acct.id) === 'deny') throw new Error('Permission denied');
         assertCurrent();
+        await linkInvoiceNote(acct.id, paymentRequest, assertCurrent);
+        assertCurrent();
         const result = await provider.payInvoice(paymentRequest);
         // Receipt persistence is best-effort after settlement. A storage failure
         // must never turn a successful payment into an error inviting a retry.
@@ -335,7 +337,9 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['wallet_payInvoice', async (params) => {
         const { bolt11 } = params as { bolt11: string };
-        const { provider, assertCurrent } = await getConnectedProvider();
+        const { provider, acct, assertCurrent } = await getConnectedProvider();
+        assertCurrent();
+        await linkInvoiceNote(acct.id, bolt11, assertCurrent);
         assertCurrent();
         return await provider.payInvoice(bolt11);
     }],
