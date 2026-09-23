@@ -40,6 +40,8 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
   const [paid, setPaid] = useState<{ amount: number } | null>(null);
   const [error, setError] = useState<string>('');
   const bolt11Copy = useCopy();
+  const amountSats = Number(amount);
+  const validAmount = Number.isSafeInteger(amountSats) && amountSats > 0;
 
   // Poll while an unpaid invoice is on screen.
   //
@@ -81,8 +83,8 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
   }, [invoice]);
 
   const createInvoice = async () => {
-    const sats = parseInt(amount, 10);
-    if (!sats || sats <= 0) return;
+    if (!validAmount) return;
+    const sats = amountSats;
     setLoading(true);
     setError('');
     try {
@@ -107,7 +109,7 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
       ) : !invoice ? (
         <>
           <ButtonSecondary small onClick={onClose}>{t('common.cancel')}</ButtonSecondary>
-          <Button small onClick={createInvoice} disabled={loading || !amount || parseInt(amount, 10) <= 0}>
+          <Button small onClick={createInvoice} disabled={loading || !validAmount}>
             {loading ? t('common.loading') : t('wallet.createInvoice')}
           </Button>
         </>

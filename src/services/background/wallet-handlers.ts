@@ -11,7 +11,7 @@ import * as signerPermissions from '../permissions/permissions.ts';
 import { npubEncode } from '../../lib/crypto/bech32.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { addWeblnAllowedDomain, isWeblnAllowed } from './domain-handlers.ts';
-import { getWalletProvider, removeWalletProvider, isWalletProviderCurrent } from '../wallet/index.ts';
+import { createWalletProvider, getWalletProvider, removeWalletProvider, isWalletProviderCurrent } from '../wallet/index.ts';
 import { captureAccountSession, assertAccountSession } from '../signing/accountSession.ts';
 import { type WalletConfig } from '@domain/wallet/types.ts';
 import { decodeBolt11 } from '../../domain/wallet/bolt11.ts';
@@ -220,13 +220,28 @@ export const handlers = new Map<string, HandlerFn>([
         await vault.requireUnlocked();
         const acctId = vault.getActiveAccountId();
         if (!acctId) throw new Error('No active account');
-        removeWalletProvider(acctId);
-        await vault.updateAccountWalletConfig(acctId, walletConfig);
-        await resetWalletDisplayCache(acctId, walletConfig.type);
-        const provider = getWalletProvider(acctId, walletConfig);
-        if (provider) {
-            await provider.connect();
+        const session = captureAccountSession(acctId);
+        const candidate = createWalletProvider(walletConfig);
+        if (!candidate) throw new Error('Unsupported wallet provider');
+        const unsubscribe = vault.onSessionInvalidated(() => candidate.disconnect());
+        try {
+            await candidate.connect();
+            assertAccountSession(session);
+            // Opening a relay socket alone does not authenticate an NWC wallet.
+            await candidate.getInfo();
+            assertAccountSession(session);
+        } finally {
+            unsubscribe();
+            candidate.disconnect();
         }
+        // Keep the previous wallet until the candidate answers successfully.
+        // Saving invalidates the old provider; subsequent reads create a fresh one.
+        const saving = vault.updateAccountWalletConfig(acctId, walletConfig);
+        const savedSession = captureAccountSession(acctId);
+        await saving;
+        assertAccountSession(savedSession);
+        await resetWalletDisplayCache(acctId, walletConfig.type);
+        assertAccountSession(savedSession);
         return true;
     }],
 

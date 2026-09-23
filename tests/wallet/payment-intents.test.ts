@@ -1,3 +1,4 @@
+import { PaymentOutcomeUnknownError } from '../../src/services/wallet/payment-errors.ts';
 /**
  * A payment happens at most once, however many times the popup asks.
  *
@@ -193,4 +194,19 @@ describe('runPaymentOnce -- concurrent claims', () => {
       'an in-flight record must survive the done-record TTL',
     );
   });
+});
+
+
+it('persists an unknown outcome across future reads without expiring and sending again', async () => {
+  let sends = 0;
+  await assert.rejects(runPaymentOnce('unknown-payment', async () => {
+    sends++;
+    throw new PaymentOutcomeUnknownError('relay closed after publishing');
+  }), /PAYMENT_OUTCOME_UNKNOWN/);
+  const store = (await browserMock.storage.session.get('walletPaymentIntents')).walletPaymentIntents;
+  assert.equal(store['unknown-payment'].status, 'unknown');
+  store['unknown-payment'].at = 1; // Beyond both ordinary retention windows.
+  await browserMock.storage.session.set({ walletPaymentIntents: store });
+  await assert.rejects(runPaymentOnce('unknown-payment', async () => { sends++; return {}; }), /PAYMENT_OUTCOME_UNKNOWN/);
+  assert.equal(sends, 1);
 });

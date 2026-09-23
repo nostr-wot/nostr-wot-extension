@@ -15,6 +15,8 @@
   --card-bg: rgba(99, 102, 241, 0.06);
   --card-border: rgba(99, 102, 241, 0.1);
   --card-active: rgba(99, 102, 241, 0.12);
+  --surface-hover: rgba(99, 102, 241, 0.12);
+  --button-secondary-hover: rgba(99, 102, 241, 0.18);
   --brand: #6366f1;
   --menu-subtitle: rgba(99, 102, 241, 0.55);
   --brand-hover: #4f46e5;
@@ -333,13 +335,49 @@ body {
   --focus-ring: 0 0 0 3px rgba(179, 167, 255, 0.5);
 }
 
+/* Nostr WoT website dark palette: gray-950 canvas, gray-900 cards,
+   near-black popup surfaces and neutral text. Lighter hover surfaces are
+   separate from popup backgrounds so navigation remains visible. Indigo-400 keeps small accent
+   labels readable on raised surfaces; indigo replaces the lavender tint. */
+:root[data-theme="dark"] {
+  --bg-page: #030712;
+  --bg-page-solid: #030712;
+  --bg-html: #030712;
+  --bg-surface: #101828;
+  --bg-elevated: #080e1a;
+  --surface-hover: #1e2939;
+  --button-secondary-hover: #293259;
+  --input-bg: #101828;
+  --text-heading: #ffffff;
+  --text-body: #f3f4f6;
+  --text-secondary: #d1d5dc;
+  --text-muted: #99a1af;
+  --menu-subtitle: #99a1af;
+  --brand: #818cf8;
+  --brand-hover: #a5b4fc;
+  --text-on-brand: #030712;
+  --brand-light: rgba(99, 102, 241, 0.1);
+  --card-bg: #101828;
+  --card-border: #1e2939;
+  --card-active: #1e2939;
+  --brand-tint-hover: #1e2939;
+  --brand-tint-active: rgba(99, 102, 241, 0.2);
+  --control-border: #6a7282;
+  --surface-glass: rgba(3, 7, 18, 0.95);
+  --surface-glass-heavy: #101828;
+  --divider: #1e2939;
+  --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.5);
+}
+
 /* La Crypta: palette from https://lacrypta.ar/ (September 2026).
    Reuses dark-mode semantics; lime replaces purple for interactive elements. */
 :root[data-theme="lacrypta"] {
   --bg-page: linear-gradient(45deg, #090908, #171710);
   --bg-page-solid: #11110f;
   --bg-html: #090908;
-  --bg-elevated: #22221c;
+  --bg-elevated: #171914;
+  --surface-hover: #303526;
+  --button-secondary-hover: rgba(199, 255, 91, 0.22);
   --input-bg: #25251e;
   --text-heading: #f5f0e6;
   --text-body: #e5e1d7;

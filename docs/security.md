@@ -305,11 +305,23 @@ Kind-23195 NWC responses are only trusted when all of the following hold:
 2. The event passes `verifyEvent()` (schnorr signature) — a malicious relay
    cannot forge a response by just stamping the wallet's pubkey on an event.
 3. The content decrypts successfully with the connection secret.
+4. The response identifies the pending request's method through `result_type`;
+   its result and required field shapes validate before success is reported.
 
 The pending-request entry is only deleted after a verified, decryptable
 response arrives — an injected garbage event can no longer consume the pending
 slot and drop the wallet's real response (previously a response-DoS vector).
-`make_invoice` amounts are converted sats → millisatoshis per NIP-47.
+`make_invoice` amounts are validated before conversion sats → millisatoshis.
+Malformed tags and verification exceptions are ignored. An authenticated response
+with an invalid payload rejects the request rather than reporting success.
+Published payments without a trustworthy final outcome raise
+`PAYMENT_OUTCOME_UNKNOWN`; LNURL intent replay remains blocked with a persistent
+unknown marker. Neither socket reconnection nor timeout retries a payment.
+Capability discovery verifies wallet authors/signatures, uses the newest info
+event before EOSE, and prefers NIP-44 v2. Missing info permits legacy NIP-04;
+explicit unsupported schemes do not silently downgrade. Late info cannot change
+the selected cipher. Sequential relay fallback is limited to connection setup,
+never a published payment. See [NWC audit](nwc-audit.md) for coverage and limits.
 
 ---
 

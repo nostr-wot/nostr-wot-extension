@@ -107,8 +107,13 @@ interface WalletProvider {
   service, the signature verifies (`verifyEvent`), and the content decrypts;
   the pending request is only consumed by such a response (see
   `docs/security.md` §13)
-- The provider factory injects shared NIP-04 encryption and NIP-01 signing after validating connection key formats.
+- The provider factory injects shared NIP-04/NIP-44 encryption and NIP-01 signing after validating connection key formats.
 - Cold startup constructs and caches NWC providers directly; removal clears the instance so reconnect creates fresh key bytes from the stored configuration.
+- Setup probes an uncached candidate with `get_info` before persisting a replacement; failure or vault lock retains the previous configuration and disposes the candidate.
+- Connections and published requests have a 60-second deadline. Socket close rejects outstanding work; reconnect never replays it.
+- Responses require the matching `result_type`, validated fields and 32-byte hex hashes/preimages. Lookup errors propagate except `NOT_FOUND`, which reports unpaid.
+- Signed kind-13194 discovery prefers NIP-44 v2 and supports NIP-44-only wallets; no info/encryption tag falls back to NIP-04. Explicit unsupported schemes fail. Discovery is bounded to 1.5 seconds and late advertisements are ignored.
+- Up to five distinct URI relays can be tried sequentially within one 60-second connection budget, before publication only. A published payment is never replayed on another relay. See [NWC audit](nwc-audit.md) and [provider compatibility](nwc-compatibility.md).
 
 ### 4.2 LNbits Provider (`lnbits.ts`)
 
@@ -260,7 +265,7 @@ So the popup stamps one `intentId` per click and `runPaymentOnce` records it in
 `storage.session` — not in a module variable, since the point is to survive the
 very teardown that causes the retry. A replay of a completed intent returns the
 first result; a replay while the first is still in flight is refused; a payment
-that *threw* clears its record, because `rpc()` does not retry application
+that definitely failed clears its record (an unknown NWC outcome retains it), because `rpc()` does not retry application
 errors and the user is the one deciding whether to try again.
 
 **Claiming an intent is serialized** through the same `AsyncLock` that
@@ -473,8 +478,8 @@ See [Storage](storage.md#wallet-storage) and [Security](security.md#8b-wallet-cr
 **Connected wallet** (`Wallet.tsx`) is composition only — balance, the two action buttons, and which child is open. Each surface owns its own state, so closing one *is* its reset; the parent used to clear eight fields by hand per dialog.
 
 - **Balance card** with gear icon for settings
-- **Deposit** (`DepositDialog.tsx`) — amount → invoice + QR → paid, polling every 2s and auto-closing 2.5s after payment lands. The amount is stored *with* the invoice rather than read back from the form, which the old version did through a stale closure that only worked because the field was unreachable by then.
-- **Send** (`SendDialog.tsx`) takes a BOLT11 invoice, Lightning Address or bech32 LNURL. An address is detected as it is typed, resolved (debounced 400 ms) via `wallet_resolveLightningAddress`, and shown as destination + description + accepted range, with amount and — where the endpoint allows it — comment fields. Pay stays disabled until the amount is inside the range. The backdrop stops dismissing while a payment is in flight.
+- **Deposit** (`DepositDialog.tsx`) — positive whole-sat amount (fractional input is rejected, never truncated) → invoice + QR → paid, polling every 2s and auto-closing 2.5s after payment lands. The amount is stored *with* the invoice rather than read back from the form, which the old version did through a stale closure that only worked because the field was unreachable by then.
+- **Send** (`SendDialog.tsx`) takes a BOLT11 invoice, Lightning Address or bech32 LNURL. An address is detected as it is typed, resolved (debounced 400 ms) via `wallet_resolveLightningAddress`, and shown as destination + description + accepted range, with amount and — where the endpoint allows it — comment fields. Pay stays disabled until the amount is inside the range. All close controls stay disabled while a payment is in flight. An unknown payment outcome shows a localized instruction to inspect wallet history and blocks payment retry within that dialog.
 - **Transaction list** (`TransactionList.tsx`) with search, refresh, and pagination; the filter form is `TxFilterDialog.tsx`. Failed reads show an error and retry control, never “No transactions yet.” Paging can continue even when the loaded rows do not match the filters. Rows show sats, date, direction, and failed status. Pending invoices are excluded from activity, including cached records. A preimage never overrides the provider’s pending status.
 - LNbits requests `status[ne]=pending&sortby=time&direction=desc`: filtering happens on the server before limit/offset. NWC already requests `unpaid:false`. If a server still returns pending rows, the adapter preserves raw page length for correct offsets and the pager drops those rows. Pending-only pages do not consume the 500 non-pending-row scan budget; paging continues until matches or the end, and stops requesting pages when the view unmounts or filters change.
 - Wallet reads wait for startup auto-unlock before checking the vault. Wallet context and history reset when the selected account changes; late history responses cannot replace a newer filter request. The balance and actions share one compact card using the app’s purple controls.
@@ -563,8 +568,8 @@ A payment retains one account/session/provider identity through connection, perm
 lookup, threshold lookup, approval and dispatch. Account-specific denials and saved
 payment permissions use that same account ID. Locking, switching account or replacing
 or disconnecting a wallet invalidates the operation; LNURL resolution is checked again
-before payment dispatch. A threshold permits individual invoices only, not a total
-spending budget.
+before payment dispatch. The threshold caps each unattended invoice and cumulative automatic spending
+over a rolling 24-hour window; explicit approval can exceed that allowance.
 
 Both wallet providers are disposable: explicit disconnect is permanent and a later
 connection uses a fresh instance. NWC network interruptions can reconnect when the
@@ -582,3 +587,14 @@ instances must be configured using their canonical URL.
 Wallet display data is encrypted at rest and read through a background-only RPC. Unlocked UI still hydrates its cache before network refresh; lock removes balances, transactions and settings from UI state. Provider presence can remain visible. Payment replay results (including preimages) are encrypted, while non-sensitive intent markers remain available to prevent duplicate sends.
 
 The configured auto-approval threshold now limits both individual invoices and the total automatically approved amount over the preceding 24 hours, across every origin for the account. Reservations persist encrypted before dispatch and remain counted after errors/timeouts. Exceeding either limit requires explicit approval. LNURL validation checks the exact msat amount without introducing a nonstandard metadata-hash requirement. See [payment-hardening.md](payment-hardening.md).
+
+
+### NWC payment ambiguity
+
+A published `pay_invoice` whose trustworthy response is lost or invalid raises
+`PAYMENT_OUTCOME_UNKNOWN`; neither timeout nor disconnect proves that funds did
+not move. The same LNURL intent keeps a non-expiring unknown marker and cannot
+request a fresh invoice on replay. Definite wallet rejections and pre-publication
+failures remain retryable. The marker is metadata only; it contains no invoice or
+preimage. A deliberately new intent can still pay again, so inspect wallet history
+before starting another payment. See [NWC audit](nwc-audit.md).

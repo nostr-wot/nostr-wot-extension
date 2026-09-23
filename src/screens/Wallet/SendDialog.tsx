@@ -9,6 +9,7 @@ import { isLightningAddress, parseLnurl } from '@domain/wallet/lnurl.ts';
 import { resolveSendTarget } from '@domain/wallet/sendTarget.ts';
 import type { ResolvedAddress } from '@domain/wallet/paymentPreview.ts';
 import { paymentErrorMessage } from '@services/i18n/paymentLabels.ts';
+import { PAYMENT_OUTCOME_UNKNOWN } from '@constants/wallet.ts';
 import PaymentPreview from './PaymentPreview';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
@@ -33,6 +34,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
   const [sendLoading, setSendLoading] = useState<boolean>(false);
   const [sendError, setSendError] = useState<string>('');
   const [sendSuccess, setSendSuccess] = useState<string>('');
+  const [outcomeUnknown, setOutcomeUnknown] = useState<boolean>(false);
   // Lightning Address send (LUD-16)
   const [sendAddress, setSendAddress] = useState<ResolvedAddress | null>(null);
   const [resolveLoading, setResolveLoading] = useState<boolean>(false);
@@ -123,7 +125,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
     // branching on `sendAddress` while the button gated on something else — is
     // how the previous address got paid.
     const target = sendTarget;
-    if (target.kind === 'none') return;
+    if (target.kind === 'none' || outcomeUnknown) return;
     setSendLoading(true);
     setSendError('');
     setSendSuccess('');
@@ -145,6 +147,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
       setSendSuccess(t('wallet.paymentSent'));
       onSent();
     } catch (e: unknown) {
+      if ((e as Error)?.message?.includes(PAYMENT_OUTCOME_UNKNOWN)) setOutcomeUnknown(true);
       setSendError(paymentErrorMessage(e));
     }
     setSendLoading(false);
@@ -153,7 +156,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
   return (
   <Modal
         title={t('wallet.sendPayment')}
-        onClose={onClose}
+        onClose={() => { if (!sendLoading) onClose(); }}
         maxWidth={340}
         /* A stray backdrop click must not tear down a payment mid-flight. */
         dismissOnBackdrop={!sendLoading}
@@ -167,7 +170,7 @@ export default function SendDialog({ onClose, onSent }: SendDialogProps) {
               <Button
                 small
                 onClick={handleSend}
-                disabled={sendLoading || sendTarget.kind === 'none'}
+                disabled={sendLoading || outcomeUnknown || sendTarget.kind === 'none'}
               >
                 {sendLoading ? t('common.loading') : t('wallet.confirmPay')}
               </Button>

@@ -6,6 +6,37 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.2 — 2026-09-23
+
+### Improved
+
+- Align dark mode with nostr-wot.com, using near-black popup surfaces, distinct lighter hovers and readable permissions menus; keep La Crypta secondary-button hovers lime.
+- Add subtle 4px backdrop blur to dialogs and approval overlays, contain keyboard focus in the topmost dialog and show toggle focus clearly.
+- Improve wallet spacing and first-use connection help with a persistent opt-out, localized nostr-wot.com guides in background tabs and wallet API-key explanations.
+- Negotiate signed NWC wallet capabilities, prefer NIP-44, retain legacy NIP-04, and try alternative relay connections before publication without replaying payments.
+
+### Fixed
+
+- Validate candidate wallets before persisting their credentials; preserve existing connections on failed validation.
+- Validate NWC response provenance, methods and fields, accepting documented Alby/LNbits nullable fields and signed fees.
+- Preserve transaction state, propagate lookup failures, and prevent ambiguous payment intents from creating another invoice or replaying a payment.
+- Reject fractional receive amounts and prevent send-dialog closure during payments.
+
+### Verification
+
+- 1,788 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
+- Popup-width component previews cover light/dark setup, expanded settings, permission menus, hover colors and dialog blur. No live-wallet payment certification is claimed.
+
+### Store release notes
+
+- Improved dark-mode menus, permissions, popup backgrounds and hover contrast; corrected La Crypta button hovers.
+- Added subtle background blur behind dialogs and approval popups.
+- Improved wallet setup spacing and first-use help with a Do not show again option, localized website guides that open in background tabs, and a clearer LNbits API-key explanation.
+- Added modern NWC encryption negotiation while retaining legacy wallet support, plus compatibility fixes for wallet responses.
+- Validate wallet connections before saving them and handle connection failures more reliably.
+- Show uncertain payment outcomes clearly and prevent automatic replay of the same payment intent.
+- Improved invoice amount validation, payment-dialog behavior and transaction status handling.
+
 ## 0.8.1 — 2026-09-23
 
 ### Added

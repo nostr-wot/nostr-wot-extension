@@ -12,7 +12,7 @@ const VARIANT_WRAP: Record<string, string> = {
 };
 
 const VARIANT_TAB: Record<string, string> = {
-  cards: 'flex flex-col items-center gap-3 py-7 px-4 border-[1.5px] border-card-border rounded-lg text-secondary hover:bg-card',
+  cards: 'flex flex-col items-center gap-3 py-7 px-4 border-[1.5px] border-card-border rounded-lg text-secondary hover:bg-hover',
   outlined: 'px-6 py-4 border-[1.5px] border-card-border rounded-md text-secondary',
   segmented: 'py-[7px] px-0 border-none rounded-md text-muted',
 };

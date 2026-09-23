@@ -94,6 +94,7 @@ it('permission rules render only the supplied account-filtered keys and their de
     keys:['getPublicKey'],permissions:{getPublicKey:'deny',hidden:'allow'},async onChange(){},
   }));
   assert.match(html,/perms.deny/);
+  assert.match(html,/border-b border-card-border/, 'rules separate with the border token, not their card surface color');
   assert.doesNotMatch(html,/hidden|perms.allow/);
   const fallback=renderToStaticMarkup(createElement(PermissionRulesList,{keys:['getPublicKey'],permissions:{},async onChange(){}}));
   assert.match(fallback,/perms.ask/);

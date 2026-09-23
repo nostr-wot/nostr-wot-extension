@@ -1,7 +1,0 @@
-Nostr WoT 0.7.2
-
-- Nostr Connect accounts now show their profile name and image in the top bar and account selector, with a shortened npub fallback.
-- A remote badge identifies remotely signed accounts.
-- Shared presentation keeps both views consistent and supports profile display_name.
-
-This is a display update; it does not change remote-signing transport or resolve the unverified native Amber signing-request issue.

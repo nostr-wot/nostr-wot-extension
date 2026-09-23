@@ -11,6 +11,9 @@ import { SectionLabel, SectionHint } from '@components/SectionLabel';
 import Tabs from '@components/Tabs';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
+import WalletConnectionHelp from './WalletConnectionHelp';
+import IconButton from '@components/IconButton';
+import IconInfo from '@assets/IconInfo.tsx';
 
 interface WalletSetupProps {
   onConnected: () => void;
@@ -19,6 +22,7 @@ interface WalletSetupProps {
 type ProviderTab = 'quick' | 'nwc' | 'lnbits';
 
 export default function WalletSetup({ onConnected }: WalletSetupProps) {
+  const [helpOpen, setHelpOpen] = useState(false);
   const [tab, setTab] = useState<ProviderTab>('quick');
   const [nwcString, setNwcString] = useState<string>('');
   const [lnbitsUrl, setLnbitsUrl] = useState<string>('');
@@ -73,10 +77,17 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
     lnbitsReady;
 
   return (
-    <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
-      <Card>
-        <SectionLabel>{t('wallet.connectWallet')}</SectionLabel>
-        <SectionHint>{t('wallet.connectHint')}</SectionHint>
+    <>
+    <WalletConnectionHelp open={helpOpen} onOpenChange={setHelpOpen} />
+    <Container gap={7} className="flex-1 min-h-0 overflow-y-auto py-2">
+      <Card className="m-0 p-8 flex flex-col gap-8">
+        <Container gap={3}>
+          <Container variant="row" className="justify-between">
+            <SectionLabel className="m-0">{t('wallet.connectWallet')}</SectionLabel>
+            <IconButton tone="brand" title={t('wallet.connectionHelpTitle')} aria-label={t('wallet.connectionHelpTitle')} onClick={() => setHelpOpen(true)}><IconInfo size={16} /></IconButton>
+          </Container>
+          <SectionHint className="m-0">{t('wallet.connectHint')}</SectionHint>
+        </Container>
 
         <Tabs
           label={t('wallet.connectWallet')}
@@ -89,7 +100,7 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
           onChange={(next) => { setTab(next); setError(''); }}
         />
 
-        <Container gap={5}>
+        <Container gap={6}>
           {tab === 'quick' ? (
             <>
               <SectionHint>{t('wallet.quickSetupHint')}</SectionHint>
@@ -110,15 +121,20 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
               )}
             </>
           ) : tab === 'nwc' ? (
-            <Input
-              type="text"
-              mono
-              placeholder="nostr+walletconnect://..."
-              value={nwcString}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => { setNwcString(e.target.value); setError(''); }}
-            />
+            <>
+              <SectionHint>{t('wallet.nwcSetupHint')}</SectionHint>
+              <Input
+                type="text"
+                mono
+                label={t('wallet.nwcUri')}
+                placeholder="nostr+walletconnect://..."
+                value={nwcString}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => { setNwcString(e.target.value); setError(''); }}
+              />
+            </>
           ) : (
             <>
+              <SectionHint className="m-0">{t('wallet.lnbitsConnectionHint')}</SectionHint>
               <Input
                 type="text"
                 placeholder="https://lnbits.example.com"
@@ -133,13 +149,15 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
                 value={lnbitsKey}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => { setLnbitsKey(e.target.value); setError(''); }}
                 label={t('wallet.adminKey')}
+                aria-describedby="lnbits-admin-key-hint"
               />
+              <div id="lnbits-admin-key-hint"><SectionHint className="m-0">{t('wallet.lnbitsAdminKeyHint')}</SectionHint></div>
             </>
           )}
 
           <FormError>{error}</FormError>
 
-          <Container variant="row" gap={4} className="justify-end mt-2">
+          <Container variant="row" gap={4} className="justify-end">
             <Button small onClick={handleConnect} disabled={loading || !canConnect}>
               {loading ? t('common.loading') : tab === 'quick' ? t('wallet.createWallet') : t('common.connect')}
             </Button>
@@ -147,5 +165,6 @@ export default function WalletSetup({ onConnected }: WalletSetupProps) {
         </Container>
       </Card>
     </Container>
+    </>
   );
 }

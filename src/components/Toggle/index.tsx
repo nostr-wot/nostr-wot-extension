@@ -24,8 +24,8 @@ export default function Toggle({ checked, onChange, ...rest }: ToggleProps) {
       />
       <span
         className={
-          'absolute inset-0 cursor-pointer bg-[rgba(0,0,0,0.15)] rounded-[11px] transition-all duration-slow ' +
-          'peer-checked:bg-brand ' +
+          'absolute inset-0 cursor-pointer bg-control-border rounded-[11px] transition-all duration-slow ' +
+          'peer-checked:bg-brand peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand ' +
           "before:content-[''] before:absolute before:h-8 before:w-8 before:left-1.5 before:bottom-1.5 " +
           'before:bg-white before:rounded-full before:transition-all before:duration-slow ' +
           'peer-checked:before:translate-x-9 peer-checked:before:bg-elevated'

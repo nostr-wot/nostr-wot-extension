@@ -117,7 +117,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
   return (
     <>
-      <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)]`} />
+      <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)] backdrop-blur-[4px]`} />
       <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-elevated backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
         <Container variant="row" gap={4} className="mb-6 flex-wrap">
           {/* Not `Text`: `font-bold` + `text-heading` at `text-lg` is not one

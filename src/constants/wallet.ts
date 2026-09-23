@@ -2,8 +2,15 @@ import type { TxFilters } from '@domain/wallet/txFilter.ts';
 
 /** NWC wallet request timeout (1 minute) */
 export const NWC_REQUEST_TIMEOUT_MS = 60_000;
+/** Finite capability discovery before a legacy wallet request. */
+export const NWC_INFO_TIMEOUT_MS = 1_500;
+/** Bound URI-driven sequential connection attempts. */
+export const NWC_MAX_RELAYS = 5;
 
 export const DEFAULT_LNBITS_URL = 'https://zaps.nostr-wot.com';
+
+/** Optional wallet explanation preference, shared across accounts. */
+export const WALLET_HELP_DISMISSED_KEY = 'walletConnectionHelpDismissed';
 
 /** Cap on the pay-params body, so a hostile server cannot stream forever. */
 export const LNURL_MAX_RESPONSE_BYTES = 64 * 1024;
@@ -52,6 +59,9 @@ export const PAYMENT_INTENT_STUCK_TTL_MS = 24 * 60 * 60 * 1000;
  * without pulling the background's storage shim into its bundle.
  */
 export const PAYMENT_IN_FLIGHT = 'PAYMENT_IN_FLIGHT';
+
+/** Published payment without a trustworthy final response; never automatically retry. */
+export const PAYMENT_OUTCOME_UNKNOWN = 'PAYMENT_OUTCOME_UNKNOWN';
 
 export const EMPTY_TX_FILTERS: TxFilters = { direction: 'all', dateFrom: '', dateTo: '' };
 

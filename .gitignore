@@ -40,3 +40,9 @@ CLADE.md
 # of this repo, so make it impossible to commit one by accident — it holds secret keys.
 keys.json
 *.keyfile.json
+
+# Publishing handoff files are generated outside the repository.
+/nostr-wot-release-notes-*.txt
+/nostr-wot-reviewer-notes-*.txt
+/nostr-wot-SHA256SUMS-*.txt
+/SHA256SUMS

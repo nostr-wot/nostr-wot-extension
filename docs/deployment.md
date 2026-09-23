@@ -11,7 +11,7 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.8.1 adds Appearance and language settings with Light, Dark, System and La Crypta themes, shared dark surfaces and theme-independent QR rendering. GitHub publication is
+0.8.2 improves dark-mode contrast, popup blur and wallet setup guidance, and adds modern NWC negotiation with payment-flow hardening. GitHub publication is
 separate from browser-store submission and approval.
 
 ## Before any store

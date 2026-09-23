@@ -1,3 +1,4 @@
+import { PaymentOutcomeUnknownError } from './payment-errors.ts';
 import {
   PAYMENT_INTENTS_STORAGE_KEY as STORE_KEY,
   PAYMENT_INTENT_TTL_MS as TTL_MS,
@@ -47,7 +48,7 @@ import { PAYMENT_IN_FLIGHT } from '@constants/wallet.ts';
 const _lock = new AsyncLock();
 
 interface IntentRecord {
-  status: 'in-flight' | 'done';
+  status: 'in-flight' | 'done' | 'unknown';
   result?: unknown;
   at: number;
 }
@@ -67,6 +68,7 @@ async function readStoreLocked(): Promise<IntentStore> {
       pruned = true;
       continue;
     }
+    if (rec.status === 'unknown') continue;
     const ttl = rec.status === 'in-flight' ? STUCK_TTL_MS : TTL_MS;
     if (rec.at < now - ttl) {
       delete store[id];
@@ -90,11 +92,11 @@ async function writeStoreLocked(store: IntentStore): Promise<void> {
  * - Replay while the first is still running: throws rather than send twice.
  * - No `intentId`: runs unguarded, so an older popup keeps working.
  *
- * A `send` that *throws* clears the record, because the caller sees the error
+ * A definite failure clears the record, because the caller sees the error
  * and decides what to do next — `rpc()` does not retry application errors, only
- * transport failures. The residual risk is unchanged from any Lightning wallet:
- * a payment that failed after the sats left cannot be distinguished from one
- * that never left.
+ * transport failures. An ambiguous published payment retains an `unknown` marker
+ * without an expiry: retrying that intent must never request another invoice.
+ * The user must inspect wallet history before initiating a new payment.
  */
 export async function runPaymentOnce<T>(
   intentId: string | undefined,
@@ -120,6 +122,7 @@ export async function runPaymentOnce<T>(
     if (!isPrivateEnvelope(existing.result)) throw new Error(PAYMENT_IN_FLIGHT);
     return openPrivateValue<T>(`${STORE_KEY}/${intentId}`, existing.result);
   }
+  if (existing?.status === 'unknown') throw new PaymentOutcomeUnknownError();
   if (existing?.status === 'in-flight') {
     throw new Error(PAYMENT_IN_FLIGHT);
   }
@@ -130,7 +133,8 @@ export async function runPaymentOnce<T>(
   } catch (err) {
     await _lock.run(async () => {
       const store = await readStoreLocked();
-      delete store[intentId];
+      if (err instanceof PaymentOutcomeUnknownError) store[intentId] = { status: 'unknown', at: Date.now() };
+      else delete store[intentId];
       await writeStoreLocked(store);
     });
     throw err;

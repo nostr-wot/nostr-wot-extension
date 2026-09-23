@@ -112,6 +112,7 @@ it('wallet settings owns a bounded scroll region and explains its refresh and di
  assert.match(html,/flex-1 min-h-0 overflow-y-auto/);
  assert.match(html,/wallet.refreshSettingsHint/);assert.match(html,/wallet.disconnectHint/);
  assert.match(html,/wallet.connectedTo/);
+ assert.match(html,/wallet.connectionHelpTitle/);
  assert.ok(html.indexOf('common.disconnect') < html.indexOf('wallet.autoApprove'), 'disconnect belongs below the connection heading, before other settings');
 });
 it('wallet copy controls use named SVG icons without rendering connection credentials',async()=>{
@@ -604,4 +605,398 @@ it('pending cards show dangerous reductions even after an ordinary first request
  assert.match(html,/text-error/);
  const safe=renderToStaticMarkup(createElement(ApprovalCard,{group:{...group,requests:[normal]},onClick(){}}));
  assert.doesNotMatch(safe,/approval.followReplacementWarning/);
+});
+
+// Mounted popup flows use the same DOM event path as the existing wizard tests.
+async function mountWalletFlow() {
+  const { JSDOM } = await import('jsdom');
+  const { act } = await import('react');
+  const dom = new JSDOM('<div id="root"></div>');
+  const previous = new Map(['window', 'document', 'IS_REACT_ACT_ENVIRONMENT'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  Object.defineProperties(globalThis, { window: { value: dom.window, configurable: true }, document: { value: dom.window.document, configurable: true }, IS_REACT_ACT_ENVIRONMENT: { value: true, configurable: true } });
+  const { createRoot } = await import('react-dom/client');
+  const root = createRoot(dom.window.document.getElementById('root')!);
+  const button = (label: string) => Array.from(dom.window.document.querySelectorAll('button')).find(item => item.textContent === label)!;
+  return {
+    dom, root, act, button,
+    async edit(value: string) {
+      await act(async () => {
+        const input = dom.window.document.querySelector('input')!;
+        Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+        input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+      });
+    },
+    async cleanup() {
+      await act(async () => root.unmount());
+      dom.window.close();
+      for (const [key, descriptor] of previous) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else Reflect.deleteProperty(globalThis, key);
+      }
+    },
+  };
+}
+
+it('NWC setup validates locally, preserves failures and connects once with the trimmed URI', async t => {
+  const { default: WalletSetup } = await import('../src/screens/Wallet/WalletSetup');
+  const { default: browser } = await import('./helpers/browser-mock');
+  const ui = await mountWalletFlow();
+  const calls: unknown[] = [];
+  let reply!: (value: unknown) => void;
+  let connected = 0;
+  t.mock.method(browser.runtime, 'sendMessage', (message: unknown) => {
+    calls.push(message);
+    return new Promise(resolve => { reply = resolve; });
+  });
+  try {
+    await ui.act(async () => ui.root.render(createElement(WalletSetup, { onConnected() { connected++; } })));
+    if (ui.button('common.gotIt')) await ui.act(async () => ui.button('common.gotIt').click());
+    const advanced = () => Array.from(ui.dom.window.document.querySelectorAll('button')).find(button => button.textContent?.startsWith('wallet.advancedSettings'))!;
+    assert.equal(ui.dom.window.document.querySelector('input'), null);
+    await ui.act(async () => advanced().click());
+    assert.ok(ui.dom.window.document.querySelector('input'), 'advanced instance URL expands');
+    await ui.act(async () => advanced().click());
+    assert.equal(ui.dom.window.document.querySelector('input'), null, 'advanced instance URL collapses');
+    await ui.act(async () => ui.button('LNbits').click());
+    const adminKey = ui.dom.window.document.querySelector<HTMLInputElement>('input[type="password"]')!;
+    const adminLabel = Array.from(ui.dom.window.document.querySelectorAll('label')).find(label => label.textContent === 'wallet.adminKey')!;
+    assert.equal(adminLabel.control, adminKey);
+    assert.equal(ui.dom.window.document.getElementById(adminKey.getAttribute('aria-describedby')!)!.textContent, 'wallet.lnbitsAdminKeyHint');
+    await ui.act(async () => ui.button('NWC').click());
+    const connectionLabel = Array.from(ui.dom.window.document.querySelectorAll('label')).find(label => label.textContent === 'wallet.nwcUri')!;
+    assert.equal(connectionLabel.control, ui.dom.window.document.querySelector('input'), 'NWC connection has an associated label');
+    assert.match(ui.dom.window.document.body.textContent!, /wallet.nwcSetupHint/);
+    assert.equal(ui.button('common.connect').disabled, true);
+    await ui.edit('https://not-a-wallet.test');
+    await ui.act(async () => ui.button('common.connect').click());
+    assert.match(ui.dom.window.document.body.textContent!, /wallet.invalidNwc/);
+    assert.equal(calls.length, 0);
+    const uri = `nostr+walletconnect://${'11'.repeat(32)}?relay=wss%3A%2F%2Fwallet.test&secret=${'22'.repeat(32)}`;
+    await ui.edit(`  ${uri}  `);
+    await ui.act(async () => ui.button('common.connect').click());
+    assert.equal(ui.button('common.loading').disabled, true);
+    await ui.act(async () => ui.button('common.loading').click());
+    assert.equal(calls.length, 1);
+    assert.deepEqual((calls[0] as { params: unknown }).params, { walletConfig: { type: 'nwc', connectionString: uri } });
+    await ui.act(async () => reply({ error: 'Wallet relay unavailable' }));
+    assert.equal(connected, 0);
+    assert.match(ui.dom.window.document.body.textContent!, /Wallet relay unavailable/);
+    assert.equal(ui.button('common.connect').disabled, false);
+    await ui.act(async () => ui.button('common.connect').click());
+    await ui.act(async () => reply({ result: { ok: true } }));
+    assert.equal(connected, 1);
+    assert.equal(calls.length, 2, 'only an explicit retry reconnects');
+  } finally { await ui.cleanup(); }
+});
+
+it('send dialog cannot be dismissed or pay again during a pending payment and reports the final result', async t => {
+  const { default: SendDialog } = await import('../src/screens/Wallet/SendDialog');
+  const { default: browser } = await import('./helpers/browser-mock');
+  const { bech32 } = await import('@scure/base');
+  const invoice = bech32.encode('lnbc10n', [...Array(7).fill(0), ...Array(104).fill(0)], 2000);
+  const ui = await mountWalletFlow();
+  let sent = 0, closed = 0, payments = 0;
+  let reply!: (value: unknown) => void;
+  t.mock.method(browser.runtime, 'sendMessage', (message: { method: string; params: unknown }) => {
+    assert.equal(message.method, 'wallet_payInvoice');
+    assert.deepEqual(message.params, { bolt11: invoice });
+    payments++;
+    return new Promise(resolve => { reply = resolve; });
+  });
+  try {
+    await ui.act(async () => ui.root.render(createElement(SendDialog, { onClose() { closed++; }, onSent() { sent++; } })));
+    await ui.edit('not an invoice');
+    assert.equal(ui.button('wallet.confirmPay').disabled, true);
+    await ui.edit(invoice);
+    await ui.act(async () => ui.button('wallet.confirmPay').click());
+    assert.equal(ui.button('common.loading').disabled, true);
+    await ui.act(async () => {
+      ui.button('common.loading').click();
+      ui.button('common.cancel').click();
+      ui.dom.window.document.querySelector<HTMLButtonElement>('[aria-label="common.close"]')!.click();
+      ui.dom.window.document.dispatchEvent(new ui.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      ui.dom.window.document.querySelector('[role="dialog"]')!.parentElement!.dispatchEvent(new ui.dom.window.MouseEvent('mousedown', { bubbles: true }));
+    });
+    assert.equal(payments, 1);
+    assert.equal(closed, 0, 'every dismissal route is blocked until the payment resolves');
+    await ui.act(async () => reply({ error: 'Insufficient balance' }));
+    assert.equal(sent, 0);
+    assert.match(ui.dom.window.document.body.textContent!, /Insufficient balance/);
+    assert.equal(ui.button('wallet.confirmPay').disabled, false);
+    await ui.act(async () => ui.button('wallet.confirmPay').click());
+    await ui.act(async () => reply({ result: { preimage: 'synthetic' } }));
+    assert.equal(payments, 2);
+    assert.equal(sent, 1);
+    assert.match(ui.dom.window.document.body.textContent!, /wallet.paymentSent/);
+    assert.equal(ui.button('wallet.confirmPay'), undefined);
+    await ui.act(async () => ui.button('common.close').click());
+    assert.equal(closed, 1);
+  } finally { await ui.cleanup(); }
+});
+
+it('receive dialog rejects fractional or unsafe sats without silently changing the requested amount', async t => {
+  const { default: DepositDialog } = await import('../src/screens/Wallet/DepositDialog');
+  const { default: browser } = await import('./helpers/browser-mock');
+  const ui = await mountWalletFlow();
+  const calls: unknown[] = [];
+  t.mock.method(browser.runtime, 'sendMessage', async (message: unknown) => {
+    calls.push(message);
+    return { error: 'Invoice creation unavailable' };
+  });
+  try {
+    await ui.act(async () => ui.root.render(createElement(DepositDialog, { onClose() {}, onPaid() {} })));
+    for (const value of ['', '0', '-1', '1.9', '9007199254740992']) {
+      await ui.edit(value);
+      assert.equal(ui.button('wallet.createInvoice').disabled, true, `reject ${value}`);
+      await ui.act(async () => ui.button('wallet.createInvoice').click());
+    }
+    assert.equal(calls.length, 0);
+    await ui.edit('21');
+    await ui.act(async () => ui.button('wallet.createInvoice').click());
+    assert.deepEqual((calls[0] as { params: unknown }).params, { amount: 21, memo: 'Deposit' });
+    assert.match(ui.dom.window.document.body.textContent!, /Invoice creation unavailable/);
+    assert.equal(ui.button('wallet.createInvoice').disabled, false);
+  } finally { await ui.cleanup(); }
+});
+
+it('receive polling tolerates failures, announces settlement once and ignores replies after closing', async t => {
+  const { default: DepositDialog } = await import('../src/screens/Wallet/DepositDialog');
+  const { default: browser } = await import('./helpers/browser-mock');
+  const ui = await mountWalletFlow();
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
+  let received = 0, closed = 0, checks = 0;
+  let reply!: (value: unknown) => void;
+  t.mock.method(browser.runtime, 'sendMessage', async (message: { method: string; params: unknown }) => {
+    if (message.method === 'wallet_makeInvoice') return { result: { bolt11: 'synthetic-invoice', paymentHash: 'test-hash' } };
+    assert.equal(message.method, 'wallet_checkInvoice');
+    assert.deepEqual(message.params, { paymentHash: 'test-hash' });
+    checks++;
+    if (checks === 1) return { error: 'Relay temporarily offline' };
+    if (checks === 2) return { result: { paid: false } };
+    return new Promise(resolve => { reply = resolve; });
+  });
+  const open = async () => {
+    await ui.act(async () => ui.root.render(createElement(DepositDialog, { onClose() { closed++; }, onPaid() { received++; } })));
+    await ui.edit('21');
+    await ui.act(async () => ui.button('wallet.createInvoice').click());
+  };
+  try {
+    await open();
+    assert.match(ui.dom.window.document.body.textContent!, /synthetic-invoice/);
+    for (let i = 0; i < 3; i++) await ui.act(async () => t.mock.timers.tick(2000));
+    assert.equal(received, 0, 'neither failures nor pending invoices are payments');
+    await ui.act(async () => reply({ result: { paid: true } }));
+    assert.equal(received, 1);
+    assert.match(ui.dom.window.document.body.textContent!, /wallet.paymentReceived/);
+    assert.match(ui.dom.window.document.body.textContent!, /\+21/,'missing amountPaid uses the invoice amount');
+    await ui.act(async () => t.mock.timers.tick(2499));
+    assert.equal(closed, 0);
+    await ui.act(async () => t.mock.timers.tick(1));
+    assert.equal(closed, 1);
+    assert.equal(checks, 3, 'settlement stops polling');
+    await ui.act(async () => ui.root.render(null));
+    await open();
+    await ui.act(async () => t.mock.timers.tick(2000));
+    assert.equal(checks, 4);
+    await ui.act(async () => ui.root.render(null));
+    await ui.act(async () => reply({ result: { paid: true, amountPaid: 50 } }));
+    await ui.act(async () => t.mock.timers.tick(10000));
+    assert.equal(received, 1, 'closed invoice cannot deliver a late success callback');
+    assert.equal(closed, 1);
+    assert.equal(checks, 4, 'unmount cancels future polling');
+  } finally { await ui.cleanup(); t.mock.timers.reset(); }
+});
+
+it('an ambiguous payment outcome blocks further payments in the current dialog even after editing', async t => {
+  const { default: SendDialog } = await import('../src/screens/Wallet/SendDialog');
+  const { default: browser } = await import('./helpers/browser-mock');
+  const { bech32 } = await import('@scure/base');
+  const invoice = bech32.encode('lnbc10n', [...Array(7).fill(0), ...Array(104).fill(0)], 2000);
+  const ui = await mountWalletFlow();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let payments = 0, closed = 0, sent = 0;
+  t.mock.method(browser.runtime, 'sendMessage', async (message: { method: string; params: { intentId?: string; address?: string } }) => {
+    if (message.method === 'wallet_resolveLightningAddress') return { result: {
+      address: 'alice@wallet.test', domain: 'wallet.test', description: 'Test recipient',
+      minSats: 1, maxSats: 100, commentAllowed: 0, allowsNostr: false,
+    } };
+    assert.equal(message.method, 'wallet_payToLightningAddress');
+    assert.equal(message.params.address, 'alice@wallet.test');
+    assert.ok(message.params.intentId, 'the address payment has a replay identifier');
+    payments++;
+    return { error: 'PAYMENT_OUTCOME_UNKNOWN' };
+  });
+  try {
+    await ui.act(async () => ui.root.render(createElement(SendDialog, { onClose() { closed++; }, onSent() { sent++; } })));
+    await ui.edit('alice@wallet.test');
+    await ui.act(async () => t.mock.timers.tick(400));
+    await ui.act(async () => ui.button('wallet.confirmPay').click());
+    assert.equal(sent, 0);
+    assert.equal(ui.button('wallet.confirmPay').disabled, true, 'uncertain payment cannot be retried with a fresh intent');
+    assert.match(ui.dom.window.document.body.textContent!, /wallet.paymentOutcomeUnknown/);
+    await ui.edit('');
+    await ui.edit(invoice);
+    assert.equal(ui.button('wallet.confirmPay').disabled, true, 'editing does not erase uncertainty');
+    await ui.act(async () => ui.button('wallet.confirmPay').click());
+    assert.equal(payments, 1);
+    await ui.act(async () => ui.button('common.cancel').click());
+    assert.equal(closed, 1, 'user can leave to check wallet history');
+  } finally { await ui.cleanup(); t.mock.timers.reset(); }
+});
+
+it('wallet connection help can be dismissed, remembered and reopened while guides open in background tabs', async t => {
+  const { default: WalletSetup } = await import('../src/screens/Wallet/WalletSetup');
+  const { default: browser, resetMockStorage } = await import('./helpers/browser-mock');
+  resetMockStorage();
+  const ui = await mountWalletFlow();
+  const created = t.mock.method(browser.tabs, 'create', async () => ({ id: 7 }));
+  const render = async () => ui.act(async () => ui.root.render(createElement(WalletSetup, { onConnected() {} })));
+  const dialog = () => ui.dom.window.document.querySelector('[role="dialog"]');
+  try {
+    await render();
+    assert.ok(dialog(), 'first visit opens the explanation');
+    await ui.act(async () => ui.button('wallet.albyGuide').click());
+    assert.deepEqual(created.mock.calls[0].arguments, [{ url: 'https://nostr-wot.com/guides/alby-hub-nwc', active: false }]);
+    assert.ok(dialog(), 'opening a guide leaves the help visible');
+    assert.match(dialog()!.textContent!, /wallet.guideOpened/);
+    created.mock.mockImplementation(async () => { throw new Error('Tab creation failed'); });
+    await ui.act(async () => ui.button('wallet.albyGuide').click());
+    assert.match(dialog()!.textContent!, /wallet.guideOpenFailed/);
+    assert.doesNotMatch(dialog()!.textContent!, /wallet.guideOpened/);
+    created.mock.mockImplementation(async () => ({ id: 7 }));
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.equal(dialog(), null);
+    await ui.act(async () => ui.root.render(null));
+    await render();
+    assert.ok(dialog(), 'dismissal without opting out permits the next explanation');
+    await ui.act(async () => ui.dom.window.document.querySelector<HTMLInputElement>('[aria-label="wallet.dontShowAgain"]')!.click());
+    const failedSave = t.mock.method(browser.storage.local, 'set', async () => { throw new Error('Preference write failed'); });
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.ok(dialog(), 'failed persistence keeps the dialog open');
+    assert.match(dialog()!.textContent!, /Preference write failed/);
+    failedSave.mock.restore();
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.equal(dialog(), null);
+    await ui.act(async () => ui.root.render(null));
+    await render();
+    assert.equal(dialog(), null, 'opt-out survives remount');
+    await ui.act(async () => ui.button('NWC').click());
+    await ui.edit('draft-connection');
+    await ui.act(async () => ui.dom.window.document.querySelector<HTMLButtonElement>('[aria-label="wallet.connectionHelpTitle"]')!.click());
+    assert.ok(dialog(), 'info button always reopens help');
+    await ui.act(async () => ui.button('wallet.lnbitsNwcGuide').click());
+    await ui.act(async () => ui.button('wallet.lnbitsApiGuide').click());
+    assert.deepEqual(created.mock.calls.slice(-2).map(call => call.arguments), [
+      [{ url: 'https://nostr-wot.com/guides/lnbits-wallet-setup#lnbits-nwc', active: false }],
+      [{ url: 'https://nostr-wot.com/guides/lnbits-wallet-setup#lnbits-api', active: false }],
+    ]);
+    const { setLanguage } = await import('../src/services/i18n/i18n');
+    t.mock.method(globalThis, 'fetch', async () => new Response('{}'));
+    for (const language of ['en', 'es', 'de', 'fr', 'it', 'pt', 'unsupported']) {
+      await ui.act(async () => { await setLanguage(language); });
+      const prefix = language === 'en' || language === 'unsupported' ? '' : `/${language}`;
+      for (const [label, path] of [
+        ['wallet.albyGuide', 'alby-hub-nwc'],
+        ['wallet.lnbitsNwcGuide', 'lnbits-wallet-setup#lnbits-nwc'],
+        ['wallet.lnbitsApiGuide', 'lnbits-wallet-setup#lnbits-api'],
+      ]) {
+        await ui.act(async () => ui.button(label).click());
+        assert.deepEqual(created.mock.calls.at(-1)!.arguments, [{ url: `https://nostr-wot.com${prefix}/guides/${path}`, active: false }]);
+      }
+    }
+    await ui.act(async () => { await setLanguage('en'); });
+    await ui.act(async () => ui.button('common.gotIt').click());
+    assert.equal(ui.dom.window.document.querySelector('input')!.value, 'draft-connection', 'help and background guides preserve the connection draft');
+  } finally { await ui.cleanup(); }
+});
+
+it('shared modal contains keyboard focus, skips unavailable controls and restores its opener', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const { default: Toggle } = await import('../src/components/Toggle');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  const tab = (shiftKey = false) => {
+    const event = new ui.dom.window.KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true });
+    ui.dom.window.document.activeElement!.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+  };
+  try {
+    await ui.act(async () => ui.root.render(createElement(Modal, { onClose() {} },
+      createElement('button', { disabled: true }, 'disabled'),
+      createElement('div', { hidden: true }, createElement('button', {}, 'hidden')),
+      createElement('button', {}, 'first'),
+      createElement(Toggle, { 'aria-label': 'remember', checked: false }),
+      createElement('button', {}, 'last'))));
+    const dialog = ui.dom.window.document.querySelector('[role="dialog"]')!;
+    assert.ok(ui.dom.window.document.activeElement === dialog);
+    tab(); assert.ok(ui.dom.window.document.activeElement === ui.button('first'));
+    tab(); assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'remember');
+    tab(); assert.ok(ui.dom.window.document.activeElement === ui.button('last'));
+    tab(); assert.ok(ui.dom.window.document.activeElement === ui.button('first'));
+    tab(true); assert.ok(ui.dom.window.document.activeElement === ui.button('last'));
+    opener.focus(); assert.ok(ui.dom.window.document.activeElement === dialog, 'focus cannot escape to the page');
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
+});
+
+it('only the visually topmost modal handles focus and Escape, including later lower overlays', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  let upperClosed = 0, lowerClosed = 0;
+  const upper = createElement(Modal, { key: 'upper', title: 'upper', zIndex: 1000, onClose() { upperClosed++; } }, createElement('button', {}, 'upper action'));
+  const lower = createElement(Modal, { key: 'lower', title: 'lower', zIndex: 700, onClose() { lowerClosed++; } }, createElement('button', {}, 'lower action'));
+  try {
+    await ui.act(async () => ui.root.render(upper));
+    ui.button('upper action').focus();
+    await ui.act(async () => ui.root.render([upper, lower]));
+    assert.ok(ui.dom.window.document.activeElement === ui.button('upper action'), 'later lower modal must not steal focus');
+    ui.dom.window.document.dispatchEvent(new ui.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(upperClosed, 1); assert.equal(lowerClosed, 0);
+    await ui.act(async () => ui.root.render(lower));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'lower');
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
+});
+
+it('stacked modal restores its parent control, then the original opener', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  const parent = createElement(Modal, { key: 'parent', onClose() {} }, createElement('button', {}, 'child opener'));
+  const child = createElement(Modal, { key: 'child', onClose() {} }, createElement('button', {}, 'child action'));
+  try {
+    await ui.act(async () => ui.root.render(parent)); ui.button('child opener').focus();
+    await ui.act(async () => ui.root.render([parent, child]));
+    await ui.act(async () => ui.root.render(parent));
+    assert.ok(ui.dom.window.document.activeElement === ui.button('child opener'));
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
+});
+
+it('nested modal remains topmost despite child effects mounting before parent effects', async () => {
+  const { default: Modal } = await import('../src/components/Modal');
+  const ui = await mountWalletFlow();
+  const opener = ui.dom.window.document.createElement('button');
+  ui.dom.window.document.body.prepend(opener); opener.focus();
+  let parentClosed = 0, childClosed = 0;
+  const render = (child: boolean) => createElement(Modal, { title: 'parent', onClose() { parentClosed++; } },
+    createElement('button', {}, 'parent action'),
+    child ? createElement(Modal, { title: 'child', onClose() { childClosed++; } }, createElement('button', {}, 'child action')) : null);
+  try {
+    await ui.act(async () => ui.root.render(render(true)));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'child');
+    ui.dom.window.document.dispatchEvent(new ui.dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(parentClosed, 0); assert.equal(childClosed, 1);
+    await ui.act(async () => ui.root.render(render(false)));
+    assert.equal(ui.dom.window.document.activeElement?.getAttribute('aria-label'), 'parent');
+    await ui.act(async () => ui.root.render(null));
+    assert.ok(ui.dom.window.document.activeElement === opener);
+  } finally { await ui.cleanup(); }
 });

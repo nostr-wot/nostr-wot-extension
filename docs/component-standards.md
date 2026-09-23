@@ -29,6 +29,12 @@ Read the component's own file for its props; duplicating them here is what rotte
 
 The recurring failure is not that a primitive is missing, it is that a feature hand-rolls one it already has. `Modal`'s own docstring records that it exists because the popup had grown three separate dialog implementations — and four more were written afterwards. Before adding a backdrop, a close button, a chip row, or an are-you-sure, check this list.
 
+Modal and approval-sheet backdrops apply a subtle 4px blur behind the dialog, retaining their dimming and leaving dialog content sharp.
+
+Shared `Modal` contains Tab and Shift+Tab within visible, enabled controls and restores the previous focused element when dismissed. Only the topmost dialog handles keyboard dismissal and focus containment; stacked dialogs respect their z-index and nested dialogs remain above their parent. If the opener has disappeared, focus returns to the remaining dialog. Keep this behavior in the shared component rather than adding competing document listeners in callers.
+
+Shared `Toggle` keeps its native checkbox keyboard interaction and shows a visible focus outline on the track through `peer-focus-visible` styling. The off-state track continues to use `bg-control-border`; labels must supply an accessible name.
+
 **Every centered dialog is now a `Modal`** — the wallet's deposit, send and tx-filter, the permissions add-rule, `KeyActionModal`, and the wizard's encrypted backup all used to hand-roll a scrim, a card, a header and a close button, at five different scrim opacities, three dismissal behaviours and no Escape key between them. Migrating them deleted ~280 lines of CSS and gave each one Escape, focus-on-open, `role="dialog"`, a scrolling body with a pinned footer, and the drag-safe backdrop rule.
 
 **Every clickable list row is a `ListRow`.** `NavRow`, `NavItem` and the permissions screen's `.permRow` were three implementations of `[leading] [title / subtitle] [chevron]`, which is why the chevron was brand coloured in two of them and muted in the third, and why only one ellipsised a long subtitle. Chrome is the variant: `grouped` is a bare row for a bordered container (a `Card`, or a rounded scroll list) to own the edge, siblings separated by a hairline; `standalone` carries its own card chrome.
@@ -662,10 +668,27 @@ Split actions use Button’s `segment="start"` / `segment="end"` presets for joi
 
 Settings → Appearance and language reuses Card and ChipGroup for Light, Dark, System and La Crypta.
 The choice saves immediately in extension-local storage, independently of accounts
-and vault state. Light remains the default. System follows OS changes; La Crypta
+and vault state. Light remains the default. Dark follows nostr-wot.com’s gray-950
+canvas, near-black popups, gray-900 cards, neutral text and indigo accents.
+Hover surfaces use a separate lighter gray-800 token (`bg-hover`), never the
+popup background token. Secondary buttons use `bg-button-secondary-hover` so
+La Crypta retains its lime tint rather than inheriting hardcoded indigo.
+Small accent labels use indigo-400 to retain AA contrast on raised surfaces.
+System follows OS changes; La Crypta
 uses the near-black, lime and orange palette from lacrypta.ar. The shared appearance
 service initializes before rendering popup, onboarding and approval windows and
 updates open documents on storage changes. Palettes live in theme.css; use semantic
 surface/text/status tokens, including for loading screens and decorative backgrounds.
 The language row opens the shared LanguagePicker dialog from this screen; the menu footer only shows the extension version.
 QR modules stay dark on a white background in every palette so they remain scannable.
+
+Wallet setup and settings share the `WalletConnectionHelp` Modal. It opens on
+entry until the user saves “Don’t show again” in extension-local storage, and
+remains reachable from each screen’s info button. Closing keeps the setup form
+mounted. It explains Quick Setup, NWC and direct LNbits connections. Localized
+nostr-wot.com guide buttons use browser.tabs.create with active:false so the
+popup retains focus; success and failure feedback remain inside the dialog. Setup separates its
+heading, tabs and form with explicit gaps; settings cards use p-8 and gap-6,
+with gap-7 between cards inside the existing bounded scroll region. The LNbits
+wallet Admin API key stays masked by the shared Input; its associated description
+explains API info, spending authority and the distinction from a login password.

@@ -96,3 +96,10 @@ Before each release, update the version in both files:
 - `package.json` → `"version": "x.y.z"`
 
 Both stores require version numbers to increase with each submission.
+
+## Publishing handoff files
+
+Keep versioned release/reviewer notes and checksums outside the repository as
+temporary publishing artifacts. Share their download links with the release
+handoff; keep CHANGELOG.md and SOURCE_BUILD.md as the durable in-repo records.
+Do not commit generated ZIPs or per-release text files to the repository root.

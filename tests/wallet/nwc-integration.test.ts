@@ -1,63 +1,8 @@
+import { finalizeEvent } from 'nostr-tools/pure';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { once } from 'node:events';
-import { WebSocketServer, WebSocket } from 'ws';
-import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
-import * as nip04 from 'nostr-tools/nip04';
+import { localWallet, until, walletPubkey, clientPubkey, clientKey, walletKey } from '../helpers/nwc-wallet.ts';
 import { getWalletProvider, clearWalletProviders, removeWalletProvider } from '../../src/services/wallet/index.ts';
-
-const walletKey = new Uint8Array(32).fill(21);
-const clientKey = new Uint8Array(32).fill(22);
-const walletPubkey = getPublicKey(walletKey);
-const clientPubkey = getPublicKey(clientKey);
-type Request = { id: string; method: string; params: Record<string, unknown> };
-
-async function until(check: () => boolean) {
-  const deadline = Date.now() + 4000;
-  while (!check()) {
-    assert.ok(Date.now() < deadline, 'NWC integration condition timed out');
-    await new Promise(resolve => setTimeout(resolve, 10));
-  }
-}
-
-// Independent wallet peer uses nostr-tools, while the provider uses the app's
-// crypto. Deliberately forwards hostile events too: the provider must verify them.
-async function localWallet() {
-  const server = new WebSocketServer({host:'127.0.0.1',port:0});
-  await once(server,'listening');
-  const address = server.address();
-  assert.ok(address && typeof address !== 'string');
-  const relay = `ws://127.0.0.1:${address.port}`;
-  const requests: Request[] = [];
-  const filters: Record<string, unknown>[] = [];
-  const errors: unknown[] = [];
-  server.on('connection', socket => {
-    socket.on('message', raw => {
-      void (async () => {
-        const [type, value, filter] = JSON.parse(raw.toString());
-        if(type==='REQ') { filters.push(filter); socket.send(JSON.stringify(['EOSE',value])); }
-        if(type!=='EVENT') return;
-        assert.ok(verifyEvent(value)); assert.equal(value.kind,23194);
-        assert.equal(value.pubkey,clientPubkey);
-        assert.deepEqual(value.tags,[['p',walletPubkey]]);
-        const content=JSON.parse(await nip04.decrypt(walletKey,clientPubkey,value.content));
-        requests.push({id:value.id,...content});
-        socket.send(JSON.stringify(['OK',value.id,true,'']));
-      })().catch(error=>errors.push(error));
-    });
-  });
-  function send(event: object) {
-    for(const socket of server.clients) if(socket.readyState===WebSocket.OPEN) socket.send(JSON.stringify(['EVENT','nwc-sub',event]));
-  }
-  async function response(req: Request, result: object, options: {key?:Uint8Array; tamper?:boolean; content?:string; reference?:string; error?:{code:string;message:string}} = {}) {
-    const content=options.content ?? await nip04.encrypt(walletKey,clientPubkey,JSON.stringify({result_type:req.method,result,...(options.error?{error:options.error}:{})}));
-    const event=finalizeEvent({kind:23195,created_at:Math.floor(Date.now()/1000),tags:[['p',clientPubkey],['e',options.reference??req.id]],content},options.key??walletKey);
-    send(options.tamper?{...event,content:event.content+'tampered'}:event);
-  }
-  return {relay,requests,filters,errors,response,
-    async close() {for(const socket of server.clients) socket.terminate();await new Promise<void>(resolve=>server.close(()=>resolve()));}
-  };
-}
 
 test('NWC integration through the wallet factory', {timeout:20000}, async t => {
   const wallet=await localWallet();
@@ -86,14 +31,14 @@ test('NWC integration through the wallet factory', {timeout:20000}, async t => {
     const start=wallet.requests.length;const invoice=provider.makeInvoice(21,'Test deposit');
     await until(()=>wallet.requests.length>start);const req=wallet.requests[start];
     assert.equal(req.method,'make_invoice');assert.deepEqual(req.params,{amount:21000,description:'Test deposit'});
-    await wallet.response(req,{invoice:'test-invoice',payment_hash:'test-hash'});
-    assert.deepEqual(await invoice,{bolt11:'test-invoice',paymentHash:'test-hash'});
+    await wallet.response(req,{invoice:'test-invoice',payment_hash:'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd'});
+    assert.deepEqual(await invoice,{bolt11:'test-invoice',paymentHash:'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd'});
   });
   await t.test('looks up unpaid and settled invoices',async()=>{
     for(const paid of [false,true]) {
-      const start=wallet.requests.length;const lookup=provider.lookupInvoice('test-hash');
+      const start=wallet.requests.length;const lookup=provider.lookupInvoice('cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd');
       await until(()=>wallet.requests.length>start);const req=wallet.requests[start];
-      assert.equal(req.method,'lookup_invoice');assert.deepEqual(req.params,{payment_hash:'test-hash'});
+      assert.equal(req.method,'lookup_invoice');assert.deepEqual(req.params,{payment_hash:'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd'});
       await wallet.response(req,{amount:21000,settled_at:paid?1700000000:0});
       assert.deepEqual(await lookup,{paid,amountPaid:21});
     }
@@ -103,11 +48,11 @@ test('NWC integration through the wallet factory', {timeout:20000}, async t => {
     await until(()=>wallet.requests.length>start);const req=wallet.requests[start];
     assert.equal(req.method,'list_transactions');assert.deepEqual(req.params,{limit:2,offset:4,unpaid:false});
     await wallet.response(req,{transactions:[
-      {type:'incoming',invoice:'invoice-a',amount:21000,fees_paid:0,description:'Deposit',settled_at:1700000001,payment_hash:'hash-a'},
-      {type:'outgoing',invoice:'invoice-b',amount:12000,fees_paid:1000,description:'Payment',settled_at:1700000002,payment_hash:'hash-b'}
+      {type:'incoming',invoice:'invoice-a',amount:21000,fees_paid:0,description:'Deposit',settled_at:1700000001,payment_hash:'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd'},
+      {type:'outgoing',invoice:'invoice-b',amount:12000,fees_paid:1000,description:'Payment',settled_at:1700000002,payment_hash:'efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef'}
     ]});
     const tx=await history;assert.deepEqual(tx.map(x=>[x.paymentHash,x.amount,x.fee,x.status,x.createdAt]),[
-      ['hash-a',21,0,'settled',1700000001],['hash-b',-12,1,'settled',1700000002]
+      ['cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd',21,0,'settled',1700000001],['efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef',-12,1,'settled',1700000002]
     ]);
   });
   await t.test('payments remain pending until the wallet replies and return its preimage',async()=>{
@@ -115,7 +60,7 @@ test('NWC integration through the wallet factory', {timeout:20000}, async t => {
     const payment=provider.payInvoice('synthetic-invoice').finally(()=>{settled=true;});
     await until(()=>wallet.requests.length>start);const req=wallet.requests[start];
     assert.equal(settled,false);assert.equal(req.method,'pay_invoice');assert.deepEqual(req.params,{invoice:'synthetic-invoice'});
-    await wallet.response(req,{preimage:'test-preimage'});assert.deepEqual(await payment,{preimage:'test-preimage'});
+    await wallet.response(req,{preimage:'abababababababababababababababababababababababababababababababab'});assert.deepEqual(await payment,{preimage:'abababababababababababababababababababababababababababababababab'});
   });
   for(const code of ['UNAUTHORIZED','INSUFFICIENT_BALANCE','PAYMENT_FAILED']) await t.test(`surfaces ${code} without retrying a payment`,async()=>{
     const start=wallet.requests.length;const rejected=assert.rejects(provider.payInvoice(`invoice-${code}`),new RegExp(code));
@@ -144,4 +89,78 @@ test('NWC integration through the wallet factory', {timeout:20000}, async t => {
     await provider.connect();const next=wallet.requests.length;const balance=provider.getBalance();
     await until(()=>wallet.requests.length>next);await wallet.response(wallet.requests[next],{balance:2000});assert.deepEqual(await balance,{balance:2});
   });
+});
+
+
+for (const advertised of ['nip44_v2 nip04', 'nip44_v2', 'nip04', undefined]) {
+  test(`NWC encryption negotiation: ${advertised ?? 'legacy without info'}`, { timeout: 10000 }, async t => {
+    const wallet = await localWallet({ encryption: advertised });
+    const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+    const provider = getWalletProvider(`cipher-${advertised}`, config)!;
+    t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+    await provider.connect();
+    assert.equal(wallet.infoFilters.length, 1);
+    assert.deepEqual(wallet.infoFilters[0].authors, [walletPubkey]);
+    const balance = provider.getBalance();
+    await until(() => wallet.requests.length === 1);
+    assert.equal(wallet.requests[0].encryption, advertised?.includes('nip44_v2') ? 'nip44_v2' : 'nip04');
+    await wallet.response(wallet.requests[0], { balance: 1000 });
+    assert.deepEqual(await balance, { balance: 1 });
+    for (const [method, invoke, result] of [
+      ['get_info', () => provider.getInfo(), { alias: 'NWC peer', methods: ['pay_invoice'] }],
+      ['make_invoice', () => provider.makeInvoice(2, 'memo'), { invoice: 'synthetic-invoice', payment_hash: 'ab'.repeat(32) }],
+      ['lookup_invoice', () => provider.lookupInvoice('ab'.repeat(32)), { amount: 2000, settled_at: null }],
+      ['list_transactions', () => provider.listTransactions(), { transactions: [] }],
+      ['pay_invoice', () => provider.payInvoice('synthetic-invoice'), { preimage: 'cd'.repeat(32) }],
+    ] as const) {
+      const count = wallet.requests.length;
+      const request = invoke();
+      await until(() => wallet.requests.length > count);
+      assert.equal(wallet.requests[count].method, method);
+      assert.equal(wallet.requests[count].encryption, advertised?.includes('nip44_v2') ? 'nip44_v2' : 'nip04');
+      await wallet.response(wallet.requests[count], result);
+      await request;
+    }
+  });
+}
+
+test('NWC discovery verifies authors/signatures and selects the newest info before EOSE', { timeout: 10000 }, async t => {
+  const event = (created_at: number, encryption: string, key = walletKey) => finalizeEvent({ kind: 13194, created_at, tags: [['encryption', encryption]], content: 'get_balance' }, key);
+  const valid = event(2, 'nip44_v2');
+  const forged = { ...event(4, 'nip04'), sig: '0'.repeat(128) };
+  const wallet = await localWallet({ infoEvents: [valid, event(1, 'nip04'), forged, event(5, 'nip04', new Uint8Array(32).fill(23))] });
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  const provider = getWalletProvider('cipher-hostile-info', config)!;
+  t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+  await provider.connect();
+  const balance = provider.getBalance(); await until(() => wallet.requests.length === 1);
+  assert.equal(wallet.requests[0].encryption, 'nip44_v2');
+  await wallet.response(wallet.requests[0], { balance: 2000 });
+  assert.deepEqual(await balance, { balance: 2 });
+});
+
+test('NWC falls back between URI relays before publication without replaying a payment', { timeout: 10000 }, async t => {
+  const unavailable = await localWallet(); const unavailableRelay = unavailable.relay; await unavailable.close();
+  const wallet = await localWallet({ encryption: 'nip44_v2' });
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(unavailableRelay)}&relay=${encodeURIComponent(wallet.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  const provider = getWalletProvider('relay-fallback', config)!;
+  t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
+  await provider.connect();
+  const rejected = assert.rejects(provider.payInvoice('synthetic-invoice'), /PAYMENT_OUTCOME_UNKNOWN/);
+  await until(() => wallet.requests.length === 1);
+  wallet.dropConnections(); await rejected;
+  await provider.connect();
+  await until(() => wallet.filters.length === 2);
+  assert.equal(wallet.requests.length, 1, 'reconnection does not replay the published payment');
+});
+
+test('NWC refuses explicit unsupported encryption instead of downgrading via another relay', { timeout: 10000 }, async t => {
+  const unsupported = await localWallet({ encryption: 'future_cipher' });
+  const legacy = await localWallet();
+  const config = { type: 'nwc' as const, connectionString: `nostr+walletconnect://${walletPubkey}?relay=${encodeURIComponent(unsupported.relay)}&relay=${encodeURIComponent(legacy.relay)}&secret=${Buffer.from(clientKey).toString('hex')}` };
+  const provider = getWalletProvider('unsupported-encryption', config)!;
+  t.after(async () => { clearWalletProviders(); await unsupported.close(); await legacy.close(); });
+  await assert.rejects(provider.connect(), /Unsupported NWC encryption/);
+  assert.equal(legacy.infoFilters.length, 0);
+  assert.equal(unsupported.requests.length, 0);
 });

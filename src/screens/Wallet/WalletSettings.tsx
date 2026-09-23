@@ -15,9 +15,11 @@ import Text from '@components/Text';
 import Spinner from '@components/Spinner';
 import IconButton from '@components/IconButton';
 import IconSync from '@assets/IconSync.tsx';
+import IconInfo from '@assets/IconInfo.tsx';
 import { useWallet } from '@context/WalletContext';
 import { useAccount } from '@context/AccountContext';
 import ProfileAddressButton from './ProfileAddressButton';
+import WalletConnectionHelp from './WalletConnectionHelp';
 
 interface WalletSettingsProps {
   providerType: string;
@@ -28,6 +30,7 @@ interface WalletSettingsProps {
 /** Settings read through the shared account context; only editable drafts stay local. */
 export default function WalletSettings({ providerType, onClose, onDisconnected }: WalletSettingsProps) {
   const { active, cachedProfile } = useAccount();
+  const [helpOpen, setHelpOpen] = useState(false);
   const {settings,settingsLoading,settingsError,ensureSettings,refreshSettings,patchSettings} = useWallet();
   const {threshold,nwcUri,address:lnAddress} = settings;
   const [thresholdDraft, setThresholdDraft] = useState('');
@@ -152,16 +155,20 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
 
   return (
     <>
+      <WalletConnectionHelp open={helpOpen} onOpenChange={setHelpOpen} />
       <OverlayPanel title={t('wallet.settings')} onClose={onClose} zIndex={500} headerRight={
+        <>
+        <IconButton tone="brand" title={t('wallet.connectionHelpTitle')} aria-label={t('wallet.connectionHelpTitle')} onClick={() => setHelpOpen(true)}><IconInfo size={16} /></IconButton>
         <IconButton tone="brand" disabled={settingsLoading} onClick={refreshSettings} title={t('wallet.refreshSettingsHint')} aria-label={t('wallet.refreshSettingsHint')}>
           {settingsLoading ? <Spinner size={14}/> : <IconSync size={16}/>}
         </IconButton>
+        </>
       }>
         <div className="flex-1 min-h-0 overflow-y-auto">
-        <Container gap={6}>
+        <Container gap={7} className="py-2">
         {settingsError && <FormError>{t('wallet.checkFailed')}</FormError>}
         <FormError>{settingsSaveError}</FormError>
-        <Card className="m-0 p-6 flex flex-col gap-5">
+        <Card className="m-0 p-8 flex flex-col gap-6">
           <Text as="p" className="text-md font-semibold text-heading">
             {t('wallet.connectedTo', { provider: providerType === 'lnbits' ? 'Nostr WoT LNBits' : providerLabel })}
           </Text>
@@ -179,8 +186,8 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
           </Container>
         </Card>
 
-        <Card className="m-0 p-6 flex flex-col gap-5">
-          <Container gap={2}><SectionLabel className="m-0 text-heading">{t('wallet.autoApprove')}</SectionLabel>
+        <Card className="m-0 p-8 flex flex-col gap-6">
+          <Container gap={3}><SectionLabel className="m-0 text-heading">{t('wallet.autoApprove')}</SectionLabel>
           <SectionHint className="m-0 text-menu-subtitle">{t('wallet.autoApproveHint')}</SectionHint></Container>
           <Container variant="row" gap={4} className="justify-between">
             <Text variant="body" as="span" className="text-sm shrink-0">{t('wallet.maxSats')}</Text>
@@ -198,8 +205,8 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
         </Card>
 
         {providerType === 'lnbits' && (
-          <Card className="m-0 p-6 flex flex-col gap-5">
-            <Container gap={2}><SectionLabel className="m-0 text-heading">{t('wallet.lightningAddress')}</SectionLabel>
+          <Card className="m-0 p-8 flex flex-col gap-6">
+            <Container gap={3}><SectionLabel className="m-0 text-heading">{t('wallet.lightningAddress')}</SectionLabel>
             <SectionHint className="m-0 text-menu-subtitle">{t('wallet.lightningAddressHint')}</SectionHint></Container>
             {lnAddress === undefined ? (<div className="text-sm text-menu-subtitle">{settingsLoading ? t('common.loading') : t('wallet.checkFailed')}</div>) : lnAddress ? (
               <Container gap={4} className="py-4">

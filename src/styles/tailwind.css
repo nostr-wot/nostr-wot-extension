@@ -59,6 +59,8 @@
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
   --color-brand-light: var(--brand-light);
+  --color-button-secondary-hover: var(--button-secondary-hover);
+  --color-hover: var(--surface-hover);
   --color-brand-tint-hover: var(--brand-tint-hover);
   --color-brand-tint-active: var(--brand-tint-active);
   --color-on-brand: var(--text-on-brand);

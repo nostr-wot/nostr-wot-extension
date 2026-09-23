@@ -41,7 +41,7 @@ export default function PermissionRulesList({ keys, permissions, onChange }: Per
       {keys.map((key) => {
         const current = permissions[key] || 'ask';
         return (
-          <Container key={key} variant="row" className="justify-between py-5 border-b border-card last:border-b-0">
+          <Container key={key} variant="row" className="justify-between py-5 border-b border-card-border last:border-b-0">
             <span className="text-md font-medium text-body">
               {formatPermissionLabel(key)}
             </span>
@@ -66,7 +66,7 @@ export default function PermissionRulesList({ keys, permissions, onChange }: Per
                   {DECISIONS.map((d) => (
                     <button
                       key={d}
-                      className={`flex items-center gap-3 w-full py-3.5 px-6 border-none bg-transparent text-sm font-medium text-body cursor-pointer font-[inherit] text-left transition-colors hover:bg-brand-tint-hover ${d === current ? 'font-bold' : ''}`}
+                      className={`flex items-center gap-3 w-full py-3.5 px-6 border-none bg-transparent text-sm font-medium text-body cursor-pointer font-[inherit] text-left transition-colors hover:bg-hover ${d === current ? 'font-bold' : ''}`}
                       onClick={() => { void onChange(key, d); setOpenDropdownKey(null); }}
                     >
                       <span className={`w-[7px] h-[7px] rounded-full shrink-0 ${DECISION_DOT_TONE[d]}`} />
