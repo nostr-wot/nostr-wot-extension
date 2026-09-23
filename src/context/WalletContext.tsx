@@ -243,10 +243,10 @@ export async function loadWalletSettings(
   const reads: Array<[string, (value: any) => Partial<WalletSettingsData>]> = [
     ['wallet_getInfo', value => ({alias:value.alias || ''})],
     ['wallet_getAutoApproveThreshold', value => ({threshold:value})],
+    ['wallet_getLightningAddress', value => ({address:value.address})],
   ];
   if (providerType === 'lnbits') reads.push(
     ['wallet_getNwcUri', value => ({nwcUri:value})],
-    ['wallet_getLightningAddress', value => ({address:value.address})],
   );
   const results = await Promise.allSettled(reads.map(async ([method, convert]) => {
     const value = await request(method);

@@ -454,3 +454,12 @@ explicit unsupported modes. Lifecycle tests bound silent discovery, discard late
 info, cancel on disposal, and try a second URI relay after a refused connection
 without replaying published payments. Provider fixtures normalize Alby nullable
 alias/settlement fields and LNbits signed fees/nullable optional values.
+
+Wallet issues #26/#27: `wallet/payment-integration.test.ts` verifies persisted
+sender notes in provider history, receipt timing after real signed NWC responses,
+no success receipt on denial/error, best-effort receipt persistence, encrypted
+account isolation, reconnect/lock retention and disconnect erasure. Provider tests
+cover LNbits/NWC comment metadata. `wallet-ui.test.ts` checks Deposit address,
+QR/copy and invoice controls, missing/error/loading states, wrapped notes and
+receipt site/amount rendering. Browser layout checks use isolated components with
+production CSS at popup dimensions; they are not live-fund payment tests.

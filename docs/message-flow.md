@@ -398,3 +398,10 @@ Follow replacement checks also consult the author’s versioned public follow li
 Empty kind:3 lists (including client-only tags) require confirmation when any previous follows are known. Warnings display both the previous and proposed counts, including zero. Tests cover local and remote accounts, ordinary/batch approval bypasses, and clearing the last follow.
 
 The pending-request cards and event details share `FollowReplacementNotice`; identical reductions within a group and in the second confirmation are shown once, while every displayed request ID remains individually confirmed. Clicking Approve or Always allow still opens the separate danger confirmation, and Cancel sends no approval.
+
+Wallet receipt feedback: after a successful WebLN provider response the background
+stores an encrypted account-scoped receipt. The popup observes that storage key,
+reads through `wallet_getPaymentNotices`, and acknowledges exact IDs through
+`wallet_acknowledgePaymentNotices`. Both are extension-only RPCs and require the
+current unlocked account. Approval queue removal itself never signals payment
+success. Receipt persistence failure leaves the successful WebLN reply unchanged.

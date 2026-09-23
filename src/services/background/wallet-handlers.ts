@@ -3,6 +3,8 @@
  * @module services/background/wallet-handlers
  */
 
+import { applyPaymentNotes, savePaymentNote, recordPaymentSuccess, getPaymentNotices, acknowledgePaymentNotices } from '../wallet/payment-records.ts';
+import { parseLightningAddress } from '../../domain/wallet/lnurl.ts';
 import browser from '../../lib/browser.ts';
 import { readWalletDisplayCache, updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
 import * as vault from '../vault/vault.ts';
@@ -168,7 +170,11 @@ export const handlers = new Map<string, HandlerFn>([
 
         if (await signerPermissions.check(origin, 'webln_sendPayment', undefined, acct.id) === 'deny') throw new Error('Permission denied');
         assertCurrent();
-        return await provider.payInvoice(paymentRequest);
+        const result = await provider.payInvoice(paymentRequest);
+        // Receipt persistence is best-effort after settlement. A storage failure
+        // must never turn a successful payment into an error inviting a retry.
+        await recordPaymentSuccess(acct.id, origin, invoiceAmountSats, assertCurrent).catch(() => {});
+        return result;
     }],
 
     ['webln_makeInvoice', async (params) => {
@@ -179,6 +185,28 @@ export const handlers = new Map<string, HandlerFn>([
         assertCurrent();
         const inv = await provider.makeInvoice(amount, defaultMemo);
         return { paymentRequest: inv.bolt11 };
+    }],
+
+    ['wallet_getPaymentNotices', async (params) => {
+        await vault.requireUnlocked();
+        const id = vault.getActiveAccountId();
+        if (!id) return [];
+        if (params.accountId && params.accountId !== id) throw new Error('Account switched');
+        const session = captureAccountSession(id);
+        const notices = await getPaymentNotices(id);
+        assertAccountSession(session);
+        return notices;
+    }],
+
+    ['wallet_acknowledgePaymentNotices', async (params) => {
+        await vault.requireUnlocked();
+        const id = vault.getActiveAccountId();
+        if (!id) throw new Error('No active account');
+        if (params.accountId && params.accountId !== id) throw new Error('Account switched');
+        if (!Array.isArray(params.ids) || params.ids.some(id => typeof id !== 'string')) throw new Error('Invalid receipt IDs');
+        const session = captureAccountSession(id);
+        await acknowledgePaymentNotices(id, params.ids as string[], () => assertAccountSession(session));
+        return true;
     }],
 
     ['wallet_readDisplayCache', async (params) => {
@@ -296,7 +324,9 @@ export const handlers = new Map<string, HandlerFn>([
         const revision = walletDisplayRevision();
         const { provider, acct, assertCurrent } = await getConnectedProvider();
         assertCurrent();
-        const transactions = await provider.listTransactions(limit ?? 10, offset ?? 0);
+        const rows = await provider.listTransactions(limit ?? 10, offset ?? 0);
+        assertCurrent();
+        const transactions = await applyPaymentNotes(acct.id, rows);
         assertCurrent();
         if (!offset) await updateWalletDisplayCache(acct.id, {providerType:provider.type,transactions}, revision).catch(() => {});
         assertCurrent();
@@ -340,7 +370,7 @@ export const handlers = new Map<string, HandlerFn>([
         const { address, amountSats, comment, intentId } = params as {
             address: string; amountSats: number; comment?: string; intentId?: string;
         };
-        const { provider, assertCurrent } = await getConnectedProvider();
+        const { provider, acct, assertCurrent } = await getConnectedProvider();
         if (!provider) throw new Error('Provider not available');
         // At most once per click. Each call asks the endpoint for a NEW invoice,
         // so a blind rpc() retry after a lost reply would pay a second, unrelated
@@ -351,6 +381,10 @@ export const handlers = new Map<string, HandlerFn>([
             // invoice must come from the address the user is looking at right now.
             const payParams = await fetchPayParams(address);
             const { bolt11 } = await requestInvoice(payParams, amountSats, comment);
+            assertCurrent();
+            const hash = decodeBolt11(bolt11)?.paymentHash;
+            const sentComment = typeof comment === 'string' && payParams.commentAllowed > 0 ? comment.slice(0, payParams.commentAllowed) : '';
+            if (hash && sentComment) await savePaymentNote(acct.id, hash, sentComment, assertCurrent);
             assertCurrent();
             const { preimage } = await provider.payInvoice(bolt11);
             return { preimage, bolt11, amountSats, address: payParams.address };
@@ -405,10 +439,15 @@ export const handlers = new Map<string, HandlerFn>([
     ['wallet_getLightningAddress', async () => {
         await vault.requireUnlocked();
         const acct = vault.getActiveAccountWithWallet();
-        if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') {
-            return { address: null };
+        if (!acct?.walletConfig) return { address: null };
+        if (acct.walletConfig.type === 'nwc') {
+            const value = new URL(acct.walletConfig.connectionString).searchParams.get('lud16') || '';
+            const parsed = parseLightningAddress(value);
+            return { address: parsed ? `${parsed.name}@${parsed.domain}` : null };
         }
+        const session = captureAccountSession(acct.id);
         const address = await getLightningAddress(acct.walletConfig.instanceUrl, acct.pubkey);
+        assertAccountSession(session);
         return { address };
     }],
 

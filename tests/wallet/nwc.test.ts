@@ -1373,6 +1373,13 @@ describe('NWC provider interoperability fixtures', () => {
     assert.deepEqual(await reply('get_info', () => provider.getInfo(), { alias: null, methods: ['pay_invoice', 'get_info'] }),
       { alias: undefined, methods: ['pay_invoice', 'get_info'] });
   });
+  it('preserves NWC history comments without treating arbitrary metadata as text', async () => {
+    const base = {type:'outgoing',amount:1000,fees_paid:0,description:'Invoice memo',payment_hash:'ab'.repeat(32),created_at:1,settled_at:2};
+    const rows = await reply('list_transactions', () => provider.listTransactions(), {transactions:[
+      {...base, metadata:{comment:'Coffee ☕'}}, {...base,metadata:{comment:{not:'text'}}},
+    ]});
+    assert.equal(rows[0].memo,'Coffee ☕');assert.equal(rows[1].memo,'Invoice memo');
+  });
   it('accepts LNbits and Alby nullable settlement time for unpaid invoices', async () => {
     assert.deepEqual(await reply('lookup_invoice', () => provider.lookupInvoice('ab'.repeat(32)), { amount: 21000, settled_at: null }),
       { paid: false, amountPaid: 21 });

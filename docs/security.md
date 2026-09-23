@@ -566,3 +566,11 @@ history and unavailable relays, an earlier follow count cannot be inferred. Repl
 Follow replacement checks also consult the author’s versioned public follow list in the WoT sync database, respecting newer signed changes. Event details show detected dangerous reductions before approval and reuse the shared split buttons, with Always choices behind the arrows.
 
 Empty kind:3 lists (including client-only tags) require confirmation when any previous follows are known. Warnings display both the previous and proposed counts, including zero. Tests cover local and remote accounts, ordinary/batch approval bypasses, and clearing the last follow.
+
+Wallet payment notes and unread WebLN receipts reuse authenticated private-cache
+encryption. No invoices, preimages or credentials enter these records. They are
+account-scoped and bounded (500 notes/20 receipts), and cleared on wallet replacement,
+disconnect and account removal. Vault destruction erases all records. Reads require
+unlock; the receipt UI unmounts on lock/account change. Session checks prevent stale
+operations writing after account/session invalidation. Notes are persisted before
+dispatch and do not imply settlement; receipts are written only after success.

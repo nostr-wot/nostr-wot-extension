@@ -1,3 +1,4 @@
+import { clearPaymentRecords } from './payment-records.ts';
 import { WALLET_DISPLAY_CACHE_PREFIX as PREFIX } from '@constants/wallet.ts';
 import * as vault from '../vault/vault.ts';
 import { readPrivateCache, writePrivateCache } from '../storage/private-cache.ts';
@@ -39,6 +40,7 @@ export function updateWalletDisplayCache(accountId: string, patch: WalletDisplay
 export function resetWalletDisplayCache(accountId: string, providerType: string | false): Promise<void> {
   revision++;
   const save = writes.catch(() => {}).then(async () => {
+    await clearPaymentRecords(accountId);
     await browser.storage.local.remove(walletDisplayKey(accountId));
     await browser.storage.local.set({ [`${walletDisplayKey(accountId)}:presence`]: providerType });
     if (!vault.isLocked()) await writePrivateCache(walletDisplayKey(accountId), { providerType });
@@ -50,6 +52,7 @@ export function resetWalletDisplayCache(accountId: string, providerType: string 
 export function clearWalletDisplayCaches(accountId?: string): Promise<void> {
   revision++;
   const save = writes.catch(() => {}).then(async () => {
+    await clearPaymentRecords(accountId);
     const keys = accountId ? [walletDisplayKey(accountId), `${walletDisplayKey(accountId)}:presence`] : Object.keys(await browser.storage.local.get(null)).filter(key => key.startsWith(PREFIX));
     await browser.storage.local.remove(keys);
   });

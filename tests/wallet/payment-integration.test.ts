@@ -20,7 +20,13 @@ import { getWalletProvider, setWalletProvider, clearWalletProviders } from '../.
 import { isWeblnAllowed } from '../../src/services/background/domain-handlers.ts';
 
 const invoice='lnbc2500u1pvjluezpp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdq5xysxxatsyp3k7enxv4jsxqzpuaztrnwngzn3kdzw5hydlzf03qdgm2hdq27cqv3agm2awhz5se903vruatfhq77w3ls4evs3ch9zw97j25emudupq63nyw24cg27h2rspfj9srp';
+function noteInvoice(metadata: string) {
+  const decoded = bech32.decode(makeLnurlInvoice(metadata) as `${string}1${string}`, 2000);
+  const hash = bech32.toWords(new Uint8Array(32).fill(42));
+  return bech32.encode(decoded.prefix, [...decoded.words.slice(0, 7), 1, 1, 20, ...hash, ...decoded.words.slice(7)], 2000);
+}
 const origin='zap.example';
+import { decodeBolt11 } from '../../src/domain/wallet/bolt11.ts';
 const key=new Uint8Array(32).fill(31), pubkey=getPublicKey(key);
 async function call(method:string,params:Record<string,unknown>={}) { return handlers.get(method)!(params) as Promise<any>; }
 async function pending() {
@@ -62,13 +68,16 @@ function page() {
 test('website payment discovery and LNbits payment integration',{timeout:20000},async t=>{
   const requests:{path:string;body:any}[]=[];
   let failPayment=false;
+  let pendingPayment=false;
   const server=createServer(async(req,res)=>{
     let raw='';for await(const chunk of req)raw+=chunk;
     const body=raw?JSON.parse(raw):{};requests.push({path:req.url!,body});
     assert.equal(req.headers['x-api-key'],'test-key');
     res.setHeader('Content-Type','application/json');
     if(req.url==='/api/v1/wallet')res.end(JSON.stringify({name:'Integration LNbits',balance:1000000}));
+    else if(req.method === 'GET' && req.url?.startsWith('/api/v1/payments?'))res.end(JSON.stringify([{payment_hash:decodeBolt11(noteInvoice('[["text/plain","Donation"]]'))!.paymentHash,amount:-250000000,memo:'Lightning Address',status:'success',time:1700000000}]));
     else if(body.out && failPayment){res.statusCode=400;res.end('{}');}
+    else if(body.out && pendingPayment)res.end(JSON.stringify({status:'pending',preimage:null}));
     else if(body.out)res.end(JSON.stringify({preimage:'test-preimage'}));
     else res.end(JSON.stringify({payment_request:invoice,payment_hash:'test-hash'}));
   });
@@ -110,8 +119,11 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
     const signApproval=await pending();await signerApprovalQueue.resolveRequest(signApproval.id,{allow:true});const signed=await signing;
     assert.ok(verifyEvent(signed));assert.equal(signed.kind,9734);
     const payment=webln.sendPayment(invoice);const payApproval=await pending();assert.equal(payApproval.walletAmount,250000);
+    assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
     const count=requests.filter(x=>x.body.out).length;await signerApprovalQueue.resolveRequest(payApproval.id,{allow:true});
     assert.equal((await payment).preimage,'test-preimage');assert.equal(requests.filter(x=>x.body.out).length,count+1);
+    const notices=await call('wallet_getPaymentNotices');assert.equal(notices.length,1);assert.equal(notices[0].origin,origin);assert.equal(notices[0].amount,250000);
+    await call('wallet_acknowledgePaymentNotices',{ids:[notices[0].id]});assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
   });
   await t.test('rejection never pays; wallet error reaches the website',async()=>{
     let count=requests.filter(x=>x.body.out).length;
@@ -119,12 +131,33 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
     assert.equal(requests.filter(x=>x.body.out).length,count);
     failPayment=true;const failed=assert.rejects(webln.sendPayment(invoice),/LNbits API error/);await signerApprovalQueue.resolveRequest((await pending()).id,{allow:true});await failed;
     assert.equal(requests.filter(x=>x.body.out).length,++count);failPayment=false;
+    assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
+  });
+  await t.test('pending LNbits payments do not produce success receipts',async()=>{
+    pendingPayment=true;
+    const payment=assert.rejects(webln.sendPayment(invoice),/PAYMENT_OUTCOME_UNKNOWN/);
+    await signerApprovalQueue.resolveRequest((await pending()).id,{allow:true});
+    await payment;
+    assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
+    pendingPayment=false;
+  });
+  await t.test('receipt storage failure cannot turn a paid invoice into a retryable error',async()=>{
+    const originalSet=browser.storage.local.set;
+    browser.storage.local.set=async(items:Record<string,unknown>)=>{
+      if(Object.keys(items).some(key=>key.startsWith('walletPaymentRecords_')))throw new Error('Storage unavailable');
+      return originalSet(items);
+    };
+    try {
+      const payment=webln.sendPayment(invoice);
+      await signerApprovalQueue.resolveRequest((await pending()).id,{allow:true});
+      assert.equal((await payment).preimage,'test-preimage');
+    }finally {browser.storage.local.set=originalSet;}
   });
   for (const recipient of ['alice@recipient.example', bech32.encode('lnurl', bech32.toWords(new TextEncoder().encode('https://recipient.example/.well-known/lnurlp/alice')), 2000)]) await t.test(`${recipient.includes('@') ? 'Lightning Address' : 'Pasted LNURL'} resolves, verifies amount, pays once per intent`,async()=>{
     const originalFetch=globalThis.fetch;const urls:string[]=[];
     globalThis.fetch=(async(input:any,init?:RequestInit)=>{
       const url=String(input);if(!url.startsWith('https://recipient.example/'))return originalFetch(input,init);
-      urls.push(url);return new Response(JSON.stringify(url.includes('/.well-known/')?{tag:'payRequest',callback:'https://recipient.example/callback',minSendable:1000,maxSendable:500000000,metadata:'[["text/plain","Donation"]]',commentAllowed:100}:{pr:makeLnurlInvoice('[["text/plain","Donation"]]')}));
+      urls.push(url);return new Response(JSON.stringify(url.includes('/.well-known/')?{tag:'payRequest',callback:'https://recipient.example/callback',minSendable:1000,maxSendable:500000000,metadata:'[["text/plain","Donation"]]',commentAllowed:100}:{pr:noteInvoice('[["text/plain","Donation"]]')}));
     }) as typeof fetch;
     try {
       const resolved=await call('wallet_resolveLightningAddress',{address:recipient});assert.equal(resolved.minSats,1);
@@ -133,6 +166,7 @@ test('website payment discovery and LNbits payment integration',{timeout:20000},
       assert.equal((await call('wallet_payToLightningAddress',params)).preimage,'test-preimage');
       await call('wallet_payToLightningAddress',params);assert.equal(requests.filter(x=>x.body.out).length,count+1);
       const callback=new URL(urls.find(x=>x.includes('/callback'))!);assert.equal(callback.searchParams.get('amount'),'250000000');assert.equal(callback.searchParams.get('comment'),'Thanks');
+      assert.equal((await call('wallet_getTransactions'))[0].memo,'Thanks');
       await assert.rejects(call('wallet_payToLightningAddress',{...params,amountSats:10,intentId:`wrong-amount-${recipient}`}),/not the 10/);
       assert.equal(requests.filter(x=>x.body.out).length,count+1);
     }finally{globalThis.fetch=originalFetch;}
@@ -187,6 +221,7 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
     assert.deepEqual(await exchange(() => webln.makeInvoice({ amount: 4, defaultMemo: 'WebLN' }), 'make_invoice', { invoice, payment_hash: 'cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd' }, { amount: 4000, description: 'WebLN' }), { paymentRequest: invoice });
   });
   await t.test('WebLN rejection does not publish; approval publishes once', async () => {
+    const before = (await call('wallet_getPaymentNotices')).length;
     const start = wallet.requests.length;
     const rejected = assert.rejects(webln.sendPayment(invoice), /denied/);
     await signerApprovalQueue.resolveRequest((await pending()).id, { allow: false }); await rejected;
@@ -197,9 +232,11 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
     await signerApprovalQueue.resolveRequest(approval.id, { allow: true });
     await until(() => wallet.requests.length > start);
     assert.equal(wallet.requests[start].method, 'pay_invoice');
+    assert.equal((await call('wallet_getPaymentNotices')).length, before, 'approval and dispatch are not settlement');
     await wallet.response(wallet.requests[start], { preimage: 'abababababababababababababababababababababababababababababababab' });
     assert.deepEqual(await payment, { preimage: 'abababababababababababababababababababababababababababababababab' });
     assert.equal(wallet.requests.length, start + 1);
+    assert.equal((await call('wallet_getPaymentNotices')).length, before + 1);
   });
   await t.test('YakiHonne published WebLN consumer pattern receives an approved preimage', async () => {
     // Mirrors useLightningWallets.js: enable, sendPayment, then map preimage.
@@ -249,7 +286,7 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
       resolutions++;
       return new Response(JSON.stringify(url.includes('/.well-known/')
         ? { tag: 'payRequest', callback: 'https://recipient.example/callback', minSendable: 1000, maxSendable: 500000000, metadata: '[["text/plain","Donation"]]' }
-        : { pr: makeLnurlInvoice('[["text/plain","Donation"]]') }));
+        : { pr: noteInvoice('[["text/plain","Donation"]]') }));
     }) as typeof fetch;
     try {
       const start = wallet.requests.length;
@@ -273,4 +310,45 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
     assert.equal(await call('wallet_hasConfig'), false);
     await assert.rejects(call('wallet_getInfo'), /No wallet configured/);
   });
+});
+
+test('wallet payment metadata stays private, account scoped and is erased on disconnect', async t => {
+  const records = await import('../../src/services/wallet/payment-records.ts');
+  const { paymentRecordsKey } = await import('../../src/domain/wallet/payment-records.ts');
+  const { captureAccountSession, assertAccountSession } = await import('../../src/services/signing/accountSession.ts');
+  resetMockStorage(); vault.lock(); clearWalletProviders();
+  const config = {type:'nwc' as const,connectionString:'nostr+walletconnect://'+'ab'.repeat(32)+'?relay=wss://relay.example&secret='+'cd'.repeat(32)+'&lud16=Alice%40example.com'};
+  await vault.create('test-password',{activeAccountId:'notes-account',accounts:[{id:'notes-account',name:'Notes',type:'nsec',pubkey,privkey:Buffer.from(key).toString('hex'),mnemonic:null,nip46Config:null,readOnly:false,createdAt:1,walletConfig:config}]});
+  t.after(()=>vault.lock());
+  const session = captureAccountSession();
+  const current = () => assertAccountSession(session);
+  assert.deepEqual(await call('wallet_getLightningAddress'), {address:'alice@example.com'});
+  await Promise.all([
+    records.savePaymentNote('notes-account','a','Private lunch note',current),
+    records.savePaymentNote('notes-account','b','Second note',current),
+  ]);
+  const rows = [{paymentHash:'a',amount:-1,status:'settled' as const,createdAt:1},{paymentHash:'b',amount:-2,status:'failed' as const,createdAt:2}];
+  assert.deepEqual((await records.applyPaymentNotes('notes-account',rows)).map(tx=>tx.memo),['Private lunch note','Second note']);
+  assert.equal((await records.applyPaymentNotes('other',rows))[0].memo,undefined);
+  assert.equal((await records.applyPaymentNotes('notes-account',[{...rows[0],amount:1}]))[0].memo,undefined);
+  for(let n=0;n<22;n++) await records.recordPaymentSuccess('notes-account','site.example',n,current);
+  const notices=await call('wallet_getPaymentNotices');assert.equal(notices.length,20);
+  await call('wallet_acknowledgePaymentNotices',{ids:[notices[0].id]});
+  assert.equal((await call('wallet_getPaymentNotices')).length,19);
+  await assert.rejects(call('wallet_getPaymentNotices',{accountId:'other'}),/Account switched/);
+  await assert.rejects(call('wallet_acknowledgePaymentNotices',{accountId:'other',ids:[]}),/Account switched/);
+  const stored=(await browser.storage.local.get(paymentRecordsKey('notes-account')))[paymentRecordsKey('notes-account')];
+  assert.equal(stored.privateCache,1);assert.doesNotMatch(JSON.stringify(stored),/Private lunch|site.example|Second note/);
+  vault.lock();
+  await assert.rejects(call('wallet_getPaymentNotices'),/locked/i);
+  await assert.rejects(records.savePaymentNote('notes-account','c','Late note',current),/locked/i);
+  await vault.unlock('test-password');
+  assert.equal((await records.applyPaymentNotes('notes-account',rows))[0].memo,'Private lunch note');
+  await call('wallet_disconnect');
+  assert.equal((await records.applyPaymentNotes('notes-account',rows))[0].memo,undefined);
+  assert.deepEqual(await call('wallet_getPaymentNotices'),[]);
+  for(const address of ['', 'bad', 'https://evil.example', 'javascript:alert(1)']) {
+    await vault.updateAccountWalletConfig('notes-account',{...config,connectionString:config.connectionString.replace('Alice%40example.com',encodeURIComponent(address))});
+    assert.deepEqual(await call('wallet_getLightningAddress'),{address:null});
+  }
 });

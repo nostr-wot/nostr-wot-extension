@@ -414,3 +414,22 @@ describe('bounded wallet HTTP responses', () => {
     }
   });
 });
+
+it('LNbits history retains LNURL comments from payment extra metadata', async () => {
+  const provider = new LnbitsProvider({instanceUrl:'https://wallet.example', adminKey:'key'}, mockFetch([
+    {payment_hash:'a',amount:-1000,status:'success',time:1,memo:'Lightning Address',extra:{comment:'Lunch — gracias!'}},
+    {payment_hash:'b',amount:1000,status:'success',time:2,memo:'Invoice description',extra:{comment:{unsafe:true}}},
+  ]));
+  const rows=await provider.listTransactions();
+  assert.equal(rows[0].memo,'Lunch — gracias!');
+  assert.equal(rows[1].memo,'Invoice description');
+});
+
+it('LNbits HTTP 200 pending or missing settlement evidence never reports payment success', async () => {
+  for(const response of [{status:'pending',preimage:'premature'}, {pending:true,preimage:'premature'}, {status:'success'}, {}, {status:'unknown',preimage:'premature'}]) {
+    const provider=new LnbitsProvider({instanceUrl:'https://wallet.example',adminKey:'key'},mockFetch(response));
+    await assert.rejects(provider.payInvoice('invoice'),/PAYMENT_OUTCOME_UNKNOWN/);
+  }
+  const failed=new LnbitsProvider({instanceUrl:'https://wallet.example',adminKey:'key'},mockFetch({status:'failed',preimage:'premature'}));
+  await assert.rejects(failed.payInvoice('invoice'),/LNbits payment failed/);
+});

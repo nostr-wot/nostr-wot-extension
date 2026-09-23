@@ -726,6 +726,8 @@
   "wallet.filterClear": "Cancella",
   "wallet.filterApply": "Applica",
   "wallet.settings": "Impostazioni",
+  "wallet.receiveAddressUnavailable": "Questo portafoglio non ha fornito un indirizzo Lightning riutilizzabile. Crea una fattura qui sotto per ricevere un pagamento.",
+  "wallet.receiveAddressFailed": "Impossibile caricare l’indirizzo di ricezione. Puoi comunque creare una fattura.",
   "wallet.depositDesc": "Genera una fattura Lightning per ricevere sats nel tuo portafoglio.",
   "wallet.sendDesc": "Incolla una fattura Lightning, un indirizzo Lightning o un LNURL per inviare un pagamento.",
   "wallet.invoiceAmount": "Importo",

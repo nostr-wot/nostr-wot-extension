@@ -30,7 +30,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   // Balance and its refresh live in WalletContext now — this used to fetch it
   // again on its own mount, on top of the config check WalletSection already
   // did.
-  const { balance, balanceLoading, balanceError, refreshBalance, cachedTransactions, configLoading, configReadFailed, refreshConfig } = useWallet();
+  const { settings, settingsLoading, settingsError, ensureSettings, refreshSettings, balance, balanceLoading, balanceError, refreshBalance, cachedTransactions, configLoading, configReadFailed, refreshConfig } = useWallet();
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
   const [showDeposit, setShowDeposit] = useState<boolean>(false);
@@ -127,13 +127,15 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
         </div>}
       {/* Action buttons */}
       <Container variant="row" gap={4}>
-        <Button className="flex-1" onClick={() => setShowDeposit(true)}>{t('wallet.deposit')}</Button>
+        <Button className="flex-1" onClick={() => { ensureSettings(); setShowDeposit(true); }}>{t('wallet.deposit')}</Button>
         <ButtonSecondary className="flex-1" onClick={() => setShowSend(true)}>{t('wallet.send')}</ButtonSecondary>
       </Container>
       </Card>
 
       {showDeposit && (
         <DepositDialog
+          address={settings.address} addressLoading={settingsLoading}
+          addressError={settingsError} onRetryAddress={refreshSettings}
           onClose={() => setShowDeposit(false)}
           onPaid={() => {
             void refreshBalance();

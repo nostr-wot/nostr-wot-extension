@@ -726,6 +726,8 @@
   "wallet.filterClear": "Clear",
   "wallet.filterApply": "Apply",
   "wallet.settings": "Settings",
+  "wallet.receiveAddressUnavailable": "This wallet has not provided a reusable Lightning Address. Create an invoice below to receive a payment.",
+  "wallet.receiveAddressFailed": "Could not load the receiving address. You can still create an invoice.",
   "wallet.depositDesc": "Generate a Lightning invoice to receive sats into your wallet.",
   "wallet.sendDesc": "Paste a Lightning invoice, Lightning Address or LNURL to send a payment.",
   "wallet.invoiceAmount": "Amount",

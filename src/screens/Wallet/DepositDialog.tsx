@@ -1,3 +1,4 @@
+import CopyButton from '@components/CopyButton';
 import { useState, useEffect, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -22,6 +23,10 @@ interface Invoice {
 }
 
 interface DepositDialogProps {
+  address?: string | null;
+  addressLoading?: boolean;
+  addressError?: string;
+  onRetryAddress?: () => void;
   onClose: () => void;
   /** Refresh balance and transactions — the money has arrived. */
   onPaid: () => void;
@@ -33,7 +38,7 @@ interface DepositDialogProps {
  * Mounted only while open, so closing it *is* the reset — the parent used to
  * clear eight pieces of state by hand on every close.
  */
-export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
+export default function DepositDialog({ onClose, onPaid, address, addressLoading, addressError, onRetryAddress }: DepositDialogProps) {
   const [amount, setAmount] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -132,6 +137,16 @@ export default function DepositDialog({ onClose, onPaid }: DepositDialogProps) {
         </Container>
       ) : !invoice ? (
         <Container gap={5}>
+          {address ? <Container gap={3}>
+            <Text>{t('wallet.lightningAddress')}</Text>
+            <div className="flex justify-center"><QrCode value={`lightning:${address}`} size={160} className="rounded-md overflow-hidden" /></div>
+            <div className="flex items-center gap-3">
+              <Text className="min-w-0 break-all font-mono">{address}</Text>
+              <CopyButton iconOnly value={address} label={t('common.copy')} />
+            </div>
+          </Container> : addressLoading ? <Text variant="hint">{t('common.loading')}</Text>
+            : addressError ? <Container gap={2}><FormError>{t('wallet.receiveAddressFailed')}</FormError><ButtonSecondary small onClick={onRetryAddress}>{t('common.retry')}</ButtonSecondary></Container>
+            : <Text variant="hint">{t('wallet.receiveAddressUnavailable')}</Text>}
           <Input
             type="number"
             label={t('wallet.amountSats')}

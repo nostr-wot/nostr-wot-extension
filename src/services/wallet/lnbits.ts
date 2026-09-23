@@ -3,6 +3,7 @@
  * @module services/wallet/lnbits
  */
 
+import { PaymentOutcomeUnknownError } from './payment-errors.ts';
 import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
 
 import type { FetchFn } from '@services/http/types.ts';
@@ -65,10 +66,18 @@ export class LnbitsProvider implements WalletProvider {
   }
 
   async payInvoice(bolt11: string): Promise<{ preimage: string }> {
-    const data = await this.request<{ preimage: string }>('POST', '/api/v1/payments', {
+    const data = await this.request<{ preimage?: string; status?: string; pending?: boolean }>('POST', '/api/v1/payments', {
       out: true,
       bolt11,
     });
+    if (data.status === 'failed') throw new Error('LNbits payment failed');
+    // LNbits returns HTTP 200 for deferred/hold payments too. A successful
+    // HTTP request is not settlement; never turn a pending row into a receipt.
+    if (data.status === 'pending' || data.pending === true ||
+        (data.status !== undefined && data.status !== 'success') ||
+        typeof data.preimage !== 'string' || !data.preimage.trim()) {
+      throw new PaymentOutcomeUnknownError('LNbits payment is not confirmed');
+    }
     return { preimage: data.preimage };
   }
 
@@ -89,6 +98,7 @@ export class LnbitsProvider implements WalletProvider {
       amount: number;       // msats in LNbits
       fee: number;          // msats
       memo: string;
+      extra?: { comment?: unknown } | null;
       status: string;
       time: string | number; // ISO 8601 string or unix timestamp
       preimage: string;
@@ -101,7 +111,7 @@ export class LnbitsProvider implements WalletProvider {
         bolt11: p.bolt11,
         amount: Math.round(p.amount / 1000),   // msats → sats
         fee: Math.round((p.fee || 0) / 1000),
-        memo: p.memo || undefined,
+        memo: typeof p.extra?.comment === 'string' && p.extra.comment.trim() ? p.extra.comment.slice(0, 1000) : p.memo || undefined,
         status: p.status === 'success' ? 'settled' as const : p.status === 'pending' ? 'pending' as const : 'failed' as const,
         createdAt: typeof p.time === 'string'
           ? Math.floor(new Date(p.time).getTime() / 1000)
