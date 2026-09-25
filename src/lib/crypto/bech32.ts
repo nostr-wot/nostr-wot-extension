@@ -9,6 +9,12 @@
  */
 
 import { bech32 as _bech32 } from '@scure/base';
+import {
+  npubEncode as sharedNpubEncode,
+  npubDecode as sharedNpubDecode,
+  nsecEncode as sharedNsecEncode,
+  nsecDecode as sharedNsecDecode,
+} from '@nostr-wot/accounts';
 import { hexToBytes, bytesToHex, concatBytes } from './utils.ts';
 
 /**
@@ -64,34 +70,38 @@ export function bech32Decode(str: string): { hrp: string; data: number[] } | nul
 
 // ── Nostr-specific helpers ──
 
+/*
+ * The four NIP-19 identity entities come from `@nostr-wot/accounts`: they are account
+ * primitives, and a second decoder for an npub is a second opinion about whether a
+ * checksum holds. What stays here is the bech32 plumbing the package does not carry —
+ * `convertBits` and the nprofile TLV, which belong with the data layer rather than with
+ * accounts, and `normalizeToHex`, which is this extension's own input-box convenience.
+ *
+ * The signatures are the extension's: hex strings in and out. `nsecDecode` in particular
+ * returns hex where the package returns bytes, because every call site here goes on to
+ * store or compare a hex string; the bytes the package hands back are zeroed on the way.
+ */
+
 export function npubEncode(pubkey: string | Uint8Array): string {
-  const bytes = typeof pubkey === 'string' ? hexToBytes(pubkey) : pubkey;
-  if (bytes.length !== 32) throw new Error('Invalid pubkey length');
-  const data = convertBits(Array.from(bytes), 8, 5, true);
-  return bech32Encode('npub', data!);
+  return sharedNpubEncode(pubkey);
 }
 
 export function npubDecode(npub: string): string {
-  const decoded = bech32Decode(npub);
-  if (!decoded || decoded.hrp !== 'npub') throw new Error('Invalid npub');
-  const bytes = convertBits(decoded.data, 5, 8, false);
-  if (!bytes || bytes.length !== 32) throw new Error('Invalid npub data');
-  return bytesToHex(new Uint8Array(bytes));
+  return sharedNpubDecode(npub);
 }
 
 export function nsecEncode(privkey: string | Uint8Array): string {
-  const bytes = typeof privkey === 'string' ? hexToBytes(privkey) : privkey;
-  if (bytes.length !== 32) throw new Error('Invalid privkey length');
-  const data = convertBits(Array.from(bytes), 8, 5, true);
-  return bech32Encode('nsec', data!);
+  return sharedNsecEncode(privkey);
 }
 
+/** The private key as hex. The bytes the package returns are zeroed before this returns. */
 export function nsecDecode(nsec: string): string {
-  const decoded = bech32Decode(nsec);
-  if (!decoded || decoded.hrp !== 'nsec') throw new Error('Invalid nsec');
-  const bytes = convertBits(decoded.data, 5, 8, false);
-  if (!bytes || bytes.length !== 32) throw new Error('Invalid nsec data');
-  return bytesToHex(new Uint8Array(bytes));
+  const bytes = sharedNsecDecode(nsec);
+  try {
+    return bytesToHex(bytes);
+  } finally {
+    bytes.fill(0);
+  }
 }
 
 export function nprofileEncode(pubkey: string, relays: string[] = []): string {

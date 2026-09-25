@@ -38,7 +38,15 @@ import {
 } from '@nostr-wot/permissions';
 import { localStore } from '@services/storage/keyValueStore.ts';
 
-export type { PermissionDecision, PermissionBucket, PermissionMap, DomainPermissions };
+// Re-exported as local aliases rather than `export … from`: this repo forbids forwarding
+// barrels (tests/test-registration.test.ts), and the callers that want these types want
+// them alongside the functions that return them.
+export type {
+  PermissionDecision,
+  PermissionBucket,
+  PermissionMap,
+  DomainPermissions,
+};
 
 /**
  * One instance over the extension's `local` area.
