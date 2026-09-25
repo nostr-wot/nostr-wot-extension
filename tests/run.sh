@@ -7,6 +7,13 @@ cd "$(dirname "$0")/.."
 # Generate the CSS inspected by the regression tests; never rely on stale dist/.
 npm run build
 
+# The vendored @nostr-wot/* tarballs: that they match their manifest, that node_modules
+# and the lockfile hold those bytes and not an older extraction, and that the SDK checkout
+# they were packed from has not moved. Run first — every group below imports them, so a
+# stale or shadowed vendored package should be reported as itself rather than as a hundred
+# confusing failures downstream.
+node --import tsx --test tests/vendor.test.ts
+
 # Crypto tests (no browser mock needed)
 node --import tsx --test tests/crypto/*.test.ts
 

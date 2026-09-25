@@ -1,0 +1,11 @@
+{
+  "source": { "checkout": "../../nostr-wot-sdk-worktrees/shared-signer-core", "sdkBranch": "feat/shared-signer-core", "sdkCommit": "2867008caee86de29b4b3ab7572af25b26cac617" },
+  "packages": {
+    "storage": { "file": "nostr-wot-storage-0.1.0.tgz", "sha256": "e52fa75564186bd422fcbb620d026066723bf0806f77982e1834a1515487d2d7" },
+    "accounts": { "file": "nostr-wot-accounts-0.1.0.tgz", "sha256": "b6ea3dc96e3f1fd946776208424f013d537d0810831d3a478750d2685c51244a" },
+    "permissions": { "file": "nostr-wot-permissions-0.1.0.tgz", "sha256": "f222ef44f7f46ae55dc7f57d8e268f6ec969d3007159928ac6e3cd3e8044e3d0" },
+    "vault": { "file": "nostr-wot-vault-0.1.0.tgz", "sha256": "be91ff40f2dc9dc88b0ef348f438992e5dab0607d2ecf29e49f7e53ee93a09f5" },
+    "signer-core": { "file": "nostr-wot-signer-core-0.1.0.tgz", "sha256": "bf142e49e10d675d44a536e7cc73422b19ae24856e30d9fb6f6e0221fa362642" },
+    "pq": { "file": "nostr-wot-pq-0.2.2.tgz", "sha256": "db590f626f1d402d914b046b1835907d1f36c0e142f3e73660f65f023673a755" }
+  }
+}
