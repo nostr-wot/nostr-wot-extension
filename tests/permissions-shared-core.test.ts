@@ -77,6 +77,60 @@ describe('permissions adapter -- per-account mode fails closed without an accoun
   });
 });
 
+describe('permissions adapter -- the blanket signEvent question is not the gate', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('answers the same bucket differently depending on whether a kind was named', async () => {
+    // Two questions, not one. `check(origin, 'signEvent', kind)` is the gate a request goes
+    // through and it is strict, so a broad allow cannot speak for a kind the user denied.
+    // `check(origin, 'signEvent')` — no kind — asks what the blanket key says, which is the
+    // key `save(…, null, …)` writes and what a settings screen reads back. Routing the second
+    // through the first answered `ask` for a decision the store was holding.
+    await permissions.save('site.test', 'signEvent', null, 'allow');
+    await permissions.save('site.test', 'signEvent', 1, 'deny');
+
+    assert.equal(await permissions.check('site.test', 'signEvent'), 'allow', 'blanket: may this site sign at all?');
+    assert.equal(await permissions.check('site.test', 'signEvent', 1), 'deny', 'gate: this kind is denied');
+    assert.equal(await permissions.check('site.test', 'signEvent', 7), 'allow', 'gate: this kind falls through to the blanket allow');
+  });
+
+  it('deny still wins over the blanket question', async () => {
+    await permissions.save('site.test', 'signEvent', null, 'allow');
+    await permissions.save('site.test', '*', null, 'deny');
+    assert.equal(await permissions.check('site.test', 'signEvent'), 'deny');
+  });
+
+  it('a non-integer kind asks the blanket question rather than inventing a key', async () => {
+    // JavaScript callers and casts can get here. The old code consulted `signEvent:NaN`.
+    await permissions.save('site.test', 'signEvent', null, 'allow');
+    assert.equal(await permissions.check('site.test', 'signEvent', Number.NaN), 'allow');
+    assert.equal(await permissions.check('site.test', 'signEvent', 1.5), 'allow');
+  });
+});
+
+describe('permissions adapter -- a retired DM key can still be written, and grants nothing', () => {
+  beforeEach(() => resetMockStorage());
+
+  it('routes signEvent:4 to the package\'s retired-key write and folds it on migration', async () => {
+    // `saveDirect` refuses these in the package, because nothing consults them. The extension
+    // wrote them before this module was an adapter, and `migrateDmKindsToSendMessages` needs
+    // to be given its own input, so the adapter routes them to `saveRetiredKey`.
+    await permissions.saveDirect('chat.test', 'signEvent:4', 'deny');
+    // While it sits there it grants and denies nothing: the cascade never looks at it.
+    assert.equal(await permissions.check('chat.test', 'signEvent', 4), 'ask');
+    assert.equal(await permissions.check('chat.test', 'nip04Encrypt'), 'ask');
+
+    await permissions.migrateDmKindsToSendMessages();
+    assert.equal(await permissions.check('chat.test', 'signEvent', 4), 'deny');
+    assert.equal(await permissions.check('chat.test', 'nip04Encrypt'), 'deny');
+  });
+
+  it('a live per-kind key is not treated as retired', async () => {
+    await permissions.saveDirect('chat.test', 'signEvent:1', 'allow');
+    assert.equal(await permissions.check('chat.test', 'signEvent', 1), 'allow');
+  });
+});
+
 describe('permissions adapter -- the caller label is canonicalised before it reaches the store', () => {
   beforeEach(() => resetMockStorage());
 

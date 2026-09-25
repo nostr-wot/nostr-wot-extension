@@ -20,8 +20,10 @@
  *   2. `migrateToPerKind` now keeps a blanket `deny`. It only ever dropped blanket GRANTS
  *      as unrepresentable; dropping the denials as well wiped a remembered "deny, every
  *      kind" on every migration-version bump.
- *   3. A `signEvent` check that cannot name an integer kind resolves from the deny levels
- *      alone, so a broad `allow` cannot answer for a kind the caller failed to state.
+ *   3. A `signEvent` check WITH a kind resolves strictly: a broad `allow` cannot answer for a
+ *      kind the caller failed to state. A check with no kind asks the blanket question
+ *      instead, through `checkBlanketSignEvent` — a different question with a different
+ *      answer, and the store can now be asked it as well as told it.
  *
  * @see https://github.com/nostr-protocol/nips/blob/master/07.md -- NIP-07
  * @module services/permissions/permissions
@@ -32,6 +34,7 @@ import {
   canonicalHttpOrigin,
   permissionKey as packagePermissionKey,
   type PermissionBucket,
+  type RetiredPermissionKey,
   type PermissionDecision,
   type PermissionMap,
   type OriginPermissions as DomainPermissions,
@@ -122,10 +125,19 @@ export async function check(
   accountId?: string,
 ): Promise<PermissionDecision> {
   if (method === 'signEvent') {
-    // Passed through even when it is not an integer: the package answers such a read from
-    // the deny levels alone rather than letting a wildcard `allow` speak for a kind the
-    // caller did not state.
-    return permissions.check(label(domain), 'signEvent', kind as number, bucket(accountId));
+    // Two different questions, and the package has one method for each.
+    //
+    // With a kind, `check` is the gate and it is strict: `{ '*': 'allow', 'signEvent:1':
+    // 'deny' }` answers `deny` for a kind-1 event, because a broad allow must never speak for
+    // a kind the caller failed to state. Every request path reaches here with `event.kind`.
+    //
+    // With no kind the caller is asking the BLANKET question — "may this site sign at all?" —
+    // which is the key `save(…, null, …)` writes and what a settings screen, a connected-sites
+    // list and a "remember for every kind" toggle read back. Routing it through the strict gate
+    // would answer `ask` for a decision the user made and the store holds. Deny still wins.
+    return kind === undefined || !Number.isInteger(kind)
+      ? permissions.checkBlanketSignEvent(label(domain), bucket(accountId))
+      : permissions.check(label(domain), 'signEvent', kind, bucket(accountId));
   }
   return permissions.check(label(domain), method as Exclude<string, 'signEvent'>, undefined, bucket(accountId));
 }
@@ -148,8 +160,27 @@ export async function save(
   await permissions.save(label(domain), method as Exclude<string, 'signEvent'>, undefined, decision, bucket(accountId));
 }
 
+/** The DM sign kinds the per-kind model retired: `permissionKey` folds them into sendMessages. */
+const RETIRED_KEYS: readonly RetiredPermissionKey[] = ['signEvent:4', 'signEvent:13', 'signEvent:14', 'signEvent:1059'];
+
+function isRetiredKey(key: string): key is RetiredPermissionKey {
+  return (RETIRED_KEYS as readonly string[]).includes(key);
+}
+
 /**
  * Save a permission decision under a key verbatim (for UI use).
+ *
+ * A retired DM key goes through the package's `saveRetiredKey` rather than `saveDirect`,
+ * which refuses one. Both are deliberate and they are not in conflict: `saveDirect` refuses
+ * because nothing consults `signEvent:4`, so a UI writing it would ship a `deny` the user
+ * believes is in force and that never fires; `saveRetiredKey` exists so
+ * `migrateDmKindsToSendMessages` can be given its own input, and its parameter is a closed
+ * union of keys the cascade provably ignores, so writing one cannot grant anything.
+ *
+ * This extension's UI never produces one — `COMMON_PERM_KEYS` has `sendMessages`, not a DM
+ * kind — so the path exists for legacy writes and migration fixtures, which is what it did
+ * before this module was an adapter. Narrowing it here would be a behaviour change.
+ *
  * @param key - permission key as-is (e.g. "signEvent:1", "sendMessages")
  */
 export async function saveDirect(
@@ -158,6 +189,10 @@ export async function saveDirect(
   decision: PermissionDecision,
   accountId?: string,
 ): Promise<void> {
+  if (isRetiredKey(key)) {
+    await permissions.saveRetiredKey(label(domain), key, decision, bucket(accountId));
+    return;
+  }
   await permissions.saveDirect(label(domain), key, decision, bucket(accountId));
 }
 
