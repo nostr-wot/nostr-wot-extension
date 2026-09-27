@@ -2,7 +2,9 @@
 
 [![Tests](https://github.com/nostr-wot/nostr-wot-extension/actions/workflows/tests.yml/badge.svg)](https://github.com/nostr-wot/nostr-wot-extension/actions/workflows/tests.yml)
 
-A browser extension for Nostr that manages your identity, signs events, and sends Lightning payments — all without leaving your browser. It is a [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md) signer, an encrypted key vault, a built-in Lightning/WebLN wallet, and a manager for your profile, mute list, and relays.
+**One secure identity for every Nostr app.** Nostr WoT keeps signing approval, encrypted key storage, Lightning/WebLN, multi-account controls, and optional Web of Trust in one browser extension. Sites can request NIP-07 access without receiving your private key, and you decide what each domain is allowed to do.
+
+Use the same identity across Nostr clients, approve signatures when needed, zap without leaving the app, and inspect how an npub connects to your own trust graph. The Web of Trust is an optional layer, not a prerequisite for using the signer or wallet.
 
 ## Features
 
