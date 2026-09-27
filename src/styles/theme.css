@@ -18,6 +18,9 @@
   --surface-hover: rgba(99, 102, 241, 0.12);
   --button-secondary-hover: rgba(99, 102, 241, 0.18);
   --brand: #6366f1;
+  --logo-line: color-mix(in srgb, var(--brand) 50%, transparent);
+  --logo-node: color-mix(in srgb, var(--brand) 90%, transparent);
+  --logo-end: color-mix(in srgb, var(--brand) 60%, transparent);
   --menu-subtitle: rgba(99, 102, 241, 0.55);
   --brand-hover: #4f46e5;
   --brand-light: rgba(99, 102, 241, 0.1);
