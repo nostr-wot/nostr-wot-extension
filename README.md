@@ -154,6 +154,8 @@ Every cryptographic operation resolves to one of seven packages from the [noble/
 
 `package.json` uses caret ranges; the exact versions below are held by the committed `package-lock.json` (lockfileVersion 3, a sha512 integrity hash on every entry, everything resolved from registry.npmjs.org), and CI installs with `npm ci`, which fails on any lockfile mismatch. **That lockfile is the pin — build with `npm ci`, not `npm install`.** No runtime dependency runs an install-time script.
 
+The lockfile protects anyone who installs with it, including a plain `npm install`. The caret ranges are a separate promise — that the code works with anything they admit — and that promise is what a second CI job (`crypto-latest-deps`) checks, by installing with the lockfile ignored and re-running the crypto, vault, signer and transport suites. It has caught two real breakages: a `@noble/hashes` release that raised scrypt's internal memory accounting and broke every NIP-49 encrypted-key backup, and a `nostr-tools` release whose WebSocket error handler recursed until the stack was gone. See [docs/testing.md § Dependency ranges](docs/testing.md#dependency-ranges).
+
 | Package | Version | Role | Deps |
 |---|---|---|---|
 | `@scure/bip39` | 2.0.1 | Mnemonic generation and seed derivation — **the seed source** | 2 (same family) |

@@ -17,7 +17,16 @@ have had.
 - Defer the shared-core migration until the required packages are released on npm. Restore the extension’s existing account utilities, permission handling and storage implementation; preserve the migration on a separate branch.
 
 ### Fixed
+- Restore NIP-49 `ncryptsec` key backup export and import for builds resolved from the declared dependency ranges rather than the committed lockfile. The scrypt memory bound sat exactly on one `@noble/hashes` version's internal accounting, so a newer release within the range refused every backup. Store builds and ordinary `npm install` builds were unaffected.
+- Report a readable error when a backup's scrypt parameters cannot be used, instead of passing the cryptography library's internal message through to the import screen.
+- Exclude `nostr-tools` 2.25.2, whose WebSocket error handler calls itself until the stack is exhausted. A single unreachable relay in a remote-signer relay list could raise an uncaught error in the background service worker.
 - Use the existing `ws` transport for local Nostr Connect integration tests, preserving refused-relay coverage without Node's recursive WebSocket teardown.
+
+### Internal
+
+- Give the scrypt memory bound a few blocks of headroom above the current `@noble/hashes` requirement, with tests against newly resolved dependency versions to detect future accounting changes.
+- Verify NIP-49 backups against an independent implementation in both directions, across every defined key-security byte and a range of cost factors.
+- Add a CI job that installs the newest dependencies each declared range admits, then typechecks, builds and re-runs the crypto, vault, signer and transport suites. It also runs weekly, so a library changing behaviour under a range is found before a contributor trips over it.
 
 ## 0.8.4 — 2026-09-27
 

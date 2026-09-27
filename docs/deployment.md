@@ -30,8 +30,8 @@ separate from browser-store submission and approval.
 ### The build environment
 
 AMO rejects builds produced on an end-of-life Node. `0.4.0` was disabled for
-being built on Node 20. CI runs the matrix `[22, 24]`; build releases on one of
-those.
+being built on Node 20. CI runs Node 24; `package.json` `engines` allows 22 or
+later, so build releases on 22 or 24.
 
 ### Data collection consent — the `0.5.2` rejection
 
