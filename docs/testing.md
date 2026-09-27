@@ -44,6 +44,7 @@ the last group running for about two minutes even after most tests finish.
 | `tests/crypto/utils.test.ts` | Hex/bytes conversion |
 | `tests/crypto/security.test.ts` | Security-focused crypto tests |
 | `tests/crypto/nip49.test.ts` | NIP-49 `ncryptsec` encode/decode, scrypt parameters |
+| `tests/crypto/scrypt-maxmem.test.ts` | That `scryptMaxMem()` equals what scrypt allocates (`V + B + tmp`), not what one `@noble/hashes` version validates against — see "Dependency ranges" below |
 | `tests/crypto/pq.test.ts` | Post-quantum key derivation vectors, domain separation, sibling-not-child property |
 | `tests/crypto/pq-envelope.test.ts` | Post-quantum envelope encrypt/decrypt, self-describing routing, hybrid key |
 | `tests/crypto/pq-import.test.ts` | Key-file parsing, length rules, and pair-proving round trips (a public key paired with the wrong secret must be rejected) |
@@ -474,3 +475,25 @@ LNbits tests cover historical `extra.nostr`, malformed/oversized data and commen
 
 `tests/wallet/nwc-connections.test.ts` covers the HTTP contract, encrypted storage, request replay, account/wallet isolation and lost-response recovery. `tests/wallet-ui.test.ts` covers the mounted management screen. The separate LNbits-proxy repository tests the actual server routes.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+## Dependency ranges
+
+Every suite above runs against the versions `package-lock.json` pins, because that is what `npm ci` installs — and what a plain `npm install` installs too. The lockfile is the pin and it holds; this section is not about ordinary builds.
+
+It is about the caret ranges in `package.json` being a published promise that the code works with anything they admit. Whoever resolves from the ranges instead of the lockfile gets software nobody here has run: `npm update`, a clone whose lockfile was dropped, a package manager that does not read `package-lock.json`, an automated dependency bump, or another project reusing `src/lib/crypto/`. A suite that only ever sees the pinned versions cannot notice when that promise stops being true.
+
+It has stopped being true twice.
+
+**`@noble/hashes` and the scrypt memory bound.** `nip49.ts` computed `maxmem` as `128·r·(N + p)`, the expression `@noble/hashes` 2.0.1 validates against; from 2.2.0 noble validates against `128·r·(N + p + 1)`, counting a scratch block it had always allocated, and says in its own source that the accounting "is intentionally noble-specific". `^2.0.1` admitted 2.2.0 through 2.4.0, so any build resolved from the range threw `"maxmem" limit was hit` on **every** ncryptsec encode and decode — the encrypted key backup and import path, gone — while every NIP-49 test here passed on the pinned 2.0.1. The breaking version was not even remote: a 2.2.0 copy sits in `node_modules` nested under `@noble/post-quantum`, one hoist from being the one `nip49.ts` resolves.
+
+**`nostr-tools` and the recursive close.** 2.25.2 calls `close()` from inside its own WebSocket `onerror`, which re-enters the error path until the stack is exhausted. `^2.23.3` admitted it, so a single unreachable relay in a NIP-46 bunker or `nostrconnect://` relay list produced an uncaught `RangeError: Maximum call stack size exceeded` in the background service worker — and dead relays in those lists are routine. There is nothing to fix on our side, so `package.json` now declares `>=2.23.3 <2.25.2`. Revisit the cap when upstream fixes the recursion.
+
+Three things close the gap, at different levels:
+
+- **`tests/crypto/scrypt-maxmem.test.ts`** does not restate any version's expression, because that would only move the coupling one version along and would still be blind to a release that raises the charge again. It binary-searches the **installed** library for the smallest `maxmem` it will accept, and requires the bound to clear that with headroom to spare. It therefore fails on the old formula whichever version is installed, and fails one revision *before* a future noble breaks users rather than after. A separate assertion pins the bound below `N + p + SCRYPT_MAXMEM_SLACK_BLOCKS` blocks, because headroom is only free while it stays a small constant — slack scaling with `N` would authorise a multiple of the V table, and `log_n` comes from the payload.
+- **`tests/crypto/nip49.test.ts`** round-trips against `nostr-tools`' independent NIP-49 implementation in both directions, across every `key_security_byte` the spec defines and cost factors either side of the one we write. Before that, every test decoded with our own decoder, so a systematic encoder error would have round-tripped happily through all of them.
+- **The `crypto-latest-deps` job** in `.github/workflows/tests.yml` installs with `npm install --no-package-lock` — note that plain `npm install` would *not* float, since it honours the lockfile — then typechecks, builds, and re-runs crypto, vault, signer, NIP-46, NWC and generated-asset suites. It also runs weekly on a schedule, so upstream breakage is normally found on `main` rather than by whichever pull request happens to come next.
+
+Known gap, deliberately not closed here: three tests in `tests/wot-relay-transport.test.ts` call `mock.method(schnorr, 'verify', …)`, and `@noble/curves` froze that export in 2.2.0, so they fail on any version `^2.0.1` admits above 2.0.1. Production is unaffected — our code only calls schnorr and never patches it — and the fix is for those tests to use an injected verifier seam alongside the existing `_createSocket` and `_timeoutMs`, rather than reaching into the library. Those suites are consequently not in the floating job yet.
+
+The general rule this leaves behind: **a numeric bound or behaviour handed to a library must be derived from what the algorithm or format requires, never copied from what a particular version of that library happens to check, and never pinned exactly to it.** The two agree right up until the library revises its own accounting, and a lockfile-pinned suite cannot tell you when that happens.

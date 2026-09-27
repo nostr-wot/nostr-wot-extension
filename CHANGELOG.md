@@ -6,6 +6,20 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## Unreleased
+
+### Fixed
+
+- Restore NIP-49 `ncryptsec` key backup export and import for builds resolved from the declared dependency ranges rather than the committed lockfile. The scrypt memory bound sat exactly on one `@noble/hashes` version's internal accounting, so a newer release within the range refused every backup. Store builds and ordinary `npm install` builds were unaffected.
+- Report a readable error when a backup's scrypt parameters cannot be used, instead of passing the cryptography library's internal message through to the import screen.
+- Exclude `nostr-tools` 2.25.2, whose WebSocket error handler calls itself until the stack is exhausted. A single unreachable relay in a remote-signer relay list could raise an uncaught error in the background service worker.
+
+### Internal
+
+- Give the scrypt memory bound a few blocks of headroom above what any supported `@noble/hashes` requires, so the next revision of that library's accounting cannot break backups again.
+- Verify NIP-49 backups against an independent implementation in both directions, across every defined key-security byte and a range of cost factors.
+- Add a CI job that installs the newest dependencies each declared range admits, then typechecks, builds and re-runs the crypto, vault, signer and transport suites. It also runs weekly, so a library changing behaviour under a range is found before a contributor trips over it.
+
 ## 0.8.3 — 2026-09-23
 
 ### Added
