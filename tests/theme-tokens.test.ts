@@ -363,14 +363,14 @@ describe('dark palette readability', () => {
     return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
   }
   it('keeps text, status and button labels at AA contrast in both dark palettes', () => {
-    const blocks = [...css.matchAll(/:root\[data-theme="lacrypta"\]\s*\{([^}]+)\}/g)];
-    assert.ok(blocks.length >= 1);
-    const shared = tokens(blocks[0][1]);
-    const darkOverride = /:root\[data-theme="dark"\]\s*\{([^}]+)\}/.exec(css);
-    assert.ok(darkOverride);
-    const dark = { ...shared, ...tokens(darkOverride[1]) };
-    const crypta = { ...shared, ...tokens(blocks[1][1]) };
-    for (const palette of [dark, crypta]) {
+    // Match each selector in a list, then apply matching rules in source order.
+    // The shared dark rule also includes project themes after La Crypta.
+    const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]+)\}/g)];
+    for (const theme of ['dark', 'lacrypta']) {
+      const selector = `:root[data-theme="${theme}"]`;
+      const blocks = rules.filter(rule => rule[1].split(',').some(part => part.trim() === selector));
+      assert.ok(blocks.length >= 2, `${theme} must include shared tokens and its overrides`);
+      const palette = Object.assign({}, ...blocks.map(block => tokens(block[2])));
       for (const foreground of ['--text-heading', '--text-body', '--text-secondary', '--text-muted', '--menu-subtitle', '--brand', '--brand-hover', '--error', '--success', '--warning', '--info']) {
         for (const background of ['--bg-page-solid', '--bg-elevated', '--input-bg', '--surface-hover']) {
           const a = luminance(palette[foreground]);
