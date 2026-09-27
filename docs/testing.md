@@ -95,6 +95,7 @@ the last group running for about two minutes even after most tests finish.
 | `tests/password-pair-fields.test.ts` | `PasswordPairFields`'s live checklist — both requirements at once, not just the first `validatePasswordPair` reports |
 | `tests/crypto/key-backup.test.ts` | A backup file has to be readable again — the encryption that was inline in the seed-export modal |
 | `tests/i18n-keys.test.ts` | Every string the UI asks for exists, in every locale, with the same placeholders |
+| `tests/custom-theme.test.ts` | Project theme preferences and strict custom JSON palette validation |
 | `tests/theme-tokens.test.ts` | Every `var(--x)` resolves, and no declaration is malformed by a stray bracket — both fail silently in CSS |
 | `tests/paged-list.test.ts` | `paginate` — the client-side "load more" window shared by the contexts |
 | `tests/format-time.test.ts` | `classifyDay` — the today/yesterday boundary behind the activity log's day headers |
