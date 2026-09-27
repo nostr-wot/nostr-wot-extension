@@ -57,6 +57,10 @@
      `bg-card` / `text-muted` / `border-divider` exist. The names are the ones
      the codebase already uses; only the prefix is new. */
   --color-brand: var(--brand);
+  --color-zap: var(--zap);
+  --color-control-accent: var(--control-accent);
+  --color-control-focus: var(--control-focus);
+  --color-control-knob: var(--control-knob);
   --color-brand-hover: var(--brand-hover);
   --color-brand-light: var(--brand-light);
   --color-button-secondary-hover: var(--button-secondary-hover);

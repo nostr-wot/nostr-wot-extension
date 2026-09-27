@@ -6,6 +6,34 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.4 — 2026-09-27
+
+### Added
+- Add project palettes for Coracle, noStrudel, YakiHonne and Nostrich alongside the existing Light, Dark, System and La Crypta themes.
+- Add a custom theme editor with manual color pickers and a JSON import path covering the extension's semantic color tokens.
+- Persist custom themes locally and apply them across popup, onboarding and approval documents.
+
+### Improved
+- Select themes through the existing shared Dropdown component, with an associated label, keyboard navigation and a retained Custom selection.
+- Align Coracle, noStrudel, YakiHonne and Nostrich with their supplied client palettes. Keep noStrudel's lime actions and blue controls distinct, and preserve Nostrich's neutral interface and separate Lightning accent.
+- Make animated logo colors follow the active theme. Render the shared built-in SVG logo with the theme color in loading, welcome and settings views.
+- Document mandatory reuse of shared UI components in AGENTS.md.
+
+### Fixed
+- Restore the missing default logo on the welcome screen and prevent the settings footer logo from retaining its standalone purple color.
+- Correct selector-list handling in theme contrast checks and preserve selection when saving a theme fails.
+
+### Verification
+- 1,808 automated tests pass, including shared controls, custom palettes, theme persistence and logo rendering. TypeScript passes; ESLint reports no errors and 10 existing warnings.
+- Verify the actual unpacked Chrome extension with the existing account and connected Lightning wallet; capture each project theme's account, settings, wallet and welcome views.
+
+### Security and reliability
+- Custom JSON accepts only the documented color keys and validated hex/RGB(A) values. Unknown keys and CSS values such as URLs are rejected instead of being injected.
+
+### Store release notes
+- Match Nostr WoT to Coracle, noStrudel, YakiHonne or Nostrich, or build your own palette manually or from JSON.
+- Choose themes from a dropdown and enjoy matching logo colors throughout the extension.
+
 ## 0.8.3 — 2026-09-23
 
 ### Added

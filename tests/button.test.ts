@@ -60,6 +60,19 @@ it('pulse logo preserves two decorative staggered rings and the accessible image
   assert.match(html, /width="72" height="72" alt="Nostr WoT"/);
 });
 
+it('the built-in logo has a visible theme-colored default and supports a static footer', () => {
+  const html = renderToStaticMarkup(createElement(PulseLogo, { alt: 'Nostr WoT' }));
+  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /role="img" aria-label="Nostr WoT"/);
+  assert.match(html, /bg-brand/);
+  assert.match(html, /mask:url\(\/icons\/icon-base.svg\)/);
+  assert.match(html, /width:96px;height:96px/);
+  assert.equal((html.match(/animate-logo-pulse/g) || []).length, 2);
+  const footer = renderToStaticMarkup(createElement(PulseLogo, { size: 16, pulse: false }));
+  assert.match(footer, /width:16px;height:16px/);
+  assert.doesNotMatch(footer, /animate-logo-pulse/);
+});
+
 it('screen-reader status stays mounted when empty and renders feedback as text', () => {
   for (const message of [undefined, '', 'Copied', 'Copy failed', '<script>']) {
     const html = renderToStaticMarkup(createElement(ScreenReaderStatus, {}, message));
