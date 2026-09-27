@@ -41,7 +41,7 @@ export default function AppearanceSection() {
         <Text as="strong">{t('theme.title')}</Text>
         <Text variant="hint">{t('theme.description')}</Text>
         <ChipGroup options={PRESETS.map(value => ({ value, label: PROJECT_LABELS[value] ?? t(`theme.${value}`) }))}
-          value={selected === 'custom' ? undefined : selected} onChange={select} disabled={saving} />
+          value={selected} onChange={select} disabled={saving} />
         <Button type="button" variant="secondary" onClick={() => setCustomOpen(open => !open)}>
           {selected === 'custom' ? 'Edit custom theme' : 'Create custom theme'}
         </Button>
