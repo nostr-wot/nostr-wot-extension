@@ -6,6 +6,19 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.4 — 2026-09-27
+
+### Added
+- Add project palettes for Coracle, noStrudel, YakiHonne and Nostrich alongside the existing Light, Dark, System and La Crypta themes.
+- Add a custom theme editor with manual color pickers and a JSON import path covering the extension's semantic color tokens.
+- Persist custom themes locally and apply them across popup, onboarding and approval documents.
+
+### Security and reliability
+- Custom JSON accepts only the documented color keys and validated hex/RGB(A) values. Unknown keys and CSS values such as URLs are rejected instead of being injected.
+
+### Store release notes
+- Match Nostr WoT to Coracle, noStrudel, YakiHonne or Nostrich, or build your own palette manually or from JSON.
+
 ## 0.8.3 — 2026-09-23
 
 ### Added
