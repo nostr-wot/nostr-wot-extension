@@ -2,7 +2,7 @@
 
 ## Release packaging
 
-The current release is **0.8.3**. Keep package and manifest versions, source-build
+The current release is **0.8.4**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
 and checksums stay outside the tracked repository. Publish new functionality in a
 new version; only replace an existing release when explicitly requested.
@@ -129,6 +129,16 @@ xcodebuild -exportArchive \
 The build then has to be selected in App Store Connect (Apps → Nostr WoT → TestFlight or App Store distribution) — that part is web-UI only.
 
 # Self-Review Checklist
+
+## Reuse shared UI components
+
+Before building or changing UI, inspect `src/components/` and
+`docs/component-standards.md` and reuse the existing component for each control,
+selector, button, field, modal, and layout. Do not introduce a one-off native
+control, duplicate markup, or a parallel component when an existing shared
+component can handle the interaction. If a capability is missing, extend the
+shared component with a reusable, tested API and document it. Keep styling in
+semantic theme tokens so all project themes work consistently.
 
 Every code change must pass through these gates. No exceptions, no shortcuts.
 

@@ -9,20 +9,29 @@ interface PulseLogoProps {
   size?: number;
   alt?: string;
   className?: string;
+  pulse?: boolean;
 }
 
-export default function PulseLogo({ src = '', size = 96, alt = '', className = '' }: PulseLogoProps) {
+export default function PulseLogo({ src = '/icons/icon-base.svg', size = 96, alt = '', className = '', pulse = true }: PulseLogoProps) {
   return (
     <div className={cn(WRAP, className)}>
-      <span aria-hidden="true" className={RING} />
-      <span aria-hidden="true" className={cn(RING, '[animation-delay:2.5s]')} />
-      <img
+      {pulse && <>
+        <span aria-hidden="true" className={RING} />
+        <span aria-hidden="true" className={cn(RING, '[animation-delay:2.5s]')} />
+      </>}
+      {src === '/icons/icon-base.svg' ? <span
+        role={alt ? 'img' : undefined}
+        aria-label={alt || undefined}
+        aria-hidden={alt ? undefined : true}
+        className="relative inline-block bg-brand"
+        style={{ width: size, height: size, mask: 'url(/icons/icon-base.svg) center / contain no-repeat', WebkitMask: 'url(/icons/icon-base.svg) center / contain no-repeat' }}
+      /> : <img
         src={src}
         width={size}
         height={size}
         alt={alt}
         className="relative"
-      />
+      />}
     </div>
   );
 }

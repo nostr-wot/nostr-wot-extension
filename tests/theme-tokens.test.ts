@@ -378,11 +378,11 @@ describe('dark palette readability', () => {
       .map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
     return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
   }
-  it('keeps text, status and button labels at AA contrast in both dark palettes', () => {
+  it('keeps text, status and button labels at AA contrast in dark and project palettes', () => {
     // Match each selector in a list, then apply matching rules in source order.
     // The shared dark rule also includes project themes after La Crypta.
     const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]+)\}/g)];
-    for (const theme of ['dark', 'lacrypta']) {
+    for (const theme of ['dark', 'lacrypta', 'nostrudel', 'yakihonne', 'nostrich']) {
       const selector = `:root[data-theme="${theme}"]`;
       const blocks = rules.filter(rule => rule[1].split(',').some(part => part.trim() === selector));
       assert.ok(blocks.length >= 2, `${theme} must include shared tokens and its overrides`);

@@ -122,7 +122,7 @@ export default function Home({ menuOpen }: HomeProps) {
       {walletState && typeof walletState === 'object' && (
         <Card className="flex items-center justify-between gap-5 py-6 px-7 cursor-pointer transition-colors hover:bg-brand-tint-hover" onClick={navigate.openWallet}>
           <Container variant="row" gap={5} className="min-w-0">
-            <IconZap size={14} className="text-brand shrink-0" />
+            <IconZap size={14} className="text-zap shrink-0" />
             <Container gap="px">
               <WalletBalance {...walletState} compact />
               <Text variant="muted" as="span" className="uppercase tracking-[0.3px] font-semibold">{t('wallet.balance')}</Text>
@@ -135,7 +135,7 @@ export default function Home({ menuOpen }: HomeProps) {
       {showWalletBanner && (
         <Card className="flex items-center justify-between gap-5 py-6 px-7">
           <Container variant="row" gap={5} className="items-start flex-1 min-w-0">
-            <IconZap size={14} className="text-brand shrink-0 mt-1" />
+            <IconZap size={14} className="text-zap shrink-0 mt-1" />
             <Container gap={1}>
               <strong className="text-md font-semibold text-heading">{t('wallet.setupBanner')}</strong>
               <Text variant="secondary" as="span" className="text-xs">{t('wallet.setupBannerHint')}</Text>
