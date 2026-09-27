@@ -20,7 +20,7 @@
       "strict_min_version": "142.0"
     }
   },
-  "description": "Nostr Web of Trust identity and wallet provider \u2014 NIP-07 signer and built-in Lightning wallet.",
+  "description": "One secure identity for Nostr — NIP-07 signing, encrypted keys, Lightning/WebLN, multi-account controls, and optional Web of Trust.",
   "permissions": [
     "storage",
     "activeTab",
