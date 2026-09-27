@@ -59,3 +59,8 @@ export async function saveCustomTheme(theme: CustomTheme): Promise<void> {
   const safe = parseCustomTheme(theme);
   await browser.storage.local.set({ [CUSTOM_THEME_STORAGE_KEY]: safe, [THEME_STORAGE_KEY]: 'custom' });
 }
+
+export async function loadCustomTheme(): Promise<CustomTheme | null> {
+  const stored = await browser.storage.local.get(CUSTOM_THEME_STORAGE_KEY);
+  try { return parseCustomTheme(stored[CUSTOM_THEME_STORAGE_KEY]); } catch { return null; }
+}
