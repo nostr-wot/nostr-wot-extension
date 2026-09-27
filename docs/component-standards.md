@@ -694,3 +694,10 @@ heading, tabs and form with explicit gaps; settings cards use p-8 and gap-6,
 with gap-7 between cards inside the existing bounded scroll region. The LNbits
 wallet Admin API key stays masked by the shared Input; its associated description
 explains API info, spending authority and the distinction from a login password.
+
+
+#### Project and custom themes
+
+Appearance includes built-in Coracle, noStrudel, YakiHonne and Nostrich palettes in addition to Light, Dark, System and La Crypta. Project palettes only override the extension's semantic CSS tokens. They do not import third-party stylesheets, logos, scripts or assets.
+
+Custom themes use the same semantic-token boundary. The editor exposes every accepted color as a manual color picker and as JSON. JSON is a flat object with these required keys: `bgPage`, `bgPageSolid`, `bgHtml`, `bgElevated`, `surfaceHover`, `inputBg`, `textHeading`, `textBody`, `textSecondary`, `textMuted`, `brand`, `brandHover`, `textOnBrand`, `cardBg`, `cardBorder`, `controlBorder`, `success`, `error`, `warning`, `info`. Values are colors only. Unknown keys, missing keys and non-color CSS values are rejected. Never accept arbitrary CSS, markup, URLs or additional custom properties from imported theme JSON.
