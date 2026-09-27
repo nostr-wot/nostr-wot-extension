@@ -288,7 +288,12 @@ body {
    and all portals on the same palette by setting the theme on the root. */
 :root { color-scheme: light; }
 :root[data-theme="dark"],
-:root[data-theme="lacrypta"] {
+:root[data-theme="lacrypta"],
+:root[data-theme="coracle"],
+:root[data-theme="nostrudel"],
+:root[data-theme="yakihonne"],
+:root[data-theme="nostrich"],
+:root[data-theme="custom"] {
   color-scheme: dark;
   --bg-page: linear-gradient(45deg, #171722, #202033);
   --bg-page-solid: #1c1c2a;
@@ -403,4 +408,48 @@ body {
   --warning-tint: rgba(255, 122, 26, 0.1);
   --warning-tint-heavy: rgba(255, 122, 26, 0.15);
   --focus-ring: 0 0 0 3px rgba(199, 255, 91, 0.5);
+}
+
+
+/* Project palettes are opt-in homages to the clients' current visual identities.
+   They change semantic tokens only; no project CSS, assets or executable code is imported. */
+:root[data-theme="coracle"] {
+  --bg-page: #0f1115; --bg-page-solid: #0f1115; --bg-html: #0a0c0f;
+  --bg-elevated: #171a20; --surface-hover: #242932; --input-bg: #1c2027;
+  --text-heading: #f7f7f5; --text-body: #e5e7eb; --text-secondary: #c0c4cc; --text-muted: #9aa1ac;
+  --brand: #f59e0b; --brand-hover: #fbbf24; --text-on-brand: #17110a;
+  --brand-light: rgba(245,158,11,.13); --card-bg: #171a20; --card-border: #343a45;
+  --card-active: #292f38; --control-border: #6b7280; --surface-glass: rgba(15,17,21,.95);
+  --surface-glass-heavy: #171a20; --divider: #343a45; --menu-subtitle: #d6a957;
+  --focus-ring: 0 0 0 3px rgba(245,158,11,.4);
+}
+:root[data-theme="nostrudel"] {
+  --bg-page: #111113; --bg-page-solid: #111113; --bg-html: #09090b;
+  --bg-elevated: #18181b; --surface-hover: #27272a; --input-bg: #202024;
+  --text-heading: #fafafa; --text-body: #e4e4e7; --text-secondary: #c4c4cc; --text-muted: #a1a1aa;
+  --brand: #a78bfa; --brand-hover: #c4b5fd; --text-on-brand: #160d2b;
+  --brand-light: rgba(167,139,250,.14); --card-bg: #18181b; --card-border: #3f3f46;
+  --card-active: #2b2638; --control-border: #71717a; --surface-glass: rgba(17,17,19,.95);
+  --surface-glass-heavy: #18181b; --divider: #3f3f46; --menu-subtitle: #c4b5fd;
+  --focus-ring: 0 0 0 3px rgba(167,139,250,.45);
+}
+:root[data-theme="yakihonne"] {
+  --bg-page: #0b0b0d; --bg-page-solid: #0b0b0d; --bg-html: #050506;
+  --bg-elevated: #151519; --surface-hover: #25252b; --input-bg: #1c1c21;
+  --text-heading: #ffffff; --text-body: #ededf0; --text-secondary: #c9c9d0; --text-muted: #a5a5ae;
+  --brand: #ff9f1c; --brand-hover: #ffb84d; --text-on-brand: #1c1000;
+  --brand-light: rgba(255,159,28,.14); --card-bg: rgba(255,255,255,.055); --card-border: #38383f;
+  --card-active: rgba(255,159,28,.16); --control-border: #6c6c75; --surface-glass: rgba(21,21,25,.9);
+  --surface-glass-heavy: rgba(21,21,25,.98); --divider: #34343a; --menu-subtitle: #ffc06a;
+  --focus-ring: 0 0 0 3px rgba(255,159,28,.42);
+}
+:root[data-theme="nostrich"] {
+  --bg-page: #0d1117; --bg-page-solid: #0d1117; --bg-html: #080b10;
+  --bg-elevated: #161b22; --surface-hover: #252d38; --input-bg: #1c232c;
+  --text-heading: #f6f8fa; --text-body: #e6edf3; --text-secondary: #c3cad2; --text-muted: #9da7b3;
+  --brand: #f7931a; --brand-hover: #ffad42; --text-on-brand: #1d1102;
+  --brand-light: rgba(247,147,26,.13); --card-bg: #161b22; --card-border: #303946;
+  --card-active: #29231b; --control-border: #687384; --surface-glass: rgba(13,17,23,.95);
+  --surface-glass-heavy: #161b22; --divider: #303946; --menu-subtitle: #f4b768;
+  --focus-ring: 0 0 0 3px rgba(247,147,26,.42);
 }
