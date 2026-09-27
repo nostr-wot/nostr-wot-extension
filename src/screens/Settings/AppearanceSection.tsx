@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import Button from '@components/Button';
 import Card from '@components/Card';
-import ChipGroup from '@components/ChipGroup';
+import Select from '@components/Select';
+import { SectionLabel } from '@components/SectionLabel';
 import Container from '@components/Container';
 import FormError from '@components/FormError';
 import Text from '@components/Text';
@@ -20,6 +21,7 @@ const PROJECT_LABELS: Partial<Record<ThemePreference, string>> = {
 const PRESETS = THEME_OPTIONS.filter(value => value !== 'custom');
 
 export default function AppearanceSection() {
+  const themeId = useId();
   const [selected, setSelected] = useState(() => themePreference(document.documentElement.dataset.themePreference));
   const [languageOpen, setLanguageOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -38,10 +40,12 @@ export default function AppearanceSection() {
   return <Container gap={6}>
     <Card>
       <Container gap={6}>
-        <Text as="strong">{t('theme.title')}</Text>
+        <SectionLabel htmlFor={themeId}>{t('theme.title')}</SectionLabel>
         <Text variant="hint">{t('theme.description')}</Text>
-        <ChipGroup options={PRESETS.map(value => ({ value, label: PROJECT_LABELS[value] ?? t(`theme.${value}`) }))}
-          value={selected} onChange={select} disabled={saving} />
+        <Select id={themeId} options={[
+          ...PRESETS.map(value => ({ value, label: PROJECT_LABELS[value] ?? t(`theme.${value}`) })),
+          ...(selected === 'custom' ? [{ value: 'custom', label: 'Custom', disabled: true }] : []),
+        ]} value={selected} onChange={event => select(themePreference(event.target.value))} disabled={saving} />
         <Button type="button" variant="secondary" onClick={() => setCustomOpen(open => !open)}>
           {selected === 'custom' ? 'Edit custom theme' : 'Create custom theme'}
         </Button>

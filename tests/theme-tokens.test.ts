@@ -332,15 +332,31 @@ describe('theme preferences', () => {
         assert.ok(mount.querySelector('[role="dialog"]'), 'language picker opens inside appearance settings');
         await act(async () => dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
         assert.equal(mount.querySelector('[role="dialog"]'), null);
-        const button = () => [...mount.querySelectorAll('button')].find(b => b.textContent === 'theme.lacrypta')!;
-        await act(async () => button().click());
+        const dropdown = mount.querySelector('select')!;
+        assert.ok(dropdown, 'theme selection uses a native dropdown');
+        assert.equal(mount.querySelector(`label[for="${dropdown.id}"]`)?.textContent, 'theme.title');
+        assert.deepEqual([...dropdown.options].map(option => option.value), ['light', 'dark', 'system', 'lacrypta', 'coracle', 'nostrudel', 'yakihonne', 'nostrich']);
+        await act(async () => {
+          dropdown.value = 'lacrypta';
+          dropdown.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+        });
         assert.equal(stored, 'lacrypta');
         assert.equal(root.dataset.theme, 'lacrypta');
-        assert.equal(button().getAttribute('aria-pressed'), 'true');
+        assert.equal(dropdown.value, 'lacrypta');
         failWrite = true;
-        await act(async () => [...mount.querySelectorAll('button')].find(b => b.textContent === 'theme.light')!.click());
+        await act(async () => {
+          dropdown.value = 'light';
+          dropdown.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+        });
         assert.equal(mount.querySelector('[role="alert"]')?.textContent, 'theme.saveError');
-        assert.equal(button().getAttribute('aria-pressed'), 'true');
+        assert.equal(dropdown.value, 'lacrypta');
+        await act(async () => {
+          root.dataset.themePreference = 'custom';
+          listeners.forEach(fn => fn({ appearanceTheme: { newValue: 'custom' } }, 'local'));
+        });
+        assert.equal(dropdown.value, 'custom');
+        assert.equal(dropdown.selectedOptions[0].textContent, 'Custom');
+        assert.ok([...mount.querySelectorAll('button')].some(button => button.textContent === 'Edit custom theme'));
       } finally {
         await act(async () => app.unmount());
         delete globals.IS_REACT_ACT_ENVIRONMENT;
