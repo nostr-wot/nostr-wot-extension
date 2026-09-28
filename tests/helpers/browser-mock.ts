@@ -134,7 +134,8 @@ const mock = {
     // Takes the message, as the real API does — so a test can swap in a spy and
     // assert on what was broadcast.
     sendMessage: (_message?: unknown) => Promise.resolve(),
-    onMessage: { addListener: () => {} }
+    onMessage: { addListener: () => {} },
+    onInstalled: { addListener: (_listener: (details: { reason: string }) => void) => {} }
   },
   action: {
     setBadgeText: () => Promise.resolve(),

@@ -6,6 +6,18 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## Unreleased
+
+### Added
+- Accept built-in `theme` URL parameters on the popup and onboarding entrypoints before first render, persist the initial choice, and preserve an existing saved theme.
+- On first install, recover a unique theme from an open official HTTPS download tab and open the welcome screen. Add host access limited to `https://nostr-wot.com/*` for that lookup; no browsing-history or referral data is stored.
+
+### Improved
+- Merge the committed shared-core migration: vendored packages, browser-storage adapter, shared permission checks and NIP-06/19/49 account utilities. Preserve existing storage formats and the extension's vault/signing implementation.
+
+### Fixed
+- Use the existing `ws` transport for local Nostr Connect integration tests, preserving refused-relay coverage without Node's recursive WebSocket teardown.
+
 ## 0.8.4 — 2026-09-27
 
 ### Added

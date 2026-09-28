@@ -301,6 +301,25 @@ describe('theme preferences', () => {
       await initTheme();
       const root = dom.window.document.documentElement;
       assert.equal(root.dataset.theme, 'dark');
+      await initTheme('?theme=coracle');
+      assert.equal(stored, 'dark', 'a campaign must preserve an existing choice');
+      for (const theme of ['coracle', 'nostrudel', 'yakihonne', 'nostrich']) {
+        stored = undefined;
+        await initTheme(`?theme=${theme}&ref=campaign`);
+        assert.equal(root.dataset.theme, theme);
+        assert.equal(stored, theme, 'first-render URL choice is persisted');
+        await initTheme();
+        assert.equal(root.dataset.theme, theme, 'later openings retain the theme');
+      }
+      stored = undefined;
+      await initTheme('?theme=custom');
+      assert.equal(stored, undefined);
+      assert.equal(root.dataset.theme, 'light');
+      failWrite = true;
+      await initTheme('?theme=coracle');
+      assert.equal(root.dataset.theme, 'coracle', 'storage failure still allows rendering');
+      assert.equal(stored, undefined);
+      failWrite = false;
       await saveTheme('system');
       assert.equal(root.dataset.theme, 'light');
       media.matches = true;

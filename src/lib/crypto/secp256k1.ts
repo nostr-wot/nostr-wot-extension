@@ -10,20 +10,22 @@ import { P } from '@constants/crypto/secp256k1.ts';
  */
 
 import { secp256k1, schnorr } from '@noble/curves/secp256k1.js';
+import { isValidPrivateKey as sharedIsValidPrivateKey } from '@nostr-wot/accounts';
 import { bytesToHex } from './utils.ts';
 
 export function getPublicKey(privkey: Uint8Array): Uint8Array {
   return schnorr.getPublicKey(privkey);
 }
 
+/**
+ * Whether these 32 bytes are a usable secp256k1 secret key.
+ *
+ * The shared one, which asks the curve whether the scalar is in range rather than deriving
+ * a public key and catching. Same answer, but it does not perform a point multiplication on
+ * a value that has just been pasted into an import box.
+ */
 export function isValidPrivateKey(privkey: Uint8Array): boolean {
-  if (!(privkey instanceof Uint8Array) || privkey.length !== 32) return false;
-  try {
-    schnorr.getPublicKey(privkey);
-    return true;
-  } catch {
-    return false;
-  }
+  return sharedIsValidPrivateKey(privkey);
 }
 
 export function ecdh(privkey: Uint8Array, theirPubkey: Uint8Array): Uint8Array {

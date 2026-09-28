@@ -77,5 +77,8 @@
         "<all_urls>"
       ]
     }
+  ],
+  "host_permissions": [
+    "https://nostr-wot.com/*"
   ]
 }

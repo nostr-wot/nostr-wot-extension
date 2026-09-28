@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import * as nip44 from 'nostr-tools/nip44';
 import * as nip04 from 'nostr-tools/nip04';
-import { SimplePool } from 'nostr-tools/pool';
+import { SimplePool, useWebSocketImplementation as configureWebSocket } from 'nostr-tools/pool';
 import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
@@ -14,6 +14,10 @@ import * as signerRemoteSigner from '../src/services/signing/remoteSigner.ts';
 import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
 import * as onboarding from '../src/services/background/onboarding-handlers.ts';
+
+// Keep the intentional refused-relay case without Node/undici's recursive
+// error -> close -> error path. The loopback server already uses this transport.
+configureWebSocket(WebSocket);
 
 const remoteKey = new Uint8Array(32).fill(7);
 const clientKey = new Uint8Array(32).fill(8);

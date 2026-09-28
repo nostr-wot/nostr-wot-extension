@@ -51,6 +51,9 @@ the last group running for about two minutes even after most tests finish.
 | `tests/pqc-handlers.test.ts` | `pqc_getStatus` / `pqc_importKeys` / `pqc_removeImportedKeys`, attestation provenance tags, `SafeAccount` leak check, end-to-end decrypt with imported keys |
 | `tests/vault.test.ts` | Vault create/unlock/lock, encryption integrity, account management, private key security |
 | `tests/permissions.test.ts` | Permission cascade, isolation, save/clear, NIP-07 methods |
+| `tests/vendor.test.ts` | The vendored `@nostr-wot/*` tarballs: each one matches `vendor/manifest.json`, `node_modules` and `package-lock.json` hold those exact bytes (npm does not re-extract an unchanged `file:` tarball), no nested registry copy shadows the vendored root one, the vendored `pq` still exports what `signer-core` imports, the SDK checkout is at the recorded commit, and the NIP-49 `maxmem` works against whichever `@noble/hashes` is installed |
+| `tests/key-value-store.test.ts` | `browser.storage` as the `@nostr-wot/storage` `KeyValueStore`: missing keys read as `undefined` rather than `{}`, falsy values survive, `keys()`, per-area `subscribe` isolation, and one throwing listener not costing another its cache invalidation |
+| `tests/permissions-shared-core.test.ts` | What changed when permissions moved onto `@nostr-wot/permissions`: a remembered blanket `deny` survives `migrateToPerKind` however often it re-runs, per-account mode fails closed with no account id instead of using the shared bucket, the caller label is canonicalised before it reaches the store, and existing `signerPermissions` trees still read |
 | `tests/accounts.test.ts` | Account creation (mnemonic, nsec, npub, nip46), type coverage |
 | `tests/signer.test.ts` | NIP-07 signing flow, permission checks, pending request lifecycle, cold-start auto-unlock (the popup must not open for an already-approved request) |
 | `tests/security-hardening.test.ts` | NIP-49 zeroing, NIP-04 error normalization, vault reEncrypt, lock zeroing, batch 1-2 regression, KDF work factor + transparent 210k→600k migration, `changePassword` empty-password guard, `withPrivkey` zeroing, and the onboarding no-plaintext-secret rules |
@@ -475,3 +478,9 @@ LNbits tests cover historical `extra.nostr`, malformed/oversized data and commen
 
 `tests/wallet/nwc-connections.test.ts` covers the HTTP contract, encrypted storage, request replay, account/wallet isolation and lost-response recovery. `tests/wallet-ui.test.ts` covers the mounted management screen. The separate LNbits-proxy repository tests the actual server routes.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+Theme handoff regressions: `tests/theme-handoff.test.ts` covers URL validation, fresh-install routing, conflicting tabs and lookup failures. `tests/theme-tokens.test.ts` verifies first-render application, persistence, saved-choice preservation and write failure.
+
+The Nostr Connect integration pool uses the existing `ws` WebSocket implementation
+for its loopback fixtures, including the deliberately refused relay. This preserves
+relay-fallback coverage without Node/undici's recursive error/close teardown.

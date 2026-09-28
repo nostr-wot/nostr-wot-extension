@@ -1,4 +1,5 @@
 import browser from '@lib/browser.ts';
+import { themeFromSearch } from '@domain/appearance/handoff.ts';
 import { CUSTOM_THEME_STORAGE_KEY, THEME_STORAGE_KEY } from '@constants/appearance.ts';
 import { parseCustomTheme, resolveTheme, themePreference, type CustomTheme, type ThemePreference } from '@domain/appearance/theme.ts';
 
@@ -20,7 +21,7 @@ function applyCustomTheme(theme: CustomTheme | null): void {
   }
 }
 
-export async function initTheme(): Promise<void> {
+export async function initTheme(search = ''): Promise<void> {
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   let preference: ThemePreference = 'light';
   let custom: CustomTheme | null = null;
@@ -45,7 +46,15 @@ export async function initTheme(): Promise<void> {
   media.addEventListener('change', apply);
   try {
     const stored = await browser.storage.local.get([THEME_STORAGE_KEY, CUSTOM_THEME_STORAGE_KEY]);
-    if (revision === 0) preference = themePreference(stored[THEME_STORAGE_KEY]);
+    if (revision === 0) {
+      preference = themePreference(stored[THEME_STORAGE_KEY]);
+      const initial = themeFromSearch(search);
+      if (stored[THEME_STORAGE_KEY] === undefined && initial) {
+        preference = initial;
+        // Persist before first render; subsequent popup/Settings views share the choice.
+        await browser.storage.local.set({ [THEME_STORAGE_KEY]: initial });
+      }
+    }
     try { custom = parseCustomTheme(stored[CUSTOM_THEME_STORAGE_KEY]); } catch { custom = null; }
   } catch { /* Storage failure must not prevent opening the extension. */ }
   apply();

@@ -67,7 +67,7 @@ Responsibilities of `background.ts`:
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
 - `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))
 - Auto-injection: `content.ts` and `inject.ts` are declared as `content_scripts` in `manifest.json` (matching `<all_urls>`), so the browser handles injection automatically.
-- On `runtime.onInstalled` (reason `install`), opens the onboarding wizard if no vault exists.
+- On `runtime.onInstalled` (reason `install`), opens the onboarding wizard if no vault or saved accounts exist; `services/appearance/install.ts` recovers an initial theme from an open official download tab. See [Theme handoff](theme-handoff.md).
 
 ### 2.2 Content Script -- `content.ts`
 

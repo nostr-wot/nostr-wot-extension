@@ -1,3 +1,4 @@
+import { openInstalledWelcome } from './src/services/appearance/install.ts';
 import { NIP07_SIGNING_METHODS, MAX_IN_FLIGHT_PER_ORIGIN, MAX_IN_FLIGHT_GLOBAL } from '@constants/signing.ts';
 import { installWotAutoSync } from './src/services/wot/automatic.ts';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
@@ -399,3 +400,13 @@ void vault.beginStartupUnlock(async () => {
 void browser.storage.session.remove('accountSwitchTrace').catch(() => {});
 
 installWotAutoSync();
+
+// Register synchronously so Chrome delivers the first-install event to this worker.
+browser.runtime.onInstalled.addListener(details => {
+    void openInstalledWelcome(details.reason, {
+        read: () => browser.storage.local.get(['keyVault', 'accounts', 'appearanceTheme']),
+        query: () => browser.tabs.query({ url: 'https://nostr-wot.com/*' }),
+        url: path => browser.runtime.getURL(path),
+        open: url => browser.tabs.create({ url }),
+    }).catch(error => console.warn('[ONBOARDING] Could not open welcome:', error));
+});

@@ -585,3 +585,12 @@ only as bounded plain display text, never as payment proof or executable markup.
 
 NWC app grants use locally generated, encrypted secrets bound to the account and wallet; privileged RPCs validate the current session. Explicit server revocation is separate from local wallet disconnect.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+### Initial theme handoff
+
+The manifest's `https://nostr-wot.com/*` host permission supports a first-install
+lookup of an open official download page. Only its validated built-in `theme`
+parameter reaches onboarding; arbitrary origins, CSS, duplicate parameters and
+custom palettes are rejected. No referral information is stored or sent, and this
+path cannot grant signing, identity, wallet or account permissions. Existing saved
+themes and accounts are preserved. See [Theme handoff](theme-handoff.md).

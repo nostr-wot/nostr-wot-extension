@@ -1,414 +1,262 @@
-import { siteScopes, sitePermissionBucket } from '@domain/site/siteScope.ts';
-import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, DM_SIGN_KINDS } from '@constants/permissions.ts';
 /**
- * Signing Permission Policies -- Per-domain, per-account, per-kind
+ * Signing permissions — a thin adapter over `@nostr-wot/permissions`.
  *
- * Stores and checks user decisions about whether to allow signing and wallet requests
- * from specific web domains. Uses per-kind checks with account dimension:
- *   - signEvent is keyed per-kind: "signEvent:1", "signEvent:0", etc.
- *   - encrypt methods map to "sendMessages"
- *   - decrypt methods map to "readMessages"
- *   - WebLN methods (webln_ prefix) pass through as-is
- *   - all other methods use their name as-is
+ * The cascade, the storage model, the cache and the migrations all live in the package now.
+ * What is left here is the extension's own calling convention: module functions rather than
+ * an instance, `domain` rather than `origin`, and an optional `accountId`. The package is
+ * the implementation; this file is a shape.
  *
- * Storage model:
- *   { "domain": { "_default": { "signEvent:1": "allow" }, "acctId": { ... } } }
+ * Storage model and resolution are unchanged, and deliberately so — the keys
+ * (`signerPermissions`, `signerUseGlobalDefaults`) are wire format, and a rename resets
+ * every decision a user ever made:
  *
- * Mode-based resolution (mutually exclusive):
- *   - useGlobalDefaults=true  -> ONLY check perms[domain]["_default"][permKey]
- *   - useGlobalDefaults=false -> ONLY check perms[domain][accountId][permKey]
- *   - If not found -> return "ask"
+ *   { "origin": { "_default": { "signEvent:1": "allow" }, "acctId": { ... } } }
  *
- * Dormant data is preserved on mode switch. Only the active mode's bucket
- * is consulted for reads and writes.
+ * Three behaviours DID change, because the package fails closed where the extension did
+ * not. Each is called out at its call site below:
  *
- * The signer handler decides local vs remote routing based on accountType,
- * not the permission value.
+ *   1. `accountId` is required by the package. Omitting it in per-account mode no longer
+ *      silently reads and writes the bucket every account shares.
+ *   2. `migrateToPerKind` now keeps a blanket `deny`. It only ever dropped blanket GRANTS
+ *      as unrepresentable; dropping the denials as well wiped a remembered "deny, every
+ *      kind" on every migration-version bump.
+ *   3. A `signEvent` check WITH a kind resolves strictly: a broad `allow` cannot answer for a
+ *      kind the caller failed to state. A check with no kind asks the blanket question
+ *      instead, through `checkBlanketSignEvent` — a different question with a different
+ *      answer, and the store can now be asked it as well as told it.
  *
- * @see https://github.com/nostr-protocol/nips/blob/master/07.md -- NIP-07: window.nostr capability
- *
+ * @see https://github.com/nostr-protocol/nips/blob/master/07.md -- NIP-07
  * @module services/permissions/permissions
  */
+import {
+  Permissions,
+  canonicalHostname,
+  canonicalHttpOrigin,
+  permissionKey as packagePermissionKey,
+  type PermissionBucket,
+  type RetiredPermissionKey,
+  type PermissionDecision,
+  type PermissionMap,
+  type OriginPermissions as DomainPermissions,
+} from '@nostr-wot/permissions';
+import { localStore } from '@services/storage/keyValueStore.ts';
 
-import type { PermissionDecision, PermissionMap, PermissionBucket, DomainPermissions } from '../../domain/permissions/types.ts';
-import browser from '@lib/browser.ts';
-import { AsyncLock } from '../../utils/asyncLock.ts';
-
-// Shared async lock for storage writes
-const _lock = new AsyncLock();
-
-// ── In-memory cache ──
-let _cachedPerms: PermissionMap | null = null;
-let _cachedUseGlobalDefaults: boolean | null = null;
-
-/** Invalidate cached permissions (call after writes or in test setup) */
-export function invalidateCache(): void {
-  _cachedPerms = null;
-  _cachedUseGlobalDefaults = null;
-}
-
-// Listen for external storage changes (e.g. from other contexts)
-try {
-  browser.storage.onChanged.addListener((changes: Record<string, { newValue?: unknown }>, area: string) => {
-    if (area === 'local' && (changes[STORAGE_KEY] || changes[GLOBAL_DEFAULTS_KEY])) {
-      invalidateCache();
-    }
-  });
-} catch { /* storage.onChanged may not be available in tests */ }
+// Re-exported as local aliases rather than `export … from`: this repo forbids forwarding
+// barrels (tests/test-registration.test.ts), and the callers that want these types want
+// them alongside the functions that return them.
+export type {
+  PermissionDecision,
+  PermissionBucket,
+  PermissionMap,
+  DomainPermissions,
+};
 
 /**
- * Map NIP-07 wire methods to logical permission keys.
- * signEvent is per-kind, encrypt/decrypt are combined groups.
+ * One instance over the extension's `local` area.
+ *
+ * The store's `subscribe` is what keeps the popup's copy of this module and the service
+ * worker's from disagreeing: each invalidates its cache when the other writes.
+ */
+const permissions = new Permissions(localStore, {
+  logger: { warn: (message, context) => console.warn('[PERMISSIONS]', message, context) },
+});
+
+/**
+ * The label a caller's rules are read and written under.
+ *
+ * `Permissions.check` reads the origin **as given**: it folds an http(s) origin to its
+ * canonical spelling but leaves a bare hostname alone, so `check('EXAMPLE.COM', …)` would
+ * miss a deny stored for `example.com`. `@nostr-wot/signer-core` canonicalises at its own
+ * boundary, and this extension is a direct caller, so it has to do the same — the package
+ * says so, and exports these two for exactly this. Anything that is neither an http(s)
+ * origin nor a hostname (an internal label) is its own key and passes through untouched.
+ */
+function label(domain: string): string {
+  return canonicalHttpOrigin(domain) ?? canonicalHostname(domain) ?? domain;
+}
+
+/**
+ * The account bucket to use, as the package wants it.
+ *
+ * `''` is not `_default`. In global-defaults mode the package ignores it and uses the
+ * shared bucket, which is correct by definition. In per-account mode it resolves to no
+ * bucket at all: a read answers `ask` and a write throws, instead of the extension's old
+ * `accountId || '_default'`, which quietly handed a request with no account the grants
+ * every account shares. That divergence is the point of the package's account dimension
+ * and is carried through here rather than undone.
+ */
+function bucket(accountId?: string): string {
+  return accountId ?? '';
+}
+
+/** Invalidate the cached tree and mode flag (after an out-of-band write, or in test setup). */
+export function invalidateCache(): void {
+  permissions.invalidateCache();
+}
+
+/**
+ * Map a NIP-07 wire method to the logical permission key that governs it.
+ *
+ * The package types `kind` against the method literal, so a `signEvent` read must name an
+ * integer kind; this signature keeps the extension's looser one (`method: string`) and
+ * narrows on the way in, because several call sites only know the method at runtime.
+ *
  * @param method - e.g. "signEvent", "nip04Encrypt"
- * @param kind - event kind (for signEvent)
- * @returns permission key or null if unresolvable
+ * @param kind - event kind for signEvent; null names the blanket key
  */
 export function permissionKey(method: string, kind?: number | null): string {
-  // WebLN methods — use as-is (already prefixed with webln_)
-  if (method.startsWith('webln_')) return method;
-
-  if (method === 'signEvent' && kind !== undefined && kind !== null) {
-    if (DM_SIGN_KINDS.has(kind)) return 'sendMessages';
-    return `signEvent:${kind}`;
-  }
-  // Map encrypt/decrypt wire methods to logical permission groups.
-  // Both NIP-04 and NIP-44 variants share the same permission.
-  if (method === 'nip04Encrypt' || method === 'nip44Encrypt') return 'sendMessages';
-  if (method === 'nip04Decrypt' || method === 'nip44Decrypt') return 'readMessages';
-  return method;
+  if (method === 'signEvent') return packagePermissionKey('signEvent', kind ?? null);
+  return packagePermissionKey(method as Exclude<string, 'signEvent'>);
 }
 
 /**
  * Check permission for a domain/method/kind combo with account awareness.
- * @param domain
+ *
+ * @param domain - the caller's origin
  * @param method - e.g. "signEvent", "nip04Encrypt"
  * @param kind - event kind (for signEvent)
- * @param accountId - account ID (uses _default if omitted)
+ * @param accountId - the account the request is for; see {@link bucket}
  * @returns "allow" | "deny" | "ask"
  */
-export async function check(domain: string, method: string, kind?: number, accountId?: string): Promise<PermissionDecision> {
-  const data = await getForDomain(domain, accountId);
-
-  // Deny-wins cascade: consult kind-specific, method-level, and wildcard keys.
-  // An explicit 'deny' at ANY consulted level short-circuits to 'deny' — a
-  // kind-specific 'allow' can never override a method-level or wildcard 'deny',
-  // and a broad '*' allow cannot bypass a narrower deny. When no level denies,
-  // the most specific defined value wins (kind > method > wildcard > ask).
-  const kindKey = permissionKey(method, kind);
-  const methodKey = method;
-  const consulted = kindKey !== methodKey ? [kindKey, methodKey, '*'] : [methodKey, '*'];
-
-  for (const key of consulted) {
-    if (data[key] === 'deny') {
-      console.warn('[PERMISSIONS] deny:', domain, key);
-      return 'deny';
-    }
+export async function check(
+  domain: string,
+  method: string,
+  kind?: number,
+  accountId?: string,
+): Promise<PermissionDecision> {
+  if (method === 'signEvent') {
+    // Two different questions, and the package has one method for each.
+    //
+    // With a kind, `check` is the gate and it is strict: `{ '*': 'allow', 'signEvent:1':
+    // 'deny' }` answers `deny` for a kind-1 event, because a broad allow must never speak for
+    // a kind the caller failed to state. Every request path reaches here with `event.kind`.
+    //
+    // With no kind the caller is asking the BLANKET question — "may this site sign at all?" —
+    // which is the key `save(…, null, …)` writes and what a settings screen, a connected-sites
+    // list and a "remember for every kind" toggle read back. Routing it through the strict gate
+    // would answer `ask` for a decision the user made and the store holds. Deny still wins.
+    return kind === undefined || !Number.isInteger(kind)
+      ? permissions.checkBlanketSignEvent(label(domain), bucket(accountId))
+      : permissions.check(label(domain), 'signEvent', kind, bucket(accountId));
   }
-
-  for (const key of consulted) {
-    if (data[key]) return data[key];
-  }
-
-  return 'ask';
+  return permissions.check(label(domain), method as Exclude<string, 'signEvent'>, undefined, bucket(accountId));
 }
 
 /**
  * Save a permission decision using permissionKey mapping.
- * @param domain
- * @param method
- * @param kind
  * @param decision - "allow" | "deny"
- * @param accountId - account ID (uses _default if omitted)
  */
-export async function save(domain: string, method: string, kind: number | null, decision: PermissionDecision, accountId?: string): Promise<void> {
-  await _lock.run(async () => {
-    const perms = await load();
-    const useDefaults = await getUseGlobalDefaults();
-    const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-    if (!perms[domain]) perms[domain] = {};
-    if (!perms[domain][bucket]) perms[domain][bucket] = {};
+export async function save(
+  domain: string,
+  method: string,
+  kind: number | null,
+  decision: PermissionDecision,
+  accountId?: string,
+): Promise<void> {
+  if (method === 'signEvent') {
+    await permissions.save(label(domain), 'signEvent', kind, decision, bucket(accountId));
+    return;
+  }
+  await permissions.save(label(domain), method as Exclude<string, 'signEvent'>, undefined, decision, bucket(accountId));
+}
 
-    const key = permissionKey(method, kind);
-    perms[domain][bucket][key] = decision;
+/** The DM sign kinds the per-kind model retired: `permissionKey` folds them into sendMessages. */
+const RETIRED_KEYS: readonly RetiredPermissionKey[] = ['signEvent:4', 'signEvent:13', 'signEvent:14', 'signEvent:1059'];
 
-    await browser.storage.local.set({ [STORAGE_KEY]: perms });
-    invalidateCache();
-  });
+function isRetiredKey(key: string): key is RetiredPermissionKey {
+  return (RETIRED_KEYS as readonly string[]).includes(key);
 }
 
 /**
- * Save a permission decision using a key directly (for UI use).
- * @param domain
+ * Save a permission decision under a key verbatim (for UI use).
+ *
+ * A retired DM key goes through the package's `saveRetiredKey` rather than `saveDirect`,
+ * which refuses one. Both are deliberate and they are not in conflict: `saveDirect` refuses
+ * because nothing consults `signEvent:4`, so a UI writing it would ship a `deny` the user
+ * believes is in force and that never fires; `saveRetiredKey` exists so
+ * `migrateDmKindsToSendMessages` can be given its own input, and its parameter is a closed
+ * union of keys the cascade provably ignores, so writing one cannot grant anything.
+ *
+ * This extension's UI never produces one — `COMMON_PERM_KEYS` has `sendMessages`, not a DM
+ * kind — so the path exists for legacy writes and migration fixtures, which is what it did
+ * before this module was an adapter. Narrowing it here would be a behaviour change.
+ *
  * @param key - permission key as-is (e.g. "signEvent:1", "sendMessages")
- * @param decision - "allow" | "deny"
- * @param accountId - account ID (uses _default if omitted)
  */
-export async function saveDirect(domain: string, key: string, decision: PermissionDecision, accountId?: string): Promise<void> {
-  await _lock.run(async () => {
-    const perms = await load();
-    const useDefaults = await getUseGlobalDefaults();
-    const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-    if (!perms[domain]) perms[domain] = {};
-    if (!perms[domain][bucket]) perms[domain][bucket] = {};
-    perms[domain][bucket][key] = decision;
-    await browser.storage.local.set({ [STORAGE_KEY]: perms });
-    invalidateCache();
-  });
+export async function saveDirect(
+  domain: string,
+  key: string,
+  decision: PermissionDecision,
+  accountId?: string,
+): Promise<void> {
+  if (isRetiredKey(key)) {
+    await permissions.saveRetiredKey(label(domain), key, decision, bucket(accountId));
+    return;
+  }
+  await permissions.saveDirect(label(domain), key, decision, bucket(accountId));
 }
 
 /**
- * Migrate old cascade-style permissions to per-kind format.
- * Removes old blanket keys (signEvent, nip04Encrypt, etc., *) since
- * they are no longer meaningful in the per-kind model.
+ * Drop the blanket grants the per-kind model retired.
+ *
+ * A blanket `deny` now survives. The extension deleted those too, and because the
+ * migration re-runs whenever the stored `_permMigrationVersion` differs, every version bump
+ * wiped a user's remembered "deny, every kind" — which is exactly the decision least
+ * defensible to lose.
  */
 export async function migrateToPerKind(): Promise<void> {
-  await _lock.run(async () => {
-    const perms = await load();
-    let changed = false;
-    const OLD_KEYS = ['signEvent', 'nip04Encrypt', 'nip04Decrypt', 'nip44Encrypt', 'nip44Decrypt', '*'];
-    for (const domain of Object.keys(perms)) {
-      const target = perms[domain];
-      if (target[DEFAULT_BUCKET]) {
-        for (const bucket of Object.keys(target)) {
-          if (typeof target[bucket] !== 'object') continue;
-          for (const key of OLD_KEYS) {
-            if ((target[bucket] as PermissionBucket)[key]) {
-              delete (target[bucket] as PermissionBucket)[key];
-              changed = true;
-            }
-          }
-          if (Object.keys(target[bucket] as PermissionBucket).length === 0) {
-            delete target[bucket];
-          }
-        }
-      } else {
-        for (const key of OLD_KEYS) {
-          if ((target as Record<string, unknown>)[key]) {
-            delete (target as Record<string, unknown>)[key];
-            changed = true;
-          }
-        }
-      }
-      if (Object.keys(perms[domain]).length === 0) {
-        delete perms[domain];
-      }
-    }
-    if (changed) {
-      await browser.storage.local.set({ [STORAGE_KEY]: perms });
-      invalidateCache();
-    }
-  });
+  await permissions.migrateToPerKind();
 }
 
-/**
- * Migrate flat per-domain permissions to per-account bucketed format.
- * Wraps existing flat entries under "_default".
- * Safe to call multiple times -- skips already-migrated domains.
- */
+/** Wrap flat per-domain permissions under "_default". Idempotent. */
 export async function migrateToPerAccount(): Promise<void> {
-  await _lock.run(async () => {
-    const perms = await load();
-    let changed = false;
-    for (const domain of Object.keys(perms)) {
-      const domainData = perms[domain];
-      if (domainData[DEFAULT_BUCKET]) continue;
-      const hasFlat = Object.values(domainData).some(v => typeof v === 'string');
-      if (!hasFlat) continue;
-      const flat: PermissionBucket = {};
-      for (const [key, val] of Object.entries(domainData)) {
-        if (typeof val === 'string') {
-          flat[key] = val as PermissionDecision;
-          delete (domainData as Record<string, unknown>)[key];
-        }
-      }
-      domainData[DEFAULT_BUCKET] = flat;
-      changed = true;
-    }
-    if (changed) {
-      await browser.storage.local.set({ [STORAGE_KEY]: perms });
-      invalidateCache();
-    }
-  });
+  await permissions.migrateToPerAccount();
 }
 
-/**
- * Migrate any stored "forward" permission values to "ask".
- * Previously NIP-46 accounts used "forward" to auto-send to remote signer.
- * Now permissions are account-type-agnostic; "ask" is the conservative default.
- */
+/** Rewrite the retired "forward" decision to "ask". */
 export async function migrateForwardToAsk(): Promise<void> {
-  await _lock.run(async () => {
-    const perms = await load();
-    let changed = false;
-    for (const domain of Object.keys(perms)) {
-      for (const bucket of Object.keys(perms[domain])) {
-        if (typeof perms[domain][bucket] !== 'object') continue;
-        for (const key of Object.keys(perms[domain][bucket] as PermissionBucket)) {
-          if ((perms[domain][bucket] as PermissionBucket)[key] === ('forward' as PermissionDecision)) {
-            (perms[domain][bucket] as PermissionBucket)[key] = 'ask';
-            changed = true;
-          }
-        }
-      }
-    }
-    if (changed) {
-      await browser.storage.local.set({ [STORAGE_KEY]: perms });
-    }
-  });
+  await permissions.migrateForwardToAsk();
 }
 
-/**
- * Migrate any stored signEvent:4/:13/:14/:1059 entries into "sendMessages".
- * These DM-related kinds now share the same logical permission as the
- * matching encrypt step, so a single approval covers the full DM flow.
- *
- * Merge rule: when both a DM-kind entry and "sendMessages" are present, the
- * most restrictive value wins (deny > ask > allow). Conservative: a user who
- * had previously denied any DM-related signEvent stays denied.
- */
+/** Fold stored signEvent:4/:13/:14/:1059 entries into "sendMessages", most restrictive wins. */
 export async function migrateDmKindsToSendMessages(): Promise<void> {
-  const DM_KEYS = ['signEvent:4', 'signEvent:13', 'signEvent:14', 'signEvent:1059'];
-  const RANK: Record<string, number> = { allow: 1, ask: 2, deny: 3 };
-  await _lock.run(async () => {
-    const perms = await load();
-    let changed = false;
-    for (const domain of Object.keys(perms)) {
-      const target = perms[domain];
-      for (const bucket of Object.keys(target)) {
-        const data = target[bucket] as PermissionBucket;
-        if (typeof data !== 'object') continue;
-        let chosen: PermissionDecision | undefined = data['sendMessages'];
-        for (const k of DM_KEYS) {
-          const incoming = data[k];
-          if (incoming) {
-            if (!chosen || (RANK[incoming] || 0) > (RANK[chosen] || 0)) {
-              chosen = incoming;
-            }
-            delete data[k];
-            changed = true;
-          }
-        }
-        if (chosen && data['sendMessages'] !== chosen) {
-          data['sendMessages'] = chosen;
-          changed = true;
-        }
-      }
-    }
-    if (changed) {
-      await browser.storage.local.set({ [STORAGE_KEY]: perms });
-      invalidateCache();
-    }
-  });
+  await permissions.migrateDmKindsToSendMessages();
 }
 
 /**
  * Clear permissions for a domain (optionally per-account), or all permissions.
- * @param domain
- * @param accountId - if provided, only clear that account's rules for the domain
+ * @param domain - omitted means every rule there is
  */
 export async function clear(domain?: string, accountId?: string): Promise<void> {
-  if (!domain) {
-    await browser.storage.local.remove(STORAGE_KEY);
-    invalidateCache();
-    return;
-  }
-  await _lock.run(async () => {
-    const perms = await load();
-    const useDefaults = await getUseGlobalDefaults();
-    const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-    for (const scope of siteScopes(domain)) {
-      if (!perms[scope]) continue;
-      delete perms[scope][bucket];
-      if (Object.keys(perms[scope]).length === 0) delete perms[scope];
-    }
-    await browser.storage.local.set({ [STORAGE_KEY]: perms });
-    invalidateCache();
-  });
+  await permissions.clear(domain === undefined ? undefined : label(domain), bucket(accountId));
 }
 
 /**
  * Remove every stored permission for a domain, across all account buckets.
  *
- * Disconnecting is a full revocation. `clear()` only touches the active mode's bucket,
- * which would leave another account's rules behind for a site the user just disconnected —
- * and stale rules for a disconnected site are exactly what used to resurrect it.
- * @param domain
+ * Disconnecting is a full revocation: `clear()` only touches the active mode's bucket,
+ * which would leave another account's rules behind for a site the user just disconnected.
  */
 export async function clearAllForDomain(domain: string): Promise<void> {
   if (!domain) return;
-  await _lock.run(async () => {
-    const perms = await load();
-    for (const scope of siteScopes(domain)) delete perms[scope];
-    await browser.storage.local.set({ [STORAGE_KEY]: perms });
-    invalidateCache();
-  });
+  await permissions.clearAllForOrigin(label(domain));
 }
 
-/**
- * Remove all permission overrides for a specific account across all domains.
- * Called on account deletion.
- * @param accountId
- */
+/** Remove all permission overrides for a specific account across all domains. */
 export async function clearForAccount(accountId: string): Promise<void> {
-  if (!accountId || accountId === DEFAULT_BUCKET) return;
-  await _lock.run(async () => {
-    const perms = await load();
-    let changed = false;
-    for (const domain of Object.keys(perms)) {
-      if (perms[domain][accountId]) {
-        delete perms[domain][accountId];
-        changed = true;
-        if (Object.keys(perms[domain]).length === 0) {
-          delete perms[domain];
-        }
-      }
-    }
-    if (changed) {
-      await browser.storage.local.set({ [STORAGE_KEY]: perms });
-      invalidateCache();
-    }
-  });
+  if (!accountId) return;
+  await permissions.clearForAccount(accountId);
 }
 
-/**
- * Deep-copy permissions from one account to another.
- * @param fromAccountId - source account (or "_default")
- * @param toAccountId - target account
- */
+/** Deep-copy permissions from one account to another. `null` means the shared bucket. */
 export async function copyPermissions(fromAccountId: string | null, toAccountId: string): Promise<void> {
   if (!toAccountId) return;
-  await _lock.run(async () => {
-    const from = fromAccountId || DEFAULT_BUCKET;
-    const perms = await load();
-    let changed = false;
-    for (const domain of Object.keys(perms)) {
-      const source = perms[domain][from];
-      if (source && Object.keys(source).length > 0) {
-        perms[domain][toAccountId] = { ...source };
-        changed = true;
-      }
-    }
-    if (changed) {
-      await browser.storage.local.set({ [STORAGE_KEY]: perms });
-      invalidateCache();
-    }
-  });
+  await permissions.copyPermissions(fromAccountId, toAccountId);
 }
 
 /**
- * Set up permissions for a freshly created account so the wizard's
- * "Start fresh" / "Copy from" choice is actually honored.
- *
- * In global ("all accounts") mode every account shares the `_default` bucket,
- * so a new account would otherwise inherit the existing accounts' permissions.
- * When in that mode we switch to per-account mode, first migrating each existing
- * account's effective (global) permissions into its OWN bucket so they keep them,
- * which leaves the new account isolated. Then we either copy a chosen source
- * account's permissions into the new account, or leave it empty (fresh).
- *
- * @param newAccountId        the just-created account
- * @param existingAccountIds  every OTHER account id (to preserve on mode switch)
- * @param copyFromAccountId   source to copy into the new account, or null for fresh
+ * Set up permissions for a freshly created account so the wizard's "Start fresh" /
+ * "Copy from" choice is actually honored.
  */
 export async function setupNewAccountPermissions(
   newAccountId: string,
@@ -416,97 +264,38 @@ export async function setupNewAccountPermissions(
   copyFromAccountId: string | null,
 ): Promise<void> {
   if (!newAccountId) return;
-
-  if (await getUseGlobalDefaults()) {
-    // Preserve each existing account's currently-shared perms in its own bucket
-    // BEFORE switching modes, so they don't start re-asking after the switch.
-    for (const id of existingAccountIds) {
-      if (id && id !== newAccountId) await copyPermissions(DEFAULT_BUCKET, id);
-    }
-    await setUseGlobalDefaults(false);
-  }
-
-  if (copyFromAccountId) {
-    await copyPermissions(copyFromAccountId, newAccountId);
-  } else {
-    // Fresh: ensure the new account's per-account bucket is empty.
-    await clearForAccount(newAccountId);
-  }
+  await permissions.setupNewAccountPermissions(newAccountId, existingAccountIds, copyFromAccountId);
 }
 
-/**
- * Get all permissions for the active mode's bucket.
- * Returns { domain: { permKey: decision } }.
- * @param accountId - account ID (used only in per-account mode)
- */
+/** All permissions for the active mode's bucket: { domain: { permKey: decision } }. */
 export async function getAll(accountId?: string): Promise<Record<string, PermissionBucket>> {
-  const perms = await load();
-  const useDefaults = await getUseGlobalDefaults();
-  const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-  const result: Record<string, PermissionBucket> = {};
-  for (const domain of Object.keys(perms)) {
-    const data = perms[domain][bucket];
-    if (data && Object.keys(data).length > 0) {
-      result[domain] = { ...data };
-    }
-  }
-  return result;
+  return permissions.getAll(bucket(accountId));
 }
 
-/**
- * Get permissions for a specific domain using the active mode's bucket.
- * @param domain
- * @param accountId
- */
+/** One domain's effective permissions in the active mode's bucket, legacy scopes folded in. */
 export async function getForDomain(domain: string, accountId?: string): Promise<PermissionBucket> {
-  const perms = await load();
-  const useDefaults = await getUseGlobalDefaults();
-  const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-  return sitePermissionBucket(perms, domain, bucket) as PermissionBucket;
+  return permissions.getForOrigin(label(domain), bucket(accountId));
 }
 
-/**
- * Get raw storage tree for all domains (for computing diff indicators in UI).
- */
+/** The raw storage tree for all domains (for computing diff indicators in the UI). */
 export async function getAllRaw(): Promise<PermissionMap> {
-  return load();
+  return permissions.getAllRaw();
 }
 
-/**
- * Get raw buckets for a single domain (for diff computation).
- * @param domain
- */
+/** The raw buckets for a single domain (for diff computation). */
 export async function getForDomainRaw(domain: string): Promise<DomainPermissions> {
-  const perms = await load();
-  return perms[domain] || {};
+  return permissions.getForOriginRaw(label(domain));
 }
 
 /**
- * Get whether global default permissions mode is active.
- * When true, ONLY _default bucket is used for reads and writes.
- * When false, ONLY per-account buckets are used.
+ * Whether global default permissions mode is active.
+ * When true, ONLY the _default bucket is used for reads and writes.
  */
 export async function getUseGlobalDefaults(): Promise<boolean> {
-  if (_cachedUseGlobalDefaults !== null) return _cachedUseGlobalDefaults;
-  const data = await browser.storage.local.get(GLOBAL_DEFAULTS_KEY);
-  // Default to true for backward compatibility
-  _cachedUseGlobalDefaults = data[GLOBAL_DEFAULTS_KEY] !== false;
-  return _cachedUseGlobalDefaults;
+  return permissions.getUseGlobalDefaults();
 }
 
-/**
- * Set whether global default permissions mode is active.
- * When true, ONLY _default bucket is used. When false, ONLY per-account buckets.
- * @param enabled
- */
+/** Turn global default permissions mode on or off. Dormant buckets are left alone. */
 export async function setUseGlobalDefaults(enabled: boolean): Promise<void> {
-  await browser.storage.local.set({ [GLOBAL_DEFAULTS_KEY]: !!enabled });
-  invalidateCache();
-}
-
-async function load(): Promise<PermissionMap> {
-  if (_cachedPerms !== null) return _cachedPerms;
-  const data = await browser.storage.local.get(STORAGE_KEY);
-  _cachedPerms = (data[STORAGE_KEY] as PermissionMap) || {};
-  return _cachedPerms;
+  await permissions.setUseGlobalDefaults(enabled);
 }
