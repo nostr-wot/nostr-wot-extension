@@ -1,4 +1,5 @@
 import AppearanceSection from '@screens/Settings/AppearanceSection';
+import PulseLogo from '@components/PulseLogo';
 import IconSettings from '@assets/IconSettings.tsx';
 import WotHowItWorks from '@screens/Settings/WotHowItWorks';
 import { useState, useEffect, useRef, ReactNode } from 'react';
@@ -256,7 +257,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
 
         <Container className="mt-auto items-center pt-6 shrink-0">
           <Container variant="row" gap={4} className="justify-center py-4 opacity-50">
-            <img src="/icons/icon-base.svg" className="w-8 h-8" alt="" />
+            <PulseLogo size={16} pulse={false} />
             <Text variant="secondary" as="span" className="text-xs font-semibold">Nostr WoT Extension</Text>
             <Text variant="muted" as="span">v{appVersion}</Text>
           </Container>

@@ -21,7 +21,7 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
 export const INPUT_BASE =
   'w-full min-w-0 border border-control-border rounded-md text-md font-[inherit] leading-normal ' +
   'bg-input text-heading placeholder:text-muted transition-colors duration-150 ' +
-  'enabled:hover:border-brand focus:outline-none focus:border-brand focus:shadow-focus ' +
+  'enabled:hover:border-brand focus:outline-none focus:border-control-focus focus:shadow-focus ' +
   'disabled:opacity-50 disabled:cursor-not-allowed';
 
 export default function Input({

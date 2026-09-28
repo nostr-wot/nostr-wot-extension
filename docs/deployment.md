@@ -11,7 +11,7 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.8.2 improves dark-mode contrast, popup blur and wallet setup guidance, and adds modern NWC negotiation with payment-flow hardening, payment notes, confirmed WebLN receipts and reusable Deposit addresses. GitHub publication is
+0.8.4 adds project palettes, the shared theme dropdown, validated custom theme JSON and theme-aware logos, including the earlier 0.8.3 NWC app-connection management. GitHub publication is
 separate from browser-store submission and approval.
 
 ## Before any store

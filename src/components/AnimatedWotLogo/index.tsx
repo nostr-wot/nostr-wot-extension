@@ -75,7 +75,7 @@ export default function AnimatedWotLogo({ size = 96 }: AnimatedWotLogoProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
       {/* Center dot — always visible */}
-      <circle cx={24} cy={24} r={5} fill="rgb(99,102,241)" />
+      <circle cx={24} cy={24} r={5} fill="var(--brand)" />
 
       {BRANCHES.map((branch, i) => {
         const bs = i * BRANCH_GAP;
@@ -86,7 +86,7 @@ export default function AnimatedWotLogo({ size = 96 }: AnimatedWotLogoProps) {
             {/* Inner line: center -> midpoint */}
             <line
               x1={24} y1={24} x2={branch.mid[0]} y2={branch.mid[1]}
-              stroke="rgba(99,102,241,0.5)" strokeWidth="1.5"
+              stroke="var(--logo-line)" strokeWidth="1.5"
               strokeDasharray={innerLen} strokeDashoffset={innerLen} opacity="0"
             >
               {lineAnims(innerLen, bs).map((a, k) => <Anim key={k} {...a} />)}
@@ -95,7 +95,7 @@ export default function AnimatedWotLogo({ size = 96 }: AnimatedWotLogoProps) {
             {/* Midpoint dot */}
             <circle
               cx={branch.mid[0]} cy={branch.mid[1]} r="0"
-              fill="rgba(99,102,241,0.9)" opacity="0"
+              fill="var(--logo-node)" opacity="0"
             >
               {dotAnims(MID_R, bs + 0.35).map((a, k) => <Anim key={k} {...a} />)}
             </circle>
@@ -107,14 +107,14 @@ export default function AnimatedWotLogo({ size = 96 }: AnimatedWotLogoProps) {
                 <g key={j}>
                   <line
                     x1={branch.mid[0]} y1={branch.mid[1]} x2={end[0]} y2={end[1]}
-                    stroke="rgba(99,102,241,0.5)" strokeWidth="1.5"
+                    stroke="var(--logo-line)" strokeWidth="1.5"
                     strokeDasharray={outerLen} strokeDashoffset={outerLen} opacity="0"
                   >
                     {lineAnims(outerLen, bs + 0.5).map((a, k) => <Anim key={k} {...a} />)}
                   </line>
                   <circle
                     cx={end[0]} cy={end[1]} r="0"
-                    fill="rgba(99,102,241,0.6)" opacity="0"
+                    fill="var(--logo-end)" opacity="0"
                   >
                     {dotAnims(END_R, bs + 0.75).map((a, k) => <Anim key={k} {...a} />)}
                   </circle>

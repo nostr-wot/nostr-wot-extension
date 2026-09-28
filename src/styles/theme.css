@@ -18,6 +18,13 @@
   --surface-hover: rgba(99, 102, 241, 0.12);
   --button-secondary-hover: rgba(99, 102, 241, 0.18);
   --brand: #6366f1;
+  --zap: var(--brand);
+  --control-accent: var(--brand);
+  --control-focus: var(--brand);
+  --control-knob: var(--bg-elevated);
+  --logo-line: color-mix(in srgb, var(--brand) 50%, transparent);
+  --logo-node: color-mix(in srgb, var(--brand) 90%, transparent);
+  --logo-end: color-mix(in srgb, var(--brand) 60%, transparent);
   --menu-subtitle: rgba(99, 102, 241, 0.55);
   --brand-hover: #4f46e5;
   --brand-light: rgba(99, 102, 241, 0.1);
@@ -288,7 +295,12 @@ body {
    and all portals on the same palette by setting the theme on the root. */
 :root { color-scheme: light; }
 :root[data-theme="dark"],
-:root[data-theme="lacrypta"] {
+:root[data-theme="lacrypta"],
+:root[data-theme="coracle"],
+:root[data-theme="nostrudel"],
+:root[data-theme="yakihonne"],
+:root[data-theme="nostrich"],
+:root[data-theme="custom"] {
   color-scheme: dark;
   --bg-page: linear-gradient(45deg, #171722, #202033);
   --bg-page-solid: #1c1c2a;
@@ -403,4 +415,80 @@ body {
   --warning-tint: rgba(255, 122, 26, 0.1);
   --warning-tint-heavy: rgba(255, 122, 26, 0.15);
   --focus-ring: 0 0 0 3px rgba(199, 255, 91, 0.5);
+}
+
+
+/* Project palettes are opt-in homages to the clients' current visual identities.
+   They change semantic tokens only; no project CSS, assets or executable code is imported. */
+:root[data-theme="coracle"] {
+  --bg-page: #262626; --bg-page-solid: #262626; --bg-html: #171717;
+  --bg-elevated: #222222; --surface-hover: #2a2a2a; --input-bg: #171717;
+  --text-heading: #f5f5f5; --text-body: #e5e5e5; --text-secondary: #d4d4d4; --text-muted: #a3a3a3;
+  --brand: #fc560e; --brand-hover: #ff5f0f; --text-on-brand: #171717;
+  --brand-light: rgba(252,86,14,.13); --card-bg: #332f2d; --card-border: #5a524f;
+  --card-active: #3e3a38; --control-border: #737373; --surface-glass: rgba(38,38,38,.95);
+  --surface-glass-heavy: #222222; --divider: #404040; --menu-subtitle: #ded3cf;
+  --brand-tint-hover: rgba(252,86,14,.09); --brand-tint-active: rgba(252,86,14,.16);
+  --button-secondary-hover: rgba(252,86,14,.18);
+  --success: #12d2b0; --success-strong: #12d2b0; --success-bright: #14e7c2;
+  --success-tint: rgba(18,210,176,.12);
+  --warning: #fcab0e; --warning-strong: #fcab0e; --warning-bright: #ffbc0f;
+  --warning-tint: rgba(252,171,14,.1); --warning-tint-heavy: rgba(252,171,14,.15);
+  --error: #dc0c0c; --error-bright: #f20d0d;
+  --error-tint: rgba(220,12,12,.12); --error-tint-hover: rgba(220,12,12,.08);
+  --focus-ring: 0 0 0 3px rgba(252,86,14,.4);
+}
+:root[data-theme="nostrudel"] {
+  --bg-page: #0e0e0e; --bg-page-solid: #0e0e0e; --bg-html: #0e0e0e;
+  --bg-elevated: #242424; --surface-hover: #303030; --input-bg: #242424;
+  --text-heading: #ffffff; --text-body: #ffffff; --text-secondary: #ffffff; --text-muted: #b3b3b3;
+  --brand: #aad238; --brand-hover: #9fc830; --text-on-brand: #171d00;
+  --brand-tint-hover: rgba(170,210,56,.09); --brand-tint-active: rgba(170,210,56,.16);
+  --button-secondary-hover: rgba(170,210,56,.18);
+  --brand-light: rgba(170,210,56,.14); --card-bg: #242424; --card-border: #3a3a3a;
+  --card-active: #303620; --control-border: #737373; --surface-glass: rgba(14,14,14,.95);
+  --surface-glass-heavy: #242424; --divider: #3a3a3a; --menu-subtitle: #ffffff;
+  --control-accent: #90cdf4;
+  --control-focus: #63b3ed;
+  --control-knob: #ffffff;
+  --info: #90cdf4; --info-tint: rgba(144,205,244,.16);
+  --warning: #fbd38d; --warning-strong: #fbd38d; --warning-bright: #f6ad55;
+  --warning-tint: rgba(251,211,141,.1); --warning-tint-heavy: rgba(251,211,141,.15);
+  --error: #feb2b2; --error-bright: #fc8181;
+  --error-tint: rgba(254,178,178,.12); --error-tint-hover: rgba(254,178,178,.08);
+  --focus-ring: 0 0 0 3px rgba(99,179,237,.45);
+}
+:root[data-theme="yakihonne"] {
+  --bg-page: #000000; --bg-page-solid: #000000; --bg-html: #000000;
+  --bg-elevated: #191919; --surface-hover: #252525; --input-bg: #191919;
+  --text-heading: #e5e5e5; --text-body: #d8d8d8; --text-secondary: #d8d8d8; --text-muted: #909090;
+  --brand: #ee7700; --brand-hover: #ee7700; --text-on-brand: #000000;
+  --brand-light: #ee770026; --card-bg: #191919; --card-border: #333333;
+  --card-active: #252525; --control-border: #909090; --surface-glass: #171718ed;
+  --surface-glass-heavy: #191919; --divider: #333333; --menu-subtitle: #d8d8d8;
+  --brand-tint-hover: #86318c08; --brand-tint-active: #ee770026;
+  --button-secondary-hover: #28002b;
+  --success: #00c04d; --success-strong: #00c04d; --success-bright: #00c04d; --success-tint: #00c04d20;
+  --error: #ff4a4a; --error-bright: #ff4a4a; --error-tint: #ff4a4a17; --error-tint-hover: #ff4a4a17;
+  --warning: #ee7700; --warning-strong: #ee7700; --warning-bright: #ffed4b;
+  --warning-tint: #ee770026; --warning-tint-heavy: #ee770026;
+  --info: #1d9bf0; --info-tint: rgba(246,246,255,.141);
+  --focus-ring: 0 0 0 3px #ee770026;
+}
+:root[data-theme="nostrich"] {
+  --bg-page: #0a0a0a; --bg-page-solid: #0a0a0a; --bg-html: #050505;
+  --bg-elevated: #171717; --surface-hover: #1c1c1c; --input-bg: #050505;
+  --text-heading: #fafafa; --text-body: #fafafa; --text-secondary: #cacaca; --text-muted: #9a9a9a;
+  --brand: #fafafa; --brand-hover: #e5e5e5; --text-on-brand: #0a0a0a;
+  --brand-light: #262626; --card-bg: #171717; --card-border: #404040;
+  --card-active: #262626; --control-border: #737373; --surface-glass: rgba(10,10,10,.95);
+  --surface-glass-heavy: #171717; --divider: #404040; --menu-subtitle: #cacaca;
+  --brand-tint-hover: #1c1c1c; --brand-tint-active: #262626; --button-secondary-hover: #262626;
+  --success: #66d6a2; --success-strong: #66d6a2; --success-bright: #217d52; --success-tint: #11271d;
+  --warning: #eb8f60; --warning-strong: #eb8f60; --warning-bright: #a54a1d;
+  --warning-tint: #2c1a11; --warning-tint-heavy: #2c1a11;
+  --error: #e76e7e; --error-bright: #bf2237; --error-tint: #2c1115; --error-tint-hover: #2c1115;
+  --info: #5eb0f5; --info-tint: rgba(94,176,245,.12);
+  --zap: #ffb020;
+  --focus-ring: 0 0 0 3px #fafafa;
 }

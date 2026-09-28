@@ -332,15 +332,31 @@ describe('theme preferences', () => {
         assert.ok(mount.querySelector('[role="dialog"]'), 'language picker opens inside appearance settings');
         await act(async () => dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
         assert.equal(mount.querySelector('[role="dialog"]'), null);
-        const button = () => [...mount.querySelectorAll('button')].find(b => b.textContent === 'theme.lacrypta')!;
-        await act(async () => button().click());
+        const dropdown = mount.querySelector('select')!;
+        assert.ok(dropdown, 'theme selection uses a native dropdown');
+        assert.equal(mount.querySelector(`label[for="${dropdown.id}"]`)?.textContent, 'theme.title');
+        assert.deepEqual([...dropdown.options].map(option => option.value), ['light', 'dark', 'system', 'lacrypta', 'coracle', 'nostrudel', 'yakihonne', 'nostrich']);
+        await act(async () => {
+          dropdown.value = 'lacrypta';
+          dropdown.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+        });
         assert.equal(stored, 'lacrypta');
         assert.equal(root.dataset.theme, 'lacrypta');
-        assert.equal(button().getAttribute('aria-pressed'), 'true');
+        assert.equal(dropdown.value, 'lacrypta');
         failWrite = true;
-        await act(async () => [...mount.querySelectorAll('button')].find(b => b.textContent === 'theme.light')!.click());
+        await act(async () => {
+          dropdown.value = 'light';
+          dropdown.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+        });
         assert.equal(mount.querySelector('[role="alert"]')?.textContent, 'theme.saveError');
-        assert.equal(button().getAttribute('aria-pressed'), 'true');
+        assert.equal(dropdown.value, 'lacrypta');
+        await act(async () => {
+          root.dataset.themePreference = 'custom';
+          listeners.forEach(fn => fn({ appearanceTheme: { newValue: 'custom' } }, 'local'));
+        });
+        assert.equal(dropdown.value, 'custom');
+        assert.equal(dropdown.selectedOptions[0].textContent, 'Custom');
+        assert.ok([...mount.querySelectorAll('button')].some(button => button.textContent === 'Edit custom theme'));
       } finally {
         await act(async () => app.unmount());
         delete globals.IS_REACT_ACT_ENVIRONMENT;
@@ -362,15 +378,15 @@ describe('dark palette readability', () => {
       .map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
     return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
   }
-  it('keeps text, status and button labels at AA contrast in both dark palettes', () => {
-    const blocks = [...css.matchAll(/:root\[data-theme="lacrypta"\]\s*\{([^}]+)\}/g)];
-    assert.equal(blocks.length, 2);
-    const shared = tokens(blocks[0][1]);
-    const darkOverride = /:root\[data-theme="dark"\]\s*\{([^}]+)\}/.exec(css);
-    assert.ok(darkOverride);
-    const dark = { ...shared, ...tokens(darkOverride[1]) };
-    const crypta = { ...shared, ...tokens(blocks[1][1]) };
-    for (const palette of [dark, crypta]) {
+  it('keeps text, status and button labels at AA contrast in dark and project palettes', () => {
+    // Match each selector in a list, then apply matching rules in source order.
+    // The shared dark rule also includes project themes after La Crypta.
+    const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]+)\}/g)];
+    for (const theme of ['dark', 'lacrypta', 'nostrudel', 'yakihonne', 'nostrich']) {
+      const selector = `:root[data-theme="${theme}"]`;
+      const blocks = rules.filter(rule => rule[1].split(',').some(part => part.trim() === selector));
+      assert.ok(blocks.length >= 2, `${theme} must include shared tokens and its overrides`);
+      const palette = Object.assign({}, ...blocks.map(block => tokens(block[2])));
       for (const foreground of ['--text-heading', '--text-body', '--text-secondary', '--text-muted', '--menu-subtitle', '--brand', '--brand-hover', '--error', '--success', '--warning', '--info']) {
         for (const background of ['--bg-page-solid', '--bg-elevated', '--input-bg', '--surface-hover']) {
           const a = luminance(palette[foreground]);
