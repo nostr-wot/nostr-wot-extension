@@ -20,34 +20,70 @@ describe('download theme handoff', () => {
       assert.equal(downloadTheme(url), null);
     }
   });
-  it('opens onboarding carrying a unique download theme only on fresh installation', async () => {
-    const opened: string[] = [];
+  it('only opens on first install without a vault or saved accounts', async () => {
+    let popups = 0;
+    const saved: string[] = [];
     const deps = {
       read: async () => ({}),
       query: async () => [{ url: 'https://nostr-wot.com/download?theme=nostrudel&ref=x' }],
-      url: (path: string) => `chrome-extension://test/${path}`,
-      open: async (url: string) => { opened.push(url); },
+      saveTheme: async (theme: string) => { saved.push(theme); },
+      openPopup: async () => { popups++; },
     };
     await openInstalledWelcome('update', deps);
-    assert.equal(opened.length, 0);
+    assert.equal(popups, 0);
     await openInstalledWelcome('install', deps);
-    assert.equal(opened[0], 'chrome-extension://test/src/entrypoints/onboarding/index.html?theme=nostrudel');
+    assert.equal(popups, 1);
+    assert.deepEqual(saved, ['nostrudel']);
     for (const stored of [{ keyVault: {} }, { accounts: [{ id: 'watch-only' }] }]) {
       await openInstalledWelcome('install', { ...deps, read: async () => stored });
     }
-    assert.equal(opened.length, 1);
+    assert.equal(popups, 1);
   });
   it('does not guess between conflicting download tabs or override saved themes', async () => {
-    const opened: string[] = [];
+    let popups = 0;
     const deps = {
       read: async () => ({}),
       query: async () => [{ url: 'https://nostr-wot.com/download?theme=coracle' }, { url: 'https://nostr-wot.com/download?theme=nostrich' }],
-      url: (path: string) => path,
-      open: async (url: string) => { opened.push(url); },
+      saveTheme: async () => { assert.fail('must not write a theme'); },
+      openPopup: async () => { popups++; },
     };
     await openInstalledWelcome('install', deps);
     await openInstalledWelcome('install', { ...deps, read: async () => ({ appearanceTheme: 'dark' }) });
     await openInstalledWelcome('install', { ...deps, query: async () => { throw new Error('denied'); } });
-    assert.deepEqual(opened, Array(3).fill('src/entrypoints/onboarding/index.html'));
+    assert.equal(popups, 3);
+  });
+  it('persists the theme before opening the native popup', async () => {
+    const events: string[] = [];
+    await openInstalledWelcome('install', {
+      read: async () => ({}),
+      query: async () => [{ url: 'https://nostr-wot.com/download?theme=coracle' }],
+      saveTheme: async theme => { await Promise.resolve(); events.push(`saved:${theme}`); },
+      openPopup: async () => { assert.deepEqual(events, ['saved:coracle']); events.push('popup'); },
+    });
+    assert.deepEqual(events, ['saved:coracle', 'popup']);
+  });
+  it('keeps the theme when automatic popup opening is refused, without opening a page or retrying', async () => {
+    let saved: string | undefined;
+    let attempts = 0;
+    await openInstalledWelcome('install', {
+      read: async () => ({}),
+      query: async () => [{ url: 'https://nostr-wot.com/download?theme=yakihonne' }],
+      saveTheme: async theme => { saved = theme; },
+      openPopup: async () => { attempts++; throw new Error('user gesture required'); },
+      // Guards against reintroducing the old setup-tab fallback.
+      ...{ open: async () => { assert.fail('no separate page'); }, url: () => { assert.fail('no setup URL'); } },
+    });
+    assert.equal(saved, 'yakihonne');
+    assert.equal(attempts, 1);
+  });
+  it('still attempts the popup if theme storage is unavailable', async () => {
+    let popups = 0;
+    await openInstalledWelcome('install', {
+      read: async () => ({}),
+      query: async () => [{ url: 'https://nostr-wot.com/download?theme=coracle' }],
+      saveTheme: async () => { throw new Error('storage unavailable'); },
+      openPopup: async () => { popups++; },
+    });
+    assert.equal(popups, 1);
   });
 });

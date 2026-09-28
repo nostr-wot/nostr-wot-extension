@@ -406,7 +406,7 @@ browser.runtime.onInstalled.addListener(details => {
     void openInstalledWelcome(details.reason, {
         read: () => browser.storage.local.get(['keyVault', 'accounts', 'appearanceTheme']),
         query: () => browser.tabs.query({ url: 'https://nostr-wot.com/*' }),
-        url: path => browser.runtime.getURL(path),
-        open: url => browser.tabs.create({ url }),
+        saveTheme: theme => browser.storage.local.set({ appearanceTheme: theme }),
+        openPopup: () => browser.action.openPopup(),
     }).catch(error => console.warn('[ONBOARDING] Could not open welcome:', error));
 });

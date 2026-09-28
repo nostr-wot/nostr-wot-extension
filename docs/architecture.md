@@ -67,7 +67,7 @@ Responsibilities of `background.ts`:
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
 - `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))
 - Auto-injection: `content.ts` and `inject.ts` are declared as `content_scripts` in `manifest.json` (matching `<all_urls>`), so the browser handles injection automatically.
-- On `runtime.onInstalled` (reason `install`), opens the onboarding wizard if no vault or saved accounts exist; `services/appearance/install.ts` recovers an initial theme from an open official download tab. See [Theme handoff](theme-handoff.md).
+- On `runtime.onInstalled` (reason `install`), tries the native onboarding popup when no vault or saved accounts exist; if the browser refuses, the user opens it from the extension icon (no setup tab); `services/appearance/install.ts` recovers an initial theme from an open official download tab. See [Theme handoff](theme-handoff.md).
 
 ### 2.2 Content Script -- `content.ts`
 
@@ -110,7 +110,7 @@ Extension popup UI opened when clicking the toolbar icon. React-based, styled wi
 
 ### 2.5 Onboarding -- `src/entrypoints/onboarding/`
 
-First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker) by rendering the same `src/screens/Wizard/` steps the popup uses.
+Legacy standalone entry point for the shared `src/screens/Wizard/` steps. Installation no longer opens this page: first-run setup happens only in the toolbar popup, opened automatically when allowed or manually by the user.
 
 | File | Purpose |
 |------|---------|

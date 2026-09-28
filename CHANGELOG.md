@@ -9,8 +9,9 @@ have had.
 ## Unreleased
 
 ### Added
+- Open only the themed toolbar popup on first install. If the browser refuses automatic opening, retain the theme for manual opening from the extension icon; never open a setup tab.
 - Accept built-in `theme` URL parameters on the popup and onboarding entrypoints before first render, persist the initial choice, and preserve an existing saved theme.
-- On first install, recover a unique theme from an open official HTTPS download tab and open the welcome screen. Add host access limited to `https://nostr-wot.com/*` for that lookup; no browsing-history or referral data is stored.
+- On first install, recover a unique theme from an open official HTTPS download tab and open the welcome popup. Add host access limited to `https://nostr-wot.com/*` for that lookup; no browsing-history or referral data is stored.
 
 ### Improved
 - Merge the committed shared-core migration: vendored packages, browser-storage adapter, shared permission checks and NIP-06/19/49 account utilities. Preserve existing storage formats and the extension's vault/signing implementation.

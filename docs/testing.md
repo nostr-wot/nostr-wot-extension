@@ -484,3 +484,5 @@ Theme handoff regressions: `tests/theme-handoff.test.ts` covers URL validation, 
 The Nostr Connect integration pool uses the existing `ws` WebSocket implementation
 for its loopback fixtures, including the deliberately refused relay. This preserves
 relay-fallback coverage without Node/undici's recursive error/close teardown.
+
+The theme handoff suite also verifies that theme persistence precedes native popup opening, refused popups retain the theme for manual opening without a separate page or retries, and failed storage writes still allow a popup attempt.
