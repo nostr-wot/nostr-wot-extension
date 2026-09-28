@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Nostr WoT",
+  "name": "Nostr WoT Extension",
   "version": "0.8.4",
   "browser_specific_settings": {
     "gecko": {

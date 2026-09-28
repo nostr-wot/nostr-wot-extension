@@ -17,6 +17,7 @@ have had.
 - Defer the shared-core migration until the required packages are released on npm. Restore the extension’s existing account utilities, permission handling and storage implementation; preserve the migration on a separate branch.
 
 ### Fixed
+- Set the packaged extension name to `Nostr WoT Extension` so the Chrome Web Store title uses the requested name.
 - Use `nostr-wot-extension@nostr-wot.com` for the new Firefox listing after AMO rejected the previous ID as a duplicate. This is a separate add-on identity, not an automatic update to the old listing.
 - Restore NIP-49 `ncryptsec` key backup export and import for builds resolved from the declared dependency ranges rather than the committed lockfile. The scrypt memory bound sat exactly on one `@noble/hashes` version's internal accounting, so a newer release within the range refused every backup. Store builds and ordinary `npm install` builds were unaffected.
 - Report a readable error when a backup's scrypt parameters cannot be used, instead of passing the cryptography library's internal message through to the import screen.
