@@ -4,7 +4,7 @@
   "version": "0.8.4",
   "browser_specific_settings": {
     "gecko": {
-      "id": "nostr-wot@dandelionlabs.io",
+      "id": "nostr-wot-extension@nostr-wot.com",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
         "required": [

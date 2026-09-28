@@ -27,6 +27,15 @@ separate from browser-store submission and approval.
 
 ## Firefox (addons.mozilla.org)
 
+### Add-on identity
+
+The new Firefox listing uses `nostr-wot-extension@nostr-wot.com`. The previous
+`nostr-wot@dandelionlabs.io` ID was rejected as a duplicate when submitting a new
+listing. Keep the new ID stable for all subsequent updates to that listing.
+Changing IDs creates a separate add-on: existing installations and their stored
+data do not automatically migrate. To update the old listing instead, submit a
+new version through its AMO management page using its original ID.
+
 ### The build environment
 
 AMO rejects builds produced on an end-of-life Node. `0.4.0` was disabled for
