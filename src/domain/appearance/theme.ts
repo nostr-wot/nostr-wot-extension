@@ -1,7 +1,19 @@
-import { THEME_OPTIONS } from '@constants/appearance.ts';
+import { THEME_OPTIONS, APPEARANCE_MODES } from '@constants/appearance.ts';
 
 export type ThemePreference = typeof THEME_OPTIONS[number];
-export type ResolvedTheme = Exclude<ThemePreference, 'system'>;
+export type AppearanceMode = typeof APPEARANCE_MODES[number];
+export type ProjectTheme = 'coracle' | 'nostrudel' | 'yakihonne' | 'nostrich';
+export type ResolvedTheme = Exclude<ThemePreference, 'system' | 'default'> | `${ProjectTheme}-light`;
+
+export function supportsAppearanceMode(theme: ThemePreference): boolean {
+  return theme !== 'lacrypta' && theme !== 'custom';
+}
+
+export function appearanceMode(value: unknown, legacy: ThemePreference = 'default'): AppearanceMode {
+  if (APPEARANCE_MODES.includes(value as AppearanceMode)) return value as AppearanceMode;
+  if (legacy === 'light' || legacy === 'dark' || legacy === 'system') return legacy;
+  return legacy === 'default' ? 'system' : 'dark';
+}
 
 export const CUSTOM_THEME_KEYS = [
   'bgPage', 'bgPageSolid', 'bgHtml', 'bgElevated', 'surfaceHover', 'inputBg',
@@ -17,8 +29,12 @@ export function themePreference(value: unknown): ThemePreference {
   return THEME_OPTIONS.includes(value as ThemePreference) ? value as ThemePreference : 'light';
 }
 
-export function resolveTheme(preference: ThemePreference, prefersDark: boolean): ResolvedTheme {
-  return preference === 'system' ? (prefersDark ? 'dark' : 'light') : preference;
+export function resolveTheme(preference: ThemePreference, prefersDark: boolean, mode?: AppearanceMode): ResolvedTheme {
+  if (preference === 'lacrypta' || preference === 'custom') return preference;
+  const selected = appearanceMode(mode, preference);
+  const resolved = selected === 'system' ? (prefersDark ? 'dark' : 'light') : selected;
+  if (preference === 'default' || preference === 'light' || preference === 'dark' || preference === 'system') return resolved;
+  return resolved === 'light' ? `${preference}-light` : preference;
 }
 
 export function parseCustomTheme(input: unknown): CustomTheme {

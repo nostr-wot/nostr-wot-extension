@@ -146,6 +146,8 @@ control, duplicate markup, or a parallel component when an existing shared
 component can handle the interaction. If a capability is missing, extend the
 shared component with a reusable, tested API and document it. Keep styling in
 semantic theme tokens so all project themes work consistently.
+Value-based selectors use the shared custom `Dropdown`; do not replace it with a
+native `<select>` wrapper. Preserve its top-layer positioning and keyboard support.
 
 Every code change must pass through these gates. No exceptions, no shortcuts.
 

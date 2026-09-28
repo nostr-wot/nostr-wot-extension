@@ -423,8 +423,10 @@ return () => browser.storage.onChanged.removeListener(onChanged);
 
 `Input`, `Select`, and `Dropdown` share 40px default / 32px compact minimum heights,
 8px corners, an opaque field surface, `--control-border`, and visible focus rings.
-`Dropdown` adapts value callbacks to the native `Select`, so arrow keys, type-ahead,
-and platform menus work without a floating panel being clipped by popup scrollers.
+`Dropdown` uses a custom themed listbox in the browser popover top layer, so
+scrolling panels cannot clip it. It preserves value callbacks, disabled choices,
+arrow/Home/End navigation, type-ahead, Escape dismissal and focus restoration.
+`Select` remains the native control for callers requiring native select semantics.
 The chevron is an SVG; Select no longer has a CSS module or a data-URI icon.
 Buttons use color feedback rather than movement or raised shadows. Disabled actions
 have no hover treatment. `IconButton` and `RemoveButton` share keyboard focus styles.
@@ -668,7 +670,7 @@ Split actions use Button’s `segment="start"` / `segment="end"` presets for joi
 
 ### Appearance
 
-Settings → Appearance and language reuses Card and ChipGroup for Light, Dark, System and La Crypta.
+Settings → Appearance and language reuses Card and Dropdown for built-in themes.
 The choice saves immediately in extension-local storage, independently of accounts
 and vault state. Light remains the default. Dark follows nostr-wot.com’s gray-950
 canvas, near-black popups, gray-900 cards, neutral text and indigo accents.
@@ -698,8 +700,17 @@ explains API info, spending authority and the distinction from a login password.
 
 #### Project and custom themes
 
-Appearance uses the shared `Dropdown` value-based wrapper with an associated Theme label, preserving keyboard navigation and type-ahead. The active custom theme appears as Custom; its editor remains available below the selector. `PulseLogo` defaults to the built-in SVG rendered as a mask using the brand token, so the welcome/loading screens and static menu footer inherit the active palette. Use `pulse={false}` for the footer; custom image sources retain normal image rendering.
+Appearance uses the shared `Dropdown` custom listbox with an associated Theme label, preserving keyboard navigation and type-ahead. The active custom theme appears as Custom; its editor remains available below the selector. `PulseLogo` defaults to the built-in SVG rendered as a mask using the brand token, so the welcome/loading screens and static menu footer inherit the active palette. Use `pulse={false}` for the footer; custom image sources retain normal image rendering.
 
 Appearance includes built-in Coracle, noStrudel, YakiHonne and Nostrich palettes in addition to Light, Dark, System and La Crypta. Nostrich uses its supplied neutral black/white palette, white primary controls, semantic status text/surfaces and a separate `--zap` token for amber Lightning icons. YakiHonne uses its supplied `#EE7700` accent, black/gray surfaces and status colors. Coracle uses its supplied `#FC560E` accent, `#262626` page background and neutral/tinted/status palette. The noStrudel preset derives its light-green dark-mode actions (`#AAD238`) from the upstream primary color `#8DB600`, with neutral near-black (`#0E0E0E`) and charcoal surfaces, white text, blue toggles/input focus, amber warnings and coral destructive actions. Shared controls use `--control-accent`, `--control-focus` and `--control-knob`; other themes inherit their existing brand and elevated-surface colors. Project palettes only override the extension's semantic CSS tokens. They do not import third-party stylesheets, logos, scripts or assets.
 
 Custom themes use the same semantic-token boundary. The editor exposes every accepted color as a manual color picker and as JSON. JSON is a flat object with these required keys: `bgPage`, `bgPageSolid`, `bgHtml`, `bgElevated`, `surfaceHover`, `inputBg`, `textHeading`, `textBody`, `textSecondary`, `textMuted`, `brand`, `brandHover`, `textOnBrand`, `cardBg`, `cardBorder`, `controlBorder`, `success`, `error`, `warning`, `info`. Values are colors only. Unknown keys, missing keys and non-color CSS values are rejected. Never accept arbitrary CSS, markup, URLs or additional custom properties from imported theme JSON.
+
+
+Appearance keeps project identity separate from Light/Dark/System. Both controls
+reuse the shared custom Dropdown. Coracle, noStrudel, YakiHonne and Nostrich use
+their own paired palettes; La Crypta and custom JSON keep their one supplied
+palette, so their mode control is hidden. The saved mode is retained when switching
+through a fixed palette. Legacy Light/Dark/System choices map to the default Nostr
+WoT project without losing their mode; legacy project choices retain their dark
+appearance until the user changes it. See [palette sources](theme-handoff.md).

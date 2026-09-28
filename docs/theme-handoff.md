@@ -47,3 +47,24 @@ and an update with an already saved theme.
 
 Browser API references: [Chrome tab permissions](https://developer.chrome.com/docs/extensions/reference/api/tabs)
 and [installation events](https://developer.chrome.com/docs/extensions/reference/api/runtime).
+
+
+## Project palettes and appearance mode
+
+`appearanceTheme` stores project identity; `appearanceMode` independently stores
+`light`, `dark`, or `system`. A theme URL chooses identity only. Existing saved
+Light/Dark/System values remain readable as the default Nostr WoT project. Existing
+project selections without a mode keep their prior dark appearance. System mode
+reacts to OS changes in every open extension window. Fixed palettes (La Crypta and
+custom JSON) ignore mode without discarding the saved preference.
+
+Paired palette sources checked September 28, 2026:
+- Coracle: https://github.com/coracle-social/coracle/blob/master/.env.template
+- noStrudel: https://github.com/hzrd149/nostrudel/blob/master/src/theme/default/index.ts
+  and [its primary scale](https://github.com/hzrd149/nostrudel/blob/master/src/theme/index.ts) (Chakra light/dark semantic tokens).
+- YakiHonne: https://yakihonne.com/ — published CSS `:root` light tokens and
+  `[data-theme=dark]` tokens; orange remains `#ee7700` in both.
+- Nostrich: https://nostrich.org/ — published CSS `:root` and `.dark` role tokens;
+  its neutral accent changes from `#171717` to `#fafafa`.
+
+These are explicit project palettes, not generated inversions of the dark colors.
