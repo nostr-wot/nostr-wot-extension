@@ -25,6 +25,13 @@ If a change starts in a worktree and then needs eyes in a browser, push it and b
 branch from the main clone rather than loading a second unpacked copy — two copies of the
 extension installed at once fight over the same origins and the same vault.
 
+# Shared-core dependency policy
+
+Keep the shared-core migration off the extension's main/release branches until
+all packages required by that migration are published on npm. Do not integrate
+local `file:` tarballs or unpublished shared-package builds as a release shortcut.
+The migration work remains on its separate branch until that condition is met.
+
 # Safari Build & Install
 
 The Safari wrapper project already exists in `safari-xcode/`. Do NOT regenerate it with `safari-web-extension-converter` — that would wipe Xcode customizations. Instead, refresh the embedded Resources from `dist/`, bump the project version, and rebuild.

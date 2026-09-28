@@ -1,16 +1,30 @@
 import { KNOWN_BIP44_NETWORKS, BITCOIN_PATH_PURPOSES } from '@constants/derivation.ts';
-import { normalizeDerivationPath, standardDerivationIndex } from '@nostr-wot/accounts';
+import { MAX_BIP32_PATH_LENGTH, MAX_BIP32_DEPTH, MAX_BIP32_INDEX, NIP06_ACCOUNT_PREFIX } from '@constants/crypto/bip32.ts';
 
-/*
- * Path canonicalisation and the NIP-06 account index come from `@nostr-wot/accounts`. They
- * decide which key a stored path restores, so they belong with the derivation that uses
- * them; re-exported here so this module's existing importers do not all have to move.
- *
- * `identifyDerivationPath` stays: it is a label for a settings screen, it knows about
- * Bitcoin path conventions that have nothing to do with a Nostr signer, and no shared
- * consumer has asked for it.
- */
-export { normalizeDerivationPath, standardDerivationIndex };
+/** Canonical private BIP-32 path; apostrophe, h and H denote hardened children. */
+export function normalizeDerivationPath(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > MAX_BIP32_PATH_LENGTH) return null;
+  const parts = value.trim().split('/');
+  if (parts.shift() !== 'm' || parts.length > MAX_BIP32_DEPTH) return null;
+  const canonical: string[] = [];
+  for (const part of parts) {
+    const match = /^(\d+)(['hH]?)$/.exec(part);
+    if (!match) return null;
+    const index = Number(match[1]);
+    if (!Number.isSafeInteger(index) || index > MAX_BIP32_INDEX) return null;
+    canonical.push(String(index) + (match[2] ? "'" : ''));
+  }
+  return ['m', ...canonical].join('/');
+}
+
+/** Only the existing NIP-06 sequence has a numeric account index. */
+export function standardDerivationIndex(path: string): number | null {
+  const canonical = normalizeDerivationPath(path);
+  if (!canonical?.startsWith(NIP06_ACCOUNT_PREFIX)) return null;
+  const suffix = canonical.slice(NIP06_ACCOUNT_PREFIX.length);
+  return /^\d+$/.test(suffix) ? Number(suffix) : null;
+}
+
 
 /** Identifies a registered prefix, not wallet compatibility or a complete wallet layout. */
 export function identifyDerivationPath(value: string): { network: string; convention: string } | null {

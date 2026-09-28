@@ -14,7 +14,7 @@ have had.
 - On first install, recover a unique theme from an open official HTTPS download tab and open the welcome popup. Add host access limited to `https://nostr-wot.com/*` for that lookup; no browsing-history or referral data is stored.
 
 ### Improved
-- Merge the committed shared-core migration: vendored packages, browser-storage adapter, shared permission checks and NIP-06/19/49 account utilities. Preserve existing storage formats and the extension's vault/signing implementation.
+- Defer the shared-core migration until the required packages are released on npm. Restore the extension’s existing account utilities, permission handling and storage implementation; preserve the migration on a separate branch.
 
 ### Fixed
 - Use the existing `ws` transport for local Nostr Connect integration tests, preserving refused-relay coverage without Node's recursive WebSocket teardown.
