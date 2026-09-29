@@ -216,3 +216,5 @@ was not recovered. A generator defect or concurrent build race is **not** an
 established cause; the proven failure is a Firefox-configured artifact reaching
 the Chrome installation. The guards check artifact contents, and the final manual
 upload must use the same file whose checksum was verified.
+
+Packaging invalidates the previous generic upload filename before building. A failed build, validation or smoke test leaves no stale ZIP from that invocation at the upload path; failure cleanup does not delete another concurrent build’s successful output.

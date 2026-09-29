@@ -7,7 +7,8 @@ completed task into `main`, push `main`, and cut a versioned GitHub release with
 verified browser archives and matching source, unless León explicitly says to
 pause or keep it unpublished. Do not stop at a local commit, worktree, ZIP, or
 unmerged PR. Use isolated worktrees while developing, then integrate and remove
-them after merge. Do not include unrelated agents' unfinished branches. Report
+them after merge, together with the merged local and remote task branches. Verify
+commit ancestry before deleting branches; never discard unmerged work. Do not include unrelated agents' unfinished branches. Report
 the pushed commit and release URL. Browser-store submission remains a separate
 step; do not claim a GitHub release updates the stores.
 

@@ -8,13 +8,17 @@ import { verifyPackage } from './verify-package.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const target = process.argv[2];
 if (!['chrome', 'firefox'].includes(target)) throw new Error('Choose chrome or firefox');
+const output = join(root, `nostr-wot-${target}.zip`);
+// Invalidate the previous upload before attempting a replacement. Never remove
+// output during failure cleanup: another concurrent invocation may have published
+// a verified archive while this one was building.
+rmSync(output, { force: true });
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const source = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
 if (source.version !== pkg.version) throw new Error('Source manifest/package version mismatch');
 // Each invocation builds and patches its own staging directory: Firefox cannot
 // mutate Chrome output, even when commands run concurrently. dist stays untouched.
 const staging = mkdtempSync(join(root, '.package-'));
-const output = join(root, `nostr-wot-${target}.zip`);
 try {
   execFileSync(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build', '--outDir', join(staging, 'build')], { cwd: root, stdio: 'inherit' });
   const build = join(staging, 'build');

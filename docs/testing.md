@@ -522,3 +522,8 @@ an isolated Chromium profile. See [deployment](deployment.md#chrome-package-regr
 - `tests/communication.test.ts`: both actual background ingress listeners reject auth from subframes, opaque/insecure or contradictory sender origins and missing frame identity; forged page origin/frame claims never establish authority. Cross-frame postMessage cannot enter the content bridge.
 
 These tests use isolated mock browser storage and synthetic keys. They do not certify a production client's deployed backend or a native browser's frame lifecycle.
+
+The 0.8.6 lifecycle regressions cover identity disable during local/remote auth
+unlock waits, account switching during relay reads (including away-and-back),
+revocation while WebSockets connect, stale key exports, and stale package output
+after failed or concurrent builds.

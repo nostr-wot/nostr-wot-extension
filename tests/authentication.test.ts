@@ -152,6 +152,28 @@ it('revocation while waiting for unlock also blocks same-origin HTTP grants',asy
   await vault.unlock('testpassword123'); await onVaultUnlocked();
   await assert.rejects(signing,/revoked/i);
 });
+for (const accountType of ['nsec', 'nip46'] as const) {
+  it(`identity disable while waiting for unlock blocks saved relay consent for ${accountType}`, async()=>{
+    const {handlers:signingHandlers}=await import('../src/services/background/nip07-handlers.ts');
+    const {handlers:domainHandlers}=await import('../src/services/background/domain-handlers.ts');
+    const {saveAuthenticationGrant}=await import('../src/services/permissions/authentication.ts');
+    const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+    const {onVaultUnlocked}=await import('../src/services/signing/approvalQueue.ts');
+    if (accountType === 'nip46') {
+      await vault.create('testpassword123',{accounts:[{id:'acct1',name:'Remote',type:'nip46',pubkey,privkey:null,mnemonic:null,nip46Config:null,readOnly:false,createdAt:1}],activeAccountId:'acct1'});
+      await browser.storage.local.set({accounts:[{id:'acct1',type:'nip46',pubkey}]});
+    }
+    await saveAuthenticationGrant('acct1',site,parseAuthentication(relay(),site)!,'site',()=>{});
+    vault.lock(); await cleanupStale();
+    const signing=signingHandlers.get('nip07_signEvent')!({origin:site,event:relay()});
+    void signing.catch(()=>{});
+    const [waiting]=await pending(); assert.equal(waiting.waitingForUnlock,true);
+    await domainHandlers.get('setIdentityDisabled')!({domain:site,disabled:true});
+    await vault.unlock('testpassword123'); await onVaultUnlocked();
+    await assert.rejects(signing,/Identity access disabled for this site/);
+    assert.equal((await getPending()).some(request=>request.nip46InFlight),false);
+  });
+}
 it('concurrent remembered destinations survive serialized storage writes',async()=>{
   const {listAuthenticationGrants}=await import('../src/services/permissions/authentication.ts');
   const first=handleSignEvent(http('https://api-a.test/login'),site); void first.catch(()=>{});

@@ -10,11 +10,11 @@ import { UNLOCK_GUARD_KEY, UNLOCK_FAILURES_PER_LOCKOUT, UNLOCK_LOCKOUT_STEPS_MS 
 import browser from '../../lib/browser.ts';
 import { clearWalletDisplayCaches } from '../wallet/display-cache.ts';
 import * as vault from '../vault/vault.ts';
+import { captureAccountSession, assertAccountSession } from '../signing/accountSession.ts';
 import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import * as signerPermissions from '../permissions/permissions.ts';
 import * as accounts from '../../domain/accounts/creation.ts';
 import { nsecEncode } from '../../lib/crypto/bech32.ts';
-import { bytesToHex } from '../../lib/crypto/utils.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
 import { clearWalletProviders } from '../wallet/index.ts';
 import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
@@ -240,26 +240,23 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_getActivePubkey', async () => vault.getActivePubkey()],
 
     ['vault_exportNsec', async () => {
-        const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
-        const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
-        if (!privkeyBytes) throw new Error('No private key available');
-        try {
-            return nsecEncode(bytesToHex(privkeyBytes));
-        } finally {
-            // finally: a throw inside nsecEncode must not skip zeroing
-            privkeyBytes.fill(0);
-        }
+        const session = captureAccountSession();
+        // Encoded inside the scope and the string handed back: `withPrivkey` zeroes its copy
+        // on every path, including one where nsecEncode throws. The bytes go straight in, with
+        // no hex string in between: a string cannot be overwritten, so the old
+        // `bytesToHex(privkeyBytes)` left a second copy of the key in the heap until GC.
+        const result = await vault.withPrivkey(session.accountId, async privkey => nsecEncode(privkey));
+        assertAccountSession(session);
+        return result;
     }],
 
     ['vault_exportNcryptsec', async (params) => {
-        const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
-        const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
-        if (!privkeyBytes) throw new Error('No private key available');
-        try {
-            return await ncryptsecEncode(bytesToHex(privkeyBytes), params.password as string);
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        const session = captureAccountSession();
+        // As exportNsec: bytes straight into the encoder, no intermediate hex string.
+        const result = await vault.withPrivkey(session.accountId, async privkey =>
+            ncryptsecEncode(privkey, params.password as string));
+        assertAccountSession(session);
+        return result;
     }],
 
     ['vault_exportSeed', async () => {

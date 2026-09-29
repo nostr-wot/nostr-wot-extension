@@ -106,10 +106,20 @@ async function deriveLegacyKey(password: string, salt: Uint8Array): Promise<Cryp
 }
 
 /**
- * Encrypt a private key with a password and encode as ncryptsec (NIP-49 v2)
+ * Encrypt a private key with a password and encode as ncryptsec (NIP-49 v2).
+ *
+ * Takes the key as bytes or as hex. Bytes are the form to prefer, and the form the export
+ * handler passes: a string cannot be overwritten, so building one on the way in put a
+ * second, unzeroable copy of the key in the heap for the garbage collector to reach
+ * whenever it felt like it. The hex form stays because other callers and the tests pass
+ * one, and the array it decodes to is zeroed here.
+ *
+ * @param privkey - the 32-byte key, as bytes (preferred) or hex. Bytes are NOT zeroed:
+ *   they belong to the caller, and inside a `withPrivkey` scope the vault zeroes them.
  */
-export async function ncryptsecEncode(privkeyHex: string, password: string): Promise<string> {
-    const privkeyBytes = hexToBytes(privkeyHex);
+export async function ncryptsecEncode(privkey: Uint8Array | string, password: string): Promise<string> {
+    const borrowed = typeof privkey !== 'string';
+    const privkeyBytes = borrowed ? privkey : hexToBytes(privkey);
     if (privkeyBytes.length !== 32) throw new Error('Invalid private key length');
 
     let key: Uint8Array | null = null;
@@ -133,7 +143,9 @@ export async function ncryptsecEncode(privkeyHex: string, password: string): Pro
         const data5bit = convertBits(Array.from(payload), 8, 5, true);
         return bech32Encode('ncryptsec', data5bit!);
     } finally {
-        privkeyBytes.fill(0);
+        // Only the copy this function made. Zeroing a borrowed array would blank the
+        // caller's key under it, and the scope it came from zeroes it anyway.
+        if (!borrowed) privkeyBytes.fill(0);
         key?.fill(0);
     }
 }

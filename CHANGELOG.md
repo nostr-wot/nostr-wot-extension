@@ -19,6 +19,9 @@ have had.
 - Defer the shared-core migration until the required packages are released on npm. Restore the extension’s existing account utilities, permission handling and storage implementation; preserve the migration on a separate branch.
 
 ### Fixed
+- Keep private-key copies inside zeroing scopes and reject stale signing, key-export and publication results after account changes; check revocation again when relay sockets open.
+- Recheck site identity access after authentication waits for unlock, including remote signer delegation.
+- Remove the previous generic upload ZIP when packaging starts so a failed rebuild cannot leave an old artifact masquerading as its output.
 - Prevent generic signing grants, batch approval and remote signer delegation from bypassing authentication destination consent. Reject malformed auth events and authentication requests from embedded, opaque or insecure non-loopback frames.
 - Set the packaged extension name to `Nostr WoT Extension` so the Chrome Web Store title uses the requested name.
 - Use `nostr-wot-extension@nostr-wot.com` for the new Firefox listing after AMO rejected the previous ID as a duplicate. This is a separate add-on identity, not an automatic update to the old listing.

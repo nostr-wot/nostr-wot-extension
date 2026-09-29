@@ -7,7 +7,7 @@ import { recordSigningRejection } from './rejections.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
 import * as vault from '../vault/vault.ts';
 import * as permissions from '../permissions/permissions.ts';
-import { isDomainAllowed } from '../background/domain-handlers.ts';
+import { isDomainAllowed, isIdentityDisabled } from '../background/domain-handlers.ts';
 import { getActiveAccountInfo, getActivePublicKey, isGetPubkeyCooldownActive, startGetPubkeyCooldown } from './identity.ts';
 import { queueRequest, resolveBatch, waitForVaultUnlock, runNip46Request } from './approvalQueue.ts';
 import { activePqKeys, decryptNip44Content } from './localDecryption.ts';
@@ -33,7 +33,7 @@ import { pqEncrypt, isPqEnvelope } from '@lib/crypto/pq.ts';
  *   6. if permission is 'ask', queues request for popup approval (badge shown)
  *   7. if permission is 'allow' but vault locked, queues as waitingForUnlock
  *   8. user opens popup, sees pending requests, approves/denies
- *   9. vault.getPrivkey() -> sign -> zero key bytes -> return signed event
+ *   9. vault.withPrivkey() -> sign inside the scope -> the copy is zeroed on every path
  *
  * Permissions are account-type-agnostic (allow/deny/ask). After permission
  * is granted, routing is based on account type: NIP-46 forwards to remote
@@ -42,6 +42,31 @@ import { pqEncrypt, isPqEnvelope } from '@lib/crypto/pq.ts';
  * @see https://github.com/nostr-protocol/nips/blob/master/07.md
  * @module services/signing/signer
  */
+
+/**
+ * Run `fn` with the account's private key, reporting a missing key in this module's words.
+ *
+ * `withPrivkey` says "no private key for THIS account"; these paths have always said "for
+ * ACTIVE account" and the wording is caller-visible (`tests/signer.test.ts` asserts it), so
+ * that one message is renamed. Everything else propagates untouched: a locked vault, and
+ * whatever `fn` itself threw.
+ *
+ * Deliberately NOT a pre-check on `readOnly`. An account can carry the read-only flag AND a
+ * private key, and such an account has to reach the crypto callback so the callback can refuse
+ * it with the specific reason (`watch-only`); `listAccounts` reports `readOnly` as
+ * `readOnly || no key`, which conflates the two and would swallow that. The only predicate
+ * that means "no key" is the one the vault applies when it looks for the key.
+ */
+async function withActiveKey<T>(accountId: string, fn: (privkey: Uint8Array) => Promise<T>): Promise<T> {
+  try {
+    return await vault.withPrivkey(accountId, fn);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'No private key for this account') {
+      throw new Error('No private key for active account');
+    }
+    throw error;
+  }
+}
 
 /**
  * Handle getPublicKey request with permission check
@@ -170,6 +195,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     if (!authentication) return;
     parseAuthentication(event, origin); // A prompt/unlock may have outlived the token.
     if (!(await isDomainAllowed(origin))) throw new Error('Site not connected');
+    if (await isIdentityDisabled(origin)) throw new Error('Identity access disabled for this site');
     const currentDecision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
     if (currentDecision === 'deny') throw new Error('Permission denied');
     if ((requiresDestination || currentDecision !== 'allow') && !authenticationScope && !(await hasAuthenticationGrant(session.accountId, origin, authentication))) throw new Error('Authentication permission revoked');
@@ -208,19 +234,18 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
   assertAccountSession(session);
   await assertAuthentication();
-  const privkey = vault.getPrivkey(session.accountId);
-  if (!privkey) throw new Error('No private key for active account');
 
-  try {
-    const result = await cryptoSignEvent(event, privkey);
-    assertAccountSession(session);
-    await rememberSignedFollowList(result);
-    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
-    assertAccountSession(session);
-    return result;
-  } finally {
-    privkey.fill(0);
-  }
+  // Sign INSIDE the scope; remember what was signed OUTSIDE it. The old shape held the
+  // `getPrivkey()` copy across `rememberSignedFollowList` and `rememberSignedZapNote`, both of
+  // which await storage, so the key stayed live for two writes that have no use for it.
+  // Keeping them outside also keeps every side effect downstream of the returned value, which
+  // is what lets the scope stay the only thing that owns the key.
+  const result = await withActiveKey(session.accountId, async privkey => cryptoSignEvent(event, privkey));
+  assertAccountSession(session);
+  await rememberSignedFollowList(result);
+  await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
+  assertAccountSession(session);
+  return result;
 }
 
 /**
@@ -296,15 +321,12 @@ async function handleCryptoRequest(
   if (vault.isLocked()) throw new Error('Vault is locked');
 
   assertAccountSession(session);
-  const privkey = vault.getPrivkey(session.accountId);
-  if (!privkey) throw new Error('No private key for active account');
-  try {
-    const result = await cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId);
-    assertAccountSession(session);
-    return result;
-  } finally {
-    privkey.fill(0);
-  }
+  // As in handleSignEvent: the key lives only for the crypto call, and the session re-check
+  // that follows no longer runs with a key copy still in hand.
+  const result = await withActiveKey(session.accountId, async privkey =>
+    cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId));
+  assertAccountSession(session);
+  return result;
 }
 
 export async function handleNip04Encrypt(theirPubkey: string, plaintext: string, origin: string): Promise<string> {

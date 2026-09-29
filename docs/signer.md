@@ -29,7 +29,9 @@ background.ts  -->  signer.handleSignEvent(event, origin)
     (vault.whenStartupUnlockSettled()); if STILL locked, queue as
     waitingForUnlock and open the popup
 [6] If still locked after queue resolves --> throw "Vault is locked"
-[7] vault.getPrivkey() --> sign with cryptoSignEvent --> privkey.fill(0)
+[7] vault.withPrivkey() --> sign with cryptoSignEvent inside the scope
+    (the copy is zeroed on every path; the follow-list and zap-note
+    bookkeeping runs after the scope, never with a key in hand)
 [8] Return signed event
 ```
 
@@ -255,3 +257,5 @@ Authentication adds a destination-specific gate before local signing or NIP-46 d
 The [client/backend registry](auth-client-registry.md) is informational. Matching entries do not create permissions or suppress consent.
 
 NIP-42 challenges are supplied by the client; only the relay can bind them to its connection. A trusted relay grant cannot prove the requesting client obtained its challenge honestly.
+
+Authentication revalidation includes identity-disabled sites after approval/unlock, before both local signing and remote delegation.
