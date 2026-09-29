@@ -1090,5 +1090,8 @@
   "eventIntent.appAction": "{origin} möchte {action} für {app}.",
   "eventIntent.appData": "{origin} möchte App-Daten für {app} signieren.",
   "eventIntent.named": "{origin} möchte ein Ereignis für {purpose} signieren.",
-  "eventIntent.generic": "{origin} möchte ein Ereignis signieren."
+  "eventIntent.generic": "{origin} möchte ein Ereignis signieren.",
+  "auth.relayPermissions": "Relay-Authentifizierung für alle Websites",
+  "auth.manageRelays": "Unter Relays verwalten",
+  "auth.decision": "Berechtigung"
 }

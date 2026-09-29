@@ -1,3 +1,4 @@
+import AuthenticationPermissions from './AuthenticationPermissions';
 import { mergeUnique } from '@utils/collections.ts';
 import useTransientState from '@hooks/useTransientState';
 import Chip from '@components/Chip';
@@ -23,7 +24,7 @@ export default function NetworkSection() {
   const [newRelay, setNewRelay] = useState<string>('');
   const [relayError, setRelayError] = useState<string>('');
 
-  const { active } = useAccount();
+  const { active, accounts, activeId } = useAccount();
   const [remote, setRemote] = useState<RelayListRead | null>(null);
   const [checking, setChecking] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -121,6 +122,7 @@ export default function NetworkSection() {
 
   return (
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
+      <AuthenticationPermissions accounts={accounts || []} activeId={activeId} view="relays"/>
       <PublishedRelayConfiguration result={remote} checking={checking} local={{relays,flags:relayFlags}} disabled={!loaded || publishing}
         onApply={configuration => { void saveRelays(configuration.relays, configuration.flags).then(() => setPublishUnsaved(false)).catch(() => setRelayError(t('common.error'))); }}
         onRetry={() => setRevision(n => n + 1)} />

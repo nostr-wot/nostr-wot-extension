@@ -6,27 +6,27 @@ import { t } from '@services/i18n/i18n.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import Container from '@components/Container';
 import Text from '@components/Text';
-import FieldDisplay from '@components/FieldDisplay';
 import FormError from '@components/FormError';
 import { SectionLabel } from '@components/SectionLabel';
 import Button, { ButtonDanger } from '@components/Button';
 import Dropdown from '@components/Dropdown';
 type AccountSummary = Pick<SafeAccount, 'id' | 'pubkey'> & Partial<Pick<SafeAccount, 'name'>>;
-export default function AuthenticationPermissions({accounts,activeId}:{accounts:AccountSummary[];activeId?:string|null}) {
+type GrantView = 'sites' | 'relays';
+export default function AuthenticationPermissions({accounts,activeId,view='sites'}:{accounts:AccountSummary[];activeId?:string|null;view?:GrantView}) {
  const [selected,setSelected]=useState(activeId || accounts[0]?.id || '');
  const account=accounts.find(item=>item.id===selected) || accounts.find(item=>item.id===activeId) || accounts[0];
- return <Container gap={3}>
-  <SectionLabel>{t('auth.permissions')}</SectionLabel>
+ return <Container gap={3} className="shrink-0">
+  <SectionLabel>{t(view==='relays' ? 'auth.relayPermissions' : 'auth.permissions')}</SectionLabel>
   <Text variant="hint">{t('auth.accountOnly')}</Text>
   {accounts.length>1 && <Dropdown value={account?.id || ''} options={accounts.map(item=>({value:item.id,label:item.name || item.pubkey}))} onChange={setSelected} />}
-  {account && <AccountGrants key={account.id} account={account}/>}
+  {account && <AccountGrants key={`${account.id}:${view}`} account={account} view={view}/>}
  </Container>;
 }
-function AccountGrants({account}:{account:AccountSummary}) {
+function AccountGrants({account,view}:{account:AccountSummary;view:GrantView}) {
  const [busy,setBusy]=useState(false); const [actionError,setActionError]=useState('');
  const {data,loading,error,refresh}=useAsyncResource<{grants:AuthenticationGrant[]}>({grants:[]},{load:async(patch,current)=>{
   const grants=await rpc<AuthenticationGrant[]>('signer_getAuthenticationGrants');
-  if(current()) patch({grants:grants.filter(grant=>grant.accountId===account.id)});
+  if(current()) patch({grants:grants.filter(grant=>grant.accountId===account.id && ((grant.protocol==='nip42' && grant.origin==='*') === (view==='relays')))});
  }});
  const revoke=async(id:string)=>{
   setBusy(true);setActionError('');
@@ -34,18 +34,27 @@ function AccountGrants({account}:{account:AccountSummary}) {
   catch {setActionError(t('approval.actionFailed'));}
   finally {setBusy(false);}
  };
- return <Container gap={3}>
-  <FieldDisplay label={t('auth.account')} value={account.pubkey} mono/>
+ return <Container gap={3} className="shrink-0">
   {loading && <Text variant="hint">{t('common.loading')}</Text>}
   <FormError>{error || actionError}</FormError>
   {error && <Button small disabled={loading} onClick={()=>void refresh()}>{t('common.retry')}</Button>}
   {!loading && !error && !data.grants.length && <Text variant="hint">{t('auth.noGrants')}</Text>}
-  {data.grants.map(grant=><Container variant="box" key={grant.id} gap={3} className="break-all">
-   <Text>{t(grant.decision === 'deny' ? 'auth.rejectAlways' : 'auth.approveAlways')}</Text>
-   <FieldDisplay label={t('auth.destination')} value={`${grant.method ? `${grant.method} ` : ''}${grant.destination}`} mono/>
-   <FieldDisplay label={t('auth.requester')} value={grant.origin==='*' ? t('auth.allConnected') : grant.origin}/>
-   {grant.origin==='*' && <Text variant="hint">{t('auth.connectedWarning')}</Text>}
-   <ButtonDanger small disabled={busy || loading} onClick={()=>void revoke(grant.id)}>{t('auth.revoke')}</ButtonDanger>
-  </Container>)}
+  {!!data.grants.length && <div className="overflow-x-auto">
+   <table className="w-full text-sm border-collapse text-left">
+    <thead><tr className="text-secondary">
+     <th scope="col" className="py-3">{t(view==='relays' ? 'network.relays' : 'auth.destination')}</th>
+     {view==='sites' && <th scope="col" className="p-3">{t('auth.requester')}</th>}
+     <th scope="col" className="p-3">{t('auth.decision')}</th>
+     <th scope="col" className="py-3">{t('wot.databaseActions')}</th>
+    </tr></thead>
+    <tbody>{data.grants.map(grant=><tr key={grant.id} className="border-t border-card-border">
+     <td className="py-3 align-top font-mono break-all">{grant.method ? `${grant.method} ` : ''}{grant.destination}</td>
+     {view==='sites' && <td className="p-3 align-top break-all">{grant.origin}</td>}
+     <td className="p-3 align-top">{t(grant.decision==='deny' ? 'auth.rejectAlways' : 'auth.approveAlways')}</td>
+     <td className="py-3 align-top"><ButtonDanger small disabled={busy || loading} aria-label={`${t('auth.revoke')}: ${grant.destination}`} onClick={()=>void revoke(grant.id)}>{t('auth.revoke')}</ButtonDanger></td>
+    </tr>)}</tbody>
+   </table>
+  </div>}
+
  </Container>;
 }

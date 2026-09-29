@@ -51,7 +51,7 @@ it('mounted permissions filters accounts and retains failed revocations until su
   throw new Error(message.method);
  });
  try{
-  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a'})));
+  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a',view:'relays'})));
   assert.ok(document.body.textContent!.includes('wss://ours.test/'));assert.ok(!document.body.textContent!.includes('wss://theirs.test/'));
   await act(async()=>{(document.querySelector('button') as HTMLButtonElement).click();});
   assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(document.body.textContent!.includes('wss://ours.test/'));
@@ -213,4 +213,45 @@ it('app intent puts its action before its application name',async t=>{
  assert.equal(describeSigningIntent('https://primal.net',{kind:30078,tags:[['d','Primal-Web App','get_app_subsettings_home']]}),'https://primal.net wants to get app subsettings home for Primal-Web App.');
  assert.equal(describeSigningIntent('site',{kind:30078,tags:[['d','Example']]}),'site wants to sign app data for Example.');
  assert.equal(describeSigningIntent('site',{kind:55555}),'site wants to sign an event.');
+});
+it('relay grant table and site permissions partition grants without hiding denials',async t=>{
+ const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
+ const {default:Permissions}=await import('../src/screens/Settings/AuthenticationPermissions');
+ const {default:browser}=await import('./helpers/browser-mock');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const grants=[
+  {id:'global',accountId:'a',origin:'*',protocol:'nip42',destination:'wss://global.test/'},
+  {id:'site',accountId:'a',origin:'https://site.test',protocol:'nip42',destination:'wss://site-relay.test/',decision:'deny'},
+  {id:'http',accountId:'a',origin:'https://site.test',protocol:'nip98',destination:'https://api.test',method:'POST'},
+  {id:'other',accountId:'b',origin:'*',protocol:'nip42',destination:'wss://other.test/'},
+ ];
+ t.mock.method(browser.runtime,'sendMessage',async()=>({result:grants}));
+ const root=createRoot(document.getElementById('root')!);const accounts=[{id:'a',pubkey:'a'.repeat(64)}];
+ try{
+  await act(async()=>root.render(createElement(Permissions,{accounts,view:'relays'})));
+  assert.equal(document.querySelectorAll('tbody tr').length,1);
+  assert.ok(document.querySelector('table')!.textContent!.includes('wss://global.test/'));
+  assert.ok(!document.body.textContent!.includes('wss://site-relay.test/'));
+  assert.ok(!document.body.textContent!.includes('wss://other.test/'));
+  await act(async()=>root.render(createElement(Permissions,{accounts,view:'sites'})));
+  assert.equal(document.querySelectorAll('tbody tr').length,2);
+  assert.ok(!document.body.textContent!.includes('wss://global.test/'));
+  assert.ok(document.body.textContent!.includes((await import('../src/services/i18n/i18n')).t('auth.rejectAlways')));
+  assert.ok(document.body.textContent!.includes('POST https://api.test'));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('Permissions offers navigation to the relay permissions panel',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
+ const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
+ const {default:browser,resetMockStorage}=await import('./helpers/browser-mock');
+ const {t:label}=await import('../src/services/i18n/i18n');resetMockStorage();
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>({result:message.method==='signer_getUseGlobalDefaults' ? true : message.method==='signer_getPermissionsRaw' ? {} : []}));
+ let opened=0;const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions,{onOpenRelays:()=>opened++})))));
+  const link=[...document.querySelectorAll('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
+  assert.ok(link);await act(async()=>link.click());assert.equal(opened,1);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
 });

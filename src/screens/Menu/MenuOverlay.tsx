@@ -185,7 +185,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
           </MenuSection>
         );
       case 'site-permissions':
-        return <PermissionsSection ref={permsSectionRef} onDetailChange={setPermDetailDomain} />;
+        return <PermissionsSection onOpenRelays={() => pushSection('network')} ref={permsSectionRef} onDetailChange={setPermDetailDomain} />;
       case 'wallet':
         return <WalletSection />;
       case 'experimental-wot':

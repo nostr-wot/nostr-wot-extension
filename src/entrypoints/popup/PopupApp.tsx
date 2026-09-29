@@ -185,7 +185,7 @@ function PopupInner() {
                 "Manage permissions" from a site's card landed on the all-sites
                 list and made the user find the site they had just been looking
                 at. PermissionsSection has honoured this prop all along. */}
-            <PermissionsSection initialDomain={permsDomain} />
+            <PermissionsSection onOpenRelays={navigation.openRelays} initialDomain={permsDomain} />
           </OverlayPanel>
         )}
 

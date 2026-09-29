@@ -1090,5 +1090,8 @@
   "eventIntent.appAction": "{origin} quiere {action} para {app}.",
   "eventIntent.appData": "{origin} quiere firmar datos de la aplicación {app}.",
   "eventIntent.named": "{origin} quiere firmar un evento de {purpose}.",
-  "eventIntent.generic": "{origin} quiere firmar un evento."
+  "eventIntent.generic": "{origin} quiere firmar un evento.",
+  "auth.relayPermissions": "Autenticación de relés para todos los sitios",
+  "auth.manageRelays": "Gestionar en Relés",
+  "auth.decision": "Permiso"
 }

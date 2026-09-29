@@ -730,3 +730,5 @@ Pending approvals group existing permission/destination cards beneath one site h
 The message reveal hint is centered over the concealed surface and disappears when content is revealed. A bottom-right ring uses useTimedReveal.remainingSeconds and loses one thirtieth each second; the ring and plaintext disappear at expiry.
 
 Signing approvals use a plain-language intent sentence and a collapsed Advanced disclosure containing the complete event JSON. App-specific requests put the d-tag action before the app identifier. Known event kinds use intent descriptions; unrecognized kinds retain a visible warning. No first-item badge is used for a group of signing actions. Each expanded group item has its own decisions, while the footer retains batch actions. Per-item authentication uses the destination-specific controls; remote-signer items offer cancellation only.
+
+Authentication grants use compact tables with account selection and per-row revocation. Permissions keeps site-specific grants and links to Relays, which owns the all-sites NIP-42 grant table. This table is independent of relay read/write configuration and publishing.

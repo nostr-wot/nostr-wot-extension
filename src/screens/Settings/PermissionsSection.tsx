@@ -27,11 +27,12 @@ export interface PermissionsSectionHandle {
 }
 
 interface PermissionsSectionProps {
+  onOpenRelays?: () => void;
   initialDomain?: string | null;
   onDetailChange?: (domain: string | null) => void;
 }
 
-export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(function PermissionsSection({ initialDomain, onDetailChange }, ref) {
+export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(function PermissionsSection({ initialDomain, onDetailChange, onOpenRelays }, ref) {
   const { accounts, activeId, profileCache } = useAccount();
   const permissions = usePermissions();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -236,6 +237,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         </Container>
       )}
 
+      {onOpenRelays && <ListRow title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={onOpenRelays}/> }
       <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
       <DeclinedSites />
     </Container>

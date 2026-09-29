@@ -518,7 +518,7 @@ an isolated Chromium profile. See [deployment](deployment.md#chrome-package-regr
 ## Authentication destinations and frame isolation
 
 - `tests/authentication.test.ts`: real signing gates, strict NIP-98/NIP-42 parsing, broad-rule/batch bypass prevention, exact account/origin/method/relay scopes, one-time approval, remote-account local consent, concurrent grants, disconnect/account deletion/revocation, stale unlock permissions, remembered destination rejection precedence/storage failure, and event snapshot integrity.
-- `tests/authentication-ui.test.ts`: collapsed Advanced event data, split-menu authentication scope controls and notices, single-request detail routing (authentication, ordinary signing and NIP-46), visible action failures, transitions from multiple requests to one, bulk approval isolation, account-specific saved grants and revocation.
+- `tests/authentication-ui.test.ts`: collapsed Advanced event data, split-menu authentication scope controls and notices, single-request detail routing (authentication, ordinary signing and NIP-46), visible action failures, transitions from multiple requests to one, bulk approval isolation, account-specific saved grants and revocation, relay/site table partitioning, and navigation from Permissions to Relays.
 - `tests/auth-client-registry.test.ts`: registry origins, evidence metadata and schema integrity; factual evidence still requires human review.
 - `tests/communication.test.ts`: both actual background ingress listeners reject auth from subframes, opaque/insecure or contradictory sender origins and missing frame identity; forged page origin/frame claims never establish authority. Cross-frame postMessage cannot enter the content bridge.
 

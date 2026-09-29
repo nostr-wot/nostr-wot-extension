@@ -9,8 +9,9 @@ have had.
 ## 0.8.7 — 2026-09-29
 
 ### Improved
+- Manage all-sites relay authentication grants in a compact Relays table, with a link from Permissions and account-specific revocation.
 - Describe signing requests in plain language with event data under Advanced, and support individual decisions inside request groups.
-- Keep the message reveal hint inside the content surface and show a shrinking 30-second countdown ring.
+- Center the hint over concealed message content, hide it during reveal, and show a shrinking 30-second countdown ring at the bottom-right.
 - Group pending approvals by site and fix scrolling so every request remains reachable without clipping cards.
 - Reveal message content by clicking its blurred surface and automatically conceal it again after 30 seconds.
 - Clarify message details with From and Content labels, a separator below the request explanation, and a public-key fallback only when no profile is shown.

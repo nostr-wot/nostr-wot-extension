@@ -1090,5 +1090,8 @@
   "eventIntent.appAction": "{origin} quer {action} para {app}.",
   "eventIntent.appData": "{origin} quer assinar dados do aplicativo {app}.",
   "eventIntent.named": "{origin} quer assinar um evento de {purpose}.",
-  "eventIntent.generic": "{origin} quer assinar um evento."
+  "eventIntent.generic": "{origin} quer assinar um evento.",
+  "auth.relayPermissions": "Autenticação de relays para todos os sites",
+  "auth.manageRelays": "Gerir em Relays",
+  "auth.decision": "Permissão"
 }
