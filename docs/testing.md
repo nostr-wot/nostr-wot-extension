@@ -505,3 +505,12 @@ Three things close the gap, at different levels:
 Known gap, deliberately not closed here: three tests in `tests/wot-relay-transport.test.ts` call `mock.method(schnorr, 'verify', …)`, and `@noble/curves` froze that export in 2.2.0, so they fail on any version `^2.0.1` admits above 2.0.1. Production is unaffected — our code only calls schnorr and never patches it — and the fix is for those tests to use an injected verifier seam alongside the existing `_createSocket` and `_timeoutMs`, rather than reaching into the library. Those suites are consequently not in the floating job yet.
 
 The general rule this leaves behind: **a numeric bound or behaviour handed to a library must be derived from what the algorithm or format requires, never copied from what a particular version of that library happens to check, and never pinned exactly to it.** The two agree right up until the library revises its own accounting, and a lockfile-pinned suite cannot tell you when that happens.
+
+## Authentication destinations and frame isolation
+
+- `tests/authentication.test.ts`: real signing gates, strict NIP-98/NIP-42 parsing, broad-rule/batch bypass prevention, exact account/origin/method/relay scopes, one-time approval, remote-account local consent, concurrent grants, disconnect/account deletion/revocation, stale unlock permissions and event snapshot integrity.
+- `tests/authentication-ui.test.ts`: authentication scope controls and notices, bulk approval isolation, account-specific saved grants and revocation.
+- `tests/auth-client-registry.test.ts`: registry origins, evidence metadata and schema integrity; factual evidence still requires human review.
+- `tests/communication.test.ts`: both actual background ingress listeners reject auth from subframes, opaque/insecure or contradictory sender origins and missing frame identity; forged page origin/frame claims never establish authority. Cross-frame postMessage cannot enter the content bridge.
+
+These tests use isolated mock browser storage and synthetic keys. They do not certify a production client's deployed backend or a native browser's frame lifecycle.

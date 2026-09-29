@@ -1,3 +1,5 @@
+import { parseAuthentication, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
+import { hasAuthenticationGrant, saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { rememberSignedZapNote } from '../wallet/payment-records.ts';
 import { followCount, followReplacementCount, rememberSignedFollowList } from './followListGuard.ts';
 import { captureAccountSession, assertAccountSession } from './accountSession.ts';
@@ -98,6 +100,9 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
  * Handle signEvent request
  */
 export async function handleSignEvent(event: UnsignedEvent, origin: string): Promise<SignedEvent> {
+  // Snapshot before any await: approval and signing must use exactly the same event.
+  event = structuredClone(event);
+  const authentication = parseAuthentication(event, origin);
   const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
   const requestedPubkey = await getActivePublicKey();
@@ -119,11 +124,17 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   // NIP-46 normally delegates approval to the remote signer. Dangerous
   // follow-list replacements require local confirmation for every account type.
+  if (authentication && !(await isDomainAllowed(origin))) throw new Error('Site not connected');
+  const requiresDestination = !!authentication && (authentication.crossOrigin || authentication.protocol === 'nip42');
+  const destinationGranted = authentication && await hasAuthenticationGrant(session.accountId, origin, authentication);
+  const needsAuthApproval = !!authentication && (requiresDestination ? !destinationGranted : !destinationGranted && decision === 'ask');
+  let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
-  if (replacementCount || (accountType !== 'nip46' && decision === 'ask')) {
+  if (replacementCount || needsAuthApproval || (!authentication && accountType !== 'nip46' && decision === 'ask')) {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'signEvent',
+      authentication,
       followReplacementCount: replacementCount,
       followReplacementNewCount: replacementCount ? followCount(event) : undefined,
       // Store the FULL content and FULL tags for every kind — the approval
@@ -132,17 +143,21 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       origin,
       event: { kind: event.kind, content: event.content, tags: event.tags, pubkey:event.pubkey, created_at:event.created_at },
       pubkey: pubkey ?? undefined,
-      permKey: permissions.permissionKey('signEvent', event.kind),
+      permKey: authentication ? authenticationKey(authentication) : permissions.permissionKey('signEvent', event.kind),
       eventKind: event.kind,
       needsPermission: true,
       accountId,
     });
     if (!approved.allow) throw new Error(approved.reason || 'User denied signing');
+    if (authentication) {
+      if (!validAuthenticationScope(authentication, approved.authenticationScope)) throw new Error('Explicit authentication approval required');
+      authenticationScope = approved.authenticationScope;
+    }
     if (replacementCount && !approved.confirmFollowReplacement) throw new Error('Follow-list replacement requires explicit confirmation');
     if ((await getActivePublicKey()) !== requestedPubkey || ((await getActiveAccountInfo()).accountId ?? vault.getActiveAccountId()) !== requestedAccountId) throw new Error('Account switched');
 
     // Save permission and batch-resolve remaining requests if user chose "remember"
-    if (approved.remember) {
+    if (approved.remember && !authentication) {
       const kind = approved.rememberKind !== false ? event.kind : null;
       await permissions.save(origin, 'signEvent', kind ?? null, 'allow', accountId ?? undefined);
       // Batch-resolve remaining requests with the same permKey as the one just approved
@@ -150,6 +165,18 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       await resolveBatch(origin, batchPermKey, { allow: true, remember: false });
     }
   }
+
+  const assertAuthentication = async () => {
+    if (!authentication) return;
+    parseAuthentication(event, origin); // A prompt/unlock may have outlived the token.
+    if (!(await isDomainAllowed(origin))) throw new Error('Site not connected');
+    const currentDecision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
+    if (currentDecision === 'deny') throw new Error('Permission denied');
+    if ((requiresDestination || currentDecision !== 'allow') && !authenticationScope && !(await hasAuthenticationGrant(session.accountId, origin, authentication))) throw new Error('Authentication permission revoked');
+    assertAccountSession(session);
+    if (authenticationScope) await saveAuthenticationGrant(session.accountId, origin, authentication, authenticationScope, () => assertAccountSession(session));
+    assertAccountSession(session);
+  };
 
   // Route by account type
   if (accountType === 'nip46') {
@@ -162,6 +189,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     assertAccountSession(session);
     const acct = vault.getAccountById(session.accountId);
     if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
+    await assertAuthentication();
     const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
     assertAccountSession(session);
     await rememberSignedFollowList(result);
@@ -179,6 +207,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
   assertAccountSession(session);
+  await assertAuthentication();
   const privkey = vault.getPrivkey(session.accountId);
   if (!privkey) throw new Error('No private key for active account');
 

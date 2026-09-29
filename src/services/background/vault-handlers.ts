@@ -1,3 +1,4 @@
+import { revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { countWords } from '@utils/text.ts';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import { UNLOCK_GUARD_KEY, UNLOCK_FAILURES_PER_LOCKOUT, UNLOCK_LOCKOUT_STEPS_MS } from '@constants/vault.ts';
@@ -310,6 +311,7 @@ export const handlers = new Map<string, HandlerFn>([
         clearWalletProviders();
         await signerApprovalQueue.cancelAllUnlockWaiters();
         await vault.destroy();
+        await revokeAuthenticationGrants();
         await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
         await browser.storage.sync.remove('myPubkey');

@@ -272,3 +272,7 @@ System mode. `src/domain/appearance/theme.ts` validates and resolves preferences
 `src/constants/appearance.ts` defines the options and storage key. CSS variables in
 `theme.css` own Light, Dark and La Crypta palettes; AppearanceSection uses existing
 settings controls. No background RPC, site permission or account migration is needed.
+
+## Authentication destination policy
+
+`domain/signing/authentication.ts` owns strict NIP-98/NIP-42 parsing and explicit scope validation; `domain/signing/requestOrigin.ts` owns browser-attested top-level origin checks. `services/permissions/authentication.ts` stores account-specific destination grants under a serialized write lock, separately from generic signing defaults. The existing signer and approval queue enforce these checks for local and remote accounts; existing permission lifecycle functions revoke grants. The informational `data/auth-clients.json` registry is used only for approval context. See [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42) and [registry contribution instructions](auth-client-registry.md).

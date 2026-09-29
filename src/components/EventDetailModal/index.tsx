@@ -1,3 +1,6 @@
+import AuthenticationNotice from '@components/AuthenticationNotice';
+import AuthenticationActions from '@components/AuthenticationActions';
+import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
 import { KIND_LABELS } from '@constants/nostr.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
@@ -40,6 +43,7 @@ interface ActivityGroup {
  *  type error. */
 interface ApprovalRequest {
   id?: string;
+  authentication?: AuthenticationRequest;
   followReplacementCount?: number;
   followReplacementNewCount?: number;
   type: string;
@@ -63,6 +67,7 @@ interface EventDetailModalProps {
   requests?: ApprovalRequest[];
   busy?: boolean;
   onApprove?: () => void;
+  onAuthenticate?: (scope: AuthenticationScope) => void;
   onDeny?: () => void;
   onAlwaysAllow?: () => void;
   onAlwaysDeny?: () => void;
@@ -89,6 +94,7 @@ export default function EventDetailModal({
   requests,
   busy = false,
   onApprove,
+  onAuthenticate,
   onDeny,
   onAlwaysAllow,
   onAlwaysDeny,
@@ -109,14 +115,14 @@ export default function EventDetailModal({
   const theirPubkey = request ? request!.theirPubkey : group?.entries?.[0]?.theirPubkey;
   const entries = group?.entries || [];
 
-  const title = formatPermissionLabel(permKey || '', event ?? undefined);
+  const title = formatPermissionLabel(request?.authentication ? `signEvent:${request.authentication.protocol === 'nip98' ? 27235 : 22242}` : permKey || '', event ?? undefined);
 
   // Approval description
   const description = isApproval ? describeRequest(request!, title) : null;
 
   return (
     <OverlayPanel
-      title={isApproval ? t('approval.detail.title') : title}
+      title={isApproval && !request?.authentication ? t('approval.detail.title') : title}
       onBack={onBack}
       onClose={onClose}
       zIndex={zIndex}
@@ -126,18 +132,19 @@ export default function EventDetailModal({
             event can never push them out of reach (see the CSS module). */}
         <div className={isApproval || nip46InFlight ? CLS.scrollArea : CLS.content}>
           {/* Origin / domain */}
-          {origin && (
+          {origin && !request?.authentication && (
             <div className="flex items-center gap-4 min-w-0"><SiteIcon domain={origin} /><span className="text-lg font-semibold text-heading truncate">{origin}</span></div>
           )}
 
           {/* Approval: method badge + description */}
-          {isApproval && (
+          {isApproval && !request?.authentication && (
             <div className={CLS.summary}>
               <div className={CLS.methodBadge}>{title}</div>
               {description && <p className={CLS.description}>{description}</p>}
             </div>
           )}
 
+          {request?.authentication && <AuthenticationNotice request={request}/>}
           <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
 
           {/* Event content */}
@@ -147,7 +154,7 @@ export default function EventDetailModal({
               {requests.map((item, index) => (
                 <details key={item.id ?? index} data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
                   <summary className="cursor-pointer text-md text-heading">
-                    {index + 1}. {formatPermissionLabel(item.permKey || item.type, item.event ?? undefined)}
+                    {index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}
                     {item.event?.kind !== undefined && <span className="block text-sm text-menu-subtitle">{KIND_LABELS[item.event.kind] || `Kind ${item.event.kind}`} ({item.event.kind})</span>}
                   </summary>
                   <div className="pt-5"><EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} /></div>
@@ -185,9 +192,9 @@ export default function EventDetailModal({
         {/* Approval action buttons */}
         {isApproval && (
           <div className={CLS.actions}>
-            <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
+            {request?.authentication ? <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1} busy={busy} onApprove={onAuthenticate} onDeny={onDeny}/> : <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
               onApprove={onApprove} onReject={onDeny}
-              choices={[{value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny}]}/>
+              choices={[{value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny}]}/>}
 
           </div>
         )}

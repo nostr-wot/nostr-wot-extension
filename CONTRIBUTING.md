@@ -148,3 +148,18 @@ Read [docs/architecture.md](docs/architecture.md) for the full technical referen
 ## Code of Conduct
 
 Be respectful, constructive, and focused on building great software. Technical disagreements are welcome; personal attacks are not.
+
+## Nostr client and backend registry
+
+Contribute verified client origins and HTTP backend relationships in
+[`src/data/auth-clients.json`](src/data/auth-clients.json). Follow the
+[evidence and contribution requirements](docs/auth-client-registry.md), including
+primary-source links, exact origins, authentication classification and a review
+date. Unknown backends must stay explicitly unknown. This is informational data;
+an entry must never create signing permission or automatically authorize a client.
+
+Run the registry integrity checks with:
+
+```bash
+node --import tsx --test tests/auth-client-registry.test.ts
+```

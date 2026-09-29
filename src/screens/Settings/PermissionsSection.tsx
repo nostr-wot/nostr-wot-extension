@@ -1,3 +1,4 @@
+import AuthenticationPermissions from './AuthenticationPermissions';
 import PermissionRulesList from './PermissionRulesList';
 import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
 import { useState, useEffect, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
@@ -235,6 +236,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         </Container>
       )}
 
+      <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
       <DeclinedSites />
     </Container>
   );

@@ -414,3 +414,7 @@ hash before dispatch; unrelated invoices never consume a recent message by timin
 
 The four privileged wallet_*AppConnection(s) RPCs invoke the LNbits-proxy management API with the wallet Admin API key. Create request IDs preserve idempotency across transport retries.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+## Authentication requests
+
+At both runtime-message and persistent-port entrypoints, `getPageRequestOrigin` validates browser sender identity. HTTP/relay authentication is top-level-only; website-provided frame metadata has no authority. The signer snapshots the event, validates its authentication tags and resolves account/site/destination consent before local signing or remote delegation. Authentication decisions use `signer_resolve` with an explicit `authenticationScope` (`once`, `site`, or NIP-42-only `connected-sites`); bulk allow never resolves them. Pending cards and event details share the auth notice. Saved grants are managed with internal-only authentication permission RPCs. See [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42).

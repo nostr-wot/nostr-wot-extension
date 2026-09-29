@@ -594,3 +594,13 @@ parameter reaches onboarding; arbitrary origins, CSS, duplicate parameters and
 custom palettes are rejected. No referral information is stored or sent, and this
 path cannot grant signing, identity, wallet or account permissions. Existing saved
 themes and accounts are preserved. See [Theme handoff](theme-handoff.md).
+
+## Authentication origin and destination boundaries
+
+Both page message ingress paths derive identity from the browser's sender, ignoring page-supplied origins and frame claims. NIP-98 (27235) and NIP-42 (22242) signing additionally require a verified top-level frame (`frameId === 0`), an HTTPS document (exact loopback development exceptions), a nonopaque origin, and consistency between browser `sender.origin` and document URL when supplied. Subframes are refused even if they share the parent's origin or embed a previously trusted client. Content scripts remain top-frame-only and the bridge rejects messages whose source is another window.
+
+Origin identifies the **requesting document**, not whichever tab happens to become active later. Browser ports are document-bound; this does not cancel all already-dispatched work after navigation. Same-origin code executing in the top-level page (including XSS or a script the client loads) shares that origin's authority. An external page cannot gain that authority merely by posting a message or embedding the client.
+
+Destination consent and strict event validation are described in [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42). Generic signing grants, registry matches, shared-account defaults and NIP-46 delegation cannot bypass cross-origin HTTP or relay consent. A relay-wide grant explicitly extends identification authority to every connected site for that account and relay. It never applies to HTTP auth.
+
+`signer_getAuthenticationGrants` and `signer_revokeAuthenticationGrant` are internal extension RPCs, automatically included in privileged-method gating. No additional browser permissions are requested.

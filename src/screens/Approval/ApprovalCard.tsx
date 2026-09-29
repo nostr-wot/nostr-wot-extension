@@ -1,3 +1,4 @@
+import AuthenticationNotice from '@components/AuthenticationNotice';
 import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
@@ -33,7 +34,7 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
           subtitle={<Container as="span" gap={1}>
             <Container as="span" variant="row" gap={3}>
               {isNip46 && <IconSync size={12} className="animate-spin [animation-duration:1.5s] shrink-0" />}
-              {isNip46 ? t('approval.awaitingSigner') : label}
+              {isNip46 ? t('approval.awaitingSigner') : firstReq?.authentication ? t('auth.review') : label}
             </Container>
             {!isNip46 && kind !== undefined && <Text as="span" variant="secondary" className="text-xs text-menu-subtitle">
               {formatPermissionLabel(group.method)} · {KIND_LABELS[kind] || `Kind ${kind}`} ({kind})
@@ -48,6 +49,7 @@ export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardP
           <IconClose size={16} aria-hidden="true" />
         </IconButton>}
       </Container>
+      {firstReq?.authentication && <Container className="px-6 pb-5"><AuthenticationNotice request={firstReq}/></Container>}
       {!isNip46 && <FollowReplacementNotice requests={group.requests}/>}
     </Card>
   );

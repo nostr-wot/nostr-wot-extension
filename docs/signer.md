@@ -9,7 +9,7 @@ Web page calls window.nostr.signEvent(event)
     |
 inject.ts  -->  NIP07_REQUEST { method: 'signEvent', params: { event } }
     |
-content.ts -->  { method: 'nip07_signEvent', params: { event, origin: hostname } }
+content.ts -->  { method: 'nip07_signEvent', params: { event, origin: window.location.origin } }
     |
 background.ts  -->  signer.handleSignEvent(event, origin)
     |
@@ -20,9 +20,10 @@ background.ts  -->  signer.handleSignEvent(event, origin)
     - 'deny' --> throw "Permission denied" (STOPS HERE — for ALL account
       types, including nip46: an explicit local deny blocks BEFORE anything
       is routed to the remote signer)
-    - 'ask' --> queue for popup approval (badge shown); skipped for nip46
-      accounts, whose remote signer (bunker) runs its own approval flow
+    - 'ask' --> queue for popup approval (badge shown); ordinary events may
+      delegate to nip46, but authentication destination consent stays local
     - 'allow' --> proceed
+[3b] For authentication, validate and authorize the destination (see Authentication below)
 [4] If type === 'nip46' --> route to remote signer (NIP-46)
 [5] If vault.isLocked() --> await any in-flight startup auto-unlock
     (vault.whenStartupUnlockSettled()); if STILL locked, queue as
@@ -239,3 +240,18 @@ the encrypted wallet-note cache, keyed by the exact returned signed JSON's SHA-2
 Cache failure never rejects an otherwise successful signing result. This is display
 metadata: the signer does not pay or publish the zap, and all WebLN consent and
 payment checks remain independent. See wallet.md for matching and recovery limits.
+
+## Authentication destinations (NIP-98 and NIP-42)
+
+Authentication adds a destination-specific gate before local signing or NIP-46 delegation. `src/domain/signing/authentication.ts` validates the exact event snapshot before any asynchronous work. NIP-98 requires one `u` and one `method`; NIP-42 requires one `relay` and one nonempty `challenge`. Duplicate/ambiguous required tags, invalid payload hashes, credential-bearing or fragment URLs, insecure non-loopback transports, nonempty content and stale/future timestamps are rejected. HTTP auth has a 60-second window; relay auth has a 10-minute window, checked again after approval/unlock. The exact URL and event remain unchanged when signed.
+
+- Same-origin NIP-98 can use the site's ordinary signing permission. A saved destination grant can also authorize it.
+- Cross-origin NIP-98 requires explicit consent even when a broad signing allow exists. Remembered consent binds **account + exact requesting origin + destination origin + HTTP method**. It covers all paths on that backend for that method; the prompt explains that scope. NIP-98 may authorize operations beyond login.
+- NIP-42 always uses destination consent. A remembered permission binds **account + requesting origin + canonical full relay URL**, retaining path and query. Users may explicitly authorize that relay from **all connected sites**. A per-site deny still wins.
+- Grants are always account-specific, independent of the ordinary permissions' “all accounts” toggle. They are not automatically copied to another account.
+- Authentication requests are excluded from generic batch allow and require an explicit `authenticationScope` through `signer_resolve`. The UI shows the requesting website, account, destination and HTTP method; shared-relay approval warns that all connected sites can identify this account to the relay.
+- Grants live in `authenticationGrants`; settings can list/revoke them through internal-only RPCs. Disconnect removes site-specific grants; an intentionally shared relay grant remains but cannot serve the disconnected site. Account deletion and vault destruction clear relevant grants. Revocation and denials are rechecked after waiting for unlock.
+
+The [client/backend registry](auth-client-registry.md) is informational. Matching entries do not create permissions or suppress consent.
+
+NIP-42 challenges are supplied by the client; only the relay can bind them to its connection. A trusted relay grant cannot prove the requesting client obtained its challenge honestly.
