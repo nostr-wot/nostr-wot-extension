@@ -1,9 +1,11 @@
+import type { AuthenticationRequest, AuthenticationScope } from './authentication.ts';
 import type { UnsignedEvent } from '../nostr/types.ts';
 
 // ── Signer ──
 
 export interface PendingRequest {
   id: string;
+  authentication?: AuthenticationRequest;
   type: string;
   origin: string;
   /** Pubkey of the account snapshotted when the request was queued — the
@@ -29,6 +31,7 @@ export interface PendingRequest {
 
 export interface RequestDecision {
   allow: boolean;
+  authenticationScope?: AuthenticationScope;
   confirmFollowReplacement?: boolean;
   remember?: boolean;
   rememberKind?: boolean;

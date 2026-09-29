@@ -102,11 +102,19 @@ it('successful crypto requests retain ciphertext, never the plaintext result or 
     await permissions.save('site.test', `${scheme}Encrypt`, null, 'allow', owner.id);
     await permissions.save('site.test', `${scheme}Decrypt`, null, 'allow', owner.id);
     const ciphertext = await nip07.get(`nip07_${scheme}Encrypt`)!({origin: 'site.test', pubkey: peer.pubkey, plaintext: 'never persist this'}) as string;
-    await new Promise(resolve => setTimeout(resolve, 10));
     const result = await nip07.get(`nip07_${scheme}Decrypt`)!({origin: 'site.test', pubkey: peer.pubkey, ciphertext});
     assert.equal(result, 'never persist this');
-    await new Promise(resolve => setTimeout(resolve, 10));
-    const log = (await readPrivateCache<ActivityEntry[]>('activityLog'))!;
+    // Handlers log asynchronously; wait for both writes, not an arbitrary delay
+    // that can still leave the previous scheme's records at the head under load.
+    let log: ActivityEntry[] = [];
+    const deadline = Date.now() + 5000;
+    do {
+      log = await readPrivateCache<ActivityEntry[]>('activityLog') || [];
+      if (log[0]?.method === `${scheme}Decrypt` && log[1]?.method === `${scheme}Encrypt`) break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    } while (Date.now() < deadline);
+    assert.equal(log[0]?.method, `${scheme}Decrypt`, 'decrypt activity write completed');
+    assert.equal(log[1]?.method, `${scheme}Encrypt`, 'encrypt activity write completed');
     assert.equal(log[0].ciphertext, ciphertext);
     assert.equal(log[1].ciphertext, ciphertext);
     assert.equal(log[0].pubkey, owner.pubkey);

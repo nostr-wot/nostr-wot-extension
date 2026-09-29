@@ -513,3 +513,12 @@ archive renamed as Chrome, mixed manifests, missing resources and version errors
 Both local and CI runners include it. CI also runs both packaging commands;
 Chrome packaging runs `scripts/smoke-chrome.mjs` against the exact output ZIP in
 an isolated Chromium profile. See [deployment](deployment.md#chrome-package-regression-gate).
+
+## Authentication destinations and frame isolation
+
+- `tests/authentication.test.ts`: real signing gates, strict NIP-98/NIP-42 parsing, broad-rule/batch bypass prevention, exact account/origin/method/relay scopes, one-time approval, remote-account local consent, concurrent grants, disconnect/account deletion/revocation, stale unlock permissions and event snapshot integrity.
+- `tests/authentication-ui.test.ts`: authentication scope controls and notices, bulk approval isolation, account-specific saved grants and revocation.
+- `tests/auth-client-registry.test.ts`: registry origins, evidence metadata and schema integrity; factual evidence still requires human review.
+- `tests/communication.test.ts`: both actual background ingress listeners reject auth from subframes, opaque/insecure or contradictory sender origins and missing frame identity; forged page origin/frame claims never establish authority. Cross-frame postMessage cannot enter the content bridge.
+
+These tests use isolated mock browser storage and synthetic keys. They do not certify a production client's deployed backend or a native browser's frame lifecycle.

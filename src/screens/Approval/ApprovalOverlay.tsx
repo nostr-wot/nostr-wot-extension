@@ -1,3 +1,5 @@
+import type { AuthenticationScope } from '@domain/signing/authentication.ts';
+import { ButtonDanger } from '@components/Button';
 import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import ConfirmDialog from '@components/ConfirmDialog';
 import ApprovalActions from '@components/ApprovalActions';
@@ -36,6 +38,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     closeAndRefresh,
   } = useApprovalQueue({ onRequestUnlock, onUnlockWaitersChange });
 
+  const ordinaryGroups = groups.filter(group => !group.requests.some(request => request.authentication));
   const selectedGroup = currentApprovalGroup(groupSelection, groups);
 
   const runAction = async (action: () => Promise<void>) => {
@@ -60,7 +63,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     else await runAction(action);
   };
 
-  const approveRequests = (requests: PendingRequest[]) => resolveDisplayedRequests(requests, id => {
+  const approveRequests = (requests: PendingRequest[]) => resolveDisplayedRequests(requests.filter(request => !request.authentication), id => {
     const request = requests.find(request => request.id === id);
     return rpc('signer_resolve', { id, decision: { allow: true, remember: false,
       ...(request?.followReplacementCount ? { confirmFollowReplacement: true } : {}),
@@ -72,11 +75,16 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   });
 
   const handleApproveShown = async () => {
-    const shown = groups.flatMap(group => group.requests);
+    const shown = ordinaryGroups.flatMap(group => group.requests);
     await confirmApproval(shown, async () => { await approveRequests(shown); });
   };
 
+  const handleAuthenticate = (group: ApprovalGroup, authenticationScope: AuthenticationScope) => runAction(async () => {
+    await resolveDisplayedRequests(group.requests, id => rpc('signer_resolve', { id, decision: { allow: true, remember: false, authenticationScope } }));
+  });
+
   const handleAlwaysAllow = (group: ApprovalGroup) => confirmApproval(group.requests, async () => {
+    if (group.requests.some(request => request.authentication)) return;
     const accountId = group.requests[0]?.accountId || active?.id || null;
     // Confirm only the exact requests displayed. Batch approval deliberately
     // leaves other dangerous replacements pending, including new arrivals.
@@ -125,15 +133,16 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
         </Container>
-        <div className="mb-6"><ApprovalActions requestCount={groups.reduce((n, group) => n + group.requests.length, 0)} busy={busy}
+        <div className="mb-6">{ordinaryGroups.length ? <ApprovalActions requestCount={ordinaryGroups.reduce((n, group) => n + group.requests.length, 0)} busy={busy}
           onApprove={handleApproveShown} onReject={handleRejectAll}
-          choices={groups.map(group => ({
+          choices={ordinaryGroups.map(group => ({
             value: JSON.stringify([group.requests[0]?.accountId, group.origin, group.permKey]),
             label: formatPermissionLabel(group.permKey, group.requests[0]?.event),
             onAlwaysAllow: () => handleAlwaysAllow(group), onAlwaysDeny: () => handleAlwaysDeny(group),
-          }))}/></div>
+          }))}/> : groups.length > 0 ? <ButtonDanger disabled={busy} onClick={handleRejectAll}>{t('approval.rejectAll')}</ButtonDanger> : null}</div>
+        {groups.some(group => group.requests.some(request => request.authentication)) && <Text variant="hint">{t('auth.reviewHint')}</Text>}
         <FormError className="py-3 px-6 text-center">{actionError}</FormError>
-        {groups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
+        {ordinaryGroups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
           <Text variant="muted" as="div" className="pt-2 px-6 pb-4 text-center">
             {t('approval.appliesToAllAccounts')}
           </Text>
@@ -170,6 +179,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           request={selectedGroup.requests[0]}
           requests={selectedGroup.requests}
           busy={busy}
+          onAuthenticate={scope => handleAuthenticate(selectedGroup, scope)}
           onApprove={() => handleApprove(selectedGroup)}
           onAlwaysAllow={() => handleAlwaysAllow(selectedGroup)}
           onDeny={() => handleDeny(selectedGroup)}

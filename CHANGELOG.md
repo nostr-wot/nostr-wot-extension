@@ -6,9 +6,11 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
-## Unreleased
+## 0.8.6 — 2026-09-29
 
 ### Added
+- Require destination-specific consent for cross-origin NIP-98 HTTP authentication and NIP-42 relay authentication, with per-account saved permissions and revocation in settings. Relay consent can optionally cover all connected sites.
+- Show the requesting site, account, exact destination and method in authentication review, with an informational registry of 20 Nostr clients and contribution instructions for backend mappings.
 - Open only the themed toolbar popup on first install. If the browser refuses automatic opening, retain the theme for manual opening from the extension icon; never open a setup tab.
 - Accept built-in `theme` URL parameters on the popup and onboarding entrypoints before first render, persist the initial choice, and preserve an existing saved theme.
 - On first install, recover a unique theme from an open official HTTPS download tab and open the welcome popup. Add host access limited to `https://nostr-wot.com/*` for that lookup; no browsing-history or referral data is stored.
@@ -17,6 +19,7 @@ have had.
 - Defer the shared-core migration until the required packages are released on npm. Restore the extension’s existing account utilities, permission handling and storage implementation; preserve the migration on a separate branch.
 
 ### Fixed
+- Prevent generic signing grants, batch approval and remote signer delegation from bypassing authentication destination consent. Reject malformed auth events and authentication requests from embedded, opaque or insecure non-loopback frames.
 - Set the packaged extension name to `Nostr WoT Extension` so the Chrome Web Store title uses the requested name.
 - Use `nostr-wot-extension@nostr-wot.com` for the new Firefox listing after AMO rejected the previous ID as a duplicate. This is a separate add-on identity, not an automatic update to the old listing.
 - Restore NIP-49 `ncryptsec` key backup export and import for builds resolved from the declared dependency ranges rather than the committed lockfile. The scrypt memory bound sat exactly on one `@noble/hashes` version's internal accounting, so a newer release within the range refused every backup. Store builds and ordinary `npm install` builds were unaffected.
@@ -30,15 +33,13 @@ have had.
 - Verify NIP-49 backups against an independent implementation in both directions, across every defined key-security byte and a range of cost factors.
 - Add a CI job that installs the newest dependencies each declared range admits, then typechecks, builds and re-runs the crypto, vault, signer and transport suites. It also runs weekly, so a library changing behaviour under a range is found before a contributor trips over it.
 
-## 0.8.6
-
-### Fixed
+### Release packaging
 - Correct Chrome release packaging so the background service worker starts and the popup can read site connection status.
 - Build browser packages in isolated directories and validate each final ZIP against its target browser and release version.
 - Require a disposable Chromium smoke test of the Chrome ZIP: worker startup, popup rendering and the connection-status RPC.
 
 ### Store release notes
-Restores the background service required for site connections and signing in Chrome. Adds release checks to prevent incorrect browser packages from being submitted.
+Restores the background service required for site connections and signing in Chrome. Adds explicit permissions for backend and relay authentication, protection against authentication from embedded frames, and release checks for browser packages.
 
 ## 0.8.4 — 2026-09-27
 

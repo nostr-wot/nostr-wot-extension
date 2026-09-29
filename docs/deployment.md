@@ -11,7 +11,8 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.8.6 corrects Chrome packaging after the installed 0.8.4 store artifact was
+0.8.6 adds account-scoped backend/relay authentication consent and top-level-frame
+validation, and corrects Chrome packaging after the installed 0.8.4 store artifact was
 found to contain Firefox background configuration. Store submission and approval
 are separate from generating and verifying the local package.
 

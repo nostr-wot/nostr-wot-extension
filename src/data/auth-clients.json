@@ -1,0 +1,548 @@
+[
+  {
+    "id": "chachi",
+    "name": "Chachi",
+    "origins": [
+      "https://chachi.chat"
+    ],
+    "backends": [
+      {
+        "origin": "https://nostr.download",
+        "purpose": "Default media upload server using Blossom authorization.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/purrgrammer/chachi/blob/1db9df733c3ec0d87c10376119c0ec30a296268b/src/app/store.ts",
+          "https://github.com/purrgrammer/chachi/blob/1db9df733c3ec0d87c10376119c0ec30a296268b/src/lib/media.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/purrgrammer/chachi"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "NIP-29 groups use configurable relays; Blossom media server preferences can override the default. NIP-42 relay authentication is separate from HTTP authentication."
+  },
+  {
+    "id": "coracle",
+    "name": "Coracle",
+    "origins": [
+      "https://coracle.social",
+      "https://app.coracle.social"
+    ],
+    "backends": [
+      {
+        "origin": "https://blossom.nostr.build",
+        "purpose": "First Blossom upload fallback in the checked-in environment template; production configuration may override it.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/coracle-social/coracle/blob/cdd2ddc670d5b9eea7a0e5eee0f10adac29b19bb/.env.template",
+          "https://github.com/coracle-social/coracle/blob/cdd2ddc670d5b9eea7a0e5eee0f10adac29b19bb/src/app/editor/index.ts",
+          "https://github.com/coracle-social/coracle/blob/cdd2ddc670d5b9eea7a0e5eee0f10adac29b19bb/src/engine/commands.ts"
+        ]
+      },
+      {
+        "origin": "https://dufflepud.onrender.com",
+        "purpose": "Dufflepud helper service in the environment template; production origin and authentication unverified.",
+        "auth": "unverified",
+        "sources": [
+          "https://github.com/coracle-social/coracle/blob/cdd2ddc670d5b9eea7a0e5eee0f10adac29b19bb/.env.template",
+          "https://github.com/coracle-social/coracle/blob/cdd2ddc670d5b9eea7a0e5eee0f10adac29b19bb/README.md"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/coracle-social/coracle",
+      "https://github.com/coracle-social/coracle/blob/cdd2ddc670d5b9eea7a0e5eee0f10adac29b19bb/.env.template"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "User Blossom server lists override environment defaults. Template values document configuration, not independently observed production traffic."
+  },
+  {
+    "id": "flotilla",
+    "name": "Flotilla",
+    "origins": [
+      "https://app.flotilla.social"
+    ],
+    "backends": [
+      {
+        "origin": "https://blossom.primal.net",
+        "purpose": "Configured default Blossom upload server.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/coracle-social/flotilla/blob/6ae38287cb686c1f6fea9cffed2f7b61368e51a4/.env"
+        ]
+      },
+      {
+        "origin": "https://api.hosting.coracle.social",
+        "purpose": "Hosted-space management API; implementation reuses a root-URL GET auth token across request paths and methods, not request-bound NIP-98.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/coracle-social/flotilla/blob/6ae38287cb686c1f6fea9cffed2f7b61368e51a4/.env",
+          "https://github.com/coracle-social/flotilla/blob/6ae38287cb686c1f6fea9cffed2f7b61368e51a4/src/app/hosting.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://flotilla.social/articles/installing-flotilla"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Relay communities also use configurable relay endpoints. Legacy reusable HTTP auth must not bypass validation; media servers can be changed."
+  },
+  {
+    "id": "habla",
+    "name": "Habla",
+    "origins": [
+      "https://habla.news"
+    ],
+    "backends": [
+      {
+        "origin": "https://void.cat",
+        "purpose": "Image upload through VoidApi; the inspected client passes no Nostr signer or NIP-98 header.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/verbiricha/habla.news/blob/5a371f394d070e739b0ef11c92ee09b2de630113/src/components/ImageUploader.tsx"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/verbiricha/habla.news"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "This is the public source implementation. Current service availability and production deployment parity are unverified."
+  },
+  {
+    "id": "highlighter",
+    "name": "Highlighter",
+    "origins": [
+      "https://highlighter.com"
+    ],
+    "backends": [
+      {
+        "origin": "https://blossom.primal.net",
+        "purpose": "Default active Blossom media server, overridable through user preferences.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/pablof7z/highlighter/blob/02f336938f64bd9e59d4db450766053406d58b24/apps/web/src/lib/stores/session.ts"
+        ]
+      },
+      {
+        "origin": "https://nostr.api.v0l.io",
+        "purpose": "Public link-preview fetch; inspected callsite has no authentication.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/pablof7z/highlighter/blob/02f336938f64bd9e59d4db450766053406d58b24/apps/web/src/lib/components/Card/UrlCard.svelte"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/pablof7z/highlighter"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "NIP-29 relays distribute grouped content. The web app uses configurable Blossom media services; studio defaults can differ."
+  },
+  {
+    "id": "iris",
+    "name": "Iris",
+    "origins": [
+      "https://iris.to"
+    ],
+    "backends": [
+      {
+        "origin": "https://npub.cash",
+        "purpose": "Default Cashu Lightning-address info, balance and claim API; domain is configurable.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/irislib/iris-client/blob/d05eaa7de3ca4f6b598931d0ea6c9efe11543a1b/src/lib/npubcash.ts"
+        ]
+      },
+      {
+        "origin": "https://upload.iris.to",
+        "purpose": "Default Blossom media upload option.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/irislib/iris-client/blob/d05eaa7de3ca4f6b598931d0ea6c9efe11543a1b/src/pages/settings/mediaservers-utils.ts"
+        ]
+      },
+      {
+        "origin": "https://cdn.nostrcheck.me",
+        "purpose": "Optional NIP-96 media upload server; actual API URL is discovered.",
+        "auth": "unverified",
+        "sources": [
+          "https://github.com/irislib/iris-client/blob/d05eaa7de3ca4f6b598931d0ea6c9efe11543a1b/src/pages/settings/mediaservers-utils.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/irislib/iris-client"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "GitHub is a mirror; README points to git.iris.to for main development. NIP-96 discovery can return a different API origin; verify the actual request destination."
+  },
+  {
+    "id": "jumble",
+    "name": "Jumble",
+    "origins": [
+      "https://jumble.social"
+    ],
+    "backends": [
+      {
+        "origin": "https://api.jumble.social",
+        "purpose": "Configured Jumble API; authentication not verified.",
+        "auth": "unverified",
+        "sources": [
+          "https://github.com/CodyTseng/jumble/blob/41194fbd47490e46b7494ebd09aaaa1510f7ddf7/src/constants.ts"
+        ]
+      },
+      {
+        "origin": "https://blossom.jumble.social",
+        "purpose": "Configured Jumble Blossom server.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/CodyTseng/jumble/blob/41194fbd47490e46b7494ebd09aaaa1510f7ddf7/src/constants.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/CodyTseng/jumble"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Other upload services can be selected; NIP-96 service URLs are discovery origins, not necessarily the actual authentication destinations."
+  },
+  {
+    "id": "listr",
+    "name": "Listr",
+    "origins": [
+      "https://listr.lol"
+    ],
+    "backends": [],
+    "sources": [
+      "https://github.com/erskingardner/listr",
+      "https://github.com/erskingardner/listr/blob/756eb1d8833bddd329d1d61f2e2e0bcaa2919676/src/lib/stores/ndk.svelte.ts",
+      "https://github.com/erskingardner/listr/blob/756eb1d8833bddd329d1d61f2e2e0bcaa2919676/src/routes/(app)/new/+page.svelte"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "The inspected list creation path publishes Nostr events through NDK and configured WebSocket relays. Fixed HTTP authentication backends remain unverified; external profile/media URLs are not an authorization inventory."
+  },
+  {
+    "id": "lumilumi",
+    "name": "Lumilumi",
+    "origins": [
+      "https://lumilumi.app"
+    ],
+    "backends": [
+      {
+        "origin": "https://blossom.band",
+        "purpose": "Offered Blossom upload service.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/TsukemonoGit/lumilumi/blob/8eefd35a8b9153d04d2d6649d9d85efe13351eaa/src/lib/func/constants.ts",
+          "https://github.com/TsukemonoGit/lumilumi/blob/8eefd35a8b9153d04d2d6649d9d85efe13351eaa/src/lib/func/upload.ts"
+        ]
+      },
+      {
+        "origin": "https://nostr.build",
+        "purpose": "Offered NIP-96 discovery origin; actual upload API is discovered and must be checked separately.",
+        "auth": "unverified",
+        "sources": [
+          "https://github.com/TsukemonoGit/lumilumi/blob/8eefd35a8b9153d04d2d6649d9d85efe13351eaa/src/lib/func/constants.ts",
+          "https://github.com/TsukemonoGit/lumilumi/blob/8eefd35a8b9153d04d2d6649d9d85efe13351eaa/src/lib/func/upload.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/TsukemonoGit/lumilumi"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "The client offers multiple configurable Blossom and NIP-96 providers. A discovery origin is not proof of the eventual authentication destination."
+  },
+  {
+    "id": "nostr-band",
+    "name": "Nostr.Band",
+    "origins": [
+      "https://nostr.band"
+    ],
+    "backends": [
+      {
+        "origin": "https://media.nostr.band",
+        "purpose": "Profile image thumbnails; displayed as public image URLs, not NIP-98 authentication.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/nostrband/nostr-band-app/blob/11eb0ed42cf0cdcf0793ae1abb592cb55372e828/src/components/ProfileItem/ProfileItem.tsx"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/nostrband/nostr-band-app",
+      "https://github.com/nostrband/nostr-band-app/blob/11eb0ed42cf0cdcf0793ae1abb592cb55372e828/src/pages/Trending/Trending.tsx"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Trending/profile APIs use build-time REACT_APP_API_URL; its deployed value was not verified from checked-in configuration. Only the explicit public thumbnail service is listed. HTTP authentication backend remains unknown."
+  },
+  {
+    "id": "nostria",
+    "name": "Nostria",
+    "origins": [
+      "https://nostria.app"
+    ],
+    "backends": [
+      {
+        "origin": "https://api.nostria.app",
+        "purpose": "Account settings, backup, notifications and payments API using NIP-98.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/nostria-app/nostria/blob/e861946f4ef4e70f3ec49997a4be27615b9b6f5e/public/auth.md"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/nostria-app/nostria"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Public account reads do not require authentication. Blossom media services are separate and configurable."
+  },
+  {
+    "id": "nostrudel",
+    "name": "noStrudel",
+    "origins": [
+      "https://nostrudel.ninja"
+    ],
+    "backends": [
+      {
+        "origin": "https://nostr.build",
+        "purpose": "Media upload at /api/v2/upload/files; optional NIP-98 header when a signer is supplied.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/hzrd149/nostrudel/blob/38f0eb9f6d9b4212910fecdff445f7a1a16e3349/src/helpers/media-upload/nostr-build.ts"
+        ]
+      },
+      {
+        "origin": "https://api.nostr.band",
+        "purpose": "Trending profiles during signup; shown callsite has no authentication.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/hzrd149/nostrudel/blob/38f0eb9f6d9b4212910fecdff445f7a1a16e3349/src/views/signup/components/finished-step.tsx"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/hzrd149/nostrudel"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Upload selection is configurable; recorded origins are not an exhaustive service inventory."
+  },
+  {
+    "id": "nostter",
+    "name": "Nostter",
+    "origins": [
+      "https://nostter.app"
+    ],
+    "backends": [
+      {
+        "origin": "https://api.nostter.app",
+        "purpose": "Public event/profile lookup; inspected fetch calls have no authentication header.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/SnowCait/nostter/blob/6751acb473be36e9c40f53d718ac4e4330dc231c/web/src/lib/Api.ts"
+        ]
+      },
+      {
+        "origin": "https://blossom.band",
+        "purpose": "Default Blossom server.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/SnowCait/nostter/blob/6751acb473be36e9c40f53d718ac4e4330dc231c/web/src/lib/Constants.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/SnowCait/nostter"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Configurable NIP-96 services are also supported. Their discovered API origins are not assumed to equal their discovery origins."
+  },
+  {
+    "id": "primal",
+    "name": "Primal",
+    "origins": [
+      "https://primal.net"
+    ],
+    "backends": [
+      {
+        "origin": "https://blossom.primal.net",
+        "purpose": "Default Blossom media upload server; Blossom authentication is separate from NIP-98.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/PrimalHQ/primal-web-app/blob/c96ee211043c6fee8a8b7c431746aab06392f765/src/constants.ts",
+          "https://github.com/PrimalHQ/primal-web-app/blob/c96ee211043c6fee8a8b7c431746aab06392f765/src/components/Uploader/UploaderBlossom.tsx"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/PrimalHQ/primal-web-app"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Caching/upload WebSocket services are documented separately by the upstream README; they are not HTTP authentication origins. User-selected Blossom servers may differ."
+  },
+  {
+    "id": "satellite",
+    "name": "Satellite",
+    "origins": [
+      "https://satellite.earth"
+    ],
+    "backends": [
+      {
+        "origin": "https://api.satellite.earth",
+        "purpose": "Media accounts and uploads; upstream documents kind 22242 events in an auth query parameter, not NIP-98.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/lovvtide/satellite-web/blob/f9049baa303e215741ed3e78578121358e390d65/src/constants.js",
+          "https://github.com/lovvtide/satellite-web/blob/f9049baa303e215741ed3e78578121358e390d65/docs/cdn.md"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/lovvtide/satellite-web"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Historical source and CDN protocol are documented; current availability and production parity are unverified. Do not reinterpret this custom kind-22242 scheme as NIP-42 relay authentication."
+  },
+  {
+    "id": "shopstr",
+    "name": "Shopstr",
+    "origins": [
+      "https://shopstr.store"
+    ],
+    "backends": [
+      {
+        "origin": "https://shopstr.store",
+        "purpose": "Same-origin API, including marking messages read, signs the exact request URL with NIP-98.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/shopstr-eng/shopstr/blob/3f47e481faa75c22310bcbe54a87beeadea4c29a/pages/_app.tsx",
+          "https://github.com/shopstr-eng/shopstr/blob/3f47e481faa75c22310bcbe54a87beeadea4c29a/utils/nostr/nip98-auth.ts"
+        ]
+      },
+      {
+        "origin": "https://cdn.nostrcheck.me",
+        "purpose": "Fallback Blossom upload server.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/shopstr-eng/shopstr/blob/3f47e481faa75c22310bcbe54a87beeadea4c29a/components/utility-components/file-uploader.tsx"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/shopstr-eng/shopstr"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Same-origin mapping follows window.location.origin in source; self-hosted deployments use their own origin. User media preferences can override the fallback."
+  },
+  {
+    "id": "snort",
+    "name": "Snort",
+    "origins": [
+      "https://snort.social"
+    ],
+    "backends": [
+      {
+        "origin": "https://api.snort.social",
+        "purpose": "Subscriptions and push notifications; kind 27235 uses legacy url tag in inspected source, not the NIP-98 u tag.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/v0l/snort/blob/c6daa0cf1db9ea7a7e4584d714033ed84fe21f29/packages/app/src/External/SnortApi.ts",
+          "https://github.com/v0l/snort/blob/c6daa0cf1db9ea7a7e4584d714033ed84fe21f29/packages/app/src/External/base.ts",
+          "https://github.com/v0l/snort/blob/c6daa0cf1db9ea7a7e4584d714033ed84fe21f29/packages/app/src/Utils/Const.ts"
+        ]
+      },
+      {
+        "origin": "https://blossom.band",
+        "purpose": "Default Blossom upload fallback.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/v0l/snort/blob/c6daa0cf1db9ea7a7e4584d714033ed84fe21f29/packages/app/src/Utils/Upload/index.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/v0l/snort"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Legacy url-tag authentication must not bypass strict NIP-98 validation. This is not a compatibility allowlist."
+  },
+  {
+    "id": "yakihonne",
+    "name": "YakiHonne",
+    "origins": [
+      "https://yakihonne.com"
+    ],
+    "backends": [
+      {
+        "origin": "https://nostr.build",
+        "purpose": "Media upload at /api/v2/nip96/upload.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/YakiHonne/yakihonne-web-app/blob/eb759adf2d9392c3d458c803e2fd23b86d9322f3/client/src/Components/UploadFile.js"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/YakiHonne/yakihonne-web-app"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Evidence is the public repository implementation; production deployment parity is unverified. Other configured services are not enumerated."
+  },
+  {
+    "id": "zap-cooking",
+    "name": "Zap Cooking",
+    "origins": [
+      "https://zap.cooking"
+    ],
+    "backends": [
+      {
+        "origin": "https://nostr.build",
+        "purpose": "Media upload at /api/v2/upload/files with request-bound NIP-98.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/zapcooking/frontend/blob/692523746ec8c55cbb4ed551a5bc09f7bb17bfaa/src/lib/mediaUpload.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/zapcooking/frontend"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Other same-origin APIs and optional integrations exist; this records the verified upload relationship, not every external service."
+  },
+  {
+    "id": "zap-stream",
+    "name": "zap.stream",
+    "origins": [
+      "https://zap.stream"
+    ],
+    "backends": [
+      {
+        "origin": "https://api-core.zap.stream",
+        "purpose": "Default streaming account and control HTTP API; signs the requested URL and method.",
+        "auth": "nip98",
+        "sources": [
+          "https://github.com/v0l/zap.stream/blob/9f01f17766662455216c62bcc1e1258d25d03665/src/hooks/stream-provider.ts",
+          "https://github.com/v0l/zap.stream/blob/9f01f17766662455216c62bcc1e1258d25d03665/packages/zap-stream-api/src/provider.ts",
+          "https://github.com/v0l/zap.stream/blob/9f01f17766662455216c62bcc1e1258d25d03665/packages/zap-stream-api/src/constants.ts"
+        ]
+      },
+      {
+        "origin": "https://nostr.download",
+        "purpose": "Default media server for uploads.",
+        "auth": "other",
+        "sources": [
+          "https://github.com/v0l/zap.stream/blob/9f01f17766662455216c62bcc1e1258d25d03665/src/hooks/media-servers.ts"
+        ]
+      }
+    ],
+    "sources": [
+      "https://github.com/v0l/zap.stream"
+    ],
+    "checkedAt": "2026-09-29",
+    "notes": "Streaming providers and media servers are configurable. WebSocket metric authentication is a separate path and is not an HTTP origin grant."
+  }
+]

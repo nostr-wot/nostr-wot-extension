@@ -1,3 +1,4 @@
+import { getPageRequestOrigin } from './src/domain/signing/requestOrigin.ts';
 import { openInstalledWelcome } from './src/services/appearance/install.ts';
 import { NIP07_SIGNING_METHODS, MAX_IN_FLIGHT_PER_ORIGIN, MAX_IN_FLIGHT_GLOBAL } from '@constants/signing.ts';
 import { installWotAutoSync } from './src/services/wot/automatic.ts';
@@ -233,17 +234,11 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
 
     // Defense-in-depth: derive NIP-07 origin from browser-verified sender info
     if (method?.startsWith('nip07_') || method?.startsWith('webln_') || method?.startsWith('wot_')) {
-        const originUrl = sender.url || (sender.frameId === 0 ? sender.tab?.url : undefined);
-        if (!originUrl) {
-            sendResponse({ error: 'Cannot determine request origin' });
-            return true;
-        }
         try {
-            const parsed = new URL(originUrl);
-            if (!['http:', 'https:'].includes(parsed.protocol) || sender.origin === 'null') throw new Error('Invalid origin');
-            request.params = { ...(request.params as Record<string, unknown>), origin: parsed.origin };
-        } catch {
-            sendResponse({ error: 'Cannot determine request origin' });
+            const origin = getPageRequestOrigin(method, request.params, sender);
+            request.params = { ...(request.params as Record<string, unknown>), origin };
+        } catch (error) {
+            sendResponse({ error: (error as Error).message });
             return true;
         }
     }
@@ -282,19 +277,12 @@ browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
 
         // Defense-in-depth: derive origin from browser-verified sender info
         if (method?.startsWith('nip07_') || method?.startsWith('webln_') || method?.startsWith('wot_')) {
-            const originUrl = port.sender?.url || (port.sender?.frameId === 0 ? port.sender?.tab?.url : undefined);
-            if (!originUrl) {
-                try { port.postMessage({ id: request.id, error: 'Cannot determine request origin' }); } catch {}
-                return;
-            }
             let origin: string;
             try {
-                const parsed = new URL(originUrl);
-                if (!['http:', 'https:'].includes(parsed.protocol) || port.sender?.origin === 'null') throw new Error('Invalid origin');
-                origin = parsed.origin;
+                origin = getPageRequestOrigin(method, request.params, port.sender);
                 request.params = { ...(request.params as Record<string, unknown>), origin };
-            } catch {
-                try { port.postMessage({ id: request.id, error: 'Cannot determine request origin' }); } catch {}
+            } catch (error) {
+                try { port.postMessage({ id: request.id, error: (error as Error).message }); } catch {}
                 return;
             }
             // Remember which tab is showing which origin, so account-change broadcasts do
