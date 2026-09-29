@@ -22,9 +22,9 @@ export default function AuthenticationNotice({ request }: {
     client.backends.some(backend => backend.origin === auth.destination && backend.auth === auth.protocol));
 
   return <Container gap={3} className="min-w-0">
-    <Text className="[overflow-wrap:anywhere]">
+    <Text variant="secondary" className="[overflow-wrap:anywhere]">
       {t(relay ? 'auth.relaySummary' : 'auth.httpSummary')}{' '}
-      <Text as="strong" mono>{destination}</Text>.
+      <Text as="strong" mono className="text-brand">{destination}</Text>.
     </Text>
     {auth.method && <FieldDisplay label={t('auth.methods')} value={auth.method} mono />}
     {known && <Text variant="hint">{t('auth.knownBackend', { name: known.name })}</Text>}

@@ -1,0 +1,20 @@
+import {it} from 'node:test';
+import assert from 'node:assert/strict';
+import browser,{resetMockStorage} from './helpers/browser-mock';
+import {maintainProfileCache} from '../src/services/profile/displayCache';
+import {profileCache} from '../src/services/background/state';
+import {PROFILE_CACHE_TTL_MS,PROFILE_CACHE_MAX_ENTRIES} from '../src/constants/profile';
+it('shared profile cache expires entries and bounds concurrent writes without deleting unrelated storage',async()=>{
+ resetMockStorage();profileCache.clear();const now=Date.now();
+ const entries=Object.fromEntries(Array.from({length:PROFILE_CACHE_MAX_ENTRIES+5},(_,i)=>[`profile_${i.toString(16).padStart(64,'0')}`,{metadata:{name:String(i)},fetchedAt:now-i}]));
+ entries[`profile_${'f'.repeat(64)}`]={metadata:{name:'expired'},fetchedAt:now-PROFILE_CACHE_TTL_MS-1};
+ await browser.storage.local.set({...entries,language:'en'});
+ await maintainProfileCache();
+ const all=await browser.storage.local.get(null);
+ assert.equal(Object.keys(all).filter(k=>k.startsWith('profile_')).length,PROFILE_CACHE_MAX_ENTRIES);
+ assert.equal(profileCache.size,PROFILE_CACHE_MAX_ENTRIES);assert.equal(all.language,'en');
+ assert.equal(all[`profile_${'f'.repeat(64)}`],undefined);
+ await Promise.all(['a','b','c'].map(key=>maintainProfileCache(key.repeat(64),{metadata:{name:key},fetchedAt:Date.now()})));
+ assert.equal(profileCache.size,PROFILE_CACHE_MAX_ENTRIES);
+ assert.equal(Object.keys(await browser.storage.local.get(null)).filter(k=>k.startsWith('profile_')).length,PROFILE_CACHE_MAX_ENTRIES);
+});

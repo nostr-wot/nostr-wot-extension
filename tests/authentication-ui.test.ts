@@ -35,7 +35,7 @@ it('collapsed card shows the site once and authentication destination without a 
 it('authentication detail cannot expose generic always-allow controls',async()=>{
  const {default:Detail}=await import('../src/components/EventDetailModal');
  const html=renderToStaticMarkup(createElement(Detail,{request:{type:'signEvent',origin:'https://client.test',authentication},onApprove(){},onAlwaysAllow(){},onAuthenticate(){},onDeny(){}}));
- assert.ok(html.includes('approval.approve')); assert.ok(!html.includes('approval.alwaysAllow'));assert.ok(html.includes('common.advanced'));
+ assert.ok(html.includes('approval.approve')); assert.ok(!html.includes('approval.alwaysAllow'));assert.ok(html.includes('event.showRaw'));
  assert.ok(!html.includes('<details open'));
 });
 it('mounted permissions filters accounts and retains failed revocations until success',async t=>{
@@ -169,7 +169,7 @@ it('advanced event data is collapsed and reject-always is available only through
  const root=createRoot(document.getElementById('root')!);let rejected=0;
  try{
   await act(async()=>root.render(createElement(Detail,{request:{type:'signEvent',authentication,event:{kind:27235,content:'',tags:[['u',authentication.url],['method','POST']]}},onAuthenticate(){},onDeny(){},onAlwaysDeny(){rejected++;}})));
-  const advanced=[...document.querySelectorAll('details')].find(d=>d.querySelector('summary')?.textContent==='common.advanced')!;
+  const advanced=[...document.querySelectorAll('details')].find(d=>d.querySelector('summary')?.getAttribute('aria-label')==='event.showRaw')!;
   assert.ok(advanced);assert.equal(advanced.open,false);assert.ok(advanced.textContent?.includes('POST'));
   assert.equal(document.querySelector('[role="menu"]'),null);
   await act(async()=>{(document.querySelector('[aria-label="approval.rejectOptions"]') as HTMLButtonElement).click();});
@@ -192,17 +192,23 @@ it('every known signing kind uses a description and collapsed raw event without 
   assert.ok(!dom.window.document.querySelector('h3'));dom.window.close();
  }
 });
-it('grouped event decisions identify only the clicked request',async()=>{
+it('grouped event selection approves only checked IDs and leaves late arrivals unchecked',async()=>{
  const {default:Detail}=await import('../src/components/EventDetailModal');const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const requests=['one','two'].map((id,i)=>({id,type:'signEvent',origin:'site',event:{kind:30078,content:'',tags:[['d','Primal-Web App',i?'reset_direct_message_count':'get_app_subsettings_home']]}}));
- const chosen:string[]=[];const root=createRoot(document.getElementById('root')!);
+ const chosen:string[][]=[];let rejected=0;const root=createRoot(document.getElementById('root')!);
+ const render=()=>createElement(Detail,{request:requests[0],requests:[...requests],onApproveSelected:ids=>chosen.push(ids),onDeny:()=>rejected++});
  try{
-  await act(async()=>root.render(createElement(Detail,{request:requests[0],requests,onApproveRequest:id=>chosen.push('approve:'+id),onDenyRequest:id=>chosen.push('reject:'+id)})));
-  const rows=document.querySelectorAll('[data-approval-request]');
-  await act(async()=>{rows[1].querySelector('button')!.click();});
-  await act(async()=>{rows[0].querySelectorAll('button')[1].click();});
-  assert.deepEqual(chosen,['approve:two','reject:one']);
+  await act(async()=>root.render(render()));
+  const approve=()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='approval.approveSelected')!;
+  assert.equal(approve().disabled,true);
+  assert.equal(document.querySelectorAll('[data-approval-request] button').length,0);
+  await act(async()=>{(document.querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click();});
+  assert.ok([...document.querySelectorAll('[data-approval-request]')].every(row=>!(row as HTMLDetailsElement).open));
+  requests.push({...requests[0],id:'late'});await act(async()=>root.render(render()));
+  assert.equal((document.querySelectorAll('input[type="checkbox"]')[2] as HTMLInputElement).checked,false);
+  await act(async()=>approve().click());assert.deepEqual(chosen,[['two']]);
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='approval.rejectAll')!.click());assert.equal(rejected,1);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
 it('app intent puts its action before its application name',async t=>{
@@ -254,4 +260,23 @@ it('Permissions offers navigation to the relay permissions panel',async t=>{
   const link=[...document.querySelectorAll('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
   assert.ok(link);await act(async()=>link.click());assert.equal(opened,1);
  }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('intent highlights keep origin/action/app literal and grouped summaries have no numbering or native marker',async t=>{
+ const {readFileSync}=await import('node:fs');const strings=JSON.parse(readFileSync(new URL('../src/public/locales/en.json',import.meta.url),'utf8'));
+ t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify(strings)));
+ const {initI18n}=await import('../src/services/i18n/i18n');await initI18n();
+ const {signingIntentParts}=await import('../src/services/i18n/eventIntent');
+ const action='get_settings';const app='Literal ]] {origin} <img>';
+ const event={kind:30078,tags:[['d',app,action]]};
+ const parts=signingIntentParts('https://client.test',event);
+ assert.deepEqual(parts.filter(p=>p.accent).map(p=>p.text),['https://client.test','get settings',app]);
+ const {default:Detail}=await import('../src/components/EventDetailModal');const {JSDOM}=await import('jsdom');
+ const request={id:'a',type:'signEvent',origin:'https://client.test',event};
+ const dom=new JSDOM(renderToStaticMarkup(createElement(Detail,{request,requests:[request,{...request,id:'b'}]})));
+ const summary=dom.window.document.querySelector('[data-approval-request] > summary')!;
+ assert.ok(!summary.textContent!.startsWith('1.'));assert.ok(summary.className.includes('list-none'));
+ assert.equal(summary.querySelectorAll('.text-brand').length,3);
+ assert.ok(summary.querySelector('svg.self-end'));assert.equal(summary.querySelector('img'),null);
+ assert.ok(dom.window.document.querySelector('summary[title="Show raw event"]'));
+ assert.ok(!dom.window.document.body.textContent!.includes('Advanced'));dom.window.close();
 });

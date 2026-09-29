@@ -1,3 +1,4 @@
+import { maintainProfileCache } from '../profile/displayCache';
 import { PROFILE_CACHE_TTL_MS as PROFILE_CACHE_TTL } from '@constants/profile.ts';
 import type { MyMuteList as GroupedMuteList } from '@domain/mutes/muteList.ts';
 import type { ProfileRead } from '@domain/profile/profileMetadata.ts';
@@ -16,7 +17,7 @@ import { cachedRelayRead } from '../relays/relayCache.ts';
 import { MUTE_LIST_CACHE } from '@constants/relays.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 
-import { config, profileCache, type HandlerFn, type ProfileCacheEntry } from './state.ts';
+import { config, profileCache, type HandlerFn } from './state.ts';
 import { DEFAULT_RELAYS } from '@constants/relays.ts';
 
 /**
@@ -65,17 +66,11 @@ const profileReads = new Map<string, { promise: Promise<Record<string, unknown> 
 
 export async function fetchProfileMetadata(pubkey: string, directory = false): Promise<Record<string, unknown> | null> {
     if (!pubkey) return null;
+    await maintainProfileCache();
 
     const cached = profileCache.get(pubkey);
     if (cached && Date.now() - cached.fetchedAt < PROFILE_CACHE_TTL) {
         return cached.metadata;
-    }
-
-    const storageKey = `profile_${pubkey}`;
-    const stored = await browser.storage.local.get(storageKey) as Record<string, ProfileCacheEntry>;
-    if (stored[storageKey] && Date.now() - stored[storageKey].fetchedAt < PROFILE_CACHE_TTL) {
-        profileCache.set(pubkey, stored[storageKey]);
-        return stored[storageKey].metadata;
     }
 
     const readKey = `${directory ? "directory:" : ""}${pubkey}`;
@@ -89,11 +84,10 @@ export async function fetchProfileMetadata(pubkey: string, directory = false): P
         const metadata = await fetchKind0(pubkey, directory ? [PROFILE_DIRECTORY_RELAY] : relays);
         if (metadata) {
             const cached = { metadata, fetchedAt: Date.now() };
-            profileCache.set(pubkey, cached);
-            await browser.storage.local.set({ [storageKey]: cached });
+            await maintainProfileCache(pubkey,cached);
         }
         return metadata;
-    })().finally(() => { entry.expiresAt = Date.now() + PROFILE_RETRY_MS; });
+    })().then(result=>{ if(result && profileReads.get(readKey)===entry) profileReads.delete(readKey); return result; }).finally(() => { entry.expiresAt = Date.now() + PROFILE_RETRY_MS; });
     profileReads.set(readKey, entry);
     return entry.promise;
 }
@@ -325,8 +319,7 @@ export const handlers = new Map<string, HandlerFn>([
         const { pubkey, metadata } = params as { pubkey: string; metadata: Record<string, unknown> };
         if (!pubkey || !metadata) throw new Error('Missing pubkey or metadata');
         const entry = { metadata, fetchedAt: Date.now() };
-        profileCache.set(pubkey, entry);
-        await browser.storage.local.set({ [`profile_${pubkey}`]: entry });
+        await maintainProfileCache(pubkey,entry);
         return { ok: true };
     }],
 

@@ -6,6 +6,9 @@ export const PROFILE_DIRECTORY_RELAY = 'wss://purplepag.es';
 /** Profile metadata cache TTL (30 minutes) */
 export const PROFILE_CACHE_TTL_MS = 30 * 60 * 1000;
 
+/** Keep at most the 500 most recently fetched public profiles. */
+export const PROFILE_CACHE_MAX_ENTRIES = 500;
+
 export const PROFILE_RETRY_MS = 60_000;
 
 /** Fields the form owns, in the order they are applied. */

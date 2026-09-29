@@ -9,6 +9,9 @@ have had.
 ## 0.8.7 — 2026-09-29
 
 ### Improved
+- Select grouped requests with visible checkboxes and approve only that selection, or reject all; new arrivals remain unchecked.
+- Group message approvals by sender with cached avatars/names and available sent dates; bound shared profile caching to 30 minutes and 500 entries.
+- Use themed intent emphasis, unnumbered right-chevron summaries and code-icon raw-event toggles; remove redundant private-message request sentences.
 - Manage all-sites relay authentication grants in a compact Relays table, with a link from Permissions and account-specific revocation.
 - Describe signing requests in plain language with event data under Advanced, and support individual decisions inside request groups.
 - Center the hint over concealed message content, hide it during reveal, and show a shrinking 30-second countdown ring at the bottom-right.

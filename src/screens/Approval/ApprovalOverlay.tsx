@@ -171,9 +171,13 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           requests={selectedGroup.requests}
           busy={busy}
           actionError={actionError}
-          onApproveRequest={id => { const item=selectedGroup.requests.find(request=>request.id === id); if (item) void handleApprove({...selectedGroup,requests:[item]}); }}
-          onDenyRequest={id => { const item=selectedGroup.requests.find(request=>request.id === id); if (item) void handleDeny({...selectedGroup,requests:[item]}); }}
-          onAuthenticateRequest={(id,scope) => { const item=selectedGroup.requests.find(request=>request.id === id); if (item) void handleAuthenticate({...selectedGroup,requests:[item]},scope); }}
+          onApproveSelected={ids => {
+            const requests=selectedGroup.requests.filter(item=>ids.includes(item.id));
+            if (!requests.length) return;
+            const subset={...selectedGroup,requests};
+            if(requests.every(item=>item.authentication)) void handleAuthenticate(subset,'once');
+            else void handleApprove(subset);
+          }}
           onAuthenticate={scope => handleAuthenticate(selectedGroup, scope)}
           onApprove={() => handleApprove(selectedGroup)}
           onAlwaysAllow={() => handleAlwaysAllow(selectedGroup)}

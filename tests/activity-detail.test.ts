@@ -1,4 +1,5 @@
 import { it } from 'node:test';
+import {JSDOM} from 'jsdom';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -39,8 +40,10 @@ for (const [kind, content, label] of [
     assert.ok(html.includes(label));
     assert.match(html, /<details open/);
     for (const tag of tags) assert.ok(html.includes(JSON.stringify(tag).replaceAll('"', '&quot;')));
-    assert.match(html, /aria-expanded="false"/);
-    assert.match(html, /focus-visible:shadow-focus/);
+    const dom=new JSDOM(html);
+    const raw=dom.window.document.querySelector('summary[aria-label="event.showRaw"]')!;
+    assert.ok(raw);assert.equal(raw.closest('details')!.open,false);
+    assert.ok(raw.className.includes('focus-visible:outline'));dom.window.close();
   });
 }
 
@@ -48,7 +51,7 @@ it('profile previews reject unsafe image URLs and handle malformed metadata', ()
   const render = (content: string) => renderToStaticMarkup(createElement(EventPreview, {
     type: 'signEvent', event: { kind: 0, content, tags: [] },
   }));
-  assert.doesNotMatch(render('{"name":"Alice","banner":"javascript:bad","picture":"javascript:bad"}'), /javascript:bad|<img/);
+  assert.doesNotMatch(render('{"name":"Alice","banner":"javascript:bad","picture":"javascript:bad"}'), /<img/);
   assert.match(render('{"name":"Alice","banner":"https://example.test/banner.png"}'), /<img[^>]*src="https:\/\/example.test\/banner.png"/);
   assert.match(render('invalid json'), /event.noEventData/);
 });

@@ -42,6 +42,7 @@ export interface RequestDecision {
 /** Local review only; never persisted in the pending-request metadata. */
 export interface PendingRequestPreview {
   request: { method: string; origin: string; params: Record<string, unknown> };
+  messageMetadata?: { senderPubkey?: string; sentAt?: number };
   plaintext?: string;
   senderPubkey?: string;
   decryptedEvent?: Record<string,unknown>;

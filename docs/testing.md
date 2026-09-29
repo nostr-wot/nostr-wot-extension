@@ -539,3 +539,5 @@ Profile lookup regressions cover purplepag.es queries, verified metadata caching
 Message-review UI tests also verify From/Content presentation, profile-key fallback, and timed concealment after 30 seconds. Both the message body and outgoing plaintext under Advanced follow the timer and manual hide; concealed message text is absent from the rendered DOM.
 
 Approval list regressions verify one heading per site while preserving separate request groups. Browser checks cover scrolling to and opening the final request and opening bulk-action menus. Timed message tests assert the internal hint, a full 30-second ring, its 29-second state, and its removal with plaintext at expiry.
+
+`tests/profile-display-cache.test.ts` verifies 30-minute expiry, the 500-profile bound under concurrent writes and unrelated-storage preservation. Message-preview regressions cover sender/date-only responses with no plaintext/payload, sender grouping, dated entries, profile images and literal themed intent parts. Raw-event disclosures retain keyboard-accessible native details.

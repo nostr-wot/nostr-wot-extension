@@ -229,11 +229,20 @@ async function removePendingFromStorage(id: string): Promise<void> {
 
 
 /** Internal popup review: never resolves a request or grants site permission. */
-export async function previewPendingRequest(id: string, reveal: boolean): Promise<PendingRequestPreview> {
+export async function previewPendingRequest(id: string, reveal: boolean, metadataOnly = false): Promise<PendingRequestPreview> {
   const preview = _pendingPreviews.get(id);
   if (!preview || !_pendingResolvers.has(id)) throw new Error('Request preview is no longer available');
-  const result = await preview(reveal);
+  let result = await preview(metadataOnly ? false : reveal);
+  if (metadataOnly && result.request.method === 'nip44Decrypt') result = await preview(true);
   if (_pendingPreviews.get(id) !== preview || !_pendingResolvers.has(id)) throw new Error('Request preview is no longer available');
+  if (metadataOnly) {
+    const sentAt = result.decryptedEvent?.created_at;
+    const senderPubkey = result.senderPubkey || result.request.params.pubkey as string | undefined;
+    return {request:{method:result.request.method,origin:result.request.origin,params:{}},messageMetadata:{
+      ...(senderPubkey ? {senderPubkey} : {}),
+      ...(typeof sentAt==='number' && Number.isSafeInteger(sentAt) && sentAt>0 && !Number.isNaN(new Date(sentAt*1000).getTime()) ? {sentAt} : {}),
+    }};
+  }
   return result;
 }
 

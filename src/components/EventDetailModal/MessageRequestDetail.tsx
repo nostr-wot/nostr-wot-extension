@@ -1,7 +1,8 @@
+import browser from '@lib/browser';
+import { PROFILE_CACHE_TTL_MS } from '@constants/profile';
 import { useEffect, useRef, useState } from 'react';
 import type { PendingRequestPreview } from '@domain/signing/types.ts';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
-import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
@@ -19,7 +20,7 @@ import { truncateMiddle } from '@utils/format/text.ts';
 export const isMessageRequest = (type: string | null) => /^(nip04|nip44)(Encrypt|Decrypt)$/.test(type || '');
 
 /** Pending message review never approves or returns plaintext to the requesting site. */
-export default function MessageRequestDetail({request}:{request:{id?:string;type:string;theirPubkey?:string|null}}) {
+export default function MessageRequestDetail({request,showSender=true}:{showSender?:boolean;request:{id?:string;type:string;theirPubkey?:string|null}}) {
   const [sender,setSender] = useState<string | null>(null);
   const message = useTimedReveal<{plaintext:string;decryptedEvent?:Record<string,unknown>} | null>(null,30_000);
   const decryptedEvent = message.value?.decryptedEvent;
@@ -37,11 +38,11 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
     const lifetime = generation.current;
     setProfile(null);
     setProfileLoading(false);
-    if (peer) void (async () => {
-      const data = await browser.storage.local.get(`profile_${peer}`);
+    if (showSender && peer) void (async () => {
+      const stored = await browser.storage.local.get(`profile_${peer}`);
       if (!current) return;
-      const cached = (data[`profile_${peer}`] as {metadata?:ProfileMetadata}|undefined)?.metadata;
-      if (cached) { setProfile(cached); return; }
+      const cached = stored[`profile_${peer}`] as {metadata?:ProfileMetadata;fetchedAt?:number}|undefined;
+      if (cached?.metadata && cached.fetchedAt && Date.now()-cached.fetchedAt < PROFILE_CACHE_TTL_MS) { setProfile(cached.metadata); return; }
       // NIP-44 can name a temporary wrapping key. Reveal identifies its author.
       if (request.type === 'nip44Decrypt' && !sender) return;
       setProfileLoading(true);
@@ -49,7 +50,7 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
       if (current) setProfile(metadata);
     })().catch(() => {}).finally(() => { if (current) setProfileLoading(false); });
     return () => { current = false; lifetime.version++; };
-  }, [request.id,request.type,peer,sender]);
+  }, [request.id,request.type,peer,sender,showSender]);
   const clear = () => { generation.current.version++; message.clear(); setSender(null); setRaw(null); setError(''); setBusy(false); };
   useStorageWatch([{area:'local',keys:[LOCK_STATE_KEY,'activeAccountId']},{area:'session',keys:['signerPending']}],clear);
   async function load(reveal:boolean) {
@@ -69,10 +70,12 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
     finally { if (current === generation.current.version) setBusy(false); }
   }
   return <Container gap={4} className="min-w-0">
+    {showSender && <>
     <Text variant="secondary">{t(decrypt ? 'messageReview.sender' : 'event.recipient')}</Text>
-    {profile && <ProfileSummary meta={{...profile,picture:undefined}} compact/>}
+    {profile && <ProfileSummary meta={profile} compact/>}
     {profileLoading && <Text variant="hint">{t('common.loading')}</Text>}
     {peer && !profile && <Text mono title={peer} className="text-xs break-all">{truncateMiddle(peer,16,12)}</Text>}
+    </>}
     <Text variant="secondary">{t('approval.detail.content')}</Text>
     <Button outline className="w-full" disabled={busy || !request.id}
       aria-label={t(plaintext === null ? 'key.clickToReveal' : 'key.clickToBlur')}
@@ -89,7 +92,7 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
       </span>
     </Button>
     <FormError>{error}</FormError>
-    <DetailDisclosure label={t('common.advanced')} onOpenChange={open => {
+    <DetailDisclosure iconOnly label={t('event.showRaw')} onOpenChange={open => {
       if (open) void load(false); else { generation.current.version++; setRaw(null); setBusy(false); }
     }}>
       {raw ? <TextBlock mono>{JSON.stringify({...raw,params:{...raw.params,...('plaintext' in raw.params ? {plaintext:plaintext ?? t('key.clickToReveal')} : {})},...(decryptedEvent ? {decryptedEvent} : {})},null,2)}</TextBlock> : busy ? <Text variant="hint">{t('common.loading')}</Text> : null}

@@ -237,7 +237,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['signer_previewRequest', async params => {
         if (typeof params.id !== 'string' || typeof params.reveal !== 'boolean') throw new Error('Invalid preview request');
-        return signerApprovalQueue.previewPendingRequest(params.id, params.reveal);
+        return signerApprovalQueue.previewPendingRequest(params.id, params.reveal, params.metadataOnly === true);
     }],
 
     ['signer_getPending', async () => signerApprovalQueue.getPending()],

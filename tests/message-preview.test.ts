@@ -100,6 +100,10 @@ it('gift-wrap preview finds the sealed sender without changing the response sent
  const encrypted=await nip44Encrypt(original,hexToBytes(wrapper.privkey!),hexToBytes(owner.pubkey));
  const work=signer.handleNip44Decrypt(wrapper.pubkey,encrypted,site);void work.catch(()=>{});
  const request=await pending();
+ const metadata=await previewPendingRequest(request.id,false,true);
+ assert.deepEqual(metadata.messageMetadata,{senderPubkey:peer.pubkey,sentAt:1});
+ assert.equal(metadata.plaintext,undefined);assert.equal(metadata.decryptedEvent,undefined);
+ assert.deepEqual(metadata.request.params,{});assert.ok(!JSON.stringify(metadata).includes(secret));
  const preview=await previewPendingRequest(request.id,true);
  assert.equal(preview.plaintext,secret);assert.equal(preview.senderPubkey,peer.pubkey);assert.deepEqual(preview.decryptedEvent,rumor);
  assert.equal((await getPending()).length,1);

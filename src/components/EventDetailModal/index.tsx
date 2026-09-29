@@ -1,5 +1,10 @@
+import GroupedMessageRequests from './GroupedMessageRequests';
+import IconChevronDown from '@assets/IconChevronDown';
+import IntentText from './IntentText';
+import { useId, useState, type ReactNode } from 'react';
+import Checkbox from '@components/Checkbox';
 import IconWarning from '@assets/IconWarning';
-import { describeSigningIntent } from '@services/i18n/eventIntent.ts';
+import { signingIntentParts, intentParts } from '@services/i18n/eventIntent.ts';
 import TextBlock from '@components/TextBlock';
 import StatusNotice from '@components/StatusNotice';
 import MessageRequestDetail, { isMessageRequest } from './MessageRequestDetail';
@@ -72,9 +77,8 @@ interface EventDetailModalProps {
   requests?: ApprovalRequest[];
   busy?: boolean;
   actionError?: string;
-  onApproveRequest?: (id:string) => void;
+  onApproveSelected?: (ids:string[]) => void;
   onDenyRequest?: (id:string) => void;
-  onAuthenticateRequest?: (id:string,scope:AuthenticationScope) => void;
   onApprove?: () => void;
   onAuthenticate?: (scope: AuthenticationScope) => void;
   onDeny?: () => void;
@@ -103,7 +107,7 @@ export default function EventDetailModal({
   requests,
   busy = false,
   actionError,
-  onApproveRequest, onDenyRequest, onAuthenticateRequest,
+  onApproveSelected, onDenyRequest,
   onApprove,
   onAuthenticate,
   onDeny,
@@ -116,6 +120,10 @@ export default function EventDetailModal({
   onBack,
   zIndex = 350,
 }: EventDetailModalProps) {
+  const selectionPrefix=useId();
+  const [selectedIds,setSelectedIds]=useState<string[]>([]);
+  const selectable=!!(requests && requests.length>1 && !nip46InFlight && onApproveSelected);
+  const selected=(requests || []).filter(item=>item.id && selectedIds.includes(item.id)).map(item=>item.id!);
   const isApproval = !!request && !nip46InFlight;
 
   // Resolve display data from either group or request
@@ -131,26 +139,26 @@ export default function EventDetailModal({
   // Approval description
   const description = request ? describeRequest(request) : null;
 
+  const renderRequest = (item:ApprovalRequest,index:number,label?:ReactNode) => (
+                <div key={item.id ?? index} className="relative">
+                <details data-approval-request={item.id ?? index} className="group/request rounded-panel border border-card-border p-5">
+                  <summary id={`${selectionPrefix}-${item.id ?? index}`} className={`${selectable ? 'pr-8 ' : ''}flex flex-col gap-2 cursor-pointer text-md list-none [&::-webkit-details-marker]:hidden [&::marker]:content-['']`}>
+                    <span>{label || describeRequest(item) || <span className="text-brand">{formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</span>}</span>
+                    <IconChevronDown aria-hidden="true" className="self-end text-secondary transition-transform group-open/request:rotate-180"/>
+                  </summary>
+                  <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item} showSender={!label}/> : item.type === 'signEvent' ? <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
+                  {nip46InFlight && item.id && onDenyRequest && <div className="flex justify-end pt-5"><ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t('approval.cancelNip46')}</ButtonDanger></div>}
+                </details>
+                {selectable && item.id && <div className="absolute right-5 top-5"><Checkbox disabled={busy} checked={selected.includes(item.id)} aria-label={t('approval.selectRequest')} aria-describedby={`${selectionPrefix}-${item.id}`} onChange={event=>setSelectedIds(previous=>event.target.checked ? [...previous,item.id!] : previous.filter(id=>id!==item.id))}/></div>}
+                </div>
+  );
+
   const eventContent = request && requests && requests.length > 1 ? (
             <div className="flex flex-col gap-4">
               <span className="text-sm text-menu-subtitle">{t('approval.requests', {count:requests.length})}</span>
-              {requests.map((item, index) => (
-                <details key={item.id ?? index} data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
-                  <summary className="cursor-pointer text-md text-heading">
-                    {isMessageRequest(item.type) ? t('messageReview.messageNumber', {number:index + 1}) : <>{index + 1}. {item.type === 'signEvent' && !item.authentication ? describeRequest(item) : formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</>}
-                  </summary>
-                  <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item}/> : item.type === 'signEvent' && !item.authentication ? <DetailDisclosure label={t('common.advanced')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
-                  {item.id && onDenyRequest && <div className="flex justify-end gap-4 pt-5">
-                    {item.authentication && onAuthenticateRequest ? <AuthenticationActions authentication={item.authentication} requestCount={1} busy={busy}
-                      onApprove={scope=>onAuthenticateRequest(item.id!,scope)} onDeny={()=>onDenyRequest(item.id!)}/> : <>
-                      {!nip46InFlight && onApproveRequest && <Button small disabled={busy} onClick={()=>onApproveRequest(item.id!)}>{t('approval.approve')}</Button>}
-                      <ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t(nip46InFlight ? 'approval.cancelNip46' : 'auth.reject')}</ButtonDanger>
-                    </>}
-                  </div>}
-                </details>
-              ))}
+              {requests.every(item=>isMessageRequest(item.type)) ? <GroupedMessageRequests requests={requests} renderRequest={(item,label)=>renderRequest(item,requests.indexOf(item),label)}/> : requests.map((item,index)=>renderRequest(item,index))}
             </div>
-          ) : request?.type === 'signEvent' && !request.authentication ? <DetailDisclosure label={t('common.advanced')}><TextBlock mono>{JSON.stringify(event || {},null,2)}</TextBlock></DetailDisclosure> : request && isMessageRequest(type) ? <MessageRequestDetail key={request.id} request={request}/> : request ? (
+          ) : request?.type === 'signEvent' ? <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(event || {},null,2)}</TextBlock></DetailDisclosure> : request && isMessageRequest(type) ? <MessageRequestDetail key={request.id} request={request}/> : request ? (
             <EventPreview
               type={type}
               event={event || null}
@@ -183,7 +191,7 @@ export default function EventDetailModal({
           {request && !request.authentication && (
             <div className={CLS.summary}>
               {type !== 'signEvent' && <div className={CLS.methodBadge}>{title}</div>}
-              {description && !(type === 'signEvent' && requests && requests.length > 1) && <p className={CLS.description}>{description}</p>}
+              {description && !isMessageRequest(type) && !(type === 'signEvent' && requests && requests.length > 1) && <p className={CLS.description}>{description}</p>}
             </div>
           )}
 
@@ -192,7 +200,7 @@ export default function EventDetailModal({
           <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
 
           {/* Event content */}
-          {request?.authentication ? <DetailDisclosure label={t('common.advanced')}>{eventContent}</DetailDisclosure> : isMessageRequest(type) ? <div className="border-t border-card-border pt-6">{eventContent}</div> : eventContent}
+          {isMessageRequest(type) ? <div className="border-t border-card-border pt-6">{eventContent}</div> : eventContent}
 
           {/* NIP-46 in-flight: pending message (the cancel button is pinned below) */}
           {nip46InFlight && request && (
@@ -216,7 +224,7 @@ export default function EventDetailModal({
         {/* Approval action buttons */}
         {isApproval && (
           <div className={CLS.actions}>
-            {request?.authentication ? <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1} busy={busy} onApprove={onAuthenticate} onDeny={onDeny} onAlwaysDeny={onAlwaysDeny}/> : <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
+            {selectable ? <div className="flex justify-end gap-4"><Button small disabled={busy || !selected.length} onClick={()=>onApproveSelected?.(selected)}>{t('approval.approveSelected')}</Button><ButtonDanger small outline disabled={busy || !onDeny} onClick={onDeny}>{t('approval.rejectAll')}</ButtonDanger></div> : request?.authentication ? <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1} busy={busy} onApprove={onAuthenticate} onDeny={onDeny} onAlwaysDeny={onAlwaysDeny}/> : <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
               onApprove={onApprove} onReject={onDeny}
               choices={[{value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny}]}/>}
 
@@ -227,19 +235,19 @@ export default function EventDetailModal({
   );
 }
 
-function describeRequest(req: ApprovalRequest): string | null {
+function describeRequest(req: ApprovalRequest): ReactNode {
   const origin = req.origin || '?';
   switch (req.type) {
     case 'getPublicKey':
-      return t('approval.detail.readProfileDesc', { origin });
+      return <IntentText parts={intentParts('approval.detail.readProfileDesc',{origin})}/>;
     case 'signEvent':
-      return describeSigningIntent(origin,req.event);
+      return req.authentication ? <AuthenticationNotice request={req}/> : <IntentText parts={signingIntentParts(origin,req.event)}/>;
     case 'nip04Encrypt':
     case 'nip44Encrypt':
-      return t('approval.detail.sendDesc', { origin });
+      return <IntentText parts={intentParts('approval.detail.sendDesc',{origin})}/>;
     case 'nip04Decrypt':
     case 'nip44Decrypt':
-      return t('approval.detail.readDesc', { origin });
+      return <IntentText parts={intentParts('approval.detail.readDesc',{origin})}/>;
     default:
       return null;
   }

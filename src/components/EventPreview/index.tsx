@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { cn } from '@utils/cn.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
@@ -21,7 +21,6 @@ import Text from '@components/Text';
 import TextBlock from '@components/TextBlock';
 import DetailDisclosure from '@components/DetailDisclosure';
 import StatusNotice from '@components/StatusNotice';
-import { ButtonSecondary } from '@components/Button';
 
 /** Maps event kind to component. Entries here skip the generic fallback. */
 const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisplay }>> = {
@@ -56,7 +55,6 @@ interface EventPreviewProps {
  * encrypt/decrypt and getPublicKey inline.
  */
 export default function EventPreview({ type, event, theirPubkey, className = '', compact = false }: EventPreviewProps) {
-  const [showRaw, setShowRaw] = useState<boolean>(false);
 
   // Encryption / decryption
   if (ENCRYPT_TYPES.has(type!)) {
@@ -122,18 +120,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '',
           maxHeight={140} className="mt-5" />
       )}
 
-      <ButtonSecondary
-        small
-        type="button"
-        aria-expanded={showRaw}
-        className="mt-4 self-start"
-        onClick={() => setShowRaw(!showRaw)}
-      >
-        {showRaw ? t('approval.detail.hideDetails') : t('approval.detail.moreDetails')}
-      </ButtonSecondary>
-      {showRaw && (
-        <TextBlock mono maxHeight={200} className="mt-3">{JSON.stringify(event, null, 2)}</TextBlock>
-      )}
+      <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono maxHeight={200}>{JSON.stringify(event,null,2)}</TextBlock></DetailDisclosure>
     </Container>
   );
 }
