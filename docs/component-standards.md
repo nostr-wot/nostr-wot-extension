@@ -8,7 +8,7 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **58**; the inventory below is checked against the component folders by the test suite.
 
-**Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
+**Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (full-screen navigation by default; `placement="bottom"` fits content up to popup height over a scrim), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
 **Content** — `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
@@ -717,4 +717,4 @@ through a fixed palette. Legacy Light/Dark/System choices map to the default Nos
 WoT project without losing their mode; legacy project choices retain their dark
 appearance until the user changes it. See [palette sources](theme-handoff.md).
 
-Authentication event detail keeps the full event inside a closed `DetailDisclosure` labelled Advanced. Menu options use the same shared `ActionMenu` keyboard/focus behavior as ordinary approvals.
+Event detail uses the bottom placement for short content, grows upward to the popup height, then scrolls only its body while the title and decisions stay visible. Authentication event detail keeps the full event inside a closed `DetailDisclosure` labelled Advanced. Menu options use the same shared `ActionMenu` keyboard/focus behavior as ordinary approvals.

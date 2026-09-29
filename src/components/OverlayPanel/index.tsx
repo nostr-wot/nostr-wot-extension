@@ -14,7 +14,7 @@ const OVERLAY_BASE = 'absolute inset-0 z-[var(--overlay-z)] bg-elevated flex fle
 // is later in the *generated* stylesheet wins regardless of prop state.
 const OVERLAY_ENTER = 'animate-overlay-slide-in';
 const OVERLAY_EXIT = 'animate-overlay-slide-out';
-const HEADER_BASE = 'flex items-center justify-between mb-8 pb-5 border-b border-card-border';
+const HEADER_BASE = 'shrink-0 flex items-center justify-between mb-8 pb-5 border-b border-card-border';
 const HEADER_NO_PADDING = 'px-8 py-6 mb-0';
 const TITLE_BASE = 'text-3xl font-bold text-heading';
 const TITLE_SMALL = 'text-2xl';
@@ -23,6 +23,7 @@ const HEADER_RIGHT = 'flex items-center gap-4';
 const BODY = 'flex-1 min-h-0 flex flex-col';
 
 interface OverlayPanelProps {
+  placement?: 'fill' | 'bottom';
   title?: string;
   onClose?: () => void;
   onBack?: (() => void) | null;
@@ -36,6 +37,7 @@ interface OverlayPanelProps {
 }
 
 export default function OverlayPanel({
+  placement = 'fill',
   title,
   onClose,
   onBack,
@@ -52,8 +54,10 @@ export default function OverlayPanel({
   const centered = onBack !== undefined;
 
   return (
+    <>
+    {placement === 'bottom' && <div aria-hidden="true" className="absolute inset-0 z-[var(--overlay-z)] bg-[rgba(0,0,0,0.25)] backdrop-blur-[4px] animate-scrim-fade-in" style={overlayStyle}/>}
     <div
-      className={cn(OVERLAY_BASE, animating ? OVERLAY_EXIT : OVERLAY_ENTER, noPadding ? 'p-0' : '', className)}
+      className={cn(OVERLAY_BASE, animating ? OVERLAY_EXIT : OVERLAY_ENTER, noPadding ? 'p-0' : '', placement === 'bottom' && 'top-auto max-h-full rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)]', className)}
       style={overlayStyle}
     >
       {showHeader && (
@@ -110,5 +114,6 @@ export default function OverlayPanel({
         {children}
       </div>
     </div>
+    </>
   );
 }

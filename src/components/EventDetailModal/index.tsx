@@ -17,12 +17,10 @@ import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import type { ActivityEntry } from '@domain/activity/activity.ts';
 
 const CLS = {
-  // The modal fills the fixed-height popup, so the event body must scroll
-  // and the approve/deny actions must stay pinned. flex/min-h-0 all the way
-  // down is what gives .scrollArea a bounded height to actually scroll
-  // within, instead of growing to fit and being clipped dead by the card.
+  // The bottom sheet grows with its contents until it fills the popup. Only
+  // this body then scrolls; the header and decision buttons stay visible.
   content: 'flex flex-col gap-5 flex-1 min-h-0',
-  scrollArea: 'flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto overscroll-contain',
+  scrollArea: 'flex-1 min-h-0 overflow-y-auto overscroll-contain',
   summary: 'flex flex-col gap-2',
   methodBadge: 'inline-flex self-start text-xs font-semibold px-5 py-[3px] rounded-panel bg-brand-light text-brand-hover',
   description: 'text-md text-body mt-2 leading-[1.45]',
@@ -149,6 +147,7 @@ export default function EventDetailModal({
 
   return (
     <OverlayPanel
+      placement="bottom"
       title={isApproval && !request?.authentication ? t('approval.detail.title') : title}
       onBack={onBack}
       onClose={onClose}
@@ -157,7 +156,8 @@ export default function EventDetailModal({
       <div className={CLS.content}>
         {/* Scrollable event body -- the actions below stay pinned so a long
             event can never push them out of reach (see the CSS module). */}
-        <div className={isApproval || nip46InFlight ? CLS.scrollArea : CLS.content}>
+        <div className={CLS.scrollArea}>
+          <div className="flex flex-col gap-5">
           <FormError>{actionError}</FormError>
           {/* Origin / domain */}
           {origin && (
@@ -185,6 +185,7 @@ export default function EventDetailModal({
               <span>{t('approval.pendingSignature')}</span>
             </div>
           )}
+          </div>
         </div>
 
         {/* NIP-46 in-flight: cancel button */}
