@@ -315,7 +315,17 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
     // withPrivkey zeroes the key on every path. The previous version held a bare
     // getPrivkey() copy across the signing AND the relay broadcast, and never zeroed
     // it — not on success, not when a relay rejected the event.
-    const signed = await vault.withPrivkey(undefined, (privkey) =>
+    //
+    // The account is named rather than left to "whatever is active now", and named after a
+    // check: the attestation was built by `pqc_getStatus` for the account that was active
+    // then, and `writeRelays()` has awaited since. Signing it with whichever account the user
+    // moved to in between would publish one identity's post-quantum keys under another's name,
+    // which is the kind of mislabelled key material a sender has no way to spot.
+    // `publish-handlers.ts` guards its own publishes the same way.
+    const accountId = vault.getActiveAccountId();
+    if (!accountId) throw new Error('This account cannot publish post-quantum keys');
+    if (vault.getActivePubkey() !== status.pubkey) throw new Error('Active account changed');
+    const signed = await vault.withPrivkey(accountId, (privkey) =>
       signEvent(status.attestation as UnsignedEvent, privkey));
 
     const { sent, failed } = await broadcastEvent(signed, relays);

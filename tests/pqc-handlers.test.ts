@@ -412,3 +412,68 @@ it('custom-path status and exports use the same path-specific post-quantum keys'
     assert.equal(file.dsa.public,status.keys.dsa);
   } finally {seed.fill(0);keys.kem.secretKey.fill(0);keys.dsa.secretKey.fill(0);}
 });
+
+// ── An account switch between building the attestation and signing it ──
+
+/**
+ * The attestation is built by `pqc_getStatus` for whichever account is active at that
+ * moment, and `pqc_publishAttestation` then awaits `writeRelays()` before it signs. An
+ * account switch inside that window used to be invisible: the handler signed with
+ * "whatever is active now", so identity A's post-quantum keys went onto the relays under
+ * identity B's signature. A sender reading that event learns the wrong ML-KEM key for B
+ * and has no way to tell.
+ *
+ * The switch is injected on the storage read `writeRelays` makes, which is the real await
+ * the user would be racing.
+ */
+it('refuses to sign a post-quantum attestation for an account that is no longer active', async () => {
+  resetMockStorage();
+  await vault.destroy();
+  const main = await createFromMnemonic(M24, 'Main');
+  const other = await createFromMnemonic(M12, 'Other');
+  await vault.create(PASSWORD, { accounts: [main, other], activeAccountId: main.id });
+  await browserMock.storage.local.set({ activeAccountId: main.id });
+  await browserMock.storage.sync.set({ relays: 'wss://publish.test' });
+
+  const realSyncGet = browserMock.storage.sync.get;
+  const sent: string[] = [];
+  const original = globalThis.WebSocket;
+  class AckSocket {
+    onopen: (() => void) | null = null;
+    onmessage: ((event: { data: string }) => void) | null = null;
+    constructor() { queueMicrotask(() => this.onopen?.()); }
+    send(raw: string) {
+      sent.push(raw);
+      const [type, event] = JSON.parse(raw);
+      if (type === 'EVENT') queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(['OK', event.id, true, 'saved']) }));
+    }
+    close() {}
+  }
+  globalThis.WebSocket = AckSocket as unknown as typeof WebSocket;
+
+  let switched = false;
+  browserMock.storage.sync.get = async (keys?: string | string[] | null) => {
+    const result = await realSyncGet(keys);
+    const wanted = typeof keys === 'string' ? [keys] : keys;
+    if (!switched && Array.isArray(wanted) && wanted.includes('relays')) {
+      switched = true;
+      await vault.setActiveAccount(other.id);
+      await browserMock.storage.local.set({ activeAccountId: other.id });
+    }
+    return result;
+  };
+
+  try {
+    await assert.rejects(
+      () => handlers.get('pqc_publishAttestation')!({}),
+      /Active account changed/,
+      'the attestation belongs to the account that was active when it was built',
+    );
+    assert.strictEqual(switched, true, 'the switch must land inside the window under test');
+    assert.deepStrictEqual(sent, [], 'nothing may reach a relay once the account moved');
+  } finally {
+    browserMock.storage.sync.get = realSyncGet;
+    globalThis.WebSocket = original;
+    await vault.destroy();
+  }
+});
