@@ -1070,5 +1070,9 @@
   "auth.httpSummary": "Questo sito sta cercando di autenticarti su",
   "auth.methods": "Metodi",
   "auth.requester": "Sito richiedente",
-  "auth.account": "Chiave pubblica dell’account"
+  "auth.account": "Chiave pubblica dell’account",
+  "auth.approveAlways": "Approva sempre",
+  "auth.approveAllSites": "Sempre per tutti i siti",
+  "auth.rejectAlways": "Rifiuta sempre",
+  "auth.reject": "Rifiuta"
 }

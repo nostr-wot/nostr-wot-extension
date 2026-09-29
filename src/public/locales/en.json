@@ -1070,5 +1070,9 @@
   "auth.httpSummary": "This site is trying to authenticate you with",
   "auth.methods": "Methods",
   "auth.requester": "Requesting site",
-  "auth.account": "Account public key"
+  "auth.account": "Account public key",
+  "auth.approveAlways": "Approve always",
+  "auth.approveAllSites": "Always for all sites",
+  "auth.rejectAlways": "Reject always",
+  "auth.reject": "Reject"
 }

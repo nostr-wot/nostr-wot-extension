@@ -1070,5 +1070,9 @@
   "auth.httpSummary": "Ce site essaie de vous authentifier auprès de",
   "auth.methods": "Méthodes",
   "auth.requester": "Site demandeur",
-  "auth.account": "Clé publique du compte"
+  "auth.account": "Clé publique du compte",
+  "auth.approveAlways": "Toujours approuver",
+  "auth.approveAllSites": "Toujours pour tous les sites",
+  "auth.rejectAlways": "Toujours refuser",
+  "auth.reject": "Refuser"
 }

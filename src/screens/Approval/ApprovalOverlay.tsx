@@ -105,6 +105,10 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   });
 
   const handleAlwaysDeny = (group: ApprovalGroup) => runAction(async () => {
+    if (group.requests.some(request => request.authentication)) {
+      await resolveDisplayedRequests(group.requests, id => rpc('signer_resolve', {id, decision:{allow:false,rememberAuthenticationDeny:true}}));
+      return;
+    }
     const accountId = group.requests[0]?.accountId || active?.id || null;
     await rpc('signer_resolveBatch', {
       origin: group.origin,

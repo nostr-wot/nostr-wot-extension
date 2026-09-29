@@ -1070,5 +1070,9 @@
   "auth.httpSummary": "Diese Website möchte dich hier authentifizieren:",
   "auth.methods": "Methoden",
   "auth.requester": "Anfragende Website",
-  "auth.account": "Öffentlicher Kontoschlüssel"
+  "auth.account": "Öffentlicher Kontoschlüssel",
+  "auth.approveAlways": "Immer erlauben",
+  "auth.approveAllSites": "Immer für alle Websites",
+  "auth.rejectAlways": "Immer ablehnen",
+  "auth.reject": "Ablehnen"
 }

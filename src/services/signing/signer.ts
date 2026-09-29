@@ -1,5 +1,5 @@
 import { parseAuthentication, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
-import { hasAuthenticationGrant, saveAuthenticationGrant } from '../permissions/authentication.ts';
+import { getAuthenticationDecision, saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { rememberSignedZapNote } from '../wallet/payment-records.ts';
 import { followCount, followReplacementCount, rememberSignedFollowList } from './followListGuard.ts';
 import { captureAccountSession, assertAccountSession } from './accountSession.ts';
@@ -151,7 +151,9 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   // follow-list replacements require local confirmation for every account type.
   if (authentication && !(await isDomainAllowed(origin))) throw new Error('Site not connected');
   const requiresDestination = !!authentication && (authentication.crossOrigin || authentication.protocol === 'nip42');
-  const destinationGranted = authentication && await hasAuthenticationGrant(session.accountId, origin, authentication);
+  const destinationDecision = authentication && await getAuthenticationDecision(session.accountId, origin, authentication);
+  if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
+  const destinationGranted = destinationDecision === 'allow';
   const needsAuthApproval = !!authentication && (requiresDestination ? !destinationGranted : !destinationGranted && decision === 'ask');
   let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
@@ -198,7 +200,9 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     if (await isIdentityDisabled(origin)) throw new Error('Identity access disabled for this site');
     const currentDecision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
     if (currentDecision === 'deny') throw new Error('Permission denied');
-    if ((requiresDestination || currentDecision !== 'allow') && !authenticationScope && !(await hasAuthenticationGrant(session.accountId, origin, authentication))) throw new Error('Authentication permission revoked');
+    const destinationDecision = await getAuthenticationDecision(session.accountId, origin, authentication);
+    if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
+    if ((requiresDestination || currentDecision !== 'allow') && !authenticationScope && destinationDecision !== 'allow') throw new Error('Authentication permission revoked');
     assertAccountSession(session);
     if (authenticationScope) await saveAuthenticationGrant(session.accountId, origin, authentication, authenticationScope, () => assertAccountSession(session));
     assertAccountSession(session);

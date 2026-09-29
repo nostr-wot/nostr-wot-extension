@@ -31,6 +31,7 @@ export interface PendingRequest {
 
 export interface RequestDecision {
   allow: boolean;
+  rememberAuthenticationDeny?: boolean;
   authenticationScope?: AuthenticationScope;
   confirmFollowReplacement?: boolean;
   remember?: boolean;

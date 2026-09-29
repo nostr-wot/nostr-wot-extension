@@ -41,6 +41,7 @@ function AccountGrants({account}:{account:AccountSummary}) {
   {error && <Button small disabled={loading} onClick={()=>void refresh()}>{t('common.retry')}</Button>}
   {!loading && !error && !data.grants.length && <Text variant="hint">{t('auth.noGrants')}</Text>}
   {data.grants.map(grant=><Container variant="box" key={grant.id} gap={3} className="break-all">
+   <Text>{t(grant.decision === 'deny' ? 'auth.rejectAlways' : 'auth.approveAlways')}</Text>
    <FieldDisplay label={t('auth.destination')} value={`${grant.method ? `${grant.method} ` : ''}${grant.destination}`} mono/>
    <FieldDisplay label={t('auth.requester')} value={grant.origin==='*' ? t('auth.allConnected') : grant.origin}/>
    {grant.origin==='*' && <Text variant="hint">{t('auth.connectedWarning')}</Text>}

@@ -11,18 +11,33 @@ export async function listAuthenticationGrants(): Promise<AuthenticationGrant[]>
   const data = await browser.storage.local.get(AUTHENTICATION_GRANTS_KEY);
   return (data[AUTHENTICATION_GRANTS_KEY] as AuthenticationGrant[] | undefined) || [];
 }
-export async function hasAuthenticationGrant(accountId: string, origin: string, auth: AuthenticationRequest): Promise<boolean> {
-  return (await listAuthenticationGrants()).some(grant => grant.accountId === accountId
+export async function getAuthenticationDecision(accountId: string, origin: string, auth: AuthenticationRequest): Promise<'allow' | 'deny' | undefined> {
+  const matching = (await listAuthenticationGrants()).filter(grant => grant.accountId === accountId
     && grant.protocol === auth.protocol && grant.destination === auth.destination && grant.method === auth.method
     && (grant.origin === origin || (auth.protocol === 'nip42' && grant.origin === '*')));
+  // A site-specific rejection takes precedence over a shared relay allowance.
+  if (matching.some(grant => grant.decision === 'deny')) return 'deny';
+  if (matching.some(grant => grant.decision === undefined || grant.decision === 'allow')) return 'allow';
 }
-export async function saveAuthenticationGrant(accountId: string, origin: string, auth: AuthenticationRequest, scope: AuthenticationScope, assertCurrent: () => void): Promise<void> {
+export async function hasAuthenticationGrant(accountId: string, origin: string, auth: AuthenticationRequest): Promise<boolean> {
+  return await getAuthenticationDecision(accountId, origin, auth) === 'allow';
+}
+export async function saveAuthenticationGrant(accountId: string, origin: string, auth: AuthenticationRequest, scope: AuthenticationScope, assertCurrent: () => void, decision: 'allow' | 'deny' = 'allow'): Promise<void> {
   if (!validAuthenticationScope(auth,scope)) throw new Error('Invalid authentication scope');
-  if (scope === 'once') return;
+  if (decision === 'deny' && scope !== 'site') throw new Error('Invalid authentication denial scope');
   await lock.run(async()=>{
     const grants = await listAuthenticationGrants();
     assertCurrent();
-    const grant: AuthenticationGrant = {accountId, origin:scope==='connected-sites'?'*':origin,protocol:auth.protocol,destination:auth.destination,
+    // A queued approval must not erase a rejection saved while it waited for
+    // this lock. Revocation in settings is the explicit way to remove a deny.
+    if (decision === 'allow' && grants.some(grant => grant.decision === 'deny'
+      && grant.accountId === accountId && grant.protocol === auth.protocol
+      && grant.destination === auth.destination && grant.method === auth.method
+      && (grant.origin === origin || (auth.protocol === 'nip42' && grant.origin === '*')))) {
+      throw new Error('Authentication permission denied');
+    }
+    if (scope === 'once') return;
+    const grant: AuthenticationGrant = {decision,accountId, origin:scope==='connected-sites'?'*':origin,protocol:auth.protocol,destination:auth.destination,
       ...(auth.method ? {method:auth.method} : {}),id:JSON.stringify([accountId,scope==='connected-sites'?'*':origin,auth.protocol,auth.destination,auth.method??''])};
     await browser.storage.local.set({[AUTHENTICATION_GRANTS_KEY]:[...grants.filter(item=>item.id!==grant.id),grant]});
   });

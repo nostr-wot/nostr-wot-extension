@@ -207,3 +207,64 @@ it('permission management RPCs revoke exactly the requested grant and reject emp
   await handlers.get('signer_revokeAuthenticationGrant')!({id:grants[0].id});
   assert.deepEqual(await handlers.get('signer_getAuthenticationGrants')!({}),[]);
 });
+
+it('remembered rejection is scoped and overrides a shared relay allowance until revoked',async()=>{
+  const {getAuthenticationDecision,saveAuthenticationGrant,revokeAuthenticationGrants,listAuthenticationGrants}=await import('../src/services/permissions/authentication.ts');
+  const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+  const signing=handleSignEvent(relay(),site); void signing.catch(()=>{});
+  const [item]=await pending();
+  const auth=parseAuthentication(relay(),site)!;
+  await saveAuthenticationGrant('acct1',site,auth,'connected-sites',()=>{});
+  await resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true});
+  await assert.rejects(signing,/denied/i);
+  assert.equal(await getAuthenticationDecision('acct1',site,auth),'deny');
+  assert.equal(await getAuthenticationDecision('acct2',site,auth),undefined);
+  assert.equal(await getAuthenticationDecision('acct1','https://other.test',auth),'allow');
+  assert.equal(await getAuthenticationDecision('acct1',site,{...auth,destination:'wss://another.test/'}),undefined);
+  await assert.rejects(handleSignEvent(relay(),site),/denied/i);
+  assert.equal((await getPending()).length,0);
+  const denial=(await listAuthenticationGrants()).find(g=>g.decision==='deny')!;
+  await revokeAuthenticationGrants({id:denial.id});
+  assert.equal((await handleSignEvent(relay(),site)).kind,22242);
+});
+it('remembered HTTP rejection binds the method and overrides broad same-origin permission',async()=>{
+  const {getAuthenticationDecision}=await import('../src/services/permissions/authentication.ts');
+  await permissions.save(site,'signEvent',27235,'ask','acct1');
+  const signing=handleSignEvent(http(site+'/login'),site); void signing.catch(()=>{});
+  const [item]=await pending();
+  await resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true});await assert.rejects(signing,/denied/i);
+  await permissions.save(site,'signEvent',27235,'allow','acct1');
+  await assert.rejects(handleSignEvent(http(site+'/other'),site),/denied/i);
+  assert.equal(await getAuthenticationDecision('acct1',site,{...item.authentication!,method:'GET'}),undefined);
+});
+it('failed remembered rejection stays pending and ordinary rejection does not persist',async t=>{
+  const {listAuthenticationGrants}=await import('../src/services/permissions/authentication.ts');
+  const signing=handleSignEvent(relay(),site); void signing.catch(()=>{}); const [item]=await pending();
+  const original=browser.storage.local.set.bind(browser.storage.local);
+  const mock=t.mock.method(browser.storage.local,'set',async(data:any)=>{if(data.authenticationGrants)throw new Error('storage failed');return original(data);});
+  await assert.rejects(resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true}),/storage failed/);
+  assert.equal((await getPending()).length,1); mock.mock.restore();
+  await resolveRequest(item.id,{allow:false});await assert.rejects(signing,/denied/i);
+  assert.deepEqual(await listAuthenticationGrants(),[]);
+});
+
+it('an approval waiting for the grant lock cannot overwrite a concurrent rejection',async()=>{
+  const {saveAuthenticationGrant,getAuthenticationDecision}=await import('../src/services/permissions/authentication.ts');
+  const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+  const auth=parseAuthentication(http(),site)!;
+  const rejection=saveAuthenticationGrant('acct1',site,auth,'site',()=>{},'deny');
+  const approval=saveAuthenticationGrant('acct1',site,auth,'site',()=>{});
+  await rejection;await assert.rejects(approval,/denied/i);
+  await assert.rejects(saveAuthenticationGrant('acct1',site,auth,'once',()=>{}),/denied/i);
+  assert.equal(await getAuthenticationDecision('acct1',site,auth),'deny');
+});
+it('an account switch while a remembered rejection is being saved creates no rule',async t=>{
+  const {listAuthenticationGrants}=await import('../src/services/permissions/authentication.ts');
+  const signing=handleSignEvent(relay(),site);void signing.catch(()=>{});const [item]=await pending();
+  const original=browser.storage.local.get.bind(browser.storage.local);
+  const mock=t.mock.method(browser.storage.local,'get',async(key:any)=>{
+    const result=await original(key);if(key==='authenticationGrants')vault.lock();return result;
+  });
+  await assert.rejects(resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true}),/locked|session|switched/i);
+  await assert.rejects(signing,/locked/i);mock.mock.restore();assert.deepEqual(await listAuthenticationGrants(),[]);
+});

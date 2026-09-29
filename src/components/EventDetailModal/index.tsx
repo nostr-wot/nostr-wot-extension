@@ -1,3 +1,4 @@
+import DetailDisclosure from '@components/DetailDisclosure';
 import AuthenticationNotice from '@components/AuthenticationNotice';
 import AuthenticationActions from '@components/AuthenticationActions';
 import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
@@ -123,6 +124,29 @@ export default function EventDetailModal({
   // Approval description
   const description = isApproval ? describeRequest(request!, title) : null;
 
+  const eventContent = request && requests && requests.length > 1 ? (
+            <div className="flex flex-col gap-4">
+              <span className="text-sm text-menu-subtitle">{t('approval.requests', {count:requests.length})}</span>
+              {requests.map((item, index) => (
+                <details key={item.id ?? index} data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
+                  <summary className="cursor-pointer text-md text-heading">
+                    {index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}
+                    {item.event?.kind !== undefined && <span className="block text-sm text-menu-subtitle">{KIND_LABELS[item.event.kind] || `Kind ${item.event.kind}`} ({item.event.kind})</span>}
+                  </summary>
+                  <div className="pt-5"><EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} /></div>
+                </details>
+              ))}
+            </div>
+          ) : request ? (
+            <EventPreview
+              type={type}
+              event={event || null}
+              theirPubkey={theirPubkey}
+            />
+          ) : (
+            <ActivityGroupDetail entries={entries} selectedAccountPubkey={selectedAccountPubkey} />
+          );
+
   return (
     <OverlayPanel
       title={isApproval && !request?.authentication ? t('approval.detail.title') : title}
@@ -152,28 +176,7 @@ export default function EventDetailModal({
           <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
 
           {/* Event content */}
-          {request && requests && requests.length > 1 ? (
-            <div className="flex flex-col gap-4">
-              <span className="text-sm text-menu-subtitle">{t('approval.requests', {count:requests.length})}</span>
-              {requests.map((item, index) => (
-                <details key={item.id ?? index} data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
-                  <summary className="cursor-pointer text-md text-heading">
-                    {index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}
-                    {item.event?.kind !== undefined && <span className="block text-sm text-menu-subtitle">{KIND_LABELS[item.event.kind] || `Kind ${item.event.kind}`} ({item.event.kind})</span>}
-                  </summary>
-                  <div className="pt-5"><EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} /></div>
-                </details>
-              ))}
-            </div>
-          ) : request ? (
-            <EventPreview
-              type={type}
-              event={event || null}
-              theirPubkey={theirPubkey}
-            />
-          ) : (
-            <ActivityGroupDetail entries={entries} selectedAccountPubkey={selectedAccountPubkey} />
-          )}
+          {request?.authentication ? <DetailDisclosure label={t('common.advanced')}>{eventContent}</DetailDisclosure> : eventContent}
 
           {/* NIP-46 in-flight: pending message (the cancel button is pinned below) */}
           {nip46InFlight && request && (
@@ -196,7 +199,7 @@ export default function EventDetailModal({
         {/* Approval action buttons */}
         {isApproval && (
           <div className={CLS.actions}>
-            {request?.authentication ? <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1} busy={busy} onApprove={onAuthenticate} onDeny={onDeny}/> : <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
+            {request?.authentication ? <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1} busy={busy} onApprove={onAuthenticate} onDeny={onDeny} onAlwaysDeny={onAlwaysDeny}/> : <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
               onApprove={onApprove} onReject={onDeny}
               choices={[{value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny}]}/>}
 

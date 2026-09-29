@@ -58,6 +58,8 @@ export function validAuthenticationScope(auth: AuthenticationRequest, scope: unk
 }
 
 export interface AuthenticationGrant {
+  /** Missing on legacy records means allow. */
+  decision?: 'allow' | 'deny';
   id: string;
   accountId: string;
   origin: string;

@@ -1,3 +1,4 @@
+import { saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { validAuthenticationScope } from '@domain/signing/authentication.ts';
 import { updateSignerBadge } from './rejections.ts';
 import * as vault from '../vault/vault.ts';
@@ -224,6 +225,19 @@ async function removePendingFromStorage(id: string): Promise<void> {
  * @param decision - { allow: boolean, remember: boolean, rememberKind?: boolean }
  */
 export async function resolveRequest(id: string, decision: RequestDecision): Promise<void> {
+  if (decision.rememberAuthenticationDeny) {
+    if (decision.allow) throw new Error('Invalid remembered rejection');
+    const revision = vault.getSessionRevision();
+    const request = (await getPending()).find(request => request.id === id);
+    if (!request?.authentication || !request.accountId || !_pendingResolvers.has(id)) throw new Error('Authentication request no longer pending');
+    const session = {accountId:request.accountId,revision};
+    const pubkey = await getActivePublicKey();
+    if (!requestMatchesAccount(request, pubkey ? {id:session.accountId,pubkey} : null)) throw new Error('Account switched');
+    await saveAuthenticationGrant(session.accountId, request.origin, request.authentication, 'site', () => {
+      assertAccountSession(session);
+      if (!_pendingResolvers.has(id)) throw new Error('Authentication request no longer pending');
+    }, 'deny');
+  }
   if (decision.allow) {
     const request = (await getPending()).find(request => request.id === id);
     if (request?.authentication && !validAuthenticationScope(request.authentication, decision.authenticationScope)) throw new Error('Explicit authentication approval required');

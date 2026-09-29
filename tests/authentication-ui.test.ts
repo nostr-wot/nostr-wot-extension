@@ -20,8 +20,9 @@ it('mounted HTTP actions offer only once and site scopes; relay adds explicit co
   assert.ok(!document.body.textContent!.includes('auth.connectedSites'));
   await act(async()=>{(document.querySelector('button') as HTMLButtonElement).click();}); assert.deepEqual(scopes,['once']);
   await act(async()=>root.render(createElement(AuthenticationActions,{authentication:{...authentication,protocol:'nip42'},onApprove:scope=>scopes.push(scope),onDeny(){}})));
-  assert.ok(document.body.textContent!.includes('auth.connectedWarning'));
-  const button=[...document.querySelectorAll('button')].find(b=>b.textContent==='auth.connectedSites')!;
+  assert.ok(!document.body.textContent!.includes('auth.connectedWarning'));
+  await act(async()=>{(document.querySelector('[aria-label="approval.approveOptions"]') as HTMLButtonElement).click();});
+  const button=[...document.querySelectorAll('button')].find(b=>b.textContent==='auth.approveAllSites')!;
   await act(async()=>button.click()); assert.deepEqual(scopes,['once','connected-sites']);
  } finally {await act(async()=>root.unmount());dom.window.close();}
 });
@@ -34,7 +35,8 @@ it('collapsed card shows the site once and authentication destination without a 
 it('authentication detail cannot expose generic always-allow controls',async()=>{
  const {default:Detail}=await import('../src/components/EventDetailModal');
  const html=renderToStaticMarkup(createElement(Detail,{request:{type:'signEvent',origin:'https://client.test',authentication},onApprove(){},onAlwaysAllow(){},onAuthenticate(){},onDeny(){}}));
- assert.ok(html.includes('auth.once')); assert.ok(!html.includes('approval.alwaysAllow'));assert.ok(!html.includes('approval.approveOnce'));
+ assert.ok(html.includes('approval.approve')); assert.ok(!html.includes('approval.alwaysAllow'));assert.ok(html.includes('common.advanced'));
+ assert.ok(!html.includes('<details open'));
 });
 it('mounted permissions filters accounts and retains failed revocations until success',async t=>{
  const {JSDOM}=await import('jsdom');const {default:Permissions}=await import('../src/screens/Settings/AuthenticationPermissions');
@@ -92,15 +94,16 @@ it('mounted sheet excludes authentication from bulk approval and resolves only r
   assert.ok(button('approval.rejectAll'));
   await act(async()=>button('approval.approveOnce')!.click());
   assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params.id),['ordinary']);
-  assert.equal(button('approval.approveOnce'),undefined);assert.equal(button('approval.rejectAll'),undefined);
-  assert.ok(button('auth.once'));
+  assert.equal(button('approval.rejectAll'),undefined);
+  assert.ok(button('approval.approve'));
   assert.ok(!document.body.textContent!.includes('approval.pendingRequests'));
   assert.ok(!document.body.textContent!.includes('auth.reviewHint'));
   pending.push({...auth,id:'late'});
-  await act(async()=>button('auth.site')!.click());
+  await act(async()=>{(document.querySelector('[aria-label="approval.approveOptions"]') as HTMLButtonElement).click();});
+  await act(async()=>button('auth.approveAlways')!.click());
   assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[{id:'ordinary',decision:{allow:true,remember:false}},{id:'auth',decision:{allow:true,remember:false,authenticationScope:'site'}}]);
   assert.ok(!calls.some(c=>c.method==='signer_savePermission'||c.method==='signer_resolveBatch'));
-  await act(async()=>button('approval.deny')!.click());assert.equal(pending.length,0);
+  await act(async()=>button('auth.reject')!.click());assert.equal(pending.length,0);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
 it('known backend hints require an exact registry origin pair and never hide cross-origin notice',async()=>{
@@ -115,7 +118,7 @@ it('known backend hints require an exact registry origin pair and never hide cro
 });
 it('grouped authentication labels explicitly disclose more than one request',()=>{
  const html=renderToStaticMarkup(createElement(AuthenticationActions,{authentication,requestCount:2,onApprove(){},onDeny(){}}));
- assert.ok(html.includes('auth.onceMany'));assert.ok(!html.includes('>auth.once<'));
+ assert.ok(html.includes('approval.approveShown'));assert.ok(!html.includes('>approval.approveOnce<'));
 });
 
 it('relay review uses one host sentence without duplicate rows or identity warning',()=>{
@@ -153,9 +156,25 @@ for (const mode of ['auth', 'ordinary', 'nip46'] as const) {
    await act(async()=>root.render(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(PermissionsProvider,null,createElement(Overlay))))));
    for(const key of ['approval.pendingRequests','approval.rejectAll','auth.reviewHint'])assert.ok(!document.body.textContent!.includes(key),key);
    assert.equal(document.querySelector('[aria-label="common.close"]'),null);
-   const label=mode==='nip46'?'approval.cancelNip46':'approval.deny';assert.ok(button(label));
+   const label=mode==='nip46'?'approval.cancelNip46':mode==='auth'?'auth.reject':'approval.deny';assert.ok(button(label));
    await act(async()=>button(label)!.click());assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(button(label));
    fail=false;await act(async()=>button(label)!.click());assert.deepEqual(decisions,['single']);assert.equal(document.body.textContent,'');
   }finally{await act(async()=>root.unmount());dom.window.close();}
  });
 }
+
+it('advanced event data is collapsed and reject-always is available only through its menu',async()=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');const {default:Detail}=await import('../src/components/EventDetailModal');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);let rejected=0;
+ try{
+  await act(async()=>root.render(createElement(Detail,{request:{type:'signEvent',authentication,event:{kind:27235,content:'',tags:[['u',authentication.url],['method','POST']]}},onAuthenticate(){},onDeny(){},onAlwaysDeny(){rejected++;}})));
+  const advanced=[...document.querySelectorAll('details')].find(d=>d.querySelector('summary')?.textContent==='common.advanced')!;
+  assert.ok(advanced);assert.equal(advanced.open,false);assert.ok(advanced.textContent?.includes('POST'));
+  assert.equal(document.querySelector('[role="menu"]'),null);
+  await act(async()=>{(document.querySelector('[aria-label="approval.rejectOptions"]') as HTMLButtonElement).click();});
+  const choice=document.querySelector('[role="menuitem"]') as HTMLButtonElement;
+  assert.equal(choice.textContent,'auth.rejectAlways');await act(async()=>choice.click());assert.equal(rejected,1);
+  assert.equal(document.querySelector('[role="menu"]'),null);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});

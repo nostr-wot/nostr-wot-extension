@@ -9,6 +9,7 @@ have had.
 ## 0.8.7 — 2026-09-29
 
 ### Improved
+- Collapse authentication event data under Advanced and use compact Approve/Reject split buttons. Remember approvals per site or relay across connected sites, and remember destination-specific rejections per account/site.
 - Open a single pending request directly in event detail; show the request list, count and bulk controls only for multiple requests.
 - Simplify authentication review into one destination sentence with methods only when specified. Remove duplicate site/URL rows, the public key and the relay identity notice; keep the requesting site visible once in cards and details.
 

@@ -27,6 +27,8 @@ are separate from generating and verifying the local package.
    (open handles in the browser mock); that is known and not a failure.
 5. Run `npm run package:chrome`. This validates and smoke-tests the actual upload ZIP in a disposable Chromium profile. For manual checks, extract that same ZIP and click through its popup. Mounted React tests cover interactions, but cannot replace native layout checks. Record whether a browser check used the installed extension or an isolated fixture.
 
+For authentication UI acceptance, verify one pending request opens directly without bulk controls. Check that Advanced starts collapsed and reveals the complete event, that Approve/Reject act once, and that the arrow menus expose remembered site/destination choices (all connected sites only for relays). Verify a saved rejection is labelled in authentication settings and can be revoked. Keep 0.8.7 as a draft until León approves manual testing; do not cancel the pending 0.8.6 review before that approval.
+
 ---
 
 ## Firefox (addons.mozilla.org)

@@ -12,7 +12,7 @@ All shared components live in `src/components/`, each implemented in its own `Na
 
 **Content** — `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `AuthenticationActions` (explicit one-time, per-site and relay-only connected-sites scopes, with shared buttons), `ApprovalActions` (shared approve/reject split buttons; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `AuthenticationActions` (uses ApprovalActions split buttons for one-time decisions and per-site/relay-only connected-sites remembered choices), `ApprovalActions` (shared approve/reject split buttons with optional per-choice labels and approval-menu context; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
 **Feedback** — `Spinner`, `ScreenReaderStatus`.
 
@@ -716,3 +716,5 @@ palette, so their mode control is hidden. The saved mode is retained when switch
 through a fixed palette. Legacy Light/Dark/System choices map to the default Nostr
 WoT project without losing their mode; legacy project choices retain their dark
 appearance until the user changes it. See [palette sources](theme-handoff.md).
+
+Authentication event detail keeps the full event inside a closed `DetailDisclosure` labelled Advanced. Menu options use the same shared `ActionMenu` keyboard/focus behavior as ordinary approvals.

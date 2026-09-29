@@ -1,17 +1,21 @@
 import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
-import Button, { ButtonDanger, ButtonSecondary } from '@components/Button';
-import Container from '@components/Container';
-import Text from '@components/Text';
+import ApprovalActions from '@components/ApprovalActions';
 import { t } from '@services/i18n/i18n.ts';
-export default function AuthenticationActions({authentication,requestCount=1,busy=false,onApprove,onDeny}:{authentication:AuthenticationRequest;requestCount?:number;busy?:boolean;onApprove?:(scope:AuthenticationScope)=>void;onDeny?:()=>void}) {
- return <Container gap={3}>
-   <Button disabled={busy || !onApprove} onClick={()=>onApprove?.('once')}>{t(requestCount > 1 ? 'auth.onceMany' : 'auth.once', {count:requestCount})}</Button>
-   {authentication.protocol==='nip98' && <Text variant="hint">{t('auth.siteHint',{method:authentication.method || '',destination:authentication.destination})}</Text>}
-   <ButtonSecondary disabled={busy || !onApprove} onClick={()=>onApprove?.('site')}>{t('auth.site')}</ButtonSecondary>
-   {authentication.protocol==='nip42' && <>
-     <Text variant="hint">{t('auth.connectedWarning')}</Text>
-     <ButtonSecondary disabled={busy || !onApprove} onClick={()=>onApprove?.('connected-sites')}>{t('auth.connectedSites')}</ButtonSecondary>
-   </>}
-   <ButtonDanger disabled={busy || !onDeny} onClick={onDeny}>{t('approval.deny')}</ButtonDanger>
- </Container>;
+
+export default function AuthenticationActions({authentication,requestCount=1,busy=false,onApprove,onDeny,onAlwaysDeny}:{
+  authentication:AuthenticationRequest;requestCount?:number;busy?:boolean;
+  onApprove?:(scope:AuthenticationScope)=>void;onDeny?:()=>void;onAlwaysDeny?:()=>void;
+}) {
+  const choices = [{
+    value:'site',label:'',allowLabel:t('auth.approveAlways'),denyLabel:t('auth.rejectAlways'),
+    onAlwaysAllow:onApprove ? () => onApprove('site') : undefined,onAlwaysDeny,
+  }];
+  if (authentication.protocol === 'nip42') choices.push({
+    value:'connected-sites',label:'',allowLabel:t('auth.approveAllSites'),denyLabel:'',
+    onAlwaysAllow:onApprove ? () => onApprove('connected-sites') : undefined,onAlwaysDeny:undefined,
+  });
+  return <ApprovalActions requestCount={requestCount} rejectCount={1} busy={busy} placement="above"
+    approveLabel={requestCount === 1 ? t('approval.approve') : undefined} rejectLabel={t('auth.reject')}
+    approveDescription={authentication.protocol === 'nip98' ? t('auth.siteHint', {method:authentication.method || '',destination:authentication.destination}) : undefined}
+    onApprove={onApprove ? () => onApprove('once') : undefined} onReject={onDeny} choices={choices}/>;
 }
