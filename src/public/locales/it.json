@@ -1050,14 +1050,9 @@
   "wallet.appsRevoke": "Revoca",
   "wallet.appsOtherDevice": "Il segreto non è salvato su questo dispositivo. Puoi comunque revocare la connessione.",
   "wallet.appsRevokeConfirm": "Revocare «{name}»? L’app non potrà più usare questa connessione. I pagamenti in corso potrebbero comunque completarsi.",
-  "auth.requester": "Sito richiedente",
-  "auth.account": "Chiave pubblica dell’account",
   "auth.destination": "Destinazione di autenticazione",
-  "auth.resource": "URL firmato e metodo",
   "auth.knownBackend": "Server noto di {name} (solo informativo)",
-  "auth.relayNotice": "Questo relay conoscerà l’identità di questo account.",
   "auth.crossOrigin": "Questa operazione autentica la tua identità presso un’origine diversa dal sito richiedente.",
-  "auth.identityNotice": "Questa operazione autentica questo account presso la destinazione indicata.",
   "auth.once": "Autentica una volta",
   "auth.site": "Ricorda per questo sito e destinazione",
   "auth.connectedWarning": "Questa opzione condivide l’identità di questo account con questo relay da tutti i siti collegati. Gli altri account sono esclusi.",
@@ -1070,5 +1065,10 @@
   "auth.review": "Esamina autenticazione",
   "auth.reviewHint": "Esamina ogni richiesta di autenticazione per scegliere il permesso di destinazione. L’approvazione collettiva esclude l’autenticazione.",
   "auth.siteHint": "Memorizzare consente l’autenticazione {method} per tutti i percorsi di {destination} da questo sito, per questo account.",
-  "auth.onceMany": "Autorizza queste {count} richieste una volta"
+  "auth.onceMany": "Autorizza queste {count} richieste una volta",
+  "auth.relaySummary": "Questo sito sta cercando di autenticarti sul relay",
+  "auth.httpSummary": "Questo sito sta cercando di autenticarti su",
+  "auth.methods": "Metodi",
+  "auth.requester": "Sito richiedente",
+  "auth.account": "Chiave pubblica dell’account"
 }

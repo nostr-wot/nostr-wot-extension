@@ -1050,14 +1050,9 @@
   "wallet.appsRevoke": "Revoke",
   "wallet.appsOtherDevice": "The secret is not stored on this device. You can still revoke this connection.",
   "wallet.appsRevokeConfirm": "Revoke “{name}”? The app will no longer be able to use this connection. Payments already in progress may still complete.",
-  "auth.requester": "Requesting site",
-  "auth.account": "Account public key",
   "auth.destination": "Authentication destination",
-  "auth.resource": "Signed URL and method",
   "auth.knownBackend": "Known backend for {name} (informational only)",
-  "auth.relayNotice": "This relay will learn this account’s identity.",
   "auth.crossOrigin": "This authenticates your identity to a different origin from the requesting site.",
-  "auth.identityNotice": "This authenticates this account to the destination shown above.",
   "auth.once": "Authenticate once",
   "auth.site": "Remember for this site and destination",
   "auth.connectedWarning": "This shares this account’s identity with this relay from every connected site. Other accounts are not included.",
@@ -1070,5 +1065,10 @@
   "auth.review": "Review authentication",
   "auth.reviewHint": "Review each authentication request to choose its destination permission. Bulk approval excludes authentication.",
   "auth.siteHint": "Remembering allows {method} authentication for every path on {destination} from this site, for this account.",
-  "auth.onceMany": "Authenticate these {count} requests once"
+  "auth.onceMany": "Authenticate these {count} requests once",
+  "auth.relaySummary": "This site is trying to authenticate you with relay",
+  "auth.httpSummary": "This site is trying to authenticate you with",
+  "auth.methods": "Methods",
+  "auth.requester": "Requesting site",
+  "auth.account": "Account public key"
 }

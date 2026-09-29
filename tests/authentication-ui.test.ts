@@ -5,9 +5,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import AuthenticationNotice from '../src/components/AuthenticationNotice';
 import AuthenticationActions from '../src/components/AuthenticationActions';
 const authentication = { protocol:'nip98' as const,url:'https://backend.test/login',destination:'https://backend.test',method:'POST',crossOrigin:true };
-it('authentication review identifies requester, full identity, exact URL and method',()=>{
+it('HTTP authentication review shows one exact URL and method without duplicate site or public key',()=>{
  const html=renderToStaticMarkup(createElement(AuthenticationNotice,{request:{origin:'https://client.test',pubkey:'a'.repeat(64),authentication}}));
- for(const text of ['https://client.test','a'.repeat(64),'https://backend.test/login','POST','auth.crossOrigin']) assert.ok(html.includes(text));
+ for(const text of ['auth.httpSummary','https://backend.test/login','POST','auth.crossOrigin']) assert.ok(html.includes(text));
+ assert.ok(!html.includes('https://client.test')); assert.ok(!html.includes('a'.repeat(64)));
+ assert.equal(html.split(authentication.url).length-1,1);
 });
 it('mounted HTTP actions offer only once and site scopes; relay adds explicit connected-sites consent',async()=>{
  const {JSDOM}=await import('jsdom'); const dom=new JSDOM('<div id="root"></div>',{url:'https://extension.test'});
@@ -23,10 +25,11 @@ it('mounted HTTP actions offer only once and site scopes; relay adds explicit co
   await act(async()=>button.click()); assert.deepEqual(scopes,['once','connected-sites']);
  } finally {await act(async()=>root.unmount());dom.window.close();}
 });
-it('collapsed card keeps authentication destination and account visible',async()=>{
+it('collapsed card shows the site once and authentication destination without a public key',async()=>{
  const {default:Card}=await import('../src/screens/Approval/ApprovalCard');
  const html=renderToStaticMarkup(createElement(Card,{group:{origin:'https://client.test',method:'signEvent',permKey:'auth',requests:[{id:'a',type:'signEvent',origin:'https://client.test',pubkey:'b'.repeat(64),authentication,timestamp:0}]},onClick(){}}));
- assert.ok(html.includes(authentication.url));assert.ok(html.includes('b'.repeat(64)));
+ assert.ok(html.includes(authentication.url));assert.ok(!html.includes('b'.repeat(64)));
+ assert.equal((html.match(/>https:\/\/client.test</g)||[]).length,1);
 });
 it('authentication detail cannot expose generic always-allow controls',async()=>{
  const {default:Detail}=await import('../src/components/EventDetailModal');
@@ -60,8 +63,8 @@ it('authentication detail labels do not expose the internal JSON grouping key',a
  const html=renderToStaticMarkup(createElement(Detail,{request,requests:[request,{...request,id:'b'}],onAuthenticate(){},onDeny(){}}));
  assert.ok(html.includes('perm.httpAuth'));assert.ok(!html.includes('&quot;nip98&quot;'));
  assert.ok(!html.includes('approval.detail.signDesc'));
- assert.ok(html.indexOf('auth.destination')<html.indexOf('auth.account'));
- assert.ok(html.indexOf('auth.resource')<html.indexOf('auth.account'));
+ assert.ok(html.includes('auth.httpSummary')); assert.ok(!html.includes('auth.account'));
+ assert.ok(html.includes('https://client.test')); assert.ok(!html.includes('auth.requester'));
 });
 it('mounted sheet excludes authentication from bulk approval and resolves only reviewed IDs',async t=>{
  const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
@@ -107,4 +110,14 @@ it('known backend hints require an exact registry origin pair and never hide cro
 it('grouped authentication labels explicitly disclose more than one request',()=>{
  const html=renderToStaticMarkup(createElement(AuthenticationActions,{authentication,requestCount:2,onApprove(){},onDeny(){}}));
  assert.ok(html.includes('auth.onceMany'));assert.ok(!html.includes('>auth.once<'));
+});
+
+it('relay review uses one host sentence without duplicate rows or identity warning',()=>{
+ const html=renderToStaticMarkup(createElement(AuthenticationNotice,{request:{origin:'https://client.test',pubkey:'a'.repeat(64),authentication:{protocol:'nip42',destination:'wss://relay.damus.io/',url:'wss://relay.damus.io/',crossOrigin:true}}}));
+ assert.ok(html.includes('auth.relaySummary')); assert.equal(html.split('relay.damus.io').length-1,1);
+ for(const removed of ['auth.account','auth.requester','auth.destination','auth.resource','auth.relayNotice','auth.methods','a'.repeat(64),'https://client.test']) assert.ok(!html.includes(removed),removed);
+});
+it('relay sentence retains non-default port and endpoint and only shows specified methods',()=>{
+ const html=renderToStaticMarkup(createElement(AuthenticationNotice,{request:{authentication:{protocol:'nip42',destination:'wss://relay.test:8443/private',url:'wss://relay.test:8443/private',method:'POST',crossOrigin:true}}}));
+ assert.ok(html.includes('relay.test:8443/private'));assert.ok(html.includes('auth.methods'));assert.ok(html.includes('POST'));
 });

@@ -132,7 +132,7 @@ export default function EventDetailModal({
             event can never push them out of reach (see the CSS module). */}
         <div className={isApproval || nip46InFlight ? CLS.scrollArea : CLS.content}>
           {/* Origin / domain */}
-          {origin && !request?.authentication && (
+          {origin && (
             <div className="flex items-center gap-4 min-w-0"><SiteIcon domain={origin} /><span className="text-lg font-semibold text-heading truncate">{origin}</span></div>
           )}
 

@@ -8,6 +8,9 @@ have had.
 
 ## 0.8.7 — 2026-09-29
 
+### Improved
+- Simplify authentication review into one destination sentence with methods only when specified. Remove duplicate site/URL rows, the public key and the relay identity notice; keep the requesting site visible once in cards and details.
+
 ### Release packaging
 - Publish the final audited integration of Chrome packaging, authentication permissions, scoped private-key handling and account-switch protection, superseding the earlier 0.8.6 store submission.
 - Automatically submit verified stable GitHub release assets to Chrome Web Store through its v2 API. Require successful CI, exact checksums, Chrome manifest validation and a real browser smoke test before using publishing credentials.
