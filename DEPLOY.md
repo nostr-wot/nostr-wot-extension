@@ -12,7 +12,7 @@ npm run test         # Run full test suite
 
 ## Packaging for Stores
 
-Each command builds the extension and creates a store-ready zip:
+Install the smoke-test browser with `npx playwright install chromium`. Each command builds in an isolated staging directory and validates the resulting ZIP:
 
 ```bash
 npm run package:chrome    # → nostr-wot-chrome.zip
@@ -26,7 +26,7 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 | Build | `vite build` | `vite build` |
 | Compile badge engine | TS → JS (Vite plugin) | TS → JS (Vite plugin) |
 | Manifest patch | Strips `browser_specific_settings` | Adds `background.scripts` |
-| Zip | `dist/` excluding `.vite/` | `dist/` excluding `.vite/` |
+| Zip | Isolated build excluding `.vite/`; manifest validation and Chromium smoke test | Isolated build excluding `.vite/`; manifest validation |
 
 ### Chrome-specific manifest
 
@@ -42,7 +42,7 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 
 1. Go to https://chrome.google.com/webstore/devconsole
 2. Pay one-time $5 developer fee (if not already)
-3. Click "New Item" and upload `nostr-wot-chrome.zip`
+3. Update the existing listing with `nostr-wot-chrome.zip` (use "New Item" only for a first release). Recheck that exact file with `npm run verify:chrome -- /path/to/upload.zip` and `npm run smoke:chrome -- /path/to/upload.zip` before uploading.
 4. Fill in store listing details
 5. Submit for review (typically 1-3 days)
 

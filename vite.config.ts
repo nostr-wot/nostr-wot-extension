@@ -26,11 +26,14 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
  * classic script. `onMessage` then registers on the first tick of wake-up.
  */
 function bundleServiceWorker(): Plugin {
+  let outDir: string;
   return {
     name: 'bundle-service-worker',
     apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
     async closeBundle() {
-      const outDir = resolve(__dirname, 'dist');
       const mf = resolve(outDir, 'manifest.json');
       if (!existsSync(mf)) return;
 

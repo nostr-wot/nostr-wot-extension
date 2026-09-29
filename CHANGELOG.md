@@ -30,6 +30,16 @@ have had.
 - Verify NIP-49 backups against an independent implementation in both directions, across every defined key-security byte and a range of cost factors.
 - Add a CI job that installs the newest dependencies each declared range admits, then typechecks, builds and re-runs the crypto, vault, signer and transport suites. It also runs weekly, so a library changing behaviour under a range is found before a contributor trips over it.
 
+## 0.8.6
+
+### Fixed
+- Correct Chrome release packaging so the background service worker starts and the popup can read site connection status.
+- Build browser packages in isolated directories and validate each final ZIP against its target browser and release version.
+- Require a disposable Chromium smoke test of the Chrome ZIP: worker startup, popup rendering and the connection-status RPC.
+
+### Store release notes
+Restores the background service required for site connections and signing in Chrome. Adds release checks to prevent incorrect browser packages from being submitted.
+
 ## 0.8.4 — 2026-09-27
 
 ### Added

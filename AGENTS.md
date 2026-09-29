@@ -2,7 +2,7 @@
 
 ## Release packaging
 
-The current release is **0.8.4**. Keep package and manifest versions, source-build
+The current release is **0.8.6**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
 and checksums stay outside the tracked repository. Publish new functionality in a
 new version; only replace an existing release when explicitly requested.

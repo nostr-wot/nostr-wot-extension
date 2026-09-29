@@ -11,8 +11,9 @@ gitignored because this repository is public. Everything here is safe to commit.
 
 ## Current release status
 
-0.8.4 adds project palettes, the shared theme dropdown, validated custom theme JSON and theme-aware logos, including the earlier 0.8.3 NWC app-connection management. GitHub publication is
-separate from browser-store submission and approval.
+0.8.6 corrects Chrome packaging after the installed 0.8.4 store artifact was
+found to contain Firefox background configuration. Store submission and approval
+are separate from generating and verifying the local package.
 
 ## Before any store
 
@@ -21,7 +22,7 @@ separate from browser-store submission and approval.
 3. `npm run build` — must succeed with no errors.
 4. `./tests/run.sh` — the module group may appear to hang after it finishes
    (open handles in the browser mock); that is known and not a failure.
-5. Load `dist/` unpacked and click through the popup once. Mounted React tests cover interactions, but cannot replace native layout checks. Record whether a browser check used the installed extension or an isolated fixture.
+5. Run `npm run package:chrome`. This validates and smoke-tests the actual upload ZIP in a disposable Chromium profile. For manual checks, extract that same ZIP and click through its popup. Mounted React tests cover interactions, but cannot replace native layout checks. Record whether a browser check used the installed extension or an isolated fixture.
 
 ---
 
@@ -172,7 +173,7 @@ detail the rest of the entry carries.
 Use supported Node 22 or 24, run `npm ci`, then `npm run package:chrome`
 and `npm run package:firefox`. The Chrome ZIP removes Firefox-specific settings;
 the Firefox ZIP retains the consent declaration and uses background scripts.
-The Firefox command restores the normal main-clone `dist/` build afterwards.
+Each command builds in a separate staging directory and leaves `dist/` untouched.
 
 For AMO reviewer notes: this release uses native Firefox consent with required
 identity, payment, authentication, personal communications and browsing activity
@@ -186,3 +187,31 @@ the transmission tables above.
 The experimental WoT API is opt-in in 0.8.0. Release and reviewer notes are kept below 3,000 characters including spaces. Oracle mode introduces user-configured HTTPS
 requests containing public identity and relationship queries; menu opt-in
 discloses these flows. Existing Firefox identity-data consent still applies.
+
+## Chrome package regression gate
+
+Install the test browser once with `npx playwright install chromium` (CI uses
+`--with-deps`). `npm run package:chrome` refuses to publish its output unless the
+ZIP declares a Chrome MV3 service worker, has no Firefox background keys or
+metadata, matches package.json, includes its declared resources, and passes a
+real Chromium startup test. The test opens the packaged popup and sends its
+`getAllowedDomains` RPC through the real extension message transport. It uses a
+disposable profile, with no accounts or user vault. It does not test live signing,
+relay interoperability, or Chrome Web Store acceptance.
+
+Immediately before upload, run `npm run verify:chrome -- /absolute/path/to/upload.zip`
+and `npm run smoke:chrome -- /absolute/path/to/upload.zip`. Upload exactly that ZIP;
+record its printed SHA-256. Renaming a Firefox ZIP does not pass these checks.
+The browser store's manual upload UI cannot be gated by repository scripts.
+
+### What the 0.8.4 evidence establishes
+
+The preserved `nostr-wot-chrome.zip` and versioned Chrome handoff ZIP have the
+correct Chrome manifest. The release task ran `package:chrome` followed by
+`package:firefox` sequentially, then copied each to the matching filename.
+The store-installed 0.8.4 manifest instead matches the Firefox ZIP exactly,
+excluding the store-added public key and update URL. The actual upload selection
+was not recovered. A generator defect or concurrent build race is **not** an
+established cause; the proven failure is a Firefox-configured artifact reaching
+the Chrome installation. The guards check artifact contents, and the final manual
+upload must use the same file whose checksum was verified.

@@ -505,3 +505,11 @@ Three things close the gap, at different levels:
 Known gap, deliberately not closed here: three tests in `tests/wot-relay-transport.test.ts` call `mock.method(schnorr, 'verify', …)`, and `@noble/curves` froze that export in 2.2.0, so they fail on any version `^2.0.1` admits above 2.0.1. Production is unaffected — our code only calls schnorr and never patches it — and the fix is for those tests to use an injected verifier seam alongside the existing `_createSocket` and `_timeoutMs`, rather than reaching into the library. Those suites are consequently not in the floating job yet.
 
 The general rule this leaves behind: **a numeric bound or behaviour handed to a library must be derived from what the algorithm or format requires, never copied from what a particular version of that library happens to check, and never pinned exactly to it.** The two agree right up until the library revises its own accounting, and a lockfile-pinned suite cannot tell you when that happens.
+
+## Release artifact checks
+
+`tests/release-package.test.ts` tests actual ZIP fixtures, including a Firefox
+archive renamed as Chrome, mixed manifests, missing resources and version errors.
+Both local and CI runners include it. CI also runs both packaging commands;
+Chrome packaging runs `scripts/smoke-chrome.mjs` against the exact output ZIP in
+an isolated Chromium profile. See [deployment](deployment.md#chrome-package-regression-gate).
