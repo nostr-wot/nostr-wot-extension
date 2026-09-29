@@ -118,14 +118,19 @@ it('message content starts concealed and is removed again after 30 seconds',asyn
  resetMockStorage();const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const root=createRoot(document.getElementById('root')!);
  t.mock.method(browser.runtime,'sendMessage',async()=>({result:{request:{method:'nip44Decrypt',origin:'site',params:{}},plaintext:'timed secret',decryptedEvent:{content:'timed secret'}}}));
- t.mock.timers.enable({apis:['setTimeout']});
+ t.mock.timers.enable({apis:['setTimeout','setInterval','Date']});
  try{
   await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt'}})));
   assert.ok(document.querySelector('[aria-hidden="true"]'));
   assert.ok(!document.body.textContent!.includes('timed secret'));
   await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
   assert.ok(document.body.textContent!.includes('timed secret'));
-  await act(async()=>t.mock.timers.tick(30000));
+  assert.equal(document.querySelector('[data-reveal-countdown] circle')!.getAttribute('stroke-dasharray'),'30 30');
+  assert.ok(document.querySelector('button')!.textContent!.includes('key.autoHideHint'));
+  await act(async()=>t.mock.timers.tick(1000));
+  assert.equal(document.querySelector('[data-reveal-countdown] circle')!.getAttribute('stroke-dasharray'),'29 30');
+  await act(async()=>t.mock.timers.tick(29000));
+  assert.equal(document.querySelector('[data-reveal-countdown]'),null);
   assert.ok(!document.body.textContent!.includes('timed secret'));
   assert.equal(document.querySelector('button')!.getAttribute('aria-pressed'),'false');
  }finally{await act(async()=>root.unmount());dom.window.close();t.mock.timers.reset();}
@@ -135,7 +140,7 @@ it('outgoing Advanced plaintext follows manual hide and auto-hide too',async t=>
  resetMockStorage();const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const root=createRoot(document.getElementById('root')!);
  t.mock.method(browser.runtime,'sendMessage',async()=>({result:{request:{method:'nip44Encrypt',origin:'site',params:{plaintext:'outgoing secret'}},plaintext:'outgoing secret'}}));
- t.mock.timers.enable({apis:['setTimeout']});
+ t.mock.timers.enable({apis:['setTimeout','setInterval','Date']});
  try{
   await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Encrypt'}})));
   const advanced=document.querySelector('details')!;

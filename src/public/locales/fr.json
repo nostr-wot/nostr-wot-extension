@@ -1078,5 +1078,17 @@
   "messageReview.sender": "De",
   "messageReview.unavailable": "Cet aperçu est indisponible. La demande peut être terminée ou le coffre verrouillé.",
   "messageReview.messageNumber": "Message {number}",
-  "messageReview.noCachedProfile": "Aucun profil en cache pour cette clé."
+  "messageReview.noCachedProfile": "Aucun profil en cache pour cette clé.",
+  "eventIntent.profile": "{origin} souhaite mettre à jour votre profil.",
+  "eventIntent.note": "{origin} souhaite publier une note.",
+  "eventIntent.contacts": "{origin} souhaite mettre à jour vos abonnements ({count} contacts).",
+  "eventIntent.delete": "{origin} souhaite demander la suppression de {count} événements.",
+  "eventIntent.repost": "{origin} souhaite republier une note.",
+  "eventIntent.reaction": "{origin} souhaite réagir à une note avec {reaction}.",
+  "eventIntent.seal": "{origin} souhaite sceller un message privé.",
+  "eventIntent.wrap": "{origin} souhaite envelopper un message privé pour son envoi.",
+  "eventIntent.appAction": "{origin} souhaite {action} pour {app}.",
+  "eventIntent.appData": "{origin} souhaite signer les données de {app}.",
+  "eventIntent.named": "{origin} souhaite signer un événement de type {purpose}.",
+  "eventIntent.generic": "{origin} souhaite signer un événement."
 }

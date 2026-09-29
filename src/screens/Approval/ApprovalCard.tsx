@@ -15,28 +15,29 @@ import { KIND_LABELS } from '@constants/nostr.ts';
 
 interface ApprovalCardProps {
   group: ApprovalGroup;
+  hideSite?: boolean;
   onClick: () => void;
   onCancel?: () => void;
 }
 
-export default function ApprovalCard({ group, onClick, onCancel }: ApprovalCardProps) {
+export default function ApprovalCard({ group, onClick, onCancel, hideSite = false }: ApprovalCardProps) {
   const domain = group.origin;
   const firstReq = group.requests[0];
-  const label = formatPermissionLabel(firstReq?.permKey || group.method, firstReq?.event);
+  const label = formatPermissionLabel(firstReq?.permKey || group.method, group.requests.length > 1 ? undefined : firstReq?.event);
   const isNip46 = group.nip46InFlight;
   const kind = firstReq?.eventKind ?? firstReq?.event?.kind;
 
   return (
-    <Card variant="flat" className="p-0 mb-0 overflow-hidden">
+    <Card variant="flat" className="p-0 mb-0 overflow-hidden shrink-0">
       <Container variant="row" gap={2}>
-        <ListRow leading={<SiteIcon domain={domain} />} leadingChip={false}
-          title={domain} onClick={onClick} trailing={isNip46 ? null : undefined}
+        <ListRow leading={hideSite ? undefined : <SiteIcon domain={domain} />} leadingChip={false}
+          title={hideSite ? isNip46 ? t('approval.awaitingSigner') : firstReq?.authentication ? t('auth.review') : label : domain} onClick={onClick} trailing={isNip46 ? null : undefined}
           subtitle={<Container as="span" gap={1}>
-            <Container as="span" variant="row" gap={3}>
+            {!hideSite && <Container as="span" variant="row" gap={3}>
               {isNip46 && <IconSync size={12} className="animate-spin [animation-duration:1.5s] shrink-0" />}
               {isNip46 ? t('approval.awaitingSigner') : firstReq?.authentication ? t('auth.review') : label}
-            </Container>
-            {!isNip46 && kind !== undefined && <Text as="span" variant="secondary" className="text-xs text-menu-subtitle">
+            </Container>}
+            {!hideSite && !isNip46 && kind !== undefined && <Text as="span" variant="secondary" className="text-xs text-menu-subtitle">
               {formatPermissionLabel(group.method)} · {KIND_LABELS[kind] || `Kind ${kind}`} ({kind})
             </Text>}
             {!isNip46 && group.requests.length > 1 && <Text variant="muted" as="span">

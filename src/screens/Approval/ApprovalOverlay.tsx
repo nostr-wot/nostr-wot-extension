@@ -9,7 +9,7 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { currentApprovalGroup, resolveDisplayedRequests, type ApprovalGroup } from '@domain/permissions/approval.ts';
 import { type PendingRequest } from '@domain/signing/types.ts';
-import ApprovalCard from './ApprovalCard';
+import ApprovalSiteList from './ApprovalSiteList';
 import useApprovalQueue from '@hooks/useApprovalQueue.ts';
 import EventDetailModal from '@components/EventDetailModal';
 import { usePermissions } from '@context/PermissionsContext';
@@ -132,13 +132,14 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     <>
       {!singleRequest && <>
       <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)] backdrop-blur-[4px]`} />
-      <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-elevated backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
-        <Container variant="row" gap={4} className="mb-6 flex-wrap">
+      <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-full box-border overflow-hidden bg-elevated backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
+        <Container variant="row" gap={4} className="mb-6 flex-wrap shrink-0">
           {/* Not `Text`: `font-bold` + `text-heading` at `text-lg` is not one
               of the four variants. */}
           <span className="text-lg font-bold text-heading">{t('approval.pendingRequests')}</span>
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
         </Container>
+        <div data-approval-scroll className="min-h-0 overflow-y-auto overscroll-contain">
         <div className="mb-6">{ordinaryGroups.length ? <ApprovalActions requestCount={ordinaryGroups.reduce((n, group) => n + group.requests.length, 0)} busy={busy}
           rejectCount={groups.reduce((n, group) => n + group.requests.length, 0)}
           onApprove={handleApproveShown} onReject={handleRejectAll}
@@ -154,31 +155,12 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
             {t('approval.appliesToAllAccounts')}
           </Text>
         )}
-        <Container gap={4} className="flex-1 min-h-0 overflow-y-auto">
-          {groups.map((group) => (
-            <ApprovalCard
-              key={`${group.origin}::${group.permKey}`}
-              group={group}
-              onClick={() => setSelectedGroup(group)}
-            />
-          ))}
-          {nip46Groups.map((group) => (
-            <ApprovalCard
-              key={`nip46::${group.origin}::${group.method}`}
-              group={group}
-              // Through runAction like every other action here. These two were
-              // the only paths still bypassing it — on the request type whose
-              // characteristic failure is "the remote signer never answers",
-              // where a silent cancel is exactly what the user cannot afford.
-              onCancel={() => runAction(async () => {
-                for (const req of group.requests) {
-                  await rpc('signer_cancelNip46', { id: req.id });
-                }
-              })}
-              onClick={() => setSelectedNip46(group)}
-            />
-          ))}
-        </Container>
+        <ApprovalSiteList groups={[...groups,...nip46Groups]}
+          onSelect={group => group.nip46InFlight ? setSelectedNip46(group) : setSelectedGroup(group)}
+          onCancel={group => runAction(async () => {
+            for (const req of group.requests) await rpc('signer_cancelNip46', {id:req.id});
+          })}/>
+        </div>
       </Container>
 
       </>}
@@ -189,6 +171,9 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           requests={selectedGroup.requests}
           busy={busy}
           actionError={actionError}
+          onApproveRequest={id => { const item=selectedGroup.requests.find(request=>request.id === id); if (item) void handleApprove({...selectedGroup,requests:[item]}); }}
+          onDenyRequest={id => { const item=selectedGroup.requests.find(request=>request.id === id); if (item) void handleDeny({...selectedGroup,requests:[item]}); }}
+          onAuthenticateRequest={(id,scope) => { const item=selectedGroup.requests.find(request=>request.id === id); if (item) void handleAuthenticate({...selectedGroup,requests:[item]},scope); }}
           onAuthenticate={scope => handleAuthenticate(selectedGroup, scope)}
           onApprove={() => handleApprove(selectedGroup)}
           onAlwaysAllow={() => handleAlwaysAllow(selectedGroup)}
@@ -222,6 +207,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           busy={busy}
           actionError={actionError}
           nip46InFlight
+          onDenyRequest={id => { void runAction(async()=>{await rpc('signer_cancelNip46',{id});}); }}
           onDeny={() => runAction(async () => {
             for (const req of selectedNip46.requests) {
               await rpc('signer_cancelNip46', { id: req.id });

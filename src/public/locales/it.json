@@ -1078,5 +1078,17 @@
   "messageReview.sender": "Da",
   "messageReview.unavailable": "Anteprima non disponibile. La richiesta potrebbe essere terminata o il vault bloccato.",
   "messageReview.messageNumber": "Messaggio {number}",
-  "messageReview.noCachedProfile": "Nessun profilo in cache per questa chiave."
+  "messageReview.noCachedProfile": "Nessun profilo in cache per questa chiave.",
+  "eventIntent.profile": "{origin} vuole aggiornare il tuo profilo.",
+  "eventIntent.note": "{origin} vuole pubblicare una nota.",
+  "eventIntent.contacts": "{origin} vuole aggiornare la lista dei seguiti ({count} contatti).",
+  "eventIntent.delete": "{origin} vuole richiedere la cancellazione di {count} eventi.",
+  "eventIntent.repost": "{origin} vuole ripubblicare una nota.",
+  "eventIntent.reaction": "{origin} vuole reagire a una nota con {reaction}.",
+  "eventIntent.seal": "{origin} vuole sigillare un messaggio privato.",
+  "eventIntent.wrap": "{origin} vuole incapsulare un messaggio privato per la consegna.",
+  "eventIntent.appAction": "{origin} vuole {action} per {app}.",
+  "eventIntent.appData": "{origin} vuole firmare dati dell’app {app}.",
+  "eventIntent.named": "{origin} vuole firmare un evento per {purpose}.",
+  "eventIntent.generic": "{origin} vuole firmare un evento."
 }

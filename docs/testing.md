@@ -537,3 +537,5 @@ Message-preview regressions also cover immediate preview during queue publicatio
 Profile lookup regressions cover purplepag.es queries, verified metadata caching, no wrapping-key lookup before Reveal, and a usable message/key fallback after lookup failure.
 
 Message-review UI tests also verify From/Content presentation, profile-key fallback, and timed concealment after 30 seconds. Both the message body and outgoing plaintext under Advanced follow the timer and manual hide; concealed message text is absent from the rendered DOM.
+
+Approval list regressions verify one heading per site while preserving separate request groups. Browser checks cover scrolling to and opening the final request and opening bulk-action menus. Timed message tests assert the internal hint, a full 30-second ring, its 29-second state, and its removal with plaintext at expiry.

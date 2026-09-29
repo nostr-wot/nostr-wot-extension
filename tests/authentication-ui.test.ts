@@ -178,3 +178,39 @@ it('advanced event data is collapsed and reject-always is available only through
   assert.equal(document.querySelector('[role="menu"]'),null);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
+
+it('every known signing kind uses a description and collapsed raw event without a kind table',async()=>{
+ const {default:Detail}=await import('../src/components/EventDetailModal');
+ const {KIND_LABELS}=await import('../src/constants/nostr');const {JSDOM}=await import('jsdom');
+ for(const kind of [...Object.keys(KIND_LABELS).map(Number),55555]){
+  const event={kind,content:'original content',tags:[['d','Primal-Web App','get_app_subsettings_home']]};
+  const html=renderToStaticMarkup(createElement(Detail,{request:{id:'request',type:'signEvent',origin:'https://primal.net',event},onApprove(){}}));
+  const dom=new JSDOM(html);const advanced=dom.window.document.querySelector('details')!;
+  assert.ok(advanced,`Advanced exists for ${kind}`);assert.equal(advanced.open,false);
+  assert.deepEqual(JSON.parse(advanced.querySelector('pre')!.textContent!),event);
+  advanced.remove();assert.ok(!dom.window.document.body.textContent!.includes('event.kind'));
+  assert.ok(!dom.window.document.querySelector('h3'));dom.window.close();
+ }
+});
+it('grouped event decisions identify only the clicked request',async()=>{
+ const {default:Detail}=await import('../src/components/EventDetailModal');const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const requests=['one','two'].map((id,i)=>({id,type:'signEvent',origin:'site',event:{kind:30078,content:'',tags:[['d','Primal-Web App',i?'reset_direct_message_count':'get_app_subsettings_home']]}}));
+ const chosen:string[]=[];const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Detail,{request:requests[0],requests,onApproveRequest:id=>chosen.push('approve:'+id),onDenyRequest:id=>chosen.push('reject:'+id)})));
+  const rows=document.querySelectorAll('[data-approval-request]');
+  await act(async()=>{rows[1].querySelector('button')!.click();});
+  await act(async()=>{rows[0].querySelectorAll('button')[1].click();});
+  assert.deepEqual(chosen,['approve:two','reject:one']);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('app intent puts its action before its application name',async t=>{
+ const {readFileSync}=await import('node:fs');const strings=JSON.parse(readFileSync(new URL('../src/public/locales/en.json',import.meta.url),'utf8'));
+ t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify(strings)));
+ const {initI18n}=await import('../src/services/i18n/i18n');await initI18n();
+ const {describeSigningIntent}=await import('../src/services/i18n/eventIntent');
+ assert.equal(describeSigningIntent('https://primal.net',{kind:30078,tags:[['d','Primal-Web App','get_app_subsettings_home']]}),'https://primal.net wants to get app subsettings home for Primal-Web App.');
+ assert.equal(describeSigningIntent('site',{kind:30078,tags:[['d','Example']]}),'site wants to sign app data for Example.');
+ assert.equal(describeSigningIntent('site',{kind:55555}),'site wants to sign an event.');
+});

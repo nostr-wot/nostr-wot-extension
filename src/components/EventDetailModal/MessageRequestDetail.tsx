@@ -78,11 +78,18 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
       aria-label={t(plaintext === null ? 'key.clickToReveal' : 'key.clickToBlur')}
       aria-pressed={plaintext !== null}
       onClick={() => plaintext === null ? void load(true) : message.clear()}>
+      <span className="flex flex-col gap-4 w-full min-w-0">
       <span aria-hidden={plaintext === null} className={`block w-full text-left font-normal whitespace-pre-wrap break-words max-h-48 overflow-y-auto ${plaintext === null ? 'blur-[6px] select-none' : ''}`}>
         {plaintext === null ? '•••••••• •••••••••••• ••••••••' : plaintext || t('activity.detail.emptyContent')}
       </span>
+      <span className="flex items-center gap-3 w-full">
+        {plaintext !== null && <svg data-reveal-countdown aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" className="shrink-0">
+          <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="2" pathLength="30" strokeDasharray={`${message.remainingSeconds} 30`} transform="rotate(-90 10 10)"/>
+        </svg>}
+        <Text as="span" variant="muted">{`${t(busy ? 'common.loading' : plaintext === null ? 'key.clickToReveal' : 'key.clickToBlur')} · ${t('key.autoHideHint')}`}</Text>
+      </span>
+      </span>
     </Button>
-    <Text variant="muted" className="text-center">{`${t(busy ? 'common.loading' : plaintext === null ? 'key.clickToReveal' : 'key.clickToBlur')} · ${t('key.autoHideHint')}`}</Text>
     <FormError>{error}</FormError>
     <DetailDisclosure label={t('common.advanced')} onOpenChange={open => {
       if (open) void load(false); else { generation.current.version++; setRaw(null); setBusy(false); }

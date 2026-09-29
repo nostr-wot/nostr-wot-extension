@@ -1,3 +1,7 @@
+import IconWarning from '@assets/IconWarning';
+import { describeSigningIntent } from '@services/i18n/eventIntent.ts';
+import TextBlock from '@components/TextBlock';
+import StatusNotice from '@components/StatusNotice';
 import MessageRequestDetail, { isMessageRequest } from './MessageRequestDetail';
 import DetailDisclosure from '@components/DetailDisclosure';
 import AuthenticationNotice from '@components/AuthenticationNotice';
@@ -12,7 +16,7 @@ import FormError from '@components/FormError';
 import EventPreview from '@components/EventPreview';
 import SiteIcon from '@components/SiteIcon';
 import ActivityGroupDetail from './ActivityGroupDetail';
-import { ButtonDanger } from '@components/Button';
+import Button, { ButtonDanger } from '@components/Button';
 import ApprovalActions from '@components/ApprovalActions';
 import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import type { ActivityEntry } from '@domain/activity/activity.ts';
@@ -68,6 +72,9 @@ interface EventDetailModalProps {
   requests?: ApprovalRequest[];
   busy?: boolean;
   actionError?: string;
+  onApproveRequest?: (id:string) => void;
+  onDenyRequest?: (id:string) => void;
+  onAuthenticateRequest?: (id:string,scope:AuthenticationScope) => void;
   onApprove?: () => void;
   onAuthenticate?: (scope: AuthenticationScope) => void;
   onDeny?: () => void;
@@ -96,6 +103,7 @@ export default function EventDetailModal({
   requests,
   busy = false,
   actionError,
+  onApproveRequest, onDenyRequest, onAuthenticateRequest,
   onApprove,
   onAuthenticate,
   onDeny,
@@ -118,10 +126,10 @@ export default function EventDetailModal({
   const theirPubkey = request ? request!.theirPubkey : group?.entries?.[0]?.theirPubkey;
   const entries = group?.entries || [];
 
-  const title = formatPermissionLabel(request?.authentication ? `signEvent:${request.authentication.protocol === 'nip98' ? 27235 : 22242}` : permKey || '', event ?? undefined);
+  const title = formatPermissionLabel(request?.authentication ? `signEvent:${request.authentication.protocol === 'nip98' ? 27235 : 22242}` : permKey || '', requests && requests.length > 1 ? undefined : event ?? undefined);
 
   // Approval description
-  const description = isApproval ? describeRequest(request!, title) : null;
+  const description = request ? describeRequest(request) : null;
 
   const eventContent = request && requests && requests.length > 1 ? (
             <div className="flex flex-col gap-4">
@@ -129,14 +137,20 @@ export default function EventDetailModal({
               {requests.map((item, index) => (
                 <details key={item.id ?? index} data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
                   <summary className="cursor-pointer text-md text-heading">
-                    {isMessageRequest(item.type) ? t('messageReview.messageNumber', {number:index + 1}) : <>{index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</>}
-                    {item.event?.kind !== undefined && <span className="block text-sm text-menu-subtitle">{KIND_LABELS[item.event.kind] || `Kind ${item.event.kind}`} ({item.event.kind})</span>}
+                    {isMessageRequest(item.type) ? t('messageReview.messageNumber', {number:index + 1}) : <>{index + 1}. {item.type === 'signEvent' && !item.authentication ? describeRequest(item) : formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</>}
                   </summary>
-                  <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item}/> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
+                  <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item}/> : item.type === 'signEvent' && !item.authentication ? <DetailDisclosure label={t('common.advanced')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
+                  {item.id && onDenyRequest && <div className="flex justify-end gap-4 pt-5">
+                    {item.authentication && onAuthenticateRequest ? <AuthenticationActions authentication={item.authentication} requestCount={1} busy={busy}
+                      onApprove={scope=>onAuthenticateRequest(item.id!,scope)} onDeny={()=>onDenyRequest(item.id!)}/> : <>
+                      {!nip46InFlight && onApproveRequest && <Button small disabled={busy} onClick={()=>onApproveRequest(item.id!)}>{t('approval.approve')}</Button>}
+                      <ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t(nip46InFlight ? 'approval.cancelNip46' : 'auth.reject')}</ButtonDanger>
+                    </>}
+                  </div>}
                 </details>
               ))}
             </div>
-          ) : request && isMessageRequest(type) ? <MessageRequestDetail key={request.id} request={request}/> : request ? (
+          ) : request?.type === 'signEvent' && !request.authentication ? <DetailDisclosure label={t('common.advanced')}><TextBlock mono>{JSON.stringify(event || {},null,2)}</TextBlock></DetailDisclosure> : request && isMessageRequest(type) ? <MessageRequestDetail key={request.id} request={request}/> : request ? (
             <EventPreview
               type={type}
               event={event || null}
@@ -166,14 +180,15 @@ export default function EventDetailModal({
           )}
 
           {/* Approval: method badge + description */}
-          {isApproval && !request?.authentication && (
+          {request && !request.authentication && (
             <div className={CLS.summary}>
-              <div className={CLS.methodBadge}>{title}</div>
-              {description && <p className={CLS.description}>{description}</p>}
+              {type !== 'signEvent' && <div className={CLS.methodBadge}>{title}</div>}
+              {description && !(type === 'signEvent' && requests && requests.length > 1) && <p className={CLS.description}>{description}</p>}
             </div>
           )}
 
           {request?.authentication && <AuthenticationNotice request={request}/>}
+          {request?.type === 'signEvent' && !request.authentication && (requests || [request]).some(item => item.event?.kind === undefined || !KIND_LABELS[item.event.kind]) && <StatusNotice tone="warn" variant="callout" icon={<IconWarning/>}>{t('event.unknownKind')}</StatusNotice>}
           <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
 
           {/* Event content */}
@@ -212,13 +227,13 @@ export default function EventDetailModal({
   );
 }
 
-function describeRequest(req: ApprovalRequest, label: string): string | null {
+function describeRequest(req: ApprovalRequest): string | null {
   const origin = req.origin || '?';
   switch (req.type) {
     case 'getPublicKey':
       return t('approval.detail.readProfileDesc', { origin });
     case 'signEvent':
-      return t('approval.detail.signDesc', { origin, label: label || 'sign an event' });
+      return describeSigningIntent(origin,req.event);
     case 'nip04Encrypt':
     case 'nip44Encrypt':
       return t('approval.detail.sendDesc', { origin });

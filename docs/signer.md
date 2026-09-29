@@ -290,3 +290,5 @@ This never changes the original result returned to the site after approval.
 A loading hint appears during lookup; missing or unavailable profiles retain the public-key fallback without a cache warning.
 
 The message surface hides again after 30 seconds using the same timed-reveal hook as private-key export. Concealed content is a placeholder; plaintext and the decoded event are discarded on timeout or click-to-hide.
+
+Pending signEvent review places the full event in collapsed Advanced and describes intent above it, including app action then app name for kind 30078. A grouped view can approve/reject one request ID through the existing confirmation and resolution path without resolving its siblings. Bulk and remembered permission behavior remains separate.

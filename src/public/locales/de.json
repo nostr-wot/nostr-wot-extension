@@ -1078,5 +1078,17 @@
   "messageReview.sender": "Von",
   "messageReview.unavailable": "Diese Vorschau ist nicht verfügbar. Die Anfrage ist möglicherweise beendet oder der Tresor gesperrt.",
   "messageReview.messageNumber": "Nachricht {number}",
-  "messageReview.noCachedProfile": "Kein gespeichertes Profil für diesen Schlüssel."
+  "messageReview.noCachedProfile": "Kein gespeichertes Profil für diesen Schlüssel.",
+  "eventIntent.profile": "{origin} möchte dein Profil aktualisieren.",
+  "eventIntent.note": "{origin} möchte eine Notiz veröffentlichen.",
+  "eventIntent.contacts": "{origin} möchte deine Folgen-Liste aktualisieren ({count} Kontakte).",
+  "eventIntent.delete": "{origin} möchte die Löschung von {count} Ereignissen anfordern.",
+  "eventIntent.repost": "{origin} möchte eine Notiz erneut veröffentlichen.",
+  "eventIntent.reaction": "{origin} möchte mit {reaction} auf eine Notiz reagieren.",
+  "eventIntent.seal": "{origin} möchte eine private Nachricht versiegeln.",
+  "eventIntent.wrap": "{origin} möchte eine private Nachricht für die Zustellung verpacken.",
+  "eventIntent.appAction": "{origin} möchte {action} für {app}.",
+  "eventIntent.appData": "{origin} möchte App-Daten für {app} signieren.",
+  "eventIntent.named": "{origin} möchte ein Ereignis für {purpose} signieren.",
+  "eventIntent.generic": "{origin} möchte ein Ereignis signieren."
 }

@@ -18,9 +18,12 @@ export default function useTimedReveal<T>(empty: T, ttlMs: number) {
   const [value, setValue] = useState<T>(empty);
   const [revealed, setRevealed] = useState(false);
   const [blurred, setBlurred] = useState(true);
+  const [remainingSeconds,setRemainingSeconds] = useState(0);
+  const countdown = useRef<ReturnType<typeof setInterval> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopTimer = () => {
+    if (countdown.current) { clearInterval(countdown.current); countdown.current = null; }
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
   };
 
@@ -29,6 +32,7 @@ export default function useTimedReveal<T>(empty: T, ttlMs: number) {
   const clear = useCallback(() => {
     stopTimer();
     setValue(empty);
+    setRemainingSeconds(0);
     setRevealed(false);
     setBlurred(true);
     // `empty` is a caller-supplied constant ('' or []); depending on it would
@@ -42,10 +46,13 @@ export default function useTimedReveal<T>(empty: T, ttlMs: number) {
     setValue(next);
     setRevealed(true);
     setBlurred(true);
+    const deadline = Date.now() + ttlMs;
+    setRemainingSeconds(Math.ceil(ttlMs / 1000));
+    countdown.current = setInterval(() => setRemainingSeconds(Math.max(0,Math.ceil((deadline - Date.now()) / 1000))),1000);
     timer.current = setTimeout(clear, ttlMs);
   }, [clear, ttlMs]);
 
   const toggleBlur = useCallback(() => setBlurred((b) => !b), []);
 
-  return { value, revealed, blurred, reveal, clear, toggleBlur };
+  return { value, revealed, blurred, reveal, clear, toggleBlur, remainingSeconds };
 }

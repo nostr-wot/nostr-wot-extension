@@ -1107,3 +1107,17 @@ it('app connections list, secret reveal and confirmed revocation use account-sco
   assert.ok([...dom.window.document.querySelectorAll('button')].find(b=>b.textContent==='wallet.appsCreate')!.disabled);
  } finally {await act(async()=>root.unmount());dom.window.close();for(const[k,d]of previous){if(d)Object.defineProperty(globalThis,k,d);else Reflect.deleteProperty(globalThis,k);}}
 });
+
+it('pending requests share one site heading while keeping permission groups separate',async()=>{
+ const {default:SiteList}=await import('../src/screens/Approval/ApprovalSiteList');
+ const make=(origin:string,id:string,permKey:string)=>({origin,method:'signEvent',permKey,requests:[{id,origin,type:'signEvent',permKey,timestamp:1,eventKind:1}]});
+ const groups=[make('https://a.test','one','signEvent:1'),make('https://b.test','two','signEvent:1'),make('https://a.test','three','signEvent:2')];
+ const html=renderToStaticMarkup(createElement(SiteList,{groups,onSelect(){},onCancel(){}}));
+ const {JSDOM}=await import('jsdom');const dom=new JSDOM(html);
+ const sections=dom.window.document.querySelectorAll('[data-approval-site]');
+ assert.equal(sections.length,2);assert.equal(sections[0].getAttribute('data-approval-site'),'https://a.test');
+ assert.equal(sections[0].querySelectorAll('button').length,2);assert.equal(sections[1].querySelectorAll('button').length,1);
+ assert.equal(sections[0].querySelectorAll('h3').length,1);
+ assert.equal(sections[0].textContent!.split('https://a.test').length-1,1);
+ dom.window.close();
+});
