@@ -1074,5 +1074,7 @@
   "auth.approveAlways": "Aprovar sempre",
   "auth.approveAllSites": "Sempre para todos os sites",
   "auth.rejectAlways": "Rejeitar sempre",
-  "auth.reject": "Rejeitar"
+  "auth.reject": "Rejeitar",
+  "messageReview.sender": "Remetente",
+  "messageReview.unavailable": "Prévia indisponível. A solicitação pode ter terminado ou o cofre estar bloqueado."
 }

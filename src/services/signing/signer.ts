@@ -278,6 +278,7 @@ async function handleCryptoRequest(
    * type without first being allowed to make the call at all.
    */
   remoteSignerUnsupported?: string,
+  previewOptions?: PqEncryptOptions,
 ): Promise<string> {
   const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
@@ -301,6 +302,15 @@ async function handleCryptoRequest(
       permKey: permissions.permissionKey(method),
       needsPermission: true,
       accountId,
+    }, async reveal => {
+      assertAccountSession(session);
+      let plaintext: string | undefined;
+      if (reveal) {
+        plaintext = method.endsWith('Encrypt') ? payload : await withActiveKey(session.accountId, async privkey =>
+          cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId));
+      }
+      assertAccountSession(session);
+      return {request:{method,origin,params:{...nip46Data,...(previewOptions ? {opts:{...previewOptions}} : {})}}, ...(plaintext !== undefined ? {plaintext} : {})};
     });
     if (!approved.allow) throw new Error(denyMessage);
   }
@@ -367,7 +377,8 @@ export async function handleNip44Encrypt(
   origin: string,
   opts?: PqEncryptOptions,
 ): Promise<string> {
-  if (opts?.scheme !== 'pq') {
+  const options = opts ? {...opts} : undefined;
+  if (options?.scheme !== 'pq') {
     return handleCryptoRequest('nip44Encrypt', theirPubkey, plaintext, origin,
       { pubkey: theirPubkey, plaintext }, nip44Encrypt, 'User denied encryption');
   }
@@ -379,7 +390,7 @@ export async function handleNip44Encrypt(
       const { keys, pubkey } = await activePqKeys(accountId);
       let conv: Uint8Array | null = null;
       try {
-        const kem = base64ToArray(opts.recipientKemKey);
+        const kem = base64ToArray(options.recipientKemKey);
         conv = getConversationKey(privkey, theirPubkeyBytes);
         return pqEncrypt(payload, kem, conv, pubkey, theirPubkey);
       } finally {
@@ -390,6 +401,7 @@ export async function handleNip44Encrypt(
     },
     'User denied encryption',
     'Remote signers do not support post-quantum encryption',
+    options,
   );
 }
 

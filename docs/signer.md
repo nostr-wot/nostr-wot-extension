@@ -260,3 +260,22 @@ The [client/backend registry](auth-client-registry.md) is informational. Matchin
 NIP-42 challenges are supplied by the client; only the relay can bind them to its connection. A trusted relay grant cannot prove the requesting client obtained its challenge honestly.
 
 Authentication revalidation includes identity-disabled sites after approval/unlock, before both local signing and remote delegation.
+
+## Local pending-message review
+
+NIP-04/NIP-44 approval details show a cached peer profile (sender for decrypt,
+recipient for encrypt) with a public-key fallback. They do not fetch a missing
+profile from relays or load remote avatar URLs; the compact profile uses an initial. Reveal message previews plaintext locally without resolving
+the page request or changing its permission. Advanced loads the full method,
+origin and parameters; these crypto calls do not carry a complete Nostr event.
+
+The internal-only `signer_previewRequest` RPC accepts an existing pending ID and
+an explicit `reveal` boolean. Its callback holds the original payload in worker
+memory, never pending-request storage. Raw review does not decrypt. Reveal uses
+the same classic/PQ crypto implementation and captured account session as the
+request, validates the session before and after the operation, and returns only
+to the extension UI. Resolution, rejection, timeout, lock and worker restart
+discard callbacks. A late preview result for a removed request is rejected.
+The UI clears preview data on account, lock or pending-queue changes and ignores
+late replies. Remote signers retain their own approval flow and do not gain a
+local-key preview.

@@ -9,6 +9,7 @@ have had.
 ## 0.8.7 — 2026-09-29
 
 ### Improved
+- Simplify private-message approvals with cached peer profiles, local Reveal/Hide controls, and Advanced request details. Previewing never approves or sends plaintext to the requesting site.
 - Bottom-align event details in a content-sized sheet that grows upward and scrolls only when necessary, keeping the title and decisions visible.
 - Collapse authentication event data under Advanced and use compact Approve/Reject split buttons. Remember approvals per site or relay across connected sites, and remember destination-specific rejections per account/site.
 - Open a single pending request directly in event detail; show the request list, count and bulk controls only for multiple requests.

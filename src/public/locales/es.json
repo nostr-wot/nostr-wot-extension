@@ -1074,5 +1074,7 @@
   "auth.approveAlways": "Aprobar siempre",
   "auth.approveAllSites": "Siempre para todos los sitios",
   "auth.rejectAlways": "Rechazar siempre",
-  "auth.reject": "Rechazar"
+  "auth.reject": "Rechazar",
+  "messageReview.sender": "Remitente",
+  "messageReview.unavailable": "La vista previa no está disponible. La solicitud puede haber terminado o la bóveda estar bloqueada."
 }

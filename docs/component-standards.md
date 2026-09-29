@@ -718,3 +718,5 @@ WoT project without losing their mode; legacy project choices retain their dark
 appearance until the user changes it. See [palette sources](theme-handoff.md).
 
 Event detail uses the bottom placement for short content, grows upward to the popup height, then scrolls only its body while the title and decisions stay visible. Authentication event detail keeps the full event inside a closed `DetailDisclosure` labelled Advanced. Menu options use the same shared `ActionMenu` keyboard/focus behavior as ordinary approvals.
+
+`MessageRequestDetail` inside EventDetailModal renders pending encrypt/decrypt review without the redundant EventPreview heading. It uses cache-only ProfileSummary in compact mode, a Reveal/Hide control, and DetailDisclosure for Advanced raw request data. DetailDisclosure supports `onOpenChange` for loading sensitive content on demand. Compact ProfileSummary shows only the avatar/name, with the peer key retained by its containing view.

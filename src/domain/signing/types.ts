@@ -38,3 +38,9 @@ export interface RequestDecision {
   rememberKind?: boolean;
   reason?: string;
 }
+
+/** Local review only; never persisted in the pending-request metadata. */
+export interface PendingRequestPreview {
+  request: { method: string; origin: string; params: Record<string, unknown> };
+  plaintext?: string;
+}

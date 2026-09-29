@@ -616,3 +616,5 @@ access after waiting for unlock. Publication checks include the session revision
 (to catch switching away and back) and the actual WebSocket `onopen` send boundary.
 A request already transmitted cannot be recalled; signed-event caches remain
 keyed by the event's public key. Key exports reject stale results after encoding.
+
+Pending-message reveal is an internal extension review capability bound to an existing request ID and its account session. It neither approves nor replies to the website request. The full message is retained only by the worker callback and the active review UI, never serialized into pending-request storage. Preview RPCs are part of the privileged handler registry, with pre/post account checks and post-await request-lifetime checks.

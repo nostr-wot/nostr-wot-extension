@@ -1074,5 +1074,7 @@
   "auth.approveAlways": "Approve always",
   "auth.approveAllSites": "Always for all sites",
   "auth.rejectAlways": "Reject always",
-  "auth.reject": "Reject"
+  "auth.reject": "Reject",
+  "messageReview.sender": "Sender",
+  "messageReview.unavailable": "This message preview is unavailable. The request may have ended, or the vault may be locked."
 }

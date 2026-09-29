@@ -1074,5 +1074,7 @@
   "auth.approveAlways": "Approva sempre",
   "auth.approveAllSites": "Sempre per tutti i siti",
   "auth.rejectAlways": "Rifiuta sempre",
-  "auth.reject": "Rifiuta"
+  "auth.reject": "Rifiuta",
+  "messageReview.sender": "Mittente",
+  "messageReview.unavailable": "Anteprima non disponibile. La richiesta potrebbe essere terminata o il vault bloccato."
 }

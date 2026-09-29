@@ -1,3 +1,4 @@
+import MessageRequestDetail, { isMessageRequest } from './MessageRequestDetail';
 import DetailDisclosure from '@components/DetailDisclosure';
 import AuthenticationNotice from '@components/AuthenticationNotice';
 import AuthenticationActions from '@components/AuthenticationActions';
@@ -131,11 +132,11 @@ export default function EventDetailModal({
                     {index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}
                     {item.event?.kind !== undefined && <span className="block text-sm text-menu-subtitle">{KIND_LABELS[item.event.kind] || `Kind ${item.event.kind}`} ({item.event.kind})</span>}
                   </summary>
-                  <div className="pt-5"><EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} /></div>
+                  <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item}/> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
                 </details>
               ))}
             </div>
-          ) : request ? (
+          ) : request && isMessageRequest(type) ? <MessageRequestDetail key={request.id} request={request}/> : request ? (
             <EventPreview
               type={type}
               event={event || null}

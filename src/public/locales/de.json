@@ -1074,5 +1074,7 @@
   "auth.approveAlways": "Immer erlauben",
   "auth.approveAllSites": "Immer für alle Websites",
   "auth.rejectAlways": "Immer ablehnen",
-  "auth.reject": "Ablehnen"
+  "auth.reject": "Ablehnen",
+  "messageReview.sender": "Absender",
+  "messageReview.unavailable": "Diese Vorschau ist nicht verfügbar. Die Anfrage ist möglicherweise beendet oder der Tresor gesperrt."
 }

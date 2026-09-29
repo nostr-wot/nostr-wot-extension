@@ -528,3 +528,6 @@ The 0.8.6 lifecycle regressions cover identity disable during local/remote auth
 unlock waits, account switching during relay reads (including away-and-back),
 revocation while WebSockets connect, stale key exports, and stale package output
 after failed or concurrent builds.
+
+- `tests/message-preview.test.ts`: local-only previews for both classic schemes, outbound plaintext review, storage exclusion, request lifetime, account/lock invalidation and privileged RPC registration.
+- `tests/message-preview-ui.test.ts`: cache-only profiles, reveal/hide, Advanced request data, correct peer labels, removal of duplicate headings and rejection of stale UI replies.

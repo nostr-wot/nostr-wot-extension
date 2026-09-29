@@ -3,7 +3,7 @@ import { validAuthenticationScope } from '@domain/signing/authentication.ts';
 import { updateSignerBadge } from './rejections.ts';
 import * as vault from '../vault/vault.ts';
 import browser from '@lib/browser.ts';
-import type { RequestDecision, PendingRequest } from '@domain/signing/types.ts';
+import type { RequestDecision, PendingRequest, PendingRequestPreview } from '@domain/signing/types.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
 import type { SafeAccount } from '@domain/accounts/types.ts';
 import { requestMatchesAccount } from '@domain/permissions/approval.ts';
@@ -17,6 +17,8 @@ import { assertAccountSession, type AccountSession } from './accountSession.ts';
 
 // In-memory resolvers for pending requests (keyed by request ID)
 const _pendingResolvers: Map<string, (decision: RequestDecision) => void> = new Map();
+
+const _pendingPreviews = new Map<string, (reveal: boolean) => Promise<PendingRequestPreview>>();
 
 let _requestCounter: number = 0;
 
@@ -38,6 +40,7 @@ vault.onLock(() => {
   const ids = new Set([..._pendingResolvers.keys(), ..._unlockWaiters.keys(), ..._nip46Aborts.keys()]);
   for (const resolve of _pendingResolvers.values()) resolve({ allow: false, remember: false, reason: 'Vault locked' });
   _pendingResolvers.clear();
+  _pendingPreviews.clear();
   for (const timer of _timeoutTimers.values()) clearTimeout(timer);
   _timeoutTimers.clear();
   for (const waiter of _unlockWaiters.values()) waiter.reject(new Error('Vault locked'));
@@ -109,7 +112,7 @@ interface QueueRequestInput {
   walletAmount?: number;        // For WebLN payment approval
 }
 
-export async function queueRequest(request: QueueRequestInput): Promise<RequestDecision> {
+export async function queueRequest(request: QueueRequestInput, preview?: (reveal: boolean) => Promise<PendingRequestPreview>): Promise<RequestDecision> {
   const revision = lockRevision;
   const id = `req_${crypto.randomUUID()}`;
   const {accountId: activeAccountId} = await getActiveAccountInfo();
@@ -156,9 +159,11 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
   // Return promise that resolves when popup decides (not used for nip46InFlight)
   return new Promise((resolve, reject) => {
     _pendingResolvers.set(id, resolve);
+    if (preview) _pendingPreviews.set(id, preview);
 
     const timer = setTimeout(() => {
       _pendingResolvers.delete(id);
+      _pendingPreviews.delete(id);
       _timeoutTimers.delete(id);
       void removePendingFromStorage(id);
       reject(new Error('Request timed out'));
@@ -219,6 +224,16 @@ async function removePendingFromStorage(id: string): Promise<void> {
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
 
+
+/** Internal popup review: never resolves a request or grants site permission. */
+export async function previewPendingRequest(id: string, reveal: boolean): Promise<PendingRequestPreview> {
+  const preview = _pendingPreviews.get(id);
+  if (!preview || !_pendingResolvers.has(id)) throw new Error('Request preview is no longer available');
+  const result = await preview(reveal);
+  if (_pendingPreviews.get(id) !== preview || !_pendingResolvers.has(id)) throw new Error('Request preview is no longer available');
+  return result;
+}
+
 /**
  * Resolve a single pending request by ID
  * @param id - request ID
@@ -251,6 +266,7 @@ export async function resolveRequest(id: string, decision: RequestDecision): Pro
   if (resolver) {
     resolver(decision);
     _pendingResolvers.delete(id);
+    _pendingPreviews.delete(id);
   }
   const timer = _timeoutTimers.get(id);
   if (timer) { clearTimeout(timer); _timeoutTimers.delete(id); }
@@ -284,6 +300,7 @@ export async function resolveBatch(origin: string, permKey: string, decision: Re
       if (resolver) {
         resolver(decision.allow && !requestMatchesAccount(req, account) ? {allow:false,remember:false,reason:'Account switched'} : decision);
         _pendingResolvers.delete(req.id);
+        _pendingPreviews.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }
@@ -325,6 +342,7 @@ export async function onVaultUnlocked(): Promise<void> {
       if (resolver) {
         resolver({ allow: true, remember: false });
         _pendingResolvers.delete(req.id);
+        _pendingPreviews.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }
@@ -349,6 +367,7 @@ export async function cleanupStale(): Promise<void> {
   for (const timer of _timeoutTimers.values()) clearTimeout(timer);
   _timeoutTimers.clear();
   _pendingResolvers.clear();
+  _pendingPreviews.clear();
   _unlockWaiters.clear();
   clearGetPubkeyCooldown();
   await _lock.run(async () => {
@@ -384,6 +403,7 @@ export async function rejectPendingForAccount(accountId: string): Promise<void> 
       if (resolver) {
         resolver({ allow: false, reason: 'Account switched' });
         _pendingResolvers.delete(req.id);
+        _pendingPreviews.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }
