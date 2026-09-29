@@ -3,6 +3,8 @@
 Notable changes per release. Store-facing copy for each version is in its
 `### Store release notes` block; the rest is for us.
 
+- Open raw events in a scrollable popup from the code icon; remove the redundant expand arrow from grouped signing requests.
+
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 

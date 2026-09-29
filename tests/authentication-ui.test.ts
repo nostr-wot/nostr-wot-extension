@@ -169,8 +169,12 @@ it('advanced event data is collapsed and reject-always is available only through
  const root=createRoot(document.getElementById('root')!);let rejected=0;
  try{
   await act(async()=>root.render(createElement(Detail,{request:{type:'signEvent',authentication,event:{kind:27235,content:'',tags:[['u',authentication.url],['method','POST']]}},onAuthenticate(){},onDeny(){},onAlwaysDeny(){rejected++;}})));
-  const advanced=[...document.querySelectorAll('details')].find(d=>d.querySelector('summary')?.getAttribute('aria-label')==='event.showRaw')!;
-  assert.ok(advanced);assert.equal(advanced.open,false);assert.ok(advanced.textContent?.includes('POST'));
+  const rawButton=document.querySelector('[aria-label="event.showRaw"]') as HTMLButtonElement;
+  assert.ok(rawButton);assert.equal(document.querySelector('[role="dialog"]'),null);
+  rawButton.focus();await act(async()=>rawButton.click());
+  const popup=document.querySelector('[role="dialog"]')!;assert.ok(popup.textContent?.includes('POST'));
+  await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  assert.equal(document.querySelector('[role="dialog"]'),null);assert.equal(document.activeElement,rawButton);
   assert.equal(document.querySelector('[role="menu"]'),null);
   await act(async()=>{(document.querySelector('[aria-label="approval.rejectOptions"]') as HTMLButtonElement).click();});
   const choice=document.querySelector('[role="menuitem"]') as HTMLButtonElement;
@@ -185,10 +189,10 @@ it('every known signing kind uses a description and collapsed raw event without 
  for(const kind of [...Object.keys(KIND_LABELS).map(Number),55555]){
   const event={kind,content:'original content',tags:[['d','Primal-Web App','get_app_subsettings_home']]};
   const html=renderToStaticMarkup(createElement(Detail,{request:{id:'request',type:'signEvent',origin:'https://primal.net',event},onApprove(){}}));
-  const dom=new JSDOM(html);const advanced=dom.window.document.querySelector('details')!;
-  assert.ok(advanced,`Advanced exists for ${kind}`);assert.equal(advanced.open,false);
-  assert.deepEqual(JSON.parse(advanced.querySelector('pre')!.textContent!),event);
-  advanced.remove();assert.ok(!dom.window.document.body.textContent!.includes('event.kind'));
+  const dom=new JSDOM(html);
+  assert.ok(dom.window.document.querySelector('button[aria-haspopup="dialog"]'),`Raw popup trigger exists for ${kind}`);
+  assert.equal(dom.window.document.querySelector('pre'),null);
+  assert.ok(!dom.window.document.body.textContent!.includes('event.kind'));
   assert.ok(!dom.window.document.querySelector('h3'));dom.window.close();
  }
 });
@@ -202,7 +206,7 @@ it('grouped event selection approves only checked IDs and leaves late arrivals u
   await act(async()=>root.render(render()));
   const approve=()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='approval.approveSelected')!;
   assert.equal(approve().disabled,true);
-  assert.equal(document.querySelectorAll('[data-approval-request] button').length,0);
+  assert.equal(document.querySelectorAll('[data-approval-request] button[aria-haspopup="dialog"]').length,2);
   await act(async()=>{(document.querySelectorAll('input[type="checkbox"]')[1] as HTMLInputElement).click();});
   assert.ok([...document.querySelectorAll('[data-approval-request]')].every(row=>!(row as HTMLDetailsElement).open));
   requests.push({...requests[0],id:'late'});await act(async()=>root.render(render()));
@@ -273,10 +277,10 @@ it('intent highlights keep origin/action/app literal and grouped summaries have 
  const {default:Detail}=await import('../src/components/EventDetailModal');const {JSDOM}=await import('jsdom');
  const request={id:'a',type:'signEvent',origin:'https://client.test',event};
  const dom=new JSDOM(renderToStaticMarkup(createElement(Detail,{request,requests:[request,{...request,id:'b'}]})));
- const summary=dom.window.document.querySelector('[data-approval-request] > summary')!;
- assert.ok(!summary.textContent!.startsWith('1.'));assert.ok(summary.className.includes('list-none'));
+ const summary=dom.window.document.querySelector('[data-approval-request] > div')!;
+ assert.ok(!summary.textContent!.startsWith('1.'));assert.equal(dom.window.document.querySelector('[data-approval-request] > summary'),null);
  assert.equal(summary.querySelectorAll('.text-brand').length,3);
- assert.ok(summary.querySelector('svg.self-end'));assert.equal(summary.querySelector('img'),null);
- assert.ok(dom.window.document.querySelector('summary[title="Show raw event"]'));
+ assert.equal(summary.querySelector('svg.self-end'),null);assert.equal(summary.querySelector('img'),null);
+ assert.ok(dom.window.document.querySelector('button[title="Show raw event"]'));
  assert.ok(!dom.window.document.body.textContent!.includes('Advanced'));dom.window.close();
 });

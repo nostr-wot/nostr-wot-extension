@@ -25,8 +25,8 @@ it('message review uses cached profile, reveals only on demand, and clears after
   await act(async()=>button('key.clickToReveal').click());assert.ok(document.body.textContent!.includes('secret text'));
   assert.deepEqual(calls.map(c=>[c.method,c.params]),[['signer_previewRequest',{id:'pending',reveal:true}]]);
   await act(async()=>button('key.clickToBlur').click());assert.ok(!document.body.textContent!.includes('secret text'));
-  const advanced=document.querySelector('details')!;
-  await act(async()=>{advanced.open=true;advanced.dispatchEvent(new dom.window.Event('toggle'));});
+  const advanced=document.querySelector('[aria-label="event.showRaw"]') as HTMLButtonElement;
+  await act(async()=>advanced.click());
   assert.ok(document.body.textContent!.includes('full ciphertext'));assert.equal(calls.at(-1).params.reveal,false);
   await act(async()=>browser.storage.local.set({activeAccountId:'another'}));
   assert.ok(!document.body.textContent!.includes('full ciphertext'));assert.ok(!document.body.textContent!.includes('secret text'));
@@ -61,8 +61,8 @@ it('preview failures show the real cause exactly once, including after Advanced 
   await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt'}})));
   await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
   assert.equal(document.body.textContent!.split(failure).length-1,1);
-  const advanced=document.querySelector('details')!;
-  await act(async()=>{advanced.open=true;advanced.dispatchEvent(new dom.window.Event('toggle'));});
+  const advanced=document.querySelector('[aria-label="event.showRaw"]') as HTMLButtonElement;
+  await act(async()=>advanced.click());
   assert.equal(document.body.textContent!.split(failure).length-1,1);
   assert.ok(!document.body.textContent!.includes('messageReview.unavailable'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
@@ -146,8 +146,8 @@ it('outgoing Advanced plaintext follows manual hide and auto-hide too',async t=>
  t.mock.timers.enable({apis:['setTimeout','setInterval','Date']});
  try{
   await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Encrypt'}})));
-  const advanced=document.querySelector('details')!;
-  await act(async()=>{advanced.open=true;advanced.dispatchEvent(new dom.window.Event('toggle'));});
+  const advanced=document.querySelector('[aria-label="event.showRaw"]') as HTMLButtonElement;
+  await act(async()=>advanced.click());
   assert.ok(!document.body.textContent!.includes('outgoing secret'));
   const button=()=>document.querySelector('button') as HTMLButtonElement;
   await act(async()=>button().click());assert.ok(document.body.textContent!.includes('outgoing secret'));

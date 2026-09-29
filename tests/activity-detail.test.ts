@@ -41,9 +41,9 @@ for (const [kind, content, label] of [
     assert.match(html, /<details open/);
     for (const tag of tags) assert.ok(html.includes(JSON.stringify(tag).replaceAll('"', '&quot;')));
     const dom=new JSDOM(html);
-    const raw=dom.window.document.querySelector('summary[aria-label="event.showRaw"]')!;
-    assert.ok(raw);assert.equal(raw.closest('details')!.open,false);
-    assert.ok(raw.className.includes('focus-visible:outline'));dom.window.close();
+    const raw=dom.window.document.querySelector('button[aria-label="event.showRaw"]')!;
+    assert.ok(raw);assert.equal(raw.getAttribute('aria-haspopup'),'dialog');
+    assert.ok(raw.className.includes('focus-visible:shadow-focus'));dom.window.close();
   });
 }
 
@@ -196,7 +196,7 @@ it('approval group details include every event in collapsed rows with one decisi
   {id:'second',type:'signEvent',origin:'site.test',event:{kind:1,content:'second pending body',tags:[]}},
  ];
  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:requests[0],requests,onApprove:()=>{}}));
- assert.match(html,/first pending body/);assert.match(html,/second pending body/);
+ assert.doesNotMatch(html,/first pending body|second pending body/);
  assert.equal((html.match(/data-approval-request=/g)||[]).length,2);
  assert.doesNotMatch(html,/<details[^>]*data-approval-request[^>]*open/);
  assert.doesNotMatch(html,/approval.alwaysAllowLabel/);
@@ -208,7 +208,7 @@ it('remote signer groups also show every pending item without local approval act
  const requests=[{id:'a',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote first',tags:[]}},
  {id:'b',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote second',tags:[]}}];
  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:requests[0],requests,nip46InFlight:true}));
- assert.match(html,/remote.test/);assert.match(html,/remote first/);assert.match(html,/remote second/);
+ assert.match(html,/remote.test/);assert.doesNotMatch(html,/remote first|remote second/);
  assert.doesNotMatch(html,/approval.alwaysAllowLabel|approval.alwaysAllowLabel/);
 });
 

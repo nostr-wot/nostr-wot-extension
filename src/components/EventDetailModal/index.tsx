@@ -141,14 +141,14 @@ export default function EventDetailModal({
 
   const renderRequest = (item:ApprovalRequest,index:number,label?:ReactNode) => (
                 <div key={item.id ?? index} className="relative">
-                <details data-approval-request={item.id ?? index} className="group/request rounded-panel border border-card-border p-5">
+                {item.type === 'signEvent' ? <div data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5"><div id={`${selectionPrefix}-${item.id ?? index}`} className={selectable ? 'pr-8' : ''}>{describeRequest(item)}</div><div className="pt-3"><DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure></div>{nip46InFlight && item.id && onDenyRequest && <ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t('approval.cancelNip46')}</ButtonDanger>}</div> : <details data-approval-request={item.id ?? index} className="group/request rounded-panel border border-card-border p-5">
                   <summary id={`${selectionPrefix}-${item.id ?? index}`} className={`${selectable ? 'pr-8 ' : ''}flex flex-col gap-2 cursor-pointer text-md list-none [&::-webkit-details-marker]:hidden [&::marker]:content-['']`}>
                     <span>{label || describeRequest(item) || <span className="text-brand">{formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</span>}</span>
                     <IconChevronDown aria-hidden="true" className="self-end text-secondary transition-transform group-open/request:rotate-180"/>
                   </summary>
                   <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item} showSender={!label}/> : item.type === 'signEvent' ? <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
                   {nip46InFlight && item.id && onDenyRequest && <div className="flex justify-end pt-5"><ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t('approval.cancelNip46')}</ButtonDanger></div>}
-                </details>
+                </details>}
                 {selectable && item.id && <div className="absolute right-5 top-5"><Checkbox disabled={busy} checked={selected.includes(item.id)} aria-label={t('approval.selectRequest')} aria-describedby={`${selectionPrefix}-${item.id}`} onChange={event=>setSelectedIds(previous=>event.target.checked ? [...previous,item.id!] : previous.filter(id=>id!==item.id))}/></div>}
                 </div>
   );
