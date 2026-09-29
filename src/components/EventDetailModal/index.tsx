@@ -177,7 +177,7 @@ export default function EventDetailModal({
           <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
 
           {/* Event content */}
-          {request?.authentication ? <DetailDisclosure label={t('common.advanced')}>{eventContent}</DetailDisclosure> : eventContent}
+          {request?.authentication ? <DetailDisclosure label={t('common.advanced')}>{eventContent}</DetailDisclosure> : isMessageRequest(type) ? <div className="border-t border-card-border pt-6">{eventContent}</div> : eventContent}
 
           {/* NIP-46 in-flight: pending message (the cancel button is pinned below) */}
           {nip46InFlight && request && (

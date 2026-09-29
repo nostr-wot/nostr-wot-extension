@@ -19,10 +19,12 @@ it('message review uses cached profile, reveals only on demand, and clears after
   await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt',theirPubkey:peer}})));
   assert.ok(document.body.textContent!.includes('Cached Alice'));assert.ok(document.body.textContent!.includes('messageReview.sender'));
   assert.ok(!document.body.textContent!.includes('Not needed here'));assert.equal(document.querySelector('img'),null);assert.equal(calls.length,0);
-  const button=(key:string)=>[...document.querySelectorAll('button')].find(b=>b.textContent===key)!;
-  await act(async()=>button('activity.detail.reveal').click());assert.ok(document.body.textContent!.includes('secret text'));
+  assert.equal(document.querySelector(`[title="${peer}"]`),null);
+  assert.ok(document.body.textContent!.includes('approval.detail.content'));
+  const button=(key:string)=>[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')===key)!;
+  await act(async()=>button('key.clickToReveal').click());assert.ok(document.body.textContent!.includes('secret text'));
   assert.deepEqual(calls.map(c=>[c.method,c.params]),[['signer_previewRequest',{id:'pending',reveal:true}]]);
-  await act(async()=>button('common.hide').click());assert.ok(!document.body.textContent!.includes('secret text'));
+  await act(async()=>button('key.clickToBlur').click());assert.ok(!document.body.textContent!.includes('secret text'));
   const advanced=document.querySelector('details')!;
   await act(async()=>{advanced.open=true;advanced.dispatchEvent(new dom.window.Event('toggle'));});
   assert.ok(document.body.textContent!.includes('full ciphertext'));assert.equal(calls.at(-1).params.reveal,false);
@@ -34,6 +36,7 @@ it('message detail removes the duplicate event card heading and shows recipient 
  const {renderToStaticMarkup}=await import('react-dom/server');
  const html=renderToStaticMarkup(createElement(Detail,{request:{id:'send',type:'nip44Encrypt',origin:'https://client.test',theirPubkey:'22'.repeat(32)},onApprove(){},onDeny(){}}));
  assert.ok(html.includes('event.recipient'));assert.ok(html.includes('common.advanced'));
+ assert.ok(html.includes('border-t border-card-border pt-6'));assert.ok(html.includes('approval.detail.content'));
  assert.ok(!html.includes('event.encryptedDesc'));assert.ok(!html.includes('<h3'));
 });
 it('late preview replies cannot reveal a message after the account changed',async t=>{
@@ -109,4 +112,39 @@ it('profile lookup failure leaves the key and message usable',async t=>{
   await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
   assert.ok(document.body.textContent!.includes('hello'));assert.ok(document.body.textContent!.includes('22222222'));assert.ok(!document.body.textContent!.includes('common.loading'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+
+it('message content starts concealed and is removed again after 30 seconds',async t=>{
+ resetMockStorage();const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);
+ t.mock.method(browser.runtime,'sendMessage',async()=>({result:{request:{method:'nip44Decrypt',origin:'site',params:{}},plaintext:'timed secret',decryptedEvent:{content:'timed secret'}}}));
+ t.mock.timers.enable({apis:['setTimeout']});
+ try{
+  await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt'}})));
+  assert.ok(document.querySelector('[aria-hidden="true"]'));
+  assert.ok(!document.body.textContent!.includes('timed secret'));
+  await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
+  assert.ok(document.body.textContent!.includes('timed secret'));
+  await act(async()=>t.mock.timers.tick(30000));
+  assert.ok(!document.body.textContent!.includes('timed secret'));
+  assert.equal(document.querySelector('button')!.getAttribute('aria-pressed'),'false');
+ }finally{await act(async()=>root.unmount());dom.window.close();t.mock.timers.reset();}
+});
+
+it('outgoing Advanced plaintext follows manual hide and auto-hide too',async t=>{
+ resetMockStorage();const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);
+ t.mock.method(browser.runtime,'sendMessage',async()=>({result:{request:{method:'nip44Encrypt',origin:'site',params:{plaintext:'outgoing secret'}},plaintext:'outgoing secret'}}));
+ t.mock.timers.enable({apis:['setTimeout']});
+ try{
+  await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Encrypt'}})));
+  const advanced=document.querySelector('details')!;
+  await act(async()=>{advanced.open=true;advanced.dispatchEvent(new dom.window.Event('toggle'));});
+  assert.ok(!document.body.textContent!.includes('outgoing secret'));
+  const button=()=>document.querySelector('button') as HTMLButtonElement;
+  await act(async()=>button().click());assert.ok(document.body.textContent!.includes('outgoing secret'));
+  await act(async()=>button().click());assert.ok(!document.body.textContent!.includes('outgoing secret'));
+  await act(async()=>button().click());assert.ok(document.body.textContent!.includes('outgoing secret'));
+  await act(async()=>t.mock.timers.tick(30000));assert.ok(!document.body.textContent!.includes('outgoing secret'));
+ }finally{await act(async()=>root.unmount());dom.window.close();t.mock.timers.reset();}
 });

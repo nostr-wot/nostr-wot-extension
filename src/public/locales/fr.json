@@ -1075,7 +1075,7 @@
   "auth.approveAllSites": "Toujours pour tous les sites",
   "auth.rejectAlways": "Toujours refuser",
   "auth.reject": "Refuser",
-  "messageReview.sender": "Expéditeur",
+  "messageReview.sender": "De",
   "messageReview.unavailable": "Cet aperçu est indisponible. La demande peut être terminée ou le coffre verrouillé.",
   "messageReview.messageNumber": "Message {number}",
   "messageReview.noCachedProfile": "Aucun profil en cache pour cette clé."

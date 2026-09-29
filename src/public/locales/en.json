@@ -1075,7 +1075,7 @@
   "auth.approveAllSites": "Always for all sites",
   "auth.rejectAlways": "Reject always",
   "auth.reject": "Reject",
-  "messageReview.sender": "Sender",
+  "messageReview.sender": "From",
   "messageReview.unavailable": "This message preview is unavailable. The request may have ended, or the vault may be locked.",
   "messageReview.messageNumber": "Message {number}",
   "messageReview.noCachedProfile": "No cached profile for this key."

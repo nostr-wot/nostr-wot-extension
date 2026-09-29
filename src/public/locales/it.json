@@ -1075,7 +1075,7 @@
   "auth.approveAllSites": "Sempre per tutti i siti",
   "auth.rejectAlways": "Rifiuta sempre",
   "auth.reject": "Rifiuta",
-  "messageReview.sender": "Mittente",
+  "messageReview.sender": "Da",
   "messageReview.unavailable": "Anteprima non disponibile. La richiesta potrebbe essere terminata o il vault bloccato.",
   "messageReview.messageNumber": "Messaggio {number}",
   "messageReview.noCachedProfile": "Nessun profilo in cache per questa chiave."

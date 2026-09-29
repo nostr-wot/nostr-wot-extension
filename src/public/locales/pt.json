@@ -1075,7 +1075,7 @@
   "auth.approveAllSites": "Sempre para todos os sites",
   "auth.rejectAlways": "Rejeitar sempre",
   "auth.reject": "Rejeitar",
-  "messageReview.sender": "Remetente",
+  "messageReview.sender": "De",
   "messageReview.unavailable": "Prévia indisponível. A solicitação pode ter terminado ou o cofre estar bloqueado.",
   "messageReview.messageNumber": "Mensagem {number}",
   "messageReview.noCachedProfile": "Nenhum perfil em cache para esta chave."

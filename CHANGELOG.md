@@ -9,6 +9,8 @@ have had.
 ## 0.8.7 — 2026-09-29
 
 ### Improved
+- Reveal message content by clicking its blurred surface and automatically conceal it again after 30 seconds.
+- Clarify message details with From and Content labels, a separator below the request explanation, and a public-key fallback only when no profile is shown.
 - Fetch missing message sender profiles from purplepag.es only, cache verified metadata, and keep a public-key fallback without cache warnings.
 - Fix immediate message-preview requests racing queue registration, show failures once with their actual reason, number grouped messages, and resolve cached NIP-17 sender profiles after local Reveal.
 - Simplify private-message approvals with cached peer profiles, local Reveal/Hide controls, and Advanced request details. Previewing never approves or sends plaintext to the requesting site.
