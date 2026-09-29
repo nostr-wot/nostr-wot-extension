@@ -727,6 +727,6 @@ The concealed message surface renders a blurred placeholder, not plaintext in th
 
 Pending approvals group existing permission/destination cards beneath one site heading via ApprovalSiteList. Site grouping is presentation only; approvals remain bound to their original groups. Cards and site sections do not shrink. The sheet fits within popup height, fixes its heading, and scrolls its actions, notices and complete site list in one bounded body.
 
-The message reveal hint sits inside its clickable surface. A bottom-left ring uses useTimedReveal.remainingSeconds and loses one thirtieth each second; the ring and plaintext disappear at expiry.
+The message reveal hint is centered over the concealed surface and disappears when content is revealed. A bottom-right ring uses useTimedReveal.remainingSeconds and loses one thirtieth each second; the ring and plaintext disappear at expiry.
 
 Signing approvals use a plain-language intent sentence and a collapsed Advanced disclosure containing the complete event JSON. App-specific requests put the d-tag action before the app identifier. Known event kinds use intent descriptions; unrecognized kinds retain a visible warning. No first-item badge is used for a group of signing actions. Each expanded group item has its own decisions, while the footer retains batch actions. Per-item authentication uses the destination-specific controls; remote-signer items offer cancellation only.

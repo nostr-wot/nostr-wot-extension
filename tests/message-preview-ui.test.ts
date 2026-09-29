@@ -123,15 +123,18 @@ it('message content starts concealed and is removed again after 30 seconds',asyn
   await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt'}})));
   assert.ok(document.querySelector('[aria-hidden="true"]'));
   assert.ok(!document.body.textContent!.includes('timed secret'));
+  assert.ok(document.querySelector('button')!.textContent!.includes('key.autoHideHint'));
   await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
   assert.ok(document.body.textContent!.includes('timed secret'));
   assert.equal(document.querySelector('[data-reveal-countdown] circle')!.getAttribute('stroke-dasharray'),'30 30');
-  assert.ok(document.querySelector('button')!.textContent!.includes('key.autoHideHint'));
+  assert.ok(!document.querySelector('button')!.textContent!.includes('key.autoHideHint'));
+  assert.ok(document.querySelector('[data-reveal-countdown]')!.classList.contains('right-0'));
   await act(async()=>t.mock.timers.tick(1000));
   assert.equal(document.querySelector('[data-reveal-countdown] circle')!.getAttribute('stroke-dasharray'),'29 30');
   await act(async()=>t.mock.timers.tick(29000));
   assert.equal(document.querySelector('[data-reveal-countdown]'),null);
   assert.ok(!document.body.textContent!.includes('timed secret'));
+  assert.ok(document.querySelector('button')!.textContent!.includes('key.autoHideHint'));
   assert.equal(document.querySelector('button')!.getAttribute('aria-pressed'),'false');
  }finally{await act(async()=>root.unmount());dom.window.close();t.mock.timers.reset();}
 });
