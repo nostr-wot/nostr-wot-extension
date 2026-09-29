@@ -9,6 +9,7 @@ have had.
 ## 0.8.7 — 2026-09-29
 
 ### Improved
+- Fetch missing message sender profiles from purplepag.es only, cache verified metadata, and keep a public-key fallback without cache warnings.
 - Fix immediate message-preview requests racing queue registration, show failures once with their actual reason, number grouped messages, and resolve cached NIP-17 sender profiles after local Reveal.
 - Simplify private-message approvals with cached peer profiles, local Reveal/Hide controls, and Advanced request details. Previewing never approves or sends plaintext to the requesting site.
 - Bottom-align event details in a content-sized sheet that grows upward and scrolls only when necessary, keeping the title and decisions visible.

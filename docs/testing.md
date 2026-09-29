@@ -530,6 +530,8 @@ revocation while WebSockets connect, stale key exports, and stale package output
 after failed or concurrent builds.
 
 - `tests/message-preview.test.ts`: local-only previews for both classic schemes, outbound plaintext review, storage exclusion, request lifetime, account/lock invalidation and privileged RPC registration.
-- `tests/message-preview-ui.test.ts`: cache-only profiles, reveal/hide, Advanced request data, correct peer labels, removal of duplicate headings and rejection of stale UI replies.
+- `tests/message-preview-ui.test.ts`: cached and directory-fetched profiles, reveal/hide, Advanced request data, correct peer labels, removal of duplicate headings and rejection of stale UI replies.
 
 Message-preview regressions also cover immediate preview during queue publication, valid and invalid NIP-17 seals, author mismatch, unchanged approved site responses, grouped numbered labels, cached inner-sender resolution, and one accurate error after Reveal and Advanced fail.
+
+Profile lookup regressions cover purplepag.es queries, verified metadata caching, no wrapping-key lookup before Reveal, and a usable message/key fallback after lookup failure.

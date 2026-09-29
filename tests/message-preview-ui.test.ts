@@ -83,3 +83,30 @@ it('grouped messages use numbered headings instead of repeating the permission l
  const html=renderToStaticMarkup(createElement(Detail,{request,requests:[request,{...request,id:'two'}],onApprove(){},onDeny(){}}));
  assert.equal(html.split('messageReview.messageNumber').length-1,2);
 });
+it('missing wrapped sender is looked up in the profile directory only after Reveal',async t=>{
+ resetMockStorage();const peer='22'.repeat(32),wrapper='33'.repeat(32);const calls:any[]=[];
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  calls.push(message);
+  return {result:message.method==='getProfileMetadata'?{name:'Directory Alice'}:{request:{method:'nip44Decrypt',origin:'site',params:{}},plaintext:'hello',senderPubkey:peer}};
+ });
+ try{
+  await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt',theirPubkey:wrapper}})));
+  assert.equal(calls.length,0);assert.ok(!document.body.textContent!.includes('messageReview.noCachedProfile'));
+  await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
+  assert.ok(document.body.textContent!.includes('Directory Alice'));
+  assert.deepEqual(calls.filter(c=>c.method==='getProfileMetadata').map(c=>c.params),[{pubkey:peer,directory:true}]);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('profile lookup failure leaves the key and message usable',async t=>{
+ resetMockStorage();const peer='22'.repeat(32);
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=> message.method==='getProfileMetadata'?{error:'relay unavailable'}:{result:{request:{method:'nip04Decrypt',origin:'site',params:{}},plaintext:'hello'}});
+ try{
+  await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip04Decrypt',theirPubkey:peer}})));
+  await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
+  assert.ok(document.body.textContent!.includes('hello'));assert.ok(document.body.textContent!.includes('22222222'));assert.ok(!document.body.textContent!.includes('common.loading'));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});

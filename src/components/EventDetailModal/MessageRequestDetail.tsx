@@ -22,6 +22,7 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
   const [sender,setSender] = useState<string | null>(null);
   const [decryptedEvent,setDecryptedEvent] = useState<Record<string,unknown> | null>(null);
   const peer = sender || request.theirPubkey;
+  const [profileLoading,setProfileLoading] = useState(false);
   const [profile,setProfile] = useState<ProfileMetadata | null>(null);
   const [plaintext,setPlaintext] = useState<string | null>(null);
   const [raw,setRaw] = useState<PendingRequestPreview['request'] | null>(null);
@@ -33,11 +34,20 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
     let current = true;
     const lifetime = generation.current;
     setProfile(null);
-    if (peer) void browser.storage.local.get(`profile_${peer}`).then(data => {
-      if (current) setProfile((data[`profile_${peer}`] as {metadata?:ProfileMetadata}|undefined)?.metadata || null);
-    }).catch(() => {});
+    setProfileLoading(false);
+    if (peer) void (async () => {
+      const data = await browser.storage.local.get(`profile_${peer}`);
+      if (!current) return;
+      const cached = (data[`profile_${peer}`] as {metadata?:ProfileMetadata}|undefined)?.metadata;
+      if (cached) { setProfile(cached); return; }
+      // NIP-44 can name a temporary wrapping key. Reveal identifies its author.
+      if (request.type === 'nip44Decrypt' && !sender) return;
+      setProfileLoading(true);
+      const metadata = await rpc<ProfileMetadata | null>('getProfileMetadata',{pubkey:peer,directory:true});
+      if (current) setProfile(metadata);
+    })().catch(() => {}).finally(() => { if (current) setProfileLoading(false); });
     return () => { current = false; lifetime.version++; };
-  }, [request.id,peer]);
+  }, [request.id,request.type,peer,sender]);
   const clear = () => { generation.current.version++; setPlaintext(null); setSender(null); setDecryptedEvent(null); setRaw(null); setError(''); setBusy(false); };
   useStorageWatch([{area:'local',keys:[LOCK_STATE_KEY,'activeAccountId']},{area:'session',keys:['signerPending']}],clear);
   async function load(reveal:boolean) {
@@ -50,7 +60,7 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
       setRaw(result.request);
       if (reveal) {
         setPlaintext(result.plaintext ?? '');
-        setSender(result.senderPubkey || null);
+        setSender(result.senderPubkey || request.theirPubkey || null);
         setDecryptedEvent(result.decryptedEvent || null);
       }
     } catch (failure) { if (current === generation.current.version) setError(failure instanceof Error ? failure.message : t('common.error')); }
@@ -59,7 +69,7 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
   return <Container gap={4} className="min-w-0">
     <Text variant="secondary">{t(decrypt ? 'messageReview.sender' : 'event.recipient')}</Text>
     {profile && <ProfileSummary meta={{...profile,picture:undefined}} compact/>}
-    {!profile && <Text variant="hint">{t('messageReview.noCachedProfile')}</Text>}
+    {profileLoading && <Text variant="hint">{t('common.loading')}</Text>}
     {peer && <Text mono title={peer} className="text-xs break-all">{truncateMiddle(peer,16,12)}</Text>}
     {plaintext === null ? <ButtonSecondary small className="self-start" disabled={busy || !request.id} onClick={() => void load(true)}>
       {t(busy ? 'common.loading' : 'activity.detail.reveal')}

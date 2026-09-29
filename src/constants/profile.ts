@@ -1,3 +1,6 @@
+/** Public kind:0 directory for message sender lookup. */
+export const PROFILE_DIRECTORY_RELAY = 'wss://purplepag.es';
+
 // ── Cache ──
 
 /** Profile metadata cache TTL (30 minutes) */

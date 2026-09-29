@@ -264,8 +264,7 @@ Authentication revalidation includes identity-disabled sites after approval/unlo
 ## Local pending-message review
 
 NIP-04/NIP-44 approval details show a cached peer profile (sender for decrypt,
-recipient for encrypt) with a public-key fallback. They do not fetch a missing
-profile from relays or load remote avatar URLs; the compact profile uses an initial. Reveal message previews plaintext locally without resolving
+recipient for encrypt) with a public-key fallback. Missing profiles use the shared verified kind:0 reader with purplepag.es only, then persist to the profile cache. NIP-44 decrypt waits for Reveal before querying the identified sender, avoiding lookups of temporary wrapping keys. Remote avatar URLs are not loaded; the compact profile uses an initial. Reveal message previews plaintext locally without resolving
 the page request or changing its permission. Advanced loads the full method,
 origin and parameters; these crypto calls do not carry a complete Nostr event.
 
@@ -288,4 +287,4 @@ For NIP-17, Reveal verifies the inner kind-13 seal and decrypts the rumor locall
 A kind-14 rumor must match its seal author. The UI then uses that author's cached
 profile, shows the message body, and includes the decrypted event under Advanced.
 This never changes the original result returned to the site after approval.
-If no profile is cached, the UI says so and keeps the public-key fallback.
+A loading hint appears during lookup; missing or unavailable profiles retain the public-key fallback without a cache warning.
