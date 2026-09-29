@@ -33,6 +33,7 @@ the last group running for about two minutes even after most tests finish.
 
 | File | Tests | What it covers |
 |------|-------|----------------|
+| `tests/chrome-publishing.test.ts` | 20 | Verified upload bytes, OAuth refresh, asynchronous processing, failure/timeout gates, and no mutation retries |
 | `tests/crypto/secp256k1.test.ts` | Elliptic curve math, scalar multiplication, public key derivation |
 | `tests/crypto/schnorr.test.ts` | BIP-340 Schnorr signature create/verify |
 | `tests/crypto/nip01.test.ts` | Event ID computation, event signing |

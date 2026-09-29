@@ -9,10 +9,12 @@ pause or keep it unpublished. Do not stop at a local commit, worktree, ZIP, or
 unmerged PR. Use isolated worktrees while developing, then integrate and remove
 them after merge, together with the merged local and remote task branches. Verify
 commit ancestry before deleting branches; never discard unmerged work. Do not include unrelated agents' unfinished branches. Report
-the pushed commit and release URL. Browser-store submission remains a separate
-step; do not claim a GitHub release updates the stores.
+the pushed commit and release URL. Stable published releases trigger the Chrome
+Web Store workflow; verify that run and report the actual submission state.
+Google approval and Firefox/Safari submission remain separate; do not claim a
+GitHub release makes every store update live. Follow docs/chrome-publishing.md.
 
-The current release is **0.8.6**. Keep package and manifest versions, source-build
+The current release is **0.8.7**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
 and checksums stay outside the tracked repository. Publish new functionality in a
 new version; only replace an existing release when explicitly requested.

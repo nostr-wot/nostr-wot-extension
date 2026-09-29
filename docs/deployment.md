@@ -4,21 +4,23 @@ Store-by-store notes for shipping a release, and the rejections we have actually
 received, with what fixed them. The rejections are the valuable part: each one
 cost a disabled version, and none of them were obvious from the code.
 
-Credentials and machine-specific paths are in `DEPLOY.local.md`, which is
-gitignored because this repository is public. Everything here is safe to commit.
+Chrome publishing credentials are in GitHub Actions secrets; see
+[Chrome publishing](chrome-publishing.md). Other machine-specific credentials and
+paths belong in gitignored `DEPLOY.local.md`. Everything here is safe to commit.
 
 ---
 
-## Current release status
+## 0.8.7 release scope
 
-0.8.6 adds account-scoped backend/relay authentication consent and top-level-frame
+0.8.7 ships the final audited integration and automatic Chrome release submission.
+It supersedes the earlier 0.8.6 store submission. The integration adds account-scoped backend/relay authentication consent and top-level-frame
 validation, and corrects Chrome packaging after the installed 0.8.4 store artifact was
 found to contain Firefox background configuration. Store submission and approval
 are separate from generating and verifying the local package.
 
 ## Before any store
 
-1. Bump `version` in **both** `package.json` and `manifest.json`. They must match.
+1. Bump `version` in `package.json`, `package-lock.json` and `manifest.json` together. Update SOURCE_BUILD and AGENTS to match.
 2. Add the release to `CHANGELOG.md`.
 3. `npm run build` — must succeed with no errors.
 4. `./tests/run.sh` — the module group may appear to hang after it finishes
@@ -135,6 +137,12 @@ and the wallet was transmitting payment data.
 
 ## Chrome Web Store
 
+Stable published GitHub releases automatically submit the verified Chrome asset using
+[the publishing workflow](chrome-publishing.md). That guide covers the one-time
+OAuth credentials setup, validation gates, global concurrency, duplicate-run no-ops,
+the authorized 0.8.6 → 0.8.7 replacement, and recovery through an existing run.
+Pushes, tags alone, draft changes and prereleases do not submit to the store.
+
 No data-consent manifest key. The equivalent is the **Privacy practices** tab in
 the developer dashboard, which must be filled in and kept consistent with the
 Firefox declaration above — the same transmissions are disclosed in a different
@@ -203,7 +211,8 @@ relay interoperability, or Chrome Web Store acceptance.
 Immediately before upload, run `npm run verify:chrome -- /absolute/path/to/upload.zip`
 and `npm run smoke:chrome -- /absolute/path/to/upload.zip`. Upload exactly that ZIP;
 record its printed SHA-256. Renaming a Firefox ZIP does not pass these checks.
-The browser store's manual upload UI cannot be gated by repository scripts.
+Use the release workflow for routine Chrome submissions: it repeats these gates
+on the downloaded release asset. The manual store UI cannot enforce the guards.
 
 ### What the 0.8.4 evidence establishes
 
@@ -214,7 +223,7 @@ The store-installed 0.8.4 manifest instead matches the Firefox ZIP exactly,
 excluding the store-added public key and update URL. The actual upload selection
 was not recovered. A generator defect or concurrent build race is **not** an
 established cause; the proven failure is a Firefox-configured artifact reaching
-the Chrome installation. The guards check artifact contents, and the final manual
-upload must use the same file whose checksum was verified.
+the Chrome installation. The guards check artifact contents; the automated release workflow uploads
+the exact archive whose checksum and browser startup it verified.
 
 Packaging invalidates the previous generic upload filename before building. A failed build, validation or smoke test leaves no stale ZIP from that invocation at the upload path; failure cleanup does not delete another concurrent build’s successful output.

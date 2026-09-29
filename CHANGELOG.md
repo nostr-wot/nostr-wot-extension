@@ -6,6 +6,16 @@ Notable changes per release. Store-facing copy for each version is in its
 See `docs/deployment.md` for the store submission process and the rejections we
 have had.
 
+## 0.8.7 — 2026-09-29
+
+### Release packaging
+- Publish the final audited integration of Chrome packaging, authentication permissions, scoped private-key handling and account-switch protection, superseding the earlier 0.8.6 store submission.
+- Automatically submit verified stable GitHub release assets to Chrome Web Store through its v2 API. Require successful CI, exact checksums, Chrome manifest validation and a real browser smoke test before using publishing credentials.
+- Serialize submissions, skip versions already submitted or published, and refuse to replace unrelated pending reviews. Document OAuth setup, release procedure and failure recovery.
+
+### Store release notes
+Includes the audited authentication permissions and account-switch protections, with verified browser-specific packaging and automated release checks.
+
 ## 0.8.6 — 2026-09-29
 
 ### Added
