@@ -6,6 +6,7 @@ import { t } from '@services/i18n/i18n.ts';
 import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 import OverlayPanel from '@components/OverlayPanel';
+import FormError from '@components/FormError';
 import EventPreview from '@components/EventPreview';
 import SiteIcon from '@components/SiteIcon';
 import ActivityGroupDetail from './ActivityGroupDetail';
@@ -66,6 +67,7 @@ interface EventDetailModalProps {
   request?: ApprovalRequest | null;
   requests?: ApprovalRequest[];
   busy?: boolean;
+  actionError?: string;
   onApprove?: () => void;
   onAuthenticate?: (scope: AuthenticationScope) => void;
   onDeny?: () => void;
@@ -93,6 +95,7 @@ export default function EventDetailModal({
   request,
   requests,
   busy = false,
+  actionError,
   onApprove,
   onAuthenticate,
   onDeny,
@@ -131,6 +134,7 @@ export default function EventDetailModal({
         {/* Scrollable event body -- the actions below stay pinned so a long
             event can never push them out of reach (see the CSS module). */}
         <div className={isApproval || nip46InFlight ? CLS.scrollArea : CLS.content}>
+          <FormError>{actionError}</FormError>
           {/* Origin / domain */}
           {origin && (
             <div className="flex items-center gap-4 min-w-0"><SiteIcon domain={origin} /><span className="text-lg font-semibold text-heading truncate">{origin}</span></div>

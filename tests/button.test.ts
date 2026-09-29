@@ -362,3 +362,11 @@ it('custom dropdown selects with keyboard, skips disabled choices, dismisses and
     for(const [key,value] of globals){if(value)Object.defineProperty(globalThis,key,value);else delete (globalThis as any)[key];}
   }
 });
+
+it('overlay headers omit inert close controls while retaining custom actions', () => {
+  for (const headerRight of [undefined, createElement('span', null, 'Custom action')]) {
+    const html = renderToStaticMarkup(createElement(OverlayPanel, { title: 'Approval', headerRight }));
+    assert.doesNotMatch(html, /aria-label="common.close"/);
+    if (headerRight) assert.match(html, /Custom action/);
+  }
+});

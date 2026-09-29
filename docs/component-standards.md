@@ -33,6 +33,8 @@ Modal and approval-sheet backdrops apply a subtle 4px blur behind the dialog, re
 
 Dialog entry, focus containment and opener restoration use `preventScroll` so focusing a sliding overlay cannot shift the popup's clipped canvas. Keyboard Tab navigation still scrolls controls into view within the dialog body.
 
+`OverlayPanel` only shows its close control when an `onClose` handler exists, including headers with custom actions.
+
 Shared `Modal` contains Tab and Shift+Tab within visible, enabled controls and restores the previous focused element when dismissed. Only the topmost dialog handles keyboard dismissal and focus containment; stacked dialogs respect their z-index and nested dialogs remain above their parent. If the opener has disappeared, focus returns to the remaining dialog. Keep this behavior in the shared component rather than adding competing document listeners in callers.
 
 Shared `Toggle` keeps its native checkbox keyboard interaction and shows a visible focus outline on the track through `peer-focus-visible` styling. The off-state track continues to use `bg-control-border`; labels must supply an accessible name.
@@ -486,7 +488,7 @@ Wallet settings owns a flex-1/min-h-0 overflow-y-auto body inside OverlayPanel; 
 
 HomeWalletLayout displays the home wallet summary only when the current site is confirmed connected. Loading, errors, restricted pages and unconnected sites hide it. The account wallet remains accessible through Settings → Wallet.
 
-The approval sheet always groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
+A single pending request opens its event detail directly, with its own approve/reject controls and visible action errors. It has no queue count, bulk controls, review-list hint or close-to-list button. More than one pending request uses the approval sheet, which groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
 
 Shared domain contracts must not be restated in handlers or UI. The activity writer accepts `ActivityLogInput = Omit<ActivityEntry, 'timestamp'>`; stored records and UI filters use `ActivityEntry`. Complete PQ panel status extends the card contract. Account and language display types use `Pick`/`Partial` projections. Runtime-only service state and component props stay local.
 

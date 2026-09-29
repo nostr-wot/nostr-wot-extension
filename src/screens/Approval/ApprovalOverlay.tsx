@@ -34,12 +34,15 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     groups,
     nip46Groups,
     selectedGroup: groupSelection, setSelectedGroup,
-    selectedNip46, setSelectedNip46,
+    selectedNip46: nip46Selection, setSelectedNip46,
     closeAndRefresh,
   } = useApprovalQueue({ onRequestUnlock, onUnlockWaitersChange });
 
   const ordinaryGroups = groups.filter(group => !group.requests.some(request => request.authentication));
-  const selectedGroup = currentApprovalGroup(groupSelection, groups);
+  const totalCount = [...groups, ...nip46Groups].reduce((n, group) => n + group.requests.length, 0);
+  const singleRequest = totalCount === 1;
+  const selectedGroup = singleRequest ? groups[0] ?? null : currentApprovalGroup(groupSelection, groups);
+  const selectedNip46 = singleRequest ? nip46Groups[0] ?? null : currentApprovalGroup(nip46Selection, nip46Groups);
 
   const runAction = async (action: () => Promise<void>) => {
     if (busy) return;
@@ -121,10 +124,9 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
   if (groups.length === 0 && nip46Groups.length === 0) return null;
 
-  const totalCount = groups.reduce((n, g) => n + g.requests.length, 0) + nip46Groups.reduce((n, g) => n + g.requests.length, 0);
-
   return (
     <>
+      {!singleRequest && <>
       <div className={`animate-scrim-fade-in absolute inset-0 z-sheet bg-[rgba(0,0,0,0.25)] backdrop-blur-[4px]`} />
       <Container className="animate-sheet-slide-in absolute bottom-0 left-0 right-0 z-[calc(var(--z-sheet)+1)] max-h-[85vh] bg-elevated backdrop-blur-[16px] rounded-t-xl shadow-[0_-4px_24px_rgba(0,0,0,0.12)] p-8">
         <Container variant="row" gap={4} className="mb-6 flex-wrap">
@@ -134,6 +136,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
         </Container>
         <div className="mb-6">{ordinaryGroups.length ? <ApprovalActions requestCount={ordinaryGroups.reduce((n, group) => n + group.requests.length, 0)} busy={busy}
+          rejectCount={groups.reduce((n, group) => n + group.requests.length, 0)}
           onApprove={handleApproveShown} onReject={handleRejectAll}
           choices={ordinaryGroups.map(group => ({
             value: JSON.stringify([group.requests[0]?.accountId, group.origin, group.permKey]),
@@ -174,17 +177,20 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
         </Container>
       </Container>
 
+      </>}
+
       {selectedGroup && (
         <EventDetailModal
           request={selectedGroup.requests[0]}
           requests={selectedGroup.requests}
           busy={busy}
+          actionError={actionError}
           onAuthenticate={scope => handleAuthenticate(selectedGroup, scope)}
           onApprove={() => handleApprove(selectedGroup)}
           onAlwaysAllow={() => handleAlwaysAllow(selectedGroup)}
           onDeny={() => handleDeny(selectedGroup)}
           onAlwaysDeny={() => handleAlwaysDeny(selectedGroup)}
-          onClose={() => setSelectedGroup(null)}
+          onClose={singleRequest ? undefined : () => setSelectedGroup(null)}
           zIndex={510}
         />
       )}
@@ -210,13 +216,14 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           request={selectedNip46.requests[0]}
           requests={selectedNip46.requests}
           busy={busy}
+          actionError={actionError}
           nip46InFlight
           onDeny={() => runAction(async () => {
             for (const req of selectedNip46.requests) {
               await rpc('signer_cancelNip46', { id: req.id });
             }
           })}
-          onClose={() => setSelectedNip46(null)}
+          onClose={singleRequest ? undefined : () => setSelectedNip46(null)}
           zIndex={510}
         />
       )}

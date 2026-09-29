@@ -92,15 +92,15 @@ export default function OverlayPanel({
               {headerRight ? (
                 <div className={HEADER_RIGHT}>
                   {headerRight}
-                  <IconButton size="large" onClick={onClose} aria-label={t('common.close')}>
+                  {onClose && <IconButton size="large" onClick={onClose} aria-label={t('common.close')}>
                     <IconClose />
-                  </IconButton>
+                  </IconButton>}
                 </div>
-              ) : (
+              ) : onClose ? (
                 <IconButton size="large" onClick={onClose} aria-label={t('common.close')}>
                   <IconClose />
                 </IconButton>
-              )}
+              ) : null}
             </>
           )}
         </div>

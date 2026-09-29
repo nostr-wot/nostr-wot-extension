@@ -86,15 +86,21 @@ it('mounted sheet excludes authentication from bulk approval and resolves only r
  const root=createRoot(document.getElementById('root')!);const render=()=>createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(PermissionsProvider,null,createElement(Overlay))));
  const button=(text:string)=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
  try{
-  await act(async()=>root.render(render()));await act(async()=>button('approval.approveOnce')!.click());
+  await act(async()=>root.render(render()));
+  assert.ok(document.body.textContent!.includes('approval.pendingRequests'));
+  assert.ok(document.body.textContent!.includes('auth.reviewHint'));
+  assert.ok(button('approval.rejectAll'));
+  await act(async()=>button('approval.approveOnce')!.click());
   assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params.id),['ordinary']);
-  assert.equal(button('approval.approveOnce'),undefined);assert.ok(button('approval.rejectAll'));
-  const card=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('auth.review'))!;
-  await act(async()=>card.click());pending.push({...auth,id:'late'});
+  assert.equal(button('approval.approveOnce'),undefined);assert.equal(button('approval.rejectAll'),undefined);
+  assert.ok(button('auth.once'));
+  assert.ok(!document.body.textContent!.includes('approval.pendingRequests'));
+  assert.ok(!document.body.textContent!.includes('auth.reviewHint'));
+  pending.push({...auth,id:'late'});
   await act(async()=>button('auth.site')!.click());
   assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[{id:'ordinary',decision:{allow:true,remember:false}},{id:'auth',decision:{allow:true,remember:false,authenticationScope:'site'}}]);
   assert.ok(!calls.some(c=>c.method==='signer_savePermission'||c.method==='signer_resolveBatch'));
-  await act(async()=>button('approval.rejectAll')!.click());assert.equal(pending.length,0);
+  await act(async()=>button('approval.deny')!.click());assert.equal(pending.length,0);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
 it('known backend hints require an exact registry origin pair and never hide cross-origin notice',async()=>{
@@ -121,3 +127,35 @@ it('relay sentence retains non-default port and endpoint and only shows specifie
  const html=renderToStaticMarkup(createElement(AuthenticationNotice,{request:{authentication:{protocol:'nip42',destination:'wss://relay.test:8443/private',url:'wss://relay.test:8443/private',method:'POST',crossOrigin:true}}}));
  assert.ok(html.includes('relay.test:8443/private'));assert.ok(html.includes('auth.methods'));assert.ok(html.includes('POST'));
 });
+for (const mode of ['auth', 'ordinary', 'nip46'] as const) {
+ it(`one ${mode} request opens detail directly and keeps failed actions visible`,async t=>{
+  const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
+  const {AccountProvider}=await import('../src/context/AccountContext');const {VaultProvider}=await import('../src/context/VaultContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
+  const {default:Overlay}=await import('../src/screens/Approval/ApprovalOverlay');const {default:browser}=await import('./helpers/browser-mock');
+  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+  const originalMessages=browser.runtime.onMessage;
+  Object.defineProperty(browser.runtime,'onMessage',{configurable:true,value:{addListener(){},removeListener(){}}});
+  t.after(()=>Object.defineProperty(browser.runtime,'onMessage',{configurable:true,value:originalMessages}));
+  const account={id:'single-test',type:'imported',pubkey:'11'.repeat(32),name:'Test'};
+  await browser.storage.local.set({accounts:[account],activeAccountId:account.id,profileCache:{}});
+  let pending:any[]=[{id:'single',accountId:account.id,pubkey:account.pubkey,origin:'https://client.test',type:'signEvent',permKey:'signEvent:1',needsPermission:true,authentication:mode==='auth'?authentication:undefined,nip46InFlight:mode==='nip46'}];
+  let fail=true;const decisions:string[]=[];
+  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+   if(message.method==='signer_getPending')return {result:pending};if(message.method==='vault_getState')return {result:{exists:true,locked:false}};
+   if(message.method==='signer_getPermissionsRaw')return {result:{}};if(message.method==='signer_getUseGlobalDefaults')return {result:true};
+   if(message.method==='signer_resolve'||message.method==='signer_cancelNip46'){
+    if(fail)return {error:'Could not resolve'};decisions.push(message.params.id);pending=[];
+   }return {result:null};
+  });
+  const root=createRoot(document.getElementById('root')!);
+  const button=(text:string)=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
+  try{
+   await act(async()=>root.render(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(PermissionsProvider,null,createElement(Overlay))))));
+   for(const key of ['approval.pendingRequests','approval.rejectAll','auth.reviewHint'])assert.ok(!document.body.textContent!.includes(key),key);
+   assert.equal(document.querySelector('[aria-label="common.close"]'),null);
+   const label=mode==='nip46'?'approval.cancelNip46':'approval.deny';assert.ok(button(label));
+   await act(async()=>button(label)!.click());assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(button(label));
+   fail=false;await act(async()=>button(label)!.click());assert.deepEqual(decisions,['single']);assert.equal(document.body.textContent,'');
+  }finally{await act(async()=>root.unmount());dom.window.close();}
+ });
+}

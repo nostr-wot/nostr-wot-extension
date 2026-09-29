@@ -13,15 +13,15 @@ interface ApprovalChoice {
 }
 
 /** Shared decisions for both the pending sheet and its event detail view. */
-export default function ApprovalActions({ choices, requestCount, busy, onApprove, onReject, placement = 'below' }: {
-    choices: ApprovalChoice[]; requestCount: number; busy: boolean;
+export default function ApprovalActions({ choices, requestCount, rejectCount = requestCount, busy, onApprove, onReject, placement = 'below' }: {
+    choices: ApprovalChoice[]; requestCount: number; rejectCount?: number; busy: boolean;
     onApprove?: Action; onReject?: Action;
     placement?: 'above' | 'below';
 }) {
     if (!requestCount) return null;
     const actions = [
         {key:'approve',label:requestCount === 1 ? 'approval.approveOnce' : 'approval.approveShown',options:'approval.approveOptions',always:'approval.alwaysAllowLabel',run:onApprove,remember:'onAlwaysAllow' as const,variant:'primary' as const},
-        {key:'reject',label:'approval.rejectAll',options:'approval.rejectOptions',always:'approval.alwaysDenyLabel',run:onReject,remember:'onAlwaysDeny' as const,variant:'danger' as const},
+        {key:'reject',label:rejectCount === 1 ? 'approval.deny' : 'approval.rejectAll',options:'approval.rejectOptions',always:'approval.alwaysDenyLabel',run:onReject,remember:'onAlwaysDeny' as const,variant:'danger' as const},
     ];
     return <Container variant="row" gap={4} className="shrink-0 justify-end">
         {actions.map(action => <Container key={action.key} variant="row" className="relative min-w-0">

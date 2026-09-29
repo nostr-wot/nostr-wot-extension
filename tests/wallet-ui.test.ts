@@ -513,9 +513,10 @@ it('approval sheet separates current-request approval from remembered permission
     assert.equal(button('approval.alwaysAllowLabel'),undefined,'remembered permission is behind the arrow');
     assert.ok(dom.window.document.querySelector('[aria-label="approval.approveOptions"]'));
     const card=Array.from(dom.window.document.querySelectorAll('button')).find(b=>b.textContent?.includes('https://site.test'));
-    assert.ok(card, 'pending group is rendered');
-    const approve=button('approval.approveOnce')!;
-    assert.ok(approve.compareDocumentPosition(card) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+    assert.equal(card, undefined, 'a single request skips the queue card');
+    assert.match(dom.window.document.body.textContent!, /https:\/\/site.test/, 'requesting site remains visible in detail');
+    assert.ok(!dom.window.document.body.textContent!.includes('approval.pendingRequests'));
+    assert.equal(button('approval.rejectAll'), undefined);
     await act(async()=>button('approval.approveOnce')!.click());
     assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[{id:'one',decision:{allow:true,remember:false}}]);
     assert.equal(calls.filter(c=>c.method==='signer_savePermission'||c.method==='signer_resolveBatch').length,0);
@@ -539,7 +540,7 @@ it('approval sheet separates current-request approval from remembered permission
         assert.deepEqual(calls.find(c=>c.method==='signer_resolveBatch')?.params,{origin:'https://site.test',permKey:'signEvent:1',decision:{allow:false,remember:false}});
         assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:1',decision:'deny',accountId:account.id});
       } else {
-        await act(async()=>button('approval.rejectAll')!.click());
+        await act(async()=>button('approval.deny')!.click());
         assert.deepEqual(calls.find(c=>c.method==='signer_resolve')?.params,{id:'reject',decision:{allow:false,remember:false}});
         assert.equal(calls.some(c=>c.method==='signer_savePermission'),false);
       }
