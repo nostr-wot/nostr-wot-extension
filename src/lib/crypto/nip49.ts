@@ -27,10 +27,18 @@ import { hexToBytes, bytesToHex } from './utils.ts';
 /**
  * Encrypt a private key with a password and encode as ncryptsec (NIP-49 v2).
  *
- * @param privkeyHex - the 32-byte key as hex; a copy is zeroed here, the caller owns theirs
+ * Takes the key as bytes or as hex. Bytes are the form to prefer and the form the export
+ * handler now passes: a hex string cannot be overwritten, so building one on the way in put a
+ * second, unzeroable copy of the key in the heap for the garbage collector to get to whenever
+ * it felt like it. The hex form stays because callers and tests pass one. The array it decodes
+ * to is zeroed here; the string itself is the caller's to regret.
+ *
+ * @param privkey - the 32-byte key, as bytes (preferred) or hex. Not zeroed: it is the
+ *   caller's, and inside a `withPrivkey` scope the vault zeroes it already.
  */
-export async function ncryptsecEncode(privkeyHex: string, password: string): Promise<string> {
-  const privkeyBytes = hexToBytes(privkeyHex);
+export async function ncryptsecEncode(privkey: Uint8Array | string, password: string): Promise<string> {
+  if (typeof privkey !== 'string') return encryptNcryptsec(privkey, password);
+  const privkeyBytes = hexToBytes(privkey);
   try {
     return encryptNcryptsec(privkeyBytes, password);
   } finally {

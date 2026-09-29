@@ -13,7 +13,6 @@ import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import * as signerPermissions from '../permissions/permissions.ts';
 import * as accounts from '../../domain/accounts/creation.ts';
 import { nsecEncode } from '../../lib/crypto/bech32.ts';
-import { bytesToHex } from '../../lib/crypto/utils.ts';
 import { ncryptsecEncode, ncryptsecDecode } from '../../lib/crypto/nip49.ts';
 import { clearWalletProviders } from '../wallet/index.ts';
 import { config, type HandlerFn, type LocalAccountEntry } from './state.ts';
@@ -240,25 +239,20 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['vault_exportNsec', async () => {
         const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
-        const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
-        if (!privkeyBytes) throw new Error('No private key available');
-        try {
-            return nsecEncode(bytesToHex(privkeyBytes));
-        } finally {
-            // finally: a throw inside nsecEncode must not skip zeroing
-            privkeyBytes.fill(0);
-        }
+        if (!exportData.activeAccountId) throw new Error('No private key available');
+        // Encoded inside the scope and the string handed back: `withPrivkey` zeroes its copy on
+        // every path, including one where nsecEncode throws. The bytes go straight in, with no
+        // hex string in between: a string cannot be overwritten, so the old
+        // `bytesToHex(privkeyBytes)` left a second copy of the key in the heap until GC.
+        return vault.withPrivkey(exportData.activeAccountId, async privkey => nsecEncode(privkey));
     }],
 
     ['vault_exportNcryptsec', async (params) => {
         const exportData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
-        const privkeyBytes = vault.getPrivkey(exportData.activeAccountId);
-        if (!privkeyBytes) throw new Error('No private key available');
-        try {
-            return await ncryptsecEncode(bytesToHex(privkeyBytes), params.password as string);
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        if (!exportData.activeAccountId) throw new Error('No private key available');
+        // As exportNsec: bytes straight into the encoder, no intermediate hex string.
+        return vault.withPrivkey(exportData.activeAccountId, async privkey =>
+            ncryptsecEncode(privkey, params.password as string));
     }],
 
     ['vault_exportSeed', async () => {
