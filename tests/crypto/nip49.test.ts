@@ -93,6 +93,28 @@ describe('NIP-49 v2 (scrypt + XChaCha20-Poly1305)', () => {
     );
   });
 
+  // The export handler runs inside `vault.withPrivkey`, which owns the key bytes and
+  // zeroes them. Handing those bytes straight to the encoder is the point: building a
+  // hex string on the way in would leave a second copy of the key in the heap that
+  // nothing can overwrite, because a string cannot be zeroed.
+  it('encrypts the key given as bytes, and leaves the caller\'s array alone', async () => {
+    const privkey = hexToBytes(TEST_PRIVKEY_HEX);
+    const encoded = await ncryptsecEncode(privkey, 'testpass');
+
+    assert.ok(encoded.startsWith('ncryptsec1'));
+    assert.strictEqual(await ncryptsecDecode(encoded, 'testpass'), TEST_PRIVKEY_HEX,
+      'bytes in must give the same key back out');
+    assert.strictEqual(bytesToHex(privkey), TEST_PRIVKEY_HEX,
+      'the array is borrowed: zeroing it here would blank the scope\'s key underneath it');
+  });
+
+  it('rejects a byte array that is not 32 bytes', async () => {
+    await assert.rejects(
+      () => ncryptsecEncode(new Uint8Array(16), 'testpass'),
+      /Invalid private key length/
+    );
+  });
+
   it('rejects non-ncryptsec bech32 strings', async () => {
     await assert.rejects(
       () => ncryptsecDecode('nsec1invalid', 'testpass'),

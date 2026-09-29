@@ -94,41 +94,48 @@ export const handlers = new Map<string, HandlerFn>([
     ['publishRelayList', async (params) => {
         await vault.whenStartupUnlockSettled();
         if (params.pubkey && params.pubkey !== vault.getActivePubkey()) throw new Error('Active account changed');
-        const privkeyBytes = vault.getPrivkey();
-        if (!privkeyBytes) throw new Error('Vault is locked or no private key');
+        const accountId = vault.getActiveAccountId();
+        if (!accountId) throw new Error('Vault is locked or no private key');
 
-        try {
-            const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
-            const flagData = await browser.storage.local.get(['relayFlags']) as Record<string, Record<string, { read: boolean; write: boolean }>>;
-            const configuration = params.configuration as RelayConfiguration | undefined;
-            const relayUrls = configuration ? configuration.relays : configuredRelayUrls(relayData.relays);
-            const flags = configuration ? configuration.flags : flagData.relayFlags || {};
-            const tags = relayPublicationTags({ relays: relayUrls, flags });
-            const relaysCsv = relayUrls.join(',');
+        const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
+        const flagData = await browser.storage.local.get(['relayFlags']) as Record<string, Record<string, { read: boolean; write: boolean }>>;
+        const configuration = params.configuration as RelayConfiguration | undefined;
+        const relayUrls = configuration ? configuration.relays : configuredRelayUrls(relayData.relays);
+        const flags = configuration ? configuration.flags : flagData.relayFlags || {};
+        const tags = relayPublicationTags({ relays: relayUrls, flags });
+        const relaysCsv = relayUrls.join(',');
 
-            const event: UnsignedEvent = {
-                created_at: Math.floor(Date.now() / 1000),
-                kind: 10002,
-                tags,
-                content: ''
-            };
+        const event: UnsignedEvent = {
+            created_at: Math.floor(Date.now() / 1000),
+            kind: 10002,
+            tags,
+            content: ''
+        };
 
-            const signed = await signEvent(event, privkeyBytes);
-            const broadcastUrls = [...new Set([...relayUrls, ...config.relays])];
-            const result = await broadcastEvent(signed, broadcastUrls);
+        // Sign INSIDE the scope, broadcast OUTSIDE it. The old shape took a `getPrivkey()`
+        // copy before the storage reads and held it live through the signing AND the relay
+        // broadcast, so the key sat in memory for the whole of a network round trip that can
+        // stall for as long as a relay takes to answer. That is the leak the note in
+        // `pqc-handlers.ts` describes, here as well.
+        //
+        // The scope is kept to the signing rather than wrapped around the broadcast for a
+        // second reason: `withPrivkey` is the place a future revocation check belongs, and a
+        // scope that is voided cannot unsend. A callback that published would already have put
+        // the event on the wire, so every side effect stays downstream of the returned value.
+        const signed = await vault.withPrivkey(accountId, async privkey => signEvent(event, privkey));
 
-            if (result.sent > 0) {
-                await writeLocalCache(signed);
-                await browser.storage.local.set({
-                    lastRelayPublish: Date.now(),
-                    lastPublishedRelays: relaysCsv
-                });
-            }
+        const broadcastUrls = [...new Set([...relayUrls, ...config.relays])];
+        const result = await broadcastEvent(signed, broadcastUrls);
 
-            return { ok: true, sent: result.sent, failed: result.failed };
-        } finally {
-            privkeyBytes.fill(0);
+        if (result.sent > 0) {
+            await writeLocalCache(signed);
+            await browser.storage.local.set({
+                lastRelayPublish: Date.now(),
+                lastPublishedRelays: relaysCsv
+            });
         }
+
+        return { ok: true, sent: result.sent, failed: result.failed };
     }],
 
     ['publishMuteList', async (params) => {
@@ -150,68 +157,60 @@ export const handlers = new Map<string, HandlerFn>([
             throw new Error('Refusing to publish a mute list built from a read no relay answered');
         }
 
-        const privkeyBytes = vault.getPrivkey();
-        if (!privkeyBytes) throw new Error('Vault is locked or no private key');
+        const accountId = vault.getActiveAccountId();
+        if (!accountId) throw new Error('Vault is locked or no private key');
 
-        try {
-            const people = Array.isArray(params.people) ? (params.people as string[]) : [];
-            const hashtags = Array.isArray(params.hashtags) ? (params.hashtags as string[]) : [];
-            const words = Array.isArray(params.words) ? (params.words as string[]) : [];
-            const events = Array.isArray(params.events) ? (params.events as string[]) : [];
-            const rawContent = typeof params.rawContent === 'string' ? params.rawContent : '';
+        const people = Array.isArray(params.people) ? (params.people as string[]) : [];
+        const hashtags = Array.isArray(params.hashtags) ? (params.hashtags as string[]) : [];
+        const words = Array.isArray(params.words) ? (params.words as string[]) : [];
+        const events = Array.isArray(params.events) ? (params.events as string[]) : [];
+        const rawContent = typeof params.rawContent === 'string' ? params.rawContent : '';
 
-            const tags: string[][] = [];
-            for (const p of people) if (p) tags.push(['p', p]);
-            for (const e of events) if (e) tags.push(['e', e]);
-            for (const ht of hashtags) if (ht) tags.push(['t', ht]);
-            for (const w of words) if (w) tags.push(['word', w]);
+        const tags: string[][] = [];
+        for (const p of people) if (p) tags.push(['p', p]);
+        for (const e of events) if (e) tags.push(['e', e]);
+        for (const ht of hashtags) if (ht) tags.push(['t', ht]);
+        for (const w of words) if (w) tags.push(['word', w]);
 
-            const event: UnsignedEvent = {
-                created_at: Math.floor(Date.now() / 1000),
-                kind: 10000,
-                tags,
-                content: rawContent
-            };
+        const event: UnsignedEvent = {
+            created_at: Math.floor(Date.now() / 1000),
+            kind: 10000,
+            tags,
+            content: rawContent
+        };
 
-            const signed = await signEvent(event, privkeyBytes);
+        // Sign inside the scope; see the note in publishRelayList.
+        const signed = await vault.withPrivkey(accountId, async privkey => signEvent(event, privkey));
 
-            // Mirror publishRelayList: publish to the user's WRITE relays.
-            const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
-            const flagData = await browser.storage.local.get(['relayFlags']) as Record<string, Record<string, { read: boolean; write: boolean }>>;
-            const relayUrls = (relayData.relays || '').split(',').map(r => r.trim()).filter(Boolean);
-            const flags = flagData.relayFlags || {};
-            const writeRelays = relayUrls.filter(url => (flags[url] || { read: true, write: true }).write);
-            const broadcastUrls = writeRelays.length > 0 ? writeRelays : (relayUrls.length > 0 ? relayUrls : config.relays);
+        // Mirror publishRelayList: publish to the user's WRITE relays.
+        const relayData = await browser.storage.sync.get(['relays']) as Record<string, string>;
+        const flagData = await browser.storage.local.get(['relayFlags']) as Record<string, Record<string, { read: boolean; write: boolean }>>;
+        const relayUrls = (relayData.relays || '').split(',').map(r => r.trim()).filter(Boolean);
+        const flags = flagData.relayFlags || {};
+        const writeRelays = relayUrls.filter(url => (flags[url] || { read: true, write: true }).write);
+        const broadcastUrls = writeRelays.length > 0 ? writeRelays : (relayUrls.length > 0 ? relayUrls : config.relays);
 
-            const result = await broadcastEvent(signed, broadcastUrls);
-            return { ok: true, sent: result.sent > 0, sentCount: result.sent, failed: result.failed };
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        const result = await broadcastEvent(signed, broadcastUrls);
+        return { ok: true, sent: result.sent > 0, sentCount: result.sent, failed: result.failed };
     }],
 
     ['signEvent', async (params) => {
         if (!params.event || typeof (params.event as Record<string, unknown>).kind !== 'number') throw new Error('Invalid event');
-        const privkeyBytes = vault.getPrivkey();
-        if (!privkeyBytes) throw new Error('Vault is locked');
-        try {
-            return await signEvent(params.event as UnsignedEvent, privkeyBytes);
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        const accountId = vault.getActiveAccountId();
+        if (!accountId) throw new Error('Vault is locked');
+        return vault.withPrivkey(accountId, async privkey => signEvent(params.event as UnsignedEvent, privkey));
     }],
 
     ['signAndPublishEvent', async (params) => {
         if (!params.event || typeof (params.event as Record<string, unknown>).kind !== 'number') throw new Error('Invalid event');
-        const privkeyBytes = vault.getPrivkey();
-        if (!privkeyBytes) throw new Error('Vault is locked');
-        try {
-            const signed = await signEvent(params.event as UnsignedEvent, privkeyBytes);
-            const result = await broadcastEvent(signed, config.relays);
-            return { ok: true, sent: result.sent, failed: result.failed };
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        const accountId = vault.getActiveAccountId();
+        if (!accountId) throw new Error('Vault is locked');
+        // Sign inside, broadcast outside: the whole point of the split. The old shape held the
+        // key live across the broadcast, so it stayed in memory for the length of a relay
+        // round trip that has no use for it.
+        const signed = await vault.withPrivkey(accountId, async privkey => signEvent(params.event as UnsignedEvent, privkey));
+        const result = await broadcastEvent(signed, config.relays);
+        return { ok: true, sent: result.sent, failed: result.failed };
     }],
 
     ['nip46_getSessionInfo', async () => {

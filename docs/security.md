@@ -73,23 +73,25 @@ On `save()` and `reEncrypt()`, memory format is serialized back to JSON via `toS
 
 ## 3. Private Key Handling
 
-`vault.getPrivkey()` returns a **copy** of the private key as `Uint8Array(32)` -- `new Uint8Array(acct.privkeyBytes)`. The caller MUST zero the returned array after use with `privkey.fill(0)` in a `try/finally` block. Because it's a copy, the caller's `fill(0)` does not affect the vault's internal state.
+`vault.withPrivkey(accountId, fn)` is how production code reaches a private key. It hands a **copy** of the key to `fn` and zeroes that copy in a `finally`, so an early return or a throw cannot skip it. Because it's a copy, the zeroing does not affect the vault's internal state.
 
 ```ts
-const privkey = vault.getPrivkey();
-if (!privkey) throw new Error('No private key');
-try {
-    return await cryptoSignEvent(event, privkey);
-} finally {
-    privkey.fill(0);
-}
+const accountId = vault.getActiveAccountId();
+if (!accountId) throw new Error('Vault is locked');
+return vault.withPrivkey(accountId, async privkey => cryptoSignEvent(event, privkey));
 ```
 
-The same try/finally discipline applies in `src/domain/accounts/creation.ts` and the vault handlers:
+Two rules go with it:
+
+- **The scope covers the crypto and nothing else.** Sign inside it, broadcast and write storage outside it. Holding the key across a relay round trip or a storage write keeps it in the heap for the length of an operation that has no use for it, and it also keeps every side effect downstream of the value the scope returns.
+- **The key is not re-encoded on the way in or out.** `nsecEncode` and `ncryptsecEncode` take the raw bytes, because a hex string cannot be overwritten: `bytesToHex(privkey)` would leave a second copy of the key in the heap until the garbage collector got to it.
+
+`vault.getPrivkey()` still exists and returns a copy with "CALLER MUST ZERO" attached. It is the primitive `withPrivkey` is built on, and the tests exercise it directly; new production code uses the scoped accessor instead, because the guarantee is only as good as each call site's memory and at least one call site had already forgotten it.
+
+The same discipline applies in `src/domain/accounts/creation.ts`, which does not go through the vault:
 
 - `createFromMnemonic` / `createFromMnemonicAtIndex` / `importFromMnemonicDerived` zero the 64-byte BIP-39 seed (`mnemonicToSeed` result) and the derived privkey `Uint8Array` in a `finally` block — only the hex copy on the returned `Account` survives.
 - `importNsec` zeroes the decoded `privkeyBytes` after deriving the pubkey.
-- `vault_exportNsec` wraps its `privkeyBytes.fill(0)` in `finally` so a throw inside `nsecEncode` cannot skip zeroing.
 
 ---
 

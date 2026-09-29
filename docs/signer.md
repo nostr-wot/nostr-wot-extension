@@ -28,7 +28,9 @@ background.ts  -->  signer.handleSignEvent(event, origin)
     (vault.whenStartupUnlockSettled()); if STILL locked, queue as
     waitingForUnlock and open the popup
 [6] If still locked after queue resolves --> throw "Vault is locked"
-[7] vault.getPrivkey() --> sign with cryptoSignEvent --> privkey.fill(0)
+[7] vault.withPrivkey() --> sign with cryptoSignEvent inside the scope
+    (the copy is zeroed on every path; the follow-list and zap-note
+    bookkeeping runs after the scope, never with a key in hand)
 [8] Return signed event
 ```
 

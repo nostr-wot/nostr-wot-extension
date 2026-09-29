@@ -50,20 +50,18 @@ export function createNip98SignFn(acctId: string, endpointUrl: string): (challen
     const session = captureAccountSession(acctId);
     return async (challenge: string): Promise<SignedEvent> => {
         assertAccountSession(session);
-        const privkeyBytes = vault.getPrivkey(acctId);
-        if (!privkeyBytes) throw new Error('No private key available');
-        try {
-            const signed = await signEvent({
-                kind: 27235,
-                created_at: Math.floor(Date.now() / 1000),
-                tags: [['challenge', challenge], ['u', endpointUrl], ['method', 'POST']],
-                content: '',
-            }, privkeyBytes);
-            assertAccountSession(session);
-            return signed;
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        // Signed inside the scope and handed back; the caller is what POSTs it. The old shape
+        // kept its own `getPrivkey()` copy alive across the whole signing block and relied on
+        // the `finally` to zero it, which is a promise each call site has to keep separately.
+        // Here the scope keeps it, and the key is not live while the caller is on the network.
+        const signed = await vault.withPrivkey(acctId, async privkey => signEvent({
+            kind: 27235,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [['challenge', challenge], ['u', endpointUrl], ['method', 'POST']],
+            content: '',
+        }, privkey));
+        assertAccountSession(session);
+        return signed;
     };
 }
 
