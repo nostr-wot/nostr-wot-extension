@@ -1076,5 +1076,7 @@
   "auth.rejectAlways": "Rechazar siempre",
   "auth.reject": "Rechazar",
   "messageReview.sender": "Remitente",
-  "messageReview.unavailable": "La vista previa no está disponible. La solicitud puede haber terminado o la bóveda estar bloqueada."
+  "messageReview.unavailable": "La vista previa no está disponible. La solicitud puede haber terminado o la bóveda estar bloqueada.",
+  "messageReview.messageNumber": "Mensaje {number}",
+  "messageReview.noCachedProfile": "No hay un perfil guardado para esta clave."
 }

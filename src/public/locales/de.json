@@ -1076,5 +1076,7 @@
   "auth.rejectAlways": "Immer ablehnen",
   "auth.reject": "Ablehnen",
   "messageReview.sender": "Absender",
-  "messageReview.unavailable": "Diese Vorschau ist nicht verfügbar. Die Anfrage ist möglicherweise beendet oder der Tresor gesperrt."
+  "messageReview.unavailable": "Diese Vorschau ist nicht verfügbar. Die Anfrage ist möglicherweise beendet oder der Tresor gesperrt.",
+  "messageReview.messageNumber": "Nachricht {number}",
+  "messageReview.noCachedProfile": "Kein gespeichertes Profil für diesen Schlüssel."
 }

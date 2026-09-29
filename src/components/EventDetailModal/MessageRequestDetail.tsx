@@ -19,6 +19,9 @@ export const isMessageRequest = (type: string | null) => /^(nip04|nip44)(Encrypt
 
 /** Pending message review never approves or returns plaintext to the requesting site. */
 export default function MessageRequestDetail({request}:{request:{id?:string;type:string;theirPubkey?:string|null}}) {
+  const [sender,setSender] = useState<string | null>(null);
+  const [decryptedEvent,setDecryptedEvent] = useState<Record<string,unknown> | null>(null);
+  const peer = sender || request.theirPubkey;
   const [profile,setProfile] = useState<ProfileMetadata | null>(null);
   const [plaintext,setPlaintext] = useState<string | null>(null);
   const [raw,setRaw] = useState<PendingRequestPreview['request'] | null>(null);
@@ -30,12 +33,12 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
     let current = true;
     const lifetime = generation.current;
     setProfile(null);
-    if (request.theirPubkey) void browser.storage.local.get(`profile_${request.theirPubkey}`).then(data => {
-      if (current) setProfile((data[`profile_${request.theirPubkey}`] as {metadata?:ProfileMetadata}|undefined)?.metadata || null);
+    if (peer) void browser.storage.local.get(`profile_${peer}`).then(data => {
+      if (current) setProfile((data[`profile_${peer}`] as {metadata?:ProfileMetadata}|undefined)?.metadata || null);
     }).catch(() => {});
     return () => { current = false; lifetime.version++; };
-  }, [request.id,request.theirPubkey]);
-  const clear = () => { generation.current.version++; setPlaintext(null); setRaw(null); setError(''); setBusy(false); };
+  }, [request.id,peer]);
+  const clear = () => { generation.current.version++; setPlaintext(null); setSender(null); setDecryptedEvent(null); setRaw(null); setError(''); setBusy(false); };
   useStorageWatch([{area:'local',keys:[LOCK_STATE_KEY,'activeAccountId']},{area:'session',keys:['signerPending']}],clear);
   async function load(reveal:boolean) {
     if (!request.id || busy) return;
@@ -45,14 +48,19 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
       const result = await rpc<PendingRequestPreview>('signer_previewRequest',{id:request.id,reveal});
       if (current !== generation.current.version) return;
       setRaw(result.request);
-      if (reveal) setPlaintext(result.plaintext ?? '');
-    } catch { if (current === generation.current.version) setError(t('messageReview.unavailable')); }
+      if (reveal) {
+        setPlaintext(result.plaintext ?? '');
+        setSender(result.senderPubkey || null);
+        setDecryptedEvent(result.decryptedEvent || null);
+      }
+    } catch (failure) { if (current === generation.current.version) setError(failure instanceof Error ? failure.message : t('common.error')); }
     finally { if (current === generation.current.version) setBusy(false); }
   }
   return <Container gap={4} className="min-w-0">
     <Text variant="secondary">{t(decrypt ? 'messageReview.sender' : 'event.recipient')}</Text>
     {profile && <ProfileSummary meta={{...profile,picture:undefined}} compact/>}
-    {request.theirPubkey && <Text mono title={request.theirPubkey} className="text-xs break-all">{truncateMiddle(request.theirPubkey,16,12)}</Text>}
+    {!profile && <Text variant="hint">{t('messageReview.noCachedProfile')}</Text>}
+    {peer && <Text mono title={peer} className="text-xs break-all">{truncateMiddle(peer,16,12)}</Text>}
     {plaintext === null ? <ButtonSecondary small className="self-start" disabled={busy || !request.id} onClick={() => void load(true)}>
       {t(busy ? 'common.loading' : 'activity.detail.reveal')}
     </ButtonSecondary> : <Container gap={3}>
@@ -63,7 +71,7 @@ export default function MessageRequestDetail({request}:{request:{id?:string;type
     <DetailDisclosure label={t('common.advanced')} onOpenChange={open => {
       if (open) void load(false); else { generation.current.version++; setRaw(null); setBusy(false); }
     }}>
-      {raw ? <TextBlock mono>{JSON.stringify(raw,null,2)}</TextBlock> : <Text variant="hint">{t(busy ? 'common.loading' : 'messageReview.unavailable')}</Text>}
+      {raw ? <TextBlock mono>{JSON.stringify({...raw,...(decryptedEvent ? {decryptedEvent} : {})},null,2)}</TextBlock> : busy ? <Text variant="hint">{t('common.loading')}</Text> : null}
     </DetailDisclosure>
   </Container>;
 }

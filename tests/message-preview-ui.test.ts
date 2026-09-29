@@ -48,3 +48,38 @@ it('late preview replies cannot reveal a message after the account changed',asyn
   assert.ok(!document.body.textContent!.includes('late secret'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
+
+it('preview failures show the real cause exactly once, including after Advanced opens',async t=>{
+ resetMockStorage();const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);
+ const failure='Request preview is no longer available';
+ t.mock.method(browser.runtime,'sendMessage',async()=>({error:failure}));
+ try{
+  await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt'}})));
+  await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
+  assert.equal(document.body.textContent!.split(failure).length-1,1);
+  const advanced=document.querySelector('details')!;
+  await act(async()=>{advanced.open=true;advanced.dispatchEvent(new dom.window.Event('toggle'));});
+  assert.equal(document.body.textContent!.split(failure).length-1,1);
+  assert.ok(!document.body.textContent!.includes('messageReview.unavailable'));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('revealing a wrapped message refreshes the cached sender profile',async t=>{
+ resetMockStorage();const peer='22'.repeat(32);const wrapper='33'.repeat(32);
+ await browser.storage.local.set({[`profile_${peer}`]:{metadata:{name:'Real sender'}}});
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const root=createRoot(document.getElementById('root')!);
+ t.mock.method(browser.runtime,'sendMessage',async()=>({result:{request:{method:'nip44Decrypt',origin:'site',params:{}},plaintext:'hello',senderPubkey:peer}}));
+ try{
+  await act(async()=>root.render(createElement(MessageRequestDetail,{request:{id:'pending',type:'nip44Decrypt',theirPubkey:wrapper}})));
+  assert.ok(!document.body.textContent!.includes('Real sender'));
+  await act(async()=>(document.querySelector('button') as HTMLButtonElement).click());
+  assert.ok(document.body.textContent!.includes('Real sender'));assert.ok(document.body.textContent!.includes('hello'));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('grouped messages use numbered headings instead of repeating the permission label',async()=>{
+ const {renderToStaticMarkup}=await import('react-dom/server');
+ const request={id:'one',type:'nip44Decrypt',origin:'site',theirPubkey:'22'.repeat(32)};
+ const html=renderToStaticMarkup(createElement(Detail,{request,requests:[request,{...request,id:'two'}],onApprove(){},onDeny(){}}));
+ assert.equal(html.split('messageReview.messageNumber').length-1,2);
+});

@@ -279,3 +279,13 @@ discard callbacks. A late preview result for a removed request is rejected.
 The UI clears preview data on account, lock or pending-queue changes and ignores
 late replies. Remote signers retain their own approval flow and do not gain a
 local-key preview.
+
+Grouped message rows use numbered Message headings rather than repeating the
+permission label. Preview failures appear once and retain the actual RPC error.
+Queue callbacks are registered before publishing pending metadata, so an already
+open popup can preview immediately; opening native UI does not block registration.
+For NIP-17, Reveal verifies the inner kind-13 seal and decrypts the rumor locally.
+A kind-14 rumor must match its seal author. The UI then uses that author's cached
+profile, shows the message body, and includes the decrypted event under Advanced.
+This never changes the original result returned to the site after approval.
+If no profile is cached, the UI says so and keeps the public-key fallback.

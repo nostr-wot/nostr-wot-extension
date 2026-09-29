@@ -73,3 +73,44 @@ it('Advanced preserves the original post-quantum parameters without encrypting',
  assert.equal((await previewPendingRequest(request.id,true)).plaintext,secret);
  await resolveRequest(request.id,{allow:false});await assert.rejects(work);
 });
+
+it('a published pending request can be previewed before native popup opening completes',async t=>{
+ const original=browser.storage.session.set.bind(browser.storage.session);
+ let observed=false;
+ t.mock.method(browser.storage.session,'set',async (values:Record<string,any>)=>{
+  await original(values);
+  const request=values.signerPending?.[0];
+  if(request?.type==='nip44Encrypt'){
+   assert.equal((await previewPendingRequest(request.id,true)).plaintext,secret);
+   observed=true;
+  }
+ });
+ const work=signer.handleNip44Encrypt(peer.pubkey,secret,site);void work.catch(()=>{});
+ const request=await pending();assert.equal(observed,true);
+ await resolveRequest(request.id,{allow:false});await assert.rejects(work);
+});
+
+it('gift-wrap preview finds the sealed sender without changing the response sent after approval',async()=>{
+ const {signEvent}=await import('../src/lib/crypto/nip01.ts');
+ const wrapper=await importNsec('33'.repeat(32),'Wrapper');
+ const rumor={kind:14,pubkey:peer.pubkey,content:secret,tags:[],created_at:1};
+ const content=await nip44Encrypt(JSON.stringify(rumor),hexToBytes(peer.privkey!),hexToBytes(owner.pubkey));
+ const seal=await signEvent({kind:13,created_at:1,tags:[],content,pubkey:peer.pubkey},hexToBytes(peer.privkey!));
+ const original=JSON.stringify(seal);
+ const encrypted=await nip44Encrypt(original,hexToBytes(wrapper.privkey!),hexToBytes(owner.pubkey));
+ const work=signer.handleNip44Decrypt(wrapper.pubkey,encrypted,site);void work.catch(()=>{});
+ const request=await pending();
+ const preview=await previewPendingRequest(request.id,true);
+ assert.equal(preview.plaintext,secret);assert.equal(preview.senderPubkey,peer.pubkey);assert.deepEqual(preview.decryptedEvent,rumor);
+ assert.equal((await getPending()).length,1);
+ await resolveRequest(request.id,{allow:true});assert.equal(await work,original);
+});
+it('message review refuses invalid seals and mismatched rumor authors',async()=>{
+ const {reviewDecryptedMessage}=await import('../src/services/signing/localDecryption.ts');
+ const {signEvent}=await import('../src/lib/crypto/nip01.ts');
+ const content=await nip44Encrypt(JSON.stringify({kind:14,pubkey:owner.pubkey,content:secret}),hexToBytes(peer.privkey!),hexToBytes(owner.pubkey));
+ const seal=await signEvent({kind:13,created_at:1,tags:[],content,pubkey:peer.pubkey},hexToBytes(peer.privkey!));
+ await assert.rejects(reviewDecryptedMessage(owner.id,peer.pubkey,JSON.stringify({...seal,sig:'00'.repeat(64)})),/signature/);
+ await assert.rejects(reviewDecryptedMessage(owner.id,peer.pubkey,JSON.stringify(seal)),/author/);
+ assert.deepEqual(await reviewDecryptedMessage(owner.id,peer.pubkey,secret),{plaintext:secret});
+});

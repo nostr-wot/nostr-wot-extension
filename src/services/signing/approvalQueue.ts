@@ -120,6 +120,7 @@ export async function queueRequest(request: QueueRequestInput, preview?: (reveal
 
   // Serialized storage write to prevent concurrent read-modify-write races
   let limitExceeded = false;
+  let decisionPromise: Promise<RequestDecision> | undefined;
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
@@ -136,7 +137,29 @@ export async function queueRequest(request: QueueRequestInput, preview?: (reveal
     }
     assertQueueCapacity(pending, request.origin);
     pending.push(entry);
-    await browser.storage.session.set({ signerPending: pending });
+    decisionPromise = new Promise<RequestDecision>((resolve, reject) => {
+      _pendingResolvers.set(id, resolve);
+      if (preview) _pendingPreviews.set(id, preview);
+
+      const timer = setTimeout(() => {
+        _pendingResolvers.delete(id);
+        _pendingPreviews.delete(id);
+        _timeoutTimers.delete(id);
+        void removePendingFromStorage(id);
+        reject(new Error('Request timed out'));
+      }, SIGNER_REQUEST_TIMEOUT_MS);
+      _timeoutTimers.set(id, timer);
+    });
+    // Storage listeners can render immediately: install capabilities first.
+    void decisionPromise.catch(() => {});
+    try { await browser.storage.session.set({ signerPending: pending }); }
+    catch (error) {
+      _pendingResolvers.delete(id); _pendingPreviews.delete(id);
+      const timer = _timeoutTimers.get(id);
+      if (timer) clearTimeout(timer);
+      _timeoutTimers.delete(id);
+      throw error;
+    }
     // Don't update badge for NIP-46 in-flight (no user action needed)
     if (!request.nip46InFlight) {
       await updateSignerBadge();
@@ -146,30 +169,10 @@ export async function queueRequest(request: QueueRequestInput, preview?: (reveal
     throw new Error('Too many pending requests from this origin');
   }
 
-  // Notify popup (fire-and-forget, popup may not be open)
+  // Opening native UI must not delay registering or returning the decision.
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
-
-  // Auto-open the popup only if the request needs user action and is from the active tab
-  if (!request.nip46InFlight) {
-    await openPopupForActiveTab(request.origin);
-  }
-
-  if (revision !== lockRevision) { await removePendingFromStorage(id); throw new Error('Vault locked'); }
-
-  // Return promise that resolves when popup decides (not used for nip46InFlight)
-  return new Promise((resolve, reject) => {
-    _pendingResolvers.set(id, resolve);
-    if (preview) _pendingPreviews.set(id, preview);
-
-    const timer = setTimeout(() => {
-      _pendingResolvers.delete(id);
-      _pendingPreviews.delete(id);
-      _timeoutTimers.delete(id);
-      void removePendingFromStorage(id);
-      reject(new Error('Request timed out'));
-    }, SIGNER_REQUEST_TIMEOUT_MS);
-    _timeoutTimers.set(id, timer);
-  });
+  if (!request.nip46InFlight) void openPopupForActiveTab(request.origin);
+  return decisionPromise!;
 }
 
 /**

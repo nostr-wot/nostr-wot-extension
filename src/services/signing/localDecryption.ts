@@ -1,3 +1,5 @@
+import { verifyEvent } from '@lib/crypto/nip01.ts';
+import type { SignedEvent } from '@domain/nostr/types.ts';
 import * as vault from '../vault/vault.ts';
 import browser from '@lib/browser.ts';
 import { PQC_SEED_WORD_COUNT } from '@constants/accounts.ts';
@@ -97,4 +99,23 @@ export async function decryptForAccount(accountId: string, scheme: 'nip04' | 'ni
   return vault.withPrivkey(accountId, key => scheme === 'nip04'
     ? nip04Decrypt(ciphertext, key, hexToBytes(peer))
     : decryptNip44Content(ciphertext, key, hexToBytes(peer), accountId));
+}
+/** NIP-17 wraps use a temporary outer key; only a verified seal identifies its author. */
+export async function reviewDecryptedMessage(accountId: string, peer: string, plaintext: string): Promise<{plaintext:string;senderPubkey?:string;decryptedEvent?:Record<string,unknown>}> {
+  let event: Record<string,unknown>;
+  try { event = JSON.parse(plaintext); } catch { return {plaintext}; }
+  if (!event || typeof event !== 'object') return {plaintext};
+  let senderPubkey: string | undefined;
+  if (event.kind === 13) {
+    if (!(await verifyEvent(event as unknown as SignedEvent))) throw new Error('Invalid sealed event signature');
+    senderPubkey = event.pubkey as string;
+    plaintext = await decryptForAccount(accountId,'nip44',senderPubkey,event.content as string);
+    try { event = JSON.parse(plaintext); } catch { return {plaintext,senderPubkey}; }
+    if (!event || typeof event !== 'object') return {plaintext,senderPubkey};
+    if (event.pubkey !== senderPubkey) throw new Error('Message author does not match its signed seal');
+  }
+  if (event.kind === 14 && event.pubkey === (senderPubkey || peer) && typeof event.content === 'string') {
+    return {plaintext:event.content,senderPubkey:senderPubkey || peer,decryptedEvent:event};
+  }
+  return {plaintext,...(senderPubkey ? {senderPubkey} : {})};
 }

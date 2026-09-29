@@ -43,4 +43,6 @@ export interface RequestDecision {
 export interface PendingRequestPreview {
   request: { method: string; origin: string; params: Record<string, unknown> };
   plaintext?: string;
+  senderPubkey?: string;
+  decryptedEvent?: Record<string,unknown>;
 }

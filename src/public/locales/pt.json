@@ -1076,5 +1076,7 @@
   "auth.rejectAlways": "Rejeitar sempre",
   "auth.reject": "Rejeitar",
   "messageReview.sender": "Remetente",
-  "messageReview.unavailable": "Prévia indisponível. A solicitação pode ter terminado ou o cofre estar bloqueado."
+  "messageReview.unavailable": "Prévia indisponível. A solicitação pode ter terminado ou o cofre estar bloqueado.",
+  "messageReview.messageNumber": "Mensagem {number}",
+  "messageReview.noCachedProfile": "Nenhum perfil em cache para esta chave."
 }

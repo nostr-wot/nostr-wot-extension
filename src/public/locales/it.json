@@ -1076,5 +1076,7 @@
   "auth.rejectAlways": "Rifiuta sempre",
   "auth.reject": "Rifiuta",
   "messageReview.sender": "Mittente",
-  "messageReview.unavailable": "Anteprima non disponibile. La richiesta potrebbe essere terminata o il vault bloccato."
+  "messageReview.unavailable": "Anteprima non disponibile. La richiesta potrebbe essere terminata o il vault bloccato.",
+  "messageReview.messageNumber": "Messaggio {number}",
+  "messageReview.noCachedProfile": "Nessun profilo in cache per questa chiave."
 }

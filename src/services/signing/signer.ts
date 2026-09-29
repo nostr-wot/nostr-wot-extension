@@ -10,7 +10,7 @@ import * as permissions from '../permissions/permissions.ts';
 import { isDomainAllowed, isIdentityDisabled } from '../background/domain-handlers.ts';
 import { getActiveAccountInfo, getActivePublicKey, isGetPubkeyCooldownActive, startGetPubkeyCooldown } from './identity.ts';
 import { queueRequest, resolveBatch, waitForVaultUnlock, runNip46Request } from './approvalQueue.ts';
-import { activePqKeys, decryptNip44Content } from './localDecryption.ts';
+import { activePqKeys, decryptNip44Content, reviewDecryptedMessage } from './localDecryption.ts';
 import { signEvent as cryptoSignEvent } from '@lib/crypto/nip01.ts';
 import { hexToBytes, base64ToArray } from '@lib/crypto/utils.ts';
 import { nip04Encrypt, nip04Decrypt } from '@lib/crypto/nip04.ts';
@@ -309,8 +309,10 @@ async function handleCryptoRequest(
         plaintext = method.endsWith('Encrypt') ? payload : await withActiveKey(session.accountId, async privkey =>
           cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId));
       }
+      const message = plaintext !== undefined && method === 'nip44Decrypt'
+        ? await reviewDecryptedMessage(session.accountId,theirPubkey,plaintext) : {plaintext};
       assertAccountSession(session);
-      return {request:{method,origin,params:{...nip46Data,...(previewOptions ? {opts:{...previewOptions}} : {})}}, ...(plaintext !== undefined ? {plaintext} : {})};
+      return {request:{method,origin,params:{...nip46Data,...(previewOptions ? {opts:{...previewOptions}} : {})}}, ...(plaintext !== undefined ? message : {})};
     });
     if (!approved.allow) throw new Error(denyMessage);
   }

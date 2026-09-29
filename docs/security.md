@@ -618,3 +618,5 @@ A request already transmitted cannot be recalled; signed-event caches remain
 keyed by the event's public key. Key exports reject stale results after encoding.
 
 Pending-message reveal is an internal extension review capability bound to an existing request ID and its account session. It neither approves nor replies to the website request. The full message is retained only by the worker callback and the active review UI, never serialized into pending-request storage. Preview RPCs are part of the privileged handler registry, with pre/post account checks and post-await request-lifetime checks.
+
+NIP-17 pending previews unwrap only on explicit Reveal. They verify the signed kind-13 seal before using its sender key, reject a rumor whose author differs, and retain the captured account-session and pending-request guards. Sender profiles stay cache-only. The page receives the original requested decryption result only after normal approval.

@@ -129,7 +129,7 @@ export default function EventDetailModal({
               {requests.map((item, index) => (
                 <details key={item.id ?? index} data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
                   <summary className="cursor-pointer text-md text-heading">
-                    {index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}
+                    {isMessageRequest(item.type) ? t('messageReview.messageNumber', {number:index + 1}) : <>{index + 1}. {formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</>}
                     {item.event?.kind !== undefined && <span className="block text-sm text-menu-subtitle">{KIND_LABELS[item.event.kind] || `Kind ${item.event.kind}`} ({item.event.kind})</span>}
                   </summary>
                   <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item}/> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
