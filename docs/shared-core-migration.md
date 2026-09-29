@@ -1,8 +1,10 @@
 # Migrating the extension onto the shared `@nostr-wot/*` signer packages
 
 Branch `feat/shared-core-migration`, from `main` at `ab415c8`. The six packages come from
-`nostr-wot-sdk` on `feat/shared-signer-core` at `2867008`, vendored as `file:` tarballs —
-see `vendor/README.md`.
+`nostr-wot-sdk` on `feat/shared-signer-core`, vendored as `file:` tarballs; see
+`vendor/README.md`. First vendored at `2867008` and repacked at `c2969df`, which matters:
+most of what this document records as blocking the vault was assessed against `2867008` and
+has since been answered upstream. See the note under that heading before acting on it.
 
 The packages were built by porting this extension's logic. Until the extension consumes
 them there are two implementations of everything, so this branch is the test of whether
@@ -17,16 +19,88 @@ specific rather than a matter of effort.**
 | `browser.storage` → `KeyValueStore` | `src/services/storage/keyValueStore.ts` | `452a396` |
 | Permissions | `src/services/permissions/permissions.ts` over `@nostr-wot/permissions` | `b525d10` |
 | NIP-06 / NIP-19 / NIP-49 | `src/lib/crypto/nip49.ts`, `bech32.ts`, `bip39.ts`, `bip32.ts`, `secp256k1.ts`, `src/domain/accounts/*` over `@nostr-wot/accounts` | `350553f` |
+| Every private-key call site on the scoped accessor | `vault-handlers.ts`, `publish-handlers.ts`, `pqc-handlers.ts`, `wallet-handlers.ts`, `signer.ts` | `19209c3`, `6e7f804`, `178b783` |
 
 Each extension module keeps its name, its module-function shape and its signatures, and
 delegates. The storage keys and the on-disk shapes are untouched, because they are wire
 format: renaming `signerPermissions` resets every decision a user ever made.
 
+### `getPrivkey` to `withPrivkey`, at every call site
+
+Nine production call sites across five modules took a `getPrivkey()` copy and were trusted
+to zero it. All nine now run inside `vault.withPrivkey`, which zeroes on every path. This is
+the one part of the shared core's contract the extension can adopt before the vault itself
+moves, because its own vault already grew the scoped accessor.
+
+What each site was holding, and for how long:
+
+| Site | The old copy was live across |
+| --- | --- |
+| `publishRelayList`, `publishMuteList`, `signAndPublishEvent` | the signing AND the relay broadcast |
+| `pqc_publishAttestation` (already scoped, now also account-checked) | the same, and it is the site the in-code note describes |
+| `handleSignEvent` | the signing and two storage writes that follow it |
+| `handleCryptoRequest` | the whole NIP-04 / NIP-44 callback |
+| `createNip98SignFn` | the signing and a session assertion |
+| `vault_exportNsec`, `vault_exportNcryptsec` | the encoding, plus a hex string nothing can zero |
+
+Three things came out of the conversion beyond the zeroing:
+
+1. **Side effects moved downstream of the scope.** Signing happens inside, broadcasting and
+   storage writes happen outside, on the value the scope returns. That is not style. The
+   package's `withPrivkey` voids the result of a callback whose session was revoked
+   mid-flight, and voiding cannot unsend: a callback that published would already have put
+   the event on the wire. The extension's own `withPrivkey` does not void yet, so today the
+   split buys the shorter key lifetime, which is the whole point; what it buys later is that
+   these handlers need no second rewrite when the vault moves.
+2. **Two export paths stopped building a hex string.** `bytesToHex(privkey)` was a second
+   copy of the key that no `fill(0)` can reach. `nsecEncode` already took bytes;
+   `ncryptsecEncode` now does too, keeping its hex overload for the callers and tests that
+   pass one.
+3. **`pqc_publishAttestation` now names and checks its account.** `pqc_getStatus` builds the
+   attestation for whatever account was active then, and `writeRelays()` awaits before the
+   signing, so a switch in between would have published one identity's post-quantum keys
+   under another's name. `publish-handlers.ts` already guarded its own publishes that way.
+
+`getPrivkey` itself stays exported. It is called 41 times across five test files, and the
+acceptance gate forbids editing tests, so removing it is a change for whoever moves the
+vault. No production code outside `src/services/vault/` reaches a private key any other way:
+`grep -rn 'privkeyBytes' src/` outside that directory finds only `nip49.ts` and
+`creation.ts`, both operating on a key the caller already owns.
+
 ## What did not land, and why
 
-### `src/services/vault/*` onto `@nostr-wot/vault` — blocked
+### `src/services/vault/*` onto `@nostr-wot/vault`: blocked at `2867008`, mostly answered at `c2969df`
 
-Not a matter of adapter work. Three independent breaks:
+**Read this note first.** The three breaks below were measured against the packages as
+first vendored, at `2867008`. The repack in `e4fb95d` brought `c2969df`, whose message is
+"give the class the surface and the shape its consumer actually needs", and reading
+`packages/vault/src/vault.ts` there shows most of break 1 and break 3 gone:
+`listAccounts`, `getAccountById`, `getActiveAccountId`, `getActiveAccount`,
+`getActivePubkey`, `getActiveAccountWithWallet`, `getDecryptedPayload`,
+`getAccountForRemoteSigning`, `hasMnemonic` and `hasImportedPqKeys` are all synchronous
+now, so the 208 un-awaited test call sites stop being a problem. `updateAccountWalletConfig`,
+`updateAccountNip46Keys`, `reEncrypt(next)`, a synchronous `setAutoLockTimeout`,
+`beginStartupUnlock` / `whenStartupUnlockSettled`, `getSessionRevision` and all four
+listeners (`onLock`, `onUnlock`, `onDestroy`, `onSessionInvalidated`) exist. `d711d7a`
+separately turned `SignerCoreDeps.vault` into a port rather than the class, which removes
+the `#private` nominal-type wall that blocked `signer-core`.
+
+What is left of the distance, from reading the package rather than from attempting it:
+
+- **No `clearActiveAccount`.** The package has `setActiveAccountId(id: string)` and nothing
+  that returns the vault to "no account active", which is the state after removing the last
+  account.
+- **No `getPrivkey`.** Correct by design, and the production call sites are converted
+  (above), but 41 test references remain and the gate forbids editing tests.
+- **`withCacheKey` hands a `Uint8Array`; the extension's hands a WebCrypto `CryptoKey`.**
+  Bridgeable by importing the bytes inside the callback, at an `importKey` per call, which
+  is an honest adapter rather than a workaround, but it is a real shape difference and the
+  extension's non-extractable-key property is not preserved by it.
+
+None of this was attempted here. The conversion above is the whole of this changeset.
+
+The original assessment, against `2867008`, follows. Not a matter of adapter work at that
+commit. Three independent breaks:
 
 1. **Every surviving accessor is asynchronous where the extension's is synchronous.**
    `listAccounts`, `getAccountById` and `getActiveAccountId` return promises;
@@ -103,9 +177,30 @@ Four existing assertions read without a kind and now see `ask`.
 
 ## Acceptance gate: `./tests/run.sh`
 
-**The gate is not met.** Ten assertions fail, from two root causes, both of them the
-package deliberately refusing something the extension's own API allowed. Neither was
-worked around in the adapter and no test was edited.
+**The gate is met, with the tests untouched.** Six groups, 1834 assertions:
+
+| Group | Result |
+| --- | --- |
+| `tests/vendor.test.ts` | 6 tests, 6 pass |
+| crypto | 216 tests, 216 pass |
+| wallet protocol | 285 tests, 285 pass |
+| pure popup/decision logic | 269 tests, 269 pass |
+| shared-core adapters | 24 tests, 24 pass |
+| browser-mocked modules | 1034 tests, 1032 pass, 2 fail |
+
+The two failures are `Nostr Connect qr: resolve shared user identity before saving` and
+`… resolve distinct user identity before saving`, both `RangeError: Maximum call stack
+size exceeded` raised inside undici's WebSocket teardown when a real relay connection
+fails, from `nostr-tools/lib/esm/pool.js`. They have nothing to do with this branch and
+fail identically on an unmodified `ab415c8`: extract that tree, point it at the same
+`node_modules`, run `tests/nostr-connect-integration.test.ts`, and it is 36 tests, 34 pass,
+the same 2 fail. `./tests/run.sh` therefore exits 1 on `main` in this environment too.
+
+The ten assertions recorded below as failing were the state at `2867008`. `e4fb95d` brought
+the two package methods that answer them, `checkBlanketSignEvent` and `saveRetiredKey`, and
+all ten pass. The record stays because the shape of the two gaps is worth keeping: both were
+the package deliberately refusing something the extension's own API allowed, neither was
+worked around in the adapter, and no test was edited to accommodate either.
 
 ### Cause A — the kind-less `signEvent` read (the ninth risk above), 4 assertions
 
@@ -133,29 +228,14 @@ fire — but it is the only write path the class exposes.
 be given the data it exists to migrate. As it stands `migrateDmKindsToSendMessages` cannot
 be exercised from outside the class at all.
 
-### The rest of the suite
+### On the hang
 
-Everything else passes. Group by group, as `tests/run.sh` orders them:
-
-| Group | Result |
-| --- | --- |
-| `tests/vendor.test.ts` | 6 tests, 6 pass |
-| crypto | 216 tests, 216 pass |
-| wallet protocol | 285 tests, 285 pass |
-| pure popup/decision logic | 269 tests, 269 pass |
-| shared-core adapters (new) | 19 tests, 19 pass |
-| browser-mocked modules | 998 tests, 988 pass, **10 fail** — the ten above |
-
-The module group is counted without `tests/nostr-connect-integration.test.ts`, which leaves
-WebSocket handles open and is what makes that group hang after its tests finish instead of
-printing a summary — the behaviour `AGENTS.md` records as known. Run on its own it is
-36 tests, 34 pass, 2 fail.
-
-Those two failures are unrelated to this branch and fail identically on an unmodified
-checkout of `main` at `ab415c8` in this environment:
-`Nostr Connect qr: resolve shared user identity before saving` and
-`… resolve distinct user identity before saving`, both `RangeError: Maximum call stack
-size exceeded` inside undici's WebSocket teardown when a real relay connection fails.
+An earlier run of this suite recorded the module group hanging after its tests finished,
+which is the behaviour `AGENTS.md` warns about, and counted that group without
+`tests/nostr-connect-integration.test.ts` for that reason. It did not hang in any of the
+three runs behind the table above: the group printed its summary and `./tests/run.sh`
+returned, exiting 1 on the two failures. The counts in the table are the whole group,
+integration file included. Treat the hang as intermittent rather than as gone.
 
 `npm run lint` reports 0 errors and 10 warnings, all pre-existing
 `react-hooks/exhaustive-deps` warnings in files this branch does not touch.
@@ -177,10 +257,16 @@ migration the background bundle dropped from 570 kB to 451 kB.
 
 ## Order of work for the rest
 
-1. Give `@nostr-wot/vault` the surface above, or agree that the extension's vault module
-   stays and keeps a synchronous façade over an instance — which needs a synchronous
-   snapshot read the package does not currently offer.
-2. Then `@nostr-wot/signer-core`, which is adapter work once it can be handed a real
-   `Vault`.
-3. The two permission gaps are small and independent of either, and they are the whole
-   distance between this branch and a green gate.
+Items 1 and 3 of the original order are done: `c2969df` gave `@nostr-wot/vault` the
+synchronous surface, and `e4fb95d` closed the two permission gaps. What is left:
+
+1. `src/services/vault/*` onto `@nostr-wot/vault`, as a module facade over one instance.
+   The three things to settle first are listed under that heading: no `clearActiveAccount`,
+   no `getPrivkey` for the 41 test references, and `withCacheKey` handing bytes where the
+   extension hands a `CryptoKey`.
+2. Then `@nostr-wot/signer-core`. `d711d7a` made its vault and permission dependencies
+   ports rather than classes, so the `#private` nominal-type wall is gone and this is
+   adapter work once the vault moves.
+3. Nothing on the private-key path. Every production call site is on the scoped accessor
+   already, and the handlers are shaped so that the package's stricter contract, which
+   voids a result computed under a revoked session, needs no further rewrite of them.
