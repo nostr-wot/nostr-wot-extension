@@ -4,10 +4,9 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { npubDecode } from '@lib/crypto/bech32.ts';
 import Button, { ButtonSecondary } from '@components/Button';
-import Avatar from '@components/Avatar';
-import { getInitial as getInitialChar } from '@utils/format/text.ts';
+import ProfileSummary from '@components/ProfileSummary';
+import usePublicProfile from '@hooks/usePublicProfile';
 import { truncateNpub } from '@domain/nostr/display.ts';
-import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import Heading from '@components/Heading';
 import Container from '@components/Container';
 import Text from '@components/Text';
@@ -46,29 +45,16 @@ function selectAccounts(): string[] {
   return [...firstHalf, ...secondHalf];
 }
 
-/* ------------------------------------------------------------------ */
-/*  Profile metadata types                                             */
-/* ------------------------------------------------------------------ */
-
-/** A cached profile: the published metadata plus when this device fetched it. */
-type ProfileMeta = ProfileMetadata & { _ts?: number };
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
+function SuggestedProfile({ pubkey }: { pubkey: string }) {
+  const { profile } = usePublicProfile(pubkey);
+  return <ProfileSummary compact meta={profile} fallback={truncateNpub(pubkey)} />;
+}
 
 interface FollowSuggestionsStepProps {
   onNext: () => void;
 }
 
 export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepProps) {
-  // Relay-backed profile loading and the "are you already following anyone?"
-  // auto-skip are intentionally disabled here for now. In Safari the extension
-  // popup cannot reach the Nostr relays, and the pending WebSocket/verify work
-  // was locking up this step (cards visible, but buttons unresponsive). The
-  // suggestions render statically from the curated list; names/avatars fall
-  // back to the shortened key + initial. Re-enable once relay access in Safari
-  // is fixed — as a background load that never gates the UI.
   const npubs = useMemo(() => selectAccounts(), []);
   const hexKeys = useMemo(
     () => npubs.reduce<Array<{ npub: string; hex: string }>>((acc, npub) => {
@@ -84,7 +70,6 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(hexList));
   const [publishing, setPublishing] = useState(false);
-  const profiles: Record<string, ProfileMeta> = {};
 
   const toggle = (hex: string) => {
     setSelected((prev) => {
@@ -111,20 +96,6 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
     onNext();
   };
 
-  const getName = (hex: string) => {
-    const p = profiles[hex];
-    return p?.display_name || p?.name || truncateNpub(hex);
-  };
-
-  const getSubtitle = (hex: string) => {
-    const p = profiles[hex];
-    return p?.nip05 || truncateNpub(hex);
-  };
-
-  const getAvatar = (hex: string) => profiles[hex]?.picture || null;
-
-  const getInitial = (hex: string) => getInitialChar(getName(hex));
-
   return (
     <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.followTitle')}</Heading>
@@ -133,7 +104,6 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
       <Container gap={3} className="max-h-[340px] overflow-y-auto pr-1">
         {hexKeys.map(({ hex }) => {
           const isSelected = selected.has(hex);
-          const avatar = getAvatar(hex);
           return (
             <button
               key={hex}
@@ -147,16 +117,7 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
               className={`w-full font-[inherit] text-left flex items-center gap-5 py-5 px-6 border rounded-panel cursor-pointer transition-all select-none hover:bg-card-active ${isSelected ? 'border-brand bg-brand-tint-hover' : 'border-card-border bg-card'}`}
               onClick={() => toggle(hex)}
             >
-              <Avatar
-                src={avatar}
-                fallback={getInitial(hex)}
-                imgClassName="w-9 h-9 rounded-full object-cover shrink-0"
-                fallbackClassName="w-9 h-9 rounded-full bg-brand-light text-brand flex items-center justify-center text-lg font-bold shrink-0"
-              />
-              <Container gap={1} className="overflow-hidden flex-1 min-w-0">
-                <span className="text-md font-semibold text-heading overflow-hidden text-ellipsis whitespace-nowrap">{getName(hex)}</span>
-                <span className="text-xs text-muted overflow-hidden text-ellipsis whitespace-nowrap">{getSubtitle(hex)}</span>
-              </Container>
+              <div className="flex-1 min-w-0"><SuggestedProfile pubkey={hex} /></div>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all text-on-brand ${isSelected ? 'border-brand bg-brand' : 'border-card-border'}`}>
                 {isSelected && (
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">

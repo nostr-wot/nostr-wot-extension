@@ -1,7 +1,7 @@
 import { t } from '@services/i18n/i18n.ts';
 import Button from '@components/Button';
-import Card from '@components/Card';
-import FieldDisplay from '@components/FieldDisplay';
+import CopyButton from '@components/CopyButton';
+import { truncateMiddle } from '@utils/format/text';
 import Heading from '@components/Heading';
 import Container from '@components/Container';
 import Text from '@components/Text';
@@ -15,31 +15,26 @@ interface DoneAccount {
 interface DoneStepProps {
   account: DoneAccount | null;
   onDone: () => void;
+  derived?: boolean;
 }
 
-export default function DoneStep({ account, onDone }: DoneStepProps) {
+export default function DoneStep({ account, onDone, derived = false }: DoneStepProps) {
   return (
-    <Container className="flex-1">
+    <Container className="flex-1 justify-end">
       <Heading className="mb-3">{t('wizard.yourAllSet')}</Heading>
       <Text variant="secondary" className="mb-8">
         {t('wizard.identityReady')}
       </Text>
 
-      {account && (
-        <Card variant="flat">
-          {account.name && <FieldDisplay divided label={t('wizard.nameLabel')} value={account.name} />}
-          <FieldDisplay divided label={t('wizard.typeLabel')} value={t(`wizard.type.${account.type}`)} />
-          <FieldDisplay
-            divided
-            label={t('wizard.publicKeyLabel')}
-            value={`${account.pubkey?.slice(0, 12)}...${account.pubkey?.slice(-12)}`}
-          />
-        </Card>
-      )}
+      {account && <Text className="text-brand mb-6">
+        {t(derived ? 'wizard.doneDerivedSummary' : 'wizard.doneAccountSummary', { name: account.name || t(`wizard.type.${account.type}`) })}{' '}
+        {account.pubkey && <span className="inline-flex items-center gap-3 text-xs font-mono">
+          <span title={account.pubkey}>{truncateMiddle(account.pubkey, 12, 12)}</span>
+          <CopyButton iconOnly value={account.pubkey} label={`${t('common.copy')} ${t('wizard.publicKeyLabel')}`} />
+        </span>}
+      </Text>}
+      <Button className="w-full" onClick={onDone}>{t('wizard.getStarted')}</Button>
 
-      <Container variant="row" gap={4} stickyFooter>
-        <Button className="flex-1" onClick={onDone}>{t('wizard.getStarted')}</Button>
-      </Container>
     </Container>
   );
 }

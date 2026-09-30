@@ -20,6 +20,7 @@ import DoneStep from './DoneStep';
 
 interface WizardFlow {
   step: string;
+  context?: { method: string | null };
   account: unknown;
   mnemonic: string | null;
   upgradeId: string | null;
@@ -102,7 +103,7 @@ function buildSteps(
     },
     done: {
       title: t('wizard.allSet'),
-      content: <DoneStep account={flow.account as any} onDone={onDone} />,
+      content: <DoneStep account={flow.account as any} derived={hasGeneratedAccount && flow.context?.method === 'create' && !flow.mnemonic} onDone={onDone} />,
     },
   };
 }

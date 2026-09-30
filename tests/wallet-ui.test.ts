@@ -303,6 +303,10 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     });
     const advancedDetails=dom.window.document.querySelector('details')!;
     assert.equal(advancedDetails.open,false);
+    assert.ok(advancedDetails.querySelector('summary')!.classList.contains('text-brand'));
+    assert.equal(advancedDetails.parentElement!.lastElementChild,advancedDetails);
+    assert.doesNotMatch(dom.window.document.body.textContent || '',/My seed|wizard.sourceSeed/);
+    assert.equal(dom.window.document.querySelectorAll('button[aria-label^="common.copy"]').length,2);
     assert.equal(advancedDetails.querySelector('summary')!.textContent,'common.advanced');
     assert.doesNotMatch(dom.window.document.body.textContent || '',/wizard.subAccountType|wizard.typeLabel/);
     await act(async()=>advancedDetails.querySelector('summary')!.click());
@@ -324,7 +328,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     assert.equal(paths.at(-1),"m/44'/60'/0'/0/0");
     assert.equal(dom.window.document.querySelector('details')!.open,true,'preview does not close Advanced');
     assert.match(dom.window.document.body.textContent || '',/npub1/);
-    assert.match(dom.window.document.body.textContent || '',new RegExp(child.pubkey));
+    assert.ok(dom.window.document.querySelector(`[title="${child.pubkey}"]`));
     assert.equal(dom.window.document.querySelector<HTMLInputElement>('#subaccount-name')!.value,'My work identity');
     assert.equal(findButton('common.continue').disabled,false);
     assert.equal(saved,0,'automatic previews never save an account');

@@ -5,6 +5,14 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Simplify account completion with a bottom-aligned summary and copyable public key.
+
+- Load suggested follow profiles through the shared directory cache without blocking onboarding. Simplify sub-account previews with compact copyable keys and an accent-colored Advanced control.
+
+- Add breathing room between the Nostr Connect tabs and both the QR code and Bunker URL content.
+
+- Show enabled Default backend auth on the Backend authentication screen, with its scope and a link to the automatic-authentication rules and backend registry.
+
 - Migrate old shared permission rules into Global rules once, remove the legacy storage layers, and preserve conflicting site choices as visible overrides. Resetting overrides leaves only global inheritance on the same screen. New accounts inherit globals and can copy site overrides.
 
 - Open Site rules directly for the current browser tab and remove the saved-site list. Prompt users to visit a website when no web tab is available. Confirm resets and keep the current site editor open afterward. Use backend- and relay-specific permission labels.

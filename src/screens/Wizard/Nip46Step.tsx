@@ -145,6 +145,7 @@ export default function Nip46Step({ onNext }: Nip46StepProps) {
       <Text variant="secondary" className="mb-8">{t('wizard.nip46Desc')}</Text>
 
       <Tabs
+        className="mb-6"
         variant="segmented"
         label={t('wizard.nip46Title')}
         value={tab}

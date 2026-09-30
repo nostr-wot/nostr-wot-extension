@@ -69,3 +69,6 @@ export const COMMON_PERM_KEYS = [
   'readMessages',
   'sendMessages',
 ];
+
+/** Policy explanation and source-evidenced client/backend registry. */
+export const DEFAULT_BACKEND_AUTH_RULES_URL = 'https://github.com/nostr-wot/nostr-wot-extension/blob/main/docs/auth-client-registry.md';

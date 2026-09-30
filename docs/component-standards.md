@@ -771,3 +771,9 @@ Approval action menus size to content within 176–260 px (clamped to the viewpo
 Backend and relay authentication screens use separate account-scope and empty-state labels; neither describes the other protocol’s grants.
 
 Global rules includes migrated legacy shared defaults. Gray rows in Site rules inherit from that same visible bucket; migrated conflicts appear as colored site overrides. Confirmed site resets refresh the editor in place and remove the override rows. New-account setup offers Use global rules or copying site overrides, without a hidden default layer.
+
+Backend authentication reuses `DefaultBackendAuth` in status mode above saved grants. When enabled for the current account, it shows a shared `StatusNotice` with the automatic policy scope and a link to the rules/registry. The status and the Permissions toggle share the same RPC read and storage subscription; account changes remount the status to avoid showing the previous account’s setting. Load failures show a retry action, not a false disabled state.
+
+Sub-account creation uses stacked `FieldDisplay` values with `CopyButton` and middle truncation. `DetailDisclosure` supports an `action` variant for an accent-colored, marker-free trigger with space before its content. Follow suggestions reuse `usePublicProfile` and compact `ProfileSummary`; directory lookup never blocks selection or skipping.
+
+The wizard completion screen aligns its heading, summary and action to the bottom. It uses a compact copyable public key rather than a metadata table; seed-derivation wording is selected only for the sub-account creation flow. Nostr Connect leaves shared spacing below the tabs in both QR and Bunker URL modes.

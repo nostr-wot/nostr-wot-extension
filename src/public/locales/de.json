@@ -1141,5 +1141,10 @@
   "auth.backendAccountOnly": "Backend-Authentifizierungsrechte gelten nur für dieses Konto.",
   "auth.backendNoGrants": "Keine gespeicherten Backend-Authentifizierungsrechte für dieses Konto.",
   "auth.relayAccountOnly": "Relay-Authentifizierungsrechte gelten nur für dieses Konto.",
-  "auth.relayNoGrants": "Keine gespeicherten Relay-Authentifizierungsrechte für dieses Konto."
+  "auth.relayNoGrants": "Keine gespeicherten Relay-Authentifizierungsrechte für dieses Konto.",
+  "auth.defaultBackendEnabled": "Standard-Backend-Authentifizierung ist aktiviert",
+  "auth.defaultBackendActiveHint": "Verbundene Websites können sich automatisch bei HTTPS-Backends derselben Origin oder registrierten Website-Backend-Paaren authentifizieren. Gespeicherte Ablehnungen gelten weiterhin. Diese Regel erstellt keine einzelnen Einträge in der Liste unten.",
+  "auth.defaultBackendRulesLink": "Regeln zur automatischen Authentifizierung und Backend-Verzeichnis ansehen",
+  "wizard.doneDerivedSummary": "Dein neues Konto heißt „{name}“ und wurde aus deiner Haupt-Seed-Phrase abgeleitet. Sein öffentlicher Schlüssel ist",
+  "wizard.doneAccountSummary": "Dein Konto heißt „{name}“. Sein öffentlicher Schlüssel ist"
 }

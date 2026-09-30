@@ -1141,5 +1141,10 @@
   "auth.backendAccountOnly": "Backend authentication permissions apply only to this account.",
   "auth.backendNoGrants": "No saved backend authentication permissions for this account.",
   "auth.relayAccountOnly": "Relay authentication permissions apply only to this account.",
-  "auth.relayNoGrants": "No saved relay authentication permissions for this account."
+  "auth.relayNoGrants": "No saved relay authentication permissions for this account.",
+  "auth.defaultBackendEnabled": "Default backend auth is enabled",
+  "auth.defaultBackendActiveHint": "Connected sites can authenticate automatically to same-origin HTTPS backends or registered backend pairs. Saved denials still apply. This policy does not create individual entries below.",
+  "auth.defaultBackendRulesLink": "View automatic authentication rules and backend registry",
+  "wizard.doneDerivedSummary": "Your new account is “{name}”, derived from your main seed phrase. Its public key is",
+  "wizard.doneAccountSummary": "Your account is “{name}”. Its public key is"
 }

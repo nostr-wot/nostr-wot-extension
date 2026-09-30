@@ -603,3 +603,93 @@ it('Site rules has a current-tab-only empty state and never lists saved sites',a
   }
  } finally {await act(async()=>root.unmount());dom.window.close();}
 });
+it('backend authentication shows the active policy and registry without inventing saved grants',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Screen}=await import('../src/screens/Settings/BackendAuthentication');
+ const {default:browser}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
+ const {DEFAULT_BACKEND_AUTH_RULES_URL}=await import('../src/constants/permissions');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ await browser.storage.local.set({defaultBackendAuthAccounts:{a:true}});
+ const calls:string[]=[];
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  calls.push(message.method);
+  if(message.method==='signer_getDefaultBackendAuth')return {result:(await browser.storage.local.get('defaultBackendAuthAccounts')).defaultBackendAuthAccounts[message.params.accountId]===true};
+  return {result:[]};
+ });
+ const root=createRoot(document.getElementById('root')!);const accounts=[{id:'a',pubkey:'a'.repeat(64)},{id:'b',pubkey:'b'.repeat(64)}];
+ const enabled=()=>document.body.textContent!.includes(label('auth.defaultBackendEnabled'));
+ try{
+  await act(async()=>root.render(createElement(Screen,{accounts,activeId:'a',onBack(){}})));
+  assert.ok(enabled());assert.ok(document.body.textContent!.includes(label('auth.defaultBackendActiveHint')));
+  const link=document.querySelector<HTMLAnchorElement>('a')!;
+  assert.equal(link.href,DEFAULT_BACKEND_AUTH_RULES_URL);assert.equal(link.target,'_blank');assert.ok(link.rel.includes('noopener'));
+  assert.equal(document.querySelectorAll('tbody tr').length,0);assert.equal(document.querySelector('input[type="checkbox"]'),null);
+  await act(async()=>{await browser.storage.local.set({defaultBackendAuthAccounts:{}});});assert.equal(enabled(),false);
+  await act(async()=>{await browser.storage.local.set({defaultBackendAuthAccounts:{a:true}});});assert.ok(enabled());
+  await act(async()=>root.render(createElement(Screen,{accounts,activeId:'b',onBack(){}})));assert.equal(enabled(),false);
+  assert.ok(!calls.includes('signer_setDefaultBackendAuth'));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('backend policy status offers retry after a failed read without claiming it is enabled',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Policy}=await import('../src/screens/Settings/DefaultBackendAuth');
+ const {default:browser}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ let fail=true;t.mock.method(browser.runtime,'sendMessage',async()=>fail?{error:'Policy unavailable'}:{result:true});
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Policy,{accountId:'a',variant:'status'})));
+  assert.ok(!document.body.textContent!.includes(label('auth.defaultBackendEnabled')));
+  const retry=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===label('common.retry'))!;assert.ok(retry);
+  fail=false;await act(async()=>retry.click());assert.ok(document.body.textContent!.includes(label('auth.defaultBackendEnabled')));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('Nostr Connect keeps tab spacing when switching between QR and bunker content',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Step}=await import('../src/screens/Wizard/Nip46Step');const {default:browser}=await import('./helpers/browser-mock');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ t.mock.method(browser.runtime,'sendMessage',async()=>({error:'Offline'}));
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Step,{onNext(){}})));
+  const tabs=document.querySelector('[role="tablist"]')!;assert.ok(tabs.classList.contains('mb-6'));
+  await act(async()=>(tabs.querySelectorAll('button')[1] as HTMLButtonElement).click());
+  assert.ok(document.querySelector('input'));assert.ok(tabs.classList.contains('mb-6'));
+  await act(async()=>(tabs.querySelectorAll('button')[0] as HTMLButtonElement).click());assert.equal(document.querySelector('input'),null);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('follow suggestions reuse cached profiles and resolve missing profiles without blocking selection',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Step}=await import('../src/screens/Wizard/FollowSuggestionsStep');
+ const {default:browser,resetMockStorage}=await import('./helpers/browser-mock');
+ const {TIER_1,TIER_2}=await import('../src/constants/followSuggestions');const {npubDecode}=await import('../src/lib/crypto/bech32');
+ const {t:label}=await import('../src/services/i18n/i18n');resetMockStorage();
+ const keys=[...new Set([...TIER_1,...TIER_2])].flatMap(npub=>{try{return [npubDecode(npub)];}catch{return [];}});
+ await browser.storage.local.set(Object.fromEntries(keys.map(key=>[`profile_${key}`,{fetchedAt:Date.now(),metadata:{name:'Cached person',picture:'https://profiles.test/avatar.png'}}])));
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const lookups:string[]=[];const pending:Array<()=>void>=[];let skipped=0;
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  assert.equal(message.method,'getProfileMetadata');assert.equal(message.params.directory,true);lookups.push(message.params.pubkey);
+  return new Promise(resolve=>pending.push(()=>resolve({result:{name:'Directory person',picture:'https://profiles.test/new.png'}})));
+ });
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Step,{onNext(){skipped++;}})));
+  assert.equal(lookups.length,0);assert.ok(document.body.textContent!.includes('Cached person'));assert.ok(document.querySelector('img[src="https://profiles.test/avatar.png"]'));
+  await act(async()=>{await browser.storage.local.remove(keys.map(key=>`profile_${key}`));});
+  assert.ok(lookups.length>0);
+  const row=document.querySelector<HTMLButtonElement>('[aria-pressed="true"]')!;await act(async()=>row.click());assert.equal(row.getAttribute('aria-pressed'),'false');
+  const skip=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===label('wizard.skipForNow'))!;
+  assert.equal(skip.disabled,false);await act(async()=>skip.click());assert.equal(skipped,1);
+  await act(async()=>pending.forEach(resolve=>resolve()));assert.ok(document.body.textContent!.includes('Directory person'));assert.ok(document.querySelector('img[src="https://profiles.test/new.png"]'));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('account completion shows a compact summary and distinguishes seed-derived accounts',async()=>{
+ const {default:Done}=await import('../src/screens/Wizard/DoneStep');const {t:label}=await import('../src/services/i18n/i18n');
+ const account={name:'Account 2',type:'generated',pubkey:'ab'.repeat(32)};
+ const derived=renderToStaticMarkup(createElement(Done,{account,derived:true,onDone(){}}));
+ assert.ok(derived.includes('justify-end'));assert.ok(derived.includes(label('wizard.doneDerivedSummary',{name:account.name})));
+ assert.ok(derived.includes(`title="${account.pubkey}"`));assert.ok(!derived.includes(label('wizard.typeLabel')));
+ const remote=renderToStaticMarkup(createElement(Done,{account:{...account,type:'nip46'},onDone(){}}));
+ assert.ok(remote.includes(label('wizard.doneAccountSummary',{name:account.name})));assert.ok(!remote.includes(label('wizard.doneDerivedSummary',{name:account.name})));
+});

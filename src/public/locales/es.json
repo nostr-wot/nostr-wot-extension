@@ -1141,5 +1141,10 @@
   "auth.backendAccountOnly": "Los permisos de autenticación de backend solo se aplican a esta cuenta.",
   "auth.backendNoGrants": "No hay permisos de autenticación de backend guardados para esta cuenta.",
   "auth.relayAccountOnly": "Los permisos de autenticación de relay solo se aplican a esta cuenta.",
-  "auth.relayNoGrants": "No hay permisos de autenticación de relay guardados para esta cuenta."
+  "auth.relayNoGrants": "No hay permisos de autenticación de relay guardados para esta cuenta.",
+  "auth.defaultBackendEnabled": "La autenticación predeterminada de backend está activada",
+  "auth.defaultBackendActiveHint": "Los sitios conectados pueden autenticarse automáticamente en backends HTTPS del mismo origen o en pares de sitio y backend registrados. Las denegaciones guardadas siguen vigentes. Esta política no crea entradas individuales en la lista inferior.",
+  "auth.defaultBackendRulesLink": "Ver reglas de autenticación automática y registro de backends",
+  "wizard.doneDerivedSummary": "Tu nueva cuenta es «{name}», derivada de tu frase semilla principal. Su clave pública es",
+  "wizard.doneAccountSummary": "Tu cuenta es «{name}». Su clave pública es"
 }

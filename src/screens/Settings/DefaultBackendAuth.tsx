@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Container from '@components/Container';
+import StatusNotice from '@components/StatusNotice';
+import { DEFAULT_BACKEND_AUTH_RULES_URL } from '@constants/permissions';
 import Text from '@components/Text';
 import Toggle from '@components/Toggle';
 import Modal from '@components/Modal';
@@ -14,7 +16,7 @@ import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 
-export default function DefaultBackendAuth({ accountId }: { accountId: string }) {
+export default function DefaultBackendAuth({ accountId, variant = 'toggle' }: { accountId: string; variant?: 'toggle' | 'status' }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -38,6 +40,15 @@ export default function DefaultBackendAuth({ accountId }: { accountId: string })
       setBusy(false);
     }
   };
+  const rulesLink = <a className="inline-flex items-center gap-2.5 text-xs text-brand cursor-pointer hover:text-brand-hover"
+    href={DEFAULT_BACKEND_AUTH_RULES_URL} target="_blank" rel="noreferrer noopener">{t('auth.defaultBackendRulesLink')}</a>;
+  if (variant === 'status') {
+    if (error) return <Container gap={3}><FormError>{error}</FormError><Button small disabled={loading} onClick={() => void refresh()}>{t('common.retry')}</Button></Container>;
+    if (loading || !data.enabled) return null;
+    return <StatusNotice tone="ok" variant="callout" icon={<IconShield size={18} />} label={t('auth.defaultBackendEnabled')}>
+      <Container gap={3}><Text variant="secondary">{t('auth.defaultBackendActiveHint')}</Text>{rulesLink}</Container>
+    </StatusNotice>;
+  }
   return <div>
     <Container variant="row" gap={3} className="justify-between py-5.5 px-7">
       <Container variant="row" gap={4} className="min-w-0 flex-1">
@@ -57,6 +68,7 @@ export default function DefaultBackendAuth({ accountId }: { accountId: string })
     {infoOpen && createPortal(<Modal title={t('auth.defaultBackend')} onClose={() => setInfoOpen(false)}>
       <Text>{t('auth.defaultBackendExplanation')}</Text>
       <Text>{t('auth.defaultBackendLimits')}</Text>
+      {rulesLink}
     </Modal>, document.body)}
   </div>;
 }

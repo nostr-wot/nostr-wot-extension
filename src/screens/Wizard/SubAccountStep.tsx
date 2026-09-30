@@ -14,6 +14,8 @@ import FormError from '@components/FormError';
 import Heading from '@components/Heading';
 import { SectionLabel } from '@components/SectionLabel';
 import FieldDisplay from '@components/FieldDisplay';
+import CopyButton from '@components/CopyButton';
+import { truncateMiddle } from '@utils/format/text';
 import Container from '@components/Container';
 import Text from '@components/Text';
 
@@ -22,7 +24,7 @@ interface SubAccountStepProps {
 }
 
 export default function SubAccountStep({ onNext }: SubAccountStepProps) {
-  const { account, path, setPath, seedName, loading, error: previewError, needsUnlock, retry } = useSubAccountPreview();
+  const { account, path, setPath, loading, error: previewError, needsUnlock, retry } = useSubAccountPreview();
   const [name, setName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -118,8 +120,12 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
             placeholder={t('wizard.accountNamePlaceholder')} disabled={saving}
             onChange={(event: ChangeEvent<HTMLInputElement>) => setName(event.target.value)} />
         </Container>
-        {seedName && <FieldDisplay className="py-0" label={t('wizard.sourceSeed')} value={seedName} />}
-        <DetailDisclosure label={t('common.advanced')}>
+        {loading && <Text variant="hint" role="status">{t('wizard.updatingPreview')}</Text>}
+        {account?.pubkey && [['npub', npubEncode(account.pubkey)], ['hex', account.pubkey]].map(([label, value]) => (
+          <FieldDisplay key={label} label={label} className="flex-col items-start gap-2 py-0" valueClassName="text-left text-brand text-xs font-mono"
+            value={<span className="inline-flex items-center gap-3"><span title={value}>{truncateMiddle(value, 16, 12)}</span><CopyButton iconOnly value={value} label={`${t('common.copy')} ${label}`} /></span>} />
+        ))}
+        <DetailDisclosure variant="action" className="mt-4" label={t('common.advanced')}>
           <SectionLabel htmlFor="subaccount-path" inline>{t('wizard.derivationPath')}</SectionLabel>
           <Input id="subaccount-path" value={path} disabled={saving}
             aria-describedby="subaccount-path-hint"
@@ -135,11 +141,6 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
               : t('wizard.unknownPathHint'))}
           </Text>
         </DetailDisclosure>
-        {loading && <Text variant="hint" role="status">{t('wizard.updatingPreview')}</Text>}
-        {account?.pubkey && <>
-          <FieldDisplay mono label="npub" value={npubEncode(account.pubkey)} />
-          <FieldDisplay mono label="hex" value={account.pubkey} />
-        </>}
       </Container>
 
       <FormError>{error || previewError}</FormError>
