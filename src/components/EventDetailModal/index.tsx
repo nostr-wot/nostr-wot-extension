@@ -1,4 +1,3 @@
-import CreateGroupPreview from '@components/EventPreview/kinds/CreateGroupPreview';
 import GroupedMessageRequests from './GroupedMessageRequests';
 import IconChevronDown from '@assets/IconChevronDown';
 import IntentText from './IntentText';
@@ -8,7 +7,6 @@ import IconWarning from '@assets/IconWarning';
 import { signingIntentParts, intentParts } from '@services/i18n/eventIntent.ts';
 import StatusNotice from '@components/StatusNotice';
 import MessageRequestDetail, { isMessageRequest } from './MessageRequestDetail';
-import RawEventButton from '@components/RawEventButton';
 import AuthenticationNotice from '@components/AuthenticationNotice';
 import AuthenticationActions from '@components/AuthenticationActions';
 import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
@@ -153,8 +151,7 @@ export default function EventDetailModal({
       {item.type === 'signEvent' ? (
         <div data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
           <div id={labelId} className={selectable ? 'pr-8' : ''}>{describeRequest(item)}</div>
-          {item.event?.kind === 9007 && <CreateGroupPreview event={item.event}/> }
-          <div className="pt-3"><RawEventButton event={item.event || {}} /></div>
+          <div className="pt-3"><EventPreview type="signEvent" event={item.event || {}} approval /></div>
           {cancel}
         </div>
       ) : (
@@ -188,7 +185,7 @@ export default function EventDetailModal({
         : requests.map((item, index) => renderRequest(item, index))}
     </div>;
   } else if (request?.type === 'signEvent') {
-    eventContent = <>{event?.kind === 9007 && <CreateGroupPreview event={event}/>}<RawEventButton event={event || {}} /></>;
+    eventContent = <EventPreview type="signEvent" event={event || {}} approval />;
   } else if (request && isMessageRequest(type)) {
     eventContent = <MessageRequestDetail key={request.id} request={request} />;
   } else if (request) {

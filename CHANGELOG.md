@@ -5,6 +5,15 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Use Deny, Denied and Always deny consistently across approval controls, permission rules and statuses.
+
+- Make approval dropdowns compact with shorter site-scoped choices and no repeated event names for a single action.
+
+- Show full note content and kind-specific previews directly in signing approvals, including grouped requests and embedded repost text. Keep raw event metadata behind the code button.
+
+- Move searchable site permissions into Rules and replace All accounts with Global rules. Show inherited rules in muted styling and account overrides in color; allow reverting individual or all account overrides to global defaults.
+- Preserve existing effective permissions during the inheritance migration, keeping previously inactive approvals from becoming active. Rule resets preserve backend and relay authentication grants.
+
 - Allow deselecting individual sites from an all-sites relay grant, switching to specific-site approval. Allow revoking all relay approvals while the vault is locked and explain failed or stale saves.
 
 - Move backend authentication grants into a dedicated screen opened from the top Permissions menu, with back navigation and an information guide.

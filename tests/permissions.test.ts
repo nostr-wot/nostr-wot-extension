@@ -466,3 +466,79 @@ test('explicit inherited rule edits apply only to that origin and bucket, and cl
   assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'A'), 'ask');
   assert.equal(await permissions.check('https://legacy.test', 'getPublicKey', undefined, 'B'), 'deny');
 });
+
+describe('global rules with account overrides', () => {
+  beforeEach(() => { resetMockStorage(); permissions.invalidateCache(); });
+  it('preserves per-account decisions across migration, including legacy hostname scopes', async () => {
+    const {default:browser}=await import('./helpers/browser-mock');
+    await browser.storage.local.set({
+      signerUseGlobalDefaults:false, accounts:[{id:'a'},{id:'b'}],
+      signerPermissions:{
+        'example.com':{_default:{readMessages:'allow'},a:{readMessages:'deny',getPublicKey:'allow'}},
+        'https://example.com':{_default:{readMessages:'allow','signEvent:1':'deny'},a:{'signEvent:7':'allow'}},
+      },
+    });
+    await permissions.migrateToInheritance();
+    assert.equal(await permissions.check('https://example.com','nip04Decrypt',undefined,'a'),'deny');
+    assert.equal(await permissions.check('https://example.com','getPublicKey',undefined,'a'),'allow');
+    assert.equal(await permissions.check('https://example.com','signEvent',1,'a'),'ask');
+    assert.equal(await permissions.check('https://example.com','nip04Decrypt',undefined,'b'),'ask');
+    const before=await permissions.getAllRaw();
+    await permissions.migrateToInheritance();assert.deepEqual(await permissions.getAllRaw(),before);
+  });
+  it('does not activate dormant account approvals when migrating global mode',async()=>{
+    const {default:browser}=await import('./helpers/browser-mock');
+    await browser.storage.local.set({signerUseGlobalDefaults:true,signerPermissions:{
+      'https://site.test':{_default:{readMessages:'deny'},a:{readMessages:'allow','signEvent:1':'allow'}},
+    }});
+    await permissions.migrateToInheritance();
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'deny');
+    assert.equal(await permissions.check('https://site.test','signEvent',1,'a'),'ask');
+    await permissions.saveDirect('https://site.test','readMessages','allow','a');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'allow');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'b'),'deny');
+    await permissions.inheritRule('https://site.test','readMessages','a');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'deny');
+  });
+  it('reset removes only account rule buckets and preserves authentication and globals',async()=>{
+    const {default:browser}=await import('./helpers/browser-mock');
+    await permissions.migrateToInheritance();
+    await permissions.saveDirect('https://site.test','readMessages','allow');
+    await permissions.saveDirect('https://site.test','readMessages','deny','a');
+    await permissions.saveDirect('https://other.test','readMessages','allow','b');
+    const grants=[{id:'relay',accountId:'a',origin:'*',protocol:'nip42',destination:'wss://relay.test/'}];
+    await browser.storage.local.set({authenticationGrants:grants});
+    await permissions.resetAccountRules();
+    assert.deepEqual(await permissions.getAllRaw(),{'https://site.test':{_default:{readMessages:'allow'}}});
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'allow');
+    assert.deepEqual((await browser.storage.local.get('authenticationGrants')).authenticationGrants,grants);
+    await permissions.saveDirect('https://site.test','readMessages','deny','a');
+    await permissions.clearRuleBucket('https://site.test','a');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'allow');
+    await permissions.clearRuleBucket('https://site.test');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'ask');
+    await assert.rejects(permissions.inheritRule('https://site.test','readMessages','_default'));
+  });
+  it('new-account fresh and copy choices retain their meaning with inherited globals',async()=>{
+    await permissions.migrateToInheritance();
+    await permissions.saveDirect('https://site.test','readMessages','allow');
+    await permissions.saveDirect('https://site.test','readMessages','deny','a');
+    await permissions.setupNewAccountPermissions('fresh',['a'],null);
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'fresh'),'ask');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'deny');
+    await permissions.setupNewAccountPermissions('copy',['a'],'a');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'copy'),'deny');
+    assert.deepEqual((await permissions.getAll('copy'))['https://site.test'],{readMessages:'deny'});
+  });
+});
+
+it('settings writes migrate before choosing the explicit account bucket',async()=>{
+  const {default:browser}=await import('./helpers/browser-mock');
+  resetMockStorage();permissions.invalidateCache();
+  await browser.storage.local.set({signerUseGlobalDefaults:true,accounts:[{id:'a'}],
+    signerPermissions:{'https://site.test':{_default:{readMessages:'allow'}}}});
+  const {handlers}=await import('../src/services/background/nip07-handlers');
+  await handlers.get('signer_savePermission')!({domain:'https://site.test',methodName:'readMessages',decision:'deny',accountId:'a'});
+  assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'deny');
+  assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'b'),'allow');
+});

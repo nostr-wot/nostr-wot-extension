@@ -45,10 +45,8 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     { rawPerms: {}, useGlobalDefaults: true, loaded: false },
     {
       load: async (patch) => {
-        const [raw, defaults] = await Promise.all([
-          rpc<RawPerms>('signer_getPermissionsRaw'),
-          rpc<boolean>('signer_getUseGlobalDefaults'),
-        ]);
+        const raw = await rpc<RawPerms>('signer_getPermissionsRaw');
+        const defaults = await rpc<boolean>('signer_getUseGlobalDefaults');
         patch({ rawPerms: raw || {}, useGlobalDefaults: defaults !== false, loaded: true });
       },
     },
@@ -65,13 +63,13 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     await rpc('signer_savePermission', {
       domain, methodName: permKey, decision, accountId,
     });
-    // Optimistic local update — use the same mode logic as the backend. A
+    // Optimistic local update — explicit account or global bucket. A
     // function of the previous data, not a captured `rawPerms`: two saves
     // issued before either re-renders must not have the second clobber the
     // first with a value it read before the first one landed.
     patch((prev) => {
       const next = { ...prev.rawPerms };
-      const bucket = prev.useGlobalDefaults ? '_default' : (accountId || '_default');
+      const bucket = accountId || '_default';
       if (!next[domain]) next[domain] = {};
       if (!next[domain][bucket]) next[domain][bucket] = {};
       next[domain][bucket] = { ...next[domain][bucket], [permKey]: decision };

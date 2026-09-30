@@ -189,14 +189,14 @@ it('compact row previews adapt to profile, note, reaction and list events withou
   assert.equal(activityRowPreview({...base,event:{kind:4,content:'ciphertext'}}),'activity.detail.encrypted');
 });
 
-it('approval group details include every event in collapsed rows with one decision footer', async () => {
+it('approval group details show each note content with one decision footer', async () => {
  const {default: EventDetailModal}=await import('../src/components/EventDetailModal');
  const requests=[
   {id:'first',type:'signEvent',origin:'site.test',event:{kind:1,content:'first pending body',tags:[]}},
   {id:'second',type:'signEvent',origin:'site.test',event:{kind:1,content:'second pending body',tags:[]}},
  ];
  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:requests[0],requests,onApprove:()=>{}}));
- assert.doesNotMatch(html,/first pending body|second pending body/);
+ assert.match(html,/first pending body/);assert.match(html,/second pending body/);
  assert.equal((html.match(/data-approval-request=/g)||[]).length,2);
  assert.doesNotMatch(html,/<details[^>]*data-approval-request[^>]*open/);
  assert.doesNotMatch(html,/approval.alwaysAllowLabel/);
@@ -208,7 +208,7 @@ it('remote signer groups also show every pending item without local approval act
  const requests=[{id:'a',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote first',tags:[]}},
  {id:'b',type:'signEvent',origin:'remote.test',event:{kind:1,content:'remote second',tags:[]}}];
  const html=renderToStaticMarkup(createElement(EventDetailModal,{request:requests[0],requests,nip46InFlight:true}));
- assert.match(html,/remote.test/);assert.doesNotMatch(html,/remote first|remote second/);
+ assert.match(html,/remote.test/);assert.match(html,/remote first/);assert.match(html,/remote second/);
  assert.doesNotMatch(html,/approval.alwaysAllowLabel|approval.alwaysAllowLabel/);
 });
 

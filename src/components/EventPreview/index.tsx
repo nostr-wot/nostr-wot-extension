@@ -1,3 +1,4 @@
+import TextBlock from '@components/TextBlock';
 import CreateGroupPreview from './kinds/CreateGroupPreview';
 import React from 'react';
 import { cn } from '@utils/cn.ts';
@@ -49,6 +50,8 @@ interface EventPreviewProps {
   theirPubkey?: string | null;
   className?: string;
   compact?: boolean;
+  /** Approval summaries already identify the action; keep technical metadata in raw view. */
+  approval?: boolean;
 }
 
 /**
@@ -56,7 +59,7 @@ interface EventPreviewProps {
  * Dispatches to kind-specific components for signEvent, handles
  * encrypt/decrypt and getPublicKey inline.
  */
-export default function EventPreview({ type, event, theirPubkey, className = '', compact = false }: EventPreviewProps) {
+export default function EventPreview({ type, event, theirPubkey, className = '', compact = false, approval = false }: EventPreviewProps) {
 
   // Encryption / decryption
   if (ENCRYPT_TYPES.has(type!)) {
@@ -95,6 +98,19 @@ export default function EventPreview({ type, event, theirPubkey, className = '',
   const kind = event.kind ?? -1;
   const kindLabel = KIND_LABELS[kind] || `Kind ${kind}`;
   const KindComponent = KIND_RENDERERS[kind];
+
+  if (approval) {
+    // Authentication is described by AuthenticationNotice. App actions are
+    // described by IntentText; avoid reintroducing their duplicated tables.
+    const authentication = kind === 22242 || kind === 27235;
+    return <Container gap={3} className={cn('min-w-0', className)}>
+      {!authentication && (KindComponent && kind !== 30078
+        ? <KindComponent event={event as NostrEventDisplay} />
+        : event.content ? <><Text variant="secondary">{t('approval.detail.content')}</Text><TextBlock>{event.content}</TextBlock></> : null)}
+      <RawEventButton event={event} />
+    </Container>;
+  }
+
 
   return (
     <Container variant="box" className={cn('min-w-0', className)}>

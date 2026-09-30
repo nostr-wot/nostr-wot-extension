@@ -36,8 +36,8 @@ export default function ActionMenu<T extends string>({ label, options, onSelect,
             const rect = anchor!.getBoundingClientRect();
             const availableWidth = Math.max(0, window.innerWidth - 16);
             panel!.style.width = matchAnchorWidth ? `${Math.min(rect.width, availableWidth)}px` : 'max-content';
-            panel!.style.maxWidth = `${Math.min(320, availableWidth)}px`;
-            panel!.style.minWidth = `${Math.min(280, availableWidth)}px`;
+            panel!.style.maxWidth = `${Math.min(260, availableWidth)}px`;
+            panel!.style.minWidth = `${Math.min(176, availableWidth)}px`;
             const width = panel!.getBoundingClientRect().width;
             const above = Math.max(0, rect.top - 16);
             const below = Math.max(0, window.innerHeight - rect.bottom - 16);

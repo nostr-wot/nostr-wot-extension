@@ -347,6 +347,7 @@ void (async () => {
             await signerPermissions.migrateDmKindsToSendMessages();
             await browser.storage.local.set({ _permMigrationVersion: 4 });
         }
+        await signerPermissions.migrateToInheritance();
     } catch (e: unknown) {
         console.warn('[PERMISSIONS] Migration failed:', (e as Error).message);
     }

@@ -270,9 +270,9 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
       request:{type:'signEvent',permKey:'signEvent:1',event:{kind:1}},
       onAlwaysAllow(){always++;},onApprove(){once++;}
     })));
-    assert.doesNotMatch(dom.window.document.body.textContent!,/approval.alwaysAllowLabel/);
+    assert.doesNotMatch(dom.window.document.body.textContent!,/approval.detail.alwaysAllow/);
     await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.approveOptions"]')!.click());
-    await act(async()=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent==='approval.alwaysAllowLabel')!.click());
+    await act(async()=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent==='approval.detail.alwaysAllow')!.click());
     assert.equal(always,1);assert.equal(once,0);
     await act(async()=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent==='approval.approveOnce')!.click());
     assert.equal(always,1);assert.equal(once,1);
@@ -510,7 +510,7 @@ it('approval sheet separates current-request approval from remembered permission
     await act(async()=>root.render(render()));
     const button=(label:string)=>Array.from(dom.window.document.querySelectorAll('button')).find(b=>b.textContent===label);
     assert.ok(button('approval.approveOnce'),'single request has an explicit one-time action');
-    assert.equal(button('approval.alwaysAllowLabel'),undefined,'remembered permission is behind the arrow');
+    assert.equal(button('approval.detail.alwaysAllow'),undefined,'remembered permission is behind the arrow');
     assert.ok(dom.window.document.querySelector('[aria-label="approval.approveOptions"]'));
     const card=Array.from(dom.window.document.querySelectorAll('button')).find(b=>b.textContent?.includes('https://site.test'));
     assert.equal(card, undefined, 'a single request skips the queue card');
@@ -525,18 +525,18 @@ it('approval sheet separates current-request approval from remembered permission
     await act(async()=>root.render(render()));
     await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.approveOptions"]')!.click());
     assert.ok(dom.window.document.querySelector('[role="menu"]'));
-    await act(async()=>button('approval.alwaysAllowLabel')!.click());
+    await act(async()=>button('approval.detail.alwaysAllow')!.click());
     assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:1',decision:'allow',accountId:account.id});
     for (const remember of [false, true]) {
       await act(async()=>root.render(null));
       calls.length = 0;
       pending=[{id:'reject',accountId:account.id,origin:'https://site.test',type:'signEvent',permKey:'signEvent:1',needsPermission:true,event:{kind:1,pubkey:account.pubkey,content:'test',tags:[]}}];
       await act(async()=>root.render(render()));
-      assert.equal(button('approval.alwaysDenyLabel'),undefined);
+      assert.equal(button('approval.detail.alwaysDeny'),undefined);
       if (remember) {
         await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.rejectOptions"]')!.click());
         assert.ok(dom.window.document.querySelector('[role="menu"]'));
-        await act(async()=>button('approval.alwaysDenyLabel')!.click());
+        await act(async()=>button('approval.detail.alwaysDeny')!.click());
         assert.deepEqual(calls.find(c=>c.method==='signer_resolveBatch')?.params,{origin:'https://site.test',permKey:'signEvent:1',decision:{allow:false,remember:false}});
         assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:1',decision:'deny',accountId:account.id});
       } else {
@@ -556,7 +556,7 @@ it('approval sheet separates current-request approval from remembered permission
       const approve = async () => {
         if (always) {
           await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.approveOptions"]')!.click());
-          await act(async()=>button('approval.alwaysAllowLabel')!.click());
+          await act(async()=>button('approval.detail.alwaysAllow')!.click());
         } else await act(async()=>button('approval.approveShown')!.click());
       };
       await approve();
@@ -584,7 +584,7 @@ it('approval sheet separates current-request approval from remembered permission
       const items = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
       assert.equal(items.length, 2, 'each pending type has its own remembered action');
       assert.equal(menu.getAttribute('popover'), 'manual', 'menu escapes clipped approval panels');
-      assert.equal((menu as HTMLElement).style.minWidth, '280px', 'options have a readable width independent of the button');
+      assert.equal((menu as HTMLElement).style.minWidth, '176px', 'options stay compact without being squeezed to the button width');
       await act(async()=>items[1].click());
       assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:4',decision:allow?'allow':'deny',accountId:account.id});
       assert.equal(calls.filter(c=>c.method==='signer_savePermission').length, 1, 'other types are not granted or denied');

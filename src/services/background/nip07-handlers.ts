@@ -217,6 +217,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['signer_savePermission', async (params) => {
+        await signerPermissions.migrateToInheritance();
         await signerPermissions.saveDirect(params.domain as string, params.methodName as string, params.decision as 'allow' | 'deny' | 'ask', params.accountId as string);
         if (params.methodName === 'getPublicKey') {
             signerIdentity.clearGetPubkeyCooldown(params.domain as string);
@@ -224,7 +225,25 @@ export const handlers = new Map<string, HandlerFn>([
         return { ok: true };
     }],
 
-    ['signer_getPermissionsRaw', async () => signerPermissions.getAllRaw()],
+    ['signer_getPermissionsRaw', async () => {
+        await signerPermissions.migrateToInheritance();
+        return signerPermissions.getAllRaw();
+    }],
+    ['signer_clearRuleBucket', async params => {
+        await signerPermissions.clearRuleBucket(params.domain as string, params.accountId as string);
+        signerIdentity.clearGetPubkeyCooldown(params.domain as string);
+        return {ok:true};
+    }],
+    ['signer_resetAccountRules', async () => {
+        await signerPermissions.resetAccountRules();
+        signerIdentity.clearGetPubkeyCooldown();
+        return {ok:true};
+    }],
+    ['signer_inheritRule', async params => {
+        await signerPermissions.inheritRule(params.domain as string, params.key as string, params.accountId as string);
+        signerIdentity.clearGetPubkeyCooldown(params.domain as string);
+        return {ok:true};
+    }],
     ['signer_getPermissionsForDomainRaw', async (params) => signerPermissions.getForDomainRaw(params.domain as string)],
 
     ['signer_copyPermissions', async (params) => {

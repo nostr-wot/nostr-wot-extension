@@ -191,9 +191,8 @@ it('every known signing kind uses a description and collapsed raw event without 
   const html=renderToStaticMarkup(createElement(Detail,{request:{id:'request',type:'signEvent',origin:'https://primal.net',event},onApprove(){}}));
   const dom=new JSDOM(html);
   assert.ok(dom.window.document.querySelector('button[aria-haspopup="dialog"]'),`Raw popup trigger exists for ${kind}`);
-  assert.equal(dom.window.document.querySelector('pre'),null);
   assert.ok(!dom.window.document.body.textContent!.includes('event.kind'));
-  assert.ok(!dom.window.document.querySelector('h3'));dom.window.close();
+  assert.ok(!dom.window.document.querySelector('details'));dom.window.close();
  }
 });
 it('grouped event selection approves only checked IDs and leaves late arrivals unchecked',async()=>{
@@ -250,7 +249,7 @@ it('relay screen includes site and all-sites grants while backend permissions co
   assert.ok(document.body.textContent!.includes('POST https://api.test'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
-it('Permissions groups All accounts, backend auth and relay auth in that order',async t=>{
+it('Permissions separates rules from backend and relay authentication',async t=>{
  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
  const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
  const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
@@ -265,14 +264,15 @@ it('Permissions groups All accounts, backend auth and relay auth in that order',
   const link=[...document.querySelectorAll('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
   assert.ok(link);assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
   const backendLink=[...document.querySelectorAll('button')].find(element=>element.textContent!.includes(label('auth.manageBackends')))!;
-  const allAccounts=[...document.querySelectorAll('span')].find(element=>element.textContent===label('perms.allAccounts'))!;
+  const rules=[...document.querySelectorAll('button')].find(element=>element.textContent!.includes(label('perms.rulesHint')))!;
+  const globals=[...document.querySelectorAll('button')].find(element=>element.textContent!.includes(label('perms.globalRulesHint')))!;
   const backend=document.querySelector(`[aria-label="${label('auth.defaultBackend')}"]`)!;
-  const card=link.parentElement!;
+  const card=link.closest('.shadow-card')!;
   assert.ok(card.classList.contains('shadow-card'));
-  assert.ok(card.contains(allAccounts));assert.ok(card.contains(backend));
+  assert.ok(card.contains(rules));assert.ok(card.contains(backend));
   assert.equal(card.querySelectorAll('.shadow-card').length,0,'controls share one card without nested cards');
-  const search=document.querySelector('input[type="search"]')!;
-  for(const [before,after] of [[allAccounts,backend],[backend,backendLink],[backendLink,link],[link,search]]) {
+  assert.equal(document.querySelector('input[type="search"]'),null);
+  for(const [before,after] of [[rules,globals],[globals,backend],[backend,backendLink],[backendLink,link]]) {
    assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   }
   assert.equal(document.querySelector('[role="dialog"]'),null);
@@ -282,7 +282,7 @@ it('Permissions groups All accounts, backend auth and relay auth in that order',
   await act(async()=>backendInfo.click());assert.ok(document.querySelector('[role="dialog"]')!.textContent!.includes(label('auth.backendInfo')));
   await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
   await act(async()=>document.querySelector<HTMLButtonElement>(`[aria-label="${label('common.back')}"]`)!.click());
-  assert.ok(document.querySelector('input[type="search"]'));
+  assert.equal(document.querySelector('input[type="search"]'),null);
   const relayLink=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
   await act(async()=>relayLink.click());assert.equal(document.querySelector('[role="dialog"]'),null);
   const info=document.querySelector<HTMLButtonElement>(`[aria-label="${label('auth.relayInfoTitle')}"]`)!;
@@ -399,6 +399,7 @@ it('declined sites share the permission list and open an individual duration edi
  const root=createRoot(document.getElementById('root')!);
  try{
   await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions)))));
+  await act(async()=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent!.includes(label('perms.rulesHint')))!.click());
   const rows=[...document.querySelectorAll('button')];
   const declined=rows.filter(button=>button.textContent!.includes('https://declined.test'));
   assert.equal(declined.length,1,'a declined site with dormant rules appears once');
@@ -483,4 +484,69 @@ it('deselecting an all-sites relay keeps other allowed sites selected and permit
   await act(async()=>save.click());
   assert.deepEqual(saves[1].origins,[]);assert.equal(saves[1].allSites,false);
  }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('Rules distinguishes inherited rules and overrides, and global reset requires confirmation',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
+ const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
+ const {default:browser,resetMockStorage}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
+ resetMockStorage();
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ dom.window.HTMLElement.prototype.showPopover=function(){};dom.window.HTMLElement.prototype.hidePopover=function(){};
+ let raw:any={'https://site.test':{_default:{readMessages:'allow',getPublicKey:'allow'},a:{getPublicKey:'deny'}}};
+ let resets=0;const saves:any[]=[];
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  if(message.method==='signer_getPermissionsRaw')return {result:raw};
+  if(message.method==='signer_getUseGlobalDefaults')return {result:false};
+  if(message.method==='signer_savePermission'){
+   saves.push(message.params);raw['https://site.test'].a[message.params.methodName]=message.params.decision;return {result:{ok:true}};
+  }
+  if(message.method==='signer_inheritRule'){delete raw['https://site.test'].a[message.params.key];return {result:{ok:true}};}
+  if(message.method==='signer_resetAccountRules'){resets++;raw={'https://site.test':{_default:raw['https://site.test']._default}};return {result:{ok:true}};}
+  return {result:[]};
+ });
+ await browser.storage.local.set({accounts:[{id:'a',pubkey:'11'.repeat(32),type:'nsec'}],activeAccountId:'a'});
+ const root=createRoot(document.getElementById('root')!);
+ const button=(text:string)=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===text || button.textContent!.includes(text))!;
+ const back=()=>document.querySelector<HTMLButtonElement>(`[aria-label="${label('common.back')}"]`)!;
+ try{
+  await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions)))));
+  assert.equal(document.querySelector('input[type="search"]'),null);
+  assert.ok(!document.body.textContent!.includes(label('perms.allAccounts')));
+  await act(async()=>button(label('perms.rulesHint')).click());
+  assert.ok(document.querySelector('input[type="search"]'));
+  await act(async()=>button('https://site.test').click());
+  assert.ok(document.body.textContent!.includes(label('perms.inheritedRule')));
+  assert.ok(document.body.textContent!.includes(label('perms.accountRule')));
+  const inherited=button(label('perms.allow'));assert.ok(inherited.classList.contains('text-secondary'));
+  await act(async()=>inherited.click());
+  await act(async()=>document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[1].click());
+  assert.equal(saves[0].accountId,'a');assert.equal(saves[0].methodName,'readMessages');
+  assert.equal(raw['https://site.test']._default.readMessages,'allow');
+  await act(async()=>back().click());await act(async()=>back().click());
+  await act(async()=>button(label('perms.globalRulesHint')).click());
+  await act(async()=>button(label('perms.resetAccountRules')).click());
+  assert.equal(resets,0);assert.ok(document.querySelector('[role="dialog"]'));
+  await act(async()=>button(label('common.cancel')).click());assert.equal(resets,0);
+  await act(async()=>button(label('perms.resetAccountRules')).click());
+  await act(async()=>button(label('common.confirm')).click());assert.equal(resets,1);
+  assert.deepEqual(Object.keys(raw['https://site.test']),['_default']);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+
+it('note approval shows full escaped content, grouped notes and kind-specific visual previews',async()=>{
+ const {default:Detail}=await import('../src/components/EventDetailModal');
+ const {t:label}=await import('../src/services/i18n/i18n');
+ const note={id:'note',type:'signEvent',origin:'https://site.test',event:{kind:1,content:'First line\n<img src=x onerror=evil()>\n'+'long note '.repeat(250),tags:[]}};
+ const html=renderToStaticMarkup(createElement(Detail,{request:note,onApprove(){}}));
+ assert.ok(html.includes('First line'));assert.ok(html.includes('long note '.repeat(250)));
+ assert.ok(html.includes('&lt;img'));assert.ok(!html.includes('<img src=x'));
+ assert.ok(html.includes(label('event.showRaw')));
+ const reaction={...note,id:'reaction',event:{kind:7,content:'🔥',tags:[['e','target']]}};
+ const grouped=renderToStaticMarkup(createElement(Detail,{request:note,requests:[note,reaction],onApproveSelected(){}}));
+ assert.ok(grouped.includes('First line'));assert.ok(grouped.includes('🔥'));assert.ok(grouped.includes('text-display'));
+ const profile={...note,event:{kind:0,content:JSON.stringify({name:'Alice',about:'Public profile biography'}),tags:[]}};
+ assert.ok(renderToStaticMarkup(createElement(Detail,{request:profile})).includes('Alice'));
+ const repost={...note,event:{kind:6,content:JSON.stringify({kind:1,content:'Embedded repost text'}),tags:[]}};
+ assert.ok(renderToStaticMarkup(createElement(Detail,{request:repost})).includes('Embedded repost text'));
 });

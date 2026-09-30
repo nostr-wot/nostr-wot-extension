@@ -15,13 +15,11 @@ import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BU
  * Storage model:
  *   { "domain": { "_default": { "signEvent:1": "allow" }, "acctId": { ... } } }
  *
- * Mode-based resolution (mutually exclusive):
- *   - useGlobalDefaults=true  -> ONLY check perms[domain]["_default"][permKey]
- *   - useGlobalDefaults=false -> ONLY check perms[domain][accountId][permKey]
- *   - If not found -> return "ask"
- *
- * Dormant data is preserved on mode switch. Only the active mode's bucket
- * is consulted for reads and writes.
+ * Global rules provide per-site defaults. Explicit account keys override the
+ * same global keys, including 'ask'; method/kind deny-wins checks follow.
+ * Legacy mutually exclusive buckets are migrated once without activating
+ * previously dormant permissions. The legacy mode flag is only read until
+ * that migration completes.
  *
  * The signer handler decides local vs remote routing based on accountType,
  * not the permission value.
@@ -39,19 +37,22 @@ import { AsyncLock } from '../../utils/asyncLock.ts';
 const _lock = new AsyncLock();
 
 // ── In-memory cache ──
+const INHERITANCE_KEY = 'signerRulesInheritance';
+let _cachedInheritance: boolean | null = null;
 let _cachedPerms: PermissionMap | null = null;
 let _cachedUseGlobalDefaults: boolean | null = null;
 
 /** Invalidate cached permissions (call after writes or in test setup) */
 export function invalidateCache(): void {
   _cachedPerms = null;
+  _cachedInheritance = null;
   _cachedUseGlobalDefaults = null;
 }
 
 // Listen for external storage changes (e.g. from other contexts)
 try {
   browser.storage.onChanged.addListener((changes: Record<string, { newValue?: unknown }>, area: string) => {
-    if (area === 'local' && (changes[STORAGE_KEY] || changes[GLOBAL_DEFAULTS_KEY])) {
+    if (area === 'local' && (changes[STORAGE_KEY] || changes[GLOBAL_DEFAULTS_KEY] || changes[INHERITANCE_KEY])) {
       invalidateCache();
     }
   });
@@ -124,7 +125,7 @@ export async function check(domain: string, method: string, kind?: number, accou
 export async function save(domain: string, method: string, kind: number | null, decision: PermissionDecision, accountId?: string): Promise<void> {
   await _lock.run(async () => {
     const perms = await load();
-    const useDefaults = await getUseGlobalDefaults();
+    const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
     if (!perms[domain]) perms[domain] = {};
     if (!perms[domain][bucket]) perms[domain][bucket] = {};
@@ -147,7 +148,7 @@ export async function save(domain: string, method: string, kind: number | null, 
 export async function saveDirect(domain: string, key: string, decision: PermissionDecision, accountId?: string): Promise<void> {
   await _lock.run(async () => {
     const perms = await load();
-    const useDefaults = await getUseGlobalDefaults();
+    const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
     if (!perms[domain]) perms[domain] = {};
     if (!perms[domain][bucket]) perms[domain][bucket] = {};
@@ -316,7 +317,7 @@ export async function clear(domain?: string, accountId?: string): Promise<void> 
   }
   await _lock.run(async () => {
     const perms = await load();
-    const useDefaults = await getUseGlobalDefaults();
+    const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
     for (const scope of siteScopes(domain)) {
       if (!perms[scope]) continue;
@@ -420,6 +421,20 @@ export async function setupNewAccountPermissions(
   copyFromAccountId: string | null,
 ): Promise<void> {
   if (!newAccountId) return;
+  if (await usesInheritance()) {
+    await _lock.run(async () => {
+      const perms = structuredClone(await load());
+      for (const domain of Object.keys(perms)) {
+        const globals = sitePermissionBucket(perms, domain, DEFAULT_BUCKET);
+        perms[domain][newAccountId] = copyFromAccountId
+          ? { ...globals, ...sitePermissionBucket(perms, domain, copyFromAccountId) } as PermissionBucket
+          : Object.fromEntries(Object.keys(globals).map(key => [key, 'ask'])) as PermissionBucket;
+      }
+      await browser.storage.local.set({ [STORAGE_KEY]: perms });
+      invalidateCache();
+    });
+    return;
+  }
 
   if (await getUseGlobalDefaults()) {
     // Preserve each existing account's currently-shared perms in its own bucket
@@ -439,34 +454,42 @@ export async function setupNewAccountPermissions(
 }
 
 /**
- * Get all permissions for the active mode's bucket.
+ * Get effective rules for every site.
  * Returns { domain: { permKey: decision } }.
  * @param accountId - account ID (used only in per-account mode)
  */
 export async function getAll(accountId?: string): Promise<Record<string, PermissionBucket>> {
-  const perms = await load();
-  const useDefaults = await getUseGlobalDefaults();
-  const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-  const result: Record<string, PermissionBucket> = {};
-  for (const domain of Object.keys(perms)) {
-    const data = perms[domain][bucket];
-    if (data && Object.keys(data).length > 0) {
-      result[domain] = { ...data };
+  return _lock.run(async () => {
+    const perms = await load();
+    const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
+    const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
+    const result: Record<string, PermissionBucket> = {};
+    for (const domain of Object.keys(perms)) {
+      const data = await usesInheritance() && accountId
+        ? { ...sitePermissionBucket(perms, domain, DEFAULT_BUCKET), ...sitePermissionBucket(perms, domain, accountId) }
+        : perms[domain][bucket];
+      if (data && Object.keys(data).length > 0) {
+        result[domain] = { ...data } as PermissionBucket;
+      }
     }
-  }
-  return result;
+    return result;
+  });
 }
 
 /**
- * Get permissions for a specific domain using the active mode's bucket.
+ * Get effective rules for a site: globals plus explicit account overrides.
  * @param domain
  * @param accountId
  */
 export async function getForDomain(domain: string, accountId?: string): Promise<PermissionBucket> {
-  const perms = await load();
-  const useDefaults = await getUseGlobalDefaults();
-  const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-  return sitePermissionBucket(perms, domain, bucket) as PermissionBucket;
+  return _lock.run(async () => {
+    const perms = await load();
+    const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
+    const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
+    const own = sitePermissionBucket(perms, domain, bucket);
+    return (await usesInheritance() && accountId
+      ? { ...sitePermissionBucket(perms, domain, DEFAULT_BUCKET), ...own } : own) as PermissionBucket;
+  });
 }
 
 /**
@@ -513,4 +536,80 @@ async function load(): Promise<PermissionMap> {
   const data = await browser.storage.local.get(STORAGE_KEY);
   _cachedPerms = (data[STORAGE_KEY] as PermissionMap) || {};
   return _cachedPerms;
+}
+
+async function usesInheritance(): Promise<boolean> {
+  if (_cachedInheritance === null) {
+    const data = await browser.storage.local.get(INHERITANCE_KEY);
+    _cachedInheritance = data[INHERITANCE_KEY] === true;
+  }
+  return _cachedInheritance;
+}
+
+/** Preserve the active legacy policy before enabling globals + account overrides. */
+export async function migrateToInheritance(): Promise<void> {
+  await _lock.run(async () => {
+    if (await usesInheritance()) return;
+    const original = structuredClone(await load());
+    const perms = structuredClone(original);
+    const { accounts } = await browser.storage.local.get('accounts');
+    const ids = new Set<string>((accounts as Array<{id:string}> || []).map(account => account.id));
+    for (const buckets of Object.values(original)) for (const id of Object.keys(buckets)) if (id !== DEFAULT_BUCKET) ids.add(id);
+    const globalMode = await getUseGlobalDefaults();
+    for (const domain of Object.keys(perms)) {
+      if (globalMode) {
+        // Dormant account rules must not suddenly override the active globals.
+        perms[domain] = original[domain][DEFAULT_BUCKET] ? { [DEFAULT_BUCKET]: original[domain][DEFAULT_BUCKET] } : {};
+      } else {
+        const globals = sitePermissionBucket(original, domain, DEFAULT_BUCKET);
+        for (const id of ids) {
+          const own = sitePermissionBucket(original, domain, id);
+          perms[domain][id] = { ...Object.fromEntries(Object.keys(globals).map(key => [key, 'ask'])), ...own } as PermissionBucket;
+        }
+      }
+    }
+    await browser.storage.local.set({ [STORAGE_KEY]: perms, [GLOBAL_DEFAULTS_KEY]: false, [INHERITANCE_KEY]: true });
+    invalidateCache();
+  });
+}
+
+/** Reset ordinary account overrides only; destination authentication is separate. */
+export async function resetAccountRules(): Promise<void> {
+  await migrateToInheritance();
+  await _lock.run(async () => {
+    const perms = structuredClone(await load());
+    for (const domain of Object.keys(perms)) {
+      const globals = perms[domain][DEFAULT_BUCKET];
+      if (globals) perms[domain] = { [DEFAULT_BUCKET]: globals };
+      else delete perms[domain];
+    }
+    await browser.storage.local.set({ [STORAGE_KEY]: perms });
+    invalidateCache();
+  });
+}
+
+/** Remove a single override, restoring inheritance, including legacy host scopes. */
+export async function inheritRule(domain: string, key: string, accountId: string): Promise<void> {
+  if (!domain || !key || !accountId || accountId === DEFAULT_BUCKET) throw new Error('Invalid rule scope');
+  await _lock.run(async () => {
+    const perms = structuredClone(await load());
+    for (const scope of siteScopes(domain)) {
+      if (perms[scope]?.[accountId]) delete perms[scope][accountId][key];
+    }
+    await browser.storage.local.set({ [STORAGE_KEY]: perms });
+    invalidateCache();
+  });
+}
+
+/** Settings-only removal of an ordinary rule bucket, without touching authentication. */
+export async function clearRuleBucket(domain: string, accountId?: string): Promise<void> {
+  if (typeof domain !== 'string' || !domain) throw new Error('Invalid rule scope');
+  await _lock.run(async () => {
+    const perms = structuredClone(await load());
+    for (const scope of siteScopes(domain)) {
+      if (perms[scope]) delete perms[scope][accountId || DEFAULT_BUCKET];
+    }
+    await browser.storage.local.set({ [STORAGE_KEY]: perms });
+    invalidateCache();
+  });
 }

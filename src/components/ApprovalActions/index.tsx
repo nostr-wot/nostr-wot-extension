@@ -39,7 +39,9 @@ export default function ApprovalActions({ choices, requestCount, rejectCount = r
                 disabled={busy || !choices.some(choice => choice[action.remember])} tone={action.key === 'reject' ? 'danger' : 'neutral'}
                 options={choices.filter(choice => choice[action.remember]).map(({value, label, allowLabel, denyLabel}) => ({
                     value,
-                    label: (action.key === 'approve' ? allowLabel : denyLabel) || t(action.always, {label}),
+                    label: (action.key === 'approve' ? allowLabel : denyLabel) || (choices.filter(choice => choice[action.remember]).length === 1
+                      ? t(action.key === 'approve' ? 'approval.detail.alwaysAllow' : 'approval.detail.alwaysDeny')
+                      : t(action.always, {label})),
                 }))}
                 onSelect={async value => {
                     const selected = choices.find(choice => choice.value === value);
