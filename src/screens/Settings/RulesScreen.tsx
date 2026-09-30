@@ -1,5 +1,4 @@
 import OverlayPanel from '@components/OverlayPanel';
-import ConfirmDialog from '@components/ConfirmDialog';
 import PermissionRulesList from './PermissionRulesList';
 import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
@@ -30,12 +29,11 @@ export interface RulesScreenHandle {
 
 interface RulesScreenProps {
   initialDomain?: string | null;
-  globalMode: boolean;
   onBack: () => void;
   onDetailChange?: (domain: string | null) => void;
 }
 
-export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScreen({ initialDomain, onDetailChange, globalMode, onBack }, ref) {
+export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScreen({ initialDomain, onDetailChange, onBack }, ref) {
   const { accounts, activeId } = useAccount();
   const permissions = usePermissions();
   const selectedAccountId = activeId;
@@ -51,10 +49,7 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
   const [query, setQuery] = useState<string>('');
   const [detailDomain, setDetailDomain] = useState<string | null>(initialDomain || null);
 
-  const allAccountsMode = globalMode;
-
-  // Global edits use the shared bucket; site edits always target the active account.
-  const effectiveAccountId = allAccountsMode ? null : selectedAccountId;
+  const effectiveAccountId = selectedAccountId;
 
   // Is the currently selected account read-only or NIP-46?
   const selectedAccount = (accounts || []).find((a: any) => a.id === selectedAccountId);
@@ -62,24 +57,15 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
   const isSelectedNip46 = selectedAccount?.type === 'nip46';
 
   // Declined sites share the searchable list and take precedence over dormant rules.
-  const domains = [...new Set([...declined.connected, ...(globalMode ? Object.keys(permissions.rawPerms) : permissions.getDomainsForBucket(null)), ...permissions.getDomainsForBucket(effectiveAccountId), ...(!globalMode ? declined.sites.map(site => site.domain) : [])])]
+  const domains = [...new Set([...declined.connected, ...permissions.getDomainsForBucket(null), ...permissions.getDomainsForBucket(effectiveAccountId), ...declined.sites.map(site => site.domain)])]
     .filter(domain => domain.toLowerCase().includes(query.toLowerCase()))
     .sort((a, b) => a.localeCompare(b));
 
   // Domain detail — derived from provider state
   const ownPerms = detailDomain ? permissions.getForBucket(detailDomain, effectiveAccountId) : {};
-  const globalPerms = detailDomain ? permissions.getForBucket(detailDomain, null) : {};
-  const domainPerms = { ...globalPerms, ...ownPerms };
-  const inheritedKeys = globalMode ? [] : Object.keys(globalPerms).filter(key => !(key in ownPerms));
-  const [resetOpen, setResetOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const domainPerms = detailDomain ? permissions.getEffective(detailDomain, effectiveAccountId) : {};
+  const inheritedKeys = Object.keys(domainPerms).filter(key => !(key in ownPerms));
   const [actionError, setActionError] = useState('');
-  const reset = async () => {
-    setBusy(true); setActionError('');
-    try { await rpc('signer_resetAccountRules'); await permissions.reload(); setResetOpen(false); }
-    catch { setActionError(t('perms.saveFailed')); }
-    finally { setBusy(false); }
-  };
   const back = () => detailDomain ? setDetailDomain(null) : onBack();
 
   // Notify on navigation, using the current callback without treating a new
@@ -130,7 +116,7 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
   };
 
   const filterKeysForAccount = (keys: string[]): string[] =>
-    filterKeysForAccountKind(keys, { readOnly: isSelectedReadOnly, nip46: isSelectedNip46 }, allAccountsMode);
+    filterKeysForAccountKind(keys, { readOnly: isSelectedReadOnly, nip46: isSelectedNip46 }, false);
 
   // ── Add Rule modal state ──
   const [addRuleOpen, setAddRuleOpen] = useState<boolean>(false);
@@ -142,11 +128,11 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
     const allKeys = filterKeysForAccount(Object.keys(domainPerms));
 
     return (
-      <OverlayPanel title={t(globalMode ? 'perms.globalRules' : 'perms.rules')} onBack={back}>
+      <OverlayPanel title={t('perms.rules')} onBack={back}>
       <PermissionsDetailLayout domain={detailDomain} actions={
         <Container variant="row" className="justify-between">
           <Button small onClick={() => setAddRuleOpen(true)}><IconPlus size={12} /> {t('perms.addRule')}</Button>
-          <ButtonDanger small onClick={handleRevoke}>{t(globalMode ? 'perms.revokeAll' : 'perms.resetSiteRules')}</ButtonDanger>
+          <ButtonDanger small onClick={handleRevoke}>{t('perms.resetSiteRules')}</ButtonDanger>
         </Container>
       }>
         {allKeys.length === 0 ? (
@@ -155,7 +141,7 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
             text={t('perms.noRules')}
           />
         ) : (
-          <PermissionRulesList keys={allKeys} permissions={domainPerms} inheritedKeys={inheritedKeys} accountMode={!globalMode} onChange={handleChip} />
+          <PermissionRulesList keys={allKeys} permissions={domainPerms} inheritedKeys={inheritedKeys} accountMode onChange={handleChip} />
         )}
 
         <FormError>{actionError}</FormError>
@@ -175,9 +161,8 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
 
   // List view
   return (
-    <OverlayPanel title={t(globalMode ? 'perms.globalRules' : 'perms.rules')} onBack={onBack}>
+    <OverlayPanel title={t('perms.rules')} onBack={onBack}>
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
-      {globalMode && <ButtonDanger small onClick={() => setResetOpen(true)}>{t('perms.resetAccountRules')}</ButtonDanger>}
       <Input type="search" label={t('perms.searchSites')} placeholder={t('perms.searchSites')}
         value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
 
@@ -191,8 +176,8 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
       ) : (
         <Container className="shrink-0 overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {domains.map((domain: string) => {
-            const bucketPerms = {...permissions.getForBucket(domain, null), ...permissions.getForBucket(domain, effectiveAccountId)};
-            const dismissal = !globalMode && declined.sites.find(site => site.domain === domain);
+            const bucketPerms = permissions.getEffective(domain, effectiveAccountId);
+            const dismissal = declined.sites.find(site => site.domain === domain);
             return (
               <ListRow
                 key={domain}
@@ -212,8 +197,6 @@ export default forwardRef<RulesScreenHandle, RulesScreenProps>(function RulesScr
         <DeclinedSites key={selectedDeclined.domain} site={selectedDeclined} onChange={refreshDeclined} onClose={() => setDeclinedDomain(null)} />
       </Modal>, document.body)}
 
-      {resetOpen && createPortal(<ConfirmDialog title={t('perms.resetAccountRules')} message={t('perms.resetAccountRulesHint')}
-        busy={busy} error={actionError} danger onConfirm={() => void reset()} onCancel={() => setResetOpen(false)} />, document.body)}
     </Container>
     </OverlayPanel>
   );

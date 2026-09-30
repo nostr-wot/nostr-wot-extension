@@ -418,3 +418,16 @@ it('relay settings revoke all allows while locked and reject an inactive account
  await handlers.get('signer_setRelayAuthenticationSites')!(params);
  assert.deepEqual(await listAuthenticationGrants(),before.filter(grant=>grant.decision==='deny'));
 });
+
+it('all-site global signing approvals still require backend and relay destination consent', async () => {
+  await permissions.migrateToInheritance();
+  await permissions.clearRuleBucket(site);
+  await permissions.saveDirect('_global', 'signEvent', 'allow');
+  for (const event of [http(), relay()]) {
+    const signing = handleSignEvent(event, site); void signing.catch(() => {});
+    const [item] = await pending();
+    assert.ok(item?.authentication, 'global signing defaults must not authorize authentication');
+    await resolveRequest(item.id, {allow:false});
+    await assert.rejects(signing, /denied/i);
+  }
+});

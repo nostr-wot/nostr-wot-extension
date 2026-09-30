@@ -1,4 +1,5 @@
-import { sitePermissionBucket } from '@domain/site/siteScope.ts';
+import { GLOBAL_RULES_SCOPE } from '@constants/permissions';
+import { effectiveSitePermissions, sitePermissionBucket } from '@domain/site/siteScope.ts';
 import { useCallback, type ReactNode } from 'react';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
@@ -31,6 +32,7 @@ interface PermissionsContextValue extends PermissionsData {
   copyPermissions: (fromAccountId: string, toAccountId: string) => Promise<void>;
   setUseGlobalDefaults: (enabled: boolean) => Promise<void>;
   getForBucket: (domain: string, accountId?: string | null) => Record<string, string>;
+  getEffective: (domain: string, accountId?: string | null) => Record<string, string>;
   getDomainsForBucket: (accountId?: string | null) => string[];
 }
 
@@ -106,6 +108,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     const bucket = accountId || '_default';
     const domains: string[] = [];
     for (const domain of Object.keys(rawPerms)) {
+      if (domain === GLOBAL_RULES_SCOPE) continue;
       const b = rawPerms[domain]?.[bucket];
       if (b && Object.keys(b).length > 0) {
         domains.push(domain);
@@ -124,6 +127,7 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     copyPermissions,
     setUseGlobalDefaults,
     getForBucket,
+    getEffective: (domain, accountId) => effectiveSitePermissions(rawPerms, domain, accountId),
     getDomainsForBucket,
   };
 

@@ -1129,15 +1129,16 @@
   "auth.relaySaveFailed": "Impossibile salvare le autorizzazioni del relay. Riprova.",
   "auth.relaySaveStale": "Le autorizzazioni del relay sono cambiate. Torna indietro e riapri questo relay prima di salvare.",
   "auth.relaySaveAccountChanged": "L’account attivo è cambiato. Torna indietro e riapri l’autenticazione dei relay.",
-  "perms.rules": "Regole",
+  "perms.rules": "Regole per sito",
   "perms.rulesHint": "Gestisci le regole dei siti per questo account",
   "perms.globalRules": "Regole globali",
-  "perms.globalRulesHint": "Regole condivise ereditate dagli account",
-  "perms.inheritedRule": "Ereditata dalle regole globali",
+  "perms.globalRulesHint": "Regole predefinite per siti connessi e account",
+  "perms.inheritedRule": "Regole ereditate",
   "perms.accountRule": "Regola specifica dell’account",
-  "perms.useGlobalRule": "Usa regola globale",
+  "perms.useGlobalRule": "Usa regola ereditata",
   "perms.resetSiteRules": "Reimposta regole del sito",
   "perms.resetAccountRules": "Reimposta regole di tutti gli account",
   "perms.resetAccountRulesHint": "Rimuovere le regole di firma specifiche di tutti gli account? Tutti erediteranno le regole globali, comprese le approvazioni. Le regole globali e le autorizzazioni di autenticazione di backend e relay restano invariate.",
-  "perms.saveFailed": "Impossibile salvare la modifica. Riprova."
+  "perms.saveFailed": "Impossibile salvare la modifica. Riprova.",
+  "perms.globalRulesInfo": "Queste regole si applicano a tutti i siti connessi e account. Le regole del sito hanno la precedenza. Connettere un nuovo sito e autenticarsi presso un backend o relay richiedono permessi separati."
 }

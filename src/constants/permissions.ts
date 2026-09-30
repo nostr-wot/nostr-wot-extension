@@ -4,6 +4,9 @@ export const GLOBAL_DEFAULTS_KEY = 'signerUseGlobalDefaults';
 
 export const DEFAULT_BUCKET = '_default';
 
+/** Internal scope for explicitly configured defaults across connected sites. */
+export const GLOBAL_RULES_SCOPE = '_global';
+
 // Decisions: "allow" | "deny" | "ask"
 
 // Event kinds that are part of the "send a DM" flow. signEvent for any of

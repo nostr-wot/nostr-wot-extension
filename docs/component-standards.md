@@ -764,6 +764,6 @@ Relay authentication settings use `OverlayPanel` for full-screen back navigation
 
 ### Permission rule editors
 
-Permissions is a navigation menu. `RulesScreen` shares site search, declined-site handling and rule details between the active account and Global rules. `PermissionRulesList` renders inherited rules with neutral chips and an explicit inherited label; overrides use semantic decision colors. Its decision choices reuse the top-layer `ActionMenu`. Global reset reuses `ConfirmDialog`; it removes account rule buckets only, preserving authentication grants.
+Permissions is a navigation menu. `GlobalRules` opens a direct shared-default editor with no site identity or intermediate list; Back returns to Permissions. It appears before Site rules. `RulesScreen` owns site search, declined-site handling and account-specific rule details. Both editors reuse `PermissionRulesList` and `AddRuleModal`. `PermissionRulesList` renders inherited rules with neutral chips and an explicit inherited label; overrides use semantic decision colors. Its decision choices reuse the top-layer `ActionMenu`. Global reset reuses `ConfirmDialog`; it removes account rule buckets only, preserving authentication grants.
 
 Approval action menus size to content within 176–260 px (clamped to the viewport), rather than filling the popup. Single-action choices use short site-scoped labels; menus with multiple action types retain their type labels. Exact authentication URL/method details remain in the request summary rather than being repeated inside the menu.

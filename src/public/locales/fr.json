@@ -1129,15 +1129,16 @@
   "auth.relaySaveFailed": "Impossible d’enregistrer les autorisations du relais. Réessayez.",
   "auth.relaySaveStale": "Les autorisations du relais ont changé. Revenez en arrière et rouvrez ce relais avant d’enregistrer.",
   "auth.relaySaveAccountChanged": "Le compte actif a changé. Revenez en arrière et rouvrez l’authentification des relais.",
-  "perms.rules": "Règles",
+  "perms.rules": "Règles par site",
   "perms.rulesHint": "Gérer les règles des sites pour ce compte",
   "perms.globalRules": "Règles globales",
-  "perms.globalRulesHint": "Règles partagées héritées par les comptes",
-  "perms.inheritedRule": "Héritée des règles globales",
+  "perms.globalRulesHint": "Règles par défaut des sites connectés et comptes",
+  "perms.inheritedRule": "Règles héritées",
   "perms.accountRule": "Règle propre au compte",
-  "perms.useGlobalRule": "Utiliser la règle globale",
+  "perms.useGlobalRule": "Utiliser la règle héritée",
   "perms.resetSiteRules": "Réinitialiser les règles du site",
   "perms.resetAccountRules": "Réinitialiser toutes les règles des comptes",
   "perms.resetAccountRulesHint": "Supprimer les règles de signature propres à chaque compte ? Tous les comptes hériteront des règles globales, y compris leurs autorisations. Les règles globales et les autorisations d’authentification des backends et relais restent inchangées.",
-  "perms.saveFailed": "Impossible d’enregistrer la modification. Réessayez."
+  "perms.saveFailed": "Impossible d’enregistrer la modification. Réessayez.",
+  "perms.globalRulesInfo": "Ces règles s’appliquent à tous les sites connectés et comptes. Les règles du site ont priorité. La connexion d’un nouveau site et l’authentification auprès d’un backend ou relais nécessitent leurs propres autorisations."
 }

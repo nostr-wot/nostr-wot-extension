@@ -4,6 +4,7 @@ import { useAccount } from '@context/AccountContext';
 import RelayAuthentication, { type RelayAuthenticationHandle } from './RelayAuthentication';
 import BackendAuthentication from './BackendAuthentication';
 import DefaultBackendAuth from './DefaultBackendAuth';
+import GlobalRules from './GlobalRules';
 import RulesScreen, { type RulesScreenHandle } from './RulesScreen';
 import Card from '@components/Card';
 import Container from '@components/Container';
@@ -23,16 +24,17 @@ export default forwardRef<PermissionsSectionHandle, Props>(function PermissionsS
   useImperativeHandle(ref, () => ({ goBack: () => {
     if (!screen) return false;
     if (screen === 'relay' && relayRef.current?.goBack()) return true;
-    if ((screen === 'rules' || screen === 'global') && rulesRef.current?.goBack()) return true;
+    if (screen === 'rules' && rulesRef.current?.goBack()) return true;
     back(); return true;
   } }));
-  if (screen === 'rules' || screen === 'global') return <RulesScreen key={`${screen}:${activeId}`} ref={rulesRef}
-    globalMode={screen === 'global'} initialDomain={initialDomain} onDetailChange={onDetailChange} onBack={back} />;
+  if (screen === 'rules') return <RulesScreen key={`${screen}:${activeId}`} ref={rulesRef}
+    initialDomain={initialDomain} onDetailChange={onDetailChange} onBack={back} />;
+  if (screen === 'global') return <GlobalRules onBack={back} />;
   if (screen === 'backend' && account) return <BackendAuthentication key={account.id} accounts={accounts || []} activeId={activeId} onBack={back} />;
   if (screen === 'relay' && account) return <RelayAuthentication key={account.id} ref={relayRef} accountId={account.id} onBack={back} />;
   const rows = [
-    { screen:'rules' as const, title:'perms.rules', hint:'perms.rulesHint' },
     { screen:'global' as const, title:'perms.globalRules', hint:'perms.globalRulesHint' },
+    { screen:'rules' as const, title:'perms.rules', hint:'perms.rulesHint' },
     { screen:'backend' as const, title:'auth.permissions', hint:'auth.manageBackends' },
     { screen:'relay' as const, title:'auth.relayPermissions', hint:'auth.manageRelays' },
   ];

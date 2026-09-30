@@ -1,6 +1,6 @@
 import { revokeAuthenticationGrants } from './authentication.ts';
-import { siteScopes, sitePermissionBucket } from '@domain/site/siteScope.ts';
-import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, DM_SIGN_KINDS } from '@constants/permissions.ts';
+import { siteScopes, sitePermissionBucket, effectiveSitePermissions } from '@domain/site/siteScope.ts';
+import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, GLOBAL_RULES_SCOPE, DM_SIGN_KINDS } from '@constants/permissions.ts';
 /**
  * Signing Permission Policies -- Per-domain, per-account, per-kind
  *
@@ -15,7 +15,7 @@ import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BU
  * Storage model:
  *   { "domain": { "_default": { "signEvent:1": "allow" }, "acctId": { ... } } }
  *
- * Global rules provide per-site defaults. Explicit account keys override the
+ * Global rules provide defaults across connected sites. Legacy shared site rules stay scoped to their site. Explicit account keys override the
  * same global keys, including 'ask'; method/kind deny-wins checks follow.
  * Legacy mutually exclusive buckets are migrated once without activating
  * previously dormant permissions. The legacy mode flag is only read until
@@ -465,8 +465,9 @@ export async function getAll(accountId?: string): Promise<Record<string, Permiss
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
     const result: Record<string, PermissionBucket> = {};
     for (const domain of Object.keys(perms)) {
-      const data = await usesInheritance() && accountId
-        ? { ...sitePermissionBucket(perms, domain, DEFAULT_BUCKET), ...sitePermissionBucket(perms, domain, accountId) }
+      if (domain === GLOBAL_RULES_SCOPE) continue;
+      const data = await usesInheritance()
+        ? effectiveSitePermissions(perms, domain, accountId)
         : perms[domain][bucket];
       if (data && Object.keys(data).length > 0) {
         result[domain] = { ...data } as PermissionBucket;
@@ -487,8 +488,8 @@ export async function getForDomain(domain: string, accountId?: string): Promise<
     const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
     const own = sitePermissionBucket(perms, domain, bucket);
-    return (await usesInheritance() && accountId
-      ? { ...sitePermissionBucket(perms, domain, DEFAULT_BUCKET), ...own } : own) as PermissionBucket;
+    return (await usesInheritance()
+      ? effectiveSitePermissions(perms, domain, accountId) : own) as PermissionBucket;
   });
 }
 

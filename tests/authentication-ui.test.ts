@@ -272,7 +272,7 @@ it('Permissions separates rules from backend and relay authentication',async t=>
   assert.ok(card.contains(rules));assert.ok(card.contains(backend));
   assert.equal(card.querySelectorAll('.shadow-card').length,0,'controls share one card without nested cards');
   assert.equal(document.querySelector('input[type="search"]'),null);
-  for(const [before,after] of [[rules,globals],[globals,backend],[backend,backendLink],[backendLink,link]]) {
+  for(const [before,after] of [[globals,rules],[rules,backend],[backend,backendLink],[backendLink,link]]) {
    assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   }
   assert.equal(document.querySelector('[role="dialog"]'),null);
@@ -493,16 +493,16 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
  resetMockStorage();
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  dom.window.HTMLElement.prototype.showPopover=function(){};dom.window.HTMLElement.prototype.hidePopover=function(){};
- let raw:any={'https://site.test':{_default:{readMessages:'allow',getPublicKey:'allow'},a:{getPublicKey:'deny'}}};
+ let raw:any={'_global':{_default:{'signEvent:7':'deny'}},'https://site.test':{_default:{readMessages:'allow',getPublicKey:'allow'},a:{getPublicKey:'deny'}}};
  let resets=0;const saves:any[]=[];
  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
   if(message.method==='signer_getPermissionsRaw')return {result:raw};
   if(message.method==='signer_getUseGlobalDefaults')return {result:false};
   if(message.method==='signer_savePermission'){
-   saves.push(message.params);raw['https://site.test'].a[message.params.methodName]=message.params.decision;return {result:{ok:true}};
+   saves.push(message.params);raw[message.params.domain][message.params.accountId || '_default'][message.params.methodName]=message.params.decision;return {result:{ok:true}};
   }
   if(message.method==='signer_inheritRule'){delete raw['https://site.test'].a[message.params.key];return {result:{ok:true}};}
-  if(message.method==='signer_resetAccountRules'){resets++;raw={'https://site.test':{_default:raw['https://site.test']._default}};return {result:{ok:true}};}
+  if(message.method==='signer_resetAccountRules'){resets++;raw={'_global':raw._global,'https://site.test':{_default:raw['https://site.test']._default}};return {result:{ok:true}};}
   return {result:[]};
  });
  await browser.storage.local.set({accounts:[{id:'a',pubkey:'11'.repeat(32),type:'nsec'}],activeAccountId:'a'});
@@ -524,6 +524,17 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   assert.equal(saves[0].accountId,'a');assert.equal(saves[0].methodName,'readMessages');
   assert.equal(raw['https://site.test']._default.readMessages,'allow');
   await act(async()=>back().click());await act(async()=>back().click());
+  await act(async()=>button(label('perms.globalRulesHint')).click());
+  assert.equal(document.querySelector('input[type="search"]'),null);
+  assert.ok(!document.body.textContent!.includes('https://site.test'));
+  assert.ok(document.body.textContent!.includes(label('perms.globalRulesInfo')));
+  await act(async()=>button(label('perms.deny')).click());
+  await act(async()=>document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[0].click());
+  assert.equal(saves[1].domain,'_global');assert.ok(!saves[1].accountId);
+  assert.equal(raw._global._default['signEvent:7'],'allow');
+  await act(async()=>back().click());
+  assert.ok(button(label('perms.rulesHint')));
+  assert.equal(document.querySelector('input[type="search"]'),null);
   await act(async()=>button(label('perms.globalRulesHint')).click());
   await act(async()=>button(label('perms.resetAccountRules')).click());
   assert.equal(resets,0);assert.ok(document.querySelector('[role="dialog"]'));

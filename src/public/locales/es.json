@@ -1129,15 +1129,16 @@
   "auth.relaySaveFailed": "No se pudieron guardar los permisos del relay. Inténtalo de nuevo.",
   "auth.relaySaveStale": "Los permisos del relay cambiaron. Vuelve atrás y abre este relay antes de guardar.",
   "auth.relaySaveAccountChanged": "La cuenta activa cambió. Vuelve atrás y abre la autenticación de relays.",
-  "perms.rules": "Reglas",
+  "perms.rules": "Reglas por sitio",
   "perms.rulesHint": "Gestionar reglas de sitios para esta cuenta",
   "perms.globalRules": "Reglas globales",
-  "perms.globalRulesHint": "Reglas compartidas que heredan las cuentas",
-  "perms.inheritedRule": "Heredada de las reglas globales",
+  "perms.globalRulesHint": "Valores predeterminados para sitios conectados y cuentas",
+  "perms.inheritedRule": "Reglas heredadas",
   "perms.accountRule": "Regla de esta cuenta",
-  "perms.useGlobalRule": "Usar regla global",
+  "perms.useGlobalRule": "Usar regla heredada",
   "perms.resetSiteRules": "Restablecer reglas del sitio",
   "perms.resetAccountRules": "Restablecer reglas de todas las cuentas",
   "perms.resetAccountRulesHint": "¿Eliminar las reglas de firma específicas de todas las cuentas? Todas heredarán las reglas globales, incluidas sus aprobaciones. Las reglas globales y los permisos de autenticación de backends y relays no cambian.",
-  "perms.saveFailed": "No se pudo guardar el cambio de permiso. Inténtalo de nuevo."
+  "perms.saveFailed": "No se pudo guardar el cambio de permiso. Inténtalo de nuevo.",
+  "perms.globalRulesInfo": "Estas reglas se aplican a todos los sitios conectados y cuentas. Las reglas de cada sitio tienen prioridad. Conectar un sitio nuevo y autenticarte en un backend o relay requieren sus propios permisos."
 }

@@ -1129,15 +1129,16 @@
   "auth.relaySaveFailed": "Não foi possível salvar as permissões do relay. Tente novamente.",
   "auth.relaySaveStale": "As permissões do relay mudaram. Volte e abra este relay antes de salvar.",
   "auth.relaySaveAccountChanged": "A conta ativa mudou. Volte e abra a autenticação de relays.",
-  "perms.rules": "Regras",
+  "perms.rules": "Regras por site",
   "perms.rulesHint": "Gerenciar regras de sites desta conta",
   "perms.globalRules": "Regras globais",
-  "perms.globalRulesHint": "Regras compartilhadas herdadas pelas contas",
-  "perms.inheritedRule": "Herdada das regras globais",
+  "perms.globalRulesHint": "Regras padrão para sites conectados e contas",
+  "perms.inheritedRule": "Regras herdadas",
   "perms.accountRule": "Regra desta conta",
-  "perms.useGlobalRule": "Usar regra global",
+  "perms.useGlobalRule": "Usar regra herdada",
   "perms.resetSiteRules": "Redefinir regras do site",
   "perms.resetAccountRules": "Redefinir regras de todas as contas",
   "perms.resetAccountRulesHint": "Remover as regras de assinatura específicas de todas as contas? Todas herdarão as regras globais, incluindo aprovações. As regras globais e permissões de autenticação de backends e relays não mudam.",
-  "perms.saveFailed": "Não foi possível salvar a alteração. Tente novamente."
+  "perms.saveFailed": "Não foi possível salvar a alteração. Tente novamente.",
+  "perms.globalRulesInfo": "Estas regras aplicam-se a todos os sites conectados e contas. As regras de cada site têm prioridade. Conectar um novo site e autenticar num backend ou relay requer permissões próprias."
 }

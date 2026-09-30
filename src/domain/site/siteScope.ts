@@ -1,3 +1,5 @@
+import { DEFAULT_BUCKET, GLOBAL_RULES_SCOPE } from '@constants/permissions.ts';
+
 /** Read an exact origin plus its original hostname scope. Never creates a grant. */
 export function siteScopes(origin: string): string[] {
   try {
@@ -23,4 +25,18 @@ export function sitePermissionBucket(
     }
   }
   return result;
+}
+
+/** Global defaults, account-wide defaults, legacy site defaults, then site overrides.
+ * Existing site grants stay site-scoped; adding globals never promotes them.
+ */
+export function effectiveSitePermissions(
+  stored: Record<string, Record<string, Record<string, string>>>, origin: string, accountId?: string | null,
+): Record<string, string> {
+  return {
+    ...sitePermissionBucket(stored, GLOBAL_RULES_SCOPE, DEFAULT_BUCKET),
+    ...(accountId ? sitePermissionBucket(stored, GLOBAL_RULES_SCOPE, accountId) : {}),
+    ...sitePermissionBucket(stored, origin, DEFAULT_BUCKET),
+    ...(accountId ? sitePermissionBucket(stored, origin, accountId) : {}),
+  };
 }

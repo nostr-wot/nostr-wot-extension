@@ -1,3 +1,4 @@
+import { GLOBAL_RULES_SCOPE } from '@constants/permissions';
 import { setRelayAuthenticationSites, getDefaultBackendAuth, setDefaultBackendAuth, listAuthenticationGrants, revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { MAX_EVENT_BYTES, MAX_EVENT_TAGS, MAX_TAG_VALUES, MAX_CRYPTO_PLAINTEXT_BYTES, MAX_CRYPTO_CIPHERTEXT_LENGTH } from '@constants/signing.ts';
 import { getSigningRejections, acknowledgeSigningRejections } from '../signing/rejections.ts';
@@ -220,7 +221,7 @@ export const handlers = new Map<string, HandlerFn>([
         await signerPermissions.migrateToInheritance();
         await signerPermissions.saveDirect(params.domain as string, params.methodName as string, params.decision as 'allow' | 'deny' | 'ask', params.accountId as string);
         if (params.methodName === 'getPublicKey') {
-            signerIdentity.clearGetPubkeyCooldown(params.domain as string);
+            signerIdentity.clearGetPubkeyCooldown(params.domain === GLOBAL_RULES_SCOPE ? undefined : params.domain as string);
         }
         return { ok: true };
     }],

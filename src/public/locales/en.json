@@ -1129,15 +1129,16 @@
   "auth.relaySaveFailed": "Relay permissions could not be saved. Please try again.",
   "auth.relaySaveStale": "Relay permissions changed. Go back and reopen this relay before saving.",
   "auth.relaySaveAccountChanged": "The active account changed. Go back and reopen relay authentication.",
-  "perms.rules": "Rules",
+  "perms.rules": "Site rules",
   "perms.rulesHint": "Manage site rules for this account",
   "perms.globalRules": "Global rules",
-  "perms.globalRulesHint": "Shared site rules inherited by accounts",
-  "perms.inheritedRule": "Inherited from global rules",
+  "perms.globalRulesHint": "Defaults across connected sites and accounts",
+  "perms.inheritedRule": "Inherited defaults",
   "perms.accountRule": "Account override",
-  "perms.useGlobalRule": "Use global rule",
+  "perms.useGlobalRule": "Use inherited default",
   "perms.resetSiteRules": "Reset site overrides",
   "perms.resetAccountRules": "Reset all account overrides",
   "perms.resetAccountRulesHint": "Remove ordinary signing rules from every specific account? All accounts will then inherit global rules, including their approvals. Global rules and backend/relay authentication grants stay unchanged.",
-  "perms.saveFailed": "Could not save the permission change. Please try again."
+  "perms.saveFailed": "Could not save the permission change. Please try again.",
+  "perms.globalRulesInfo": "These defaults apply to all connected sites and accounts. Site rules override matching defaults. Connecting a new site and backend or relay authentication still require their own permissions."
 }

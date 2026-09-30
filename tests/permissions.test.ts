@@ -542,3 +542,36 @@ it('settings writes migrate before choosing the explicit account bucket',async()
   assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'deny');
   assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'b'),'allow');
 });
+
+
+describe('defaults across connected sites', () => {
+  beforeEach(async () => { resetMockStorage(); permissions.invalidateCache(); await permissions.migrateToInheritance(); });
+  it('does not broaden existing site approvals; explicit global rules apply across sites and accounts', async () => {
+    await permissions.saveDirect('https://one.test', 'readMessages', 'allow');
+    assert.equal(await permissions.check('https://two.test', 'nip04Decrypt', undefined, 'a'), 'ask');
+    await permissions.saveDirect('_global', 'signEvent:1', 'allow');
+    for (const site of ['https://one.test', 'https://two.test']) for (const account of ['a', 'b']) {
+      assert.equal(await permissions.check(site, 'signEvent', 1, account), 'allow');
+    }
+    await permissions.saveDirect('https://one.test', 'signEvent:1', 'deny', 'a');
+    assert.equal(await permissions.check('https://one.test', 'signEvent', 1, 'a'), 'deny');
+    assert.equal(await permissions.check('https://one.test', 'signEvent', 1, 'b'), 'allow');
+    assert.equal(await permissions.check('https://two.test', 'signEvent', 1, 'a'), 'allow');
+    await permissions.inheritRule('https://one.test', 'signEvent:1', 'a');
+    assert.equal(await permissions.check('https://one.test', 'signEvent', 1, 'a'), 'allow');
+    assert.ok(!('_global' in await permissions.getAll('a')));
+  });
+  it('supports ask overrides, fresh accounts, copying and resetting without losing shared defaults', async () => {
+    await permissions.saveDirect('_global', 'readMessages', 'allow');
+    await permissions.saveDirect('https://one.test', 'readMessages', 'ask', 'a');
+    assert.equal(await permissions.check('https://one.test', 'nip04Decrypt', undefined, 'a'), 'ask');
+    await permissions.setupNewAccountPermissions('fresh', ['a'], null);
+    assert.equal(await permissions.check('https://unknown.test', 'nip04Decrypt', undefined, 'fresh'), 'ask');
+    await permissions.setupNewAccountPermissions('copy', ['a','fresh'], 'fresh');
+    assert.equal(await permissions.check('https://unknown.test', 'nip04Decrypt', undefined, 'copy'), 'ask');
+    await permissions.resetAccountRules();
+    assert.equal(await permissions.check('https://unknown.test', 'nip04Decrypt', undefined, 'fresh'), 'allow');
+    await permissions.clearRuleBucket('_global');
+    assert.equal(await permissions.check('https://unknown.test', 'nip04Decrypt', undefined, 'fresh'), 'ask');
+  });
+});

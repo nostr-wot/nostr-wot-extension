@@ -1129,15 +1129,16 @@
   "auth.relaySaveFailed": "Die Relay-Berechtigungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
   "auth.relaySaveStale": "Die Relay-Berechtigungen haben sich geändert. Gehe zurück und öffne dieses Relay vor dem Speichern erneut.",
   "auth.relaySaveAccountChanged": "Das aktive Konto hat sich geändert. Gehe zurück und öffne die Relay-Authentifizierung erneut.",
-  "perms.rules": "Regeln",
+  "perms.rules": "Website-Regeln",
   "perms.rulesHint": "Website-Regeln für dieses Konto verwalten",
   "perms.globalRules": "Globale Regeln",
-  "perms.globalRulesHint": "Gemeinsame Regeln, die Konten erben",
-  "perms.inheritedRule": "Von globalen Regeln geerbt",
+  "perms.globalRulesHint": "Standardregeln für verbundene Websites und Konten",
+  "perms.inheritedRule": "Geerbte Regeln",
   "perms.accountRule": "Kontospezifische Regel",
-  "perms.useGlobalRule": "Globale Regel verwenden",
+  "perms.useGlobalRule": "Geerbte Regel verwenden",
   "perms.resetSiteRules": "Website-Regeln zurücksetzen",
   "perms.resetAccountRules": "Alle Kontoregeln zurücksetzen",
   "perms.resetAccountRulesHint": "Kontospezifische Signierregeln aller Konten entfernen? Alle Konten erben dann globale Regeln einschließlich ihrer Genehmigungen. Globale Regeln und Backend-/Relay-Authentifizierungen bleiben unverändert.",
-  "perms.saveFailed": "Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen."
+  "perms.saveFailed": "Die Änderung konnte nicht gespeichert werden. Bitte erneut versuchen.",
+  "perms.globalRulesInfo": "Diese Regeln gelten für alle verbundenen Websites und Konten. Website-Regeln haben Vorrang. Neue Website-Verbindungen sowie Backend- und Relay-Authentifizierung benötigen eigene Berechtigungen."
 }
