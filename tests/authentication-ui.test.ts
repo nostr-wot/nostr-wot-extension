@@ -255,7 +255,7 @@ it('relay grant table and site permissions partition grants without hiding denia
   assert.ok(document.body.textContent!.includes('POST https://api.test'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
-it('Permissions opens all-sites relay grants in a popup below site authentication',async t=>{
+it('Permissions orders relay and backend controls below All accounts and above site permissions',async t=>{
  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
  const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
  const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
@@ -270,7 +270,12 @@ it('Permissions opens all-sites relay grants in a popup below site authenticatio
   const link=[...document.querySelectorAll('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
   assert.ok(link);assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
   const heading=[...document.querySelectorAll('label')].find(element=>element.textContent===label('auth.permissions'))!;
-  assert.ok(heading);assert.ok(heading.compareDocumentPosition(link)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+  const allAccounts=[...document.querySelectorAll('span')].find(element=>element.textContent===label('perms.allAccounts'))!;
+  const backend=document.querySelector(`[aria-label="${label('auth.defaultBackend')}"]`)!;
+  const search=document.querySelector('input[type="search"]')!;
+  for(const [before,after] of [[allAccounts,link],[link,backend],[backend,search],[search,heading]]) {
+   assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+  }
   assert.equal(document.querySelector('[role="dialog"]'),null);
   await act(async()=>link.click());assert.ok(document.querySelector('[role="dialog"]'));
   await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
@@ -338,7 +343,7 @@ it('authentication permissions refresh after background saves and revocations wi
 });
 it('default backend toggle is off initially, saves for the active account and explains its scope',async t=>{
  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
- const {default:Permissions}=await import('../src/screens/Settings/AuthenticationPermissions');
+ const {default:Permissions}=await import('../src/screens/Settings/DefaultBackendAuth');
  const {default:browser}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  let enabled=false;const saves:unknown[]=[];
@@ -348,7 +353,7 @@ it('default backend toggle is off initially, saves for the active account and ex
  });
  const root=createRoot(document.getElementById('root')!);
  try{
-  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a'})));
+  await act(async()=>root.render(createElement(Permissions,{accountId:'a'})));
   const toggle=document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;assert.equal(toggle.checked,false);
   await act(async()=>toggle.click());assert.deepEqual(saves,[{accountId:'a',enabled:true}]);assert.equal(toggle.checked,true);
   const info=document.querySelector<HTMLButtonElement>(`[aria-label="${label('auth.defaultBackendInfo')}"]`)!;

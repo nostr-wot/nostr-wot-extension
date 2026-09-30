@@ -1,3 +1,4 @@
+import DefaultBackendAuth from './DefaultBackendAuth';
 import AuthenticationPermissions from './AuthenticationPermissions';
 import PermissionRulesList from './PermissionRulesList';
 import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
@@ -36,6 +37,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const { accounts, activeId } = useAccount();
   const permissions = usePermissions();
   const selectedAccountId = activeId;
+  const authenticationAccount = accounts?.find(account => account.id === activeId) || accounts?.[0];
   const [relayPermissionsOpen, setRelayPermissionsOpen] = useState(false);
   const [query, setQuery] = useState<string>('');
   const [detailDomain, setDetailDomain] = useState<string | null>(initialDomain || null);
@@ -182,6 +184,10 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   return (
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
       {accountScopeBlock}
+      <Card className="p-0 overflow-hidden mb-0 shrink-0">
+        <ListRow leading={<IconShield size={15} className="text-brand" />} title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={() => setRelayPermissionsOpen(true)} />
+      </Card>
+      {authenticationAccount && <DefaultBackendAuth key={authenticationAccount.id} accountId={authenticationAccount.id} />}
 
       <Input type="search" label={t('perms.searchSites')} placeholder={t('perms.searchSites')}
         value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
@@ -212,7 +218,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
       <DeclinedSites />
       <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
-      <ListRow title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={() => setRelayPermissionsOpen(true)}/>
       {relayPermissionsOpen && createPortal(<Modal title={t('auth.relayPermissions')} onClose={() => setRelayPermissionsOpen(false)}>
         <AuthenticationPermissions accounts={accounts || []} activeId={activeId} view="relays"/>
       </Modal>, document.body)}
