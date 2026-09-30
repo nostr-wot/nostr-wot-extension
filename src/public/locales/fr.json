@@ -1092,7 +1092,7 @@
   "eventIntent.named": "{origin} souhaite [[signer un événement de type {purpose}]].",
   "eventIntent.generic": "{origin} souhaite [[signer un événement]].",
   "auth.relayPermissions": "Authentification des relais pour tous les sites",
-  "auth.manageRelays": "Gérer dans Relais",
+  "auth.manageRelays": "Consulter et révoquer l’accès aux relais depuis tous les sites",
   "auth.decision": "Autorisation",
   "messageReview.message": "Message",
   "messageReview.dateUnavailable": "Date indisponible",

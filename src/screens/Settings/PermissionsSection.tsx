@@ -13,7 +13,8 @@ import { usePermissions } from '@context/PermissionsContext';
 import PermissionsDetailLayout from './PermissionsDetailLayout';
 import Card from '@components/Card';
 import Button, { ButtonDanger } from '@components/Button';
-import Dropdown from '@components/Dropdown';
+import Modal from '@components/Modal';
+import { createPortal } from 'react-dom';
 import DeclinedSites from './DeclinedSites';
 import AddRuleModal from './AddRuleModal';
 import Toggle from '@components/Toggle';
@@ -27,15 +28,15 @@ export interface PermissionsSectionHandle {
 }
 
 interface PermissionsSectionProps {
-  onOpenRelays?: () => void;
   initialDomain?: string | null;
   onDetailChange?: (domain: string | null) => void;
 }
 
-export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(function PermissionsSection({ initialDomain, onDetailChange, onOpenRelays }, ref) {
-  const { accounts, activeId, profileCache } = useAccount();
+export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(function PermissionsSection({ initialDomain, onDetailChange }, ref) {
+  const { accounts, activeId } = useAccount();
   const permissions = usePermissions();
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const selectedAccountId = activeId;
+  const [relayPermissionsOpen, setRelayPermissionsOpen] = useState(false);
   const [query, setQuery] = useState<string>('');
   const [detailDomain, setDetailDomain] = useState<string | null>(initialDomain || null);
 
@@ -55,13 +56,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   // Domain detail — derived from provider state
   const domainPerms: Record<string, string> = detailDomain ? permissions.getForBucket(detailDomain, effectiveAccountId) : {};
-
-  // Initialize selected account to active account
-  useEffect(() => {
-    if (activeId && selectedAccountId === null) {
-      setSelectedAccountId(activeId);
-    }
-  }, [activeId, selectedAccountId]);
 
   // Notify parent when entering/leaving detail view
   useEffect(() => {
@@ -100,23 +94,11 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     setDetailDomain(null);
   };
 
-  const handleAccountChange = (val: string) => {
-    setSelectedAccountId(val);
-  };
-
-  const getAccountLabel = (a: any): string => {
-    const profile = profileCache[a.pubkey];
-    if (profile?.name) return profile.name;
-    if (a.name) return a.name;
-    return a.pubkey?.slice(0, 12) + '...';
-  };
-
   const filterKeysForAccount = (keys: string[]): string[] =>
     filterKeysForAccountKind(keys, { readOnly: isSelectedReadOnly, nip46: isSelectedNip46 }, allAccountsMode);
 
   // Account scope picker block
   const hasMultipleAccounts = accounts && accounts.length > 1;
-  const accountOptions = (accounts || []).map((a: any) => ({ value: a.id, label: getAccountLabel(a) }));
 
   const accountScopeBlock = hasMultipleAccounts && (
     <Container gap={3} className="pb-5 mb-3 border-b border-card-border">
@@ -136,18 +118,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           }} />
         </Container>
       </Card>
-
-      {!allAccountsMode && (
-        <>
-          <span className="text-xs font-semibold text-secondary mb-1">{t('perms.accountLabel')}</span>
-          <Dropdown
-            options={accountOptions}
-            value={selectedAccountId || ''}
-            onChange={handleAccountChange}
-            small
-          />
-        </>
-      )}
 
       {!allAccountsMode && isSelectedReadOnly && (
         <Container variant="box" gap={1} className="rounded-md border-card-active mb-4">
@@ -207,7 +177,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   // List view
   return (
-    <Container gap={4} className="flex-1 min-h-0 py-2">
+    <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
       {accountScopeBlock}
 
       <Input type="search" label={t('perms.searchSites')} placeholder={t('perms.searchSites')}
@@ -221,7 +191,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           hint={t('perms.permsHint')}
         />
       ) : (
-        <Container className="flex-1 overflow-y-auto overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
+        <Container className="shrink-0 overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {domains.map((domain: string) => {
             const bucketPerms = permissions.getForBucket(domain, effectiveAccountId);
             return (
@@ -237,9 +207,12 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         </Container>
       )}
 
-      {onOpenRelays && <ListRow title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={onOpenRelays}/> }
-      <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
       <DeclinedSites />
+      <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
+      <ListRow title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={() => setRelayPermissionsOpen(true)}/>
+      {relayPermissionsOpen && createPortal(<Modal title={t('auth.relayPermissions')} onClose={() => setRelayPermissionsOpen(false)}>
+        <AuthenticationPermissions accounts={accounts || []} activeId={activeId} view="relays"/>
+      </Modal>, document.body)}
     </Container>
   );
 });

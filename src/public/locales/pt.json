@@ -1092,7 +1092,7 @@
   "eventIntent.named": "{origin} quer [[assinar um evento de {purpose}]].",
   "eventIntent.generic": "{origin} quer [[assinar um evento]].",
   "auth.relayPermissions": "Autenticação de relays para todos os sites",
-  "auth.manageRelays": "Gerir em Relays",
+  "auth.manageRelays": "Rever e revogar o acesso a relays de todos os sites",
   "auth.decision": "Permissão",
   "messageReview.message": "Mensagem",
   "messageReview.dateUnavailable": "Data indisponível",

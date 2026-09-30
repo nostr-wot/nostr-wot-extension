@@ -543,3 +543,5 @@ Approval list regressions verify one heading per site while preserving separate 
 `tests/profile-display-cache.test.ts` verifies 30-minute expiry, the 500-profile bound under concurrent writes and unrelated-storage preservation. Message-preview regressions cover sender/date-only responses with no plaintext/payload, sender grouping, dated entries, profile images and literal themed intent parts. Raw-event disclosures retain keyboard-accessible native details.
 
 Raw event popup checks cover closed-state JSON absence, code-button activation, Escape dismissal, focus restoration, and timed plaintext concealment while raw request data is open.
+
+Relay settings tests verify active-account grant filtering without a relay-panel selector, plus published-list popup opening, actions, Escape dismissal and focus restoration.

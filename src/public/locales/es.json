@@ -1092,7 +1092,7 @@
   "eventIntent.named": "{origin} quiere [[firmar un evento de {purpose}]].",
   "eventIntent.generic": "{origin} quiere [[firmar un evento]].",
   "auth.relayPermissions": "Autenticación de relés para todos los sitios",
-  "auth.manageRelays": "Gestionar en Relés",
+  "auth.manageRelays": "Revisar y revocar el acceso a relés desde todos los sitios",
   "auth.decision": "Permiso",
   "messageReview.message": "Mensaje",
   "messageReview.dateUnavailable": "Fecha no disponible",

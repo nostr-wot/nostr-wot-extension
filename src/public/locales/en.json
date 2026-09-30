@@ -1092,7 +1092,7 @@
   "eventIntent.named": "{origin} wants to [[sign an event for {purpose}]].",
   "eventIntent.generic": "{origin} wants to [[sign an event]].",
   "auth.relayPermissions": "Relay authentication for all sites",
-  "auth.manageRelays": "Manage in Relays",
+  "auth.manageRelays": "Review and revoke relay access across all sites",
   "auth.decision": "Permission",
   "messageReview.message": "Message",
   "messageReview.dateUnavailable": "Date unavailable",

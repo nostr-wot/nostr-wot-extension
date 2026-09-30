@@ -236,21 +236,26 @@ it('relay grant table and site permissions partition grants without hiding denia
   {id:'other',accountId:'b',origin:'*',protocol:'nip42',destination:'wss://other.test/'},
  ];
  t.mock.method(browser.runtime,'sendMessage',async()=>({result:grants}));
- const root=createRoot(document.getElementById('root')!);const accounts=[{id:'a',pubkey:'a'.repeat(64)}];
+ const root=createRoot(document.getElementById('root')!);const accounts=[{id:'a',pubkey:'a'.repeat(64)},{id:'b',pubkey:'b'.repeat(64)}];
  try{
   await act(async()=>root.render(createElement(Permissions,{accounts,view:'relays'})));
   assert.equal(document.querySelectorAll('tbody tr').length,1);
   assert.ok(document.querySelector('table')!.textContent!.includes('wss://global.test/'));
   assert.ok(!document.body.textContent!.includes('wss://site-relay.test/'));
   assert.ok(!document.body.textContent!.includes('wss://other.test/'));
+  assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
+  await act(async()=>root.render(createElement(Permissions,{accounts,activeId:'b',view:'relays'})));
+  assert.ok(document.querySelector('table')!.textContent!.includes('wss://other.test/'));
+  assert.ok(!document.querySelector('table')!.textContent!.includes('wss://global.test/'));
   await act(async()=>root.render(createElement(Permissions,{accounts,view:'sites'})));
+  assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
   assert.equal(document.querySelectorAll('tbody tr').length,2);
   assert.ok(!document.body.textContent!.includes('wss://global.test/'));
   assert.ok(document.body.textContent!.includes((await import('../src/services/i18n/i18n')).t('auth.rejectAlways')));
   assert.ok(document.body.textContent!.includes('POST https://api.test'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
-it('Permissions offers navigation to the relay permissions panel',async t=>{
+it('Permissions opens all-sites relay grants in a popup below site authentication',async t=>{
  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
  const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
  const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
@@ -258,11 +263,18 @@ it('Permissions offers navigation to the relay permissions panel',async t=>{
  const {t:label}=await import('../src/services/i18n/i18n');resetMockStorage();
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>({result:message.method==='signer_getUseGlobalDefaults' ? true : message.method==='signer_getPermissionsRaw' ? {} : []}));
- let opened=0;const root=createRoot(document.getElementById('root')!);
+ await browser.storage.local.set({accounts:[{id:'a',pubkey:'11'.repeat(32),type:'imported'},{id:'b',pubkey:'22'.repeat(32),type:'imported'}],activeAccountId:'a'});
+ const root=createRoot(document.getElementById('root')!);
  try{
-  await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions,{onOpenRelays:()=>opened++})))));
+  await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions)))));
   const link=[...document.querySelectorAll('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
-  assert.ok(link);await act(async()=>link.click());assert.equal(opened,1);
+  assert.ok(link);assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
+  const heading=[...document.querySelectorAll('label')].find(element=>element.textContent===label('auth.permissions'))!;
+  assert.ok(heading);assert.ok(heading.compareDocumentPosition(link)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.equal(document.querySelector('[role="dialog"]'),null);
+  await act(async()=>link.click());assert.ok(document.querySelector('[role="dialog"]'));
+  await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  assert.equal(document.querySelector('[role="dialog"]'),null);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
 it('intent highlights keep origin/action/app literal and grouped summaries have no numbering or native marker',async t=>{

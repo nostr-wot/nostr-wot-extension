@@ -3,6 +3,8 @@
 Notable changes per release. Store-facing copy for each version is in its
 `### Store release notes` block; the rest is for us.
 
+- Simplify account-scoped settings: move authentication grants to the bottom of Permissions, open all-sites relay grants in their own popup, remove redundant account selectors, and open the published relay list in a popup.
+
 - Open raw events in a scrollable popup from the code icon; remove the redundant expand arrow from grouped signing requests.
 
 See `docs/deployment.md` for the store submission process and the rejections we

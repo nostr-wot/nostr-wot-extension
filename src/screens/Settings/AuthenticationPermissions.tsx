@@ -9,16 +9,13 @@ import Text from '@components/Text';
 import FormError from '@components/FormError';
 import { SectionLabel } from '@components/SectionLabel';
 import Button, { ButtonDanger } from '@components/Button';
-import Dropdown from '@components/Dropdown';
 type AccountSummary = Pick<SafeAccount, 'id' | 'pubkey'> & Partial<Pick<SafeAccount, 'name'>>;
 type GrantView = 'sites' | 'relays';
 export default function AuthenticationPermissions({accounts,activeId,view='sites'}:{accounts:AccountSummary[];activeId?:string|null;view?:GrantView}) {
- const [selected,setSelected]=useState(activeId || accounts[0]?.id || '');
- const account=accounts.find(item=>item.id===selected) || accounts.find(item=>item.id===activeId) || accounts[0];
+ const account=accounts.find(item=>item.id===activeId) || accounts[0];
  return <Container gap={3} className="shrink-0">
-  <SectionLabel>{t(view==='relays' ? 'auth.relayPermissions' : 'auth.permissions')}</SectionLabel>
+  {view==='sites' && <SectionLabel>{t('auth.permissions')}</SectionLabel>}
   <Text variant="hint">{t('auth.accountOnly')}</Text>
-  {accounts.length>1 && <Dropdown value={account?.id || ''} options={accounts.map(item=>({value:item.id,label:item.name || item.pubkey}))} onChange={setSelected} />}
   {account && <AccountGrants key={`${account.id}:${view}`} account={account} view={view}/>}
  </Container>;
 }
