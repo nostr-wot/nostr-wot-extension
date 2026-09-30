@@ -5,11 +5,13 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Migrate old shared permission rules into Global rules once, remove the legacy storage layers, and preserve conflicting site choices as visible overrides. Resetting overrides leaves only global inheritance on the same screen. New accounts inherit globals and can copy site overrides.
+
 - Open Site rules directly for the current browser tab and remove the saved-site list. Prompt users to visit a website when no web tab is available. Confirm resets and keep the current site editor open afterward. Use backend- and relay-specific permission labels.
 
 - Distinguish Permissions menu options with individual SVG icons while preserving consistent alignment and theme colors.
 
-- Global rules now opens a direct editor above Site rules, without a website header or intermediate site list. Explicit global defaults apply across connected sites and accounts; existing site approvals keep their original scope. Back returns directly to Permissions.
+- Global rules now opens a direct editor above Site rules, without a website header or intermediate site list. Explicit global defaults apply across connected sites and accounts; existing site-specific account overrides keep their scope. Back returns directly to Permissions.
 
 - Use Deny, Denied and Always deny consistently across approval controls, permission rules and statuses.
 

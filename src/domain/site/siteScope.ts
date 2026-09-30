@@ -27,8 +27,8 @@ export function sitePermissionBucket(
   return result;
 }
 
-/** Global defaults, account-wide defaults, legacy site defaults, then site overrides.
- * Existing site grants stay site-scoped; adding globals never promotes them.
+/** Resolve globals and site overrides, accepting old layers during migration.
+ * Consolidated storage contains only shared globals and account/site overrides.
  */
 export function effectiveSitePermissions(
   stored: Record<string, Record<string, Record<string, string>>>, origin: string, accountId?: string | null,

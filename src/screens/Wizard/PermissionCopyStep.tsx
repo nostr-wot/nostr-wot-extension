@@ -62,9 +62,7 @@ export default function PermissionCopyStep({ onNext, account }: PermissionCopySt
     })();
   }, [account?.id, onNext]);
 
-  // Start fresh: isolate the new account's permissions (switches to per-account
-  // mode if the app was in shared "all accounts" mode, preserving existing
-  // accounts' perms) and leave the new account empty.
+  // Use shared global defaults without copying another account’s site overrides.
   const handleFresh = async () => {
     if (!account?.id) { onNext(); return; }
     setCopying(true);

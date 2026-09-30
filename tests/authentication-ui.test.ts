@@ -495,7 +495,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  dom.window.HTMLElement.prototype.showPopover=function(){};dom.window.HTMLElement.prototype.hidePopover=function(){};
  t.mock.method(browser.tabs,'query',async()=>[{id:1,url:'https://site.test/chat'}]);
- let raw:any={'_global':{_default:{'signEvent:7':'deny'}},'https://site.test':{_default:{readMessages:'allow',getPublicKey:'allow'},a:{getPublicKey:'deny'}}};
+ let raw:any={'_global':{_default:{readMessages:'allow',getPublicKey:'allow','signEvent:7':'deny'}},'https://site.test':{a:{getPublicKey:'deny'}}};
  let resets=0;let siteResets=0;const saves:any[]=[];
  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
   if(message.method==='signer_getPermissionsRaw')return {result:raw};
@@ -505,7 +505,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   }
   if(message.method==='signer_clearRuleBucket'){siteResets++;assert.deepEqual(message.params,{domain:'https://site.test',accountId:'a'});raw['https://site.test'].a={};return {result:{ok:true}};}
   if(message.method==='signer_inheritRule'){delete raw['https://site.test'].a[message.params.key];return {result:{ok:true}};}
-  if(message.method==='signer_resetAccountRules'){resets++;raw={'_global':raw._global,'https://site.test':{_default:raw['https://site.test']._default}};return {result:{ok:true}};}
+  if(message.method==='signer_resetAccountRules'){resets++;raw={'_global':raw._global};return {result:{ok:true}};}
   return {result:[]};
  });
  await browser.storage.local.set({accounts:[{id:'a',pubkey:'11'.repeat(32),type:'nsec'}],activeAccountId:'a'});
@@ -525,7 +525,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   await act(async()=>inherited.click());
   await act(async()=>document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[1].click());
   assert.equal(saves[0].accountId,'a');assert.equal(saves[0].methodName,'readMessages');
-  assert.equal(raw['https://site.test']._default.readMessages,'allow');
+  assert.equal(raw._global._default.readMessages,'allow');
   await act(async()=>button(label('perms.resetSiteRules')).click());
   assert.equal(siteResets,0);assert.ok(document.querySelector('[role="dialog"]'));
   assert.ok(document.querySelector('[role="dialog"]')!.textContent!.includes('https://site.test'));
@@ -536,6 +536,8 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   assert.equal(siteResets,1);assert.equal(document.querySelector('[role="dialog"]'),null);
   assert.ok(document.body.textContent!.includes('https://site.test'));
   assert.ok(button(label('perms.resetSiteRules')),'reset keeps the site editor open');
+  assert.equal([...document.querySelectorAll('p')].filter(element=>element.textContent===label('perms.inheritedRule')).length,Object.keys(raw._global._default).length);
+  assert.ok(!document.body.textContent!.includes(label('perms.accountRule')));
   assert.equal(document.querySelector('input[type="search"]'),null);
   await act(async()=>back().click());
   await act(async()=>button(label('perms.globalRulesHint')).click());
@@ -555,7 +557,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   await act(async()=>button(label('common.cancel')).click());assert.equal(resets,0);
   await act(async()=>button(label('perms.resetAccountRules')).click());
   await act(async()=>button(label('common.confirm')).click());assert.equal(resets,1);
-  assert.deepEqual(Object.keys(raw['https://site.test']),['_default']);
+  assert.equal(raw['https://site.test'],undefined);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
 

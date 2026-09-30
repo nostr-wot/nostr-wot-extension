@@ -15,7 +15,9 @@ import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BU
  * Storage model:
  *   { "domain": { "_default": { "signEvent:1": "allow" }, "acctId": { ... } } }
  *
- * Global rules provide defaults across connected sites. Legacy shared site rules stay scoped to their site. Explicit account keys override the
+ * Global rules provide defaults across connected sites. Legacy shared rules are
+ * consolidated once into the global bucket, with conflicts preserved as site
+ * overrides. Explicit account keys override the
  * same global keys, including 'ask'; method/kind deny-wins checks follow.
  * Legacy mutually exclusive buckets are migrated once without activating
  * previously dormant permissions. The legacy mode flag is only read until
@@ -38,6 +40,8 @@ const _lock = new AsyncLock();
 
 // ── In-memory cache ──
 const INHERITANCE_KEY = 'signerRulesInheritance';
+const GLOBAL_RULES_VERSION_KEY = 'signerGlobalRulesVersion';
+let _cachedGlobalRules: boolean | null = null;
 let _cachedInheritance: boolean | null = null;
 let _cachedPerms: PermissionMap | null = null;
 let _cachedUseGlobalDefaults: boolean | null = null;
@@ -46,13 +50,14 @@ let _cachedUseGlobalDefaults: boolean | null = null;
 export function invalidateCache(): void {
   _cachedPerms = null;
   _cachedInheritance = null;
+  _cachedGlobalRules = null;
   _cachedUseGlobalDefaults = null;
 }
 
 // Listen for external storage changes (e.g. from other contexts)
 try {
   browser.storage.onChanged.addListener((changes: Record<string, { newValue?: unknown }>, area: string) => {
-    if (area === 'local' && (changes[STORAGE_KEY] || changes[GLOBAL_DEFAULTS_KEY] || changes[INHERITANCE_KEY])) {
+    if (area === 'local' && (changes[STORAGE_KEY] || changes[GLOBAL_DEFAULTS_KEY] || changes[INHERITANCE_KEY] || changes[GLOBAL_RULES_VERSION_KEY])) {
       invalidateCache();
     }
   });
@@ -123,19 +128,7 @@ export async function check(domain: string, method: string, kind?: number, accou
  * @param accountId - account ID (uses _default if omitted)
  */
 export async function save(domain: string, method: string, kind: number | null, decision: PermissionDecision, accountId?: string): Promise<void> {
-  await _lock.run(async () => {
-    const perms = await load();
-    const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
-    const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
-    if (!perms[domain]) perms[domain] = {};
-    if (!perms[domain][bucket]) perms[domain][bucket] = {};
-
-    const key = permissionKey(method, kind);
-    perms[domain][bucket][key] = decision;
-
-    await browser.storage.local.set({ [STORAGE_KEY]: perms });
-    invalidateCache();
-  });
+  await saveDirect(domain, permissionKey(method, kind), decision, accountId);
 }
 
 /**
@@ -147,6 +140,7 @@ export async function save(domain: string, method: string, kind: number | null, 
  */
 export async function saveDirect(domain: string, key: string, decision: PermissionDecision, accountId?: string): Promise<void> {
   await _lock.run(async () => {
+    if (await usesGlobalRules() && ((domain !== GLOBAL_RULES_SCOPE && (!accountId || accountId === DEFAULT_BUCKET)) || (domain === GLOBAL_RULES_SCOPE && accountId && accountId !== DEFAULT_BUCKET))) throw new Error('Global rules require global scope; site rules require an account');
     const perms = await load();
     const useDefaults = !await usesInheritance() && await getUseGlobalDefaults();
     const bucket = useDefaults ? DEFAULT_BUCKET : (accountId || DEFAULT_BUCKET);
@@ -387,6 +381,7 @@ export async function copyPermissions(fromAccountId: string | null, toAccountId:
     const perms = await load();
     let changed = false;
     for (const domain of Object.keys(perms)) {
+      if (domain === GLOBAL_RULES_SCOPE && await usesGlobalRules()) continue;
       const source = perms[domain][from];
       if (source && Object.keys(source).length > 0) {
         perms[domain][toAccountId] = { ...source };
@@ -401,19 +396,12 @@ export async function copyPermissions(fromAccountId: string | null, toAccountId:
 }
 
 /**
- * Set up permissions for a freshly created account so the wizard's
- * "Start fresh" / "Copy from" choice is actually honored.
- *
- * In global ("all accounts") mode every account shares the `_default` bucket,
- * so a new account would otherwise inherit the existing accounts' permissions.
- * When in that mode we switch to per-account mode, first migrating each existing
- * account's effective (global) permissions into its OWN bucket so they keep them,
- * which leaves the new account isolated. Then we either copy a chosen source
- * account's permissions into the new account, or leave it empty (fresh).
- *
- * @param newAccountId        the just-created account
- * @param existingAccountIds  every OTHER account id (to preserve on mode switch)
- * @param copyFromAccountId   source to copy into the new account, or null for fresh
+ * New accounts inherit shared globals. Optionally copy another account's site
+ * overrides; choosing globals leaves the new account without site overrides.
+ * The older isolation behavior below is only for pre-consolidation storage.
+ * @param newAccountId the newly created account
+ * @param existingAccountIds existing accounts for legacy mode migration
+ * @param copyFromAccountId source account, or null to use global rules
  */
 export async function setupNewAccountPermissions(
   newAccountId: string,
@@ -421,6 +409,21 @@ export async function setupNewAccountPermissions(
   copyFromAccountId: string | null,
 ): Promise<void> {
   if (!newAccountId) return;
+  if (await usesGlobalRules()) {
+    await _lock.run(async () => {
+      const perms = structuredClone(await load());
+      for (const domain of Object.keys(perms)) {
+        if (domain === GLOBAL_RULES_SCOPE) continue;
+        delete perms[domain][newAccountId];
+        if (copyFromAccountId && perms[domain][copyFromAccountId]) {
+          perms[domain][newAccountId] = { ...perms[domain][copyFromAccountId] };
+        }
+      }
+      await browser.storage.local.set({ [STORAGE_KEY]: perms });
+      invalidateCache();
+    });
+    return;
+  }
   if (await usesInheritance()) {
     await _lock.run(async () => {
       const perms = structuredClone(await load());
@@ -576,7 +579,7 @@ export async function migrateToInheritance(): Promise<void> {
 
 /** Reset ordinary account overrides only; destination authentication is separate. */
 export async function resetAccountRules(): Promise<void> {
-  await migrateToInheritance();
+  await migrateToGlobalRules();
   await _lock.run(async () => {
     const perms = structuredClone(await load());
     for (const domain of Object.keys(perms)) {
@@ -611,6 +614,70 @@ export async function clearRuleBucket(domain: string, accountId?: string): Promi
       if (perms[scope]) delete perms[scope][accountId || DEFAULT_BUCKET];
     }
     await browser.storage.local.set({ [STORAGE_KEY]: perms });
+    invalidateCache();
+  });
+}
+
+
+async function usesGlobalRules(): Promise<boolean> {
+  if (_cachedGlobalRules === null) {
+    const data = await browser.storage.local.get(GLOBAL_RULES_VERSION_KEY);
+    _cachedGlobalRules = data[GLOBAL_RULES_VERSION_KEY] === 1;
+  }
+  return _cachedGlobalRules;
+}
+
+/** Consolidate old shared defaults once, retaining conflicting site/account choices.
+ * The map and version are committed together; a failed write is safe to retry.
+ */
+export async function migrateToGlobalRules(): Promise<void> {
+  await migrateToInheritance();
+  await _lock.run(async () => {
+    if (await usesGlobalRules()) return;
+    const original = structuredClone(await load());
+    const perms = structuredClone(original);
+    const state = await browser.storage.local.get(['accounts', 'allowedDomains']);
+    const ids = new Set<string>((state.accounts as Array<{id:string}> || []).map(account => account.id));
+    for (const buckets of Object.values(original)) for (const id of Object.keys(buckets)) if (id !== DEFAULT_BUCKET) ids.add(id);
+    const sites = new Set([...Object.keys(original).filter(scope => scope !== GLOBAL_RULES_SCOPE), ...(state.allowedDomains as string[] || [])]);
+    const existing = original[GLOBAL_RULES_SCOPE]?.[DEFAULT_BUCKET] || {};
+    const globals: PermissionBucket = { ...existing };
+    const rank: Record<PermissionDecision, number> = {allow:0, ask:1, deny:2};
+    for (const [scope,buckets] of Object.entries(original)) {
+      if (scope === GLOBAL_RULES_SCOPE) continue;
+      for (const [key,value] of Object.entries(buckets[DEFAULT_BUCKET] || {})) {
+        if (Object.hasOwn(existing,key)) continue;
+        if (!Object.hasOwn(globals,key) || rank[value] > rank[globals[key]]) globals[key] = value;
+      }
+      delete perms[scope][DEFAULT_BUCKET];
+    }
+    // Retire account-wide hidden defaults too: preserve their current effects
+    // as visible overrides on known/connected sites. Future sites use globals.
+    perms[GLOBAL_RULES_SCOPE] = { [DEFAULT_BUCKET]: globals };
+    // Legacy hostname scopes must be handled before exact origins, so an
+    // exact-origin exception can override a migrated hostname exception.
+    for (const site of [...sites].sort((a,b) => siteScopes(a).length - siteScopes(b).length || a.localeCompare(b))) {
+      for (const id of ids) {
+        const previous = effectiveSitePermissions(original,site,id);
+        const next = effectiveSitePermissions(perms,site,id);
+        const keys = new Set([
+          ...Object.keys(sitePermissionBucket(original,site,DEFAULT_BUCKET)),
+          ...Object.keys(original[GLOBAL_RULES_SCOPE]?.[id] || {}),
+        ]);
+        for (const key of keys) {
+          if (previous[key] === next[key]) continue;
+          perms[site] ??= {};
+          perms[site][id] ??= {};
+          // Explicit site keys already win and must never be overwritten.
+          if (!Object.hasOwn(sitePermissionBucket(original,site,id),key)) perms[site][id][key] = previous[key] as PermissionDecision;
+        }
+      }
+    }
+    for (const scope of Object.keys(perms)) {
+      for (const id of Object.keys(perms[scope])) if (!Object.keys(perms[scope][id]).length) delete perms[scope][id];
+      if (!Object.keys(perms[scope]).length) delete perms[scope];
+    }
+    await browser.storage.local.set({[STORAGE_KEY]:perms,[GLOBAL_RULES_VERSION_KEY]:1});
     invalidateCache();
   });
 }

@@ -99,25 +99,22 @@ Permissions are stored in `browser.storage.local` under key `signerPermissions` 
 
 ```json
 {
-    "example.com": {
-        "_default": {
-            "signEvent:1": "allow",
-            "signEvent": "deny",
-            "nip04Encrypt": "allow",
-            "*": "allow"
-        },
-        "acct_abc123": {
-            "signEvent:1": "deny"
-        }
+    "_global": {
+        "_default": { "getPublicKey": "allow", "readMessages": "deny" }
+    },
+    "https://example.com": {
+        "acct_abc123": { "readMessages": "ask" }
     }
 }
 ```
 
-**Global rules and account overrides**: `_global._default` supplies explicitly configured defaults across connected sites and accounts. Effective rules merge in this order: global defaults, account-wide defaults (`_global.<accountId>`, used by new-account setup), legacy shared site rules (`<site>._default`), then account-specific site rules. A later value replaces the same key, including `ask`; the resulting rules use the deny-wins cascade below. Existing shared site rules remain site-scoped and are never promoted to global approvals. No global rules exist until the user adds them. The internal `_global` scope is excluded from site lists.
+**Global rules and site overrides**: `_global._default` supplies the shared defaults shown in Global rules. An explicit account-specific site rule replaces the same global key, including `ask`; the resulting rules use the deny-wins cascade below. Gray site rows come from this global bucket. Resetting site overrides removes those overrides and leaves only global rules, without navigating away.
+
+The one-time `signerGlobalRulesVersion: 1` migration follows the older inheritance migration. It moves legacy `<site>._default` rules into `_global._default`, retaining any explicitly configured new global values. Conflicting old values use `deny` before `ask` before `allow`. Differences are retained as visible account-specific site overrides for existing accounts. Hostname scopes migrate before exact origins so origin-specific exceptions remain intact. Legacy account-wide defaults are converted to visible overrides on known/connected sites; future sites inherit the shared globals. All old shared site buckets and hidden account-wide buckets are removed. The permissions map and migration version are written atomically under the permission lock; failed writes can retry. Startup and settings reads/writes run this migration. Post-migration writes cannot recreate the retired buckets. Backend/relay destination grants are unaffected.
 
 Permissions opens a menu with **Global rules** above **Site rules**. **Site rules** resolves the current browser tab and opens only that site’s account rules. The dashboard’s **Manage permissions** shortcut opens the same editor. There is no saved-site list or search route. Browser-internal pages, non-web URLs and missing tabs show a prompt to visit a website. A denied current site shows its dismissal duration editor. **Global rules** opens its editor directly, without a website header or site list; Back returns directly to Permissions. It explains the scope across connected sites and accounts. Connection consent and backend/relay authentication are separate. Site details label inherited rules in muted styling and account overrides in accent colors. Editing an inherited rule creates an account override; **Use inherited default** removes it. **Reset site overrides** requires confirmation, explains that inherited approvals may apply again, and keeps the current site editor open after saving. Global rules also offers **Reset all account overrides**, with a confirmation explaining that global approvals will apply afterward. These resets affect ordinary signing rules, not backend/relay authentication grants.
 
-The one-time `signerRulesInheritance` migration preserves the previously active decisions. Previously global mode keeps globals and discards dormant account overrides; previously account-only mode keeps effective account rules and inserts explicit `ask` overrides where dormant globals would otherwise apply. Migration and permission reads/writes share a lock. The old `signerUseGlobalDefaults` flag only governs the pre-migration compatibility path. New remembered approvals target the requesting account; global edits are explicit. New-account **Start fresh** masks existing globals with `ask`, while **Copy from** copies the source account's effective rules.
+The one-time `signerRulesInheritance` migration preserves the previously active decisions. Previously global mode keeps globals and discards dormant account overrides; previously account-only mode keeps effective account rules and inserts explicit `ask` overrides where dormant globals would otherwise apply. Migration and permission reads/writes share a lock. The old `signerUseGlobalDefaults` flag only governs the pre-migration compatibility path. New remembered approvals target the requesting account; global edits are explicit. After consolidation, new accounts choose **Use global rules** or copy another account’s site overrides. Both choices inherit the shared global rules; neither creates hidden account-wide defaults.
 
 **Cascade order** (deny-wins):
 1. **Deny short-circuit**: if ANY consulted level — kind-specific (`signEvent:{kind}`), method-level (`signEvent`), or wildcard (`*`) — is `deny`, the result is `deny`. A kind-specific `allow` can never override a method-level or wildcard `deny`, and a broad `*` allow cannot bypass a narrower deny.

@@ -218,7 +218,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['signer_savePermission', async (params) => {
-        await signerPermissions.migrateToInheritance();
+        await signerPermissions.migrateToGlobalRules();
         await signerPermissions.saveDirect(params.domain as string, params.methodName as string, params.decision as 'allow' | 'deny' | 'ask', params.accountId as string);
         if (params.methodName === 'getPublicKey') {
             signerIdentity.clearGetPubkeyCooldown(params.domain === GLOBAL_RULES_SCOPE ? undefined : params.domain as string);
@@ -227,7 +227,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['signer_getPermissionsRaw', async () => {
-        await signerPermissions.migrateToInheritance();
+        await signerPermissions.migrateToGlobalRules();
         return signerPermissions.getAllRaw();
     }],
     ['signer_clearRuleBucket', async params => {
@@ -248,11 +248,13 @@ export const handlers = new Map<string, HandlerFn>([
     ['signer_getPermissionsForDomainRaw', async (params) => signerPermissions.getForDomainRaw(params.domain as string)],
 
     ['signer_copyPermissions', async (params) => {
+        await signerPermissions.migrateToGlobalRules();
         await signerPermissions.copyPermissions(params.fromAccountId as string, params.toAccountId as string);
         return { ok: true };
     }],
 
     ['signer_setupNewAccountPermissions', async (params) => {
+        await signerPermissions.migrateToGlobalRules();
         const newId = params.newAccountId as string;
         const copyFrom = (params.copyFromAccountId as string) || null;
         const data = await browser.storage.local.get(['accounts']) as Record<string, Array<{ id: string }>>;

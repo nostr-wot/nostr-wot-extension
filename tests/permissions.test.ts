@@ -509,13 +509,13 @@ describe('global rules with account overrides', () => {
     const grants=[{id:'relay',accountId:'a',origin:'*',protocol:'nip42',destination:'wss://relay.test/'}];
     await browser.storage.local.set({authenticationGrants:grants});
     await permissions.resetAccountRules();
-    assert.deepEqual(await permissions.getAllRaw(),{'https://site.test':{_default:{readMessages:'allow'}}});
+    assert.deepEqual(await permissions.getAllRaw(),{'_global':{_default:{readMessages:'allow'}}});
     assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'allow');
     assert.deepEqual((await browser.storage.local.get('authenticationGrants')).authenticationGrants,grants);
     await permissions.saveDirect('https://site.test','readMessages','deny','a');
     await permissions.clearRuleBucket('https://site.test','a');
     assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'allow');
-    await permissions.clearRuleBucket('https://site.test');
+    await permissions.clearRuleBucket('_global');
     assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'ask');
     await assert.rejects(permissions.inheritRule('https://site.test','readMessages','_default'));
   });
@@ -574,4 +574,102 @@ describe('defaults across connected sites', () => {
     await permissions.clearRuleBucket('_global');
     assert.equal(await permissions.check('https://unknown.test', 'nip04Decrypt', undefined, 'fresh'), 'ask');
   });
+});
+
+describe('one-time migration into visible Global rules', () => {
+  beforeEach(() => { resetMockStorage(); permissions.invalidateCache(); });
+  it('merges old shared rules into the new global bucket, removes old buckets and runs only once', async () => {
+    const {default:browser}=await import('./helpers/browser-mock');
+    await browser.storage.local.set({signerRulesInheritance:true, accounts:[{id:'a'}], signerPermissions:{
+      _global:{_default:{getPublicKey:'allow'}},
+      'https://obelisk.ar':{_default:{readMessages:'deny','signEvent:27235':'ask','signEvent:9007':'allow'}},
+    }});
+    await Promise.all([permissions.migrateToGlobalRules(),permissions.migrateToGlobalRules()]);
+    const raw=await permissions.getAllRaw();
+    assert.deepEqual(raw,{_global:{_default:{getPublicKey:'allow',readMessages:'deny','signEvent:27235':'ask','signEvent:9007':'allow'}}});
+    assert.deepEqual(await permissions.getForDomain('https://obelisk.ar','a'),raw._global._default);
+    await permissions.saveDirect('_global','readMessages','ask');
+    await permissions.migrateToGlobalRules();
+    assert.equal(await permissions.check('https://obelisk.ar','nip04Decrypt',undefined,'a'),'ask');
+    await assert.rejects(permissions.saveDirect('https://obelisk.ar','readMessages','allow'),/require/);
+    await assert.rejects(permissions.save('https://obelisk.ar','signEvent',1,'allow'),/require/);
+    await assert.rejects(permissions.saveDirect('_global','readMessages','allow','a'),/require/);
+  });
+  it('preserves explicit new globals and site differences; reset leaves only global inheritance', async () => {
+    const {default:browser}=await import('./helpers/browser-mock');
+    const grants=[{id:'auth',accountId:'a',protocol:'nip42'}];
+    await browser.storage.local.set({signerRulesInheritance:true,accounts:[{id:'a'},{id:'b'}],authenticationGrants:grants,signerPermissions:{
+      _global:{_default:{getPublicKey:'allow'}},
+      'https://one.test':{_default:{getPublicKey:'deny',readMessages:'allow'},a:{'signEvent:1':'deny'}},
+      'https://two.test':{_default:{readMessages:'deny'}},
+    }});
+    await permissions.migrateToGlobalRules();
+    const raw=await permissions.getAllRaw();
+    assert.deepEqual(raw._global._default,{getPublicKey:'allow',readMessages:'deny'});
+    assert.equal(raw['https://one.test'].a.readMessages,'allow');
+    assert.equal(raw['https://one.test'].b.getPublicKey,'deny');
+    assert.equal(raw['https://one.test'].a['signEvent:1'],'deny');
+    assert.ok(Object.entries(raw).every(([site,buckets])=>site==='_global'||!buckets._default));
+    await permissions.clearRuleBucket('https://one.test','a');
+    assert.deepEqual(await permissions.getForDomain('https://one.test','a'),raw._global._default);
+    await permissions.resetAccountRules();
+    assert.deepEqual(await permissions.getAllRaw(),{_global:raw._global});
+    assert.deepEqual((await browser.storage.local.get('authenticationGrants')).authenticationGrants,grants);
+  });
+  it('preserves exact-origin exceptions over migrated legacy hostname overrides',async()=>{
+    const {default:browser}=await import('./helpers/browser-mock');
+    await browser.storage.local.set({signerRulesInheritance:true,accounts:[{id:'a'}],signerPermissions:{
+      'https://one.test':{_default:{readMessages:'deny'}},
+      'one.test':{_default:{readMessages:'allow'}},
+    }});
+    await permissions.migrateToGlobalRules();
+    assert.equal(await permissions.check('https://one.test','nip04Decrypt',undefined,'a'),'deny');
+    assert.equal(await permissions.check('http://one.test','nip04Decrypt',undefined,'a'),'allow');
+  });
+  it('makes account-wide exceptions visible on known sites and new accounts use globals',async()=>{
+    const {default:browser}=await import('./helpers/browser-mock');
+    await browser.storage.local.set({signerRulesInheritance:true,accounts:[{id:'a'}],allowedDomains:['https://site.test'],signerPermissions:{
+      _global:{_default:{readMessages:'allow'},a:{readMessages:'ask'}},
+    }});
+    await permissions.migrateToGlobalRules();
+    const raw=await permissions.getAllRaw();
+    assert.deepEqual(raw,{_global:{_default:{readMessages:'allow'}},'https://site.test':{a:{readMessages:'ask'}}});
+    await permissions.setupNewAccountPermissions('fresh',['a'],null);
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'fresh'),'allow');
+    await permissions.setupNewAccountPermissions('copy',['a'],'a');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'copy'),'ask');
+    await permissions.clearRuleBucket('https://site.test','a');
+    assert.equal(await permissions.check('https://site.test','nip04Decrypt',undefined,'a'),'allow');
+    assert.ok(!(await permissions.getAllRaw())._global.a);
+  });
+  it('failed persistence leaves legacy data intact and can safely retry',async t=>{
+    const {default:browser}=await import('./helpers/browser-mock');
+    const original={'https://one.test':{_default:{readMessages:'deny'}}};
+    await browser.storage.local.set({signerRulesInheritance:true,signerPermissions:original});
+    const set=browser.storage.local.set.bind(browser.storage.local);
+    const mock=t.mock.method(browser.storage.local,'set',async(data:any)=>{
+      if(data.signerGlobalRulesVersion)throw new Error('disk unavailable');
+      return set(data);
+    });
+    await assert.rejects(permissions.migrateToGlobalRules(),/disk unavailable/);
+    assert.deepEqual(await permissions.getAllRaw(),original);
+    assert.equal((await browser.storage.local.get('signerGlobalRulesVersion')).signerGlobalRulesVersion,undefined);
+    mock.mock.restore();
+    await permissions.migrateToGlobalRules();
+    assert.deepEqual(await permissions.getAllRaw(),{_global:{_default:{readMessages:'deny'}}});
+  });
+});
+
+
+it('account setup runs consolidation before creating any new permission buckets',async()=>{
+  const {default:browser}=await import('./helpers/browser-mock');
+  resetMockStorage();permissions.invalidateCache();
+  await browser.storage.local.set({accounts:[{id:'a'},{id:'fresh'}],signerPermissions:{
+    'https://site.test':{_default:{readMessages:'deny'}},
+  }});
+  const {handlers}=await import('../src/services/background/nip07-handlers');
+  await handlers.get('signer_setupNewAccountPermissions')!({newAccountId:'fresh',copyFromAccountId:null});
+  assert.deepEqual(await permissions.getAllRaw(),{_global:{_default:{readMessages:'deny'}}});
+  await handlers.get('signer_copyPermissions')!({fromAccountId:'_default',toAccountId:'fresh'});
+  assert.deepEqual(await permissions.getAllRaw(),{_global:{_default:{readMessages:'deny'}}});
 });

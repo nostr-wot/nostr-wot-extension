@@ -769,3 +769,5 @@ Permissions is a navigation menu. Its options reuse distinct 15 px SVGs: globe f
 Approval action menus size to content within 176–260 px (clamped to the viewport), rather than filling the popup. Single-action choices use short site-scoped labels; menus with multiple action types retain their type labels. Exact authentication URL/method details remain in the request summary rather than being repeated inside the menu.
 
 Backend and relay authentication screens use separate account-scope and empty-state labels; neither describes the other protocol’s grants.
+
+Global rules includes migrated legacy shared defaults. Gray rows in Site rules inherit from that same visible bucket; migrated conflicts appear as colored site overrides. Confirmed site resets refresh the editor in place and remove the override rows. New-account setup offers Use global rules or copying site overrides, without a hidden default layer.

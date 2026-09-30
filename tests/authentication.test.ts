@@ -420,7 +420,7 @@ it('relay settings revoke all allows while locked and reject an inactive account
 });
 
 it('all-site global signing approvals still require backend and relay destination consent', async () => {
-  await permissions.migrateToInheritance();
+  await permissions.migrateToGlobalRules();
   await permissions.clearRuleBucket(site);
   await permissions.saveDirect('_global', 'signEvent', 'allow');
   for (const event of [http(), relay()]) {
