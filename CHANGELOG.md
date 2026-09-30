@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Distinguish Permissions menu options with individual SVG icons while preserving consistent alignment and theme colors.
+
 - Global rules now opens a direct editor above Site rules, without a website header or intermediate site list. Explicit global defaults apply across connected sites and accounts; existing site approvals keep their original scope. Back returns directly to Permissions.
 
 - Use Deny, Denied and Always deny consistently across approval controls, permission rules and statuses.

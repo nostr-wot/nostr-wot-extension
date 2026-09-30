@@ -9,7 +9,10 @@ import RulesScreen, { type RulesScreenHandle } from './RulesScreen';
 import Card from '@components/Card';
 import Container from '@components/Container';
 import ListRow from '@components/ListRow';
-import IconShield from '@assets/IconShield';
+import IconGlobe from '@assets/IconGlobe';
+import IconTuner from '@assets/IconTuner';
+import IconKey from '@assets/IconKey';
+import IconCloud from '@assets/IconCloud';
 import IconChevronRight from '@assets/IconChevronRight';
 
 export interface PermissionsSectionHandle { goBack: () => boolean }
@@ -33,16 +36,16 @@ export default forwardRef<PermissionsSectionHandle, Props>(function PermissionsS
   if (screen === 'backend' && account) return <BackendAuthentication key={account.id} accounts={accounts || []} activeId={activeId} onBack={back} />;
   if (screen === 'relay' && account) return <RelayAuthentication key={account.id} ref={relayRef} accountId={account.id} onBack={back} />;
   const rows = [
-    { screen:'global' as const, title:'perms.globalRules', hint:'perms.globalRulesHint' },
-    { screen:'rules' as const, title:'perms.rules', hint:'perms.rulesHint' },
-    { screen:'backend' as const, title:'auth.permissions', hint:'auth.manageBackends' },
-    { screen:'relay' as const, title:'auth.relayPermissions', hint:'auth.manageRelays' },
+    { screen:'global' as const, title:'perms.globalRules', hint:'perms.globalRulesHint', icon:IconGlobe },
+    { screen:'rules' as const, title:'perms.rules', hint:'perms.rulesHint', icon:IconTuner },
+    { screen:'backend' as const, title:'auth.permissions', hint:'auth.manageBackends', icon:IconKey },
+    { screen:'relay' as const, title:'auth.relayPermissions', hint:'auth.manageRelays', icon:IconCloud },
   ];
   return <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
     <Card className="p-0 overflow-hidden mb-0 shrink-0 [&>*+*]:[border-top:1px_solid_var(--brand-tint-active)]">
       {rows.map(row => <Fragment key={row.screen}>
         {row.screen === 'backend' && account && <DefaultBackendAuth key={account.id} accountId={account.id} />}
-        <ListRow key={row.screen} leading={<IconShield size={15} />} leadingChip={false}
+        <ListRow key={row.screen} leading={<row.icon size={15} aria-hidden="true" />} leadingChip={false}
         className="px-7 py-5.5 gap-4" title={t(row.title)} subtitle={t(row.hint)}
         trailing={<span className="w-20 flex justify-center"><IconChevronRight size={16} /></span>}
         onClick={() => setScreen(row.screen)} /></Fragment>)}
