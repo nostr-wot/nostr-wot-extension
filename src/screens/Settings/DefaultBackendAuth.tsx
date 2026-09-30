@@ -44,7 +44,7 @@ export default function DefaultBackendAuth({ accountId }: { accountId: string })
         <IconShield size={15} className="text-brand shrink-0" />
         <div>
           <span className="text-md font-medium text-body">{t('auth.defaultBackend')}</span>
-          <Text variant="muted" as="div" className="mt-px">{t('auth.accountOnly')}</Text>
+          <Text variant="muted" as="div" className="mt-px">{t('auth.backendAccountOnly')}</Text>
         </div>
       </Container>
       <IconButton aria-label={t('auth.defaultBackendInfo')} onClick={() => setInfoOpen(true)}><IconInfo /></IconButton>

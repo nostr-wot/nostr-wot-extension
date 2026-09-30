@@ -21,11 +21,10 @@ import ActivityOverlay from '@screens/Activity/ActivityOverlay';
 import ApprovalOverlay from '@screens/Approval/ApprovalOverlay';
 import WizardOverlay from '@screens/Wizard/WizardOverlay';
 import EditProfileOverlay from '@screens/EditProfile/EditProfileOverlay';
-import PermissionsSection from '@screens/Settings/PermissionsSection';
+import RulesScreen from '@screens/Settings/RulesScreen';
 import OverlayPanel from '@components/OverlayPanel';
 import Container from '@components/Container';
 import UnlockModal from '@screens/Vault/UnlockModal';
-import { t } from '@services/i18n/i18n.ts';
 import { type PendingRequest } from '@domain/signing/types.ts';
 
 type OverlayType = 'menu' | 'filters' | 'activity' | 'wizard' | 'editProfile' | 'permissions' | null;
@@ -37,7 +36,6 @@ function PopupInner() {
   const [activeOverlay, setActiveOverlay] = useState<OverlayType>(null);
   const [menuSection, setMenuSection] = useState<string | null>(null);
   const [activityDomain, setActivityDomain] = useState<string | null>(null);
-  const [permsDomain, setPermsDomain] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const account = useAccount();
   const vault = useVault();
@@ -107,7 +105,7 @@ function PopupInner() {
   // navigation object was handed down.
   const navigation = useMemo<HomeNavigation>(() => ({
     viewAllActivity: (d) => { setActivityDomain(d || null); setActiveOverlay('activity'); },
-    managePermissions: (domain) => { setPermsDomain(domain); setActiveOverlay('permissions'); },
+    managePermissions: () => setActiveOverlay('permissions'),
     manageFilters: () => setActiveOverlay('filters'),
     editProfile: () => setActiveOverlay('editProfile'),
     openRelays: () => { setMenuSection('network'); setActiveOverlay('menu'); },
@@ -174,18 +172,9 @@ function PopupInner() {
           onClose={() => setActiveOverlay(null)}
         />
 
-        {activeOverlay === 'permissions' && permsDomain && (
-          <OverlayPanel
-            title={t('security.permissions')}
-            onClose={() => { setActiveOverlay(null); setPermsDomain(null); }}
-            onBack={() => { setActiveOverlay(null); setPermsDomain(null); }}
-            zIndex={300}
-          >
-            {/* The domain was captured to open this panel and then dropped, so
-                "Manage permissions" from a site's card landed on the all-sites
-                list and made the user find the site they had just been looking
-                at. PermissionsSection has honoured this prop all along. */}
-            <PermissionsSection initialDomain={permsDomain} />
+        {activeOverlay === 'permissions' && (
+          <OverlayPanel showHeader={false} zIndex={300}>
+            <RulesScreen onBack={() => setActiveOverlay(null)} />
           </OverlayPanel>
         )}
 

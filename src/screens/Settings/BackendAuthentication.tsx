@@ -20,7 +20,7 @@ export default function BackendAuthentication({ accounts, activeId, onBack }: Pr
     </Container>
     {infoOpen && createPortal(<Modal title={t('auth.backendInfoTitle')} onClose={() => setInfoOpen(false)}>
       <Text>{t('auth.backendInfo')}</Text>
-      <Text>{t('auth.accountOnly')}</Text>
+      <Text>{t('auth.backendAccountOnly')}</Text>
     </Modal>, document.body)}
   </OverlayPanel>;
 }

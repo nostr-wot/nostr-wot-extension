@@ -42,7 +42,7 @@ export default function SiteControls({
         <ListRow
           title={t('home.managePermissions')}
           trailing={<IconChevronRight size={14} />}
-          onClick={() => navigate.managePermissions(domain!)}
+          onClick={navigate.managePermissions}
         />
       )}
 

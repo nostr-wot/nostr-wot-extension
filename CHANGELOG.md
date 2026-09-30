@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Open Site rules directly for the current browser tab and remove the saved-site list. Prompt users to visit a website when no web tab is available. Confirm resets and keep the current site editor open afterward. Use backend- and relay-specific permission labels.
+
 - Distinguish Permissions menu options with individual SVG icons while preserving consistent alignment and theme colors.
 
 - Global rules now opens a direct editor above Site rules, without a website header or intermediate site list. Explicit global defaults apply across connected sites and accounts; existing site approvals keep their original scope. Back returns directly to Permissions.

@@ -46,7 +46,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   const [wotInfoOpen, setWotInfoOpen] = useState(false);
   const [navStack, setNavStack] = useState<string[]>([]);
   const [keyAction, setKeyAction] = useState<string | null>(null); // 'nsec' | 'ncryptsec' | 'changePassword'
-  const [permDetailDomain, setPermDetailDomain] = useState<string | null>(null);
   const pqcSectionRef = useRef<PqcSectionHandle>(null);
   const permsSectionRef = useRef<PermissionsSectionHandle>(null);
   const vault = useVault();
@@ -102,7 +101,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     security: t('settings.security'),
     network: t('network.relays'),
     wallet: t('wallet.title'),
-    'site-permissions': permDetailDomain || t('security.permissions'),
+    'site-permissions': t('security.permissions'),
     pqc: t('pqc.menuLabel'),
   };
 
@@ -185,7 +184,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
           </MenuSection>
         );
       case 'site-permissions':
-        return <PermissionsSection ref={permsSectionRef} onDetailChange={setPermDetailDomain} />;
+        return <PermissionsSection ref={permsSectionRef} />;
       case 'wallet':
         return <WalletSection />;
       case 'experimental-wot':

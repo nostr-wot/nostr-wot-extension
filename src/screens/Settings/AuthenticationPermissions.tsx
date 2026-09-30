@@ -15,7 +15,7 @@ export default function AuthenticationPermissions({accounts,activeId,showHeading
  const account=accounts.find(item=>item.id===activeId) || accounts[0];
  return <Container gap={3} className="shrink-0">
   {showHeading && <SectionLabel>{t('auth.permissions')}</SectionLabel>}
-  <Text variant="hint">{t('auth.accountOnly')}</Text>
+  <Text variant="hint">{t('auth.backendAccountOnly')}</Text>
   {account && <AccountGrants key={account.id} account={account}/>}
  </Container>;
 }
@@ -36,7 +36,7 @@ function AccountGrants({account}:{account:AccountSummary}) {
   {loading && <Text variant="hint">{t('common.loading')}</Text>}
   <FormError>{error || actionError}</FormError>
   {error && <Button small disabled={loading} onClick={()=>void refresh()}>{t('common.retry')}</Button>}
-  {!loading && !error && !data.grants.length && <Text variant="hint">{t('auth.noGrants')}</Text>}
+  {!loading && !error && !data.grants.length && <Text variant="hint">{t('auth.backendNoGrants')}</Text>}
   {!!data.grants.length && <div className="overflow-x-auto">
    <table className="w-full text-sm border-collapse text-left">
     <thead><tr className="text-secondary">

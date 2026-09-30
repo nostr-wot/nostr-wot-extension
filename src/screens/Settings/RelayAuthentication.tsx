@@ -44,7 +44,7 @@ export default forwardRef<RelayAuthenticationHandle, { accountId: string; onBack
     {loading && <Text variant="hint">{t('common.loading')}</Text>}
     {selected ? <RelaySites key={`${accountId}:${selected.destination}`} group={selected} sites={data.sites} accountId={accountId} onSave={async () => { await refresh(); setDestination(null); }} /> :
       <Container className="flex-1 min-h-0 overflow-y-auto">
-        {!loading && !error && !groups.length && <Text variant="hint">{t('auth.noGrants')}</Text>}
+        {!loading && !error && !groups.length && <Text variant="hint">{t('auth.relayNoGrants')}</Text>}
         {!!groups.length && <Card className="p-0 overflow-hidden mb-0 shrink-0">
           {groups.map(group => <ListRow key={group.destination} leading={<IconShield />} title={group.destination.replace(/^wss?:\/\//, '').replace(/\/$/, '')}
             subtitle={`${group.allSites ? t('auth.allSitesApproved') : t(group.allowedOrigins.length === 1 ? 'auth.oneSiteApproved' : 'auth.sitesApproved', { count: group.allowedOrigins.length })}${group.deniedOrigins.length ? ` · ${t(group.deniedOrigins.length === 1 ? 'auth.oneSiteBlocked' : 'auth.sitesBlocked', { count: group.deniedOrigins.length })}` : ''}`}
@@ -52,7 +52,7 @@ export default forwardRef<RelayAuthenticationHandle, { accountId: string; onBack
         </Card>}
       </Container>}
     {infoOpen && createPortal(<Modal title={t('auth.relayInfoTitle')} onClose={() => setInfoOpen(false)}>
-      <Text>{t('auth.relayInfo')}</Text><Text>{t('auth.accountOnly')}</Text>
+      <Text>{t('auth.relayInfo')}</Text><Text>{t('auth.relayAccountOnly')}</Text>
     </Modal>, document.body)}
   </OverlayPanel>;
 });

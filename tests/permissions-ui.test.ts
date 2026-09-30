@@ -102,7 +102,7 @@ it('permission rules render only the supplied account-filtered keys and their de
 
 import DeclinedSites, { dismissalDurationOptions } from '../src/screens/Settings/DeclinedSites';
 it('declined-site duration uses the shared dropdown with week/month/year/forever options', () => {
-  const html=renderToStaticMarkup(createElement(DeclinedSites,{site:{domain:'example.com',until:'never'},onChange:async()=>{},onClose(){}}));
+  const html=renderToStaticMarkup(createElement(DeclinedSites,{site:{domain:'example.com',until:'never'},onChange:async()=>{}}));
   assert.match(html,/aria-haspopup="listbox"/);
   assert.deepEqual(dismissalDurationOptions().map(option=>option.value),['604800000','2592000000','31536000000','never']);
   assert.match(html,/perm.changeDuration/);

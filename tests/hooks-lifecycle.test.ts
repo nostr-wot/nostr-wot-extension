@@ -193,22 +193,25 @@ it('profile cache refresh preserves a draft, while reopening seeds the latest pr
  } finally { await view.close(); }
 });
 
-it('permission navigation uses the latest callback without repeating a transition on rerender', async t => {
+it('permission back navigation returns directly to the menu without a site list', async t => {
  resetMockStorage();
  const { AccountProvider } = await import('../src/context/AccountContext');
  const { PermissionsProvider } = await import('../src/context/PermissionsContext');
  const { default: PermissionsSection } = await import('../src/screens/Settings/PermissionsSection');
  const { createRef } = await import('react');
+ const { t: label } = await import('../src/services/i18n/i18n');
  const ref = createRef<{ goBack: () => boolean }>();
- const events: unknown[] = [];
+ t.mock.method(browser.tabs, 'query', async () => [{id:1,url:'https://site.test/path'}]);
  t.mock.method(browser.runtime, 'sendMessage', async (message: { method: string }) => ({ result: message.method === 'signer_getUseGlobalDefaults' ? true : message.method === 'signer_getPermissionsRaw' ? {} : [] }));
  const view = await mount();
- const render = (label: string) => view.render(createElement(AccountProvider, null, createElement(PermissionsProvider, null, createElement(PermissionsSection, { ref, initialDomain: 'site.test', onDetailChange: domain => events.push([label, domain]) }))));
  try {
-  await render('initial'); await render('latest');
-  assert.deepEqual(events, [['initial', 'site.test']]);
+  await view.render(createElement(AccountProvider, null, createElement(PermissionsProvider, null, createElement(PermissionsSection, { ref }))));
+  await act(async () => [...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent!.includes(label('perms.rulesHint')))!.click());
+  assert.ok(document.body.textContent!.includes('https://site.test'));
   await act(async () => { assert.equal(ref.current?.goBack(), true); });
-  assert.deepEqual(events, [['initial', 'site.test'], ['latest', null]]);
+  assert.equal(document.querySelector('input[type="search"]'),null);
+  assert.ok(document.body.textContent!.includes(label('perms.rulesHint')));
+  await act(async () => { assert.equal(ref.current?.goBack(), false); });
  } finally { await view.close(); }
 });
 

@@ -5,7 +5,7 @@ import RelayAuthentication, { type RelayAuthenticationHandle } from './RelayAuth
 import BackendAuthentication from './BackendAuthentication';
 import DefaultBackendAuth from './DefaultBackendAuth';
 import GlobalRules from './GlobalRules';
-import RulesScreen, { type RulesScreenHandle } from './RulesScreen';
+import RulesScreen from './RulesScreen';
 import Card from '@components/Card';
 import Container from '@components/Container';
 import ListRow from '@components/ListRow';
@@ -16,22 +16,18 @@ import IconCloud from '@assets/IconCloud';
 import IconChevronRight from '@assets/IconChevronRight';
 
 export interface PermissionsSectionHandle { goBack: () => boolean }
-interface Props { initialDomain?: string | null; onDetailChange?: (domain: string | null) => void }
-export default forwardRef<PermissionsSectionHandle, Props>(function PermissionsSection({ initialDomain, onDetailChange }, ref) {
+export default forwardRef<PermissionsSectionHandle>(function PermissionsSection(_props, ref) {
   const { accounts, activeId } = useAccount();
   const account = accounts?.find(account => account.id === activeId) || accounts?.[0];
-  const [screen, setScreen] = useState<'rules' | 'global' | 'backend' | 'relay' | null>(initialDomain ? 'rules' : null);
+  const [screen, setScreen] = useState<'rules' | 'global' | 'backend' | 'relay' | null>(null);
   const relayRef = useRef<RelayAuthenticationHandle>(null);
-  const rulesRef = useRef<RulesScreenHandle>(null);
-  const back = () => { setScreen(null); onDetailChange?.(null); };
+  const back = () => setScreen(null);
   useImperativeHandle(ref, () => ({ goBack: () => {
     if (!screen) return false;
     if (screen === 'relay' && relayRef.current?.goBack()) return true;
-    if (screen === 'rules' && rulesRef.current?.goBack()) return true;
     back(); return true;
   } }));
-  if (screen === 'rules') return <RulesScreen key={`${screen}:${activeId}`} ref={rulesRef}
-    initialDomain={initialDomain} onDetailChange={onDetailChange} onBack={back} />;
+  if (screen === 'rules') return <RulesScreen key={activeId} onBack={back} />;
   if (screen === 'global') return <GlobalRules onBack={back} />;
   if (screen === 'backend' && account) return <BackendAuthentication key={account.id} accounts={accounts || []} activeId={activeId} onBack={back} />;
   if (screen === 'relay' && account) return <RelayAuthentication key={account.id} ref={relayRef} accountId={account.id} onBack={back} />;

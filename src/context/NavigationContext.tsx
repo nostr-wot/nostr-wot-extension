@@ -13,7 +13,7 @@ import { createContext, useContext, type ReactNode } from 'react';
  */
 export interface HomeNavigation {
   viewAllActivity: (domain: string | null) => void;
-  managePermissions: (domain: string) => void;
+  managePermissions: () => void;
   manageFilters: () => void;
   editProfile: () => void;
   openRelays: () => void;

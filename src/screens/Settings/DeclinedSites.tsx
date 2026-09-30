@@ -23,8 +23,8 @@ export function dismissalDurationOptions() {
 }
 
 /** Per-site dismissal editor; changing it never connects or approves the site. */
-export default function DeclinedSites({ site, onChange, onClose }: {
-  site: DeclinedSite; onChange: () => Promise<void>; onClose: () => void;
+export default function DeclinedSites({ site, onChange }: {
+  site: DeclinedSite; onChange: () => Promise<void>;
 }) {
   const [selected, setSelected] = useState(site.until === 'never' ? 'never' : '');
   const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export default function DeclinedSites({ site, onChange, onClose }: {
     setBusy(true); setError('');
     try {
       await rpc('removeDismissedDomain', { domain: site.domain });
-      await onChange(); onClose();
+      await onChange();
     } catch { setError(t('approval.actionFailed')); }
     finally { setBusy(false); }
   };
