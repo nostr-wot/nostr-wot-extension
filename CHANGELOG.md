@@ -5,8 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## 0.8.7
 
-Community guides: [backend authentication](docs/guides/backend-authentication.md)
-and [relay authentication](docs/guides/relay-authentication.md).
+Community guides: [backend authentication](https://nostr-wot.com/en/guides/backend-authentication)
+and [relay authentication](https://nostr-wot.com/en/guides/relay-authentication).
 
 ### Authentication and security
 

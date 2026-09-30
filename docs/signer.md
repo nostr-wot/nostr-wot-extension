@@ -317,5 +317,5 @@ returning canonical fields; reject mutations even when the remote signature is v
 Account-session validity is rechecked after verification.
 
 
-Community explanations: [backend authentication](guides/backend-authentication.md)
-and [relay authentication](guides/relay-authentication.md).
+Community explanations: [backend authentication](https://nostr-wot.com/en/guides/backend-authentication)
+and [relay authentication](https://nostr-wot.com/en/guides/relay-authentication).

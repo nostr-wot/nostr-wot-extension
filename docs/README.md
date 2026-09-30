@@ -25,8 +25,8 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | Document | Description |
 |----------|-------------|
 | [Security](security.md) | Vault encryption, key handling, MemoryVaultPayload, zeroing, error normalization |
-| [Backend authentication](guides/backend-authentication.md) | Website/API boundaries, consent scopes and native wallet protections |
-| [Relay authentication](guides/relay-authentication.md) | Relay consent, all-sites grants and revocation |
+| [Backend authentication](https://nostr-wot.com/en/guides/backend-authentication) | Website/API boundaries, consent scopes and native wallet protections |
+| [Relay authentication](https://nostr-wot.com/en/guides/relay-authentication) | Relay consent, all-sites grants and revocation |
 | [Accounts](accounts.md) | Account types, registry, switching |
 | [Signer](signer.md) | NIP-07 signing flow, permission cascade, prompt system, NIP-46 |
 
