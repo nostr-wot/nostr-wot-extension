@@ -1,0 +1,72 @@
+# Mozilla Add-ons publishing
+
+Publishing a stable GitHub release triggers `.github/workflows/release-firefox.yml`
+for the existing listed add-on `nostr-wot-extension@nostr-wot.com`. Pushes, tags,
+pull requests, drafts and prereleases do not submit to Mozilla. The Chrome workflow
+runs independently from the same release event. Submission does not establish
+Mozilla approval or public availability; check the developer dashboard for that.
+
+## Credentials
+
+Configure repository Actions secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` using the
+publisher's [AMO API credentials](https://addons.mozilla.org/developers/addon/api/key/).
+The issuer includes its `user:` prefix. No Google OAuth or separate service account
+is needed. Never put the secret in source, release assets or reviewer notes.
+
+Only the final submission step receives these secrets. The publisher generates a
+fresh, one-minute HS256 JWT for each API call, sends it only to Mozilla's HTTPS API
+and refuses redirects. To rotate credentials, replace both repository secrets with
+the new pair and revoke the old credentials in Mozilla's dashboard.
+
+## Release contents and checks
+
+Attach these files to `vX.Y.Z` before publishing the GitHub release:
+
+- `nostr-wot-firefox-X.Y.Z.zip`, made by `npm run package:firefox`.
+- `nostr-wot-source-X.Y.Z.zip`, made by `git archive --format=zip` of the release commit.
+- `SHA256SUMS`, with exactly one matching SHA-256 entry for each archive.
+
+The shared `scripts/prepare-store-release.mjs` gate resolves the tag, requires its
+commit to be on `main` with successful push CI on that exact SHA, and checks the
+package version. The Firefox preparation step checks the manifest, add-on ID and
+checksums, compares every source archive file with `git archive` of that commit,
+then rebuilds Firefox and compares every packaged file. ZIP timestamps are ignored;
+file contents and paths must match. These checks run before Mozilla secrets are used.
+
+Mozilla receives the Firefox ZIP and matching source ZIP, plus:
+
+- Reviewer notes from [firefox-reviewer-notes.md](firefox-reviewer-notes.md).
+- The exact [source build instructions](../SOURCE_BUILD.md), commit and archive hashes.
+- The version's complete [changelog](../CHANGELOG.md), also saved as English release notes.
+
+Update these tracked documents alongside the code. Generated metadata and notes
+stay in the runner's temporary directory. The API submission attaches source and
+reviewer notes during version creation, then saves translated release notes and
+reads the version back to verify both notes and the source attachment.
+
+## Duplicate protection and recovery
+
+All Mozilla runs share a concurrency group with cancellation disabled. They run
+serially, and the API state is checked again before each submission. An already
+submitted version with matching archive markers and notes is skipped. If only
+metadata is incomplete, a rerun can finish it without uploading another version.
+An existing version without matching source/package markers is left untouched.
+
+The workflow refuses a newer version, a different listed version awaiting review,
+a rejected/disabled matching version, a validation failure, or a build mismatch.
+It never deletes versions or cancels another submission. Resolve conflicts in the
+[developer dashboard](https://addons.mozilla.org/en-US/developers/addon/nostr-wot-extension/versions)
+before rerunning the failed workflow. A rerun still requires a published release
+and passing CI; it does not bypass the release gate.
+
+Writes are not automatically retried. After a network error, inspect the dashboard
+before rerunning: Mozilla may have accepted a request whose response was lost. An
+orphaned validation upload is not a submitted version; a rerun may validate a new
+upload, but it checks for an existing submitted version first. If version creation
+succeeded, its hash markers let the rerun safely resume metadata. No automatic
+rollback or store-version replacement is performed.
+
+The implementation uses Mozilla's [Add-ons API](https://mozilla.github.io/addons-server/topics/api/addons.html)
+and [JWT authentication](https://mozilla.github.io/addons-server/topics/api/auth.html).
+Tests mock the API and cover submission, source/notes attachment, interrupted runs,
+duplicate refusal, pagination, credential boundaries and validation failures.

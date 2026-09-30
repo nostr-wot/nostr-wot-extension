@@ -31,19 +31,7 @@ jobs:
         with:
           node-version: 24
       - name: Resolve published release and require successful CI
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
-          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,tagName > "$RUNNER_TEMP/release.json"
-          jq -e --arg tag "$RELEASE_TAG" '.isDraft == false and .isPrerelease == false and .tagName == $tag' "$RUNNER_TEMP/release.json"
-          commit=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
-          git merge-base --is-ancestor "$commit" origin/main
-          gh run list --workflow tests.yml --commit "$commit" --event push --limit 30 --json conclusion,headSha | jq -e --arg commit "$commit" 'any(.[]; .headSha == $commit and .conclusion == "success")'
-          git checkout --detach "$commit"
-          version=$(node -p "require('./package.json').version")
-          [[ "$RELEASE_TAG" == "v$version" ]] || exit 1
-          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+        run: node scripts/prepare-store-release.mjs
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Download and verify the exact release Chrome archive

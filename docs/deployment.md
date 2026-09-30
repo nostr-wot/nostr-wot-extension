@@ -1,8 +1,8 @@
 # Deployment and browser packages
 
 This is the current packaging and disclosure reference. Use [DEPLOY.md](../DEPLOY.md)
-for local commands and [Chrome publishing](chrome-publishing.md) for automated store
-submission. Machine-specific credentials and paths belong in gitignored
+for local commands, [Chrome publishing](chrome-publishing.md) and
+[Mozilla publishing](firefox-publishing.md) for automated store submission. Machine-specific credentials and paths belong in gitignored
 `DEPLOY.local.md`, never in the repository or source archive.
 
 ## Release checks
@@ -41,6 +41,10 @@ manifest. These are declared minimums, not a claim of tests on every browser/dev
 `npm run package:firefox` retains Firefox metadata and replaces `background.service_worker`
 with `background.scripts`. It builds in an isolated staging directory and leaves `dist/`
 untouched. Source-review instructions live in [SOURCE_BUILD.md](../SOURCE_BUILD.md).
+
+Stable GitHub releases submit the verified Firefox archive, matching source archive,
+[reviewer notes](firefox-reviewer-notes.md), build instructions and version changelog
+through the [Mozilla workflow](firefox-publishing.md). Drafts do not submit.
 
 ### Data transmission and consent
 

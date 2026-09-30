@@ -1,0 +1,41 @@
+name: Publish Mozilla Add-ons
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: mozilla-addons
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'nostr-wot/nostr-wot-extension' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5, Node 24
+        with:
+          node-version: 24
+      - name: Resolve published release and require successful CI
+        run: node scripts/prepare-store-release.mjs
+      - run: npm ci
+      - name: Verify Firefox ZIP, matching source, reproducible build and review notes
+        run: node scripts/prepare-firefox-release.mjs "$RUNNER_TEMP/firefox-release"
+      - name: Submit verified package and source with reviewer and release notes
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: node scripts/publish-firefox.mjs "$RUNNER_TEMP/firefox-release/publish-metadata.json"

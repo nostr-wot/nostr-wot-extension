@@ -33,6 +33,7 @@ the last group running for about two minutes even after most tests finish.
 
 | File | What it covers |
 |------|----------------|
+| `tests/firefox-publishing.test.ts` | Shared release gate, source checks, Mozilla JWT, upload validation, reviewer/release notes, safe reruns and credential boundaries |
 | `tests/chrome-publishing.test.ts` | Verified upload bytes, OAuth refresh, asynchronous processing, failure/timeout gates, and no mutation retries |
 | `tests/crypto/secp256k1.test.ts` | Elliptic curve math, scalar multiplication, public key derivation |
 | `tests/crypto/schnorr.test.ts` | BIP-340 Schnorr signature create/verify |

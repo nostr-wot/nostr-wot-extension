@@ -42,6 +42,8 @@ and [relay authentication](docs/guides/relay-authentication.md).
 
 ### Packaging and publishing
 
+- Automate Mozilla Add-ons submissions from stable GitHub releases with matching source, reviewer/build instructions and version changelog. Verify the source tree and Firefox rebuild before using credentials; serialize runs and resume matching submissions without duplicate version uploads.
+
 - Integrate Chrome-specific manifest packaging, ZIP validation and actual Chrome worker/popup/connection-status smoke checks. Generate Chrome and Firefox archives independently with matching reproducible source and checksums.
 - Submit Chrome packages only when a stable GitHub release is published, after successful CI and archive verification. Serialize submissions, skip versions already submitted/published and refuse unrelated pending-review replacement.
 - Document the coordinated backend rollout, manual acceptance, OAuth setup and publishing recovery. Preparing a draft does not submit to stores or deploy the backend.

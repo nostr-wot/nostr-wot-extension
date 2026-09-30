@@ -49,6 +49,8 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | [Component Standards](component-standards.md) | Shared components, hooks, utilities, CSS patterns, import aliases |
 | [Contributing](../CONTRIBUTING.md) | Development setup, issue reports, pull requests and community conduct |
 | [Testing](testing.md) | Test runner, test files, communication test suite, infrastructure |
+| [Chrome publishing](chrome-publishing.md) | Stable-release submission, OAuth credentials and recovery |
+| [Mozilla publishing](firefox-publishing.md) | Stable-release submission with source, reviewer notes and changelog |
 | [Deployment](deployment.md) | Current build requirements, browser packages, data-consent declarations and release checks |
 
 ---

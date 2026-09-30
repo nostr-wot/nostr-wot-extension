@@ -5,7 +5,8 @@ It downloads exactly `nostr-wot-chrome-VERSION.zip` and `SHA256SUMS` from that
 release, verifies its checksum, validates its Chrome manifest and version, and
 starts the actual archive in Chromium. The worker, popup, and connection-status
 RPC must work before Google credentials are used. The release commit must belong
-to main and have a successful push run of `tests.yml`.
+to main and have a successful push run of `tests.yml`. Both store workflows use
+`scripts/prepare-store-release.mjs` for this exact-commit release gate.
 
 The final Node 24 step calls Google's Web Store **v2** API. It rechecks the ZIP
 checksum, skips versions already submitted or published, refuses to overwrite a different

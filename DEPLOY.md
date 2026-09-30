@@ -51,16 +51,11 @@ verified by `verify:chrome` and `smoke:chrome` immediately before upload.
 
 ## Firefox Add-ons (AMO)
 
-1. Go to https://addons.mozilla.org/developers/
-2. Create account or log in
-3. Open the existing listing to upload an update; use "Submit a New Add-on" only for a new listing
-4. Choose distribution method:
-   - **On this site** — Listed publicly on AMO
-   - **On your own** — Self-distributed (signed but unlisted)
-5. Upload `nostr-wot-firefox.zip`
-6. Supply the matching source archive, lockfile and [source build instructions](SOURCE_BUILD.md)
-7. Fill in listing details
-8. Submit for review; check the actual status in AMO
+Stable GitHub releases trigger the Mozilla upload workflow with the verified Firefox
+ZIP, matching source, reviewer instructions and version changelog. Follow
+[Mozilla publishing](docs/firefox-publishing.md) for credentials, checks and recovery.
+The workflow verifies reproducibility before using store credentials and skips an
+already completed matching submission. Mozilla review controls public availability.
 
 ### Firefox-specific notes
 

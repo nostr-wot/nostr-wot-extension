@@ -11,8 +11,9 @@ them after merge, together with the merged local and remote task branches. Verif
 commit ancestry before deleting branches; never discard unmerged work. Do not include unrelated agents' unfinished branches. Report
 the pushed commit and release URL. Stable published releases trigger the Chrome
 Web Store workflow; verify that run and report the actual submission state.
-Google approval and Firefox/Safari submission remain separate; do not claim a
-GitHub release makes every store update live. Follow docs/chrome-publishing.md.
+Stable published releases also trigger Mozilla submission with matching source and reviewer notes.
+Google/Mozilla approval and Safari submission remain separate; do not claim a
+GitHub release makes every store update live. Follow docs/chrome-publishing.md and docs/firefox-publishing.md.
 
 The current release is **0.8.7**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
