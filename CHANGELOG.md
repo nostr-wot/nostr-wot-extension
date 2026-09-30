@@ -5,6 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Allow deselecting individual sites from an all-sites relay grant, switching to specific-site approval. Allow revoking all relay approvals while the vault is locked and explain failed or stale saves.
+
+- Move backend authentication grants into a dedicated screen opened from the top Permissions menu, with back navigation and an information guide.
+
 - Unify relay authentication approvals in a dedicated settings screen with relay summaries, approved-site selection, back navigation and an information guide.
 
 - Include declined sites in the searchable Permissions list with their expiry and individual week, month, year or forever duration controls.

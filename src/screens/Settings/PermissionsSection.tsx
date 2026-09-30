@@ -1,6 +1,6 @@
 import RelayAuthentication, { type RelayAuthenticationHandle } from './RelayAuthentication';
 import DefaultBackendAuth from './DefaultBackendAuth';
-import AuthenticationPermissions from './AuthenticationPermissions';
+import BackendAuthentication from './BackendAuthentication';
 import PermissionRulesList from './PermissionRulesList';
 import { COMMON_PERM_KEYS } from '@constants/permissions.ts';
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef, ChangeEvent } from 'react';
@@ -44,6 +44,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const permissions = usePermissions();
   const selectedAccountId = activeId;
   const authenticationAccount = accounts?.find(account => account.id === activeId) || accounts?.[0];
+  const [backendPermissionsOpen, setBackendPermissionsOpen] = useState(false);
   const [relayPermissionsOpen, setRelayPermissionsOpen] = useState(false);
   const relayPermissionsRef = useRef<RelayAuthenticationHandle>(null);
   const [declinedDomain, setDeclinedDomain] = useState<string | null>(null);
@@ -87,6 +88,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   // Expose goBack so the parent can navigate back from detail -> list
   useImperativeHandle(ref, () => ({
     goBack: () => {
+      if (backendPermissionsOpen) { setBackendPermissionsOpen(false); return true; }
       if (relayPermissionsOpen) {
         if (!relayPermissionsRef.current?.goBack()) setRelayPermissionsOpen(false);
         return true;
@@ -97,7 +99,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
       }
       return false; // nothing to go back from
     },
-  }), [detailDomain, relayPermissionsOpen]);
+  }), [detailDomain, relayPermissionsOpen, backendPermissionsOpen]);
 
   const getPermSummary = (bucketPerms: Record<string, string>): string => {
     const { allow, deny } = countDecisions(bucketPerms);
@@ -164,6 +166,10 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   const availableKeys = availablePermKeys(COMMON_PERM_KEYS, domainPerms);
 
+  if (backendPermissionsOpen && authenticationAccount) {
+    return <BackendAuthentication key={authenticationAccount.id} accounts={accounts || []} activeId={activeId} onBack={() => setBackendPermissionsOpen(false)} />;
+  }
+
   if (relayPermissionsOpen && authenticationAccount) {
     return <RelayAuthentication key={authenticationAccount.id} ref={relayPermissionsRef} accountId={authenticationAccount.id} onBack={() => setRelayPermissionsOpen(false)} />;
   }
@@ -210,6 +216,10 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         {accountScopeBlock}
         {authenticationAccount && <DefaultBackendAuth key={authenticationAccount.id} accountId={authenticationAccount.id} />}
         <ListRow leading={<IconShield size={15} />} leadingChip={false}
+          className="px-7 py-5.5 gap-4" title={t('auth.permissions')} subtitle={t('auth.manageBackends')}
+          trailing={<span className="w-20 flex justify-center"><IconChevronRight size={16} /></span>}
+          onClick={() => setBackendPermissionsOpen(true)} />
+        <ListRow leading={<IconShield size={15} />} leadingChip={false}
           className="px-7 py-5.5 gap-4" title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')}
           trailing={<span className="w-20 flex justify-center"><IconChevronRight size={16} /></span>}
           onClick={() => setRelayPermissionsOpen(true)} />
@@ -248,7 +258,6 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
       {selectedDeclined && createPortal(<Modal title={selectedDeclined.domain} onClose={() => setDeclinedDomain(null)}>
         <DeclinedSites key={selectedDeclined.domain} site={selectedDeclined} onChange={refreshDeclined} onClose={() => setDeclinedDomain(null)} />
       </Modal>, document.body)}
-      <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
 
     </Container>
   );

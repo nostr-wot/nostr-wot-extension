@@ -69,7 +69,11 @@ function RelaySites({ group, sites, accountId, onSave }: { group: RelayPermissio
     try {
       await rpc('signer_setRelayAuthenticationSites', { accountId, destination: group.destination, origins: allSites ? [] : selected.filter(origin => sites.includes(origin)), allSites, revision });
       await onSave();
-    } catch { setError(t('approval.actionFailed')); }
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : '';
+      setError(t(message.includes('permissions changed') || message.includes('no longer exists') ? 'auth.relaySaveStale'
+        : message.includes('Account switched') ? 'auth.relaySaveAccountChanged' : 'auth.relaySaveFailed'));
+    }
     finally { setBusy(false); }
   };
   return <Container className="flex-1 min-h-0">
@@ -87,9 +91,14 @@ function RelaySites({ group, sites, accountId, onSave }: { group: RelayPermissio
           {!sites.includes(origin) && <Text variant="muted">{t('auth.siteDisconnected')}</Text>}
           {group.deniedOrigins.includes(origin) && !selected.includes(origin) && <Text variant="muted">{t('auth.siteBlocked')}</Text>}
         </div>
-        <Checkbox aria-label={origin} disabled={busy || allSites || !sites.includes(origin)}
+        <Checkbox aria-label={origin} disabled={busy || !sites.includes(origin)}
           checked={allSites ? sites.includes(origin) && !group.deniedOrigins.includes(origin) : selected.includes(origin)}
-          onChange={event => setSelected(previous => event.target.checked ? [...previous, origin] : previous.filter(site => site !== origin))} />
+          onChange={event => {
+            const checked = event.target.checked;
+            const current = allSites ? sites.filter(site => !group.deniedOrigins.includes(site)) : selected;
+            setSelected(checked ? [...new Set([...current, origin])] : current.filter(site => site !== origin));
+            setAllSites(false);
+          }} />
       </label>)}
     </Container>
     <FormError>{error}</FormError>

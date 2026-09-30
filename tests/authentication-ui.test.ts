@@ -264,7 +264,7 @@ it('Permissions groups All accounts, backend auth and relay auth in that order',
   await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions)))));
   const link=[...document.querySelectorAll('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
   assert.ok(link);assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
-  const heading=[...document.querySelectorAll('label')].find(element=>element.textContent===label('auth.permissions'))!;
+  const backendLink=[...document.querySelectorAll('button')].find(element=>element.textContent!.includes(label('auth.manageBackends')))!;
   const allAccounts=[...document.querySelectorAll('span')].find(element=>element.textContent===label('perms.allAccounts'))!;
   const backend=document.querySelector(`[aria-label="${label('auth.defaultBackend')}"]`)!;
   const card=link.parentElement!;
@@ -272,11 +272,19 @@ it('Permissions groups All accounts, backend auth and relay auth in that order',
   assert.ok(card.contains(allAccounts));assert.ok(card.contains(backend));
   assert.equal(card.querySelectorAll('.shadow-card').length,0,'controls share one card without nested cards');
   const search=document.querySelector('input[type="search"]')!;
-  for(const [before,after] of [[allAccounts,backend],[backend,link],[link,search],[search,heading]]) {
+  for(const [before,after] of [[allAccounts,backend],[backend,backendLink],[backendLink,link],[link,search]]) {
    assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   }
   assert.equal(document.querySelector('[role="dialog"]'),null);
-  await act(async()=>link.click());assert.equal(document.querySelector('[role="dialog"]'),null);
+  await act(async()=>backendLink.click());
+  assert.equal(document.querySelector('[role="dialog"]'),null,'backend screen is a full page');
+  const backendInfo=document.querySelector<HTMLButtonElement>(`[aria-label="${label('auth.backendInfoTitle')}"]`)!;
+  await act(async()=>backendInfo.click());assert.ok(document.querySelector('[role="dialog"]')!.textContent!.includes(label('auth.backendInfo')));
+  await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  await act(async()=>document.querySelector<HTMLButtonElement>(`[aria-label="${label('common.back')}"]`)!.click());
+  assert.ok(document.querySelector('input[type="search"]'));
+  const relayLink=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent!.includes(label('auth.manageRelays')))!;
+  await act(async()=>relayLink.click());assert.equal(document.querySelector('[role="dialog"]'),null);
   const info=document.querySelector<HTMLButtonElement>(`[aria-label="${label('auth.relayInfoTitle')}"]`)!;
   await act(async()=>info.click());assert.ok(document.querySelector('[role="dialog"]'));
   await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
@@ -437,5 +445,42 @@ it('relay editor selects connected apps, saves explicit scopes, and uses back na
   assert.equal(document.querySelector('[aria-label="https://two.test"]'),null,'save returns to relay list');
   await act(async()=>document.querySelector<HTMLButtonElement>(`[aria-label="${label('common.back')}"]`)!.click());
   assert.equal(backs,1);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('deselecting an all-sites relay keeps other allowed sites selected and permits revoking all',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Relays}=await import('../src/screens/Settings/RelayAuthentication');
+ const {default:browser}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const grants=[
+  {id:'all',accountId:'a',origin:'*',protocol:'nip42',destination:'wss://relay.test/',decision:'allow'},
+  {id:'deny',accountId:'a',origin:'https://blocked.test',protocol:'nip42',destination:'wss://relay.test/',decision:'deny'},
+ ];
+ const saves:any[]=[];let fail=true;
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  if(message.method==='getAllowedDomains')return {result:['https://one.test','https://two.test','https://blocked.test']};
+  if(message.method==='signer_getAuthenticationGrants')return {result:grants};
+  if(message.method==='signer_setRelayAuthenticationSites'){saves.push(message.params);return fail?{error:'Relay permissions changed; reopen the editor'}:{result:{ok:true}};}
+  return {result:null};
+ });
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Relays,{accountId:'a',onBack(){}})));
+  await act(async()=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent!.includes('relay.test'))!.click());
+  const one=document.querySelector<HTMLInputElement>('[aria-label="https://one.test"]')!;
+  const two=document.querySelector<HTMLInputElement>('[aria-label="https://two.test"]')!;
+  const blocked=document.querySelector<HTMLInputElement>('[aria-label="https://blocked.test"]')!;
+  const all=document.querySelector<HTMLInputElement>(`[aria-label="${label('auth.allConnectedSites')}"]`)!;
+  assert.equal(all.checked,true);assert.equal(one.disabled,false);assert.equal(two.checked,true);assert.equal(blocked.checked,false);
+  await act(async()=>one.click());
+  assert.equal(all.checked,false);assert.equal(one.checked,false);assert.equal(two.checked,true);assert.equal(blocked.checked,false);
+  const save=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===label('common.save'))!;
+  await act(async()=>save.click());
+  assert.deepEqual(saves[0].origins,['https://two.test']);assert.equal(saves[0].allSites,false);
+  assert.ok(document.body.textContent!.includes(label('auth.relaySaveStale')));
+  assert.ok(!document.body.textContent!.includes(label('approval.actionFailed')));
+  await act(async()=>two.click());fail=false;
+  await act(async()=>save.click());
+  assert.deepEqual(saves[1].origins,[]);assert.equal(saves[1].allSites,false);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });

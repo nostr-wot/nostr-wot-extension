@@ -1122,5 +1122,11 @@
   "auth.siteDisconnected": "No conectado",
   "auth.siteBlocked": "Bloqueado",
   "auth.oneSiteApproved": "1 sitio autorizado",
-  "auth.oneSiteBlocked": "1 sitio bloqueado"
+  "auth.oneSiteBlocked": "1 sitio bloqueado",
+  "auth.manageBackends": "Revisa y revoca el acceso a backends",
+  "auth.backendInfoTitle": "Acerca de la autenticación del backend",
+  "auth.backendInfo": "Las aprobaciones y rechazos guardados pertenecen a esta cuenta, al sitio solicitante, a la URL exacta y al método HTTP. Revoca una entrada para eliminar esa decisión. La autenticación predeterminada del backend es una política independiente: si está activada, los sitios conectados compatibles pueden seguir autenticándose automáticamente. La autenticación en relays se gestiona por separado.",
+  "auth.relaySaveFailed": "No se pudieron guardar los permisos del relay. Inténtalo de nuevo.",
+  "auth.relaySaveStale": "Los permisos del relay cambiaron. Vuelve atrás y abre este relay antes de guardar.",
+  "auth.relaySaveAccountChanged": "La cuenta activa cambió. Vuelve atrás y abre la autenticación de relays."
 }

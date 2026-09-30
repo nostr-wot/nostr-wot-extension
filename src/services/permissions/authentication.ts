@@ -84,7 +84,7 @@ export async function revokeAuthenticationGrants(filter: {id?:string;accountId?:
 }
 
 /** Settings edits replace one relay's allows atomically; unrelated denials stay in force. */
-export async function setRelayAuthenticationSites(accountId: string, destination: string, origins: string[], allSites: boolean, assertCurrent: () => void, expectedRevision: string): Promise<void> {
+export async function setRelayAuthenticationSites(accountId: string, destination: string, origins: string[], allSites: boolean, assertCurrent: () => void | Promise<void>, expectedRevision: string): Promise<void> {
   if (typeof expectedRevision !== 'string' || typeof accountId !== 'string' || !accountId || typeof destination !== 'string'
     || typeof allSites !== 'boolean' || !Array.isArray(origins) || origins.length > 1000
     || origins.some(origin => typeof origin !== 'string')) throw new Error('Invalid relay permissions');
@@ -107,7 +107,7 @@ export async function setRelayAuthenticationSites(accountId: string, destination
       id: JSON.stringify([accountId, origin, 'nip42', destination, '']),
       accountId, origin, protocol: 'nip42', destination, decision: 'allow',
     }));
-    assertCurrent();
+    await assertCurrent();
     await browser.storage.local.set({ [AUTHENTICATION_GRANTS_KEY]: [...kept, ...updated] });
   });
 }

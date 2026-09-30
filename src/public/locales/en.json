@@ -1122,5 +1122,11 @@
   "auth.siteDisconnected": "Not connected",
   "auth.siteBlocked": "Blocked",
   "auth.oneSiteApproved": "1 site approved",
-  "auth.oneSiteBlocked": "1 site blocked"
+  "auth.oneSiteBlocked": "1 site blocked",
+  "auth.manageBackends": "Review and revoke backend access",
+  "auth.backendInfoTitle": "About backend authentication",
+  "auth.backendInfo": "Remembered backend approvals and denials belong to this account, the requesting site, the exact URL and HTTP method. Revoke an entry to remove that saved decision. Default backend auth is a separate policy: when enabled, eligible connected sites may still authenticate automatically. Relay authentication is managed separately.",
+  "auth.relaySaveFailed": "Relay permissions could not be saved. Please try again.",
+  "auth.relaySaveStale": "Relay permissions changed. Go back and reopen this relay before saving.",
+  "auth.relaySaveAccountChanged": "The active account changed. Go back and reopen relay authentication."
 }

@@ -399,3 +399,22 @@ it('relay settings reject disconnected apps, stale accounts and unknown destinat
  await saveAuthenticationGrant('acct1',site,auth,'site',()=>{},'deny');
  await assert.rejects(setRelayAuthenticationSites('acct1',auth.destination,[site],false,()=>{},stale),/permissions changed/);
 });
+
+it('relay settings revoke all allows while locked and reject an inactive account',async()=>{
+ const {handlers}=await import('../src/services/background/nip07-handlers');
+ const {saveAuthenticationGrant,listAuthenticationGrants}=await import('../src/services/permissions/authentication');
+ const {parseAuthentication}=await import('../src/domain/signing/authentication');
+ const {relayPermissionRevision}=await import('../src/domain/signing/relayPermissions');
+ const auth=parseAuthentication(relay(),site)!;
+ await saveAuthenticationGrant('acct1',site,auth,'connected-sites',()=>{});
+ await saveAuthenticationGrant('acct1','https://blocked.test',auth,'site',()=>{},'deny');
+ const before=await listAuthenticationGrants();
+ const params={accountId:'acct1',destination:auth.destination,origins:[],allSites:false,revision:relayPermissionRevision(before,'acct1',auth.destination)};
+ vault.lock();
+ await browser.storage.local.set({activeAccountId:'other'});
+ await assert.rejects(handlers.get('signer_setRelayAuthenticationSites')!(params),/Account switched/);
+ assert.deepEqual(await listAuthenticationGrants(),before);
+ await browser.storage.local.set({activeAccountId:'acct1'});
+ await handlers.get('signer_setRelayAuthenticationSites')!(params);
+ assert.deepEqual(await listAuthenticationGrants(),before.filter(grant=>grant.decision==='deny'));
+});

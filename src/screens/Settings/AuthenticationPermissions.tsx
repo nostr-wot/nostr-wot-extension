@@ -11,10 +11,10 @@ import FormError from '@components/FormError';
 import { SectionLabel } from '@components/SectionLabel';
 import Button, { ButtonDanger } from '@components/Button';
 type AccountSummary = Pick<SafeAccount, 'id' | 'pubkey'> & Partial<Pick<SafeAccount, 'name'>>;
-export default function AuthenticationPermissions({accounts,activeId}:{accounts:AccountSummary[];activeId?:string|null}) {
+export default function AuthenticationPermissions({accounts,activeId,showHeading=true}:{accounts:AccountSummary[];activeId?:string|null;showHeading?:boolean}) {
  const account=accounts.find(item=>item.id===activeId) || accounts[0];
  return <Container gap={3} className="shrink-0">
-  <SectionLabel>{t('auth.permissions')}</SectionLabel>
+  {showHeading && <SectionLabel>{t('auth.permissions')}</SectionLabel>}
   <Text variant="hint">{t('auth.accountOnly')}</Text>
   {account && <AccountGrants key={account.id} account={account}/>}
  </Container>;

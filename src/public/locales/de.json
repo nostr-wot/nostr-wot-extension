@@ -1122,5 +1122,11 @@
   "auth.siteDisconnected": "Nicht verbunden",
   "auth.siteBlocked": "Blockiert",
   "auth.oneSiteApproved": "1 Website erlaubt",
-  "auth.oneSiteBlocked": "1 Website blockiert"
+  "auth.oneSiteBlocked": "1 Website blockiert",
+  "auth.manageBackends": "Backend-Zugriff prüfen und widerrufen",
+  "auth.backendInfoTitle": "Über Backend-Authentifizierung",
+  "auth.backendInfo": "Gespeicherte Genehmigungen und Ablehnungen gelten für dieses Konto, die anfragende Website, die genaue URL und die HTTP-Methode. Widerrufen Sie einen Eintrag, um diese Entscheidung zu entfernen. Die standardmäßige Backend-Authentifizierung ist eine separate Regel: Ist sie aktiviert, können berechtigte verbundene Websites sich weiterhin automatisch authentifizieren. Relay-Authentifizierung wird separat verwaltet.",
+  "auth.relaySaveFailed": "Die Relay-Berechtigungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
+  "auth.relaySaveStale": "Die Relay-Berechtigungen haben sich geändert. Gehe zurück und öffne dieses Relay vor dem Speichern erneut.",
+  "auth.relaySaveAccountChanged": "Das aktive Konto hat sich geändert. Gehe zurück und öffne die Relay-Authentifizierung erneut."
 }

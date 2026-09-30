@@ -1122,5 +1122,11 @@
   "auth.siteDisconnected": "Non connecté",
   "auth.siteBlocked": "Bloqué",
   "auth.oneSiteApproved": "1 site autorisé",
-  "auth.oneSiteBlocked": "1 site bloqué"
+  "auth.oneSiteBlocked": "1 site bloqué",
+  "auth.manageBackends": "Consulter et révoquer les accès aux backends",
+  "auth.backendInfoTitle": "À propos de l’authentification du backend",
+  "auth.backendInfo": "Les autorisations et refus enregistrés concernent ce compte, le site demandeur, l’URL exacte et la méthode HTTP. Révoquez une entrée pour supprimer cette décision. L’authentification par défaut du backend est une règle distincte : lorsqu’elle est activée, les sites connectés éligibles peuvent encore s’authentifier automatiquement. L’authentification des relais se gère séparément.",
+  "auth.relaySaveFailed": "Impossible d’enregistrer les autorisations du relais. Réessayez.",
+  "auth.relaySaveStale": "Les autorisations du relais ont changé. Revenez en arrière et rouvrez ce relais avant d’enregistrer.",
+  "auth.relaySaveAccountChanged": "Le compte actif a changé. Revenez en arrière et rouvrez l’authentification des relais."
 }
