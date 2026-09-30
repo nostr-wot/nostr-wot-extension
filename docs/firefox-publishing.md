@@ -36,11 +36,14 @@ file contents and paths must match. These checks run before Mozilla secrets are 
 Mozilla receives the Firefox ZIP and matching source ZIP, plus:
 
 - Reviewer notes from [firefox-reviewer-notes.md](firefox-reviewer-notes.md).
-- The exact [source build instructions](../SOURCE_BUILD.md), commit and archive hashes.
-- The version's complete [changelog](../CHANGELOG.md), also saved as English release notes.
+- Build commands, source commit and archive hashes. Full [build instructions](../SOURCE_BUILD.md) are included in the source ZIP.
+- English release notes from the [changelog](../CHANGELOG.md). If the full section exceeds Mozilla's 3,000-character limit, use its `### Store release notes` summary and an immutable link to the complete changelog; the complete file is also in the source ZIP.
 
 Update these tracked documents alongside the code. Generated metadata and notes
-stay in the runner's temporary directory. The API submission attaches source and
+stay in the runner's temporary directory. Reviewer notes must fit Mozilla’s 3,000-character limit including the archive
+markers; the publisher checks that before making an API call. Full build/reviewer
+guides remain in the source archive, and release notes use a separate field with the same limit.
+The API submission attaches source and
 reviewer notes during version creation, then saves translated release notes and
 reads the version back to verify both notes and the source attachment.
 
@@ -70,3 +73,6 @@ The implementation uses Mozilla's [Add-ons API](https://mozilla.github.io/addons
 and [JWT authentication](https://mozilla.github.io/addons-server/topics/api/auth.html).
 Tests mock the API and cover submission, source/notes attachment, interrupted runs,
 duplicate refusal, pagination, credential boundaries and validation failures.
+
+Upload IDs accept Mozilla’s compact hexadecimal UUID representation as well as
+the canonical hyphenated form. Both are validated before building polling URLs.

@@ -19,6 +19,15 @@ export function changelogFor(text, version) {
   assert.ok(body, 'Empty changelog section');
   return body;
 }
+export function releaseNotesFor(changelog, commit) {
+  const full = changelog.replace(/\]\((docs\/[^)]+)\)/g, `](https://github.com/nostr-wot/nostr-wot-extension/blob/${commit}/$1)`);
+  if (full.length <= 3000) return full;
+  const summary = changelog.split(/^### Store release notes\s*$/m)[1]?.split(/^### /m)[0]?.trim();
+  assert.ok(summary, 'Long changelogs require a Store release notes section');
+  const notes = `${summary}\n\nFull changelog: https://github.com/nostr-wot/nostr-wot-extension/blob/${commit}/CHANGELOG.md\nAlso included in the attached source archive.`;
+  assert.ok(notes.length <= 3000, 'Mozilla release notes exceed 3000 characters');
+  return notes;
+}
 /** Compare contents without extracting an untrusted path into the checkout. */
 export function compareArchives(left, right) {
   execFileSync('python3', ['-c', `import sys,zipfile
@@ -52,8 +61,8 @@ export function prepareFirefox(directory, version, commit, run = execFileSync) {
   run('npm', ['run', 'package:firefox'], { stdio: 'inherit' });
   compareArchives(archive, resolve('nostr-wot-firefox.zip'));
   const changelog = changelogFor(readFileSync('CHANGELOG.md', 'utf8'), version);
-  const releaseNotes = changelog.replace(/\]\((docs\/[^)]+)\)/g, `](https://github.com/nostr-wot/nostr-wot-extension/blob/${commit}/$1)`);
-  const approvalNotes = [`Nostr WoT ${version}\nSource commit: ${commit}`, readFileSync('docs/firefox-reviewer-notes.md', 'utf8').trim(), readFileSync('SOURCE_BUILD.md', 'utf8').trim(), `Changes in this version\n\n${releaseNotes}`].join('\n\n');
+  const releaseNotes = releaseNotesFor(changelog, commit);
+  const approvalNotes = [`Nostr WoT ${version}\nSource commit: ${commit}`, readFileSync('docs/firefox-reviewer-notes.md', 'utf8').trim(), 'Full build instructions: SOURCE_BUILD.md in the attached source archive. The complete changelog is supplied as release notes.'].join('\n\n');
   const metadata = { archive, source, version, archiveHash, sourceHash, approvalNotes, releaseNotes };
   writeFileSync(join(root, 'publish-metadata.json'), JSON.stringify(metadata));
   writeFileSync(join(root, 'reviewer-notes.txt'), approvalNotes);

@@ -9,6 +9,8 @@ import { verifyPackage } from './verify-package.mjs';
 export const ADDON_ID = 'nostr-wot-extension@nostr-wot.com';
 const ORIGIN = 'https://addons.mozilla.org';
 const API = '/api/v5/';
+// AMO linkifies URLs and wraps outbound links in its redirect service. Compare visible text.
+const releaseText = value => typeof value === 'string' ? value.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\r\n?/g, '\n') : '';
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function amoToken(env, now = Math.floor(Date.now() / 1000)) {
   assert.ok(env.AMO_JWT_ISSUER && env.AMO_JWT_SECRET, 'Missing Mozilla credentials');
@@ -36,6 +38,8 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
   assert.ok(approvalNotes?.trim() && releaseNotes?.trim(), 'Missing reviewer or release notes');
   const marker = `Firefox SHA256: ${archiveHash}\nSource SHA256: ${sourceHash}`;
   const notes = `${approvalNotes.trim()}\n\n${marker}`;
+  assert.ok(releaseNotes.length <= 3000, 'Mozilla release notes exceed 3000 characters');
+  assert.ok(notes.replace(/\r?\n/g, '\r\n').length <= 3000, 'Mozilla reviewer notes exceed 3000 characters');
   async function request(path, init = {}) {
     const url = new URL(path, ORIGIN);
     assert.ok(url.origin === ORIGIN && url.pathname.startsWith(API) && !url.username && !url.password, 'Unsafe Mozilla API URL');
@@ -60,8 +64,8 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
     const detail = await request(`${base}versions/${existing.id}/`);
     assert.equal(detail.version, version);
     assert.ok(detail.channel === 'listed' && ['public', 'unreviewed'].includes(detail.file?.status) && detail.is_disabled !== true, 'Existing version is not an active listed submission');
-    assert.ok(detail.source && detail.approval_notes?.includes(marker), 'Existing version has unverified package/source; no changes attempted');
-    if (detail.approval_notes === notes && detail.release_notes?.['en-US'] === releaseNotes) return 'ALREADY_SUBMITTED';
+    assert.ok(detail.source && detail.approval_notes?.replace(/\r\n?/g, '\n').includes(marker), 'Existing version has unverified package/source; no changes attempted');
+    if (detail.approval_notes?.replace(/\r\n?/g, '\n') === notes && releaseText(detail.release_notes?.['en-US']) === releaseText(releaseNotes)) return 'ALREADY_SUBMITTED';
     return await metadata(detail);
   }
   for (const v of versions) {
@@ -72,7 +76,7 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
   form.set('channel', 'listed');
   form.set('upload', new Blob([readFileSync(archive)], { type: 'application/zip' }), `nostr-wot-firefox-${version}.zip`);
   let upload = await request(`${API}addons/upload/`, { method: 'POST', body: form });
-  assert.match(upload.uuid ?? '', /^[a-f0-9-]{36}$/i, 'Invalid Mozilla upload ID');
+  assert.match(upload.uuid ?? '', /^(?:[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i, 'Invalid Mozilla upload ID');
   const uuid = upload.uuid;
   for (let attempt = 0; upload.processed !== true && attempt < 30; attempt++) {
     await sleep(10000);
@@ -100,8 +104,8 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
     assert.equal(saved.version, version);
     assert.equal(saved.channel, 'listed');
     assert.ok(saved.source, 'Mozilla source attachment missing');
-    assert.equal(saved.approval_notes, notes, 'Reviewer notes were not saved');
-    assert.equal(saved.release_notes?.['en-US'], releaseNotes, 'Release notes were not saved');
+    assert.equal(saved.approval_notes?.replace(/\r\n?/g, '\n'), notes, 'Reviewer notes were not saved');
+    assert.equal(releaseText(saved.release_notes?.['en-US']), releaseText(releaseNotes), 'Release notes were not saved');
     return 'SUBMITTED';
   }
 }

@@ -6,10 +6,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { ADDON_ID, amoToken, digest, compareVersions, publishFirefox } from '../scripts/publish-firefox.mjs';
-import { checksumFor, changelogFor, compareArchives, prepareFirefox } from '../scripts/prepare-firefox-release.mjs';
+import { checksumFor, changelogFor, compareArchives, prepareFirefox, releaseNotesFor } from '../scripts/prepare-firefox-release.mjs';
 import { prepareRelease } from '../scripts/prepare-store-release.mjs';
 const env = { AMO_JWT_ISSUER: 'test-issuer', AMO_JWT_SECRET: 'synthetic-test-secret' };
-const uuid = '10000000-0000-0000-0000-000000000001';
+// AMO serializes upload UUIDs as compact hexadecimal strings.
+const uuid = '10000000000000000000000000000001';
 function fixture(t: { after: (fn: () => void) => void }) {
   const dir = mkdtempSync(join(tmpdir(), 'firefox-publishing-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -170,7 +171,7 @@ test('prepares source, rebuild and notes before submission', t => {
  assert.deepEqual(calls, ['gh', 'git', 'npm']);
  assert.equal(metadata.releaseNotes, 'Release changes');
  assert.match(metadata.approvalNotes, /Reviewer instructions/);
- assert.match(metadata.approvalNotes, /Build instructions/);
+ assert.match(metadata.approvalNotes, /SOURCE_BUILD.md/);
  assert.deepEqual(JSON.parse(readFileSync('release/publish-metadata.json', 'utf8')), metadata);
 });
 test('Mozilla workflow only submits stable releases, serially, after verification', () => {
@@ -182,4 +183,54 @@ test('Mozilla workflow only submits stable releases, serially, after verificatio
  assert.match(workflow, /!github.event.release.prerelease/);
  assert.ok(workflow.indexOf('prepare-store-release.mjs') < workflow.indexOf('prepare-firefox-release.mjs'));
  assert.ok(workflow.indexOf('prepare-firefox-release.mjs') < workflow.indexOf('secrets.AMO_JWT_SECRET'));
+});
+
+for (const uploadId of ['10000000-0000-0000-0000-000000000001', '------------------------------------', '../not-an-upload']) test(`validates upload ID format: ${uploadId}`, async t => {
+ const o = fixture(t), saved = detail(o);
+ const mock = api([addon, empty, { ...validated, uuid: uploadId }, saved, saved, saved]);
+ if (uploadId.startsWith('1000')) assert.equal(await publishFirefox(o, env, mock.fetcher), 'SUBMITTED');
+ else { await assert.rejects(publishFirefox(o, env, mock.fetcher), /Invalid Mozilla upload ID/); assert.equal(mock.calls.length, 3); }
+});
+
+test('refuses oversized reviewer notes before using Mozilla credentials', async t => {
+ const o = fixture(t); o.approvalNotes = 'x'.repeat(3000);
+ const mock = api([]);
+ await assert.rejects(publishFirefox(o, env, mock.fetcher), /exceed 3000/);
+ assert.equal(mock.calls.length, 0);
+});
+
+test('fits Mozilla release-note limits while linking the complete changelog', () => {
+ const commit='a'.repeat(40);
+ assert.equal(releaseNotesFor('Short changes',commit),'Short changes');
+ const notes=releaseNotesFor('x'.repeat(3100)+'\n### Store release notes\nUser-facing summary',commit);
+ assert.ok(notes.length <= 3000); assert.match(notes,/User-facing summary/);
+ assert.ok(notes.includes(`/blob/${commit}/CHANGELOG.md`));
+ assert.throws(()=>releaseNotesFor('x'.repeat(3100),commit),/require a Store/);
+ assert.throws(()=>releaseNotesFor('### Store release notes\n'+'x'.repeat(3100),commit),/exceed 3000/);
+});
+test('refuses oversized release notes before any Mozilla mutation', async t => {
+ const o=fixture(t);o.releaseNotes='x'.repeat(3001);const mock=api([]);
+ await assert.rejects(publishFirefox(o,env,mock.fetcher),/release notes exceed/);
+ assert.equal(mock.calls.length,0);
+});
+
+test('recognizes AMO multipart CRLF notes and resumes metadata without reuploading', async t => {
+ const o=fixture(t), saved=detail(o);
+ const partial={...saved,approval_notes:saved.approval_notes.replace(/\n/g,'\r\n'),release_notes:null};
+ const mock=api([addon,{results:[partial],next:null},partial,saved,saved]);
+ assert.equal(await publishFirefox(o,env,mock.fetcher),'SUBMITTED');
+ assert.deepEqual(mock.calls.map(c=>c.options.method||'GET'),['GET','GET','GET','PATCH','GET']);
+ const complete={...saved,approval_notes:partial.approval_notes};
+ const rerun=api([addon,{results:[complete],next:null},complete]);
+ assert.equal(await publishFirefox(o,env,rerun.fetcher),'ALREADY_SUBMITTED');
+});
+
+test('recognizes Mozilla linkified release notes on save and rerun', async t => {
+ const o=fixture(t);o.releaseNotes='Changes: https://example.test/changelog';
+ const saved=detail(o), linked={...saved,release_notes:{'en-US':'Changes: <a href="https://outgoing.example/redirect" rel="nofollow">https://example.test/changelog</a>'}};
+ const submission=api([addon,empty,validated,saved,saved,linked]);
+ assert.equal(await publishFirefox(o,env,submission.fetcher),'SUBMITTED');
+ const rerun=api([addon,{results:[linked],next:null},linked]);
+ assert.equal(await publishFirefox(o,env,rerun.fetcher),'ALREADY_SUBMITTED');
+ assert.ok(rerun.calls.every(c=>!c.options.method));
 });

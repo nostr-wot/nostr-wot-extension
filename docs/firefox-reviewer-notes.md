@@ -1,47 +1,32 @@
 # Mozilla reviewer notes
 
-Nostr WoT is a Manifest V3 identity signer and optional Lightning wallet for Nostr
-web applications. The attached source ZIP contains the matching TypeScript/React
-source and committed npm lockfile. SOURCE_BUILD.md supplies the exact build commands.
-The release workflow verifies that the source matches the release commit and that
-its Firefox build reproduces every file in the submitted ZIP. Vite bundles local
-code; runtime network responses are data, not downloaded executable code.
+Nostr WoT is a Manifest V3 Nostr identity signer and optional Lightning wallet.
+The attached source ZIP contains matching TypeScript/React code and package-lock.json.
+Vite bundles local code; network responses are data, not downloaded executable code.
 
-## Review setup
+Build on Linux or macOS with npm, zip/unzip and Node 24.15+ in 24.x (recommended),
+22.22.2+ in 22.x, or 26+: run npm ci, then npm run package:firefox. The output is
+nostr-wot-firefox.zip. SOURCE_BUILD.md has complete reproduction instructions.
+The release workflow compares every rebuilt file with the submitted package.
 
-Use a disposable account in a clean Firefox profile. Open the extension toolbar
-popup, create an identity and set a vault password. No project login or invitation
-is required for local account creation and signing. Remote signing, relay queries
-and wallet features depend on the user's selected third-party services. Do not use
-real funds or production keys for review; automated wallet tests use synthetic
-invoices and local fixtures.
+Use a clean Firefox profile and disposable identity. Open the toolbar popup,
+create an identity and set a vault password. Local onboarding/signing needs no
+project login or invitation. Connect a Nostr client using browser-extension sign-in.
+Review ordinary signing and authentication separately; revoke grants in Permissions.
+HTTP grants bind site, account, exact URL and method. Relay grants cover one site
+or explicitly all connected sites. Lock/switch accounts to invalidate old approvals.
 
-Connect a compatible Nostr client through its browser-extension sign-in option.
-Review its ordinary signing permissions and authentication requests separately.
-HTTP authentication approvals bind the requesting site, account, exact URL and
-method; relay permissions can cover one site or explicitly all connected sites.
-Manage and revoke these grants under Permissions. Lock the vault or switch accounts
-to check that obsolete approvals and previews are rejected.
+The Firefox build uses background scripts. storage, activeTab and alarms support
+vault/settings, current-site controls and scheduled work. Content scripts expose
+NIP-07/WebLN on websites. Host access to nostr-wot.com supports installation setup.
 
-## Permissions and data flows
+Required data consent covers wallet credentials/payments, remote-signer content,
+public identity/relay queries and site domains sent to Google's favicon service.
+There is no analytics or telemetry. See docs/deployment.md and SECURITY.md for
+complete disclosures. Local keys stay in the signing flow; NIP-46 has remote custody.
+Never lock uses an empty-password vault. PQ encryption and Web of Trust are opt-in
+experiments; ordinary event signatures remain classical.
 
-The Firefox package uses background scripts, not Chrome's service worker manifest.
-`storage`, `activeTab` and `alarms` support the vault/settings, current-site controls
-and scheduled work. Content scripts expose NIP-07/WebLN APIs on websites; host
-access to `https://nostr-wot.com/*` supports the project-site installation flow.
-
-Firefox's required data-consent categories cover authentication information,
-financial/payment information, personal communications, identifying information
-and browsing activity. These describe feature-related transmission, including
-wallet credentials, remote-signer content, public profile/relay queries and site
-domains sent to Google's favicon service. The extension implements no analytics
-or telemetry. See docs/deployment.md and SECURITY.md in the source archive for
-complete destinations, key custody and security limits.
-
-Password-protected local keys remain in the extension's signing flow. NIP-46 uses
-a remote signer with its own key custody. Never lock uses an empty-password vault.
-Post-quantum encryption is experimental and opt-in; ordinary Nostr event signatures
-remain classical. Web of Trust is separately opt-in.
-
-The version-specific changelog and source/package checksums are appended
-by the publishing workflow. This note contains no credentials or test accounts.
+Wallet and remote signing tests need compatible user-selected providers. Use no
+real funds or production keys; automated tests use synthetic invoices and fixtures.
+The complete version changelog is supplied separately as release notes.
