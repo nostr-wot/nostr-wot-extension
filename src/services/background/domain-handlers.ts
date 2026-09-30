@@ -246,6 +246,21 @@ export async function addDismissedDomain(domain: string, permanent = false): Pro
     return true;
 }
 
+/** Change one existing dismissal without changing the default for other sites. */
+export async function updateDismissedDomain(domain: string, duration: number | 'never'): Promise<boolean> {
+    if (typeof domain !== 'string' || !domain || ![604_800_000, 2_592_000_000, 31_536_000_000, 'never'].includes(duration)) {
+        throw new Error('Unsupported dismissal duration');
+    }
+    if (await isDomainAllowed(domain) || !(await isDomainDismissed(domain))) return false;
+    const dismissals = await getDismissals();
+    const now = Date.now();
+    dismissals[domain] = { at: now, until: duration === 'never' ? 'never' : now + duration };
+    await browser.storage.local.set({ dismissedDomains: dismissals });
+    const session = await getSessionDismissed();
+    await browser.storage.session.set({ [SESSION_DISMISSED_KEY]: session.filter(item => item !== domain) });
+    return true;
+}
+
 export async function removeDismissedDomain(domain: string): Promise<void> {
     const dismissals = await getDismissals();
     for (const scope of siteScopes(domain)) delete dismissals[scope];
@@ -499,6 +514,7 @@ export const handlers = new Map<string, HandlerFn>([
     // "Not now" on the connect card. Without this the dismissal was never
     // recorded, so the next request from the site re-opened the popup.
     ['addDismissedDomain', async (params) => addDismissedDomain(params.domain as string, !!params.permanent)],
+    ['updateDismissedDomain', async (params) => updateDismissedDomain(params.domain as string, params.duration as number | 'never')],
     ['getDismissedDomains', async () => getDismissedDomains()],
     ['removeDismissedDomain', async (params) => { await removeDismissedDomain(params.domain as string); return { ok: true }; }],
     ['getDismissDuration', async () => getDismissDuration()],

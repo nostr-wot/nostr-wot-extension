@@ -845,8 +845,8 @@
   "perm.dismissDurationLabel": "„Jetzt nicht“ behalten für",
   "perm.duration.session": "Bis ich den Browser neu starte",
   "perm.duration.day": "1 Tag",
-  "perm.duration.week": "7 Tage",
-  "perm.duration.month": "30 Tage",
+  "perm.duration.week": "1 Woche",
+  "perm.duration.month": "1 Monat",
   "pqc.cardEnabledTitle": "Post-Quanten-Schlüssel sind aktiv",
   "pqc.cardEnabledDesc": "Andere können dir Nachrichten senden, die privat bleiben, auch wenn die heutige Kryptografie gebrochen ist",
   "pqc.cardStaleTitle": "Post-Quanten-Schlüssel müssen neu veröffentlicht werden",
@@ -1107,5 +1107,9 @@
   "eventIntent.createGroup": "[[{origin}]] möchte [[eine Gruppe erstellen]].",
   "eventIntent.createNamedGroup": "[[{origin}]] möchte [[die Gruppe {group} erstellen]].",
   "event.groupId": "Gruppen-ID",
-  "event.groupIdMissing": "Nicht angegeben"
+  "event.groupIdMissing": "Nicht angegeben",
+  "perm.declined": "Abgelehnt",
+  "perm.changeDuration": "Dauer ändern",
+  "perm.duration.year": "1 Jahr",
+  "perm.duration.forever": "Unbegrenzt"
 }

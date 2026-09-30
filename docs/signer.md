@@ -319,3 +319,5 @@ Account-session validity is rechecked after verification.
 
 Community explanations: [backend authentication](https://nostr-wot.com/en/guides/backend-authentication)
 and [relay authentication](https://nostr-wot.com/en/guides/relay-authentication).
+
+Declined connection requests appear alongside sites with signing rules in Permissions, using the same search. Their rows show “Declined” and the expiry instead of an approval count. Opening a declined site edits that site's duration (one week, 30 days, 365 days, or forever, starting when saved), or removes the dismissal so it can ask again. Neither action grants connection or signing permission. Existing session dismissals remain visible until the browser restarts.

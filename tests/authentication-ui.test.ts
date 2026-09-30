@@ -374,3 +374,39 @@ it('kind 9007 has a create-group intent and a custom preview with raw event acce
  assert.ok(html.includes('group-id'));assert.ok(html.includes('Group description'));assert.ok(html.includes('A new community'));
  assert.ok(html.includes(label('event.showRaw')));assert.ok(!html.includes(label('event.unknownKind')));assert.ok(!html.includes('<img onerror=evil()>'));
 });
+it('declined sites share the permission list and open an individual duration editor instead of signing rules',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
+ const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
+ const {default:browser,resetMockStorage}=await import('./helpers/browser-mock');
+ const {t:label}=await import('../src/services/i18n/i18n');resetMockStorage();
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ dom.window.HTMLElement.prototype.showPopover=function(){};
+ dom.window.HTMLElement.prototype.hidePopover=function(){};
+ let until:number|'never'=Date.now()+86400000;const updates:unknown[]=[];
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  if(message.method==='getDismissedDomains')return {result:[{domain:'https://declined.test',until}]};
+  if(message.method==='updateDismissedDomain'){updates.push(message.params);until='never';return {result:true};}
+  if(message.method==='signer_getPermissionsRaw')return {result:{'https://allowed.test':{_default:{'signEvent:1':'allow'}},'https://declined.test':{_default:{'signEvent:1':'allow'}}}};
+  return {result:message.method==='signer_getUseGlobalDefaults' ? true : []};
+ });
+ await browser.storage.local.set({accounts:[{id:'a',pubkey:'11'.repeat(32),type:'imported'}],activeAccountId:'a'});
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(AccountProvider,null,createElement(PermissionsProvider,null,createElement(Permissions)))));
+  const rows=[...document.querySelectorAll('button')];
+  const declined=rows.filter(button=>button.textContent!.includes('https://declined.test'));
+  assert.equal(declined.length,1,'a declined site with dormant rules appears once');
+  assert.ok(declined[0].textContent!.includes(label('perm.declined')));
+  assert.ok(rows.some(button=>button.textContent!.includes('https://allowed.test')));
+  await act(async()=>declined[0].click());
+  assert.ok(document.querySelector('[role="dialog"]'));
+  assert.equal(document.querySelector('[role="dialog"]')!.textContent!.includes(label('perms.revokeAll')),false);
+  const dropdown=document.querySelector<HTMLButtonElement>(`[aria-label="${label('perm.changeDuration')}"]`)!;
+  await act(async()=>dropdown.click());
+  const forever=[...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find(option=>option.textContent===label('perm.duration.forever'))!;
+  await act(async()=>forever.click());
+  assert.deepEqual(updates,[{domain:'https://declined.test',duration:'never'}]);
+  assert.ok(document.querySelector('[role="dialog"]')!.textContent!.includes(label('perm.declinedNever')));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});

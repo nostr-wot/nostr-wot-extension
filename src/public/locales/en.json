@@ -845,8 +845,8 @@
   "perm.dismissDurationLabel": "Keep “Not now” for",
   "perm.duration.session": "Until I restart the browser",
   "perm.duration.day": "1 day",
-  "perm.duration.week": "7 days",
-  "perm.duration.month": "30 days",
+  "perm.duration.week": "1 week",
+  "perm.duration.month": "1 month",
   "pqc.cardEnabledTitle": "Post-quantum keys are on",
   "pqc.cardEnabledDesc": "Others can send you messages that stay private even after today's cryptography is broken",
   "pqc.cardStaleTitle": "Post-quantum keys need republishing",
@@ -1107,5 +1107,9 @@
   "eventIntent.createGroup": "[[{origin}]] wants to [[create a group]].",
   "eventIntent.createNamedGroup": "[[{origin}]] wants to [[create group {group}]].",
   "event.groupId": "Group ID",
-  "event.groupIdMissing": "Not specified"
+  "event.groupIdMissing": "Not specified",
+  "perm.declined": "Declined",
+  "perm.changeDuration": "Change duration",
+  "perm.duration.year": "1 year",
+  "perm.duration.forever": "Forever"
 }

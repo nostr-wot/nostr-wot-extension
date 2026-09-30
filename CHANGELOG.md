@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Include declined sites in the searchable Permissions list with their expiry and individual week, month, year or forever duration controls.
+
 - Group All accounts, Default backend auth and all-sites relay authentication in one dashboard-style card at the top of Permissions, with aligned icons, labels and controls.
 
 - Add an off-by-default, account-specific backend authentication policy for exact same-origin HTTPS destinations and curated NIP-98 pairs, with an explanatory Permissions popup and denial precedence.

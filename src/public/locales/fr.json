@@ -845,8 +845,8 @@
   "perm.dismissDurationLabel": "Conserver « Pas maintenant » pendant",
   "perm.duration.session": "Jusqu'au redémarrage du navigateur",
   "perm.duration.day": "1 jour",
-  "perm.duration.week": "7 jours",
-  "perm.duration.month": "30 jours",
+  "perm.duration.week": "1 semaine",
+  "perm.duration.month": "1 mois",
   "pqc.cardEnabledTitle": "Les clés post-quantiques sont actives",
   "pqc.cardEnabledDesc": "On peut vous envoyer des messages qui resteront privés même quand la cryptographie actuelle sera cassée",
   "pqc.cardStaleTitle": "Les clés post-quantiques doivent être republiées",
@@ -1107,5 +1107,9 @@
   "eventIntent.createGroup": "[[{origin}]] souhaite [[créer un groupe]].",
   "eventIntent.createNamedGroup": "[[{origin}]] souhaite [[créer le groupe {group}]].",
   "event.groupId": "Identifiant du groupe",
-  "event.groupIdMissing": "Non précisé"
+  "event.groupIdMissing": "Non précisé",
+  "perm.declined": "Refusé",
+  "perm.changeDuration": "Modifier la durée",
+  "perm.duration.year": "1 an",
+  "perm.duration.forever": "Toujours"
 }

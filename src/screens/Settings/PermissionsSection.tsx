@@ -17,7 +17,11 @@ import Card from '@components/Card';
 import Button, { ButtonDanger } from '@components/Button';
 import Modal from '@components/Modal';
 import { createPortal } from 'react-dom';
-import DeclinedSites from './DeclinedSites';
+import DeclinedSites, { describeDeclinedSite, type DeclinedSite } from './DeclinedSites';
+import useAsyncResource from '@hooks/useAsyncResource';
+import useStorageWatch from '@hooks/useStorageWatch';
+import { rpc } from '@services/rpc';
+import FormError from '@components/FormError';
 import AddRuleModal from './AddRuleModal';
 import Toggle from '@components/Toggle';
 import EmptyState from '@components/EmptyState';
@@ -40,6 +44,15 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const selectedAccountId = activeId;
   const authenticationAccount = accounts?.find(account => account.id === activeId) || accounts?.[0];
   const [relayPermissionsOpen, setRelayPermissionsOpen] = useState(false);
+  const [declinedDomain, setDeclinedDomain] = useState<string | null>(null);
+  const { data: declined, error: declinedError, refresh: refreshDeclined } = useAsyncResource<{ sites: DeclinedSite[] }>({ sites: [] }, {
+    load: async (patch, current) => {
+      const sites = await rpc<DeclinedSite[]>('getDismissedDomains');
+      if (current()) patch({ sites: sites || [] });
+    },
+  });
+  useStorageWatch([{ area: 'local', keys: ['dismissedDomains'] }, { area: 'session', keys: ['sessionDismissedDomains'] }], refreshDeclined);
+  const selectedDeclined = declined.sites.find(site => site.domain === declinedDomain);
   const [query, setQuery] = useState<string>('');
   const [detailDomain, setDetailDomain] = useState<string | null>(initialDomain || null);
 
@@ -53,9 +66,10 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const isSelectedReadOnly = selectedAccount?.readOnly === true || selectedAccount?.type === 'npub';
   const isSelectedNip46 = selectedAccount?.type === 'nip46';
 
-  // Derive the visible domains from the provider for the current bucket
-  const domains = permissions.getDomainsForBucket(effectiveAccountId)
-    .filter((d: string) => !query || d.toLowerCase().includes(query.toLowerCase()));
+  // Declined sites share the searchable list and take precedence over dormant rules.
+  const domains = [...new Set([...permissions.getDomainsForBucket(effectiveAccountId), ...declined.sites.map(site => site.domain)])]
+    .filter(domain => domain.toLowerCase().includes(query.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b));
 
   // Domain detail — derived from provider state
   const domainPerms: Record<string, string> = detailDomain ? permissions.getForBucket(detailDomain, effectiveAccountId) : {};
@@ -205,20 +219,25 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         <Container className="shrink-0 overflow-x-hidden border border-card-border bg-glass rounded-panel shadow-[0_2px_12px_var(--brand-tint-active)]">
           {domains.map((domain: string) => {
             const bucketPerms = permissions.getForBucket(domain, effectiveAccountId);
+            const dismissal = declined.sites.find(site => site.domain === domain);
             return (
               <ListRow
                 key={domain}
                 leading={domain.charAt(0).toUpperCase()}
                 title={domain}
-                subtitle={getPermSummary(bucketPerms)}
-                onClick={() => openDetail(domain)}
+                subtitle={dismissal ? describeDeclinedSite(dismissal.until) : getPermSummary(bucketPerms)}
+                onClick={() => dismissal ? setDeclinedDomain(domain) : openDetail(domain)}
               />
             );
           })}
         </Container>
       )}
 
-      <DeclinedSites />
+      <FormError>{declinedError}</FormError>
+      {declinedError && <Button small onClick={() => void refreshDeclined()}>{t('common.retry')}</Button>}
+      {selectedDeclined && createPortal(<Modal title={selectedDeclined.domain} onClose={() => setDeclinedDomain(null)}>
+        <DeclinedSites key={selectedDeclined.domain} site={selectedDeclined} onChange={refreshDeclined} onClose={() => setDeclinedDomain(null)} />
+      </Modal>, document.body)}
       <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
       {relayPermissionsOpen && createPortal(<Modal title={t('auth.relayPermissions')} onClose={() => setRelayPermissionsOpen(false)}>
         <AuthenticationPermissions accounts={accounts || []} activeId={activeId} view="relays"/>

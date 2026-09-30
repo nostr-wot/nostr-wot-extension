@@ -100,13 +100,12 @@ it('permission rules render only the supplied account-filtered keys and their de
   assert.match(fallback,/perms.ask/);
 });
 
-import DeclinedSites from '../src/screens/Settings/DeclinedSites';
-it('declined-site duration reuses native selection with all supported durations', () => {
-  const html=renderToStaticMarkup(createElement(DeclinedSites));
-  assert.match(html,/<select/);
-  assert.match(html,/border-control-border/);
-  for (const duration of ['0','86400000','604800000','2592000000']) assert.match(html,new RegExp(`value="${duration}"`));
-  assert.match(html,/perm.dismissDurationLabel/);
+import DeclinedSites, { dismissalDurationOptions } from '../src/screens/Settings/DeclinedSites';
+it('declined-site duration uses the shared dropdown with week/month/year/forever options', () => {
+  const html=renderToStaticMarkup(createElement(DeclinedSites,{site:{domain:'example.com',until:'never'},onChange:async()=>{},onClose(){}}));
+  assert.match(html,/aria-haspopup="listbox"/);
+  assert.deepEqual(dismissalDurationOptions().map(option=>option.value),['604800000','2592000000','31536000000','never']);
+  assert.match(html,/perm.changeDuration/);
 });
 
 import DecisionRow from '../src/screens/Prompt/DecisionRow';

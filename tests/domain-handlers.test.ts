@@ -595,3 +595,35 @@ it('legacy dismissal and disabled identity apply to existing origin scopes and c
   await connectDomain('https://legacy.test:8443');
   assert.equal(await isIdentityDisabled('https://legacy.test:8443'), false);
 });
+
+describe('per-site dismissal duration changes', () => {
+  beforeEach(() => resetMockStorage());
+  it('updates only the selected site for week, month, year and forever without connecting it', async () => {
+    const { updateDismissedDomain } = await import('../src/services/background/domain-handlers');
+    await addDismissedDomain('other.example', true);
+    await setDismissDuration(0);
+    await addDismissedDomain('edit.example');
+    for (const duration of [604_800_000, 2_592_000_000, 31_536_000_000, 'never'] as const) {
+      const start = Date.now();
+      assert.equal(await updateDismissedDomain('edit.example', duration), true);
+      const entries = await getDismissedDomains();
+      const entry = entries.find(item => item.domain === 'edit.example')!;
+      assert.equal(entries.filter(item => item.domain === 'edit.example').length, 1, 'session entry is replaced');
+      if (duration === 'never') assert.equal(entry.until, 'never');
+      else assert.ok(typeof entry.until === 'number' && entry.until >= start + duration && entry.until <= Date.now() + duration);
+      assert.equal(entries.find(item => item.domain === 'other.example')!.until, 'never');
+      assert.equal(await isDomainAllowed('edit.example'), false);
+      assert.equal(await getDismissDuration(), 0, 'global default is unchanged');
+    }
+  });
+  it('rejects unsupported durations and does not create dismissals for connected or unknown sites', async () => {
+    const { updateDismissedDomain } = await import('../src/services/background/domain-handlers');
+    await addDismissedDomain('edit.example', true);
+    await assert.rejects(updateDismissedDomain('edit.example', -1), /Unsupported/);
+    assert.equal(await updateDismissedDomain('unknown.example', 604_800_000), false);
+    await connectDomain('edit.example');
+    assert.equal(await updateDismissedDomain('edit.example', 'never'), false);
+    assert.equal(await isDomainDismissed('edit.example'), false);
+    assert.ok(handlers.has('updateDismissedDomain'));
+  });
+});
