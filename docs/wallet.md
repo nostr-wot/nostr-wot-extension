@@ -121,7 +121,8 @@ interface WalletProvider {
 - REST API with admin key in `X-Api-Key` header
 - HTTPS-only: requests throw for any non-`https://` instance URL except
   `http://localhost` / `http://127.0.0.1` (see `docs/security.md` §15)
-- Endpoints: `GET /api/v1/wallet` (balance), `POST /api/v1/payments` (pay/create invoice), `GET /api/v1/payments` (transactions)
+- Endpoints: `GET /api/v1/wallet` (balance), `POST /api/v1/payments` (pay/create invoice), `GET /api/v1/payments` (transactions),
+  `GET /api/v1/payments/fee-reserve?invoice=<bolt11>` (fee ceiling, `{"fee_reserve": <msat>}`)
 
 ### 4.3 Provider Factory (`index.ts`)
 
