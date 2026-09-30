@@ -1,3 +1,4 @@
+import RelayAuthentication, { type RelayAuthenticationHandle } from './RelayAuthentication';
 import DefaultBackendAuth from './DefaultBackendAuth';
 import AuthenticationPermissions from './AuthenticationPermissions';
 import PermissionRulesList from './PermissionRulesList';
@@ -44,6 +45,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const selectedAccountId = activeId;
   const authenticationAccount = accounts?.find(account => account.id === activeId) || accounts?.[0];
   const [relayPermissionsOpen, setRelayPermissionsOpen] = useState(false);
+  const relayPermissionsRef = useRef<RelayAuthenticationHandle>(null);
   const [declinedDomain, setDeclinedDomain] = useState<string | null>(null);
   const { data: declined, error: declinedError, refresh: refreshDeclined } = useAsyncResource<{ sites: DeclinedSite[] }>({ sites: [] }, {
     load: async (patch, current) => {
@@ -85,13 +87,17 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   // Expose goBack so the parent can navigate back from detail -> list
   useImperativeHandle(ref, () => ({
     goBack: () => {
+      if (relayPermissionsOpen) {
+        if (!relayPermissionsRef.current?.goBack()) setRelayPermissionsOpen(false);
+        return true;
+      }
       if (detailDomain) {
         setDetailDomain(null);
         return true; // handled internally
       }
       return false; // nothing to go back from
     },
-  }), [detailDomain]);
+  }), [detailDomain, relayPermissionsOpen]);
 
   const getPermSummary = (bucketPerms: Record<string, string>): string => {
     const { allow, deny } = countDecisions(bucketPerms);
@@ -157,6 +163,10 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const [addRuleOpen, setAddRuleOpen] = useState<boolean>(false);
 
   const availableKeys = availablePermKeys(COMMON_PERM_KEYS, domainPerms);
+
+  if (relayPermissionsOpen && authenticationAccount) {
+    return <RelayAuthentication key={authenticationAccount.id} ref={relayPermissionsRef} accountId={authenticationAccount.id} onBack={() => setRelayPermissionsOpen(false)} />;
+  }
 
   // Detail view
   if (detailDomain) {
@@ -239,9 +249,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
         <DeclinedSites key={selectedDeclined.domain} site={selectedDeclined} onChange={refreshDeclined} onClose={() => setDeclinedDomain(null)} />
       </Modal>, document.body)}
       <AuthenticationPermissions accounts={accounts || []} activeId={activeId}/>
-      {relayPermissionsOpen && createPortal(<Modal title={t('auth.relayPermissions')} onClose={() => setRelayPermissionsOpen(false)}>
-        <AuthenticationPermissions accounts={accounts || []} activeId={activeId} view="relays"/>
-      </Modal>, document.body)}
+
     </Container>
   );
 });

@@ -759,3 +759,5 @@ and malformed metadata are rejected. This cache stores public metadata only;
 message plaintext remains in the timed reveal state.
 
 Authentication grant tables subscribe to local `authenticationGrants` changes using `useStorageWatch`, so background approvals and revocations appear without reopening Settings. One-time approvals do not create remembered grants.
+
+Relay authentication settings use `OverlayPanel` for full-screen back navigation and a header information button. Relay rows reuse `ListRow`; the app editor uses `SiteIcon`, `Checkbox` and `Toggle`, with the site list scrolling above a fixed save action. The screen groups NIP-42 grants by exact destination for the active account. A revision check rejects saves from an obsolete editor instead of overwriting newer permissions or denials.

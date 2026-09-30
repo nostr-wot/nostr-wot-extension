@@ -1,4 +1,4 @@
-import { getDefaultBackendAuth, setDefaultBackendAuth, listAuthenticationGrants, revokeAuthenticationGrants } from '../permissions/authentication.ts';
+import { setRelayAuthenticationSites, getDefaultBackendAuth, setDefaultBackendAuth, listAuthenticationGrants, revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { MAX_EVENT_BYTES, MAX_EVENT_TAGS, MAX_TAG_VALUES, MAX_CRYPTO_PLAINTEXT_BYTES, MAX_CRYPTO_CIPHERTEXT_LENGTH } from '@constants/signing.ts';
 import { getSigningRejections, acknowledgeSigningRejections } from '../signing/rejections.ts';
 /**
@@ -7,6 +7,7 @@ import { getSigningRejections, acknowledgeSigningRejections } from '../signing/r
  */
 
 import browser from '../../lib/browser.ts';
+import { captureAccountSession, assertAccountSession } from '../signing/accountSession';
 import * as signer from '../signing/signer.ts';
 import * as signerIdentity from '../signing/identity.ts';
 import * as signerApprovalQueue from '../signing/approvalQueue.ts';
@@ -181,6 +182,12 @@ export const handlers = new Map<string, HandlerFn>([
     ['signer_getDefaultBackendAuth', async params => getDefaultBackendAuth(params.accountId as string)],
     ['signer_setDefaultBackendAuth', async params => {
         await setDefaultBackendAuth(params.accountId as string, params.enabled as boolean);
+        return {ok:true};
+    }],
+    ['signer_setRelayAuthenticationSites', async params => {
+        const session = captureAccountSession(params.accountId as string);
+        assertAccountSession(session);
+        await setRelayAuthenticationSites(params.accountId as string, params.destination as string, params.origins as string[], params.allSites as boolean, () => assertAccountSession(session), params.revision as string);
         return {ok:true};
     }],
     ['signer_getAuthenticationGrants', async () => listAuthenticationGrants()],

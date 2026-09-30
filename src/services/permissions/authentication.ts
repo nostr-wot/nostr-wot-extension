@@ -1,7 +1,8 @@
 import browser from '@lib/browser.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
-import { siteScopes } from '@domain/site/siteScope.ts';
+import { siteScopes, hasSiteScope } from '@domain/site/siteScope.ts';
 import type { AuthenticationRequest, AuthenticationScope, AuthenticationGrant } from '@domain/signing/authentication.ts';
+import { connectedSiteOrigins, relayPermissionRevision } from '@domain/signing/relayPermissions';
 import { findKnownAuthenticationBackend, validAuthenticationScope } from '@domain/signing/authentication.ts';
 
 export const AUTHENTICATION_GRANTS_KEY = 'authenticationGrants';
@@ -79,5 +80,34 @@ export async function revokeAuthenticationGrants(filter: {id?:string;accountId?:
       (!filter.id || grant.id === filter.id) && (!filter.accountId || grant.accountId === filter.accountId)
       && (!filter.origin || siteScopes(grant.origin).includes(filter.origin))
     ))});
+  });
+}
+
+/** Settings edits replace one relay's allows atomically; unrelated denials stay in force. */
+export async function setRelayAuthenticationSites(accountId: string, destination: string, origins: string[], allSites: boolean, assertCurrent: () => void, expectedRevision: string): Promise<void> {
+  if (typeof expectedRevision !== 'string' || typeof accountId !== 'string' || !accountId || typeof destination !== 'string'
+    || typeof allSites !== 'boolean' || !Array.isArray(origins) || origins.length > 1000
+    || origins.some(origin => typeof origin !== 'string')) throw new Error('Invalid relay permissions');
+  const selected = [...new Set(origins)];
+  if (allSites && selected.length) throw new Error('Choose all sites or selected sites');
+  await lock.run(async () => {
+    const grants = await listAuthenticationGrants();
+    const matches = (grant: AuthenticationGrant) => grant.accountId === accountId && grant.protocol === 'nip42' && grant.destination === destination;
+    if (!grants.some(matches)) throw new Error('Relay permission no longer exists');
+    if (relayPermissionRevision(grants, accountId, destination) !== expectedRevision) throw new Error('Relay permissions changed; reopen the editor');
+    const data = await browser.storage.local.get('allowedDomains');
+    const connected = (data.allowedDomains || []) as string[];
+    if (selected.some(origin => !connectedSiteOrigins([origin]).includes(origin) || !hasSiteScope(connected, origin))) {
+      throw new Error('Site not connected');
+    }
+    // Explicitly selecting a previously denied site replaces that denial. In
+    // all-sites mode denials remain exceptions, never silently erased.
+    const kept = grants.filter(grant => !matches(grant) || (grant.decision === 'deny' && !selected.includes(grant.origin)));
+    const updated: AuthenticationGrant[] = (allSites ? ['*'] : selected).map(origin => ({
+      id: JSON.stringify([accountId, origin, 'nip42', destination, '']),
+      accountId, origin, protocol: 'nip42', destination, decision: 'allow',
+    }));
+    assertCurrent();
+    await browser.storage.local.set({ [AUTHENTICATION_GRANTS_KEY]: [...kept, ...updated] });
   });
 }

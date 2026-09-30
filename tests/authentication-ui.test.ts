@@ -44,17 +44,17 @@ it('mounted permissions filters accounts and retains failed revocations until su
  const dom=new JSDOM('<div id="root"></div>',{url:'https://extension.test'});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const {createRoot}=await import('react-dom/client'); const root=createRoot(document.getElementById('root')!);
- let fail=true;let grants=[{id:'ours',accountId:'a',origin:'*',protocol:'nip42',destination:'wss://ours.test/'},{id:'theirs',accountId:'b',origin:'*',protocol:'nip42',destination:'wss://theirs.test/'}];const revoked:string[]=[];
+ let fail=true;let grants=[{id:'ours',accountId:'a',origin:'https://site.test',protocol:'nip98',destination:'https://ours.test/'},{id:'theirs',accountId:'b',origin:'https://site.test',protocol:'nip98',destination:'https://theirs.test/'}];const revoked:string[]=[];
  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
   if(message.method==='signer_getAuthenticationGrants')return {result:grants};
   if(message.method==='signer_revokeAuthenticationGrant'){revoked.push(message.params.id);if(fail)return {error:'Offline'};grants=grants.filter(g=>g.id!==message.params.id);return {result:{ok:true}};}
   throw new Error(message.method);
  });
  try{
-  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a',view:'relays'})));
-  assert.ok(document.body.textContent!.includes('wss://ours.test/'));assert.ok(!document.body.textContent!.includes('wss://theirs.test/'));
+  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a'})));
+  assert.ok(document.body.textContent!.includes('https://ours.test/'));assert.ok(!document.body.textContent!.includes('https://theirs.test/'));
   await act(async()=>{(document.querySelector('button') as HTMLButtonElement).click();});
-  assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(document.body.textContent!.includes('wss://ours.test/'));
+  assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(document.body.textContent!.includes('https://ours.test/'));
   fail=false;await act(async()=>{(document.querySelector('button') as HTMLButtonElement).click();});
   assert.deepEqual(revoked,['ours','ours']);assert.ok(document.body.textContent!.includes('auth.noGrants'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
@@ -224,9 +224,10 @@ it('app intent puts its action before its application name',async t=>{
  assert.equal(describeSigningIntent('site',{kind:30078,tags:[['d','Example']]}),'site wants to sign app data for Example.');
  assert.equal(describeSigningIntent('site',{kind:55555}),'site wants to sign an event.');
 });
-it('relay grant table and site permissions partition grants without hiding denials',async t=>{
+it('relay screen includes site and all-sites grants while backend permissions contain only HTTP grants',async t=>{
  const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
  const {default:Permissions}=await import('../src/screens/Settings/AuthenticationPermissions');
+ const {default:Relays}=await import('../src/screens/Settings/RelayAuthentication');
  const {default:browser}=await import('./helpers/browser-mock');
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const grants=[
@@ -235,23 +236,17 @@ it('relay grant table and site permissions partition grants without hiding denia
   {id:'http',accountId:'a',origin:'https://site.test',protocol:'nip98',destination:'https://api.test',method:'POST'},
   {id:'other',accountId:'b',origin:'*',protocol:'nip42',destination:'wss://other.test/'},
  ];
- t.mock.method(browser.runtime,'sendMessage',async()=>({result:grants}));
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>({result:message.method==='getAllowedDomains' ? ['https://site.test'] : grants}));
  const root=createRoot(document.getElementById('root')!);const accounts=[{id:'a',pubkey:'a'.repeat(64)},{id:'b',pubkey:'b'.repeat(64)}];
  try{
-  await act(async()=>root.render(createElement(Permissions,{accounts,view:'relays'})));
+  await act(async()=>root.render(createElement(Relays,{accountId:'a',onBack(){}})));
+  assert.ok(document.body.textContent!.includes('global.test'));assert.ok(document.body.textContent!.includes('site-relay.test'));
+  assert.ok(!document.body.textContent!.includes('other.test'));assert.ok(!document.body.textContent!.includes('api.test'));
+  await act(async()=>root.render(createElement(Relays,{accountId:'b',onBack(){}})));
+  assert.ok(document.body.textContent!.includes('other.test'));assert.ok(!document.body.textContent!.includes('global.test'));
+  await act(async()=>root.render(createElement(Permissions,{accounts})));
   assert.equal(document.querySelectorAll('tbody tr').length,1);
-  assert.ok(document.querySelector('table')!.textContent!.includes('wss://global.test/'));
-  assert.ok(!document.body.textContent!.includes('wss://site-relay.test/'));
-  assert.ok(!document.body.textContent!.includes('wss://other.test/'));
-  assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
-  await act(async()=>root.render(createElement(Permissions,{accounts,activeId:'b',view:'relays'})));
-  assert.ok(document.querySelector('table')!.textContent!.includes('wss://other.test/'));
-  assert.ok(!document.querySelector('table')!.textContent!.includes('wss://global.test/'));
-  await act(async()=>root.render(createElement(Permissions,{accounts,view:'sites'})));
-  assert.equal(document.querySelector('[aria-haspopup="listbox"]'),null);
-  assert.equal(document.querySelectorAll('tbody tr').length,2);
-  assert.ok(!document.body.textContent!.includes('wss://global.test/'));
-  assert.ok(document.body.textContent!.includes((await import('../src/services/i18n/i18n')).t('auth.rejectAlways')));
+  assert.ok(!document.body.textContent!.includes('global.test'));assert.ok(!document.body.textContent!.includes('site-relay.test'));
   assert.ok(document.body.textContent!.includes('POST https://api.test'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
@@ -281,7 +276,9 @@ it('Permissions groups All accounts, backend auth and relay auth in that order',
    assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   }
   assert.equal(document.querySelector('[role="dialog"]'),null);
-  await act(async()=>link.click());assert.ok(document.querySelector('[role="dialog"]'));
+  await act(async()=>link.click());assert.equal(document.querySelector('[role="dialog"]'),null);
+  const info=document.querySelector<HTMLButtonElement>(`[aria-label="${label('auth.relayInfoTitle')}"]`)!;
+  await act(async()=>info.click());assert.ok(document.querySelector('[role="dialog"]'));
   await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
   assert.equal(document.querySelector('[role="dialog"]'),null);
  }finally{await act(async()=>root.unmount());dom.window.close();}
@@ -408,5 +405,37 @@ it('declined sites share the permission list and open an individual duration edi
   await act(async()=>forever.click());
   assert.deepEqual(updates,[{domain:'https://declined.test',duration:'never'}]);
   assert.ok(document.querySelector('[role="dialog"]')!.textContent!.includes(label('perm.declinedNever')));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('relay editor selects connected apps, saves explicit scopes, and uses back navigation',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Relays}=await import('../src/screens/Settings/RelayAuthentication');
+ const {default:browser}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const grants=[{id:'one',accountId:'a',origin:'https://one.test',protocol:'nip42',destination:'wss://relay.test/',decision:'allow'}];
+ const saves:any[]=[];let backs=0;
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  if(message.method==='getAllowedDomains')return {result:['https://one.test','https://two.test']};
+  if(message.method==='signer_getAuthenticationGrants')return {result:grants};
+  if(message.method==='signer_setRelayAuthenticationSites'){saves.push(message.params);return {result:{ok:true}};}
+  return {result:null};
+ });
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Relays,{accountId:'a',onBack(){backs++;}})));
+  assert.ok(document.body.textContent!.includes(label('auth.oneSiteApproved')));
+  const relay=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent!.includes('relay.test'))!;
+  await act(async()=>relay.click());
+  const one=document.querySelector<HTMLInputElement>('[aria-label="https://one.test"]')!;
+  const two=document.querySelector<HTMLInputElement>('[aria-label="https://two.test"]')!;
+  assert.equal(one.checked,true);assert.equal(two.checked,false);
+  await act(async()=>{one.click();two.click();});
+  const save=[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent===label('common.save'))!;
+  await act(async()=>save.click());
+  assert.equal(saves.length,1);assert.deepEqual(saves[0].origins,['https://two.test']);assert.equal(saves[0].allSites,false);
+  assert.equal(saves[0].accountId,'a');assert.equal(saves[0].destination,'wss://relay.test/');assert.equal(typeof saves[0].revision,'string');
+  assert.equal(document.querySelector('[aria-label="https://two.test"]'),null,'save returns to relay list');
+  await act(async()=>document.querySelector<HTMLButtonElement>(`[aria-label="${label('common.back')}"]`)!.click());
+  assert.equal(backs,1);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });

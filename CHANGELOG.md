@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Unify relay authentication approvals in a dedicated settings screen with relay summaries, approved-site selection, back navigation and an information guide.
+
 - Include declined sites in the searchable Permissions list with their expiry and individual week, month, year or forever duration controls.
 
 - Group All accounts, Default backend auth and all-sites relay authentication in one dashboard-style card at the top of Permissions, with aligned icons, labels and controls.
