@@ -5,10 +5,9 @@ import { useId, useState, type ReactNode } from 'react';
 import Checkbox from '@components/Checkbox';
 import IconWarning from '@assets/IconWarning';
 import { signingIntentParts, intentParts } from '@services/i18n/eventIntent.ts';
-import TextBlock from '@components/TextBlock';
 import StatusNotice from '@components/StatusNotice';
 import MessageRequestDetail, { isMessageRequest } from './MessageRequestDetail';
-import DetailDisclosure from '@components/DetailDisclosure';
+import RawEventButton from '@components/RawEventButton';
 import AuthenticationNotice from '@components/AuthenticationNotice';
 import AuthenticationActions from '@components/AuthenticationActions';
 import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
@@ -139,34 +138,62 @@ export default function EventDetailModal({
   // Approval description
   const description = request ? describeRequest(request) : null;
 
-  const renderRequest = (item:ApprovalRequest,index:number,label?:ReactNode) => (
-                <div key={item.id ?? index} className="relative">
-                {item.type === 'signEvent' ? <div data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5"><div id={`${selectionPrefix}-${item.id ?? index}`} className={selectable ? 'pr-8' : ''}>{describeRequest(item)}</div><div className="pt-3"><DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure></div>{nip46InFlight && item.id && onDenyRequest && <ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t('approval.cancelNip46')}</ButtonDanger>}</div> : <details data-approval-request={item.id ?? index} className="group/request rounded-panel border border-card-border p-5">
-                  <summary id={`${selectionPrefix}-${item.id ?? index}`} className={`${selectable ? 'pr-8 ' : ''}flex flex-col gap-2 cursor-pointer text-md list-none [&::-webkit-details-marker]:hidden [&::marker]:content-['']`}>
-                    <span>{label || describeRequest(item) || <span className="text-brand">{formatPermissionLabel(item.authentication ? `signEvent:${item.authentication.protocol === 'nip98' ? 27235 : 22242}` : item.permKey || item.type, item.event ?? undefined)}</span>}</span>
-                    <IconChevronDown aria-hidden="true" className="self-end text-secondary transition-transform group-open/request:rotate-180"/>
-                  </summary>
-                  <div className="pt-5"><>{isMessageRequest(item.type) ? <MessageRequestDetail key={item.id} request={item} showSender={!label}/> : item.type === 'signEvent' ? <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(item.event || {},null,2)}</TextBlock></DetailDisclosure> : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}</></div>
-                  {nip46InFlight && item.id && onDenyRequest && <div className="flex justify-end pt-5"><ButtonDanger small outline disabled={busy} onClick={()=>onDenyRequest(item.id!)}>{t('approval.cancelNip46')}</ButtonDanger></div>}
-                </details>}
-                {selectable && item.id && <div className="absolute right-5 top-5"><Checkbox disabled={busy} checked={selected.includes(item.id)} aria-label={t('approval.selectRequest')} aria-describedby={`${selectionPrefix}-${item.id}`} onChange={event=>setSelectedIds(previous=>event.target.checked ? [...previous,item.id!] : previous.filter(id=>id!==item.id))}/></div>}
-                </div>
-  );
+  const renderRequest = (item: ApprovalRequest, index: number, label?: ReactNode) => {
+    const labelId = `${selectionPrefix}-${item.id ?? index}`;
+    const cancel = nip46InFlight && item.id && onDenyRequest ? (
+      <ButtonDanger small outline disabled={busy} onClick={() => onDenyRequest(item.id!)}>
+        {t('approval.cancelNip46')}
+      </ButtonDanger>
+    ) : null;
+    const requestLabel = label || describeRequest(item) || (
+      <span className="text-brand">{formatPermissionLabel(item.permKey || item.type, item.event ?? undefined)}</span>
+    );
+    return <div key={item.id ?? index} className="relative">
+      {item.type === 'signEvent' ? (
+        <div data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
+          <div id={labelId} className={selectable ? 'pr-8' : ''}>{describeRequest(item)}</div>
+          <div className="pt-3"><RawEventButton event={item.event || {}} /></div>
+          {cancel}
+        </div>
+      ) : (
+        <details data-approval-request={item.id ?? index} className="group/request rounded-panel border border-card-border p-5">
+          <summary id={labelId} className={`${selectable ? 'pr-8 ' : ''}flex flex-col gap-2 cursor-pointer text-md list-none [&::-webkit-details-marker]:hidden [&::marker]:content-['']`}>
+            <span>{requestLabel}</span>
+            <IconChevronDown aria-hidden="true" className="self-end text-secondary transition-transform group-open/request:rotate-180" />
+          </summary>
+          <div className="pt-5">
+            {isMessageRequest(item.type)
+              ? <MessageRequestDetail key={item.id} request={item} showSender={!label} />
+              : <EventPreview type={item.type} event={item.event || null} theirPubkey={item.theirPubkey} />}
+          </div>
+          {cancel && <div className="flex justify-end pt-5">{cancel}</div>}
+        </details>
+      )}
+      {selectable && item.id && <div className="absolute right-5 top-5">
+        <Checkbox disabled={busy} checked={selected.includes(item.id)} aria-label={t('approval.selectRequest')}
+          aria-describedby={labelId} onChange={event => setSelectedIds(previous => event.target.checked
+            ? [...previous, item.id!] : previous.filter(id => id !== item.id))} />
+      </div>}
+    </div>;
+  };
 
-  const eventContent = request && requests && requests.length > 1 ? (
-            <div className="flex flex-col gap-4">
-              <span className="text-sm text-menu-subtitle">{t('approval.requests', {count:requests.length})}</span>
-              {requests.every(item=>isMessageRequest(item.type)) ? <GroupedMessageRequests requests={requests} renderRequest={(item,label)=>renderRequest(item,requests.indexOf(item),label)}/> : requests.map((item,index)=>renderRequest(item,index))}
-            </div>
-          ) : request?.type === 'signEvent' ? <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono>{JSON.stringify(event || {},null,2)}</TextBlock></DetailDisclosure> : request && isMessageRequest(type) ? <MessageRequestDetail key={request.id} request={request}/> : request ? (
-            <EventPreview
-              type={type}
-              event={event || null}
-              theirPubkey={theirPubkey}
-            />
-          ) : (
-            <ActivityGroupDetail entries={entries} selectedAccountPubkey={selectedAccountPubkey} />
-          );
+  let eventContent: ReactNode;
+  if (request && requests && requests.length > 1) {
+    eventContent = <div className="flex flex-col gap-4">
+      <span className="text-sm text-menu-subtitle">{t('approval.requests', { count: requests.length })}</span>
+      {requests.every(item => isMessageRequest(item.type))
+        ? <GroupedMessageRequests requests={requests} renderRequest={(item, label) => renderRequest(item, requests.indexOf(item), label)} />
+        : requests.map((item, index) => renderRequest(item, index))}
+    </div>;
+  } else if (request?.type === 'signEvent') {
+    eventContent = <RawEventButton event={event || {}} />;
+  } else if (request && isMessageRequest(type)) {
+    eventContent = <MessageRequestDetail key={request.id} request={request} />;
+  } else if (request) {
+    eventContent = <EventPreview type={type} event={event || null} theirPubkey={theirPubkey} />;
+  } else {
+    eventContent = <ActivityGroupDetail entries={entries} selectedAccountPubkey={selectedAccountPubkey} />;
+  }
 
   return (
     <OverlayPanel
@@ -224,9 +251,23 @@ export default function EventDetailModal({
         {/* Approval action buttons */}
         {isApproval && (
           <div className={CLS.actions}>
-            {selectable ? <div className="flex justify-end gap-4"><Button small disabled={busy || !selected.length} onClick={()=>onApproveSelected?.(selected)}>{t('approval.approveSelected')}</Button><ButtonDanger small outline disabled={busy || !onDeny} onClick={onDeny}>{t('approval.rejectAll')}</ButtonDanger></div> : request?.authentication ? <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1} busy={busy} onApprove={onAuthenticate} onDeny={onDeny} onAlwaysDeny={onAlwaysDeny}/> : <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
-              onApprove={onApprove} onReject={onDeny}
-              choices={[{value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny}]}/>}
+            {selectable ? (
+              <div className="flex justify-end gap-4">
+                <Button small disabled={busy || !selected.length} onClick={() => onApproveSelected?.(selected)}>
+                  {t('approval.approveSelected')}
+                </Button>
+                <ButtonDanger small outline disabled={busy || !onDeny} onClick={onDeny}>
+                  {t('approval.rejectAll')}
+                </ButtonDanger>
+              </div>
+            ) : request?.authentication ? (
+              <AuthenticationActions authentication={request.authentication} requestCount={requests?.length || 1}
+                busy={busy} onApprove={onAuthenticate} onDeny={onDeny} onAlwaysDeny={onAlwaysDeny} />
+            ) : (
+              <ApprovalActions requestCount={requests?.length || 1} busy={busy} placement="above"
+                onApprove={onApprove} onReject={onDeny}
+                choices={[{ value: permKey || '', label: title, onAlwaysAllow, onAlwaysDeny }]} />
+            )}
 
           </div>
         )}

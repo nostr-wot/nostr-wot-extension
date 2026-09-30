@@ -603,7 +603,7 @@ Both page message ingress paths derive identity from the browser's sender, ignor
 
 Origin identifies the **requesting document**, not whichever tab happens to become active later. Browser ports are document-bound; this does not cancel all already-dispatched work after navigation. Same-origin code executing in the top-level page (including XSS or a script the client loads) shares that origin's authority. An external page cannot gain that authority merely by posting a message or embedding the client.
 
-Destination consent and strict event validation are described in [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42). Generic signing grants, registry matches, shared-account defaults and NIP-46 delegation cannot bypass cross-origin HTTP or relay consent. A relay-wide grant explicitly extends identification authority to every connected site for that account and relay. It never applies to HTTP auth. Destination-specific remembered rejections override allowances and are scoped to the current account and requesting site (plus HTTP method when present). The queue validates the account session before persisting a rejection, and the signer rechecks it before local or remote signing.
+Destination consent and strict event validation are described in [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42). Generic signing grants, registry matches, shared-account defaults and NIP-46 delegation cannot bypass HTTP (including same-origin) or relay consent. A relay-wide grant explicitly extends identification authority to every connected site for that account and relay. It never applies to HTTP auth. Destination-specific remembered rejections override allowances and are scoped to the current account and requesting site (plus HTTP method when present). The queue validates the account session before persisting a rejection, and the signer rechecks it before local or remote signing.
 
 `signer_getAuthenticationGrants` and `signer_revokeAuthenticationGrant` are internal extension RPCs, automatically included in privileged-method gating. No additional browser permissions are requested.
 
@@ -622,3 +622,28 @@ Pending-message reveal is an internal extension review capability bound to an ex
 NIP-17 pending previews unwrap only on explicit Reveal. They verify the signed kind-13 seal before using its sender key, reject a rumor whose author differs, and retain the captured account-session and pending-request guards. Missing sender profiles can be queried from purplepag.es only using only a public kind:0 author filter; message contents are never part of the query. NIP-44 lookup waits until Reveal identifies the sender. Profile signatures are verified by the existing reader. The page receives the original requested decryption result only after normal approval.
 
 Grouped pending-message metadata is decoded locally to identify NIP-17 senders and sent dates. Only sender/date leave the worker in metadata-only mode; plaintext stays behind explicit timed reveal. Public profiles are fetched from purplepag.es through verified kind:0 reads. The shared public-profile cache expires after 30 minutes and keeps at most 500 newest fetched entries, with serialized pruning/writes. User-requested profile avatars may load the profile's safe HTTP(S) image URL; this is separate from the directory metadata query.
+
+
+### Endpoint scope and returned-event integrity
+
+HTTP grants bind the requesting origin, account, exact resource URL (including
+query bytes) and method. Legacy origin-wide allows require consent again; legacy
+denies remain effective. An optional origin/client-origin tag must equal the
+browser-derived requesting origin, but is not attestation. Client/backend registry
+entries are explanatory only and never grant permission.
+
+Remote signer results are verified against the approved immutable event snapshot:
+expected account public key, signature, kind, timestamp, content and ordered tags.
+Substitution is rejected before returning a result to the website. Missing tags
+and timestamps are normalized before review, not after approval.
+
+Native wallet mutations use [wallet authentication v2](wallet-auth-v2.md): exact
+body and URL binding, a separate transaction token, and server-side atomic nonce
+consumption. CORS is an additional browser boundary, not a replacement for proof
+validation or protection against arbitrary server-to-server forwarding.
+
+Public profile storage uses a bounded timestamp index. Legacy storage is scanned
+once to build it; subsequent lookups read the index and requested profile. Expired,
+future-dated and evicted entries are excluded, and storage changes invalidate UI
+and worker caches. Raw-event dialogs share one explicit component; they do not
+change signing or reveal permissions.

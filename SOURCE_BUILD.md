@@ -4,7 +4,7 @@ Use the attached `nostr-wot-source-0.8.7.zip`, which includes the release's
 working source and lockfile. Use that archive to reproduce the packaged release;
 do not use an older GitHub tag or assume the latest main matches its contents.
 
-Requirements: Node.js 22 or 24 (release built with 22.23.2), npm, and macOS or
+Requirements: Node.js 22 or 24 (release built with 24.3.0), npm, and macOS or
 Linux with the `zip` and `unzip` utilities installed. Extract the source into an empty folder:
 
 ```sh

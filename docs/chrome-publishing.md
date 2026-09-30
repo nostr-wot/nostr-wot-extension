@@ -15,6 +15,17 @@ approval. Google review still controls when users receive the update. Existing
 store visibility and rollout settings are preserved. Store warnings stop submission.
 No workflow is triggered by pull requests; submissions are serialized across releases.
 
+## Backend compatibility gate for 0.8.7
+
+Before publishing 0.8.7, deploy the matching LNbits-proxy v2 authentication update
+using its documented deployment procedure and verify the v2 transaction tests,
+health check and legacy HTTP 426 behavior. The protocol is documented in
+[wallet-auth-v2.md](wallet-auth-v2.md). New wallet provisioning and address mutations
+require that backend; the extension will not fall back to unsafe legacy routes.
+Existing wallet-key operations keep their existing APIs. Updating a draft release
+or building packages does not deploy the backend or submit to Chrome Web Store.
+Manual UI acceptance and backend rollout must both finish before publication.
+
 ## One-time setup (OAuth client)
 
 No service account is required. Use a Google OAuth web client owned by the publisher:

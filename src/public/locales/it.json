@@ -1064,7 +1064,7 @@
   "auth.revoke": "Revoca",
   "auth.review": "Esamina autenticazione",
   "auth.reviewHint": "Esamina ogni richiesta di autenticazione per scegliere il permesso di destinazione. L’approvazione collettiva esclude l’autenticazione.",
-  "auth.siteHint": "Memorizzare consente l’autenticazione {method} per tutti i percorsi di {destination} da questo sito, per questo account.",
+  "auth.siteHint": "Memorizzare consente l’autenticazione {method} solo per {destination} da questo sito, per questo account.",
   "auth.onceMany": "Autorizza queste {count} richieste una volta",
   "auth.relaySummary": "Questo sito sta cercando di autenticarti sul relay",
   "auth.httpSummary": "Questo sito sta cercando di autenticarti su",

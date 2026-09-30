@@ -1,8 +1,6 @@
-import browser from '@lib/browser';
-import { PROFILE_CACHE_TTL_MS } from '@constants/profile';
+import usePublicProfile from '@hooks/usePublicProfile';
 import { useEffect, useRef, useState } from 'react';
 import type { PendingRequestPreview } from '@domain/signing/types.ts';
-import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
@@ -11,7 +9,7 @@ import Container from '@components/Container';
 import Text from '@components/Text';
 import TextBlock from '@components/TextBlock';
 import ProfileSummary from '@components/ProfileSummary';
-import DetailDisclosure from '@components/DetailDisclosure';
+import RawEventButton from '@components/RawEventButton';
 import FormError from '@components/FormError';
 import { Button } from '@components/Button';
 import useTimedReveal from '@hooks/useTimedReveal.ts';
@@ -25,8 +23,7 @@ export default function MessageRequestDetail({request,showSender=true}:{showSend
   const message = useTimedReveal<{plaintext:string;decryptedEvent?:Record<string,unknown>} | null>(null,30_000);
   const decryptedEvent = message.value?.decryptedEvent;
   const peer = sender || request.theirPubkey;
-  const [profileLoading,setProfileLoading] = useState(false);
-  const [profile,setProfile] = useState<ProfileMetadata | null>(null);
+  const { profile, loading: profileLoading } = usePublicProfile(peer, { enabled: showSender, lookup: request.type !== 'nip44Decrypt' || !!sender });
   const plaintext = message.value?.plaintext ?? null;
   const [raw,setRaw] = useState<PendingRequestPreview['request'] | null>(null);
   const [error,setError] = useState('');
@@ -34,23 +31,9 @@ export default function MessageRequestDetail({request,showSender=true}:{showSend
   const generation = useRef({version:0});
   const decrypt = request.type.endsWith('Decrypt');
   useEffect(() => {
-    let current = true;
     const lifetime = generation.current;
-    setProfile(null);
-    setProfileLoading(false);
-    if (showSender && peer) void (async () => {
-      const stored = await browser.storage.local.get(`profile_${peer}`);
-      if (!current) return;
-      const cached = stored[`profile_${peer}`] as {metadata?:ProfileMetadata;fetchedAt?:number}|undefined;
-      if (cached?.metadata && cached.fetchedAt && Date.now()-cached.fetchedAt < PROFILE_CACHE_TTL_MS) { setProfile(cached.metadata); return; }
-      // NIP-44 can name a temporary wrapping key. Reveal identifies its author.
-      if (request.type === 'nip44Decrypt' && !sender) return;
-      setProfileLoading(true);
-      const metadata = await rpc<ProfileMetadata | null>('getProfileMetadata',{pubkey:peer,directory:true});
-      if (current) setProfile(metadata);
-    })().catch(() => {}).finally(() => { if (current) setProfileLoading(false); });
-    return () => { current = false; lifetime.version++; };
-  }, [request.id,request.type,peer,sender,showSender]);
+    return () => { lifetime.version++; };
+  }, [request.id, request.type]);
   const clear = () => { generation.current.version++; message.clear(); setSender(null); setRaw(null); setError(''); setBusy(false); };
   useStorageWatch([{area:'local',keys:[LOCK_STATE_KEY,'activeAccountId']},{area:'session',keys:['signerPending']}],clear);
   async function load(reveal:boolean) {
@@ -92,10 +75,10 @@ export default function MessageRequestDetail({request,showSender=true}:{showSend
       </span>
     </Button>
     <FormError>{error}</FormError>
-    <DetailDisclosure iconOnly label={t('event.showRaw')} onOpenChange={open => {
+    <RawEventButton onOpenChange={open => {
       if (open) void load(false); else { generation.current.version++; setRaw(null); setBusy(false); }
     }}>
       {raw ? <TextBlock mono>{JSON.stringify({...raw,params:{...raw.params,...('plaintext' in raw.params ? {plaintext:plaintext ?? t('key.clickToReveal')} : {})},...(decryptedEvent ? {decryptedEvent} : {})},null,2)}</TextBlock> : busy ? <Text variant="hint">{t('common.loading')}</Text> : null}
-    </DetailDisclosure>
+    </RawEventButton>
   </Container>;
 }

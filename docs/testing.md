@@ -54,6 +54,8 @@ the last group running for about two minutes even after most tests finish.
 | `tests/vault.test.ts` | Vault create/unlock/lock, encryption integrity, account management, private key security |
 | `tests/permissions.test.ts` | Permission cascade, isolation, save/clear, NIP-07 methods |
 | `tests/accounts.test.ts` | Account creation (mnemonic, nsec, npub, nip46), type coverage |
+| `tests/remote-signer-integrity.test.ts` | Remote response signature, expected author and exact approved-event equality, ordered tags, malformed replies and mutation isolation; no browser mock required |
+| `tests/public-profile.test.ts` | Shared display validation/name precedence, cache freshness including future dates, directory fallback and obsolete reply suppression; browser mock required |
 | `tests/signer.test.ts` | NIP-07 signing flow, permission checks, pending request lifecycle, cold-start auto-unlock (the popup must not open for an already-approved request) |
 | `tests/security-hardening.test.ts` | NIP-49 zeroing, NIP-04 error normalization, vault reEncrypt, lock zeroing, batch 1-2 regression, KDF work factor + transparent 210k→600k migration, `changePassword` empty-password guard, `withPrivkey` zeroing, and the onboarding no-plaintext-secret rules |
 | `tests/communication.test.ts` | Full communication test suite (see below) |
@@ -540,7 +542,7 @@ Message-review UI tests also verify From/Content presentation, profile-key fallb
 
 Approval list regressions verify one heading per site while preserving separate request groups. Browser checks cover scrolling to and opening the final request and opening bulk-action menus. Timed message tests assert the internal hint, a full 30-second ring, its 29-second state, and its removal with plaintext at expiry.
 
-`tests/profile-display-cache.test.ts` verifies 30-minute expiry, the 500-profile bound under concurrent writes and unrelated-storage preservation. Message-preview regressions cover sender/date-only responses with no plaintext/payload, sender grouping, dated entries, profile images and literal themed intent parts. Raw-event disclosures retain keyboard-accessible native details.
+`tests/profile-display-cache.test.ts` verifies 30-minute expiry, future-date rejection, the 500-profile bound under concurrent writes, legacy index migration, targeted reads after worker restart, storage deletion/reset and unrelated-storage preservation. Message-preview regressions cover sender/date-only responses with no plaintext/payload, sender grouping, dated entries, profile images and literal themed intent parts. Inline disclosures retain keyboard-accessible native details; raw events use the explicit shared RawEventButton dialog.
 
 Raw event popup checks cover closed-state JSON absence, code-button activation, Escape dismissal, focus restoration, and timed plaintext concealment while raw request data is open.
 

@@ -1064,7 +1064,7 @@
   "auth.revoke": "Revoke",
   "auth.review": "Review authentication",
   "auth.reviewHint": "Review each authentication request to choose its destination permission. Bulk approval excludes authentication.",
-  "auth.siteHint": "Remembering allows {method} authentication for every path on {destination} from this site, for this account.",
+  "auth.siteHint": "Remembering allows {method} authentication only for {destination} from this site, for this account.",
   "auth.onceMany": "Authenticate these {count} requests once",
   "auth.relaySummary": "This site is trying to authenticate you with relay",
   "auth.httpSummary": "This site is trying to authenticate you with",

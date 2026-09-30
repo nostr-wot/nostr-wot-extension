@@ -1064,7 +1064,7 @@
   "auth.revoke": "Révoquer",
   "auth.review": "Vérifier l’authentification",
   "auth.reviewHint": "Vérifiez chaque demande d’authentification pour choisir son autorisation de destination. L’approbation groupée exclut l’authentification.",
-  "auth.siteHint": "Mémoriser autorise l’authentification {method} pour tous les chemins de {destination} depuis ce site, pour ce compte.",
+  "auth.siteHint": "Mémoriser autorise l’authentification {method} uniquement pour {destination} depuis ce site, pour ce compte.",
   "auth.onceMany": "Autoriser ces {count} demandes une fois",
   "auth.relaySummary": "Ce site essaie de vous authentifier auprès du relais",
   "auth.httpSummary": "Ce site essaie de vous authentifier auprès de",

@@ -137,13 +137,16 @@ Per-account provider cache (`Map<string, WalletProvider>`):
 
 Users can instantly provision a wallet via "Quick Setup" without manual key entry.
 
+See [Wallet authentication v2](wallet-auth-v2.md) for exact headers, bodies,
+origin policy and the required backend-first rollout. No legacy downgrade is supported.
+
 ### Flow
 
 ```
 User clicks "Create Wallet"
-  → GET  {server}/api/provision/challenge     → { challenge }
-  → Sign challenge as NIP-98 kind:27235 event
-  → POST {server}/api/provision               → { adminkey, id, nwcUri? }
+  → POST {server}/api/v2/provision/challenge  → { version, challenge, transactionToken, expiresAt }
+  → Sign URL, method, body hash, challenge and transaction hash (kind 27235)
+  → POST {server}/api/v2/provision            → { adminkey, id, nwcUri? }
   → Store as LNbits config in vault
   → Initialize provider
 ```
@@ -163,9 +166,9 @@ After provisioning, users can claim a Lightning Address (`username@zaps.nostr-wo
 
 ```
 User enters desired username
-  → GET  {server}/api/provision/challenge     → { challenge }
-  → Sign challenge as NIP-98 kind:27235 event
-  → POST {server}/api/claim-username          → { address, payLinkId }
+  → POST {server}/api/v2/provision/challenge  → { version, challenge, transactionToken, expiresAt }
+  → Sign URL, method, body hash, challenge and transaction hash (kind 27235)
+  → POST {server}/api/v2/claim-username       → { address, payLinkId }
   → Prompt to update profile lud16 field
 ```
 
@@ -173,9 +176,9 @@ Server endpoints:
 
 | Endpoint | Method | Auth | Purpose |
 |----------|--------|------|---------|
-| `/api/claim-username` | POST | NIP-98 | Claim a username, creates lnurlp pay link |
+| `/api/v2/claim-username` | POST | NIP-98 | Claim a username, creates lnurlp pay link |
 | `/api/lightning-address` | GET | None | Look up address by pubkey |
-| `/api/release-username` | POST | NIP-98 | Delete pay link, release username |
+| `/api/v2/release-username` | POST | NIP-98 | Delete pay link, release username |
 
 Username validation: `^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$` (3-30 chars). Reserved names blocked.
 

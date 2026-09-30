@@ -1,3 +1,4 @@
+import { publicProfile, profileDisplayName } from '@domain/profile/publicProfile';
 import type { ProfileMetadata } from '@domain/profile/profileMetadata.ts';
 import { safeImageUrl } from '@utils/safeUrl.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -8,10 +9,16 @@ import Avatar from '@components/Avatar';
 import FieldDisplay from '@components/FieldDisplay';
 
 /** Shared read-only profile presentation for event review and the publish preview. */
-export default function ProfileSummary({ meta, initial, compact = false }: { meta: ProfileMetadata | null; initial?: string; compact?: boolean }) {
-  meta = Object.fromEntries(Object.entries(meta || {}).filter(([, value]) => typeof value === 'string'));
-  const name = meta?.name || meta?.display_name || '—';
+export default function ProfileSummary({ meta, initial, compact = false, fallback }: { meta: ProfileMetadata | null; initial?: string; compact?: boolean; fallback?: string }) {
+  meta = publicProfile(meta);
+  const name = profileDisplayName(meta, fallback);
   const banner = safeImageUrl(meta?.banner);
+  if (compact) return <div className="flex items-center gap-3 min-w-0">
+    <Avatar key={meta?.picture || name} src={meta?.picture} fallback={initial || name[0]?.toUpperCase() || '?'}
+      imgClassName="size-12 rounded-full object-cover"
+      fallbackClassName="size-12 rounded-full shrink-0 bg-brand-light text-brand flex items-center justify-center" />
+    <Text className="font-medium break-all">{name}</Text>
+  </div>;
   return <Container variant="box" gap={4}>
     {!compact && banner && <img src={banner} alt={t('profileEdit.banner')} className="w-full h-[100px] object-cover rounded-md" />}
     <Container variant="row" gap={5}>

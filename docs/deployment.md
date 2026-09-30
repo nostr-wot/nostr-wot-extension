@@ -18,6 +18,12 @@ validation, and corrects Chrome packaging after the installed 0.8.4 store artifa
 found to contain Firefox background configuration. Store submission and approval
 are separate from generating and verifying the local package.
 
+Before publishing 0.8.7, deploy and verify the matching LNbits-proxy wallet-auth-v2
+backend. New provisioning and address mutations fail on legacy backends by design;
+there is no insecure fallback. See [wallet-auth-v2.md](wallet-auth-v2.md) and the
+[backend compatibility gate](chrome-publishing.md#backend-compatibility-gate-for-087).
+Building packages or updating the draft does not perform that deployment.
+
 ## Before any store
 
 1. Bump `version` in `package.json`, `package-lock.json` and `manifest.json` together. Update SOURCE_BUILD and AGENTS to match.
@@ -27,7 +33,7 @@ are separate from generating and verifying the local package.
    (open handles in the browser mock); that is known and not a failure.
 5. Run `npm run package:chrome`. This validates and smoke-tests the actual upload ZIP in a disposable Chromium profile. For manual checks, extract that same ZIP and click through its popup. Mounted React tests cover interactions, but cannot replace native layout checks. Record whether a browser check used the installed extension or an isolated fixture.
 
-For authentication UI acceptance, verify one pending request opens directly without bulk controls. Check that Advanced starts collapsed and reveals the complete event, that Approve/Reject act once, and that the arrow menus expose remembered site/destination choices (all connected sites only for relays). Verify a saved rejection is labelled in authentication settings and can be revoked. Keep 0.8.7 as a draft until León approves manual testing; do not cancel the pending 0.8.6 review before that approval.
+For authentication UI acceptance, verify one pending request opens directly without bulk controls. Check that the code button opens the complete event in a dismissible popup, that Approve/Reject act once, and that the arrow menus expose remembered site/exact-URL-and-method choices (all connected sites only for relays). Verify a saved rejection is labelled in authentication settings and can be revoked. Keep 0.8.7 as a draft until León approves manual testing; do not cancel the pending 0.8.6 review before that approval.
 
 ---
 

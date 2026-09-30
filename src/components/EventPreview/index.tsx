@@ -18,7 +18,7 @@ import GenericPreview from './kinds/GenericPreview';
 import Container from '@components/Container';
 import Heading from '@components/Heading';
 import Text from '@components/Text';
-import TextBlock from '@components/TextBlock';
+import RawEventButton from '@components/RawEventButton';
 import DetailDisclosure from '@components/DetailDisclosure';
 import StatusNotice from '@components/StatusNotice';
 
@@ -120,7 +120,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '',
           maxHeight={140} className="mt-5" />
       )}
 
-      <DetailDisclosure iconOnly label={t('event.showRaw')}><TextBlock mono maxHeight={200}>{JSON.stringify(event,null,2)}</TextBlock></DetailDisclosure>
+      <RawEventButton event={event}/>
     </Container>
   );
 }

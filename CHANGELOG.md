@@ -12,7 +12,14 @@ have had.
 
 ## 0.8.7 — 2026-09-29
 
+### Security
+- Bind every HTTP authentication grant to its exact URL, method, requesting site and account; require new consent for older broad allowances.
+- Verify remote signer results against the exact approved event and expected account signature.
+- Use body-bound, one-use wallet authentication v2 with a separate transaction token; require the compatible backend before rollout.
+- Reject mismatched origin metadata and generic website signatures for native wallet management endpoints.
+
 ### Improved
+- Reuse the raw-event dialog and public-profile rendering, and use a bounded indexed profile cache instead of repeated full-storage scans.
 - Select grouped requests with visible checkboxes and approve only that selection, or reject all; new arrivals remain unchecked.
 - Group message approvals by sender with cached avatars/names and available sent dates; bound shared profile caching to 30 minutes and 500 entries.
 - Use themed intent emphasis, unnumbered right-chevron summaries and code-icon raw-event toggles; remove redundant private-message request sentences.

@@ -1064,7 +1064,7 @@
   "auth.revoke": "Revogar",
   "auth.review": "Rever autenticação",
   "auth.reviewHint": "Reveja cada pedido de autenticação para escolher a permissão de destino. A aprovação em conjunto exclui a autenticação.",
-  "auth.siteHint": "Guardar permite a autenticação {method} para todos os caminhos de {destination} a partir deste site, para esta conta.",
+  "auth.siteHint": "Guardar permite a autenticação {method} apenas para {destination} a partir deste site, para esta conta.",
   "auth.onceMany": "Autorizar estas {count} solicitações uma vez",
   "auth.relaySummary": "Este site está tentando autenticar você no relay",
   "auth.httpSummary": "Este site está tentando autenticar você em",

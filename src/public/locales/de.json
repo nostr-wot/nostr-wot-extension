@@ -1064,7 +1064,7 @@
   "auth.revoke": "Widerrufen",
   "auth.review": "Authentifizierung prüfen",
   "auth.reviewHint": "Prüfe jede Authentifizierungsanfrage, um ihre Zielberechtigung auszuwählen. Sammelgenehmigungen schließen Authentifizierung aus.",
-  "auth.siteHint": "Das Merken erlaubt für dieses Konto die {method}-Authentifizierung für alle Pfade auf {destination} von dieser Website.",
+  "auth.siteHint": "Das Merken erlaubt für dieses Konto die {method}-Authentifizierung nur für {destination} von dieser Website.",
   "auth.onceMany": "Diese {count} Anfragen einmal autorisieren",
   "auth.relaySummary": "Diese Website möchte dich bei diesem Relay authentifizieren:",
   "auth.httpSummary": "Diese Website möchte dich hier authentifizieren:",

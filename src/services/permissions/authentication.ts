@@ -11,10 +11,17 @@ export async function listAuthenticationGrants(): Promise<AuthenticationGrant[]>
   const data = await browser.storage.local.get(AUTHENTICATION_GRANTS_KEY);
   return (data[AUTHENTICATION_GRANTS_KEY] as AuthenticationGrant[] | undefined) || [];
 }
+/** Legacy HTTP denies remain broad; legacy allows never acquire endpoint authority. */
+function matchesGrant(grant: AuthenticationGrant, accountId: string, origin: string, auth: AuthenticationRequest): boolean {
+  if (grant.accountId !== accountId || grant.protocol !== auth.protocol
+    || grant.destination !== auth.destination || grant.method !== auth.method
+    || !(grant.origin === origin || (auth.protocol === 'nip42' && grant.origin === '*'))) return false;
+  if (auth.protocol === 'nip42') return true;
+  if (grant.version === 2 && typeof grant.resource === 'string') return grant.resource === auth.url;
+  return grant.decision === 'deny';
+}
 export async function getAuthenticationDecision(accountId: string, origin: string, auth: AuthenticationRequest): Promise<'allow' | 'deny' | undefined> {
-  const matching = (await listAuthenticationGrants()).filter(grant => grant.accountId === accountId
-    && grant.protocol === auth.protocol && grant.destination === auth.destination && grant.method === auth.method
-    && (grant.origin === origin || (auth.protocol === 'nip42' && grant.origin === '*')));
+  const matching = (await listAuthenticationGrants()).filter(grant => matchesGrant(grant,accountId,origin,auth));
   // A site-specific rejection takes precedence over a shared relay allowance.
   if (matching.some(grant => grant.decision === 'deny')) return 'deny';
   if (matching.some(grant => grant.decision === undefined || grant.decision === 'allow')) return 'allow';
@@ -31,14 +38,13 @@ export async function saveAuthenticationGrant(accountId: string, origin: string,
     // A queued approval must not erase a rejection saved while it waited for
     // this lock. Revocation in settings is the explicit way to remove a deny.
     if (decision === 'allow' && grants.some(grant => grant.decision === 'deny'
-      && grant.accountId === accountId && grant.protocol === auth.protocol
-      && grant.destination === auth.destination && grant.method === auth.method
-      && (grant.origin === origin || (auth.protocol === 'nip42' && grant.origin === '*')))) {
+      && matchesGrant(grant,accountId,origin,auth))) {
       throw new Error('Authentication permission denied');
     }
     if (scope === 'once') return;
     const grant: AuthenticationGrant = {decision,accountId, origin:scope==='connected-sites'?'*':origin,protocol:auth.protocol,destination:auth.destination,
-      ...(auth.method ? {method:auth.method} : {}),id:JSON.stringify([accountId,scope==='connected-sites'?'*':origin,auth.protocol,auth.destination,auth.method??''])};
+      ...(auth.protocol === 'nip98' ? {version:2 as const,resource:auth.url} : {}),
+      ...(auth.method ? {method:auth.method} : {}),id:JSON.stringify([accountId,scope==='connected-sites'?'*':origin,auth.protocol,auth.protocol==='nip98'?auth.url:auth.destination,auth.method??''])};
     await browser.storage.local.set({[AUTHENTICATION_GRANTS_KEY]:[...grants.filter(item=>item.id!==grant.id),grant]});
   });
 }

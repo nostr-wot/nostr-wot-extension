@@ -1,4 +1,4 @@
-import { parseAuthentication, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
+import { parseAuthentication, assertPageAuthenticationPolicy, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
 import { getAuthenticationDecision, saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { rememberSignedZapNote } from '../wallet/payment-records.ts';
 import { followCount, followReplacementCount, rememberSignedFollowList } from './followListGuard.ts';
@@ -127,7 +127,10 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
 export async function handleSignEvent(event: UnsignedEvent, origin: string): Promise<SignedEvent> {
   // Snapshot before any await: approval and signing must use exactly the same event.
   event = structuredClone(event);
+  event.tags ??= [];
+  event.created_at ??= Math.floor(Date.now()/1000);
   const authentication = parseAuthentication(event, origin);
+  assertPageAuthenticationPolicy(authentication);
   const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
   const requestedPubkey = await getActivePublicKey();
@@ -150,11 +153,10 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   // NIP-46 normally delegates approval to the remote signer. Dangerous
   // follow-list replacements require local confirmation for every account type.
   if (authentication && !(await isDomainAllowed(origin))) throw new Error('Site not connected');
-  const requiresDestination = !!authentication && (authentication.crossOrigin || authentication.protocol === 'nip42');
   const destinationDecision = authentication && await getAuthenticationDecision(session.accountId, origin, authentication);
   if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
   const destinationGranted = destinationDecision === 'allow';
-  const needsAuthApproval = !!authentication && (requiresDestination ? !destinationGranted : !destinationGranted && decision === 'ask');
+  const needsAuthApproval = !!authentication && !destinationGranted;
   let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
   if (replacementCount || needsAuthApproval || (!authentication && accountType !== 'nip46' && decision === 'ask')) {
@@ -202,7 +204,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     if (currentDecision === 'deny') throw new Error('Permission denied');
     const destinationDecision = await getAuthenticationDecision(session.accountId, origin, authentication);
     if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
-    if ((requiresDestination || currentDecision !== 'allow') && !authenticationScope && destinationDecision !== 'allow') throw new Error('Authentication permission revoked');
+    if (!authenticationScope && destinationDecision !== 'allow') throw new Error('Authentication permission revoked');
     assertAccountSession(session);
     if (authenticationScope) await saveAuthenticationGrant(session.accountId, origin, authentication, authenticationScope, () => assertAccountSession(session));
     assertAccountSession(session);

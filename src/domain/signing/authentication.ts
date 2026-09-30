@@ -3,7 +3,7 @@ import type { UnsignedEvent } from '../nostr/types.ts';
 export type AuthenticationScope = 'once' | 'site' | 'connected-sites';
 export interface AuthenticationRequest {
   protocol: 'nip98' | 'nip42';
-  /** Exact signed URL for review; normalization is only used for permission lookup. */
+  /** Exact signed URL for review and HTTP permission lookup, including query bytes. */
   url: string;
   destination: string;
   method?: string;
@@ -22,6 +22,13 @@ function tag(event: UnsignedEvent, name: string): string {
 export function parseAuthentication(event: UnsignedEvent, origin: string, now = Math.floor(Date.now()/1000)): AuthenticationRequest | undefined {
   if (event.kind !== 27235 && event.kind !== 22242) return undefined;
   const relay = event.kind === 22242;
+  // Metadata is never evidence of browser attestation, but must not contradict
+  // the browser-derived caller that authorized this signing request.
+  for (const name of ['origin', 'client-origin']) {
+    if (event.tags?.some(item => item[0] === name) && tag(event, name) !== origin) {
+      throw new Error(`Invalid authentication ${name} tag`);
+    }
+  }
   const raw = tag(event, relay ? 'relay' : 'u');
   let url: URL;
   let requester: URL;
@@ -66,4 +73,17 @@ export interface AuthenticationGrant {
   protocol: AuthenticationRequest['protocol'];
   destination: string;
   method?: string;
+  /** v2 HTTP grants bind the exact signed URL. Legacy allows require new consent. */
+  version?: 2;
+  resource?: string;
+}
+
+/** Generic page signing cannot mint the extension's privileged native wallet tokens. */
+export function assertPageAuthenticationPolicy(auth: AuthenticationRequest | undefined): void {
+  if (auth?.protocol !== 'nip98') return;
+  const url = new URL(auth.url);
+  if (url.origin === 'https://zaps.nostr-wot.com'
+    && /^\/api\/(?:v2\/)?(?:provision|claim-username|release-username)\/?$/.test(decodeURIComponent(url.pathname))) {
+    throw new Error('Native wallet authentication requires the internal wallet flow');
+  }
 }

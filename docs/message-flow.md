@@ -424,3 +424,15 @@ For pending NIP-04/NIP-44 requests, the popup can call privileged `signer_previe
 Pending-message callbacks are installed before session metadata is published. NIP-17 local Reveal verifies and unwraps the seal to identify its author; the site still receives only its originally requested decryption after approval.
 
 Grouped message review requests `signer_previewRequest` with `metadataOnly:true` and `reveal:false`. The privileged worker locally decodes NIP-44 (including verified NIP-17 seals) to derive the sender and rumor sent date; only those fields return, with plaintext, decoded event and request params removed. NIP-04 lacks a sent date in its decrypt API. The operation never resolves the pending request or approves the site and retains account/session and request-liveness checks. Plaintext reveal remains a separate timed UI action.
+
+
+## Native wallet authentication
+
+The privileged wallet handler captures the active account session and calls the
+shared wallet HTTP client. The client obtains a v2 challenge bound to the exact
+serialized operation; the handler signs its URL, method, body hash, challenge and
+transaction hash within the private-key scope. The client sends the event in an
+Authorization header and the separate transaction token in X-Nostr-Transaction.
+The proxy verifies all commitments and atomically consumes the nonce before the
+wallet mutation. See [the v2 contract](wallet-auth-v2.md). Website signEvent cannot
+invoke this native wallet authentication path or supply trusted origin metadata.

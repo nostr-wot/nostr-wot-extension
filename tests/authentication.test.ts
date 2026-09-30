@@ -35,8 +35,11 @@ it('broad signing permission cannot silently authenticate to a relay',async()=>{
   const items=await pending(); assert.equal(items.length,1);
   await resolveRequest(items[0].id,{allow:false}); await assert.rejects(signing,/denied/i);
 });
-it('same-origin HTTP requests preserve the normal authentication permission',async()=>{
-  const result=await handleSignEvent(http(site+'/login'),site); assert.equal(result.kind,27235); assert.equal((await getPending()).length,0);
+it('same-origin HTTP requests require endpoint consent despite broad signing permission',async()=>{
+  const signing=handleSignEvent(http(site+'/login'),site); void signing.catch(()=>{});
+  const [item]=await pending(); assert.ok(item);
+  await resolveRequest(item.id,{allow:true,authenticationScope:'once'});
+  assert.equal((await signing).kind,27235);
 });
 it('malformed authentication is rejected even with broad permissions',async()=>{
   for(const event of [
@@ -78,7 +81,10 @@ it('HTTP grants bind account, exact requesting origin, destination and method',a
   assert.equal(await hasAuthenticationGrant('acct1',site,parseAuthentication(http('https://api.test:8443/login'),site)!),false);
   const get={...http(),tags:[['u','https://api.test/login'],['method','GET']]};
   assert.equal(await hasAuthenticationGrant('acct1',site,parseAuthentication(get,site)!),false);
-  assert.equal((await handleSignEvent(http('https://api.test/other-path'),site)).kind,27235);
+  for (const url of ['https://api.test/other-path','https://api.test/login?x=1','https://API.TEST/login']) {
+    assert.equal(await hasAuthenticationGrant('acct1',site,parseAuthentication(http(url),site)!),false);
+  }
+  assert.equal((await handleSignEvent(http(),site)).kind,27235);
 });
 it('HTTP authentication never offers a shared-sites grant',async()=>{
   const signing=handleSignEvent(http(),site); void signing.catch(()=>{});
@@ -234,7 +240,8 @@ it('remembered HTTP rejection binds the method and overrides broad same-origin p
   const [item]=await pending();
   await resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true});await assert.rejects(signing,/denied/i);
   await permissions.save(site,'signEvent',27235,'allow','acct1');
-  await assert.rejects(handleSignEvent(http(site+'/other'),site),/denied/i);
+  await assert.rejects(handleSignEvent(http(site+'/login'),site),/denied/i);
+  assert.equal(await getAuthenticationDecision('acct1',site,{...item.authentication!,url:site+'/other'}),undefined);
   assert.equal(await getAuthenticationDecision('acct1',site,{...item.authentication!,method:'GET'}),undefined);
 });
 it('failed remembered rejection stays pending and ordinary rejection does not persist',async t=>{
@@ -267,4 +274,46 @@ it('an account switch while a remembered rejection is being saved creates no rul
   });
   await assert.rejects(resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true}),/locked|session|switched/i);
   await assert.rejects(signing,/locked/i);mock.mock.restore();assert.deepEqual(await listAuthenticationGrants(),[]);
+});
+
+it('legacy origin-wide HTTP allows ask again while legacy denies retain their scope',async()=>{
+  const {getAuthenticationDecision,saveAuthenticationGrant}=await import('../src/services/permissions/authentication.ts');
+  const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+  const grant={id:'legacy',accountId:'acct1',origin:site,protocol:'nip98',destination:'https://api.test',method:'POST'};
+  for (const decision of [undefined,'allow','deny']) {
+    await browser.storage.local.set({authenticationGrants:[{...grant,decision}]});
+    for (const url of ['https://api.test/login','https://api.test/delete?confirm=1']) {
+      const auth=parseAuthentication(http(url),site)!;
+      assert.equal(await getAuthenticationDecision('acct1',site,auth),decision==='deny'?'deny':undefined);
+      if (decision==='deny') await assert.rejects(saveAuthenticationGrant('acct1',site,auth,'site',()=>{}),/denied/i);
+    }
+  }
+});
+it('origin metadata cannot impersonate another website or contain duplicate claims',async()=>{
+  for (const name of ['origin','client-origin']) {
+    for (const tags of [[[name,'https://trusted.test']],[[name,site],[name,site]],[[name,site,'extra']]]) {
+      await assert.rejects(handleSignEvent({...http(),tags:[...http().tags,...tags]},site),/origin/i);
+    }
+  }
+});
+it('native wallet capabilities cannot be signed through generic page authentication',async()=>{
+  for (const origin of [site,'https://zaps.nostr-wot.com']) {
+    for (const prefix of ['/api/','/api/v2/']) for (const operation of ['provision','claim-username','release-username']) {
+      await assert.rejects(handleSignEvent(http('https://zaps.nostr-wot.com'+prefix+operation+'?ignored=1'),origin),/wallet/i);
+    }
+  }
+});
+
+it('matching origin metadata is preserved without becoming an attestation',async()=>{
+  const request={...http(),tags:[...http().tags,['client-origin',site],['origin',site]]};
+  const signing=handleSignEvent(request,site);void signing.catch(()=>{});
+  const [item]=await pending();await resolveRequest(item.id,{allow:true,authenticationScope:'once'});
+  assert.deepEqual((await signing).tags,request.tags);
+});
+it('omitted ordinary tags and timestamp are normalized before review',async()=>{
+  await permissions.save(site,'signEvent',1,'ask','acct1');
+  const signing=handleSignEvent({kind:1,content:'hello'} as UnsignedEvent,site);void signing.catch(()=>{});
+  const [item]=await pending(); assert.deepEqual(item.event?.tags,[]);assert.ok(Number.isInteger(item.event?.created_at));
+  await resolveRequest(item.id,{allow:true});const result=await signing;
+  assert.equal(result.created_at,item.event?.created_at);assert.deepEqual(result.tags,item.event?.tags);
 });

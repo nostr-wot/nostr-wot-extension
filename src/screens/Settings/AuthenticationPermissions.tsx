@@ -45,7 +45,7 @@ function AccountGrants({account,view}:{account:AccountSummary;view:GrantView}) {
      <th scope="col" className="py-3">{t('wot.databaseActions')}</th>
     </tr></thead>
     <tbody>{data.grants.map(grant=><tr key={grant.id} className="border-t border-card-border">
-     <td className="py-3 align-top font-mono break-all">{grant.method ? `${grant.method} ` : ''}{grant.destination}</td>
+     <td className="py-3 align-top font-mono break-all">{grant.method ? `${grant.method} ` : ''}{grant.resource ?? grant.destination}</td>
      {view==='sites' && <td className="p-3 align-top break-all">{grant.origin}</td>}
      <td className="p-3 align-top">{t(grant.decision==='deny' ? 'auth.rejectAlways' : 'auth.approveAlways')}</td>
      <td className="py-3 align-top"><ButtonDanger small disabled={busy || loading} aria-label={`${t('auth.revoke')}: ${grant.destination}`} onClick={()=>void revoke(grant.id)}>{t('auth.revoke')}</ButtonDanger></td>

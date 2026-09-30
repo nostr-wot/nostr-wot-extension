@@ -1,5 +1,4 @@
-import { maintainProfileCache } from '../profile/displayCache';
-import { PROFILE_CACHE_TTL_MS as PROFILE_CACHE_TTL } from '@constants/profile.ts';
+import { maintainProfileCache, readProfileCache } from '../profile/displayCache';
 import type { MyMuteList as GroupedMuteList } from '@domain/mutes/muteList.ts';
 import type { ProfileRead } from '@domain/profile/profileMetadata.ts';
 
@@ -17,7 +16,7 @@ import { cachedRelayRead } from '../relays/relayCache.ts';
 import { MUTE_LIST_CACHE } from '@constants/relays.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 
-import { config, profileCache, type HandlerFn } from './state.ts';
+import { config, type HandlerFn } from './state.ts';
 import { DEFAULT_RELAYS } from '@constants/relays.ts';
 
 /**
@@ -65,11 +64,9 @@ async function getUserRelays(): Promise<string[]> {
 const profileReads = new Map<string, { promise: Promise<Record<string, unknown> | null>; expiresAt: number }>();
 
 export async function fetchProfileMetadata(pubkey: string, directory = false): Promise<Record<string, unknown> | null> {
-    if (!pubkey) return null;
-    await maintainProfileCache();
-
-    const cached = profileCache.get(pubkey);
-    if (cached && Date.now() - cached.fetchedAt < PROFILE_CACHE_TTL) {
+    if (!/^[a-f0-9]{64}$/i.test(pubkey)) return null;
+    const cached = await readProfileCache(pubkey);
+    if (cached) {
         return cached.metadata;
     }
 

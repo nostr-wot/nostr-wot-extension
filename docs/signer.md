@@ -247,12 +247,12 @@ payment checks remain independent. See wallet.md for matching and recovery limit
 
 Authentication adds a destination-specific gate before local signing or NIP-46 delegation. `src/domain/signing/authentication.ts` validates the exact event snapshot before any asynchronous work. NIP-98 requires one `u` and one `method`; NIP-42 requires one `relay` and one nonempty `challenge`. Duplicate/ambiguous required tags, invalid payload hashes, credential-bearing or fragment URLs, insecure non-loopback transports, nonempty content and stale/future timestamps are rejected. HTTP auth has a 60-second window; relay auth has a 10-minute window, checked again after approval/unlock. The exact URL and event remain unchanged when signed.
 
-- Same-origin NIP-98 can use the site's ordinary signing permission. A saved destination grant can also authorize it.
-- Cross-origin NIP-98 requires explicit consent even when a broad signing allow exists. Remembered consent binds **account + exact requesting origin + destination origin + HTTP method**. It covers all paths on that backend for that method; the approval menu explains that scope. NIP-98 may authorize operations beyond login.
+- Every NIP-98 request, including same-origin HTTP, requires explicit endpoint consent or a matching saved grant. Ordinary signing allows never substitute for this gate. Remembered consent binds **account + exact requesting origin + exact signed URL (including query bytes) + HTTP method**. Paths and queries are not normalized or sorted; a different resource asks again. NIP-98 may authorize operations beyond login.
+- HTTP grants use `version: 2` and an exact `resource`, preserving the destination origin for display. Legacy origin-wide HTTP allows (including records without a decision) are deliberately ignored and require new consent. They remain visible/revocable in storage; their original broad scope is never silently converted to endpoint consent. Legacy HTTP denies remain broad until explicitly revoked. Relay grants retain their existing behavior.
 - NIP-42 always uses destination consent. A remembered permission binds **account + requesting origin + canonical full relay URL**, retaining path and query. Users may explicitly authorize that relay from **all connected sites**. A per-site deny still wins.
 - Grants are always account-specific, independent of the ordinary permissions' “all accounts” toggle. They are not automatically copied to another account.
 - Authentication requests are excluded from generic batch allow and require an explicit `authenticationScope` through `signer_resolve`. The compact UI shows the requesting website and a destination sentence (plus the HTTP method when present). Full event data is collapsed under Advanced. Approve and Reject act once; their arrow menus offer Approve always, relay-only Always for all sites, and Reject always. All remembered choices remain account-specific.
-- Reject always persists a site-specific denial for the reviewed account, destination and HTTP method (when present), before resolving the request. It takes precedence over shared relay allowances and broad signing permissions, including same-origin HTTP. Stale/account-switched requests cannot create a denial; failed storage leaves the request pending. Settings labels and revokes both approvals and rejections. Legacy records without a decision remain approvals.
+- Reject always persists a site-specific denial for the reviewed account, destination and HTTP method (when present), before resolving the request. It takes precedence over shared relay allowances and broad signing permissions, including same-origin HTTP. Stale/account-switched requests cannot create a denial; failed storage leaves the request pending. Settings labels and revokes both approvals and rejections. Legacy relay records without a decision remain approvals. New HTTP denials bind the exact resource; legacy HTTP denials retain their broader origin/method scope.
 - Grants live in `authenticationGrants`; settings can list/revoke them through internal-only RPCs. Site-specific grants appear at the bottom of Permissions; a link below opens all-sites relay grants in a separate popup table. Both views follow the active account and retain individual revocation without a separate account selector. Disconnect removes site-specific grants; an intentionally shared relay grant remains but cannot serve the disconnected site. Account deletion and vault destruction clear relevant grants. Revocation and denials are rechecked after waiting for unlock.
 
 The [client/backend registry](auth-client-registry.md) is informational. Matching entries do not create permissions or suppress consent.
@@ -292,3 +292,26 @@ A loading hint appears during lookup; missing or unavailable profiles retain the
 The message surface hides again after 30 seconds using the same timed-reveal hook as private-key export. Concealed content is a placeholder; plaintext and the decoded event are discarded on timeout or click-to-hide.
 
 Pending signEvent review places the full event in collapsed Advanced and describes intent above it, including app action then app name for kind 30078. A grouped view can approve/reject one request ID through the existing confirmation and resolution path without resolving its siblings. Bulk and remembered permission behavior remains separate.
+
+## Authentication integrity and native wallet policy
+
+Optional `origin` and reserved `client-origin` tags on authentication events must each
+appear at most once, contain exactly one value, and equal the browser-derived caller
+origin. They remain optional signed metadata, not browser or extension attestation.
+Another signer can make arbitrary origin claims; backends must not infer browser identity
+from the presence of either tag.
+
+Generic page `signEvent` refuses NIP-98 tokens for `https://zaps.nostr-wot.com` wallet
+operations `/api/provision`, `/api/claim-username`, `/api/release-username`, and their
+`/api/v2/` counterparts, including queries and trailing slashes. This applies even to
+same-origin pages and existing grants. These capabilities are issued only by the
+extension's privileged internal wallet flow. Other endpoints use the ordinary exact
+resource consent policy. Relay authentication is unaffected.
+
+Before review, omitted ordinary-event tags become `[]` and omitted timestamps become
+the current integer timestamp. The same normalized event is signed. Remote signing uses
+`signVerifiedRemoteEvent`: snapshot before any connection await, give the signer a separate
+copy, and compare the result's expected author, kind, timestamp, content and every ordered
+tag against that snapshot. Verify its ID and Schnorr signature independently before
+returning canonical fields; reject mutations even when the remote signature is valid.
+Account-session validity is rechecked after verification.

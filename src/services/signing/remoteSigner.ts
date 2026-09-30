@@ -1,3 +1,4 @@
+import { signVerifiedRemoteEvent } from './remoteEventVerifier.ts';
 import * as vault from '../vault/vault.ts';
 import browser from '@lib/browser.ts';
 import type { SafeAccount } from '@domain/accounts/types.ts';
@@ -102,13 +103,20 @@ async function getNip46Client(acct: SafeAccount, session: AccountSession): Promi
 export async function handleNip46Request(acct: SafeAccount, method: string, data: unknown, _origin: string): Promise<SignedEvent | string> {
   const session = captureAccountSession(acct.id);
   assertAccountSession(session);
+  if (method === 'signEvent') {
+    const result = await signVerifiedRemoteEvent(data as UnsignedEvent, acct.pubkey, async approved => {
+      const client = await getNip46Client(acct, session);
+      assertAccountSession(session);
+      return duringSession(client, () => client.signer!.signEvent(approved));
+    });
+    assertAccountSession(session);
+    return result;
+  }
   const client = await getNip46Client(acct, session);
   assertAccountSession(session);
   return duringSession(client, async () => {
     const signer = client.signer!;
     switch (method) {
-    case 'signEvent':
-      return signer.signEvent(data as UnsignedEvent);
     case 'nip04Encrypt': {
       const { pubkey, plaintext } = data as { pubkey: string; plaintext: string };
       return signer.nip04Encrypt(pubkey, plaintext);

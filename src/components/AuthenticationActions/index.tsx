@@ -16,6 +16,6 @@ export default function AuthenticationActions({authentication,requestCount=1,bus
   });
   return <ApprovalActions requestCount={requestCount} rejectCount={1} busy={busy} placement="above"
     approveLabel={requestCount === 1 ? t('approval.approve') : undefined} rejectLabel={t('auth.reject')}
-    approveDescription={authentication.protocol === 'nip98' ? t('auth.siteHint', {method:authentication.method || '',destination:authentication.destination}) : undefined}
+    approveDescription={authentication.protocol === 'nip98' ? t('auth.siteHint', {method:authentication.method || '',destination:authentication.url}) : undefined}
     onApprove={onApprove ? () => onApprove('once') : undefined} onReject={onDeny} choices={choices}/>;
 }

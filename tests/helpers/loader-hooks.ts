@@ -36,6 +36,8 @@ export async function resolve(
     specifier === './browser.ts' ||
     specifier === '../browser.js' ||
     specifier === '../browser.ts' ||
+    specifier === '@lib/browser' ||
+    specifier.endsWith('/lib/browser') ||
     specifier === '@lib/browser.js' ||
     specifier === '@lib/browser.ts' ||
     specifier.endsWith('/lib/browser.js') ||

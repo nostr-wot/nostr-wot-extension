@@ -6,13 +6,13 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **59**; the inventory below is checked against the component folders by the test suite.
+All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **60**; the inventory below is checked against the component folders by the test suite.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (full-screen navigation by default; `placement="bottom"` fits content up to popup height over a scrim), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
 **Content** — `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `AuthenticationActions` (uses ApprovalActions split buttons for one-time decisions and per-site/relay-only connected-sites remembered choices), `ApprovalActions` (shared approve/reject split buttons with optional per-choice labels and approval-menu context; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Checkbox` (native selection control with theme accent and keyboard focus), `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `RawEventButton` (code-icon trigger and raw-data dialog composed from Modal, IconButton and TextBlock), `AuthenticationActions` (uses ApprovalActions split buttons for one-time decisions and per-site/relay-only connected-sites remembered choices), `ApprovalActions` (shared approve/reject split buttons with optional per-choice labels and approval-menu context; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Checkbox` (native selection control with theme accent and keyboard focus), `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
 **Feedback** — `Spinner`, `ScreenReaderStatus`.
 
@@ -535,7 +535,7 @@ clipboard action rather than a choice, despite having similarly named fields.
 content, including the shared box surface for encrypted messages. `DetailDisclosure`
 owns collapsed raw text/JSON sections with a native keyboard-accessible summary
 and a bounded, selectable preformatted body. It escapes content as text and is
-also reused by the activity item dialog. `TextBlock` preserves full escaped content, line breaks and selectable scrolling.
+used for inline event tags. `RawEventButton` handles complete event JSON in activity and approval dialogs. `TextBlock` preserves full escaped content, line breaks and selectable scrolling.
 Native `time` and the shared text block’s `pre` retain their semantics; decryption and vault-lock clearing remain in the detail view.
 
 `ActivityGroupDetail` and every kind-specific event preview compose shared UI
@@ -566,7 +566,7 @@ nested buttons. The welcome action uses the standard default button.
 ### Shared editor lifecycles
 
 `ImageEditorButton` owns the cover/avatar editing affordance and standard shapes.
-`ProfileSummary` is shared by profile confirmation and kind-0 event review.
+`ProfileSummary` is shared by profile confirmation, kind-0 event review and compact message sender rows.
 `useObjectUrl` owns local preview allocation and revocation on file/scope changes
 and unmount; remote image URLs still pass through URL validation.
 
@@ -719,7 +719,7 @@ appearance until the user changes it. See [palette sources](theme-handoff.md).
 
 Event detail uses the bottom placement for short content, grows upward to the popup height, then scrolls only its body while the title and decisions stay visible. Authentication event detail keeps the full event in a shared `Modal` opened by the bottom-right Show raw event code icon. Menu options use the same shared `ActionMenu` keyboard/focus behavior as ordinary approvals.
 
-`MessageRequestDetail` inside EventDetailModal renders pending encrypt/decrypt review without the redundant EventPreview heading. It uses cache-first ProfileSummary in compact mode, a click-to-reveal message surface using useTimedReveal with a 30-second lifetime, and a code-icon DetailDisclosure popup for raw request data. DetailDisclosure supports `onOpenChange` for loading sensitive content on demand. Compact ProfileSummary shows only the avatar/name, with the peer key shown only as a fallback when no profile is available. Message details are separated from the request explanation by a themed top border, use From for incoming messages, and label the message body Content.
+`MessageRequestDetail` inside EventDetailModal renders pending encrypt/decrypt review without the redundant EventPreview heading. It uses cache-first ProfileSummary in compact mode, a click-to-reveal message surface using useTimedReveal with a 30-second lifetime, and a `RawEventButton` popup for raw request data. RawEventButton supports `onOpenChange` for loading sensitive content on demand. Compact ProfileSummary shows only the avatar/name, with the peer key shown only as a fallback when no profile is available. Message details are separated from the request explanation by a themed top border, use From for incoming messages, and label the message body Content.
 
 Grouped message approvals use sender avatar/name headings and per-message sent dates (or Date unavailable when the decrypt API supplies no date). Message review has one shared error location outside Advanced; display the actual RPC failure rather than repeating an unavailable fallback. After local NIP-17 Reveal, refresh the cached profile using the seal author, fetching missing metadata through the shared profile RPC with directory mode. Show a loading hint while fetching and the public-key fallback if no profile is available.
 
@@ -735,6 +735,25 @@ Authentication grants use compact tables scoped to the active account, with per-
 
 Approval intent sentences use text-secondary with text-brand emphasis for host, action and app, parsed from trusted localized templates before inserting literal event values. Grouped summaries have no numbering/native marker and use a bottom-right chevron. Private-message review omits the redundant site/action sentence. Raw-event icons have hover titles and accessible labels, while native details retain keyboard toggling. Sender avatars reuse Avatar with safe URL/fallback handling.
 
-`DetailDisclosure` keeps native inline details for text labels. Its `iconOnly` mode uses IconButton and a portalled Modal with a scrollable body, Escape/backdrop/close dismissal and focus restoration. Raw JSON is mounted only while the popup is open. Message reveal and its expiry still control sensitive plaintext inside an open raw popup.
+`DetailDisclosure` always renders native inline details. `RawEventButton` explicitly opens a portalled Modal, reusing IconButton and TextBlock with a scrollable body, Escape/backdrop/close dismissal and focus restoration. Raw JSON is mounted only while the popup is open. Message reveal and its expiry still control sensitive plaintext inside an open raw popup.
 
 Permissions uses the active account directly, without a second account selector. Site authentication grants appear below the ordinary permission sections, followed by a link to a separate all-sites relay grant popup. Shared relay grants are no longer shown in Relays settings. The published NIP-65 configuration is opened from its labelled button in a shared Modal; discovery status, read/write flags, retry and applying the published list remain inside that popup. Local relay editing stays on the settings panel.
+
+
+`usePublicProfile` shares cache-first public metadata reads between message details
+and grouped sender headings. Its `lookup` option controls directory requests:
+temporary NIP-44 wrapper keys are never sent to the directory before the decoded
+sender is known. `publicProfile`, `profileDisplayName` and `freshProfileEntry` in
+`src/domain/profile/publicProfile.ts` validate display fields and cache freshness.
+Both ProfileSummary layouts prefer nonblank display_name, then name; compact mode
+uses the shared small avatar/name row. Profile storage changes refresh the hook,
+and obsolete async replies cannot replace a newer sender.
+
+The background display cache maintains a serialized `publicProfileIndexV1` of
+profile keys and fetched timestamps, expiring entries after 30 minutes and keeping
+at most 500. A missing index triggers one legacy migration scan; routine reads
+load only the bounded index and requested profile. Pruning never reads or removes
+unrelated values. Targeted disk reads and storage-change invalidation prevent
+removed profiles from surviving as positive in-memory answers. Future timestamps
+and malformed metadata are rejected. This cache stores public metadata only;
+message plaintext remains in the timed reveal state.
