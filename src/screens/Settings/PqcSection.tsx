@@ -53,6 +53,16 @@ function PqcSection(_props: unknown, ref: React.Ref<PqcSectionHandle>) {
   // (`isAlreadyPublished`) stays here in `@domain/pqc/pqcState.ts`'s exports; the
   // context only supplies the data.
   const { status, published: existing, error, refresh } = usePqc();
+  // Entering this panel is the deliberate network refresh; home only reads cache.
+  useEffect(() => {
+    if (!status?.canDerive || !status.pubkey) return;
+    let cancelled = false;
+    void rpc('pqc_checkPublished').then(() => {
+      if (!cancelled) return refresh();
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [status?.canDerive, status?.pubkey, status?.keys?.kem, status?.keys?.dsa, refresh]);
+
   const attestationCopy = useCopy();
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [publishing, setPublishing] = useState<boolean>(false);

@@ -291,3 +291,45 @@ it('changing the wizard account retires the old check before account creation', 
   assert.deepEqual(added, [currentAccount]);
  } finally { await view.close(); }
 });
+
+it('PQ home reads only cached evidence; entering settings refreshes once and account changes refresh the new identity', async t => {
+ resetMockStorage();
+ const { AccountProvider } = await import('../src/context/AccountContext');
+ const { PqcProvider, usePqc } = await import('../src/context/PqcContext');
+ const { default: PqcSection } = await import('../src/screens/Settings/PqcSection');
+ const { PQC_HOW_SEEN_KEY } = await import('../src/constants/pqc');
+ const accounts = ['a', 'b'].map(id => ({ id, pubkey: id.repeat(64), name: id, type: 'generated' }));
+ await browser.storage.local.set({ accounts, activeAccountId: 'a', [PQC_HOW_SEEN_KEY]: true });
+ const reads: { cached: boolean; account: string }[] = [];
+ let current = accounts[0];
+ let confirmed = false;
+ t.mock.method(browser.runtime, 'sendMessage', async (message: { method: string; params?: { cachedOnly?: boolean } }) => {
+  if (message.method === 'pqc_getStatus') return { result: { pubkey: current.pubkey, canDerive: true, canImport: false, source: 'derived', reason: null, wordCount: 24, keys: { kem: current.id, dsa: current.id }, attestation: null } };
+  if (message.method === 'pqc_checkPublished') {
+   reads.push({ cached: message.params?.cachedOnly === true, account: current.id });
+   if (!message.params?.cachedOnly) confirmed = true;
+   return { result: confirmed ? { published: true, current: true } : null };
+  }
+  return { result: null };
+ });
+ function Probe() {
+  const { published } = usePqc();
+  return createElement('output', null, published?.published ? 'published' : 'unknown');
+ }
+ const view = await mount();
+ const render = (settings: boolean) => view.render(createElement(AccountProvider, null, createElement(PqcProvider, null, createElement(Probe), settings ? createElement(PqcSection) : null)));
+ try {
+  await render(false);
+  assert.equal(document.querySelector('output')?.textContent, 'unknown');
+  assert.ok(reads.length > 0);
+  assert.ok(reads.every(read => read.cached));
+  await render(true);
+  assert.equal(reads.filter(read => !read.cached).length, 1);
+  assert.equal(document.querySelector('output')?.textContent, 'published');
+  await render(true);
+  assert.equal(reads.filter(read => !read.cached).length, 1, 'rerender must not repeat network reads');
+  current = accounts[1]; confirmed = false;
+  await act(async () => { await browser.storage.local.set({ activeAccountId: 'b' }); });
+  assert.deepEqual(reads.filter(read => !read.cached).map(read => read.account), ['a', 'b']);
+ } finally { await view.close(); }
+});

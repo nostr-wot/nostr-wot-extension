@@ -32,7 +32,7 @@ import { derivePqKeys, popMessage, signPop, parsePqKeyfile } from '../../lib/cry
 import { ALG_KEM, ALG_DSA, PQ_PROFILE } from '@constants/crypto/pq.ts';
 import { signEvent } from '../../lib/crypto/nip01.ts';
 import { broadcastEvent } from './publish-handlers.ts';
-import { cachedRelayRead, seedRelayCache, clearRelayCache } from '../relays/relayCache.ts';
+import { cachedRelayRead, readRelayCache, seedRelayCache, clearRelayCache } from '../relays/relayCache.ts';
 import { PQC_PUBLISHED_CACHE } from '@constants/relays.ts';
 import { writeLocalCache } from '../relays/relay.ts';
 import { readPublishedEvent } from '../relays/readPublishedEvent.ts';
@@ -347,10 +347,13 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
    * Answered by querying relays rather than a local flag, so it stays correct when the
    * attestation was published from another device — or when it was never really accepted.
    */
-  ['pqc_checkPublished', async () => {
+  ['pqc_checkPublished', async (params) => {
     const status = (await handlers.get('pqc_getStatus')!({})) as PqcStatus;
     if (!status.canDerive || !status.pubkey) return { published: false, current: false };
     const pubkey = status.pubkey;
+    if (params.cachedOnly === true) {
+      return (await readRelayCache(PQC_PUBLISHED_CACHE, pubkey))?.value ?? null;
+    }
 
     // Served from the last real answer so the home card paints immediately; the
     // relays are asked behind and `storage.onChanged` corrects it. An

@@ -21,6 +21,9 @@ and [relay authentication](docs/guides/relay-authentication.md).
 
 ### Reliability and contributor guidance
 
+- Keep PQ publication reads on the home popup entirely local, including empty and stale caches. Refresh relay evidence when the PQ settings panel is opened; preserve account isolation and unknown status.
+- Clarify the extension description and reorganize the README around installation, first use, features and support. Keep release details in this changelog and technical guides in the documentation index.
+
 - Verify NWC payment preimages against the requested invoice payment hash. Treat mismatched success responses as unknown outcomes and preserve replay protection.
 - Resolve equal-timestamp replaceable events using the lower event ID consistently across relay arrivals and cached published lists.
 - Cancel obsolete unlock and dialog callbacks, clean up wheel timers, and guard abandoned wizard steps while preserving profile drafts and activity pagination.

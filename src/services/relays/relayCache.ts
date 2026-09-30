@@ -41,6 +41,15 @@ export function cacheKey(name: string, pubkey: string): string {
   return `${RELAY_CACHE_PREFIX}${name}_${pubkey}`;
 }
 
+/** Read stored evidence without starting or refreshing any network operation. */
+export async function readRelayCache<T>(name: string, pubkey: string): Promise<CachedAnswer<T> | null> {
+  const key = cacheKey(name, pubkey);
+  try {
+    const stored = await browser.storage.local.get(key) as Record<string, CachedAnswer<T>>;
+    return stored[key] ?? null;
+  } catch { return null; }
+}
+
 /** In-flight refreshes, so N popup opens in a row do not start N queries. */
 const inFlight = new Map<string, Promise<unknown>>();
 const revisions = new Map<string, number>();
@@ -66,11 +75,7 @@ export async function cachedRelayRead<T extends MaybeUnreachable>(
 ): Promise<T> {
   const key = cacheKey(name, pubkey);
 
-  let cached: CachedAnswer<T> | undefined;
-  try {
-    const stored = await browser.storage.local.get(key) as Record<string, CachedAnswer<T>>;
-    cached = stored[key];
-  } catch { /* storage unavailable — fall through to a live read */ }
+  const cached = await readRelayCache<T>(name, pubkey);
 
   // A storage notification causes the popup to read this value again. Without
   // this freshness check that read launches another refresh, whose fetchedAt

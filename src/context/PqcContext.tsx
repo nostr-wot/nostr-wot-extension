@@ -68,7 +68,7 @@ export function PqcProvider({ children }: PqcProviderProps) {
           return;
         }
 
-        const nextPublished = await rpc<PqcPublished>('pqc_checkPublished').catch(() => null);
+        const nextPublished = await rpc<PqcPublished | null>('pqc_checkPublished', { cachedOnly: true }).catch(() => null);
         if (!isCurrent()) return;
         patch(previous => ({ published: mergePqcPublished(previous.published, nextPublished) }));
       },
@@ -79,9 +79,8 @@ export function PqcProvider({ children }: PqcProviderProps) {
     patch(previous => mergePqcStatus(previous, next));
   }, [patch]);
 
-  // The published check is served from the background's cache
-  // (services/relays/relayCache.ts) so the popup paints without a relay round trip;
-  // this picks up the answer once the background finishes refreshing it. Runs
+  // Home reads local publication evidence only. The settings panel starts the
+  // relay check explicitly; storage changes deliver its answer to every consumer. Runs
   // through the same run-versioned `refresh` as the mount effect, so this can
   // overlap an account-switch read in flight without the slower one winning.
   useStorageWatch([{ area: 'local', keys: [`${RELAY_CACHE_PREFIX}${PQC_PUBLISHED_CACHE}_${active?.pubkey}`] }], refresh);

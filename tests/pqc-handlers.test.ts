@@ -531,3 +531,29 @@ it('refuses attestation publication after switching away and back during relay r
     await vault.destroy();
   }
 });
+
+it('home publication reads never open sockets, including missing and stale account caches', async () => {
+  const { cacheKey } = await import('../src/services/relays/relayCache.ts');
+  const { PQC_PUBLISHED_CACHE } = await import('../src/constants/relays.ts');
+  resetMockStorage();
+  const acct = await createFromMnemonic(M24, 'Main');
+  await vaultWith(acct);
+  const original = globalThis.WebSocket;
+  let opened = 0;
+  globalThis.WebSocket = class {
+    constructor() { opened++; throw new Error('home must not query relays'); }
+  } as unknown as typeof WebSocket;
+  const read = () => handlers.get('pqc_checkPublished')!({ cachedOnly: true });
+  try {
+    assert.equal(await read(), null, 'unknown remains unknown');
+    await browserMock.storage.local.set({
+      [cacheKey(PQC_PUBLISHED_CACHE, 'b'.repeat(64))]: { value: { published: true, current: true }, fetchedAt: 1 },
+    });
+    assert.equal(await read(), null, 'another account cannot supply the answer');
+    await browserMock.storage.local.set({
+      [cacheKey(PQC_PUBLISHED_CACHE, acct.pubkey)]: { value: { published: true, current: false }, fetchedAt: 1 },
+    });
+    assert.deepEqual(await read(), { published: true, current: false });
+    assert.equal(opened, 0);
+  } finally { globalThis.WebSocket = original; await vault.destroy(); }
+});

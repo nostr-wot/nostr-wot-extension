@@ -558,3 +558,7 @@ only lint output.
 ```sh
 node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/hooks-lifecycle.test.ts
 ```
+
+PQ publication regressions cover socket-free home reads with missing/stale caches,
+account isolation, and a mounted home-to-settings transition with account switching
+in `tests/pqc-handlers.test.ts` and `tests/hooks-lifecycle.test.ts`.
