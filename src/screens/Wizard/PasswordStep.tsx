@@ -1,7 +1,7 @@
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import StatusNotice from '@components/StatusNotice';
-import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
@@ -27,6 +27,8 @@ interface PasswordStepProps {
 
 export default function PasswordStep({ account, upgradeId, onNext }: PasswordStepProps) {
   const pair = usePasswordPair();
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
   const [autoLockMs, setAutoLockMs] = useState<number>(DEFAULT_AUTO_LOCK_MS); // 15 min default
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -62,30 +64,38 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   });
 
   useEffect(() => {
+    let current = true;
+    setVaultExists(null);
+    setNeedsUnlock(false);
     void (async () => {
       try {
         const exists = await rpc<boolean>('vault_exists');
+        if (!current) return;
         if (!exists) { setVaultExists(false); return; }
         // Vault blob exists but may have no accounts (user removed all)
         // In that case, treat as new vault so user can set auto-lock
         const data: any = await browser.storage.local.get(['accounts']);
+        if (!current) return;
         const accts = data.accounts || [];
         if (accts.length === 0) { setVaultExists(false); return; }
 
         // Vault exists with accounts — auto-add without showing UI, if the
         // vault is open or can be opened without a password.
-        if (!(await isVaultOpen(rpc))) { setNeedsUnlock(true); setVaultExists(true); return; }
+        const open = await isVaultOpen(rpc);
+        if (!current) return;
+        if (!open) { setNeedsUnlock(true); setVaultExists(true); return; }
         // Vault unlocked — add account and proceed
         await rpc('onboarding_addToVault', {
           account,
           upgradeFromReadOnly: upgradeId || null,
         });
-        onNext(!!upgradeId);
+        if (current) onNextRef.current(!!upgradeId);
       } catch {
-        setVaultExists(false);
+        if (current) setVaultExists(false);
       }
     })();
-  }, []);
+    return () => { current = false; };
+  }, [account, upgradeId]);
 
   const isNever = autoLockMs === 0;
 

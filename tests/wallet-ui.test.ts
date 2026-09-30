@@ -513,9 +513,10 @@ it('approval sheet separates current-request approval from remembered permission
     assert.equal(button('approval.alwaysAllowLabel'),undefined,'remembered permission is behind the arrow');
     assert.ok(dom.window.document.querySelector('[aria-label="approval.approveOptions"]'));
     const card=Array.from(dom.window.document.querySelectorAll('button')).find(b=>b.textContent?.includes('https://site.test'));
-    assert.ok(card, 'pending group is rendered');
-    const approve=button('approval.approveOnce')!;
-    assert.ok(approve.compareDocumentPosition(card) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
+    assert.equal(card, undefined, 'a single request skips the queue card');
+    assert.match(dom.window.document.body.textContent!, /https:\/\/site.test/, 'requesting site remains visible in detail');
+    assert.ok(!dom.window.document.body.textContent!.includes('approval.pendingRequests'));
+    assert.equal(button('approval.rejectAll'), undefined);
     await act(async()=>button('approval.approveOnce')!.click());
     assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[{id:'one',decision:{allow:true,remember:false}}]);
     assert.equal(calls.filter(c=>c.method==='signer_savePermission'||c.method==='signer_resolveBatch').length,0);
@@ -539,7 +540,7 @@ it('approval sheet separates current-request approval from remembered permission
         assert.deepEqual(calls.find(c=>c.method==='signer_resolveBatch')?.params,{origin:'https://site.test',permKey:'signEvent:1',decision:{allow:false,remember:false}});
         assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:1',decision:'deny',accountId:account.id});
       } else {
-        await act(async()=>button('approval.rejectAll')!.click());
+        await act(async()=>button('approval.deny')!.click());
         assert.deepEqual(calls.find(c=>c.method==='signer_resolve')?.params,{id:'reject',decision:{allow:false,remember:false}});
         assert.equal(calls.some(c=>c.method==='signer_savePermission'),false);
       }
@@ -1105,4 +1106,18 @@ it('app connections list, secret reveal and confirmed revocation use account-sco
   await click('wallet.appsNew');assert.equal(dom.window.document.querySelectorAll('input').length,3);
   assert.ok([...dom.window.document.querySelectorAll('button')].find(b=>b.textContent==='wallet.appsCreate')!.disabled);
  } finally {await act(async()=>root.unmount());dom.window.close();for(const[k,d]of previous){if(d)Object.defineProperty(globalThis,k,d);else Reflect.deleteProperty(globalThis,k);}}
+});
+
+it('pending requests share one site heading while keeping permission groups separate',async()=>{
+ const {default:SiteList}=await import('../src/screens/Approval/ApprovalSiteList');
+ const make=(origin:string,id:string,permKey:string)=>({origin,method:'signEvent',permKey,requests:[{id,origin,type:'signEvent',permKey,timestamp:1,eventKind:1}]});
+ const groups=[make('https://a.test','one','signEvent:1'),make('https://b.test','two','signEvent:1'),make('https://a.test','three','signEvent:2')];
+ const html=renderToStaticMarkup(createElement(SiteList,{groups,onSelect(){},onCancel(){}}));
+ const {JSDOM}=await import('jsdom');const dom=new JSDOM(html);
+ const sections=dom.window.document.querySelectorAll('[data-approval-site]');
+ assert.equal(sections.length,2);assert.equal(sections[0].getAttribute('data-approval-site'),'https://a.test');
+ assert.equal(sections[0].querySelectorAll('button').length,2);assert.equal(sections[1].querySelectorAll('button').length,1);
+ assert.equal(sections[0].querySelectorAll('h3').length,1);
+ assert.equal(sections[0].textContent!.split('https://a.test').length-1,1);
+ dom.window.close();
 });

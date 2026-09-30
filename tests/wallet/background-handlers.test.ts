@@ -388,20 +388,20 @@ const { DEFAULT_LNBITS_URL } = await import('@constants/wallet.ts');
   const walletName = `WoT:${npub.slice(0, 16)}`;
 
   // Mock signFn — returns a fake signed event (real handler uses vault.getPrivkey + signEvent)
-  const signFn = async (challenge: string) => ({
+  const signFn = async ({challenge,payload,transaction}: import('../../src/services/wallet/lnbits-provision.ts').WalletAuthProof) => ({
     id: 'test-event-id',
     pubkey: acct.pubkey,
     created_at: Math.floor(Date.now() / 1000),
     kind: 27235 as const,
-    tags: [['challenge', challenge], ['u', url]],
+    tags: [['challenge', challenge], ['u', url], ['payload',payload], ['transaction',transaction]],
     content: '',
     sig: 'test-sig',
   });
 
-  // Mock fetch — returns challenge on GET, provision response on POST
-  const mockFetch = async (_url: string, init?: RequestInit) => {
-    if (!init?.method || init.method === 'GET') {
-      return new Response(JSON.stringify({ challenge: 'test-challenge-hex' }), { status: 200 });
+  // Mock fetch — v2 challenge and operation both use POST
+  const mockFetch = async (_url: string, _init?: RequestInit) => {
+    if (_url.endsWith('/challenge')) {
+      return new Response(JSON.stringify({version:2,challenge:'a'.repeat(64),transactionToken:'b'.repeat(64),expiresAt:Math.floor(Date.now()/1000)+60}), { status: 200 });
     }
     return new Response(JSON.stringify({
       id: 'prov-wallet-id', adminkey: 'prov-admin-key', inkey: 'prov-inkey',
@@ -1729,4 +1729,22 @@ it('NWC setup authenticates before replacing the saved wallet and cancels on loc
   vault.lock(); await vault.unlock(TEST_PASSWORD);
   assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig, config);
   assert.deepEqual(peer.errors, []);
+});
+
+it('the real wallet signer includes body and transaction hashes and retains account-session protection', async () => {
+  const vault=await import('../../src/services/vault/vault');
+  const {createNip98SignFn}=await import('../../src/services/background/wallet-handlers');
+  const {signEvent,verifyEvent}=await import('../../src/lib/crypto/nip01');
+  const key=new Uint8Array(32);key[31]=1;
+  const identity=await signEvent({kind:1,created_at:1,content:'',tags:[]},key);
+  try {
+    await vault.create('test-password',{activeAccountId:'audit-wallet',accounts:[{id:'audit-wallet',name:'Test',type:'nsec',pubkey:identity.pubkey,privkey:Buffer.from(key).toString('hex'),mnemonic:null,nip46Config:null,readOnly:false,createdAt:1}]});
+    const sign=createNip98SignFn('audit-wallet','https://WALLET.TEST:443/api/v2/provision');
+    const proof={challenge:'a'.repeat(64),payload:'b'.repeat(64),transaction:'c'.repeat(64)};
+    const event=await sign(proof);assert.equal(await verifyEvent(event),true);
+    assert.deepEqual(event.tags.find(tag=>tag[0]==='u'),['u','https://wallet.test/api/v2/provision']);
+    for(const [name,value] of Object.entries(proof)) assert.deepEqual(event.tags.find(tag=>tag[0]===name),[name,value]);
+    await assert.rejects(sign({...proof,payload:'bad'}),/Invalid/);
+    vault.lock();await assert.rejects(sign(proof),/locked/i);
+  } finally {vault.lock();key.fill(0);}
 });

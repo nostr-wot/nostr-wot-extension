@@ -46,3 +46,6 @@ keys.json
 /nostr-wot-reviewer-notes-*.txt
 /nostr-wot-SHA256SUMS-*.txt
 /SHA256SUMS
+
+# Isolated package staging directories
+.package-*/

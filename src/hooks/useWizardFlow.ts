@@ -7,6 +7,8 @@ import {
 } from '@domain/wizard/wizardMachine.ts';
 import type { WizardState, WizardAction, WizardOptions, WizardContext } from '@domain/wizard/wizardMachine.ts';
 
+const NON_PERSIST_STEPS = ['lang', 'welcome', 'method', 'done'];
+
 interface UseWizardFlowOptions {
   initialStep?: string;
   skipLang?: boolean;
@@ -80,7 +82,6 @@ export default function useWizardFlow({
 
   // Persist state changes (persist mode only, after initial restore).
   // Only save mid-flow steps — entry points and terminal steps clear storage.
-  const NON_PERSIST_STEPS = ['lang', 'welcome', 'method', 'done'];
   useEffect(() => {
     if (!persist || loading) return;
     if (NON_PERSIST_STEPS.includes(state.step)) {

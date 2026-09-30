@@ -4,6 +4,22 @@
 
 A browser extension for Nostr that manages your identity, signs events, and sends Lightning payments — all without leaving your browser. It is a [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md) signer, an encrypted key vault, a built-in Lightning/WebLN wallet, and a manager for your profile, mute list, and relays.
 
+## Authentication protections in 0.8.7
+
+Version 0.8.7 separates permission to use your identity on a website from
+permission to authenticate it to a particular backend or relay. HTTP approvals
+bind the exact URL and method to the requesting site and account. Relay approvals
+can cover one site or, explicitly, all connected sites for that account and relay.
+Browser-derived origin checks reject authentication from embedded frames; remote
+signatures must match the event you approved.
+
+Two community guides explain the controls, examples, compatibility and limits:
+
+- **[Backend authentication: know which API you are authenticating to](docs/guides/backend-authentication.md)** — separate API domains, exact endpoint consent, native wallet transactions, and what CORS cannot guarantee.
+- **[Relay authentication: choose which relays can authenticate your account](docs/guides/relay-authentication.md)** — NIP-42, all-sites relay grants, revocation, and connection-challenge responsibilities.
+
+See the [changelog](CHANGELOG.md) for the complete 0.8.7 changes.
+
 ## Features
 
 ### Identity & Key Management
@@ -22,7 +38,7 @@ Signing requests show a permission prompt. Grant access once, per-domain, per-me
 
 ### Encrypted Vault
 
-Your private keys never leave the extension. They're encrypted at rest with **AES-256-GCM** (PBKDF2-SHA-256, 600,000 iterations) and only decrypted in memory when the vault is unlocked. An auto-lock timer clears everything after 15 minutes of inactivity (configurable, or set to "never"). Key bytes are zeroed immediately after each signing operation.
+Locally managed identity keys are encrypted at rest with **AES-256-GCM** and PBKDF2-SHA-256 (600,000 iterations for password-protected vaults). Scoped operations zero their temporary key bytes; JavaScript cannot guarantee erasure of every copy. Auto-lock defaults to 15 minutes. **Never lock** uses an empty-password vault and provides no meaningful password protection. NIP-46 accounts keep their identity key at the remote signer; wallet connections carry separate spending credentials. See [Security](SECURITY.md) for custody and lock limits.
 
 ### Lightning Wallet & Zaps
 
@@ -58,7 +74,8 @@ Switch between multiple identities. Each account has its own permissions, wallet
 
 - Allow or block sites from accessing your identity
 - Disable identity on specific sites
-- Manage signing permissions per domain. Permissions can be **shared across all accounts** (the default) or **isolated per account**.
+- Manage ordinary signing permissions per domain. These can be **shared across all accounts** (the default) or **isolated per account**.
+- Authentication permissions remain tied to the approving account. Review and revoke them at the bottom of Permissions, including a separate popup for all-sites relay grants.
 
 ### Experimental Web of Trust
 
@@ -75,8 +92,8 @@ later by anyone who archived it — the damage is already accruing.
 The extension derives **ML-KEM-1024** and **ML-DSA-87** keys ([FIPS 203] / [FIPS 204]) from
 the same 24-word seed phrase your Nostr key comes from. Crucially they are derived as
 *siblings* of the secp256k1 key, never *from* it: recovering your Nostr private key reveals
-nothing about the seed, so messages encrypted to your post-quantum key stay confidential
-permanently. One mnemonic still restores everything — nothing extra to back up.
+nothing about the seed, so recovering the secp256k1 key alone does not recover those post-quantum keys.
+Confidentiality still depends on the algorithms, implementation and endpoint security. One mnemonic still restores everything — nothing extra to back up.
 
 Open **Menu → Security → Post-quantum key** to see your keys and copy a ready-to-publish
 `kind:10203` attestation. Or generate one offline:
@@ -96,8 +113,9 @@ npm run pqc:keygen -- --independent --keyfile keys.json
 The extension validates the file by round trip — encapsulate/decapsulate for ML-KEM, sign/verify for ML-DSA — rather than trusting its lengths, then signs and publishes the attestation with the account's own key. The generator is [`scripts/pqc-keygen.mjs`](scripts/pqc-keygen.mjs), and the panel links to it so you can read the source before running it. An imported key is **not** recoverable from your seed phrase: back up the key file separately, or the messages sent to it become permanently unreadable.
 
 **What this does not do:** it does not stop a quantum adversary forging events in your
-name — events are still signed with secp256k1. It makes *past* messages permanently
-confidential, which is the only half of the problem that cannot be fixed after the fact.
+name — events are still signed with secp256k1. The hybrid encryption path is intended to protect archived ciphertext against a future
+attack on classical key agreement. It does not promise permanent confidentiality or protect
+plaintext on compromised endpoints.
 
 Message cost, measured on the full `kind:1059` gift wrap:
 
@@ -152,7 +170,9 @@ Two things we cannot verify from this repository, and therefore do not claim: th
 
 Every cryptographic operation resolves to one of seven packages from the [noble/scure](https://paulmillr.com/noble/) family, plus `nostr-tools` for NIP-46 protocol plumbing. Nothing is vendored, forked, or patched — every file in `src/lib/crypto/` is a thin wrapper over an imported implementation, so what ships is what was published upstream.
 
-`package.json` uses caret ranges; the exact versions below are held by the committed `package-lock.json` (lockfileVersion 3, a sha512 integrity hash on every entry, everything resolved from registry.npmjs.org), and CI installs with `npm ci`, which fails on any lockfile mismatch. **That lockfile is the pin — build with `npm ci`, not `npm install`.** No runtime dependency runs an install-time script.
+`package.json` declares version ranges; the exact versions below are held by the committed `package-lock.json` (lockfileVersion 3, a sha512 integrity hash on every entry, everything resolved from registry.npmjs.org), and CI installs with `npm ci`, which fails on any lockfile mismatch. **That lockfile is the pin — build with `npm ci`, not `npm install`.** No runtime dependency runs an install-time script.
+
+The lockfile protects anyone who installs with it, including a plain `npm install`. The declared ranges are a separate promise — that the code works with anything they admit — and that promise is what a second CI job (`crypto-latest-deps`) checks, by installing with the lockfile ignored and re-running the crypto, vault, signer and transport suites. It has caught two real breakages: a `@noble/hashes` release that raised scrypt's internal memory accounting and broke every NIP-49 encrypted-key backup, and a `nostr-tools` release whose WebSocket error handler recursed until the stack was gone. See [docs/testing.md § Dependency ranges](docs/testing.md#dependency-ranges).
 
 | Package | Version | Role | Deps |
 |---|---|---|---|
@@ -165,17 +185,13 @@ Every cryptographic operation resolves to one of seven packages from the [noble/
 | `@noble/post-quantum` | 0.6.1 | ML-KEM-1024, ML-DSA-87 (FIPS 203/204) | 3 |
 | `nostr-tools` | 2.23.3 | NIP-46 bunker / nostr-connect protocol only | 7 (6 dedupe to the rows above) |
 
-**Why these.** `@scure/bip39`, `@scure/bip32`, `@scure/base` and `@noble/hashes` were audited
-by Cure53 in January 2022, funded by the Ethereum Foundation and Nomic Labs ([report](https://cure53.de/pentest-report_hashing-libs.pdf)). `@noble/curves` has three independent audits: Trail of Bits at v0.7.3 ([report](https://github.com/trailofbits/publications/blob/master/reviews/2023-01-ryanshea-noblecurveslibrary-securityreview.pdf)) — the only one whose scope covers the secp256k1/weierstrass code this extension actually uses — Kudelski Security at v1.2.0, and Cure53 at v1.6.0, funded by OpenSats ([report](https://cure53.de/audit-report_noble-crypto-libs.pdf)), whose scope is ed25519/bls rather than secp256k1. `@noble/ciphers` is covered by that same 2024 Cure53 report. Every other JS option we considered (crypto-js, hash.js, elliptic) is unaudited, heavier, or both.
-
-One caveat that applies to the whole family, stated plainly because it is easy to gloss over: **the audits above cover earlier versions than what is installed.** The 2.x line is a post-audit major revision. "Audited" here means an earlier version was audited, not that these exact bytes were.
-
-**`@noble/post-quantum` has no independent audit at all.** Its own README says so: "The library has not been independently audited yet … at version 0.6.1 it was audited by ourselves (self-audited)", and "There is no protection against side-channel attacks." We use it anyway, and the reasons are these rather than optimism: no independently audited pure-JS ML-KEM/ML-DSA implementation exists today; it is the reference JS implementation, from the same author and process as the audited packages, tested against NIST ACVP vectors; and the post-quantum keys are derived *from* the BIP-39 seed through the audited `@noble/hashes` HKDF, so a flaw here cannot weaken the seed or your secp256k1 identity. Post-quantum encryption is additive to the classical path, never a replacement — the hybrid envelope key requires breaking **both** ML-KEM-1024 and secp256k1 ECDH. We track [upstream](https://github.com/paulmillr/noble-post-quantum) and will move when an independently audited release lands.
-
-**`nostr-tools`** (by fiatjaf, the Nostr creator) is used only for the NIP-46 remote-signer
-protocol and implements no cryptography of its own in our bundle: its crypto dependencies dedupe to the audited noble/scure versions above, and its optional `nostr-wasm` accelerator is verified absent from the built `dist/`. The lockfile's integrity hash is the control here.
-
-The remaining runtime dependencies are `qrcode-generator` (zero dependencies, renders QR codes locally) and React for the popup UI. Neither touches a key. `npm audit --omit=dev` reports **0 vulnerabilities**; the advisories `npm audit` does report are all in build and test tooling.
+The dependencies are bundled at build time. Noble/Scure provide the cryptographic
+primitives; `nostr-tools` supplies NIP-46 protocol plumbing. React, React DOM,
+`tailwind-merge` and `qrcode-generator` support the UI. Dependency audits and upstream
+security reviews have version-specific scope and do not certify this extension or every
+locked package. Run `npm audit` against the current lockfile rather than relying on a
+historic advisory count. See [cryptography](docs/crypto.md) and [security](SECURITY.md)
+for the implementation and post-quantum limitations.
 
 ## Install
 
@@ -185,7 +201,7 @@ The remaining runtime dependencies are `qrcode-generator` (zero dependencies, re
 
 **Manual:**
 1. Clone this repo
-2. `npm install && npm run build`
+2. Use Node 24.15+ in 24.x (recommended), 22.22.2+ in 22.x, or 26+; run `npm ci && npm run build`
 3. Go to `chrome://extensions`, enable "Developer mode"
 4. Click "Load unpacked" and select the `dist/` folder
 
@@ -197,17 +213,24 @@ The remaining runtime dependencies are `qrcode-generator` (zero dependencies, re
 
 ## Privacy
 
-- All identity and configuration data stays in your browser (encrypted vault + local storage)
-- Relay and profile data is fetched from the relays you configure
-- **No tracking, no analytics, no telemetry**
+- Local keys and wallet configuration are stored in the encrypted vault; public settings/caches use browser storage and IndexedDB.
+- Features transmit the data they need: signed events to relays, requests/credentials to the configured wallet, remote-signing content to the selected signer, and public WoT queries to a configured oracle.
+- Icon requests disclose site domains to Google's favicon service; avatar uploads and profile/image fetching also use network services.
+- The extension implements no tracking analytics or telemetry. See [data destinations](docs/deployment.md#data-transmission-and-consent) for the complete disclosure categories.
 
 ## Documentation
 
+- [Backend Authentication Guide](docs/guides/backend-authentication.md) — Website/API boundaries and native wallet protections
+- [Relay Authentication Guide](docs/guides/relay-authentication.md) — Consent scopes, identity and revocation
+- [Wallet Authentication v2](docs/wallet-auth-v2.md) — Exact client/backend wire contract and rollout
+
 - [Architecture Reference](docs/architecture.md) — Technical deep dive into the extension's internals
+- [NWC Protocol](docs/nwc-protocol.md) — Encryption, response verification and payment outcome limits
 - [Wallet & Lightning](docs/wallet.md) — Wallet providers, WebLN API, auto-provisioning, permissions
 - [Cryptography](docs/crypto.md) — Primitives, key derivation, and post-quantum keys
 - [`@nostr-wot/pq`](https://github.com/nostr-wot/nostr-wot-sdk/tree/main/packages/pq) — The post-quantum wire format and reference library
-- [Contributing](CONTRIBUTING.md) — How to contribute to the project
+- [Contributing](CONTRIBUTING.md) — Development setup, issues and pull requests
+- [Code of Conduct](CODE_OF_CONDUCT.md) — Community standards and reporting
 - [Security](SECURITY.md) — Security model and vulnerability reporting
 - [Deployment](DEPLOY.md) — Building and publishing to browser stores
 - [Changelog](CHANGELOG.md) — Version history

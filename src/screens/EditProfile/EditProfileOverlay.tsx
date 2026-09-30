@@ -56,10 +56,16 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   const [previewMeta, setPreviewMeta] = useState<ProfileMetadata | null>(null);
   const [error, setError] = useState<string>('');
 
-  // Pre-fill from cachedProfile on open
+  // Seed only on open/account change. A background cache refresh must not
+  // overwrite the draft or cancel an in-progress upload.
+  const cachedProfileRef = useRef(cachedProfile);
+  cachedProfileRef.current = cachedProfile;
+
+  // Pre-fill from the current cachedProfile on open
   useEffect(() => {
     operation.current++;
     if (!visible) return;
+    const cachedProfile = cachedProfileRef.current;
     if (cachedProfile) {
       setName(cachedProfile.name || cachedProfile.display_name || '');
       setAbout(cachedProfile.about || '');

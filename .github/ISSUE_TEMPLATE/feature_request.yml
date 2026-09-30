@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a focused improvement.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Who needs this and what cannot they do today? Link related issues.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-visible result, relevant NIPs and browsers. Avoid secrets or private account data.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing features, workarounds or other approaches.
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Privacy, permissions and compatibility
+      description: Note new network destinations, permissions, signing/payment authority or migration requirements, if applicable.

@@ -1,6 +1,7 @@
 import { UNLOCK_FAILURES_PER_LOCKOUT as LOCKOUT_THRESHOLD } from '@constants/vault.ts';
 import { UNLOCK_LOCKOUT_STEPS_MS as LOCKOUT_DURATIONS } from '@constants/vault.ts';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import useAsyncScope from '@hooks/useAsyncScope';
 import { rpc } from '@services/rpc.ts';
 
 interface VaultUnlockMessages {
@@ -48,7 +49,14 @@ let _failCount = 0;
 let _lockedUntil = 0;
 
 export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOptions = {}): UseVaultUnlockResult {
-  const msg = messages ? { ...DEFAULT_MESSAGES, ...messages } : DEFAULT_MESSAGES;
+  const { enterPassword, wrongPassword, unlockFailed, lockedOut } = messages || {};
+  const msg = useMemo(() => ({
+    enterPassword: enterPassword ?? DEFAULT_MESSAGES.enterPassword,
+    wrongPassword: wrongPassword ?? DEFAULT_MESSAGES.wrongPassword,
+    unlockFailed: unlockFailed ?? DEFAULT_MESSAGES.unlockFailed,
+    lockedOut: lockedOut ?? DEFAULT_MESSAGES.lockedOut,
+  }), [enterPassword, wrongPassword, unlockFailed, lockedOut]);
+  const scope = useAsyncScope();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -73,6 +81,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
   }, [lockedUntil, msg.lockedOut]);
 
   const reset = useCallback((): void => {
+    scope.invalidate();
     setPassword('');
     setLoading(false);
     // Preserve lockout state — only clear error if not locked out
@@ -82,7 +91,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
     } else {
       setLockedUntil(_lockedUntil);
     }
-  }, []);
+  }, [scope]);
 
   const focus = useCallback((): void => {
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -97,6 +106,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
     }
 
     if (!password) { setError(msg.enterPassword); return false; }
+    const current = scope.start();
     setLoading(true);
     setError('');
     try {
@@ -104,6 +114,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
       if (ok) {
         _failCount = 0;
         _lockedUntil = 0;
+        if (!current()) return false;
         setPassword('');
         setLockedUntil(0);
         onSuccess?.();
@@ -113,21 +124,23 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
         const duration = getLockoutDuration(_failCount);
         if (duration > 0) {
           _lockedUntil = Date.now() + duration;
-          setLockedUntil(_lockedUntil);
-        } else {
+          if (current()) setLockedUntil(_lockedUntil);
+        } else if (current()) {
           setError(msg.wrongPassword);
         }
-        inputRef.current?.select();
+        if (current()) inputRef.current?.select();
         return false;
       }
     } catch (e: unknown) {
-      setError((e as Error).message || msg.unlockFailed);
-      inputRef.current?.select();
+      if (current()) {
+        setError((e as Error).message || msg.unlockFailed);
+        inputRef.current?.select();
+      }
       return false;
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
-  }, [password, onSuccess, msg]);
+  }, [password, onSuccess, msg, scope]);
 
   return { password, setPassword, error, setError, loading, lockedUntil, inputRef, unlock, reset, focus };
 }

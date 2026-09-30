@@ -73,23 +73,25 @@ On `save()` and `reEncrypt()`, memory format is serialized back to JSON via `toS
 
 ## 3. Private Key Handling
 
-`vault.getPrivkey()` returns a **copy** of the private key as `Uint8Array(32)` -- `new Uint8Array(acct.privkeyBytes)`. The caller MUST zero the returned array after use with `privkey.fill(0)` in a `try/finally` block. Because it's a copy, the caller's `fill(0)` does not affect the vault's internal state.
+`vault.withPrivkey(accountId, fn)` is how production code reaches a private key. It hands a **copy** of the key to `fn` and zeroes that copy in a `finally`, so an early return or a throw cannot skip it. Because it's a copy, the zeroing does not affect the vault's internal state.
 
 ```ts
-const privkey = vault.getPrivkey();
-if (!privkey) throw new Error('No private key');
-try {
-    return await cryptoSignEvent(event, privkey);
-} finally {
-    privkey.fill(0);
-}
+const accountId = vault.getActiveAccountId();
+if (!accountId) throw new Error('Vault is locked');
+return vault.withPrivkey(accountId, async privkey => cryptoSignEvent(event, privkey));
 ```
 
-The same try/finally discipline applies in `src/domain/accounts/creation.ts` and the vault handlers:
+Two rules go with it:
+
+- **The scope covers the crypto and nothing else.** Sign inside it, broadcast and write storage outside it. Holding the key across a relay round trip or a storage write keeps it in the heap for the length of an operation that has no use for it, and it also keeps every side effect downstream of the value the scope returns.
+- **The key is not re-encoded on the way in or out.** `nsecEncode` and `ncryptsecEncode` take the raw bytes, because a hex string cannot be overwritten: `bytesToHex(privkey)` would leave a second copy of the key in the heap until the garbage collector got to it.
+
+`vault.getPrivkey()` still exists and returns a copy with "CALLER MUST ZERO" attached. It is the primitive `withPrivkey` is built on, and the tests exercise it directly; new production code uses the scoped accessor instead, because the guarantee is only as good as each call site's memory and at least one call site had already forgotten it.
+
+The same discipline applies in `src/domain/accounts/creation.ts`, which does not go through the vault:
 
 - `createFromMnemonic` / `createFromMnemonicAtIndex` / `importFromMnemonicDerived` zero the 64-byte BIP-39 seed (`mnemonicToSeed` result) and the derived privkey `Uint8Array` in a `finally` block — only the hex copy on the returned `Account` survives.
 - `importNsec` zeroes the decoded `privkeyBytes` after deriving the pubkey.
-- `vault_exportNsec` wraps its `privkeyBytes.fill(0)` in `finally` so a throw inside `nsecEncode` cannot skip zeroing.
 
 ---
 
@@ -209,11 +211,11 @@ independently generated key instead.
 ## 9. Rate Limiting
 
 - **Per-origin pending-request cap** (`src/services/signing/approvalQueue.ts`): an origin may have at most 5 actionable signer prompts pending at once (`MAX_PENDING_PER_ORIGIN`). Further `queueRequest` calls from that origin throw `Too many pending requests from this origin`, blunting popup-spam / DoS from a connected tab. NIP-46 in-flight tracking entries and unlock markers are exempt (they need no user action); resolving prompts frees capacity.
-- **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 600,000 iterations (~600ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----srclibvaultts).
+- **`vault_unlock`** is protected by the privilege gate (only callable from extension pages), PBKDF2's 600,000 iterations (~600ms per attempt), and the persisted background-side failed-attempt lockout described in [§1 Brute-force protection](#1-vault----srcservicesvaultvaultts).
 
 ### 9b. Permission Resolution Is Deny-Wins
 
-`permissions.check()` consults the kind-specific key, the method-level key, and the `*` wildcard. An explicit `deny` at ANY of those levels short-circuits to `deny` — a kind-specific or wildcard `allow` can never override a `deny` at another level. When no level denies, the most specific defined value wins. See [signer.md §5](signer.md#5-permission-cascade----srclibpermissionsts).
+`permissions.check()` consults the kind-specific key, the method-level key, and the `*` wildcard. An explicit `deny` at ANY of those levels short-circuits to `deny` — a kind-specific or wildcard `allow` can never override a `deny` at another level. When no level denies, the most specific defined value wins. See [signer.md §5](signer.md).
 
 ### 9c. Pending Onboarding TTL
 
@@ -307,6 +309,8 @@ Kind-23195 NWC responses are only trusted when all of the following hold:
 3. The content decrypts successfully with the connection secret.
 4. The response identifies the pending request's method through `result_type`;
    its result and required field shapes validate before success is reported.
+5. A successful `pay_invoice` preimage is 32 bytes and its SHA-256 hash matches
+   the payment hash decoded from the original requested BOLT11 invoice.
 
 The pending-request entry is only deleted after a verified, decryptable
 response arrives — an injected garbage event can no longer consume the pending
@@ -314,14 +318,15 @@ slot and drop the wallet's real response (previously a response-DoS vector).
 `make_invoice` amounts are validated before conversion sats → millisatoshis.
 Malformed tags and verification exceptions are ignored. An authenticated response
 with an invalid payload rejects the request rather than reporting success.
-Published payments without a trustworthy final outcome raise
+A missing or mismatched preimage, or an invoice whose payment hash cannot be
+decoded, does not establish failure after publication. Published payments without a trustworthy final outcome raise
 `PAYMENT_OUTCOME_UNKNOWN`; LNURL intent replay remains blocked with a persistent
 unknown marker. Neither socket reconnection nor timeout retries a payment.
 Capability discovery verifies wallet authors/signatures, uses the newest info
 event before EOSE, and prefers NIP-44 v2. Missing info permits legacy NIP-04;
 explicit unsupported schemes do not silently downgrade. Late info cannot change
 the selected cipher. Sequential relay fallback is limited to connection setup,
-never a published payment. See [NWC audit](nwc-audit.md) for coverage and limits.
+never a published payment. See [NWC protocol](nwc-protocol.md) for coverage and limits.
 
 ---
 
@@ -470,7 +475,7 @@ accounts, which each retain the mnemonic in the encrypted vault. Removing all
 accounts carrying that seed removes its stored account copies from this extension;
 it does not revoke identities or erase external backups.
 
-### September 2026 audit remediation (A1–A7)
+### Account sessions, request bounds and wallet transport
 
 Every signing/crypto operation captures an account ID and vault session revision.
 Lock, account changes (including A → B → A), account removal and wallet configuration
@@ -512,7 +517,7 @@ ingress cap and algorithm-specific encoded limits before decoding. Activity rete
 is capped at 256 KiB per entry, 4 MiB total and 2,000 entries, in addition to the
 200-per-domain limit. Activity and wallet display records use a separate encrypted store whose key is protected by the vault; these retention limits apply to their decrypted contents.
 
-### Follow-up hardening
+### Metadata and origin boundaries
 
 Safe account RPC responses use an explicit metadata allowlist, excluding wallet and remote-signer credentials; only dedicated background accessors retrieve them. Page permissions bind to scheme, hostname and port, and existing hostname grants retain their prior scope and continue without reconnection or reapproval. LNURL payment policy requires exact integer-msat equality and adds no metadata-hash requirement beyond current LUD-06; description-only invoices remain supported. GitHub Actions are pinned to verified commits and use contents:read. See [payment policy](payment-hardening.md), [origin migration](origin-permissions.md), and [safe account data](safe-account-data.md).
 
@@ -544,7 +549,7 @@ automatic refresh requires separate consent and runs only for the active account
 
 Experimental WoT locally decrypts the active account’s private mute list when available. It does not persist or transmit the plaintext list. Score queries can reveal mute decisions indirectly; the opt-in notice discloses this. See `wot.md` for incomplete-list and oracle-path limitations.
 
-The popup-only score explanation and database inventory/management RPCs are not part of the website WoT surface. Per-type remembered approval choices reuse existing origin, permission and account/global scoping; clicking an ordinary Approve/Reject action never saves a standing rule. See [the 0.8.0 audit](audits/2026-09-20.md) and [WoT proposal privacy semantics](../nips/wot/02-scoring-and-data.md).
+The popup-only score explanation and database inventory/management RPCs are not part of the website WoT surface. Per-type remembered approval choices reuse existing origin, permission and account/global scoping; clicking an ordinary Approve/Reject action never saves a standing rule. See [WoT implementation](wot.md) and [WoT proposal privacy semantics](../nips/wot/02-scoring-and-data.md).
 
 ## Follow-list replacement confirmation
 
@@ -585,3 +590,63 @@ only as bounded plain display text, never as payment proof or executable markup.
 
 NWC app grants use locally generated, encrypted secrets bound to the account and wallet; privileged RPCs validate the current session. Explicit server revocation is separate from local wallet disconnect.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+### Initial theme handoff
+
+The manifest's `https://nostr-wot.com/*` host permission supports a first-install
+lookup of an open official download page. Only its validated built-in `theme`
+parameter reaches onboarding; arbitrary origins, CSS, duplicate parameters and
+custom palettes are rejected. No referral information is stored or sent, and this
+path cannot grant signing, identity, wallet or account permissions. Existing saved
+themes and accounts are preserved. See [Theme handoff](theme-handoff.md).
+
+## Authentication origin and destination boundaries
+
+Both page message ingress paths derive identity from the browser's sender, ignoring page-supplied origins and frame claims. NIP-98 (27235) and NIP-42 (22242) signing additionally require a verified top-level frame (`frameId === 0`), an HTTPS document (exact loopback development exceptions), a nonopaque origin, and consistency between browser `sender.origin` and document URL when supplied. Subframes are refused even if they share the parent's origin or embed a previously trusted client. Content scripts remain top-frame-only and the bridge rejects messages whose source is another window.
+
+Origin identifies the **requesting document**, not whichever tab happens to become active later. Browser ports are document-bound; this does not cancel all already-dispatched work after navigation. Same-origin code executing in the top-level page (including XSS or a script the client loads) shares that origin's authority. An external page cannot gain that authority merely by posting a message or embedding the client.
+
+Destination consent and strict event validation are described in [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42). Generic signing grants, registry matches, shared-account defaults and NIP-46 delegation cannot bypass HTTP (including same-origin) or relay consent. A relay-wide grant explicitly extends identification authority to every connected site for that account and relay. It never applies to HTTP auth. Destination-specific remembered rejections override allowances and are scoped to the current account and requesting site (plus HTTP method when present). The queue validates the account session before persisting a rejection, and the signer rechecks it before local or remote signing.
+
+`signer_getAuthenticationGrants` and `signer_revokeAuthenticationGrant` are internal extension RPCs, automatically included in privileged-method gating. No additional browser permissions are requested.
+
+### Approval and profile lifecycle
+
+Key scopes zero temporary bytes on success and failure; they do not themselves
+revoke operations. Signer, wallet, export and publication callers retain explicit
+account-session checks. Backend/relay authentication also rechecks site identity
+access after waiting for unlock. Publication checks include the session revision
+(to catch switching away and back) and the actual WebSocket `onopen` send boundary.
+A request already transmitted cannot be recalled; signed-event caches remain
+keyed by the event's public key. Key exports reject stale results after encoding.
+
+Pending-message reveal is an internal extension review capability bound to an existing request ID and its account session. It neither approves nor replies to the website request. The full message is retained only by the worker callback and the active review UI, never serialized into pending-request storage. Preview RPCs are part of the privileged handler registry, with pre/post account checks and post-await request-lifetime checks.
+
+NIP-17 pending previews unwrap only on explicit Reveal. They verify the signed kind-13 seal before using its sender key, reject a rumor whose author differs, and retain the captured account-session and pending-request guards. Missing sender profiles can be queried from purplepag.es only using only a public kind:0 author filter; message contents are never part of the query. NIP-44 lookup waits until Reveal identifies the sender. Profile signatures are verified by the existing reader. The page receives the original requested decryption result only after normal approval.
+
+Grouped pending-message metadata is decoded locally to identify NIP-17 senders and sent dates. Only sender/date leave the worker in metadata-only mode; plaintext stays behind explicit timed reveal. Public profiles are fetched from purplepag.es through verified kind:0 reads. The shared public-profile cache expires after 30 minutes and keeps at most 500 newest fetched entries, with serialized pruning/writes. User-requested profile avatars may load the profile's safe HTTP(S) image URL; this is separate from the directory metadata query.
+
+
+### Endpoint scope and returned-event integrity
+
+HTTP grants bind the requesting origin, account, exact resource URL (including
+query bytes) and method. Legacy origin-wide allows require consent again; legacy
+denies remain effective. An optional origin/client-origin tag must equal the
+browser-derived requesting origin, but is not attestation. Client/backend registry
+entries are explanatory only and never grant permission.
+
+Remote signer results are verified against the approved immutable event snapshot:
+expected account public key, signature, kind, timestamp, content and ordered tags.
+Substitution is rejected before returning a result to the website. Missing tags
+and timestamps are normalized before review, not after approval.
+
+Native wallet mutations use [wallet authentication v2](wallet-auth-v2.md): exact
+body and URL binding, a separate transaction token, and server-side atomic nonce
+consumption. CORS is an additional browser boundary, not a replacement for proof
+validation or protection against arbitrary server-to-server forwarding.
+
+Public profile storage uses a bounded timestamp index. Legacy storage is scanned
+once to build it; subsequent lookups read the index and requested profile. Expired,
+future-dated and evicted entries are excluded, and storage changes invalidate UI
+and worker caches. Raw-event dialogs share one explicit component; they do not
+change signing or reveal permissions.

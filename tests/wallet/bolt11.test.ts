@@ -5,6 +5,9 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { bech32 } from '@scure/base';
+import { createHash } from 'node:crypto';
+import { makeNwcInvoice } from '../helpers/nwc-invoice.ts';
 import { decodeBolt11 } from '../../src/domain/wallet/bolt11.ts';
 
 // ── Known BOLT11 test vectors from BOLT-11 spec ──
@@ -107,5 +110,38 @@ describe('decodeBolt11', () => {
     assert.ok(decoded);
     assert.ok(decoded.paymentHash);
     assert.equal(decoded.paymentHash!.length, 64); // 32 bytes = 64 hex chars
+  });
+});
+
+
+describe('payment hash proof boundary', () => {
+  const digest = createHash('sha256').update(Buffer.from('ab'.repeat(32), 'hex')).digest();
+  const hash = bech32.toWords(digest);
+  const other = bech32.toWords(new Uint8Array(32).fill(42));
+  const invoice = (...fields: number[][]) => bech32.encode('lnbc2500u', [
+    ...Array(7).fill(0),
+    ...fields.flatMap(words => [1, Math.floor(words.length / 32), words.length % 32, ...words]),
+    ...Array(104).fill(0),
+  ], 2000);
+
+  it('extracts the unique payment hash with the exact 52-word encoding', () => {
+    assert.equal(decodeBolt11(makeNwcInvoice())?.paymentHash, digest.toString('hex'));
+  });
+  for (const [name, fields] of [
+    ['conflicting hashes', [hash, other]],
+    ['reversed conflicting hashes', [other, hash]],
+    ['repeated identical hashes', [hash, hash]],
+  ] as const) it(`rejects ${name} instead of choosing a payment proof`, () => {
+    assert.equal(decodeBolt11(invoice(...fields)), null);
+  });
+  for (const length of [0, 51, 53]) it(`rejects a ${length}-word payment hash, including before a valid hash`, () => {
+    const malformed = Array(length).fill(0);
+    assert.equal(decodeBolt11(invoice(malformed)), null);
+    assert.equal(decodeBolt11(invoice(malformed, hash)), null);
+  });
+  it('rejects nonzero padding in the payment hash', () => {
+    const badPadding = [...hash];
+    badPadding[51] |= 1;
+    assert.equal(decodeBolt11(invoice(badPadding)), null);
   });
 });

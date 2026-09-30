@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import ActionMenu from '@components/ActionMenu';
 import Button from '@components/Button';
@@ -8,32 +9,37 @@ type Action = () => void | Promise<void>;
 interface ApprovalChoice {
     value: string;
     label: string;
+    allowLabel?: string;
+    denyLabel?: string;
     onAlwaysAllow?: Action;
     onAlwaysDeny?: Action;
 }
 
 /** Shared decisions for both the pending sheet and its event detail view. */
-export default function ApprovalActions({ choices, requestCount, busy, onApprove, onReject, placement = 'below' }: {
-    choices: ApprovalChoice[]; requestCount: number; busy: boolean;
+export default function ApprovalActions({ choices, requestCount, rejectCount = requestCount, busy, onApprove, onReject, placement = 'below', approveLabel, rejectLabel, approveDescription }: {
+    choices: ApprovalChoice[]; requestCount: number; rejectCount?: number; busy: boolean;
     onApprove?: Action; onReject?: Action;
     placement?: 'above' | 'below';
+    approveDescription?: ReactNode;
+    approveLabel?: string;
+    rejectLabel?: string;
 }) {
     if (!requestCount) return null;
     const actions = [
         {key:'approve',label:requestCount === 1 ? 'approval.approveOnce' : 'approval.approveShown',options:'approval.approveOptions',always:'approval.alwaysAllowLabel',run:onApprove,remember:'onAlwaysAllow' as const,variant:'primary' as const},
-        {key:'reject',label:'approval.rejectAll',options:'approval.rejectOptions',always:'approval.alwaysDenyLabel',run:onReject,remember:'onAlwaysDeny' as const,variant:'danger' as const},
+        {key:'reject',label:rejectCount === 1 ? 'approval.deny' : 'approval.rejectAll',options:'approval.rejectOptions',always:'approval.alwaysDenyLabel',run:onReject,remember:'onAlwaysDeny' as const,variant:'danger' as const},
     ];
     return <Container variant="row" gap={4} className="shrink-0 justify-end">
         {actions.map(action => <Container key={action.key} variant="row" className="relative min-w-0">
             <Button variant={action.variant} outline={action.key === 'reject'} small disabled={busy || !action.run}
                 segment="start" onClick={() => { void action.run?.(); }}>
-                {t(action.label)}
+                {(action.key === 'approve' ? approveLabel : rejectLabel) || t(action.label)}
             </Button>
-            <ActionMenu label={t(action.options)} placement={placement} anchorToParent matchAnchorWidth
+            <ActionMenu description={action.key === 'approve' ? approveDescription : undefined} label={t(action.options)} placement={placement} anchorToParent matchAnchorWidth
                 disabled={busy || !choices.some(choice => choice[action.remember])} tone={action.key === 'reject' ? 'danger' : 'neutral'}
-                options={choices.filter(choice => choice[action.remember]).map(({value, label}) => ({
+                options={choices.filter(choice => choice[action.remember]).map(({value, label, allowLabel, denyLabel}) => ({
                     value,
-                    label: t(action.always, {label}),
+                    label: (action.key === 'approve' ? allowLabel : denyLabel) || t(action.always, {label}),
                 }))}
                 onSelect={async value => {
                     const selected = choices.find(choice => choice.value === value);

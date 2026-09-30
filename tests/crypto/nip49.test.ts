@@ -1,7 +1,8 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { encrypt as ntEncrypt, decrypt as ntDecrypt } from 'nostr-tools/nip49';
 import { ncryptsecEncode, ncryptsecDecode } from '../../src/lib/crypto/nip49.ts';
-import { hexToBytes } from '../../src/lib/crypto/utils.ts';
+import { hexToBytes, bytesToHex } from '../../src/lib/crypto/utils.ts';
 import { bech32Encode, bech32Decode, convertBits } from '../../src/lib/crypto/bech32.ts';
 
 const TEST_PRIVKEY_HEX = '3501454135014541350145413501453fefb02227e449e57cf4d3a3ce05378683';
@@ -92,6 +93,28 @@ describe('NIP-49 v2 (scrypt + XChaCha20-Poly1305)', () => {
     );
   });
 
+  // The export handler runs inside `vault.withPrivkey`, which owns the key bytes and
+  // zeroes them. Handing those bytes straight to the encoder is the point: building a
+  // hex string on the way in would leave a second copy of the key in the heap that
+  // nothing can overwrite, because a string cannot be zeroed.
+  it('encrypts the key given as bytes, and leaves the caller\'s array alone', async () => {
+    const privkey = hexToBytes(TEST_PRIVKEY_HEX);
+    const encoded = await ncryptsecEncode(privkey, 'testpass');
+
+    assert.ok(encoded.startsWith('ncryptsec1'));
+    assert.strictEqual(await ncryptsecDecode(encoded, 'testpass'), TEST_PRIVKEY_HEX,
+      'bytes in must give the same key back out');
+    assert.strictEqual(bytesToHex(privkey), TEST_PRIVKEY_HEX,
+      'the array is borrowed: zeroing it here would blank the scope\'s key underneath it');
+  });
+
+  it('rejects a byte array that is not 32 bytes', async () => {
+    await assert.rejects(
+      () => ncryptsecEncode(new Uint8Array(16), 'testpass'),
+      /Invalid private key length/
+    );
+  });
+
   it('rejects non-ncryptsec bech32 strings', async () => {
     await assert.rejects(
       () => ncryptsecDecode('nsec1invalid', 'testpass'),
@@ -120,6 +143,53 @@ describe('NIP-49 v2 (scrypt + XChaCha20-Poly1305)', () => {
       () => ncryptsecDecode(bogus, 'testpass'),
       /Unsupported scrypt cost/
     );
+  });
+});
+
+/**
+ * Every other test in this file decodes with our own decoder, so a systematic encoder
+ * error — a wrong offset, the AAD omitted, the password normalized differently — would
+ * round-trip happily and pass all of them. The one spec vector only exercises decode.
+ *
+ * `nostr-tools` ships an independent NIP-49 implementation and is already a dependency,
+ * so the other direction is cheap to check. A backup is the artefact that has to be
+ * readable by software that is not this extension, years from now.
+ */
+describe('NIP-49 interoperability with an independent implementation', () => {
+  it('writes an ncryptsec that nostr-tools can decrypt', async () => {
+    const encoded = await ncryptsecEncode(TEST_PRIVKEY_HEX, 'correct horse battery staple');
+    assert.strictEqual(bytesToHex(ntDecrypt(encoded, 'correct horse battery staple')), TEST_PRIVKEY_HEX);
+  });
+
+  it('reads an ncryptsec that nostr-tools wrote', async () => {
+    const foreign = ntEncrypt(hexToBytes(TEST_PRIVKEY_HEX), 'hunter2', 16, 0x02);
+    assert.strictEqual(await ncryptsecDecode(foreign, 'hunter2'), TEST_PRIVKEY_HEX);
+  });
+
+  it('reads every key_security_byte the spec defines', async () => {
+    // 0x00 "has been handled insecurely", 0x01 "has not been", 0x02 "not tracked". The
+    // byte is the AAD, so a decode that succeeds for all three proves the AAD is wired
+    // from the payload rather than assumed to be the 0x02 we always write.
+    for (const ksb of [0x00, 0x01, 0x02] as const) {
+      const foreign = ntEncrypt(hexToBytes(TEST_PRIVKEY_HEX), 'pw', 16, ksb);
+      assert.strictEqual(
+        await ncryptsecDecode(foreign, 'pw'), TEST_PRIVKEY_HEX,
+        `key_security_byte 0x0${ksb} must decode`
+      );
+    }
+  });
+
+  it('reads foreign cost factors either side of the one it writes', async () => {
+    // Other clients choose their own log_n, and the decoder accepts 1..MAX_LOG_N. This
+    // also exercises `scryptMaxMem` at costs the encoder never writes — the bound has to
+    // be right across the whole accepted range, not just at 16.
+    for (const logN of [1, 8, 14, 20]) {
+      const foreign = ntEncrypt(hexToBytes(TEST_PRIVKEY_HEX), 'pw', logN, 0x02);
+      assert.strictEqual(
+        await ncryptsecDecode(foreign, 'pw'), TEST_PRIVKEY_HEX,
+        `foreign log_n ${logN} must decode`
+      );
+    }
   });
 });
 

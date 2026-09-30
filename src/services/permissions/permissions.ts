@@ -1,3 +1,4 @@
+import { revokeAuthenticationGrants } from './authentication.ts';
 import { siteScopes, sitePermissionBucket } from '@domain/site/siteScope.ts';
 import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, DM_SIGN_KINDS } from '@constants/permissions.ts';
 /**
@@ -307,6 +308,7 @@ export async function migrateDmKindsToSendMessages(): Promise<void> {
  * @param accountId - if provided, only clear that account's rules for the domain
  */
 export async function clear(domain?: string, accountId?: string): Promise<void> {
+  await revokeAuthenticationGrants({ origin: domain, accountId });
   if (!domain) {
     await browser.storage.local.remove(STORAGE_KEY);
     invalidateCache();
@@ -336,6 +338,7 @@ export async function clear(domain?: string, accountId?: string): Promise<void> 
  */
 export async function clearAllForDomain(domain: string): Promise<void> {
   if (!domain) return;
+  await revokeAuthenticationGrants({origin:domain});
   await _lock.run(async () => {
     const perms = await load();
     for (const scope of siteScopes(domain)) delete perms[scope];
@@ -351,6 +354,7 @@ export async function clearAllForDomain(domain: string): Promise<void> {
  */
 export async function clearForAccount(accountId: string): Promise<void> {
   if (!accountId || accountId === DEFAULT_BUCKET) return;
+  await revokeAuthenticationGrants({accountId});
   await _lock.run(async () => {
     const perms = await load();
     let changed = false;

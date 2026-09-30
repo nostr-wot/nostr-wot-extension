@@ -1,84 +1,61 @@
-# Security
+# Security policy
 
-## Reporting Vulnerabilities
+## Report a vulnerability privately
 
-If you discover a security vulnerability, please report it privately via GitHub's security advisory feature or by contacting the maintainers directly. Do not open a public issue.
+Use [GitHub's private vulnerability report form](https://github.com/nostr-wot/nostr-wot-extension/security/advisories/new). Do not disclose exploit details in a public issue or pull request.
 
-## Threat Model
+Include the affected extension version or commit, browser and operating system versions, account/provider type, reproduction steps, expected and actual behavior, and the security impact. Use disposable accounts and synthetic invoices when demonstrating a problem. Never include real seed phrases, private keys, passwords, wallet API keys, NWC secrets, or live payment credentials. Coordinate public disclosure with the maintainers through the private report.
 
-The extension handles sensitive cryptographic key material. The security design assumes:
+## Supported versions and scope
 
-- The user's device is not compromised
-- The browser itself is trusted
-- Web pages are untrusted and may be hostile
+Security fixes target the latest published extension release and current development on `main`. Update to the [latest release](https://github.com/nostr-wot/nostr-wot-extension/releases); historical versions do not have a guaranteed backport policy. Reports about older versions are still useful when they identify an issue in current code.
 
-## Key Storage
+Use a browser that receives security updates from its vendor. Chrome/Chromium and Firefox use separate release packages and background runtimes. The source manifest requires Firefox desktop 140+ and Firefox Android 142+; those installation minimums do not mean every older browser release remains safe or supported. Safari uses a separate native wrapper and platform build, not the Chrome archive. Browser-specific testing matters: Node tests cannot establish compatibility or security on every browser. Node is a development/build dependency, not an end-user requirement; see [contributing](CONTRIBUTING.md) and [testing](docs/testing.md).
 
-Private keys are encrypted at rest using **AES-256-GCM**:
+This policy covers the extension's code and its integration boundaries. A relay, remote signer, LNbits instance, NWC wallet, oracle, website, or provisioning server is a separate system. The extension does not establish the security of their deployment, operators, storage, or balances. Report extension-side handling failures here; coordinate vulnerabilities in a separate service with that project's maintainers.
 
-- Password-derived key via **PBKDF2** with SHA-256, **600,000 iterations** (OWASP's recommendation for SHA-256), and a random 32-byte salt
-- Random 12-byte IV per encryption
-- Stored in `browser.storage.local` as base64-encoded salt + IV + ciphertext, alongside the iteration count the record was written with
-- Vaults created before the work factor was raised are re-encrypted at the current count on the next successful unlock, with no action needed
-- "Never lock" vaults are stored under an empty password and stay at 210,000: the password is public, so the work factor protects nothing there, while that KDF runs on every service-worker start
+## Trust assumptions and key custody
 
-Keys are only decrypted in memory when the vault is explicitly unlocked.
+The design assumes a trustworthy browser, operating system, extension installation, and cryptographic random-number generator. Hostile websites, relays and malformed responses are part of the threat model. A compromised device, browser, extension update, or same-origin website script can exceed these boundaries. Site permissions distinguish origins, not individual scripts within an origin.
 
-## Auto-Lock
+Locally generated or imported signing keys are encrypted in the local vault. Normal signing uses them locally and returns a signature, not the private key. Explicit export, backup and reveal actions can disclose secrets to the user; protect those outputs separately.
 
-The vault auto-locks after a configurable period of inactivity (default: 15 minutes). On lock, all decrypted key material and the derived crypto key are set to `null`. On Chrome, service worker termination also clears memory.
+NIP-46 accounts use a configured remote signer that holds the signing key; the extension retains connection credentials. A returned signature must match the expected author and the complete approved event, but this cannot stop a remote signer from using a key it controls independently. External signers and wallet providers have their own key custody and authorization models.
 
-## Private Key Zeroing
+## Vault and memory protection
 
-Every code path that accesses raw private key bytes follows a strict pattern:
+Password-protected vaults use AES-256-GCM with PBKDF2-HMAC-SHA-256 at 600,000 iterations, a random 32-byte salt, and a fresh 12-byte IV per encryption. The stored record carries its work factor; older password-protected records are upgraded on successful unlock. Encryption resists offline access only to the extent that the password remains secret and sufficiently strong.
 
-```js
-const privkey = vault.getPrivkey();
-try {
-    // use privkey
-} finally {
-    privkey.fill(0);
-}
-```
+**“Never lock” uses a known empty password and automatically unlocks on startup.** Its encrypted format and 210,000-iteration KDF do not provide password secrecy against someone who can read the stored vault. Choose a password-protected timed-lock mode when that threat matters.
 
-The `Uint8Array` is zeroed immediately after use, minimizing the window of exposure.
+The default inactivity lock is 15 minutes. Locking invalidates account sessions, clears vault references, zeroes retained secret byte arrays and disposes active wallet/remote-signer sessions. Local key operations use `withPrivkey()` to zero the temporary copy on success or failure. JavaScript strings, garbage-collected copies and browser-managed memory cannot be reliably erased; zeroing is exposure reduction, not a secure-memory guarantee.
 
-## Message Isolation
+Wallet credentials are stored in the encrypted vault and omitted from ordinary account metadata. Privileged settings/export flows can intentionally reveal them. Financial display caches and payment results use encrypted storage protected by the vault; wallet display records are keyed per account, while payment results are keyed by intent ID. Some public metadata, settings and replay-prevention markers remain outside those encrypted records. See [security architecture](docs/security.md) for the storage boundaries.
 
-Three execution contexts with strict boundaries:
+## Website authorization and authentication
 
-| Context | World | Access |
-|---------|-------|--------|
-| `inject.js` | MAIN (page) | Can only `postMessage` to content script |
-| `content.js` | ISOLATED | Validates method names against allowlists before forwarding |
-| `background.js` | Service worker | Handles all business logic, gated by sender verification |
+Content-script method allowlists and background sender checks separate page APIs from privileged extension operations. Page identity comes from browser sender information, not a page-supplied origin. Authentication requires a verified top-level frame and secure origins/transports, with explicit loopback development exceptions.
 
-Web pages cannot directly call background methods. All requests pass through the content script's method allowlist.
+Ordinary signing permissions may be shared across accounts or isolated per account, according to settings. Saved allowances can avoid a new prompt; connecting a site also grants access to the active public identity. Authentication has a separate account-specific gate:
 
-## Privileged Method Gating
+- NIP-98 consent binds the requesting origin, account, exact signed URL including query, and HTTP method, including for same-origin requests. Legacy origin-wide HTTP allowances require new consent; legacy denials retain their scope.
+- NIP-42 consent binds the account and full relay URL. An explicit all-connected-sites grant applies only to that relay and account. The relay must validate the challenge for its actual connection.
+- Optional `origin` and reserved `client-origin` tags must agree with the browser-derived caller. They are signed metadata, **not browser or extension attestation**.
 
-Sensitive operations (vault, permissions, account management, sync, database operations) are restricted to internal extension pages:
+The signer checks event snapshots, permissions and account/session validity around approval and unlock. Remote results also require event equality and signature verification. Generic page signing cannot mint native wallet provisioning or username-mutation tokens for the default `https://zaps.nostr-wot.com` endpoints. See [signer behavior](docs/signer.md) and the [backend](docs/guides/backend-authentication.md) and [relay](docs/guides/relay-authentication.md) guides.
 
-```js
-const isInternal = sender.id === browser.runtime.id && !sender.tab;
-```
+These checks do not make a backend trustworthy or force it to validate tokens correctly. A holder of fresh authentication material can forward it to its intended audience; exact URL/body binding, CORS and replay prevention do not prove the holder's identity or prevent all first-use forwarding.
 
-The `!sender.tab` check ensures the message originates from an extension page (popup, onboarding, prompt) and not from a content script running in a web page tab.
+## Wallet outcomes and network privacy
 
-## Per-Account Isolation
+The native wallet v2 flow signs the exact operation-body hash, audience, method, challenge and transaction-token hash. The backend must enforce those bindings and single use. Third-party wallets remain responsible for executing payments and reporting their state.
 
-Signing permissions and wallet configuration are keyed per account. Private keys and wallet secrets (LNbits admin key, NWC connection string) live only inside the AES-256-GCM vault and are stripped from the `SafeAccount` objects handed to the UI. Switching accounts clears any pending signer requests and the getPublicKey approval cooldown so one identity cannot inherit another's in-flight consent.
+NWC responses require the configured wallet's signature, decryption, request correlation and matching result type. A successful payment additionally requires a 32-byte preimage whose SHA-256 matches the requested invoice's payment hash. A malformed or mismatched success remains `PAYMENT_OUTCOME_UNKNOWN`; it is not treated as proof that funds did not move. Published payments are not automatically replayed, and unknown LNURL intents retain replay protection. Inspect wallet history before starting a deliberately new payment.
 
-## NIP-07 Signing Permissions
+Requested operations disclose data to their destinations: wallet providers receive payment requests, remote signers receive delegated operations, and relays or lookup services receive relevant queries/events and network metadata. Encryption of stored credentials or message content does not provide anonymity or eliminate metadata leakage. Public-key identity and activity may be linkable across sites and services.
 
-Signing requests trigger a user-facing prompt window. Users can:
+## Dependencies and cryptographic limits
 
-- Allow or deny individual requests
-- Grant persistent permissions per domain, per method, or per event kind
-- Revoke permissions at any time from the popup
+The extension bundles runtime dependencies, including noble/scure cryptographic libraries, `nostr-tools`, React and other UI packages. It does not implement every primitive itself. Use the committed lockfile and the documented build process; dependency integrity checks and tests do not guarantee a safe supply chain or constitute an independent audit of this extension.
 
-Permission lookup follows a specificity cascade: kind-specific > method-level > domain wildcard > default (ask).
-
-## Dependencies
-
-The extension has **zero external runtime dependencies**. All cryptographic primitives (secp256k1, Schnorr, NIP-04, NIP-44, BIP-32, BIP-39) are implemented in pure JavaScript using the Web Crypto API where available.
+Post-quantum encryption is an opt-in hybrid protocol with separate interoperability and implementation assumptions. It does not retrofit protection onto old classical ciphertext, replace Nostr's secp256k1 event signatures, or guarantee permanent confidentiality. See the [protocol drafts](nips/pqc/README.md) and [security architecture](docs/security.md) for the construction and its limits.

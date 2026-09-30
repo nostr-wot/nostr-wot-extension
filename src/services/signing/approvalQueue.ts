@@ -1,7 +1,9 @@
+import { saveAuthenticationGrant } from '../permissions/authentication.ts';
+import { validAuthenticationScope } from '@domain/signing/authentication.ts';
 import { updateSignerBadge } from './rejections.ts';
 import * as vault from '../vault/vault.ts';
 import browser from '@lib/browser.ts';
-import type { RequestDecision, PendingRequest } from '@domain/signing/types.ts';
+import type { RequestDecision, PendingRequest, PendingRequestPreview } from '@domain/signing/types.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
 import type { SafeAccount } from '@domain/accounts/types.ts';
 import { requestMatchesAccount } from '@domain/permissions/approval.ts';
@@ -15,6 +17,8 @@ import { assertAccountSession, type AccountSession } from './accountSession.ts';
 
 // In-memory resolvers for pending requests (keyed by request ID)
 const _pendingResolvers: Map<string, (decision: RequestDecision) => void> = new Map();
+
+const _pendingPreviews = new Map<string, (reveal: boolean) => Promise<PendingRequestPreview>>();
 
 let _requestCounter: number = 0;
 
@@ -36,6 +40,7 @@ vault.onLock(() => {
   const ids = new Set([..._pendingResolvers.keys(), ..._unlockWaiters.keys(), ..._nip46Aborts.keys()]);
   for (const resolve of _pendingResolvers.values()) resolve({ allow: false, remember: false, reason: 'Vault locked' });
   _pendingResolvers.clear();
+  _pendingPreviews.clear();
   for (const timer of _timeoutTimers.values()) clearTimeout(timer);
   _timeoutTimers.clear();
   for (const waiter of _unlockWaiters.values()) waiter.reject(new Error('Vault locked'));
@@ -90,6 +95,7 @@ export async function onActiveAccountChanged(
 // -- Pending Request Queue --
 
 interface QueueRequestInput {
+  authentication?: PendingRequest['authentication'];
   followReplacementCount?: number;
   followReplacementNewCount?: number;
   type: string;
@@ -106,7 +112,7 @@ interface QueueRequestInput {
   walletAmount?: number;        // For WebLN payment approval
 }
 
-export async function queueRequest(request: QueueRequestInput): Promise<RequestDecision> {
+export async function queueRequest(request: QueueRequestInput, preview?: (reveal: boolean) => Promise<PendingRequestPreview>): Promise<RequestDecision> {
   const revision = lockRevision;
   const id = `req_${crypto.randomUUID()}`;
   const {accountId: activeAccountId} = await getActiveAccountInfo();
@@ -114,6 +120,7 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
 
   // Serialized storage write to prevent concurrent read-modify-write races
   let limitExceeded = false;
+  let decisionPromise: Promise<RequestDecision> | undefined;
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
@@ -130,7 +137,29 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
     }
     assertQueueCapacity(pending, request.origin);
     pending.push(entry);
-    await browser.storage.session.set({ signerPending: pending });
+    decisionPromise = new Promise<RequestDecision>((resolve, reject) => {
+      _pendingResolvers.set(id, resolve);
+      if (preview) _pendingPreviews.set(id, preview);
+
+      const timer = setTimeout(() => {
+        _pendingResolvers.delete(id);
+        _pendingPreviews.delete(id);
+        _timeoutTimers.delete(id);
+        void removePendingFromStorage(id);
+        reject(new Error('Request timed out'));
+      }, SIGNER_REQUEST_TIMEOUT_MS);
+      _timeoutTimers.set(id, timer);
+    });
+    // Storage listeners can render immediately: install capabilities first.
+    void decisionPromise.catch(() => {});
+    try { await browser.storage.session.set({ signerPending: pending }); }
+    catch (error) {
+      _pendingResolvers.delete(id); _pendingPreviews.delete(id);
+      const timer = _timeoutTimers.get(id);
+      if (timer) clearTimeout(timer);
+      _timeoutTimers.delete(id);
+      throw error;
+    }
     // Don't update badge for NIP-46 in-flight (no user action needed)
     if (!request.nip46InFlight) {
       await updateSignerBadge();
@@ -140,28 +169,10 @@ export async function queueRequest(request: QueueRequestInput): Promise<RequestD
     throw new Error('Too many pending requests from this origin');
   }
 
-  // Notify popup (fire-and-forget, popup may not be open)
+  // Opening native UI must not delay registering or returning the decision.
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
-
-  // Auto-open the popup only if the request needs user action and is from the active tab
-  if (!request.nip46InFlight) {
-    await openPopupForActiveTab(request.origin);
-  }
-
-  if (revision !== lockRevision) { await removePendingFromStorage(id); throw new Error('Vault locked'); }
-
-  // Return promise that resolves when popup decides (not used for nip46InFlight)
-  return new Promise((resolve, reject) => {
-    _pendingResolvers.set(id, resolve);
-
-    const timer = setTimeout(() => {
-      _pendingResolvers.delete(id);
-      _timeoutTimers.delete(id);
-      void removePendingFromStorage(id);
-      reject(new Error('Request timed out'));
-    }, SIGNER_REQUEST_TIMEOUT_MS);
-    _timeoutTimers.set(id, timer);
-  });
+  if (!request.nip46InFlight) void openPopupForActiveTab(request.origin);
+  return decisionPromise!;
 }
 
 /**
@@ -216,14 +227,47 @@ async function removePendingFromStorage(id: string): Promise<void> {
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
 }
 
+
+/** Internal popup review: never resolves a request or grants site permission. */
+export async function previewPendingRequest(id: string, reveal: boolean, metadataOnly = false): Promise<PendingRequestPreview> {
+  const preview = _pendingPreviews.get(id);
+  if (!preview || !_pendingResolvers.has(id)) throw new Error('Request preview is no longer available');
+  let result = await preview(metadataOnly ? false : reveal);
+  if (metadataOnly && result.request.method === 'nip44Decrypt') result = await preview(true);
+  if (_pendingPreviews.get(id) !== preview || !_pendingResolvers.has(id)) throw new Error('Request preview is no longer available');
+  if (metadataOnly) {
+    const sentAt = result.decryptedEvent?.created_at;
+    const senderPubkey = result.senderPubkey || result.request.params.pubkey as string | undefined;
+    return {request:{method:result.request.method,origin:result.request.origin,params:{}},messageMetadata:{
+      ...(senderPubkey ? {senderPubkey} : {}),
+      ...(typeof sentAt==='number' && Number.isSafeInteger(sentAt) && sentAt>0 && !Number.isNaN(new Date(sentAt*1000).getTime()) ? {sentAt} : {}),
+    }};
+  }
+  return result;
+}
+
 /**
  * Resolve a single pending request by ID
  * @param id - request ID
  * @param decision - { allow: boolean, remember: boolean, rememberKind?: boolean }
  */
 export async function resolveRequest(id: string, decision: RequestDecision): Promise<void> {
+  if (decision.rememberAuthenticationDeny) {
+    if (decision.allow) throw new Error('Invalid remembered rejection');
+    const revision = vault.getSessionRevision();
+    const request = (await getPending()).find(request => request.id === id);
+    if (!request?.authentication || !request.accountId || !_pendingResolvers.has(id)) throw new Error('Authentication request no longer pending');
+    const session = {accountId:request.accountId,revision};
+    const pubkey = await getActivePublicKey();
+    if (!requestMatchesAccount(request, pubkey ? {id:session.accountId,pubkey} : null)) throw new Error('Account switched');
+    await saveAuthenticationGrant(session.accountId, request.origin, request.authentication, 'site', () => {
+      assertAccountSession(session);
+      if (!_pendingResolvers.has(id)) throw new Error('Authentication request no longer pending');
+    }, 'deny');
+  }
   if (decision.allow) {
     const request = (await getPending()).find(request => request.id === id);
+    if (request?.authentication && !validAuthenticationScope(request.authentication, decision.authenticationScope)) throw new Error('Explicit authentication approval required');
     if (request?.followReplacementCount && !decision.confirmFollowReplacement) throw new Error('Follow-list replacement requires explicit confirmation');
     const {accountId} = await getActiveAccountInfo();
     const idNow = accountId ?? vault.getActiveAccountId();
@@ -234,6 +278,7 @@ export async function resolveRequest(id: string, decision: RequestDecision): Pro
   if (resolver) {
     resolver(decision);
     _pendingResolvers.delete(id);
+    _pendingPreviews.delete(id);
   }
   const timer = _timeoutTimers.get(id);
   if (timer) { clearTimeout(timer); _timeoutTimers.delete(id); }
@@ -253,7 +298,7 @@ export async function resolveRequest(id: string, decision: RequestDecision): Pro
  * @param decision - { allow: boolean, remember: boolean }
  */
 export async function resolveBatch(origin: string, permKey: string, decision: RequestDecision): Promise<void> {
-  const match = (r: PendingRequest) => r.origin === origin && r.permKey === permKey && !(decision.allow && r.followReplacementCount);
+  const match = (r: PendingRequest) => r.origin === origin && r.permKey === permKey && !(decision.allow && (r.followReplacementCount || r.authentication));
   await _lock.run(async () => {
     const data = await browser.storage.session.get('signerPending');
     const pending: PendingRequest[] = (data.signerPending as PendingRequest[] | undefined) || [];
@@ -267,6 +312,7 @@ export async function resolveBatch(origin: string, permKey: string, decision: Re
       if (resolver) {
         resolver(decision.allow && !requestMatchesAccount(req, account) ? {allow:false,remember:false,reason:'Account switched'} : decision);
         _pendingResolvers.delete(req.id);
+        _pendingPreviews.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }
@@ -308,6 +354,7 @@ export async function onVaultUnlocked(): Promise<void> {
       if (resolver) {
         resolver({ allow: true, remember: false });
         _pendingResolvers.delete(req.id);
+        _pendingPreviews.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }
@@ -332,6 +379,7 @@ export async function cleanupStale(): Promise<void> {
   for (const timer of _timeoutTimers.values()) clearTimeout(timer);
   _timeoutTimers.clear();
   _pendingResolvers.clear();
+  _pendingPreviews.clear();
   _unlockWaiters.clear();
   clearGetPubkeyCooldown();
   await _lock.run(async () => {
@@ -367,6 +415,7 @@ export async function rejectPendingForAccount(accountId: string): Promise<void> 
       if (resolver) {
         resolver({ allow: false, reason: 'Account switched' });
         _pendingResolvers.delete(req.id);
+        _pendingPreviews.delete(req.id);
       }
       const timer = _timeoutTimers.get(req.id);
       if (timer) { clearTimeout(timer); _timeoutTimers.delete(req.id); }

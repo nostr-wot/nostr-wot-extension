@@ -29,7 +29,7 @@ export function useAnimatedVisible(visible: boolean, duration: number = 200): Us
       }, duration);
       return () => clearTimeout(timer);
     }
-  }, [visible, duration]);
+  }, [visible, duration, shouldRender]);
 
   return { shouldRender, animating };
 }

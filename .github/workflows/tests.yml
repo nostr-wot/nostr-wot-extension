@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # For crypto-latest-deps only. That job detects upstream releases, which arrive on
+  # their own schedule rather than ours; without this it would fire only on whatever
+  # unrelated pull request happened to come next, and hold that one hostage.
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,6 +18,8 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # The pinned suite has nothing to say on a timer; the lockfile has not moved.
+    if: github.event_name != 'schedule'
 
     strategy:
       matrix:
@@ -29,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Typecheck locked dependencies
+        run: npm run typecheck
+
       - name: Run lint
         run: npm run lint
 
@@ -36,19 +47,128 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Install Chromium for package smoke test
+        run: npx playwright install --with-deps chromium
+
+      - name: Build and smoke-test the Chrome upload ZIP
+        run: npm run package:chrome
+
+      - name: Build and validate the Firefox upload ZIP
+        run: npm run package:firefox
+
       - name: Run crypto tests
         run: node --import tsx --test tests/crypto/*.test.ts
 
       # Mirrors the browser-mocked group in tests/run.sh. It had drifted: several suites
       # that run locally were never gated here, including the post-quantum handlers.
       - name: Run module tests
-        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/nostr-connect-integration.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/wallet/payment-integration.test.ts tests/wallet/nwc-connections.test.ts tests/wallet/payment-intents.test.ts tests/wallet/automatic-payment-budget.test.ts tests/wallet/payment-hardening.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts tests/profile-read.test.ts tests/profile-images.test.ts tests/wot.test.ts tests/wot-sync.test.ts tests/wot-numeric.test.ts tests/wot-relay-transport.test.ts tests/wot-storage.test.ts tests/wallet-ui.test.ts tests/relay-list.test.ts tests/relay-cache.test.ts tests/activity.test.ts tests/activity-decrypt.test.ts tests/activity-detail.test.ts tests/favicon.test.ts tests/vault-auto-unlock.test.ts tests/password-pair.test.ts tests/password-pair-fields.test.ts tests/vault-lock-race.test.ts
+        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/permissions.test.ts tests/domain-handlers.test.ts tests/accounts.test.ts tests/signer.test.ts tests/authentication.test.ts tests/authentication-ui.test.ts tests/message-preview.test.ts tests/message-preview-ui.test.ts tests/nostr-connect-integration.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/communication.test.ts tests/delete-recreate.test.ts tests/wallet/approval.test.ts tests/wallet/permissions.test.ts tests/wallet/background-handlers.test.ts tests/wallet/payment-integration.test.ts tests/wallet/nwc-connections.test.ts tests/wallet/payment-intents.test.ts tests/wallet/automatic-payment-budget.test.ts tests/wallet/payment-hardening.test.ts tests/vault-wallet.test.ts tests/publish-handlers.test.ts tests/pqc-handlers.test.ts tests/profile-read.test.ts tests/profile-display-cache.test.ts tests/public-profile.test.ts tests/hooks-lifecycle.test.ts tests/profile-images.test.ts tests/wot.test.ts tests/wot-sync.test.ts tests/wot-numeric.test.ts tests/wot-relay-transport.test.ts tests/wot-storage.test.ts tests/wallet-ui.test.ts tests/relay-list.test.ts tests/relay-cache.test.ts tests/activity.test.ts tests/activity-decrypt.test.ts tests/activity-detail.test.ts tests/favicon.test.ts tests/vault-auto-unlock.test.ts tests/password-pair.test.ts tests/password-pair-fields.test.ts tests/vault-lock-race.test.ts
         timeout-minutes: 5
 
       - name: Run remaining unit tests
-        run: node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/wallet/lnurl.test.ts tests/inject-webln.test.ts tests/inject-nip44-schemes.test.ts tests/account-import.test.ts tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts tests/safeUrl.test.ts tests/rpc.test.ts tests/active-tab-domain.test.ts tests/i18n-keys.test.ts tests/theme-tokens.test.ts tests/custom-theme.test.ts tests/site-state.test.ts tests/send-target.test.ts tests/approval.test.ts tests/profile-metadata.test.ts tests/tx-filter.test.ts tests/tx-pager.test.ts tests/invoice-expiry.test.ts tests/pqc-state.test.ts tests/permissions-ui.test.ts tests/paged-list.test.ts tests/format-time.test.ts tests/tailwind-classes.test.ts tests/cn.test.ts tests/status-notice.test.ts tests/button.test.ts tests/mute-state.test.ts tests/css-selectors.test.ts tests/test-registration.test.ts
+        run: node --import tsx --test tests/wallet/types.test.ts tests/wallet/lnbits.test.ts tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts tests/wallet/lnbits-provision.test.ts tests/wallet/bolt11.test.ts tests/wallet/lnurl.test.ts tests/inject-webln.test.ts tests/inject-nip44-schemes.test.ts tests/account-import.test.ts tests/wizardMachine.test.ts tests/openPopupForActiveTab.test.ts tests/safeUrl.test.ts tests/rpc.test.ts tests/active-tab-domain.test.ts tests/i18n-keys.test.ts tests/theme-tokens.test.ts tests/custom-theme.test.ts tests/theme-handoff.test.ts tests/site-state.test.ts tests/send-target.test.ts tests/approval.test.ts tests/profile-metadata.test.ts tests/tx-filter.test.ts tests/tx-pager.test.ts tests/invoice-expiry.test.ts tests/pqc-state.test.ts tests/permissions-ui.test.ts tests/paged-list.test.ts tests/format-time.test.ts tests/tailwind-classes.test.ts tests/cn.test.ts tests/status-notice.test.ts tests/button.test.ts tests/mute-state.test.ts tests/css-selectors.test.ts tests/test-registration.test.ts tests/release-package.test.ts tests/chrome-publishing.test.ts tests/auth-client-registry.test.ts tests/remote-signer-integrity.test.ts
         timeout-minutes: 3
 
       - name: Run relay tests
         run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/relay.test.ts
         timeout-minutes: 2
+
+  # The job above runs `npm ci`, so it only ever exercises the versions the lockfile
+  # pins. The lockfile is the pin and it works: a plain `npm install` on a fresh clone
+  # installs the pinned versions too, so this is not about protecting ordinary builds.
+  #
+  # It is about the caret ranges in package.json being a published promise that the code
+  # works with anything they admit. Whoever resolves from the ranges instead of the
+  # lockfile — `npm update`, a clone whose lockfile was dropped, a package manager that
+  # does not read package-lock.json, an automated dependency bump, or another project
+  # reusing src/lib/crypto — gets software we never ran.
+  #
+  # The promise has been broken twice, which is why this job is not speculative:
+  #
+  #   * `nip49.ts` derived scrypt's `maxmem` from the expression @noble/hashes 2.0.1
+  #     validated against. 2.2.0 raised the accounting by one block, `^2.0.1` admitted
+  #     it, and every ncryptsec encode and decode threw. A 2.2.0 copy was already in the
+  #     tree, nested under @noble/post-quantum — never more than a hoist away.
+  #   * nostr-tools 2.25.2 calls close() inside its own WebSocket error handler, which
+  #     recurses until the stack is gone. `^2.23.3` admitted it, so an unreachable relay
+  #     in a NIP-46 bunker list became an uncaught RangeError in the service worker. That
+  #     range is now capped below 2.25.2.
+  #
+  # Both were invisible to `npm ci`. This job floats every range and re-runs the paths
+  # where a library changing behaviour under us does the most damage: crypto, the vault
+  # and signer that consume it, the NIP-46 and NWC transports that live on nostr-tools,
+  # and a build and typecheck so a floated toolchain cannot break the bundle unnoticed.
+  #
+  # Red here means the declared ranges no longer describe working software. Fix the code
+  # to be correct on every admitted version where that is possible — a range we cannot
+  # satisfy is a range we should not be declaring — otherwise narrow the range and say
+  # why, as the nostr-tools cap does. It is deliberately not `continue-on-error`: it is
+  # the only gate that catches a maxmem call-site regression on the pinned versions, and
+  # a build that cannot read its own key backups should not reach a release.
+  #
+  # If it is red for a reason unrelated to the PR in front of you, the fix belongs in its
+  # own commit rather than bolted onto yours; the range-narrowing option exists precisely
+  # so an unrelated change is not held hostage to an upstream release. The weekly
+  # schedule below is meant to make that the uncommon case, by finding breakage on main
+  # before a contributor finds it for us.
+  #
+  # Supply chain: this step deliberately installs unpinned dependencies and runs them.
+  # It is a plain `pull_request`, so forks get no secrets and a read-only token, and the
+  # job uploads nothing — the blast radius of a malicious release is a red job and some
+  # CI minutes. `--ignore-scripts` is not used because esbuild's postinstall places the
+  # binary that tsx needs to run at all.
+  crypto-latest-deps:
+    name: Crypto suites on newest dependencies in range
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # Node 24 for both test execution and JavaScript action runtimes.
+        node-version: [24]
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5 (Node 24)
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5 (Node 24)
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # --no-package-lock resolves from the semver ranges in package.json and neither
+      # reads nor rewrites package-lock.json. Plain `npm install` would NOT do this — it
+      # honours the committed lockfile — and `--no-save` would not either.
+      - name: Install newest dependencies satisfying package.json ranges
+        run: npm install --no-package-lock
+
+      # --all, not --depth=0: the maxmem regression turned on a nested copy of
+      # @noble/hashes, and a top-level-only listing is exactly what hides those.
+      - name: Report resolved versions
+        run: npm ls --all @noble/hashes @noble/curves @noble/ciphers @noble/post-quantum @scure/base @scure/bip32 @scure/bip39 nostr-tools || true
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Run crypto tests
+        run: node --import tsx --test tests/crypto/*.test.ts tests/remote-signer-integrity.test.ts
+        timeout-minutes: 5
+
+      # The vault, signer and key-backup paths are the consumers of src/lib/crypto/,
+      # and the ones a broken KDF bound strands a user in.
+      - name: Run vault, signer and hardening tests
+        run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/vault.test.ts tests/accounts.test.ts tests/signer.test.ts tests/authentication.test.ts tests/authentication-ui.test.ts tests/message-preview.test.ts tests/message-preview-ui.test.ts tests/signer-pq-refusal.test.ts tests/security-hardening.test.ts tests/nostr-connect-integration.test.ts
+        timeout-minutes: 5
+
+      # nostr-tools floats furthest of any runtime dependency and is a protocol library:
+      # NIP-46 remote signing and NWC both sit on it. account-import is grouped here
+      # without the browser mock to match tests/run.sh and the job above.
+      - name: Run transport and import tests
+        run: node --import tsx --test tests/wallet/nwc.test.ts tests/wallet/nwc-integration.test.ts tests/wallet/index.test.ts tests/account-import.test.ts tests/inject-webln.test.ts
+        timeout-minutes: 5
+
+      # These inspect generated assets, so they only mean anything after the build above.
+      - name: Run generated-asset tests
+        run: node --import tsx --test tests/css-selectors.test.ts tests/tailwind-classes.test.ts tests/theme-tokens.test.ts tests/i18n-keys.test.ts
+        timeout-minutes: 3

@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible extension problem.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities, use [private security reporting](https://github.com/nostr-wot/nostr-wot-extension/security/advisories/new), not this public form.
+        Never include seed phrases, nsec keys, NWC connection URIs, API keys, vault exports, authentication tokens or private messages.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched existing issues and removed secrets and private data from this report.
+          required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Extension version, browser/version, OS/version, store or unpacked installation; for source builds include commit and Node/npm versions.
+      placeholder: 'Source builds: Node 24.15+ in 24.x recommended; supported alternatives are 22.22.2+ in 22.x or 26+.'
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal repeatable steps, using a disposable account if possible. Describe lock/account state and relevant wallet type without credentials.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted evidence
+      description: Error text, screenshots, logs or a minimal test. For ambiguous payments, inspect wallet history before trying again; do not send real payments just to reproduce a report.

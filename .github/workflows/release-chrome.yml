@@ -1,0 +1,74 @@
+name: Publish Chrome Web Store
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  actions: read
+
+# One store item: never race uploads, including releases of different versions.
+concurrency:
+  group: chrome-web-store
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.repository == 'nostr-wot/nostr-wot-extension' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5, Node 24
+        with:
+          node-version: 24
+      - name: Resolve published release and require successful CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          gh release view "$RELEASE_TAG" --json isDraft,isPrerelease,tagName > "$RUNNER_TEMP/release.json"
+          jq -e --arg tag "$RELEASE_TAG" '.isDraft == false and .isPrerelease == false and .tagName == $tag' "$RUNNER_TEMP/release.json"
+          commit=$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")
+          git merge-base --is-ancestor "$commit" origin/main
+          gh run list --workflow tests.yml --commit "$commit" --event push --limit 30 --json conclusion,headSha | jq -e --arg commit "$commit" 'any(.[]; .headSha == $commit and .conclusion == "success")'
+          git checkout --detach "$commit"
+          version=$(node -p "require('./package.json').version")
+          [[ "$RELEASE_TAG" == "v$version" ]] || exit 1
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Download and verify the exact release Chrome archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/chrome-release"
+          archive="nostr-wot-chrome-$RELEASE_VERSION.zip"
+          gh release download "$RELEASE_TAG" --pattern "$archive" --pattern SHA256SUMS --dir "$RUNNER_TEMP/chrome-release"
+          cd "$RUNNER_TEMP/chrome-release"
+          # Select exactly one checksum for the exact Chrome filename, never a glob.
+          awk -v name="$archive" '$2 == name || $2 == "*" name {print}' SHA256SUMS > chrome.sha256
+          [[ $(wc -l < chrome.sha256) -eq 1 ]]
+          sha256sum --check --strict chrome.sha256
+          echo "VERIFIED_SHA256=$(cut -d ' ' -f1 chrome.sha256)" >> "$GITHUB_ENV"
+          echo "CHROME_ARCHIVE=$RUNNER_TEMP/chrome-release/$archive" >> "$GITHUB_ENV"
+      - name: Validate Chrome manifest and boot worker, popup and connection-status RPC
+        run: node scripts/smoke-chrome.mjs "$CHROME_ARCHIVE"
+      - name: Upload verified ZIP, await processing, submit for review
+        env:
+          CHROME_WEBSTORE_CLIENT_ID: ${{ secrets.CHROME_WEBSTORE_CLIENT_ID }}
+          CHROME_WEBSTORE_CLIENT_SECRET: ${{ secrets.CHROME_WEBSTORE_CLIENT_SECRET }}
+          CHROME_WEBSTORE_REFRESH_TOKEN: ${{ secrets.CHROME_WEBSTORE_REFRESH_TOKEN }}
+          CHROME_WEBSTORE_PUBLISHER_ID: ${{ vars.CHROME_WEBSTORE_PUBLISHER_ID }}
+          # One-time replacement explicitly authorized for this release. Clear the
+          # variable after success; other releases cannot cancel this submission.
+          REPLACE_PENDING_VERSION: ${{ github.event.release.tag_name == 'v0.8.7' && vars.CHROME_WEBSTORE_REPLACE_VERSION || '' }}
+        run: node scripts/publish-chrome.mjs "$CHROME_ARCHIVE"

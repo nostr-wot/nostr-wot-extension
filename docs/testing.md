@@ -1,6 +1,6 @@
 # Test Suite
 
-Tests use **Node.js built-in test runner** (`node:test`, Node 22+) with the `tsx` loader for TypeScript. The full runner builds first because CSS regression tests inspect generated assets. Most targeted non-CSS tests run directly without a build. `inject-webln.test.ts` also executes the packaged MAIN-world script, so build before running it directly.
+Tests use **Node.js built-in test runner** (`node:test`; Node 22.22.2+ in 22.x, 24.15+ in 24.x, or 26+) with the `tsx` loader for TypeScript. The full runner builds first because CSS regression tests inspect generated assets. Most targeted non-CSS tests run directly without a build. `inject-webln.test.ts` also executes the packaged MAIN-world script, so build before running it directly.
 
 ## 1. Running Tests
 
@@ -31,8 +31,9 @@ the last group running for about two minutes even after most tests finish.
 
 ## 2. Test Files
 
-| File | Tests | What it covers |
-|------|-------|----------------|
+| File | What it covers |
+|------|----------------|
+| `tests/chrome-publishing.test.ts` | Verified upload bytes, OAuth refresh, asynchronous processing, failure/timeout gates, and no mutation retries |
 | `tests/crypto/secp256k1.test.ts` | Elliptic curve math, scalar multiplication, public key derivation |
 | `tests/crypto/schnorr.test.ts` | BIP-340 Schnorr signature create/verify |
 | `tests/crypto/nip01.test.ts` | Event ID computation, event signing |
@@ -44,6 +45,7 @@ the last group running for about two minutes even after most tests finish.
 | `tests/crypto/utils.test.ts` | Hex/bytes conversion |
 | `tests/crypto/security.test.ts` | Security-focused crypto tests |
 | `tests/crypto/nip49.test.ts` | NIP-49 `ncryptsec` encode/decode, scrypt parameters |
+| `tests/crypto/scrypt-maxmem.test.ts` | That `scryptMaxMem()` equals what scrypt allocates (`V + B + tmp`), not what one `@noble/hashes` version validates against — see "Dependency ranges" below |
 | `tests/crypto/pq.test.ts` | Post-quantum key derivation vectors, domain separation, sibling-not-child property |
 | `tests/crypto/pq-envelope.test.ts` | Post-quantum envelope encrypt/decrypt, self-describing routing, hybrid key |
 | `tests/crypto/pq-import.test.ts` | Key-file parsing, length rules, and pair-proving round trips (a public key paired with the wrong secret must be rejected) |
@@ -52,6 +54,8 @@ the last group running for about two minutes even after most tests finish.
 | `tests/vault.test.ts` | Vault create/unlock/lock, encryption integrity, account management, private key security |
 | `tests/permissions.test.ts` | Permission cascade, isolation, save/clear, NIP-07 methods |
 | `tests/accounts.test.ts` | Account creation (mnemonic, nsec, npub, nip46), type coverage |
+| `tests/remote-signer-integrity.test.ts` | Remote response signature, expected author and exact approved-event equality, ordered tags, malformed replies and mutation isolation; no browser mock required |
+| `tests/public-profile.test.ts` | Shared display validation/name precedence, cache freshness including future dates, directory fallback and obsolete reply suppression; browser mock required |
 | `tests/signer.test.ts` | NIP-07 signing flow, permission checks, pending request lifecycle, cold-start auto-unlock (the popup must not open for an already-approved request) |
 | `tests/security-hardening.test.ts` | NIP-49 zeroing, NIP-04 error normalization, vault reEncrypt, lock zeroing, batch 1-2 regression, KDF work factor + transparent 210k→600k migration, `changePassword` empty-password guard, `withPrivkey` zeroing, and the onboarding no-plaintext-secret rules |
 | `tests/communication.test.ts` | Full communication test suite (see below) |
@@ -167,7 +171,7 @@ Approval group regressions verify live arrivals/removals stay within the selecte
 
 Signer popup lifecycle tests cover reuse of an already-visible popup through runtime.getContexts and the extension.getViews fallback, plus normal automatic opening when no popup is present.
 
-Release checks in `tests/test-registration.test.ts` enforce matching package/lockfile/manifest versions, Firefox desktop and Android consent minimums, and the audited required data categories.
+Release checks in `tests/test-registration.test.ts` enforce matching package/lockfile/manifest versions, Firefox desktop and Android consent minimums, and the required data categories.
 
 ## Nostr Connect integration
 
@@ -285,7 +289,7 @@ Temporary diagnostics UI, lifecycle listeners and trace collection are removed.
 Wallet profile-address tests cover a matching cached lud16, a different or missing
 address, publication cache updates, reopening and account isolation.
 
-### September 2026 security audit regressions
+### Account-session and transport regressions
 
 `tests/security-hardening.test.ts` imports `tests/security-audit-regressions.ts`, so
 both the local full suite and existing GitHub module-test step exercise the real
@@ -429,10 +433,10 @@ OS and cross-window updates, failed storage reads/writes, mounted theme selectio
 AA text contrast for dark palettes, and QR foreground independence from theme text.
 
 
-### NWC audit coverage
+### NWC protocol coverage
 
-The [NWC audit](nwc-audit.md) maps each wallet flow to its regression coverage and
-records compatibility limits. Provider tests cover handshake/request deadlines,
+The [NWC protocol](nwc-protocol.md) maps each wallet flow to its regression coverage and
+describes compatibility limits. Provider tests cover handshake/request deadlines,
 remote close, late replies, malformed result fields and tags, result-type binding,
 lookup errors and pending/failed history. The shared loopback fixture exercises
 real NIP-04/NIP-44 signatures/encryption; production payment handlers exercise NWC setup, balance,
@@ -475,3 +479,82 @@ LNbits tests cover historical `extra.nostr`, malformed/oversized data and commen
 
 `tests/wallet/nwc-connections.test.ts` covers the HTTP contract, encrypted storage, request replay, account/wallet isolation and lost-response recovery. `tests/wallet-ui.test.ts` covers the mounted management screen. The separate LNbits-proxy repository tests the actual server routes.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+Theme handoff regressions: `tests/theme-handoff.test.ts` covers URL validation, fresh-install routing, conflicting tabs and lookup failures. `tests/theme-tokens.test.ts` verifies first-render application, persistence, saved-choice preservation and write failure.
+
+The Nostr Connect integration pool uses the existing `ws` WebSocket implementation
+for its loopback fixtures, including the deliberately refused relay. This preserves
+relay-fallback coverage without Node/undici's recursive error/close teardown.
+
+The theme handoff suite also verifies that theme persistence precedes native popup opening, refused popups retain the theme for manual opening without a separate page or retries, and failed storage writes still allow a popup attempt.
+## Dependency ranges
+
+Every suite above runs against the versions `package-lock.json` pins, because that is what `npm ci` installs — and what a plain `npm install` installs too. The lockfile is the pin and it holds; this section is not about ordinary builds.
+
+It is about the caret ranges in `package.json` being a published promise that the code works with anything they admit. Whoever resolves from the ranges instead of the lockfile gets software nobody here has run: `npm update`, a clone whose lockfile was dropped, a package manager that does not read `package-lock.json`, an automated dependency bump, or another project reusing `src/lib/crypto/`. A suite that only ever sees the pinned versions cannot notice when that promise stops being true.
+
+It has stopped being true twice.
+
+**`@noble/hashes` and the scrypt memory bound.** `nip49.ts` computed `maxmem` as `128·r·(N + p)`, the expression `@noble/hashes` 2.0.1 validates against; from 2.2.0 noble validates against `128·r·(N + p + 1)`, counting a scratch block it had always allocated, and says in its own source that the accounting "is intentionally noble-specific". `^2.0.1` admitted 2.2.0 through 2.4.0, so any build resolved from the range threw `"maxmem" limit was hit` on **every** ncryptsec encode and decode — the encrypted key backup and import path, gone — while every NIP-49 test here passed on the pinned 2.0.1. The breaking version was not even remote: a 2.2.0 copy sits in `node_modules` nested under `@noble/post-quantum`, one hoist from being the one `nip49.ts` resolves.
+
+**`nostr-tools` and the recursive close.** 2.25.2 calls `close()` from inside its own WebSocket `onerror`, which re-enters the error path until the stack is exhausted. `^2.23.3` admitted it, so a single unreachable relay in a NIP-46 bunker or `nostrconnect://` relay list produced an uncaught `RangeError: Maximum call stack size exceeded` in the background service worker — and dead relays in those lists are routine. There is nothing to fix on our side, so `package.json` now declares `>=2.23.3 <2.25.2`. Revisit the cap when upstream fixes the recursion.
+
+Three things close the gap, at different levels:
+
+- **`tests/crypto/scrypt-maxmem.test.ts`** does not restate any version's expression, because that would only move the coupling one version along and would still be blind to a release that raises the charge again. It binary-searches the **installed** library for the smallest `maxmem` it will accept, and requires the bound to clear that with headroom to spare. It therefore fails on the old formula whichever version is installed, and fails one revision *before* a future noble breaks users rather than after. A separate assertion pins the bound below `N + p + SCRYPT_MAXMEM_SLACK_BLOCKS` blocks, because headroom is only free while it stays a small constant — slack scaling with `N` would authorise a multiple of the V table, and `log_n` comes from the payload.
+- **`tests/crypto/nip49.test.ts`** round-trips against `nostr-tools`' independent NIP-49 implementation in both directions, across every `key_security_byte` the spec defines and cost factors either side of the one we write. Before that, every test decoded with our own decoder, so a systematic encoder error would have round-tripped happily through all of them.
+- **The `crypto-latest-deps` job** in `.github/workflows/tests.yml` installs with `npm install --no-package-lock` — note that plain `npm install` would *not* float, since it honours the lockfile — then typechecks, builds, and re-runs crypto, vault, signer, NIP-46, NWC and generated-asset suites. It also runs weekly on a schedule, so upstream breakage is normally found on `main` rather than by whichever pull request happens to come next.
+
+Known gap, deliberately not closed here: three tests in `tests/wot-relay-transport.test.ts` call `mock.method(schnorr, 'verify', …)`, and `@noble/curves` froze that export in 2.2.0, so they fail on any version `^2.0.1` admits above 2.0.1. Production is unaffected — our code only calls schnorr and never patches it — and the fix is for those tests to use an injected verifier seam alongside the existing `_createSocket` and `_timeoutMs`, rather than reaching into the library. Those suites are consequently not in the floating job yet.
+
+The general rule this leaves behind: **a numeric bound or behaviour handed to a library must be derived from what the algorithm or format requires, never copied from what a particular version of that library happens to check, and never pinned exactly to it.** The two agree right up until the library revises its own accounting, and a lockfile-pinned suite cannot tell you when that happens.
+
+## Release artifact checks
+
+`tests/release-package.test.ts` tests actual ZIP fixtures, including a Firefox
+archive renamed as Chrome, mixed manifests, missing resources and version errors.
+Both local and CI runners include it. CI also runs both packaging commands;
+Chrome packaging runs `scripts/smoke-chrome.mjs` against the exact output ZIP in
+an isolated Chromium profile. See [deployment](deployment.md#chrome).
+
+## Authentication destinations and frame isolation
+
+- `tests/authentication.test.ts`: real signing gates, strict NIP-98/NIP-42 parsing, broad-rule/batch bypass prevention, exact account/origin/method/relay scopes, one-time approval, remote-account local consent, concurrent grants, disconnect/account deletion/revocation, stale unlock permissions, remembered destination rejection precedence/storage failure, and event snapshot integrity.
+- `tests/authentication-ui.test.ts`: collapsed Advanced event data, split-menu authentication scope controls and notices, single-request detail routing (authentication, ordinary signing and NIP-46), visible action failures, transitions from multiple requests to one, bulk approval isolation, account-specific saved grants and revocation, relay/site table partitioning, and navigation from Permissions to Relays.
+- `tests/auth-client-registry.test.ts`: registry origins, evidence metadata and schema integrity; factual evidence still requires human review.
+- `tests/communication.test.ts`: both actual background ingress listeners reject auth from subframes, opaque/insecure or contradictory sender origins and missing frame identity; forged page origin/frame claims never establish authority. Cross-frame postMessage cannot enter the content bridge.
+
+These tests use isolated mock browser storage and synthetic keys. They do not certify a production client's deployed backend or a native browser's frame lifecycle.
+
+The 0.8.6 lifecycle regressions cover identity disable during local/remote auth
+unlock waits, account switching during relay reads (including away-and-back),
+revocation while WebSockets connect, stale key exports, and stale package output
+after failed or concurrent builds.
+
+- `tests/message-preview.test.ts`: local-only previews for both classic schemes, outbound plaintext review, storage exclusion, request lifetime, account/lock invalidation and privileged RPC registration.
+- `tests/message-preview-ui.test.ts`: cached and directory-fetched profiles, reveal/hide, Advanced request data, correct peer labels, removal of duplicate headings and rejection of stale UI replies.
+
+Message-preview regressions also cover immediate preview during queue publication, valid and invalid NIP-17 seals, author mismatch, unchanged approved site responses, grouped numbered labels, cached inner-sender resolution, and one accurate error after Reveal and Advanced fail.
+
+Profile lookup regressions cover purplepag.es queries, verified metadata caching, no wrapping-key lookup before Reveal, and a usable message/key fallback after lookup failure.
+
+Message-review UI tests also verify From/Content presentation, profile-key fallback, and timed concealment after 30 seconds. Both the message body and outgoing plaintext under Advanced follow the timer and manual hide; concealed message text is absent from the rendered DOM.
+
+Approval list regressions verify one heading per site while preserving separate request groups. Browser checks cover scrolling to and opening the final request and opening bulk-action menus. Timed message tests assert the internal hint, a full 30-second ring, its 29-second state, and its removal with plaintext at expiry.
+
+`tests/profile-display-cache.test.ts` verifies 30-minute expiry, future-date rejection, the 500-profile bound under concurrent writes, legacy index migration, targeted reads after worker restart, storage deletion/reset and unrelated-storage preservation. Message-preview regressions cover sender/date-only responses with no plaintext/payload, sender grouping, dated entries, profile images and literal themed intent parts. Inline disclosures retain keyboard-accessible native details; raw events use the explicit shared RawEventButton dialog.
+
+Raw event popup checks cover closed-state JSON absence, code-button activation, Escape dismissal, focus restoration, and timed plaintext concealment while raw request data is open.
+
+Relay settings tests verify active-account grant filtering without a relay-panel selector, plus published-list popup opening, actions, Escape dismissal and focus restoration.
+
+### Hook lifecycle regressions
+
+`tests/hooks-lifecycle.test.ts` runs with the browser mock registration used by the
+module-test group. It checks mounted hook behavior across rerenders and lifecycle
+changes, so effect dependency changes are verified through behavior rather than
+only lint output.
+
+```sh
+node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/hooks-lifecycle.test.ts
+```

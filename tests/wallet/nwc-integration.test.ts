@@ -1,3 +1,4 @@
+import { makeNwcInvoice } from '../helpers/nwc-invoice.ts';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -57,10 +58,19 @@ test('NWC integration through the wallet factory', {timeout:20000}, async t => {
   });
   await t.test('payments remain pending until the wallet replies and return its preimage',async()=>{
     const start=wallet.requests.length;let settled=false;
-    const payment=provider.payInvoice('synthetic-invoice').finally(()=>{settled=true;});
+    const payment=provider.payInvoice(makeNwcInvoice()).finally(()=>{settled=true;});
     await until(()=>wallet.requests.length>start);const req=wallet.requests[start];
-    assert.equal(settled,false);assert.equal(req.method,'pay_invoice');assert.deepEqual(req.params,{invoice:'synthetic-invoice'});
+    assert.equal(settled,false);assert.equal(req.method,'pay_invoice');assert.deepEqual(req.params,{invoice:makeNwcInvoice()});
     await wallet.response(req,{preimage:'abababababababababababababababababababababababababababababababab'});assert.deepEqual(await payment,{preimage:'abababababababababababababababababababababababababababababababab'});
+  });
+  await t.test('a signed wallet success with another invoice preimage stays unknown and is never replayed',async()=>{
+    const start=wallet.requests.length;
+    const rejected=assert.rejects(provider.payInvoice(makeNwcInvoice()),/PAYMENT_OUTCOME_UNKNOWN/);
+    await until(()=>wallet.requests.length>start);
+    await wallet.response(wallet.requests[start],{preimage:'cd'.repeat(32)});
+    await rejected;
+    wallet.dropConnections();await until(()=>!provider.isConnected());await provider.connect();
+    assert.equal(wallet.requests.length,start+1);
   });
   for(const code of ['UNAUTHORIZED','INSUFFICIENT_BALANCE','PAYMENT_FAILED']) await t.test(`surfaces ${code} without retrying a payment`,async()=>{
     const start=wallet.requests.length;const rejected=assert.rejects(provider.payInvoice(`invoice-${code}`),new RegExp(code));
@@ -111,7 +121,7 @@ for (const advertised of ['nip44_v2 nip04', 'nip44_v2', 'nip04', undefined]) {
       ['make_invoice', () => provider.makeInvoice(2, 'memo'), { invoice: 'synthetic-invoice', payment_hash: 'ab'.repeat(32) }],
       ['lookup_invoice', () => provider.lookupInvoice('ab'.repeat(32)), { amount: 2000, settled_at: null }],
       ['list_transactions', () => provider.listTransactions(), { transactions: [] }],
-      ['pay_invoice', () => provider.payInvoice('synthetic-invoice'), { preimage: 'cd'.repeat(32) }],
+      ['pay_invoice', () => provider.payInvoice(makeNwcInvoice('cd'.repeat(32))), { preimage: 'cd'.repeat(32) }],
     ] as const) {
       const count = wallet.requests.length;
       const request = invoke();
@@ -146,7 +156,7 @@ test('NWC falls back between URI relays before publication without replaying a p
   const provider = getWalletProvider('relay-fallback', config)!;
   t.after(async () => { clearWalletProviders(); await wallet.close(); assert.deepEqual(wallet.errors, []); });
   await provider.connect();
-  const rejected = assert.rejects(provider.payInvoice('synthetic-invoice'), /PAYMENT_OUTCOME_UNKNOWN/);
+  const rejected = assert.rejects(provider.payInvoice(makeNwcInvoice()), /PAYMENT_OUTCOME_UNKNOWN/);
   await until(() => wallet.requests.length === 1);
   wallet.dropConnections(); await rejected;
   await provider.connect();

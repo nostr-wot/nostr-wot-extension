@@ -1,3 +1,6 @@
+import { bech32 } from '@scure/base';
+import { makeNwcInvoice } from '../helpers/nwc-invoice.ts';
+import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { NwcProvider } from '../../src/services/wallet/nwc.ts';
@@ -11,6 +14,15 @@ const RELAY = 'wss://relay.example.com';
 const SECRET_HEX = '71a8c14c1407c113601079c4302dab36460f0ccd0ad506f1f2dc73b5100e4f3c';
 const CONNECTION_STRING = `nostr+walletconnect://${WALLET_PUBKEY}?relay=${encodeURIComponent(RELAY)}&secret=${SECRET_HEX}`;
 const LOCAL_PUBKEY_HEX = 'aa'.repeat(32);
+
+/** Keep the valid hash last: a last-wins parser would wrongly accept this proof. */
+function invoiceWithExtraPaymentHash(words: number[]): string {
+  const decoded = bech32.decode(makeNwcInvoice() as `${string}1${string}`, 2000);
+  return bech32.encode(decoded.prefix, [
+    ...decoded.words.slice(0, 7), 1, Math.floor(words.length / 32), words.length % 32,
+    ...words, ...decoded.words.slice(7),
+  ], 2000);
+}
 
 // ── Mock WebSocket ──
 
@@ -443,7 +455,7 @@ describe('NwcProvider', () => {
     });
 
     it('payInvoice() sends pay_invoice request with invoice param', async () => {
-      const bolt11 = 'lnbc1pvjluezpp5qqqsyq...';
+      const bolt11 = makeNwcInvoice();
       const payPromise = provider.payInvoice(bolt11);
       await flushAsync();
 
@@ -1242,6 +1254,31 @@ describe('NWC audited transport boundaries', () => {
     await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
     ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'get_balance', result: { balance: 1000 } })));
     await rejected;
+  });
+
+  for (const [name, invoice, preimage] of [
+    ['mismatched payment hash', makeNwcInvoice('cd'.repeat(32)), 'ab'.repeat(32)],
+    ['missing payment hash', makeLnurlInvoice('metadata'), 'ab'.repeat(32)],
+    ['undecodable invoice', 'invalid-invoice', 'ab'.repeat(32)],
+    ['conflicting payment hashes', invoiceWithExtraPaymentHash(bech32.toWords(new Uint8Array(32).fill(42))), 'ab'.repeat(32)],
+    ['wrong-length payment hash before a valid hash', invoiceWithExtraPaymentHash(Array(51).fill(0)), 'ab'.repeat(32)],
+  ]) it(`treats successful response with ${name} as unknown without replay`, async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const rejected = assert.rejects(provider.payInvoice(invoice), (error: Error) => error.message === 'PAYMENT_OUTCOME_UNKNOWN');
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'pay_invoice', result: { preimage } })));
+    await rejected;
+    ws.close(); const reconnect = provider.connect(); const next = latestWs(); next.simulateOpen(); await reconnect;
+    assert.equal(ws.sentMessages.filter(raw => JSON.parse(raw)[0] === 'EVENT').length, 1);
+    assert.equal(next.sentMessages.filter(raw => JSON.parse(raw)[0] === 'EVENT').length, 0);
+  });
+
+  it('accepts uppercase hexadecimal preimages when their decoded bytes match the invoice', async () => {
+    const connection = provider.connect(); const ws = latestWs(); ws.simulateOpen(); await connection;
+    const payment = provider.payInvoice(makeNwcInvoice());
+    await flushAsync(); const id = JSON.parse(ws.sentMessages[1])[1].id;
+    ws.simulateMessage(buildResponseMessage(id, JSON.stringify({ result_type: 'pay_invoice', result: { preimage: 'AB'.repeat(32) } })));
+    assert.deepEqual(await payment, { preimage: 'AB'.repeat(32) });
   });
 
   it('rejects missing payment result rather than returning an undefined preimage', async () => {

@@ -92,7 +92,7 @@ test('oracle validates responses and uses bounded credential-free HTTPS requests
         url: string;
         init?: RequestInit;
     }[] = [];
-    let response: unknown = { hops: 2, paths: 2 };
+    let response: unknown = { from: a, to: d, hops: 2, path_count: 2, mutual_follow: false };
     let status = 200;
     const oracle = new WotOracle('https://oracle.test', new AbortController().signal, async (url, init) => {
         calls.push({ url, init });
@@ -104,17 +104,17 @@ test('oracle validates responses and uses bounded credential-free HTTPS requests
     assert.equal(calls[0].init?.redirect, 'error');
     response = { hops: -1 };
     await assert.rejects(oracle.details(a, d), /distance/);
-    response = { hops: 2, paths: 'bad' };
-    await assert.rejects(oracle.details(a, d), /paths/);
+    response = { hops: 2, path_count: 'bad' };
+    await assert.rejects(oracle.details(a, d), /path count/);
     response = { follows: [b, c] };
     assert.deepEqual(await oracle.follows(a), [b, c]);
-    response = { common: [c] };
+    response = { from: a, to: b, common_follows: [c] };
     assert.deepEqual(await oracle.common(a, b), [c]);
     response = { follows: ['bad'] };
     await assert.rejects(oracle.follows(a), /pubkey/);
-    response = { path: [a, b, d] };
+    response = { from: a, to: d, path: [b] };
     assert.deepEqual(await oracle.path(a, d), [a, b, d]);
-    response = { path: [a, b, a, d] };
+    response = { path: [b, b] };
     await assert.rejects(oracle.path(a, d), /path/);
     response = { path: [b, d] };
     await assert.rejects(oracle.path(a, d), /path/);
@@ -131,10 +131,104 @@ test('oracle validates responses and uses bounded credential-free HTTPS requests
     response = { payload: 'x'.repeat(1024 * 1024) };
     await assert.rejects(oracle.stats(), /large/);
 });
+/*
+ * The four tests below are written from nostr-wot-oracle's own docs/API.md and
+ * src/api/http.rs, not from what this client used to send. The two had drifted, and
+ * every divergence failed silently: a missing field reads as undefined, so the score
+ * quietly lost its bonus and common follows quietly became empty. Each test fails
+ * against the spelling this client used before, which is the point of writing it here.
+ */
+test('oracle reads path_count, the field the oracle actually sends', async () => {
+    const oracle = (response: unknown) => new WotOracle('https://oracle.test', new AbortController().signal,
+        async () => new Response(JSON.stringify(response)));
+    // docs/API.md: `GET /distance` returns `from`, `to`, `hops`, `path_count`, `mutual_follow`.
+    assert.deepEqual(await oracle({ from: a, to: d, hops: 2, path_count: 2, mutual_follow: false }).details(a, d),
+        { hops: 2, paths: 2, score: 0.65 });
+    // And what the old spelling produced: no such field, so no bonus, with no error.
+    const asBefore = await oracle({ from: a, to: d, hops: 2, paths: 2 }).details(a, d);
+    assert.equal(asBefore?.paths, null, '`paths` is not the oracle’s spelling');
+    assert.equal(asBefore?.score, 0.5, 'and reading it silently drops the path bonus');
+    // "Counts saturate at the maximum unsigned 64-bit integer rather than overflowing",
+    // which is a real answer and is not a safe integer. Clamped, never refused.
+    const saturated = await oracle({ hops: 2, path_count: 2 ** 64 - 1 }).details(a, d);
+    assert.equal(saturated?.paths, Number.MAX_SAFE_INTEGER, 'a saturated count is an answer, not an error');
+    assert.equal(saturated?.score, 1);
+    for (const path_count of [1.5, -1, 'bad', {}])
+        await assert.rejects(oracle({ hops: 2, path_count }).details(a, d), /path count/, JSON.stringify(path_count));
+    assert.equal(await oracle({ from: a, to: d, hops: null, path_count: 0 }).details(a, d), null, 'no route within the depth searched');
+});
+test('oracle reads common_follows, so common follows are not silently empty', async () => {
+    const oracle = (response: unknown) => new WotOracle('https://oracle.test', new AbortController().signal,
+        async () => new Response(JSON.stringify(response)));
+    // docs/API.md: `GET /common-follows` returns `from`, `to`, `common_follows`.
+    assert.deepEqual(await oracle({ from: a, to: b, common_follows: [c, c] }).common(a, b), [c]);
+    await assert.rejects(oracle({ from: a, to: b, common: [c] }).common(a, b), /pubkey list/, 'the old spelling reads as nothing');
+});
+test('oracle path is intermediate pubkeys only, with both endpoints added back', async () => {
+    const oracle = (response: unknown) => new WotOracle('https://oracle.test', new AbortController().signal,
+        async () => new Response(JSON.stringify(response)));
+    // docs/API.md: `GET /path` returns `path`: "intermediate pubkeys only, or null",
+    // and "an empty intermediate list for self/direct paths".
+    assert.deepEqual(await oracle({ from: a, to: d, path: [b] }).path(a, d), [a, b, d]);
+    assert.deepEqual(await oracle({ from: a, to: b, path: [] }).path(a, b), [a, b], 'a direct follow has no intermediates');
+    assert.deepEqual(await oracle({ from: a, to: a, path: [] }).path(a, a), [a], 'self');
+    assert.equal(await oracle({ from: a, to: d, path: null }).path(a, d), null);
+    await assert.rejects(oracle({ path: [a, b] }).path(a, d), /path/, 'an endpoint inside the intermediates');
+    await assert.rejects(oracle({ path: [b, d] }).path(a, d), /path/, 'the target inside the intermediates');
+    await assert.rejects(oracle({ path: [b, b] }).path(a, d), /path/, 'a repeated hop');
+    await assert.rejects(oracle({ path: [b, c, d, '55'.repeat(32), '66'.repeat(32)] }).path(a, '77'.repeat(32)),
+        /path/, 'longer than the oracle searches');
+});
+test('oracle is told the hop depth rather than inheriting the server default', async () => {
+    const hops = (maxHops?: number) => {
+        const urls: string[] = [];
+        const oracle = new WotOracle('https://oracle.test', new AbortController().signal, async (url) => {
+            urls.push(url);
+            return new Response(JSON.stringify({ from: a, to: d, hops: 1, path_count: 1, path: [] }));
+        }, maxHops);
+        return { oracle, sent: () => urls.map(url => new URL(url).searchParams.get('max_hops')) };
+    };
+    // The oracle's own default is 3 (src/config.rs MAX_HOPS_DEFAULT). Left unsent, it
+    // decides how deep we search, so a user configured to 2 gets a depth-3 answer.
+    const asked = hops(2);
+    await asked.oracle.details(a, d);
+    await asked.oracle.path(a, d);
+    assert.deepEqual(asked.sent(), ['2', '2'], 'both graph endpoints carry the depth');
+    // Clamped to the 1..5 the oracle accepts (src/config.rs MAX_HOPS_LIMIT), because a
+    // value it rejects is a 400 rather than a shallower answer.
+    const deep = hops(99);
+    await deep.oracle.details(a, d);
+    assert.deepEqual(deep.sent(), ['5']);
+    const zero = hops(0);
+    await zero.oracle.details(a, d);
+    assert.deepEqual(zero.sent(), ['1'], 'depth 0 is answerable at depth 1 and filtered by the caller');
+});
+test('oracle pages the follow list instead of passing the first page off as all of it', async () => {
+    const all = Array.from({ length: 1200 }, (_, i) => i.toString(16).padStart(64, '0'));
+    const requested: string[] = [];
+    // The oracle pages `GET /follows` at 500 by default and caps `limit` at 5000, and it
+    // reports `total`. A server may still answer with fewer than it was asked for.
+    const oracle = new WotOracle('https://oracle.test', new AbortController().signal, async (url) => {
+        const params = new URL(url).searchParams;
+        requested.push(`${params.get('offset')}:${params.get('limit')}`);
+        const offset = Number(params.get('offset'));
+        return new Response(JSON.stringify({ pubkey: a, follows: all.slice(offset, offset + 400), total: all.length }));
+    });
+    assert.deepEqual(await oracle.follows(a), all, 'every follow, not the first page');
+    assert.deepEqual(requested, ['0:5000', '400:5000', '800:5000'], 'an explicit limit, then offsets until total is reached');
+    // A server that keeps claiming a larger total while returning nothing must not spin.
+    let calls = 0;
+    const stuck = new WotOracle('https://oracle.test', new AbortController().signal, async () => {
+        calls++;
+        return new Response(JSON.stringify({ pubkey: a, follows: [], total: 9000 }));
+    });
+    assert.deepEqual(await stuck.follows(a), []);
+    assert.equal(calls, 1, 'an empty page ends the walk');
+});
 test('remote and hybrid query modes share oracle cache and keep local answers local', async () => {
     await setup('hybrid');
     let calls = 0;
-    globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ hops: 2, paths: 1 })); };
+    globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ hops: 2, path_count: 1 })); };
     assert.equal(await queryWot('getDistance', { target: d }), 2);
     assert.equal(calls, 0);
     const target = '66'.repeat(32);
@@ -288,7 +382,7 @@ test('account mutes zero scores, exclude membership and remove only affected loc
 test('oracle cannot restore muted targets or paths, including cached answers', async () => {
     await setup('remote');
     let calls = 0;
-    globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ path: [a, b, d] })); };
+    globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ from: a, to: d, path: [b] })); };
     await seedRelayCache(MUTE_LIST_CACHE, a, muteList([b]));
     assert.equal(await queryWot('getTrustScore', { target: b }), 0);
     assert.equal(calls, 0);
@@ -695,7 +789,7 @@ test('score explanations reuse paths, weights and mute exclusions without exposi
 
 test('score explanations identify oracle evidence and render the complete local breakdown', async () => {
     await setup('remote');
-    globalThis.fetch = async () => new Response(JSON.stringify({ hops: 2, paths: 2 }), { status: 200 });
+    globalThis.fetch = async () => new Response(JSON.stringify({ hops: 2, path_count: 2 }), { status: 200 });
     const info = await queryWot('getScoreExplanation', { target: d }) as import('../src/domain/wot/types.ts').WotScoreExplanation;
     assert.equal(info.source, 'oracle');
     assert.equal(info.graph, null);

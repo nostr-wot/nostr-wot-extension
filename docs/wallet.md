@@ -111,9 +111,9 @@ interface WalletProvider {
 - Cold startup constructs and caches NWC providers directly; removal clears the instance so reconnect creates fresh key bytes from the stored configuration.
 - Setup probes an uncached candidate with `get_info` before persisting a replacement; failure or vault lock retains the previous configuration and disposes the candidate.
 - Connections and published requests have a 60-second deadline. Socket close rejects outstanding work; reconnect never replays it.
-- Responses require the matching `result_type`, validated fields and 32-byte hex hashes/preimages. Lookup errors propagate except `NOT_FOUND`, which reports unpaid.
+- Responses require the matching `result_type`, validated fields and 32-byte hex hashes/preimages. Payment success additionally requires SHA-256 of the preimage to match the original BOLT11 payment hash. Lookup errors propagate except `NOT_FOUND`, which reports unpaid.
 - Signed kind-13194 discovery prefers NIP-44 v2 and supports NIP-44-only wallets; no info/encryption tag falls back to NIP-04. Explicit unsupported schemes fail. Discovery is bounded to 1.5 seconds and late advertisements are ignored.
-- Up to five distinct URI relays can be tried sequentially within one 60-second connection budget, before publication only. A published payment is never replayed on another relay. See [NWC audit](nwc-audit.md) and [provider compatibility](nwc-compatibility.md).
+- Up to five distinct URI relays can be tried sequentially within one 60-second connection budget, before publication only. A published payment is never replayed on another relay. See [NWC protocol](nwc-protocol.md) and [provider compatibility](nwc-compatibility.md).
 
 ### 4.2 LNbits Provider (`lnbits.ts`)
 
@@ -137,13 +137,16 @@ Per-account provider cache (`Map<string, WalletProvider>`):
 
 Users can instantly provision a wallet via "Quick Setup" without manual key entry.
 
+See [Wallet authentication v2](wallet-auth-v2.md) for exact headers, bodies,
+origin policy and the required backend-first rollout. No legacy downgrade is supported.
+
 ### Flow
 
 ```
 User clicks "Create Wallet"
-  → GET  {server}/api/provision/challenge     → { challenge }
-  → Sign challenge as NIP-98 kind:27235 event
-  → POST {server}/api/provision               → { adminkey, id, nwcUri? }
+  → POST {server}/api/v2/provision/challenge  → { version, challenge, transactionToken, expiresAt }
+  → Sign URL, method, body hash, challenge and transaction hash (kind 27235)
+  → POST {server}/api/v2/provision            → { adminkey, id, nwcUri? }
   → Store as LNbits config in vault
   → Initialize provider
 ```
@@ -163,9 +166,9 @@ After provisioning, users can claim a Lightning Address (`username@zaps.nostr-wo
 
 ```
 User enters desired username
-  → GET  {server}/api/provision/challenge     → { challenge }
-  → Sign challenge as NIP-98 kind:27235 event
-  → POST {server}/api/claim-username          → { address, payLinkId }
+  → POST {server}/api/v2/provision/challenge  → { version, challenge, transactionToken, expiresAt }
+  → Sign URL, method, body hash, challenge and transaction hash (kind 27235)
+  → POST {server}/api/v2/claim-username       → { address, payLinkId }
   → Prompt to update profile lud16 field
 ```
 
@@ -173,9 +176,9 @@ Server endpoints:
 
 | Endpoint | Method | Auth | Purpose |
 |----------|--------|------|---------|
-| `/api/claim-username` | POST | NIP-98 | Claim a username, creates lnurlp pay link |
+| `/api/v2/claim-username` | POST | NIP-98 | Claim a username, creates lnurlp pay link |
 | `/api/lightning-address` | GET | None | Look up address by pubkey |
-| `/api/release-username` | POST | NIP-98 | Delete pay link, release username |
+| `/api/v2/release-username` | POST | NIP-98 | Delete pay link, release username |
 
 Username validation: `^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$` (3-30 chars). Reserved names blocked.
 
@@ -597,7 +600,7 @@ not move. The same LNURL intent keeps a non-expiring unknown marker and cannot
 request a fresh invoice on replay. Definite wallet rejections and pre-publication
 failures remain retryable. The marker is metadata only; it contains no invoice or
 preimage. A deliberately new intent can still pay again, so inspect wallet history
-before starting another payment. See [NWC audit](nwc-audit.md).
+before starting another payment. See [NWC protocol](nwc-protocol.md).
 
 ### Payment notes and receipts (0.8.2)
 

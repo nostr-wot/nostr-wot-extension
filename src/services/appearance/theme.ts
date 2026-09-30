@@ -1,6 +1,7 @@
 import browser from '@lib/browser.ts';
-import { CUSTOM_THEME_STORAGE_KEY, THEME_STORAGE_KEY } from '@constants/appearance.ts';
-import { parseCustomTheme, resolveTheme, themePreference, type CustomTheme, type ThemePreference } from '@domain/appearance/theme.ts';
+import { themeFromSearch } from '@domain/appearance/handoff.ts';
+import { APPEARANCE_MODE_STORAGE_KEY, CUSTOM_THEME_STORAGE_KEY, THEME_STORAGE_KEY } from '@constants/appearance.ts';
+import { appearanceMode, parseCustomTheme, resolveTheme, themePreference, type AppearanceMode, type CustomTheme, type ThemePreference } from '@domain/appearance/theme.ts';
 
 const CSS_KEYS: Record<keyof CustomTheme, string> = {
   bgPage: '--bg-page', bgPageSolid: '--bg-page-solid', bgHtml: '--bg-html',
@@ -20,15 +21,17 @@ function applyCustomTheme(theme: CustomTheme | null): void {
   }
 }
 
-export async function initTheme(): Promise<void> {
+export async function initTheme(search = ''): Promise<void> {
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   let preference: ThemePreference = 'light';
+  let mode: AppearanceMode | undefined;
   let custom: CustomTheme | null = null;
   let revision = 0;
   const apply = () => {
-    const resolved = resolveTheme(preference, media.matches);
+    const resolved = resolveTheme(preference, media.matches, mode);
     document.documentElement.dataset.theme = resolved;
     document.documentElement.dataset.themePreference = preference;
+    document.documentElement.dataset.appearanceMode = appearanceMode(mode, preference);
     applyCustomTheme(resolved === 'custom' ? custom : null);
   };
   browser.storage.onChanged.addListener((changes, area) => {
@@ -37,6 +40,10 @@ export async function initTheme(): Promise<void> {
       revision++;
       preference = themePreference(changes[THEME_STORAGE_KEY].newValue);
     }
+    if (APPEARANCE_MODE_STORAGE_KEY in changes) {
+      revision++;
+      mode = appearanceMode(changes[APPEARANCE_MODE_STORAGE_KEY].newValue, preference);
+    }
     if (CUSTOM_THEME_STORAGE_KEY in changes) {
       try { custom = parseCustomTheme(changes[CUSTOM_THEME_STORAGE_KEY].newValue); } catch { custom = null; }
     }
@@ -44,15 +51,24 @@ export async function initTheme(): Promise<void> {
   });
   media.addEventListener('change', apply);
   try {
-    const stored = await browser.storage.local.get([THEME_STORAGE_KEY, CUSTOM_THEME_STORAGE_KEY]);
-    if (revision === 0) preference = themePreference(stored[THEME_STORAGE_KEY]);
+    const stored = await browser.storage.local.get([THEME_STORAGE_KEY, CUSTOM_THEME_STORAGE_KEY, APPEARANCE_MODE_STORAGE_KEY]);
+    if (revision === 0) {
+      preference = themePreference(stored[THEME_STORAGE_KEY]);
+      mode = stored[APPEARANCE_MODE_STORAGE_KEY] === undefined ? undefined : appearanceMode(stored[APPEARANCE_MODE_STORAGE_KEY], preference);
+      const initial = themeFromSearch(search);
+      if (stored[THEME_STORAGE_KEY] === undefined && initial) {
+        preference = initial;
+        // Persist before first render; subsequent popup/Settings views share the choice.
+        await browser.storage.local.set({ [THEME_STORAGE_KEY]: initial });
+      }
+    }
     try { custom = parseCustomTheme(stored[CUSTOM_THEME_STORAGE_KEY]); } catch { custom = null; }
   } catch { /* Storage failure must not prevent opening the extension. */ }
   apply();
 }
 
-export async function saveTheme(preference: ThemePreference): Promise<void> {
-  await browser.storage.local.set({ [THEME_STORAGE_KEY]: themePreference(preference) });
+export async function saveTheme(preference: ThemePreference, mode?: AppearanceMode): Promise<void> {
+  await browser.storage.local.set({ [THEME_STORAGE_KEY]: themePreference(preference), ...(mode ? { [APPEARANCE_MODE_STORAGE_KEY]: appearanceMode(mode) } : {}) });
 }
 
 export async function saveCustomTheme(theme: CustomTheme): Promise<void> {

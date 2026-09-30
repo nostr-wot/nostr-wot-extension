@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private vulnerability report
+    url: https://github.com/nostr-wot/nostr-wot-extension/security/advisories/new
+    about: Report security vulnerabilities privately. Never publish credentials or exploit details in a public issue.
+  - name: Community conduct or general contact
+    url: https://nostr-wot.com/contact
+    about: Contact the project team about community concerns or support.

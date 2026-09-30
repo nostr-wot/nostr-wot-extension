@@ -5,6 +5,7 @@ import {
   MAX_LOG_N,
   SCRYPT_R,
   SCRYPT_P,
+  SCRYPT_MAXMEM_SLACK_BLOCKS,
   KEY_SECURITY_UNKNOWN,
   V2_PAYLOAD_LENGTH,
   LEGACY_PBKDF2_ITERATIONS,
@@ -30,16 +31,61 @@ import { xchacha20poly1305 } from '@noble/ciphers/chacha.js';
 import { hexToBytes, bytesToHex } from './utils.ts';
 import { bech32Encode, bech32Decode, convertBits } from './bech32.ts';
 
+/**
+ * The `maxmem` to hand `@noble/hashes` for a scrypt cost of 2^logN, in bytes: the
+ * `N + p` blocks the algorithm itself needs, plus {@link SCRYPT_MAXMEM_SLACK_BLOCKS}
+ * blocks of headroom for the library's own scratch space.
+ *
+ * The headroom is the whole point, so it is worth being exact about what this number is
+ * and is not. It is **not** a measurement of scrypt's true heap — noble also allocates
+ * PBKDF2 and HMAC state it does not charge here. It is a budget chosen to sit above
+ * whatever any `@noble/hashes` in the declared range charges against `maxmem`, on the
+ * standing assumption that the charge may rise again.
+ *
+ * It has already risen once. This bound used to be `128·r·(N + p)` — character for
+ * character the expression 2.0.1 validates against, and therefore exactly on its line.
+ * From 2.2.0 noble validates against `128·r·(N + p + 1)`, counting a scratch block it
+ * had always allocated, and notes in its own source that the accounting "is
+ * intentionally noble-specific". `package.json` declared `^2.0.1`, which admits 2.2.0
+ * through 2.4.0, so any build resolved from the range rather than from the committed
+ * lockfile threw `"maxmem" limit was hit` on every encode and decode — while the suite,
+ * installed via the lockfile at 2.0.1, stayed green. Sitting a few blocks clear of the
+ * line, rather than on it, is what stops the next revision doing the same thing:
+ * matching the library's current expression exactly would only move the coupling one
+ * version along.
+ *
+ * `maxmem` is a compatibility bound, not a safety one: it is derived from the cost
+ * factor in the payload, so it can never reject an expensive backup. {@link MAX_LOG_N}
+ * is what bounds that.
+ *
+ * @see tests/crypto/scrypt-maxmem.test.ts — probes the installed library for what it
+ *      actually requires instead of restating any version's expression.
+ */
+export function scryptMaxMem(logN: number): number {
+    const blockSize = 128 * SCRYPT_R;
+    return blockSize * (2 ** logN + SCRYPT_P + SCRYPT_MAXMEM_SLACK_BLOCKS);
+}
+
 async function deriveScryptKey(password: string, salt: Uint8Array, logN: number): Promise<Uint8Array> {
     const passwordBytes = new TextEncoder().encode(password.normalize('NFKC'));
+    const N = 2 ** logN;
     try {
         return await scryptAsync(passwordBytes, salt, {
-            N: 1 << logN,
+            N,
             r: SCRYPT_R,
             p: SCRYPT_P,
             dkLen: 32,
-            maxmem: 128 * SCRYPT_R * ((1 << logN) + SCRYPT_P)
+            maxmem: scryptMaxMem(logN)
         });
+    } catch (cause) {
+        // The import screen renders `error.message` straight into the UI, so a library's
+        // internal message would reach the user as-is: the original form of this bug
+        // showed them `"maxmem" limit was hit: memUsed(128*r*(N+p+1))=67110912`. Keep the
+        // cause for debugging and say something a person can act on. Deliberately not the
+        // wrong-password message — a backup this extension cannot stretch at all is a
+        // different problem from a password that does not match, and telling someone to
+        // retype a correct password is its own kind of harm.
+        throw new Error('Could not derive a key from this backup\'s scrypt parameters', { cause });
     } finally {
         passwordBytes.fill(0);
     }
@@ -60,10 +106,20 @@ async function deriveLegacyKey(password: string, salt: Uint8Array): Promise<Cryp
 }
 
 /**
- * Encrypt a private key with a password and encode as ncryptsec (NIP-49 v2)
+ * Encrypt a private key with a password and encode as ncryptsec (NIP-49 v2).
+ *
+ * Takes the key as bytes or as hex. Bytes are the form to prefer, and the form the export
+ * handler passes: a string cannot be overwritten, so building one on the way in put a
+ * second, unzeroable copy of the key in the heap for the garbage collector to reach
+ * whenever it felt like it. The hex form stays because other callers and the tests pass
+ * one, and the array it decodes to is zeroed here.
+ *
+ * @param privkey - the 32-byte key, as bytes (preferred) or hex. Bytes are NOT zeroed:
+ *   they belong to the caller, and inside a `withPrivkey` scope the vault zeroes them.
  */
-export async function ncryptsecEncode(privkeyHex: string, password: string): Promise<string> {
-    const privkeyBytes = hexToBytes(privkeyHex);
+export async function ncryptsecEncode(privkey: Uint8Array | string, password: string): Promise<string> {
+    const borrowed = typeof privkey !== 'string';
+    const privkeyBytes = borrowed ? privkey : hexToBytes(privkey);
     if (privkeyBytes.length !== 32) throw new Error('Invalid private key length');
 
     let key: Uint8Array | null = null;
@@ -87,7 +143,9 @@ export async function ncryptsecEncode(privkeyHex: string, password: string): Pro
         const data5bit = convertBits(Array.from(payload), 8, 5, true);
         return bech32Encode('ncryptsec', data5bit!);
     } finally {
-        privkeyBytes.fill(0);
+        // Only the copy this function made. Zeroing a borrowed array would blank the
+        // caller's key under it, and the scope it came from zeroes it anyway.
+        if (!borrowed) privkeyBytes.fill(0);
         key?.fill(0);
     }
 }

@@ -14,6 +14,7 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**',
+      '.package-*/**',
       'node_modules/**',
       'safari-build/**',
       'safari-xcode/**',

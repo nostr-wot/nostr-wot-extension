@@ -442,3 +442,28 @@ it('account copy menu offers exact formats, keyboard dismissal and clipboard fee
     for(const [name,descriptor] of globals){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete (globalThis as any)[name];}
   }
 });
+
+it('published relay configuration opens in a dismissible popup while the local editor stays on the panel', async t => {
+  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');const {act}=await import('react');
+  const {default:browser,resetMockStorage}=await import('./helpers/browser-mock');resetMockStorage();
+  const pubkey='11'.repeat(32);
+  await browser.storage.local.set({accounts:[{id:'a',pubkey,type:'imported'}],activeAccountId:'a'});
+  await browser.storage.sync.set({relays:'wss://local.test'});
+  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>({result:message.method==='getMyRelayList' ? {pubkey,reachable:true,event:{created_at:1,tags:[['r','wss://published.test','read']]}} : message.method==='signer_getAuthenticationGrants' ? [] : {}}));
+  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+  const root=createRoot(document.getElementById('root')!);
+  try {
+    await act(async()=>root.render(createElement(AccountProvider,null,createElement(RelaysProvider,null,createElement(NetworkSection)))));
+    assert.equal(document.querySelector('[role="dialog"]'),null);
+    assert.ok(!document.body.textContent!.includes('wss://published.test'));
+    const trigger=document.querySelector('button[aria-haspopup="dialog"]') as HTMLButtonElement;
+    trigger.focus();await act(async()=>trigger.click());
+    const popup=document.querySelector('[role="dialog"]')!;
+    assert.ok(popup.textContent!.includes('wss://published.test'));
+    assert.ok(popup.textContent!.includes('network.usePublished'));
+    assert.ok(popup.textContent!.includes('network.checkAgain'));
+    assert.ok(!popup.textContent!.includes('network.localConfiguration'));
+    await act(async()=>document.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+    assert.equal(document.querySelector('[role="dialog"]'),null);assert.equal(document.activeElement,trigger);
+  } finally {await act(async()=>root.unmount());dom.window.close();}
+});

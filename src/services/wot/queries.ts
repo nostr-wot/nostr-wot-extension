@@ -17,11 +17,15 @@ export async function queryWot(method: string, params: Record<string, unknown>):
     const signal = AbortSignal.any([contextSignal, AbortSignal.timeout(WOT_QUERY_TIMEOUT_MS)]);
     const mutes = await readWotMutes(account.id, account.pubkey);
     const muted = mutes.people;
-    const oracle = new WotOracle(settings.oracleUrl, signal);
     const hops = params.maxHops === undefined ? settings.maxHops : params.maxHops;
     if (!Number.isInteger(hops) || (hops as number) < 0 || (hops as number) > settings.maxHops)
         throw new Error('Invalid maxHops');
     const maxHops = hops as number;
+    // The oracle's own max_hops default is 3, so leaving it unsent let the server decide
+    // how deep this query searched: a person configured to 2 got a depth-3 answer, and
+    // any change to that default would have moved our scores. Every answer deeper than
+    // maxHops is discarded below anyway, so asking for more is work nobody keeps.
+    const oracle = new WotOracle(settings.oracleUrl, signal, undefined, maxHops);
     const local = settings.mode !== 'remote';
     const remote = settings.mode !== 'local';
     async function memo<T>(method: string, target: string, load: () => Promise<T>): Promise<T> {

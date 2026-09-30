@@ -10,6 +10,16 @@ export const WOT_CACHE_MS = 60000;
 export const WOT_SCORING: WotScoring = { distanceWeights: { 1: 1, 2: 0.5, 3: 0.25, 4: 0.1 }, pathBonus: { 2: 0.15, 3: 0.1, 4: 0.05 }, maxPathBonus: 0.5 };
 export const WOT_QUERY_TIMEOUT_MS = 60000;
 export const WOT_ORACLE_CONCURRENCY = 4;
+/**
+ * The hop depth nostr-wot-oracle will accept, from its `src/config.rs` `MAX_HOPS_LIMIT`.
+ * Its own default is 3; a request outside 1..5 is answered with a 400, not a shallower
+ * search, so the depth we send is clamped to this before it leaves.
+ */
+export const WOT_ORACLE_MAX_HOPS = 5;
+/** nostr-wot-oracle `GET /follows` defaults `limit` to 500 and caps it at 5000. */
+export const WOT_ORACLE_FOLLOWS_LIMIT = 5000;
+/** Bound on the follow walk. Four pages of the cap is far past any real follow list. */
+export const WOT_ORACLE_MAX_FOLLOW_PAGES = 4;
 export const WOT_MAX_CACHE_ENTRIES = 256;
 export const WOT_MAX_RESPONSE_BYTES = 1024 * 1024;
 export const WOT_SYNC_BATCH_SIZE = 50;

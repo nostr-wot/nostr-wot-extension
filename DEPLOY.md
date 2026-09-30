@@ -1,8 +1,12 @@
 # Deployment Guide
 
-This extension is compatible with both Chrome and Firefox.
+Browser-specific packages target Chrome and Firefox. The separate Safari wrapper
+is described in [the deployment reference](docs/deployment.md#safari).
 
 ## Building
+
+Use Node 24.15+ in 24.x (recommended; CI uses Node 24), 22.22.2+ in 22.x,
+or 26+. Install the locked dependencies with `npm ci`.
 
 ```bash
 npm run build        # Build to dist/
@@ -12,7 +16,7 @@ npm run test         # Run full test suite
 
 ## Packaging for Stores
 
-Each command builds the extension and creates a store-ready zip:
+Install the smoke-test browser with `npx playwright install chromium`. Each command builds in an isolated staging directory and validates the resulting ZIP:
 
 ```bash
 npm run package:chrome    # → nostr-wot-chrome.zip
@@ -24,9 +28,8 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 | Step | Chrome | Firefox |
 |------|--------|---------|
 | Build | `vite build` | `vite build` |
-| Compile badge engine | TS → JS (Vite plugin) | TS → JS (Vite plugin) |
 | Manifest patch | Strips `browser_specific_settings` | Adds `background.scripts` |
-| Zip | `dist/` excluding `.vite/` | `dist/` excluding `.vite/` |
+| Zip | Isolated build excluding `.vite/`; manifest validation and Chromium smoke test | Isolated build excluding `.vite/`; manifest validation |
 
 ### Chrome-specific manifest
 
@@ -40,24 +43,24 @@ npm run package:firefox   # → nostr-wot-firefox.zip
 
 ## Chrome Web Store
 
-1. Go to https://chrome.google.com/webstore/devconsole
-2. Pay one-time $5 developer fee (if not already)
-3. Click "New Item" and upload `nostr-wot-chrome.zip`
-4. Fill in store listing details
-5. Submit for review (typically 1-3 days)
+Stable GitHub releases trigger the verified upload workflow. Follow
+[Chrome publishing](docs/chrome-publishing.md) for credentials, release gates and recovery.
+Drafts, tags and builds do not submit; Google review remains separate from submission.
+Use manual dashboard upload only as an explicit recovery path, with the exact archive
+verified by `verify:chrome` and `smoke:chrome` immediately before upload.
 
 ## Firefox Add-ons (AMO)
 
 1. Go to https://addons.mozilla.org/developers/
 2. Create account or log in
-3. Click "Submit a New Add-on"
+3. Open the existing listing to upload an update; use "Submit a New Add-on" only for a new listing
 4. Choose distribution method:
    - **On this site** — Listed publicly on AMO
    - **On your own** — Self-distributed (signed but unlisted)
 5. Upload `nostr-wot-firefox.zip`
-6. AMO requires source code for review — upload a zip of the repo or link to the GitHub repo
+6. Supply the matching source archive, lockfile and [source build instructions](SOURCE_BUILD.md)
 7. Fill in listing details
-8. Submit for review (typically 1-3 days)
+8. Submit for review; check the actual status in AMO
 
 ### Firefox-specific notes
 
@@ -90,10 +93,11 @@ web-ext run -s /path/to/extracted-firefox-package
 
 ## Version Bumping
 
-Before each release, update the version in both files:
+Before each release, keep all version records aligned:
 
 - `manifest.json` → `"version": "x.y.z"`
-- `package.json` → `"version": "x.y.z"`
+- `package.json` and the package-lock root version → `"version": "x.y.z"`
+- `SOURCE_BUILD.md`, `CHANGELOG.md` and the Safari project version/build numbers
 
 Both stores require version numbers to increase with each submission.
 

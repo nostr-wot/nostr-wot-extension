@@ -130,7 +130,11 @@ export function decodeBolt11(invoice: string): DecodedInvoice | null {
         expiry = wordsToInt(fieldWords);
         break;
       case TAG_PAYMENT_HASH:
+        // This value also verifies NWC payment proofs. Never choose one hash
+        // from an ambiguous invoice or accept malformed fixed-length data.
+        if (paymentHash !== null || dataLength !== 52) return null;
         paymentHash = wordsToHex(fieldWords);
+        if (paymentHash.length !== 64) return null;
         break;
     }
 

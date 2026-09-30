@@ -17,7 +17,7 @@ import TextBlock from '@components/TextBlock';
 import DetailDisclosure from '@components/DetailDisclosure';
 import EventPreview from '@components/EventPreview';
 
-/** Activity-only reveal controls; approval requests never gain a decrypt action. */
+/** Reveal saved activity; pending requests use their separate, request-bound preview. */
 export default function ActivityEntryDetail({ entry, hideAccount = false, hidePeer = false }: { entry: ActivityEntry; hideAccount?: boolean; hidePeer?: boolean }) {
   const encrypted = activityEncryption(entry);
   const [peer, setPeer] = useState('');

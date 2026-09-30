@@ -34,7 +34,7 @@ Firefox natively supports the `browser.*` API; Chrome uses the `chrome.*` API. A
 
 ### 2.1 Background Script -- `background.ts` + `src/services/background/`
 
-The central coordinator. Runs as a **service worker** on Chrome and a **persistent background script** on Firefox (both declared in `manifest.json` via `"service_worker"` and `"scripts"` fields respectively, with `"type": "module"`).
+The central coordinator. Runs as a **service worker** on Chrome and a **background script** on Firefox. The source manifest lists both forms; browser-specific packaging retains only the correct one. Safari uses the separately synchronized persistent-page wrapper.
 
 `background.ts` is a thin orchestrator (~300 lines) that assembles handler modules, sets up listeners, and dispatches requests. Business logic lives in `src/services/background/` handler modules, each exporting a `Map<string, HandlerFn>` plus individual functions for direct testing.
 
@@ -67,7 +67,7 @@ Responsibilities of `background.ts`:
 - `browser.runtime.onConnect` listener (port-based NIP-07/WebLN)
 - `browser.alarms.onAlarm` listener -- the `'vault-keepalive'` tick does a trivial storage read to keep the MV3 service worker alive until the vault auto-lock fires (see [Security](security.md))
 - Auto-injection: `content.ts` and `inject.ts` are declared as `content_scripts` in `manifest.json` (matching `<all_urls>`), so the browser handles injection automatically.
-- On `runtime.onInstalled` (reason `install`), opens the onboarding wizard if no vault exists.
+- On `runtime.onInstalled` (reason `install`), tries the native onboarding popup when no vault or saved accounts exist; if the browser refuses, the user opens it from the extension icon (no setup tab); `services/appearance/install.ts` recovers an initial theme from an open official download tab. See [Theme handoff](theme-handoff.md).
 
 ### 2.2 Content Script -- `content.ts`
 
@@ -110,7 +110,7 @@ Extension popup UI opened when clicking the toolbar icon. React-based, styled wi
 
 ### 2.5 Onboarding -- `src/entrypoints/onboarding/`
 
-First-run wizard opened on `runtime.onInstalled` if no vault exists. Guides users through account creation (generate, import nsec, import npub, NIP-46 bunker) by rendering the same `src/screens/Wizard/` steps the popup uses.
+Legacy standalone entry point for the shared `src/screens/Wizard/` steps. Installation no longer opens this page: first-run setup happens only in the toolbar popup, opened automatically when allowed or manually by the user.
 
 | File | Purpose |
 |------|---------|
@@ -175,26 +175,27 @@ From `manifest.json` (MV3):
 }
 ```
 
-There is no `optional_permissions` key. `host_permissions` is empty and stays that way (see [Deployment](deployment.md) on why). `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
+There is no `optional_permissions` key. `host_permissions` contains only `https://nostr-wot.com/*`, used for the project-site bridge/tab discovery. Connecting another website does not request a host grant. `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
 
 Firefox-specific settings (`browser_specific_settings`):
 ```json
 {
     "gecko": {
-        "id": "nostr-wot@dandelionlabs.io",
+        "id": "nostr-wot-extension@nostr-wot.com",
         "strict_min_version": "140.0",
         "data_collection_permissions": {
-            "required": ["financialAndPaymentInfo", "personallyIdentifyingInfo"]
+            "required": ["financialAndPaymentInfo", "personallyIdentifyingInfo", "authenticationInfo", "personalCommunications", "browsingActivity"]
         }
-    }
+    },
+    "gecko_android": { "strict_min_version": "142.0" }
 }
 ```
 
-`data_collection_permissions` switches on Firefox's built-in data-consent install screen for the two categories the wallet and the profile/relay-list publishing actually transmit — see [Deployment](deployment.md) for the rejection that made this required and why the other categories are deliberately not declared.
+`data_collection_permissions` switches on Firefox's built-in data-consent install screen for the five declared transmission categories. See [Deployment](deployment.md) for current data destinations and disclosure requirements.
 
 ### Permission Model
 
-- **Required**: `storage` (browser.storage), `activeTab` (current tab access), `alarms` (the vault's MV3 service-worker keep-alive, see [Security](security.md)).
+- **Required**: `storage` (browser.storage), `activeTab` (current tab access), `alarms` (scheduled extension tasks, including vault/WoT work; see [Security](security.md)).
 - **None requested at runtime**: there is no `optional_permissions` key and no runtime `permissions.request()` call. Up to 0.5.0, connecting a site additionally requested `*://<site>/*`; that request is gone (see [Security — Connecting a site](security.md#connecting-a-site)) because identity release is decided by the allowlist below, not by `permissions.contains`.
 - **Per-domain**: The "Connect this site" card calls the `connectDomain` RPC (`addAllowedDomain` underneath), the only writer of the `allowedDomains` list in `browser.storage.local`.
 
@@ -272,3 +273,7 @@ System mode. `src/domain/appearance/theme.ts` validates and resolves preferences
 `src/constants/appearance.ts` defines the options and storage key. CSS variables in
 `theme.css` own Light, Dark and La Crypta palettes; AppearanceSection uses existing
 settings controls. No background RPC, site permission or account migration is needed.
+
+## Authentication destination policy
+
+`domain/signing/authentication.ts` owns strict NIP-98/NIP-42 parsing and explicit scope validation; `domain/signing/requestOrigin.ts` owns browser-attested top-level origin checks. `services/permissions/authentication.ts` stores account-specific destination grants under a serialized write lock, separately from generic signing defaults. The existing signer and approval queue enforce these checks for local and remote accounts; existing permission lifecycle functions revoke grants. The informational `data/auth-clients.json` registry is used only for approval context. See [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42) and [registry contribution instructions](auth-client-registry.md).

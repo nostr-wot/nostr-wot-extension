@@ -1,3 +1,4 @@
+import { makeNwcInvoice } from '../helpers/nwc-invoice.ts';
 import { localWallet, until, walletPubkey, clientKey } from '../helpers/nwc-wallet.ts';
 import * as permissions from '../../src/services/permissions/permissions.ts';
 import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
@@ -186,6 +187,8 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
   await browser.storage.local.set({ activeAccountId: accountId, accounts: [{ id: accountId, type: 'nsec', pubkey }] });
   await browser.storage.sync.set({ myPubkey: pubkey });
 
+  const invoice = makeNwcInvoice();
+
   async function exchange(operation: () => Promise<any>, method: string, result: object, params?: object) {
     const start = wallet.requests.length;
     const request = operation();
@@ -279,7 +282,7 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
     assert.deepEqual(await exchange(() => call('wallet_getBalance'), 'get_balance', { balance: 3000 }), { balance: 3 });
     assert.notEqual(getWalletProvider(accountId, config), old);
   });
-  await t.test('ambiguous Lightning Address payment retains its intent without requesting another invoice', async () => {
+  for (const outcome of ['disconnect', 'mismatched-preimage']) await t.test(`${outcome} Lightning Address payment retains its intent without requesting another invoice`, async () => {
     const originalFetch = globalThis.fetch;
     let resolutions = 0;
     globalThis.fetch = (async (input: any, init?: RequestInit) => {
@@ -293,11 +296,15 @@ test('NWC production wallet and WebLN handlers over a signed loopback relay', { 
     try {
       const start = wallet.requests.length;
       const payments = wallet.requests.filter(req => req.method === 'pay_invoice').length;
-      const params = { address: 'alice@recipient.example', amountSats: 250000, intentId: 'nwc-ambiguous' };
+      const params = { address: 'alice@recipient.example', amountSats: 250000, intentId: `nwc-ambiguous-${outcome}` };
+      const noticesBefore = (await call('wallet_getPaymentNotices')).length;
       const rejected = assert.rejects(call('wallet_payToLightningAddress', params), /unknown/i);
       await until(() => wallet.requests.length > start);
       assert.equal(wallet.requests[start].method, 'pay_invoice');
-      wallet.dropConnections(); await rejected;
+      if (outcome === 'disconnect') wallet.dropConnections();
+      else await wallet.response(wallet.requests[start], { preimage: 'ab'.repeat(32) });
+      await rejected;
+      assert.equal((await call('wallet_getPaymentNotices')).length, noticesBefore, 'unverified success must not create a paid receipt');
       assert.equal(resolutions, 2);
       // getConnectedProvider reconnects first, but the durable intent must stop
       // the operation before resolving the address or minting another invoice.

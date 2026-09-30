@@ -166,14 +166,16 @@ export default function ScrollWheelPicker<T>({
     }
   }, [items.length, getIdx, snapTo]);
 
+  // selectedIndex seeds the wheel in the ref initializer. Re-running that seed
+  // on parent renders would interrupt an in-progress drag or snap animation.
   useEffect(() => {
-    st.current.offset = -selectedIndex * itemHeight;
-    rerender();
-  }, []);
-
-  useEffect(() => () => {
-    if (st.current.raf) cancelAnimationFrame(st.current.raf);
-    clearTimeout(st.current.wt!);
+    const state = st.current;
+    return () => {
+      if (state.raf) cancelAnimationFrame(state.raf);
+      clearTimeout(state.wt!);
+      clearTimeout(state.holdTimer);
+      state.pending = false;
+    };
   }, []);
 
   const offset = st.current.offset;

@@ -305,3 +305,29 @@ it('repeated metadata reads share sockets even when no profile exists or relays 
     }
   } finally {config.relays=previous; globalThis.WebSocket=realWebSocket;}
 });
+
+it('directory profile lookup queries purplepag.es, verifies and caches its result',async t=>{
+ t.after(()=>{globalThis.WebSocket=realWebSocket;});
+ const {fetchProfileMetadata}=await import('../src/services/background/profile-handlers.ts');
+ const {profileCache}=await import('../src/services/background/state.ts');
+ const {default:browser}=await import('./helpers/browser-mock.ts');
+ resetMockStorage();profileCache.clear();
+ const urls:string[]=[];const event=await signed(0,'{"name":"Directory Alice"}');
+ class DirectorySocket {
+  onopen:(()=>void)|null=null;onmessage:((e:{data:string})=>void)|null=null;onerror:(()=>void)|null=null;
+  constructor(public url:string){urls.push(url);queueMicrotask(()=>this.onopen?.());}
+  send(data:string){const [type,id,filter]=JSON.parse(data);if(type!=='REQ')return;
+   assert.deepEqual(filter,{kinds:[0],authors:[PUBKEY],limit:1});
+   if(this.url==='wss://purplepag.es')this.onmessage?.({data:JSON.stringify(['EVENT',id,event])});
+   this.onmessage?.({data:JSON.stringify(['EOSE',id])});
+  }
+  close(){}
+ }
+ (globalThis as {WebSocket:unknown}).WebSocket=DirectorySocket;
+ assert.deepEqual(await fetchProfileMetadata(PUBKEY,true),{name:'Directory Alice'});
+ assert.deepEqual(urls,['wss://purplepag.es']);
+ const stored=await browser.storage.local.get(`profile_${PUBKEY}`);
+ assert.equal((stored[`profile_${PUBKEY}`] as any).metadata.name,'Directory Alice');
+ const count=urls.length;assert.deepEqual(await fetchProfileMetadata(PUBKEY,true),{name:'Directory Alice'});assert.equal(urls.length,count);
+ profileCache.clear();
+});

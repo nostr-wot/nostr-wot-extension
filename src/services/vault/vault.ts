@@ -27,7 +27,9 @@ import {
  * Security properties:
  *   - Auto-lock timer clears decrypted keys from memory
  *   - Chrome service worker termination naturally clears all memory
- *   - Private key bytes obtained via getPrivkey() must be zeroed by caller
+ *   - Private key bytes are reached through withPrivkey(), which zeroes its copy on
+ *     every path; getPrivkey() remains the primitive underneath and leaves the zeroing
+ *     to the caller
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey -- Web Crypto: PBKDF2
  * @see https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/encrypt -- Web Crypto: AES-GCM

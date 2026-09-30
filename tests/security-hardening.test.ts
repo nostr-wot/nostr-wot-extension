@@ -684,3 +684,20 @@ describe('security: vault KDF work factor', () => {
 });
 
 import "./private-cache-regressions.ts";
+
+for (const method of ['vault_exportNsec', 'vault_exportNcryptsec']) {
+  it(`refuses stale ${method} results after an account switch`, async () => {
+    resetMockStorage();
+    await vault.destroy();
+    const payload = makePayload();
+    payload.accounts.push({ ...payload.accounts[0], id: 'acct2', name: 'Other' });
+    await vault.create(TEST_PASSWORD, payload);
+    await browserMock.storage.local.set({ activeAccountId: 'acct1' });
+    const pending = vaultHandlers.get(method)!({ password: TEST_PASSWORD });
+    await Promise.all([
+      assert.rejects(pending, /Account switched|session changed/),
+      vault.setActiveAccount('acct2'),
+    ]);
+    await vault.destroy();
+  });
+}

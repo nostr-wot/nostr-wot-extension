@@ -44,7 +44,7 @@ Sync settings are saved explicitly; valid scoring changes apply immediately. Exi
 
 ## 2. Relay List (NIP-65)
 
-The user's read/write relay list is edited in the popup and published as replaceable kind:10002 events via `src/services/background/publish-handlers.ts`. Publication and configured CSV parsing reuse helpers in `src/domain/relays/relayList.ts`. Experimental WoT sync reads the configured relays; it does not replace the user's own published relay configuration.
+The user's read/write relay list is edited in the popup and published as replaceable kind:10002 events via `src/services/background/publish-handlers.ts`. Publication and configured CSV parsing reuse helpers in `src/domain/relays/relayList.ts`. Experimental WoT sync reads the configured relays; it does not replace the user's own published relay configuration. The shared published-event reader uses `isNewerReplaceable`: higher `created_at` wins, then the lexicographically lower event ID breaks equal timestamps. Verified cached evidence remains available during relay outages.
 
 ---
 
@@ -58,3 +58,9 @@ Kind:0 (profile metadata) events are fetched from relays and cached at two level
 | Persistent | 30 minutes | `browser.storage.local` under `profile_{pubkey}` |
 
 The fetch queries all configured relays simultaneously, accepts the newest event (highest `created_at`), with a 5-second overall timeout and 4-second per-relay timeout.
+
+Public display-profile cache maintenance uses a bounded `publicProfileIndexV1` index
+and retains at most 500 fresh entries. Reads target the requested profile key; a full
+storage scan is reserved for migration when the index is absent. Future timestamps
+and expired entries are rejected. Message sender lookups can explicitly use the public
+`wss://purplepag.es` directory; this is distinct from configured-relay profile editing.

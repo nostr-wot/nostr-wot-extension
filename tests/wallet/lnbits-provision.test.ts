@@ -2,9 +2,9 @@
  * LNbits auto-provisioning tests
  *
  * Tests provisionLnbitsWallet() which uses a two-step challenge-response:
- *   1. GET  /api/provision/challenge → { challenge }
+ *   1. POST /api/v2/provision/challenge → body-bound challenge + transaction token
  *   2. Sign challenge with signFn → kind:27235 event
- *   3. POST /api/provision with { name, event }
+ *   3. POST /api/v2/provision with { name } and Authorization header
  *
  * Run with:
  *   node --import tsx --test tests/wallet/lnbits-provision.test.ts
@@ -14,16 +14,20 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress } from '../../src/services/wallet/lnbits-provision.ts';
 import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
+import type { WalletAuthProof } from '../../src/services/wallet/lnbits-provision.ts';
+import { createHash } from 'node:crypto';
 import type { SignedEvent } from '../../src/domain/nostr/types.ts';
 
-const FAKE_CHALLENGE = 'a1b2c3d4e5f6';
+const FAKE_CHALLENGE = 'a'.repeat(64);
+const TRANSACTION_TOKEN = 'b'.repeat(64);
+const challengeResponse = () => ({version:2,challenge:FAKE_CHALLENGE,transactionToken:TRANSACTION_TOKEN,expiresAt:Math.floor(Date.now()/1000)+60});
 
 const FAKE_SIGNED_EVENT: SignedEvent = {
   id: 'event-id-123',
   pubkey: 'pubkey-abc',
   created_at: 1700000000,
   kind: 27235,
-  tags: [['challenge', FAKE_CHALLENGE], ['u', 'https://zaps.example.com/api/provision']],
+  tags: [['challenge', FAKE_CHALLENGE], ['u', 'https://zaps.example.com/api/v2/provision']],
   content: '',
   sig: 'sig-xyz',
 };
@@ -31,7 +35,9 @@ const FAKE_SIGNED_EVENT: SignedEvent = {
 function createMockSignFn(expectedChallenge?: string) {
   let called = false;
   let receivedChallenge = '';
-  const signFn = async (challenge: string): Promise<SignedEvent> => {
+  const signFn = async ({challenge,payload,transaction}: WalletAuthProof): Promise<SignedEvent> => {
+    assert.match(payload,/^[a-f0-9]{64}$/);
+    assert.equal(transaction,createHash('sha256').update(TRANSACTION_TOKEN).digest('hex'));
     called = true;
     receivedChallenge = challenge;
     if (expectedChallenge !== undefined) {
@@ -43,22 +49,24 @@ function createMockSignFn(expectedChallenge?: string) {
 }
 
 describe('provisionLnbitsWallet', () => {
-  it('fetches challenge, calls signFn, sends signed event in POST body', async () => {
+  it('fetches challenge, calls signFn, sends an exact body hash and a separate authentication header', async () => {
     const { signFn, wasCalled } = createMockSignFn(FAKE_CHALLENGE);
     let postBody: Record<string, unknown> | null = null;
 
     const mockFetch = async (url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
         // Challenge endpoint
-        assert.strictEqual(url, 'https://zaps.example.com/api/provision/challenge');
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+        assert.strictEqual(url, 'https://zaps.example.com/api/v2/provision/challenge');
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       // Provision endpoint
-      assert.strictEqual(url, 'https://zaps.example.com/api/provision');
-      assert.strictEqual(init.method, 'POST');
-      const headers = init.headers as Record<string, string>;
+      assert.strictEqual(url, 'https://zaps.example.com/api/v2/provision');
+      assert.strictEqual(init?.method, 'POST');
+      const headers = init?.headers as Record<string, string>;
       assert.strictEqual(headers['Content-Type'], 'application/json');
-      postBody = JSON.parse(init.body as string);
+      assert.deepEqual(JSON.parse(atob(headers.Authorization.slice(6))),FAKE_SIGNED_EVENT);
+      assert.equal(headers['X-Nostr-Transaction'],TRANSACTION_TOKEN);
+      postBody = JSON.parse(init?.body as string);
       return new Response(JSON.stringify({
         id: 'wallet-id-123',
         name: 'WoT:npub1abc1234',
@@ -81,7 +89,7 @@ describe('provisionLnbitsWallet', () => {
     assert.strictEqual(wasCalled(), true);
     assert.ok(postBody);
     assert.strictEqual((postBody as Record<string, unknown>).name, 'WoT:npub1abc1234');
-    assert.deepStrictEqual((postBody as Record<string, unknown>).event, FAKE_SIGNED_EVENT);
+    assert.equal((postBody as Record<string, unknown>).event, undefined);
   });
 
   it('strips trailing slashes from instance URL', async () => {
@@ -90,8 +98,8 @@ describe('provisionLnbitsWallet', () => {
 
     const mockFetch = async (url: string, init?: RequestInit) => {
       capturedUrls.push(url);
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response(JSON.stringify({
         id: 'w1', adminkey: 'k1', inkey: 'i1', name: 'test', balance_msat: 0, user: 'u1',
@@ -99,8 +107,8 @@ describe('provisionLnbitsWallet', () => {
     };
 
     await provisionLnbitsWallet('https://zaps.example.com/', 'test', signFn, mockFetch as typeof fetch);
-    assert.strictEqual(capturedUrls[0], 'https://zaps.example.com/api/provision/challenge');
-    assert.strictEqual(capturedUrls[1], 'https://zaps.example.com/api/provision');
+    assert.strictEqual(capturedUrls[0], 'https://zaps.example.com/api/v2/provision/challenge');
+    assert.strictEqual(capturedUrls[1], 'https://zaps.example.com/api/v2/provision');
   });
 
   it('throws on challenge request failure', async () => {
@@ -108,15 +116,15 @@ describe('provisionLnbitsWallet', () => {
     const mockFetch = async () => new Response('Service Unavailable', { status: 503 });
     await assert.rejects(
       () => provisionLnbitsWallet('https://zaps.example.com', 'test', signFn, mockFetch as typeof fetch),
-      (err: Error) => err.message.includes('Challenge request failed: 503'),
+      (err: Error) => err.message.includes('challenge request failed') && err.message.includes('503'),
     );
   });
 
   it('throws on provision POST failure', async () => {
     const { signFn } = createMockSignFn();
     const mockFetch = async (_url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response('Forbidden', { status: 403 });
     };
@@ -138,7 +146,7 @@ describe('provisionLnbitsWallet', () => {
   it('throws when signFn throws', async () => {
     const failSignFn = async () => { throw new Error('No private key'); };
     const mockFetch = async () => {
-      return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      return new Response(JSON.stringify(challengeResponse()), { status: 200 });
     };
     await assert.rejects(
       () => provisionLnbitsWallet('https://zaps.example.com', 'test', failSignFn, mockFetch as typeof fetch),
@@ -151,8 +159,8 @@ describe('provisionLnbitsWallet', () => {
     const nwcUri = 'nostr+walletconnect://pubkey?relay=wss://relay.test&secret=abc';
 
     const mockFetch = async (_url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response(JSON.stringify({
         id: 'w1', adminkey: 'k1', inkey: 'i1', name: 'test',
@@ -168,8 +176,8 @@ describe('provisionLnbitsWallet', () => {
     const { signFn } = createMockSignFn();
 
     const mockFetch = async (_url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response(JSON.stringify({
         id: 'w1', adminkey: 'k1', inkey: 'i1', name: 'test',
@@ -188,16 +196,16 @@ describe('provisionLnbitsWallet', () => {
 });
 
 describe('claimLightningAddress', () => {
-  it('fetches challenge, signs, sends POST with username and event', async () => {
+  it('fetches challenge, signs, sends POST with a body-bound username', async () => {
     const { signFn, wasCalled } = createMockSignFn(FAKE_CHALLENGE);
     let postBody: Record<string, unknown> | null = null;
 
     const mockFetch = async (url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
-      assert.strictEqual(url, 'https://zaps.example.com/api/claim-username');
-      postBody = JSON.parse(init.body as string);
+      assert.strictEqual(url, 'https://zaps.example.com/api/v2/claim-username');
+      postBody = JSON.parse(init?.body as string);
       return new Response(JSON.stringify({ address: 'alice@zaps.nostr-wot.com' }), { status: 200 });
     };
 
@@ -208,14 +216,14 @@ describe('claimLightningAddress', () => {
     assert.strictEqual(wasCalled(), true);
     assert.ok(postBody);
     assert.strictEqual((postBody as Record<string, unknown>).username, 'alice');
-    assert.deepStrictEqual((postBody as Record<string, unknown>).event, FAKE_SIGNED_EVENT);
+    assert.equal((postBody as Record<string, unknown>).event, undefined);
   });
 
   it('throws server error message when claim fails', async () => {
     const { signFn } = createMockSignFn();
     const mockFetch = async (_url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response(JSON.stringify({ error: 'Username already taken' }), { status: 409 });
     };
@@ -228,8 +236,8 @@ describe('claimLightningAddress', () => {
   it('throws generic error when claim response has no error field', async () => {
     const { signFn } = createMockSignFn();
     const mockFetch = async (_url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response('Bad Request', { status: 400 });
     };
@@ -244,7 +252,7 @@ describe('claimLightningAddress', () => {
     const mockFetch = async () => new Response('Down', { status: 503 });
     await assert.rejects(
       () => claimLightningAddress('https://zaps.example.com', 'alice', signFn, mockFetch as typeof fetch),
-      (err: Error) => err.message.includes('Challenge request failed: 503'),
+      (err: Error) => err.message.includes('challenge request failed') && err.message.includes('503'),
     );
   });
 });
@@ -279,8 +287,8 @@ describe('releaseLightningAddress', () => {
     let postUrl = '';
 
     const mockFetch = async (url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       postUrl = url;
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -288,14 +296,14 @@ describe('releaseLightningAddress', () => {
 
     await releaseLightningAddress('https://zaps.example.com', signFn, mockFetch as typeof fetch);
     assert.strictEqual(wasCalled(), true);
-    assert.strictEqual(postUrl, 'https://zaps.example.com/api/release-username');
+    assert.strictEqual(postUrl, 'https://zaps.example.com/api/v2/release-username');
   });
 
   it('throws on release failure', async () => {
     const { signFn } = createMockSignFn();
     const mockFetch = async (_url: string, init?: RequestInit) => {
-      if (!init?.method || init.method === 'GET') {
-        return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE }), { status: 200 });
+      if (!(init?.headers as Record<string,string>)?.Authorization) {
+        return new Response(JSON.stringify(challengeResponse()), { status: 200 });
       }
       return new Response('Not Found', { status: 404 });
     };
@@ -329,7 +337,7 @@ describe('provisioning transport boundaries', () => {
   });
   it('rejects malformed provisioning credentials', async () => {
     for (const body of [null, {}, {id: 'id', adminkey: 123}, {id:'id', adminkey:'key', nwcUri:'https://bad.test'}]) {
-      const fetchFn = (async (_url: unknown, init?: RequestInit) => new Response(JSON.stringify(init?.method === 'POST' ? body : {challenge: FAKE_CHALLENGE}))) as typeof fetch;
+      const fetchFn = (async (_url: unknown, init?: RequestInit) => new Response(JSON.stringify((init?.headers as Record<string,string>)?.Authorization ? body : challengeResponse()))) as typeof fetch;
       await assert.rejects(provisionLnbitsWallet('https://wallet.test', 'test', createMockSignFn().signFn, fetchFn), /response/i);
     }
   });
@@ -338,7 +346,7 @@ describe('provisioning transport boundaries', () => {
 it('uses redirect refusal for challenge, provisioning, claim, lookup and release', async () => {
   const fetchFn = (async (_url: unknown, init?: RequestInit) => {
     assert.equal(init?.redirect, 'error');
-    return new Response(JSON.stringify({ challenge: FAKE_CHALLENGE, id: 'id', adminkey: 'key', address: 'alice@example.test' }));
+    return new Response(JSON.stringify({ ...challengeResponse(), id: 'id', adminkey: 'key', address: 'alice@example.test' }));
   }) as typeof fetch;
   const { signFn } = createMockSignFn();
   await provisionLnbitsWallet('http://127.0.0.1:1234', 'test', signFn, fetchFn);
@@ -352,4 +360,49 @@ it('rejects malformed address responses', async () => {
     await assert.rejects(getLightningAddress('https://wallet.test', 'key',
       (async () => new Response(JSON.stringify({ address }))) as typeof fetch), /response/i);
   }
+});
+
+it('binds the exact bytes for provision, claim and release before signing', async () => {
+  for (const [operation,body,invoke] of [
+    ['provision',{name:'Wallet é'},(sign: any,fetch: typeof globalThis.fetch)=>provisionLnbitsWallet('https://wallet.test','Wallet é',sign,fetch)],
+    ['claim-username',{username:'alice'},(sign: any,fetch: typeof globalThis.fetch)=>claimLightningAddress('https://wallet.test','alice',sign,fetch)],
+    ['release-username',{},(sign: any,fetch: typeof globalThis.fetch)=>releaseLightningAddress('https://wallet.test',sign,fetch)],
+  ] as const) {
+    let proof: WalletAuthProof | undefined;
+    const bytes=JSON.stringify(body);const hash=createHash('sha256').update(bytes).digest('hex');
+    const mockFetch=(async(url:string,init:RequestInit)=>{
+      assert.equal(init.redirect,'error');
+      if(url.endsWith('/challenge')) {
+        assert.deepEqual(JSON.parse(init.body as string),{url:`https://wallet.test/api/v2/${operation}`,method:'POST',payload:hash});
+        return new Response(JSON.stringify(challengeResponse()));
+      }
+      assert.equal(init.body,bytes);assert.equal(proof?.payload,hash);
+      const headers=new Headers(init.headers);assert.equal(headers.get('X-Nostr-Transaction'),TRANSACTION_TOKEN);
+      assert.equal(JSON.parse(atob(headers.get('Authorization')!.slice(6))).tags.find((tag:string[])=>tag[0]==='payload')[1],hash);
+      assert.ok(!String(init.body).includes(TRANSACTION_TOKEN));
+      return new Response(JSON.stringify({id:'wallet',adminkey:'key',address:'alice@wallet.test'}));
+    }) as typeof fetch;
+    await invoke(async(value:WalletAuthProof)=>{proof=value;return {...FAKE_SIGNED_EVENT,tags:[['payload',value.payload]]};},mockFetch);
+  }
+});
+
+it('does not downgrade when the backend lacks v2 and never signs malformed or expired transactions', async () => {
+  for (const response of [new Response('upgrade',{status:426}),new Response('missing',{status:404}),
+    new Response(JSON.stringify({...challengeResponse(),version:1})),
+    new Response(JSON.stringify({...challengeResponse(),transactionToken:'bad'})),
+    new Response(JSON.stringify({...challengeResponse(),expiresAt:Math.floor(Date.now()/1000)-1})),
+    new Response(JSON.stringify({...challengeResponse(),expiresAt:Math.floor(Date.now()/1000)+600})),
+  ]) {
+    let calls=0;let signatures=0;
+    await assert.rejects(provisionLnbitsWallet('https://wallet.test','name',async()=>{signatures++;return FAKE_SIGNED_EVENT;},(async()=>{calls++;return response;}) as typeof fetch));
+    assert.equal(calls,1);assert.equal(signatures,0);
+  }
+});
+
+it('refuses an expired transaction after signing and before posting', async t => {
+  const now=Date.now();let calls=0;
+  t.mock.method(Date,'now',()=>now);
+  const sign=async()=>{t.mock.method(Date,'now',()=>now+61_000);return FAKE_SIGNED_EVENT;};
+  await assert.rejects(provisionLnbitsWallet('https://wallet.test','name',sign,(async()=>{calls++;return new Response(JSON.stringify(challengeResponse()));}) as typeof fetch),/expired/);
+  assert.equal(calls,1);
 });

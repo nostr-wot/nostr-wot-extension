@@ -23,12 +23,14 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
   onUnlockedRef.current = onUnlocked;
 
   useEffect(() => {
-    isVaultOpen(rpc).then((open) => { if (open) onUnlockedRef.current?.(); }).catch(() => {});
+    let current = true;
+    isVaultOpen(rpc).then((open) => { if (current && open) onUnlockedRef.current?.(); }).catch(() => {});
+    return () => { current = false; };
   }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [inputRef]);
 
   return (
     <div className="p-5 bg-[rgba(217,119,6,0.1)] border border-[rgba(217,119,6,0.15)] rounded-md flex flex-col gap-3">

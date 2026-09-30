@@ -278,6 +278,7 @@ describe('theme preferences', () => {
     const listeners: Array<(changes: any, area: string) => void> = [];
     const mediaListeners: Array<() => void> = [];
     let stored: unknown = 'dark';
+    let storedMode: unknown;
     let failRead = false;
     let failWrite = false;
     const media = { matches: false, addEventListener: (_: string, fn: () => void) => mediaListeners.push(fn) };
@@ -288,11 +289,12 @@ describe('theme preferences', () => {
       session: {},
       onChanged: { addListener: (fn: any) => listeners.push(fn), removeListener: (fn: any) => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); } },
       local: {
-        get: async () => { if (failRead) throw new Error('offline'); return { appearanceTheme: stored }; },
+        get: async () => { if (failRead) throw new Error('offline'); return { appearanceTheme: stored, appearanceMode: storedMode }; },
         set: async (value: any) => {
           if (failWrite) throw new Error('quota');
-          stored = value.appearanceTheme;
-          listeners.forEach(fn => fn({ appearanceTheme: { newValue: stored } }, 'local'));
+          if ('appearanceTheme' in value) stored = value.appearanceTheme;
+          if ('appearanceMode' in value) storedMode = value.appearanceMode;
+          listeners.forEach(fn => fn(Object.fromEntries(Object.entries(value).map(([key, newValue]) => [key, { newValue }])), 'local'));
         },
       },
     } };
@@ -301,6 +303,25 @@ describe('theme preferences', () => {
       await initTheme();
       const root = dom.window.document.documentElement;
       assert.equal(root.dataset.theme, 'dark');
+      await initTheme('?theme=coracle');
+      assert.equal(stored, 'dark', 'a campaign must preserve an existing choice');
+      for (const theme of ['coracle', 'nostrudel', 'yakihonne', 'nostrich']) {
+        stored = undefined;
+        await initTheme(`?theme=${theme}&ref=campaign`);
+        assert.equal(root.dataset.theme, theme);
+        assert.equal(stored, theme, 'first-render URL choice is persisted');
+        await initTheme();
+        assert.equal(root.dataset.theme, theme, 'later openings retain the theme');
+      }
+      stored = undefined;
+      await initTheme('?theme=custom');
+      assert.equal(stored, undefined);
+      assert.equal(root.dataset.theme, 'light');
+      failWrite = true;
+      await initTheme('?theme=coracle');
+      assert.equal(root.dataset.theme, 'coracle', 'storage failure still allows rendering');
+      assert.equal(stored, undefined);
+      failWrite = false;
       await saveTheme('system');
       assert.equal(root.dataset.theme, 'light');
       media.matches = true;
@@ -332,30 +353,50 @@ describe('theme preferences', () => {
         assert.ok(mount.querySelector('[role="dialog"]'), 'language picker opens inside appearance settings');
         await act(async () => dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
         assert.equal(mount.querySelector('[role="dialog"]'), null);
-        const dropdown = mount.querySelector('select')!;
-        assert.ok(dropdown, 'theme selection uses a native dropdown');
-        assert.equal(mount.querySelector(`label[for="${dropdown.id}"]`)?.textContent, 'theme.title');
-        assert.deepEqual([...dropdown.options].map(option => option.value), ['light', 'dark', 'system', 'lacrypta', 'coracle', 'nostrudel', 'yakihonne', 'nostrich']);
-        await act(async () => {
-          dropdown.value = 'lacrypta';
-          dropdown.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+        Object.defineProperties(dom.window.HTMLElement.prototype, {
+          showPopover: { value() {}, configurable: true },
+          hidePopover: { value() {}, configurable: true },
         });
+        const dropdown = mount.querySelector<HTMLButtonElement>('[aria-haspopup="listbox"]')!;
+        assert.ok(dropdown, 'theme selection uses the shared custom dropdown');
+        assert.equal(mount.querySelector(`label[for="${dropdown.id}"]`)?.textContent, 'theme.title');
+        assert.deepEqual([...mount.querySelectorAll<HTMLElement>('[role="option"]')].map(option => option.dataset.value), ['default', 'lacrypta', 'coracle', 'nostrudel', 'yakihonne', 'nostrich', 'light', 'dark', 'system']);
+        await act(async () => dropdown.click());
+        await act(async () => mount.querySelector<HTMLButtonElement>('[data-value="lacrypta"]')!.click());
         assert.equal(stored, 'lacrypta');
         assert.equal(root.dataset.theme, 'lacrypta');
-        assert.equal(dropdown.value, 'lacrypta');
+        assert.equal(mount.querySelectorAll('[aria-haspopup="listbox"]').length, 1, 'fixed themes have no ineffective mode control');
+        assert.equal(mount.querySelector('[data-value="lacrypta"]')?.getAttribute('aria-selected'), 'true');
         failWrite = true;
-        await act(async () => {
-          dropdown.value = 'light';
-          dropdown.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
-        });
+        await act(async () => dropdown.click());
+        await act(async () => mount.querySelector<HTMLButtonElement>('[data-value="default"]')!.click());
         assert.equal(mount.querySelector('[role="alert"]')?.textContent, 'theme.saveError');
-        assert.equal(dropdown.value, 'lacrypta');
+        assert.equal(mount.querySelector('[data-value="lacrypta"]')?.getAttribute('aria-selected'), 'true');
+        failWrite = false;
+        await act(async () => dropdown.click());
+        await act(async () => mount.querySelector<HTMLButtonElement>('[data-value="coracle"]')!.click());
+        assert.equal(storedMode, 'light');
+        assert.equal(root.dataset.theme, 'coracle-light');
+        const modeDropdown = mount.querySelectorAll<HTMLButtonElement>('[aria-haspopup="listbox"]')[1];
+        assert.ok(modeDropdown, 'paired palettes expose a separate appearance selector');
+        await act(async () => modeDropdown.click());
+        await act(async () => mount.querySelector<HTMLButtonElement>('[data-value="system"]')!.click());
+        assert.equal(stored, 'coracle', 'appearance changes preserve the project');
+        assert.equal(storedMode, 'system');
+        media.matches = true;
+        mediaListeners.forEach(fn => fn());
+        assert.equal(root.dataset.theme, 'coracle');
+        media.matches = false;
+        mediaListeners.forEach(fn => fn());
+        assert.equal(root.dataset.theme, 'coracle-light');
+        failRead = false;
+        await initTheme();
+        assert.equal(root.dataset.theme, 'coracle-light', 'mode survives reopening');
         await act(async () => {
           root.dataset.themePreference = 'custom';
           listeners.forEach(fn => fn({ appearanceTheme: { newValue: 'custom' } }, 'local'));
         });
-        assert.equal(dropdown.value, 'custom');
-        assert.equal(dropdown.selectedOptions[0].textContent, 'Custom');
+        assert.equal(dropdown.textContent, 'Custom');
         assert.ok([...mount.querySelectorAll('button')].some(button => button.textContent === 'Edit custom theme'));
       } finally {
         await act(async () => app.unmount());

@@ -103,6 +103,68 @@ import type { UnsignedEvent } from '../src/domain/nostr/types.ts';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import { getPageRequestOrigin } from '../src/domain/signing/requestOrigin.ts';
+
+describe('authentication browser sender boundary', () => {
+  function ingress(channel: 'message' | 'port') {
+    const source = readFileSync(new URL('../background.ts', import.meta.url), 'utf8');
+    const start = channel === 'message' ? 'browser.runtime.onMessage.addListener' : 'browser.runtime.onConnect.addListener';
+    const end = channel === 'message' ? '// Port-based handler' : '// Keep-alive alarm';
+    let listener: any;
+    const seen: any[] = [];
+    runInNewContext(ts.transpileModule(source.slice(source.indexOf(start), source.indexOf(end)), {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {
+      browser: {runtime:{onMessage:{addListener(fn: any) { listener = fn; }}, onConnect:{addListener(fn: any) { listener = fn; }}}},
+      getPageRequestOrigin, PRIVILEGED_METHODS: new Set(), URL, console,
+      forgetTabOrigin() {}, rememberTabOrigin() {},
+      handlePageRequest: async (request: any) => { seen.push(request); return request.params.origin; },
+    });
+    return { seen, call: async (sender: any, kind = 27235) => {
+      const request = {id:1, method:'nip07_signEvent', frameId:0, sender:{frameId:0,origin:'https://forged.test'}, params:{event:{kind,content:'',tags:[]}, origin:'https://forged.test', frameId:0, sender:{frameId:0,origin:'https://forged.test'}}};
+      if (channel === 'message') return new Promise<any>(resolve => listener(request,sender,resolve));
+      let receive: any;
+      let response: any;
+      listener({name:'nip07',sender,onDisconnect:{addListener() {}},onMessage:{addListener(fn: any) {receive=fn;}},postMessage(reply: any) {response=reply;}});
+      await receive(request);
+      return response;
+    }};
+  }
+
+  for (const channel of ['message', 'port'] as const) {
+    it(`${channel}: authentication rejects subframes and unverified or insecure identities before dispatch`, async () => {
+      const boundary = ingress(channel);
+      for (const kind of [27235,22242]) {
+        for (const sender of [
+          {frameId:2,url:'https://trusted.test',origin:'https://trusted.test',tab:{url:'https://attacker.test'}},
+          {frameId:2,url:'https://trusted.test',origin:'https://trusted.test',tab:{url:'https://trusted.test'}},
+          {url:'https://trusted.test',origin:'https://trusted.test'},
+          {frameId:0,origin:'https://trusted.test'},
+          {frameId:0,url:'https://trusted.test',origin:'null'},
+          {frameId:0,url:'https://trusted.test',origin:'https://attacker.test'},
+          {frameId:0,url:'data:text/plain,opaque',origin:'null'},
+          {frameId:0,url:'http://trusted.test',origin:'http://trusted.test'},
+          {frameId:0,url:'http://localhost.attacker.test',origin:'http://localhost.attacker.test'},
+        ]) {
+          const response = await boundary.call(sender,kind);
+          assert.ok(response.error, `accepted ${kind} from ${JSON.stringify(sender)}`);
+        }
+      }
+      assert.equal(boundary.seen.length,0,'rejected authentication must never reach signing/approval');
+    });
+
+    it(`${channel}: top-level HTTPS and loopback authentication uses browser identity, not page claims`, async () => {
+      const boundary = ingress(channel);
+      for (const origin of ['https://trusted.test:8443','http://localhost:3000','http://127.0.0.1:3000','http://[::1]:3000']) {
+        for (const kind of [27235,22242]) {
+          assert.equal((await boundary.call({frameId:0,url:origin+'/path',origin},kind)).result,origin);
+        }
+      }
+      // Browsers without sender.origin still provide a verified document URL.
+      assert.equal((await boundary.call({frameId:0,url:'https://trusted.test/path'})).result,'https://trusted.test');
+      assert.equal((await boundary.call({frameId:0,tab:{url:'https://trusted.test/path'}})).result,'https://trusted.test');
+      assert.equal((await boundary.call({frameId:2,url:'http://ordinary.test'},1)).result,'http://ordinary.test','ordinary signing preserves existing routing');
+    });
+  }
+});
 
 describe('actual content bridge concurrency', () => {
   it('runtime messages derive full frame origins and reject opaque senders', async () => {
@@ -112,7 +174,7 @@ describe('actual content bridge concurrency', () => {
     const seen: string[] = [];
     runInNewContext(ts.transpileModule(listener, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {
       browser: {runtime:{onMessage:{addListener(fn: any) { receive = fn; }}}},
-      PRIVILEGED_METHODS: new Set(), URL,
+      getPageRequestOrigin, PRIVILEGED_METHODS: new Set(), URL,
       handlePageRequest: async ({params}: any) => { seen.push(params.origin); return params.origin; },
     });
     const call = (sender: any) => new Promise<any>(resolve => receive({method:'webln_enable',params:{origin:'https://forged.test'}},sender,resolve));
@@ -134,7 +196,7 @@ describe('actual content bridge concurrency', () => {
     const receivedOrigins: string[] = [];
     runInNewContext(ts.transpileModule(listener, {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText, {
       browser: {runtime:{onConnect:{addListener(fn: any) { connect = fn; }}}},
-      forgetTabOrigin() {}, rememberTabOrigin() {}, URL, console,
+      getPageRequestOrigin, forgetTabOrigin() {}, rememberTabOrigin() {}, URL, console,
       handlePageRequest: ({id, params}: any) => new Promise(resolve => { receivedOrigins.push(params.origin); completions[id] = resolve; }),
     });
     const port = {name:'nip07',sender:{frameId:0,tab:{id:1,url:'https://site.test:8443/path'}},
@@ -183,8 +245,15 @@ describe('actual content bridge concurrency', () => {
     const source = readFileSync(new URL('../content.ts', import.meta.url), 'utf8');
     runInNewContext(ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
       { window, browser, exports: {}, console, setTimeout: (fn: () => void) => timers.push(fn) });
-    return { ports, responses, internal: (...args: any[]) => internal(...args), reloads: () => reloads, flush: () => timers.splice(0).forEach(fn => fn()), send: (id: string, type = 'NIP07_REQUEST', method = 'signEvent') => receive({source:window,data:{type,id,method,params:{}}}) };
+    return { crossFrame: () => receive({source:{},data:{type:'NIP07_REQUEST',id:'forged-top',method:'signEvent',params:{event:{kind:27235},frameId:0}}}), ports, responses, internal: (...args: any[]) => internal(...args), reloads: () => reloads, flush: () => timers.splice(0).forEach(fn => fn()), send: (id: string, type = 'NIP07_REQUEST', method = 'signEvent') => receive({source:window,data:{type,id,method,params:{}}}) };
   }
+
+  it('does not forward direct cross-frame postMessage requests', async () => {
+    const b = bridge();
+    await b.crossFrame();
+    assert.equal(b.ports.length, 0);
+    assert.equal(b.responses.length, 0);
+  });
 
   it('ignores account broadcasts for a different origin after navigation', () => {
     const b = bridge();

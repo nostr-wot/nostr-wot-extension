@@ -1,10 +1,92 @@
 # Changelog
 
-Notable changes per release. Store-facing copy for each version is in its
-`### Store release notes` block; the rest is for us.
+Notable changes per release. Store-facing copy appears under **Store release notes**.
+See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-See `docs/deployment.md` for the store submission process and the rejections we
-have had.
+## 0.8.7
+
+Community guides: [backend authentication](docs/guides/backend-authentication.md)
+and [relay authentication](docs/guides/relay-authentication.md).
+
+### Authentication and security
+
+- Require destination-specific consent for all NIP-98 HTTP authentication, including same-origin requests. Remembered permissions bind the account, requesting origin, exact signed URL (including query text), and HTTP method. Older broad allows require fresh consent; older denials remain effective.
+- Keep NIP-42 relay permissions account-bound and separate from HTTP permissions. Allow once, remember for one site, or explicitly allow a relay across connected sites. Site-specific denials override shared relay allows.
+- Require browser-derived, verified top-level request identity for authentication. Reject embedded-frame, opaque, inconsistent or insecure origins outside explicit loopback development exceptions. Recheck site access and account-session validity after approval/unlock waits.
+- Validate optional authentication origin metadata against the requesting origin. Registry entries remain informational and cannot grant permissions.
+- Verify returned NIP-46 signatures and compare the complete signed event with the approved snapshot and expected account. Reject substituted content, destinations, challenges and other signed fields.
+- Use body-bound wallet authentication v2 for provisioning and address mutations, with a separate transaction token and one-use backend challenge. The companion proxy verifies exact request bytes, unique tags, audience and client scope, rejects queries on fixed auth endpoints, and atomically consumes nonces across processes sharing its database.
+- Restrict sensitive native wallet authentication to the internal wallet flow. Generic website signing cannot mint those tokens. Deploy the compatible backend first; retired endpoints return HTTP 426 and the client does not downgrade.
+- Preserve scoped private-key cleanup and account-switch protection in signing, export, wallet and publication flows. Already transmitted requests cannot be recalled.
+
+### Reliability and contributor guidance
+
+- Verify NWC payment preimages against the requested invoice payment hash. Treat mismatched success responses as unknown outcomes and preserve replay protection.
+- Resolve equal-timestamp replaceable events using the lower event ID consistently across relay arrivals and cached published lists.
+- Cancel obsolete unlock and dialog callbacks, clean up wheel timers, and guard abandoned wizard steps while preserving profile drafts and activity pagination.
+- Align build requirements with the locked dependencies: Node 22.22.2+, Node 24.15.0+, or Node 26+, within the supported major-version ranges declared in `package.json`. Update vulnerable development-only brace-expansion versions.
+- Add contributor issue forms, a pull request template and the Contributor Covenant. Refresh security reporting, architecture, build, testing and deployment documentation; replace obsolete audit snapshots with current protocol documentation.
+
+### Request review and settings
+
+- Open a single pending request directly. Group multiple requests by site with bounded scrolling; grouped ordinary requests use checkboxes and approve only the selected IDs. New arrivals remain unchecked, and ordinary bulk approval excludes authentication.
+- Describe authentication destinations and other event intent in plain language. Use theme accents for important values and show complete raw events in a dismissible code-button popup instead of duplicate tables or expand arrows on signing cards.
+- Use compact Approve/Reject controls with remembered choices in arrow menus. Keep detail sheets bottom-aligned, with a scrolling body when content exceeds the popup height.
+- Group private-message requests by sender and show available sent dates, small profile images and names. Fetch missing verified metadata from purplepag.es with the existing message-identity privacy guards.
+- Reveal message content locally on click, without approving or returning it to the website. Automatically conceal it after 30 seconds; hide the centered hint during reveal and show a shrinking countdown at the bottom-right. Display preview errors once and reject stale preview results.
+- Move site-specific authentication grants to the bottom of Permissions. A link below opens all-sites relay grants in their own table popup. Both follow the active account without redundant account selectors. Open the published relay list in a separate popup in Relays settings.
+- Reuse raw-event dialogs, profile selectors and compact profile presentation. Maintain a shared profile cache limited to 30 minutes and 500 entries through an index rather than repeated full-storage scans.
+
+### Packaging and publishing
+
+- Integrate Chrome-specific manifest packaging, ZIP validation and actual Chrome worker/popup/connection-status smoke checks. Generate Chrome and Firefox archives independently with matching reproducible source and checksums.
+- Submit Chrome packages only when a stable GitHub release is published, after successful CI and archive verification. Serialize submissions, skip versions already submitted/published and refuse unrelated pending-review replacement.
+- Document the coordinated backend rollout, manual acceptance, OAuth setup and publishing recovery. Preparing a draft does not submit to stores or deploy the backend.
+
+### Store release notes
+
+More precise backend and relay authentication permissions, clearer approval dialogs,
+local timed message previews, and account-switch protections. Includes verified
+browser-specific packaging and automated release checks. See the linked guides
+for permission scopes and compatibility requirements.
+
+## 0.8.6 — 2026-09-29
+
+### Added
+- Require destination-specific consent for cross-origin NIP-98 HTTP authentication and NIP-42 relay authentication, with per-account saved permissions and revocation in settings. Relay consent can optionally cover all connected sites.
+- Show the requesting site, account, exact destination and method in authentication review, with an informational registry of 20 Nostr clients and contribution instructions for backend mappings.
+- Open only the themed toolbar popup on first install. If the browser refuses automatic opening, retain the theme for manual opening from the extension icon; never open a setup tab.
+- Accept built-in `theme` URL parameters on the popup and onboarding entrypoints before first render, persist the initial choice, and preserve an existing saved theme.
+- On first install, recover a unique theme from an open official HTTPS download tab and open the welcome popup. Add host access limited to `https://nostr-wot.com/*` for that lookup; no browsing-history or referral data is stored.
+
+### Improved
+- Defer the shared-core migration until the required packages are released on npm. Restore the extension’s existing account utilities, permission handling and storage implementation; preserve the migration on a separate branch.
+
+### Fixed
+- Keep private-key copies inside zeroing scopes and reject stale signing, key-export and publication results after account changes; check revocation again when relay sockets open.
+- Recheck site identity access after authentication waits for unlock, including remote signer delegation.
+- Remove the previous generic upload ZIP when packaging starts so a failed rebuild cannot leave an old artifact masquerading as its output.
+- Prevent generic signing grants, batch approval and remote signer delegation from bypassing authentication destination consent. Reject malformed auth events and authentication requests from embedded, opaque or insecure non-loopback frames.
+- Set the packaged extension name to `Nostr WoT Extension` so the Chrome Web Store title uses the requested name.
+- Use `nostr-wot-extension@nostr-wot.com` for the new Firefox listing after AMO rejected the previous ID as a duplicate. This is a separate add-on identity, not an automatic update to the old listing.
+- Restore NIP-49 `ncryptsec` key backup export and import for builds resolved from the declared dependency ranges rather than the committed lockfile. The scrypt memory bound sat exactly on one `@noble/hashes` version's internal accounting, so a newer release within the range refused every backup. Store builds and ordinary `npm install` builds were unaffected.
+- Report a readable error when a backup's scrypt parameters cannot be used, instead of passing the cryptography library's internal message through to the import screen.
+- Exclude `nostr-tools` 2.25.2, whose WebSocket error handler calls itself until the stack is exhausted. A single unreachable relay in a remote-signer relay list could raise an uncaught error in the background service worker.
+- Use the existing `ws` transport for local Nostr Connect integration tests, preserving refused-relay coverage without Node's recursive WebSocket teardown.
+
+### Internal
+
+- Give the scrypt memory bound a few blocks of headroom above the current `@noble/hashes` requirement, with tests against newly resolved dependency versions to detect future accounting changes.
+- Verify NIP-49 backups against an independent implementation in both directions, across every defined key-security byte and a range of cost factors.
+- Add a CI job that installs the newest dependencies each declared range admits, then typechecks, builds and re-runs the crypto, vault, signer and transport suites. It also runs weekly, so a library changing behaviour under a range is found before a contributor trips over it.
+
+### Release packaging
+- Correct Chrome release packaging so the background service worker starts and the popup can read site connection status.
+- Build browser packages in isolated directories and validate each final ZIP against its target browser and release version.
+- Require a disposable Chromium smoke test of the Chrome ZIP: worker startup, popup rendering and the connection-status RPC.
+
+### Store release notes
+Restores the background service required for site connections and signing in Chrome. Adds explicit permissions for backend and relay authentication, protection against authentication from embedded frames, and release checks for browser packages.
 
 ## 0.8.4 — 2026-09-27
 
@@ -78,7 +160,7 @@ have had.
 
 ### Verification
 
-- 1,799 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See `docs/nwc-audit.md` and `docs/nwc-compatibility.md` for coverage and live-provider limitations.
+- 1,799 tests pass, including signed local NWC wallets, production handlers and mounted UI flows. See [NWC protocol](docs/nwc-protocol.md) and [compatibility](docs/nwc-compatibility.md) for current coverage and live-provider limitations.
 - Popup-width component previews cover light/dark setup, expanded settings, permission menus, hover colors and dialog blur. No live-wallet payment certification is claimed.
 
 ### Store release notes
@@ -147,7 +229,7 @@ have had.
 ### Verification
 
 - Regression coverage includes site/account isolation, permission revocation, mute handling, follow additions/removals, cancellation, storage, oracle validation and approval-menu scoping.
-- See [release audit](docs/audits/2026-09-20.md) for verification scope and remaining native/provider limitations.
+- See [testing](docs/testing.md) and [NWC compatibility](docs/nwc-compatibility.md) for current verification scope and native/provider limitations.
 
 ### Store release notes
 

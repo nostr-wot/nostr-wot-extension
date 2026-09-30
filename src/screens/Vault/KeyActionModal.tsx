@@ -21,7 +21,7 @@ interface KeyActionModalProps {
 }
 
 export default function KeyActionModal({ action, onClose }: KeyActionModalProps) {
-  const vault = useVault();
+  const { checkState } = useVault();
   const [needsUnlock, setNeedsUnlock] = useState<boolean>(false);
 
   const titles: Record<string, string> = { nsec: t('key.exportTitle'), ncryptsec: t('key.exportEncTitle'), seed: t('key.exportSeedTitle'), changePassword: t('key.changePasswordTitle') };
@@ -32,7 +32,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
     error: unlockError,
     unlock: handleUnlock,
   } = useVaultUnlock({
-    onSuccess: () => { setNeedsUnlock(false); void vault.checkState(); },
+    onSuccess: () => { setNeedsUnlock(false); void checkState(); },
     messages: {
       wrongPassword: t('key.wrongPassword'),
       unlockFailed: t('key.failedUnlock'),
@@ -40,13 +40,17 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   });
 
   useEffect(() => {
+    let current = true;
     void (async () => {
       try {
-        if (await isVaultOpen(rpc)) { setNeedsUnlock(false); void vault.checkState?.(); return; }
-        setNeedsUnlock(true);
+        const open = await isVaultOpen(rpc);
+        if (!current) return;
+        setNeedsUnlock(!open);
+        if (open) void checkState();
       } catch { /* ignore */ }
     })();
-  }, []);
+    return () => { current = false; };
+  }, [checkState]);
 
   const handleClose = onClose;
 

@@ -19,7 +19,8 @@ import { createWalletProvider, getWalletProvider, removeWalletProvider, isWallet
 import { captureAccountSession, assertAccountSession } from '../signing/accountSession.ts';
 import { type WalletConfig } from '@domain/wallet/types.ts';
 import { decodeBolt11 } from '../../domain/wallet/bolt11.ts';
-import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress } from '../wallet/lnbits-provision.ts';
+import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress, type WalletAuthSigner } from '../wallet/lnbits-provision.ts';
+import { secureWalletUrl } from '../http/wallet.ts';
 import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 import { fetchPayParams, requestInvoice } from '../wallet/lnurl.ts';
 import { reserveAutomaticPayment } from '../wallet/automatic-payment-budget.ts';
@@ -46,24 +47,24 @@ export async function getConnectedProvider() {
     return { provider, acct, assertCurrent };
 }
 
-export function createNip98SignFn(acctId: string, endpointUrl: string): (challenge: string) => Promise<SignedEvent> {
+export function createNip98SignFn(acctId: string, endpointUrl: string): WalletAuthSigner {
     const session = captureAccountSession(acctId);
-    return async (challenge: string): Promise<SignedEvent> => {
+    const audience = secureWalletUrl(endpointUrl);
+    return async ({challenge, payload, transaction}): Promise<SignedEvent> => {
+        if (![challenge,payload,transaction].every(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))) throw new Error('Invalid wallet authentication proof');
         assertAccountSession(session);
-        const privkeyBytes = vault.getPrivkey(acctId);
-        if (!privkeyBytes) throw new Error('No private key available');
-        try {
-            const signed = await signEvent({
-                kind: 27235,
-                created_at: Math.floor(Date.now() / 1000),
-                tags: [['challenge', challenge], ['u', endpointUrl], ['method', 'POST']],
-                content: '',
-            }, privkeyBytes);
-            assertAccountSession(session);
-            return signed;
-        } finally {
-            privkeyBytes.fill(0);
-        }
+        // Signed inside the scope and handed back; the caller is what POSTs it. The old shape
+        // kept its own `getPrivkey()` copy alive across the whole signing block and relied on
+        // the `finally` to zero it, which is a promise each call site has to keep separately.
+        // Here the scope keeps it, and the key is not live while the caller is on the network.
+        const signed = await vault.withPrivkey(acctId, async privkey => signEvent({
+            kind: 27235,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [['challenge', challenge], ['u', audience], ['method', 'POST'], ['payload', payload], ['transaction', transaction]],
+            content: '',
+        }, privkey));
+        assertAccountSession(session);
+        return signed;
     };
 }
 
@@ -414,11 +415,11 @@ export const handlers = new Map<string, HandlerFn>([
         if (!acct) throw new Error('No active account');
 
         const session = captureAccountSession(acctId);
-        const url = (params.instanceUrl as string)?.trim() || DEFAULT_LNBITS_URL;
+        const url = secureWalletUrl((params.instanceUrl as string)?.trim() || DEFAULT_LNBITS_URL);
         const npub = npubEncode(acct.pubkey);
         const walletName = `WoT:${npub.slice(0, 16)}`;
 
-        const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/provision`);
+        const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/v2/provision`);
         const { adminKey, nwcUri } = await provisionLnbitsWallet(url, walletName, signFn);
 
         assertAccountSession(session);
@@ -463,8 +464,8 @@ export const handlers = new Map<string, HandlerFn>([
         if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') {
             throw new Error('No LNbits wallet configured');
         }
-        const url = acct.walletConfig.instanceUrl;
-        const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/claim-username`);
+        const url = secureWalletUrl(acct.walletConfig.instanceUrl);
+        const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/v2/claim-username`);
         return await claimLightningAddress(url, params.username as string, signFn);
     }],
 
@@ -491,8 +492,8 @@ export const handlers = new Map<string, HandlerFn>([
         if (!acct?.walletConfig || acct.walletConfig.type !== 'lnbits') {
             throw new Error('No LNbits wallet configured');
         }
-        const url = acct.walletConfig.instanceUrl;
-        const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/release-username`);
+        const url = secureWalletUrl(acct.walletConfig.instanceUrl);
+        const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/v2/release-username`);
         await releaseLightningAddress(url, signFn);
         return { ok: true };
     }],

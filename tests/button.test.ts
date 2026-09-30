@@ -144,9 +144,9 @@ import Select from '../src/components/Select';
 import Dropdown from '../src/components/Dropdown';
 import RemoveButton from '../src/components/RemoveButton';
 
-it('select and dropdown retain native keyboard semantics and disabled state', () => {
-  for (const component of [Select, Dropdown]) {
-    const html = renderToStaticMarkup(createElement(component as typeof Dropdown, {
+it('native select retains keyboard semantics and disabled state', () => {
+  for (const component of [Select]) {
+    const html = renderToStaticMarkup(createElement(component, {
       options: [{ value: 'one', label: 'First' }], value: 'one', onChange() {}, disabled: true, 'aria-label': 'Account',
     }));
     assert.match(html, /<select[^>]*disabled=""[^>]*aria-label="Account"/);
@@ -306,4 +306,67 @@ it('split button segments keep standard tones and join only their inner corners'
     assert.match(end, /aria-label="More actions"/);
   }
   assert.doesNotMatch(renderToStaticMarkup(createElement(Button, null, 'Normal')), /rounded-[lr]-none/);
+});
+
+
+it('dropdown renders a themed custom trigger and retains its accessible label and disabled state', () => {
+  const html = renderToStaticMarkup(createElement(Dropdown, {
+    id: 'theme', options: [{value:'coracle',label:'Coracle'}], value:'coracle',
+    onChange() {}, disabled:true, 'aria-label':'Theme',
+  }));
+  assert.doesNotMatch(html, /<select/);
+  assert.match(html, /aria-haspopup="listbox"/);
+  assert.match(html, /aria-label="Theme"/);
+  assert.match(html, /disabled=""/);
+  assert.match(html, /Coracle/);
+});
+
+it('custom dropdown selects with keyboard, skips disabled choices, dismisses and uses the top layer', async () => {
+  const {JSDOM}=await import('jsdom');
+  const {act}=await import('react');
+  const dom=new JSDOM('<div id="root"></div><button id="outside">Outside</button>');
+  const globals=new Map(['window','document','IS_REACT_ACT_ENVIRONMENT'].map(k=>[k,Object.getOwnPropertyDescriptor(globalThis,k)]));
+  Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
+  Object.defineProperties(dom.window.HTMLElement.prototype,{
+    showPopover:{value:function(this:HTMLElement){this.dataset.open='true';},configurable:true},
+    hidePopover:{value:function(this:HTMLElement){delete this.dataset.open;},configurable:true},
+  });
+  const {createRoot}=await import('react-dom/client');
+  const root=createRoot(dom.window.document.getElementById('root')!);
+  const selected:string[]=[];
+  try {
+    await act(async()=>root.render(createElement(Dropdown,{options:[{value:'a',label:'Alpha'},{value:'b',label:'Beta',disabled:true},{value:'c',label:'Coracle'}],value:'a',onChange:v=>selected.push(v),'aria-label':'Theme'})));
+    const trigger=dom.window.document.querySelector<HTMLButtonElement>('[aria-haspopup="listbox"]')!;
+    assert.ok(trigger,'custom trigger exists');
+    const key=async(k:string)=>{await act(async()=>dom.window.document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:k,bubbles:true})));};
+    await act(async()=>trigger.click());
+    const menu=dom.window.document.querySelector<HTMLElement>('[role=listbox]')!;
+    assert.equal(menu.dataset.open,'true');
+    assert.equal(dom.window.document.activeElement?.textContent,'Alpha');
+    await key('ArrowDown');
+    assert.equal(dom.window.document.activeElement?.textContent,'Coracle');
+    await key('Enter');
+    assert.deepEqual(selected,['c']);
+    assert.equal(dom.window.document.activeElement,trigger);
+    assert.equal(trigger.getAttribute('aria-expanded'),'false');
+    await act(async()=>trigger.click());
+    await key('c');
+    assert.equal(dom.window.document.activeElement?.textContent,'Coracle');
+    await key('Escape');
+    assert.equal(trigger.getAttribute('aria-expanded'),'false');
+    await act(async()=>trigger.click());
+    await act(async()=>dom.window.document.getElementById('outside')!.dispatchEvent(new dom.window.MouseEvent('mousedown',{bubbles:true})));
+    assert.equal(trigger.getAttribute('aria-expanded'),'false');
+  } finally {
+    await act(async()=>root.unmount()); dom.window.close();
+    for(const [key,value] of globals){if(value)Object.defineProperty(globalThis,key,value);else delete (globalThis as any)[key];}
+  }
+});
+
+it('overlay headers omit inert close controls while retaining custom actions', () => {
+  for (const headerRight of [undefined, createElement('span', null, 'Custom action')]) {
+    const html = renderToStaticMarkup(createElement(OverlayPanel, { title: 'Approval', headerRight }));
+    assert.doesNotMatch(html, /aria-label="common.close"/);
+    if (headerRight) assert.match(html, /Custom action/);
+  }
 });

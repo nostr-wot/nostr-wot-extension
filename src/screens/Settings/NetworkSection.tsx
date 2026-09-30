@@ -16,6 +16,8 @@ import PublishRow from '@components/PublishRow';
 import { SectionLabel } from '@components/SectionLabel';
 import { useRelays } from '@context/RelaysContext';
 import Container from '@components/Container';
+import Modal from '@components/Modal';
+import { createPortal } from 'react-dom';
 
 export default function NetworkSection() {
   const { relays, relayFlags, loaded, previousConfiguration, saveRelays } = useRelays();
@@ -24,6 +26,7 @@ export default function NetworkSection() {
   const [relayError, setRelayError] = useState<string>('');
 
   const { active } = useAccount();
+  const [showPublished, setShowPublished] = useState(false);
   const [remote, setRemote] = useState<RelayListRead | null>(null);
   const [checking, setChecking] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -121,9 +124,12 @@ export default function NetworkSection() {
 
   return (
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
+      <ButtonSecondary small aria-haspopup="dialog" onClick={() => setShowPublished(true)}>{t('network.publishedConfiguration')}</ButtonSecondary>
+      {showPublished && createPortal(<Modal title={t('network.publishedConfiguration')} onClose={() => setShowPublished(false)}>
       <PublishedRelayConfiguration result={remote} checking={checking} local={{relays,flags:relayFlags}} disabled={!loaded || publishing}
         onApply={configuration => { void saveRelays(configuration.relays, configuration.flags).then(() => setPublishUnsaved(false)).catch(() => setRelayError(t('common.error'))); }}
         onRetry={() => setRevision(n => n + 1)} />
+      </Modal>, document.body)}
       <SectionLabel>{t('network.localConfiguration')}</SectionLabel>
       {loaded && (previousConfiguration || !relays.length) && <ButtonSecondary small disabled={publishing} onClick={() => {
         const restored = previousConfiguration || {relays:configuredRelayUrls(undefined),flags:{}};
@@ -183,7 +189,6 @@ export function PublishedRelayConfiguration({result, checking, local, disabled, 
   const differs = !!published && !sameRelayList(local, published);
   return (
       <div className="shrink-0 rounded-panel border border-card-border bg-input p-5 text-xs text-secondary">
-        <p className="font-semibold text-heading">{t('network.publishedConfiguration')}</p>
         <p className="mt-2">{t(checking ? 'network.checkingPublished' : result?.event ? (published?.relays.length ? 'network.publishedFound' : 'network.publishedEmpty') : result?.reachable ? 'network.noPublishedEvent' : 'network.publishedUnavailable')}</p>
         {published && <ul className="my-3 space-y-2">{published.relays.map(url => <li key={url} className="flex justify-between gap-3"><span className="break-all">{url}</span><span className="shrink-0">{published.flags[url].read ? 'R' : ''}{published.flags[url].write ? 'W' : ''}</span></li>)}</ul>}
         {differs && <ButtonSecondary small disabled={disabled || !published?.relays.length} onClick={() => { if (published?.relays.length) { onApply(published); } }}>{t('network.usePublished')}</ButtonSecondary>}

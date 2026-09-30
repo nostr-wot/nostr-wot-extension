@@ -1,4 +1,4 @@
-import { liveQuery, writeLocalCache } from './relay.ts';
+import { liveQuery, writeLocalCache, isNewerReplaceable } from './relay.ts';
 import { verifyEvent } from '../../lib/crypto/nip01.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 
@@ -13,7 +13,7 @@ export async function readPublishedEvent(pubkey: string, kind: number, relays: s
     const candidate = item.event;
     if (candidate.kind !== kind || candidate.pubkey !== pubkey || !await verifyEvent(candidate)) continue;
     if (item.type === 'update' || item.source === 'relay') reachable = true;
-    if (!event || candidate.created_at > event.created_at) event = candidate;
+    if (!event || isNewerReplaceable(candidate, event)) event = candidate;
   }
   // Retain signed evidence across relay outages and empty answers from other
   // relays. A later empty response does not revoke an existing publication.

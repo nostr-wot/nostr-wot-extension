@@ -1,3 +1,5 @@
+import { parseAuthentication, assertPageAuthenticationPolicy, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
+import { getAuthenticationDecision, saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { rememberSignedZapNote } from '../wallet/payment-records.ts';
 import { followCount, followReplacementCount, rememberSignedFollowList } from './followListGuard.ts';
 import { captureAccountSession, assertAccountSession } from './accountSession.ts';
@@ -5,10 +7,10 @@ import { recordSigningRejection } from './rejections.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
 import * as vault from '../vault/vault.ts';
 import * as permissions from '../permissions/permissions.ts';
-import { isDomainAllowed } from '../background/domain-handlers.ts';
+import { isDomainAllowed, isIdentityDisabled } from '../background/domain-handlers.ts';
 import { getActiveAccountInfo, getActivePublicKey, isGetPubkeyCooldownActive, startGetPubkeyCooldown } from './identity.ts';
 import { queueRequest, resolveBatch, waitForVaultUnlock, runNip46Request } from './approvalQueue.ts';
-import { activePqKeys, decryptNip44Content } from './localDecryption.ts';
+import { activePqKeys, decryptNip44Content, reviewDecryptedMessage } from './localDecryption.ts';
 import { signEvent as cryptoSignEvent } from '@lib/crypto/nip01.ts';
 import { hexToBytes, base64ToArray } from '@lib/crypto/utils.ts';
 import { nip04Encrypt, nip04Decrypt } from '@lib/crypto/nip04.ts';
@@ -31,7 +33,7 @@ import { pqEncrypt, isPqEnvelope } from '@lib/crypto/pq.ts';
  *   6. if permission is 'ask', queues request for popup approval (badge shown)
  *   7. if permission is 'allow' but vault locked, queues as waitingForUnlock
  *   8. user opens popup, sees pending requests, approves/denies
- *   9. vault.getPrivkey() -> sign -> zero key bytes -> return signed event
+ *   9. vault.withPrivkey() -> sign inside the scope -> the copy is zeroed on every path
  *
  * Permissions are account-type-agnostic (allow/deny/ask). After permission
  * is granted, routing is based on account type: NIP-46 forwards to remote
@@ -40,6 +42,31 @@ import { pqEncrypt, isPqEnvelope } from '@lib/crypto/pq.ts';
  * @see https://github.com/nostr-protocol/nips/blob/master/07.md
  * @module services/signing/signer
  */
+
+/**
+ * Run `fn` with the account's private key, reporting a missing key in this module's words.
+ *
+ * `withPrivkey` says "no private key for THIS account"; these paths have always said "for
+ * ACTIVE account" and the wording is caller-visible (`tests/signer.test.ts` asserts it), so
+ * that one message is renamed. Everything else propagates untouched: a locked vault, and
+ * whatever `fn` itself threw.
+ *
+ * Deliberately NOT a pre-check on `readOnly`. An account can carry the read-only flag AND a
+ * private key, and such an account has to reach the crypto callback so the callback can refuse
+ * it with the specific reason (`watch-only`); `listAccounts` reports `readOnly` as
+ * `readOnly || no key`, which conflates the two and would swallow that. The only predicate
+ * that means "no key" is the one the vault applies when it looks for the key.
+ */
+async function withActiveKey<T>(accountId: string, fn: (privkey: Uint8Array) => Promise<T>): Promise<T> {
+  try {
+    return await vault.withPrivkey(accountId, fn);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'No private key for this account') {
+      throw new Error('No private key for active account');
+    }
+    throw error;
+  }
+}
 
 /**
  * Handle getPublicKey request with permission check
@@ -98,6 +125,12 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
  * Handle signEvent request
  */
 export async function handleSignEvent(event: UnsignedEvent, origin: string): Promise<SignedEvent> {
+  // Snapshot before any await: approval and signing must use exactly the same event.
+  event = structuredClone(event);
+  event.tags ??= [];
+  event.created_at ??= Math.floor(Date.now()/1000);
+  const authentication = parseAuthentication(event, origin);
+  assertPageAuthenticationPolicy(authentication);
   const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
   const requestedPubkey = await getActivePublicKey();
@@ -119,11 +152,18 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   // NIP-46 normally delegates approval to the remote signer. Dangerous
   // follow-list replacements require local confirmation for every account type.
+  if (authentication && !(await isDomainAllowed(origin))) throw new Error('Site not connected');
+  const destinationDecision = authentication && await getAuthenticationDecision(session.accountId, origin, authentication);
+  if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
+  const destinationGranted = destinationDecision === 'allow';
+  const needsAuthApproval = !!authentication && !destinationGranted;
+  let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
-  if (replacementCount || (accountType !== 'nip46' && decision === 'ask')) {
+  if (replacementCount || needsAuthApproval || (!authentication && accountType !== 'nip46' && decision === 'ask')) {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'signEvent',
+      authentication,
       followReplacementCount: replacementCount,
       followReplacementNewCount: replacementCount ? followCount(event) : undefined,
       // Store the FULL content and FULL tags for every kind — the approval
@@ -132,17 +172,21 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       origin,
       event: { kind: event.kind, content: event.content, tags: event.tags, pubkey:event.pubkey, created_at:event.created_at },
       pubkey: pubkey ?? undefined,
-      permKey: permissions.permissionKey('signEvent', event.kind),
+      permKey: authentication ? authenticationKey(authentication) : permissions.permissionKey('signEvent', event.kind),
       eventKind: event.kind,
       needsPermission: true,
       accountId,
     });
     if (!approved.allow) throw new Error(approved.reason || 'User denied signing');
+    if (authentication) {
+      if (!validAuthenticationScope(authentication, approved.authenticationScope)) throw new Error('Explicit authentication approval required');
+      authenticationScope = approved.authenticationScope;
+    }
     if (replacementCount && !approved.confirmFollowReplacement) throw new Error('Follow-list replacement requires explicit confirmation');
     if ((await getActivePublicKey()) !== requestedPubkey || ((await getActiveAccountInfo()).accountId ?? vault.getActiveAccountId()) !== requestedAccountId) throw new Error('Account switched');
 
     // Save permission and batch-resolve remaining requests if user chose "remember"
-    if (approved.remember) {
+    if (approved.remember && !authentication) {
       const kind = approved.rememberKind !== false ? event.kind : null;
       await permissions.save(origin, 'signEvent', kind ?? null, 'allow', accountId ?? undefined);
       // Batch-resolve remaining requests with the same permKey as the one just approved
@@ -150,6 +194,21 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       await resolveBatch(origin, batchPermKey, { allow: true, remember: false });
     }
   }
+
+  const assertAuthentication = async () => {
+    if (!authentication) return;
+    parseAuthentication(event, origin); // A prompt/unlock may have outlived the token.
+    if (!(await isDomainAllowed(origin))) throw new Error('Site not connected');
+    if (await isIdentityDisabled(origin)) throw new Error('Identity access disabled for this site');
+    const currentDecision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
+    if (currentDecision === 'deny') throw new Error('Permission denied');
+    const destinationDecision = await getAuthenticationDecision(session.accountId, origin, authentication);
+    if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
+    if (!authenticationScope && destinationDecision !== 'allow') throw new Error('Authentication permission revoked');
+    assertAccountSession(session);
+    if (authenticationScope) await saveAuthenticationGrant(session.accountId, origin, authentication, authenticationScope, () => assertAccountSession(session));
+    assertAccountSession(session);
+  };
 
   // Route by account type
   if (accountType === 'nip46') {
@@ -162,6 +221,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     assertAccountSession(session);
     const acct = vault.getAccountById(session.accountId);
     if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
+    await assertAuthentication();
     const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
     assertAccountSession(session);
     await rememberSignedFollowList(result);
@@ -179,19 +239,19 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
   assertAccountSession(session);
-  const privkey = vault.getPrivkey(session.accountId);
-  if (!privkey) throw new Error('No private key for active account');
+  await assertAuthentication();
 
-  try {
-    const result = await cryptoSignEvent(event, privkey);
-    assertAccountSession(session);
-    await rememberSignedFollowList(result);
-    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
-    assertAccountSession(session);
-    return result;
-  } finally {
-    privkey.fill(0);
-  }
+  // Sign INSIDE the scope; remember what was signed OUTSIDE it. The old shape held the
+  // `getPrivkey()` copy across `rememberSignedFollowList` and `rememberSignedZapNote`, both of
+  // which await storage, so the key stayed live for two writes that have no use for it.
+  // Keeping them outside also keeps every side effect downstream of the returned value, which
+  // is what lets the scope stay the only thing that owns the key.
+  const result = await withActiveKey(session.accountId, async privkey => cryptoSignEvent(event, privkey));
+  assertAccountSession(session);
+  await rememberSignedFollowList(result);
+  await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
+  assertAccountSession(session);
+  return result;
 }
 
 /**
@@ -220,6 +280,7 @@ async function handleCryptoRequest(
    * type without first being allowed to make the call at all.
    */
   remoteSignerUnsupported?: string,
+  previewOptions?: PqEncryptOptions,
 ): Promise<string> {
   const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
@@ -243,6 +304,17 @@ async function handleCryptoRequest(
       permKey: permissions.permissionKey(method),
       needsPermission: true,
       accountId,
+    }, async reveal => {
+      assertAccountSession(session);
+      let plaintext: string | undefined;
+      if (reveal) {
+        plaintext = method.endsWith('Encrypt') ? payload : await withActiveKey(session.accountId, async privkey =>
+          cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId));
+      }
+      const message = plaintext !== undefined && method === 'nip44Decrypt'
+        ? await reviewDecryptedMessage(session.accountId,theirPubkey,plaintext) : {plaintext};
+      assertAccountSession(session);
+      return {request:{method,origin,params:{...nip46Data,...(previewOptions ? {opts:{...previewOptions}} : {})}}, ...(plaintext !== undefined ? message : {})};
     });
     if (!approved.allow) throw new Error(denyMessage);
   }
@@ -267,15 +339,12 @@ async function handleCryptoRequest(
   if (vault.isLocked()) throw new Error('Vault is locked');
 
   assertAccountSession(session);
-  const privkey = vault.getPrivkey(session.accountId);
-  if (!privkey) throw new Error('No private key for active account');
-  try {
-    const result = await cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId);
-    assertAccountSession(session);
-    return result;
-  } finally {
-    privkey.fill(0);
-  }
+  // As in handleSignEvent: the key lives only for the crypto call, and the session re-check
+  // that follows no longer runs with a key copy still in hand.
+  const result = await withActiveKey(session.accountId, async privkey =>
+    cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId));
+  assertAccountSession(session);
+  return result;
 }
 
 export async function handleNip04Encrypt(theirPubkey: string, plaintext: string, origin: string): Promise<string> {
@@ -312,7 +381,8 @@ export async function handleNip44Encrypt(
   origin: string,
   opts?: PqEncryptOptions,
 ): Promise<string> {
-  if (opts?.scheme !== 'pq') {
+  const options = opts ? {...opts} : undefined;
+  if (options?.scheme !== 'pq') {
     return handleCryptoRequest('nip44Encrypt', theirPubkey, plaintext, origin,
       { pubkey: theirPubkey, plaintext }, nip44Encrypt, 'User denied encryption');
   }
@@ -324,7 +394,7 @@ export async function handleNip44Encrypt(
       const { keys, pubkey } = await activePqKeys(accountId);
       let conv: Uint8Array | null = null;
       try {
-        const kem = base64ToArray(opts.recipientKemKey);
+        const kem = base64ToArray(options.recipientKemKey);
         conv = getConversationKey(privkey, theirPubkeyBytes);
         return pqEncrypt(payload, kem, conv, pubkey, theirPubkey);
       } finally {
@@ -335,6 +405,7 @@ export async function handleNip44Encrypt(
     },
     'User denied encryption',
     'Remote signers do not support post-quantum encryption',
+    options,
   );
 }
 

@@ -33,6 +33,9 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | Document | Description |
 |----------|-------------|
 | [Wallet](wallet.md) | Providers (NWC/LNbits), auto-provisioning, WebLN API, permissions, BOLT11 decoder, UI |
+| [NWC protocol](nwc-protocol.md) | Signed requests, encryption negotiation, response validation and payment ambiguity |
+| [Wallet compatibility](nwc-compatibility.md) | Provider setup and tested response shapes |
+| [Wallet authentication v2](wallet-auth-v2.md) | Body-bound client/backend transaction contract |
 
 ### Configuration & Infrastructure
 
@@ -42,8 +45,9 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | [Crypto Library](crypto.md) | Pure JS crypto: secp256k1, Schnorr, NIP-04/44/49, BIP-32/39, bech32 |
 | [NIP proposals](../nips/README.md) | PQC canonical-draft shortcuts and experimental browser WoT API/scoring proposals |
 | [Component Standards](component-standards.md) | Shared components, hooks, utilities, CSS patterns, import aliases |
+| [Contributing](../CONTRIBUTING.md) | Development setup, issue reports, pull requests and community conduct |
 | [Testing](testing.md) | Test runner, test files, communication test suite, infrastructure |
-| [Deployment](deployment.md) | Store-by-store release notes: build requirements, data-consent declarations, past rejections and their fixes |
+| [Deployment](deployment.md) | Current build requirements, browser packages, data-consent declarations and release checks |
 
 ---
 

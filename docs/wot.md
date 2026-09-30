@@ -88,7 +88,7 @@ work; permission revocation is checked before returning results.
 `tests/wot.test.ts` covers graph cycles/paths, modes, limits, consent, oracle
 validation, cancellation, signed relay sync and the actual injected API. The
 communication suite verifies the content/background origin and privilege boundary.
-Native UI and IndexedDB checks use isolated Chrome fixtures; these do not establish live oracle-provider interoperability. See the [API and scoring proposals](../nips/wot/README.md) and [release audit](audits/2026-09-20.md) for scope and remaining limits.
+Native UI and IndexedDB checks use isolated Chrome fixtures; these do not establish live oracle-provider interoperability. See the [API and scoring proposals](../nips/wot/README.md) and [testing guide](testing.md) for scope and remaining limits.
 
 ## Mutes and scoring
 

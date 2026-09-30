@@ -1,3 +1,4 @@
+import { decodeBolt11 } from '@domain/wallet/bolt11.ts';
 import { transactionMemo } from '@domain/wallet/transaction-memo.ts';
 import { PaymentOutcomeUnknownError } from './payment-errors.ts';
 import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@constants/wallet.ts';
@@ -14,7 +15,7 @@ import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@co
 
 import type { UnsignedEvent, SignedEvent } from '../../domain/nostr/types.ts';
 import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
-import { hexToBytes, bytesToHex } from '../../lib/crypto/utils.ts';
+import { hexToBytes, bytesToHex, sha256 } from '../../lib/crypto/utils.ts';
 import { verifyEvent as verifyEventNip01 } from '../../lib/crypto/nip01.ts';
 
 // ── Parsed URI ──
@@ -172,7 +173,16 @@ export class NwcProvider implements WalletProvider {
     const result = (await this.sendRequest('pay_invoice', { invoice: bolt11 })) as {
       preimage: string;
     };
-    try { requireHex32(result.preimage); } catch (error) {
+    try {
+      requireHex32(result.preimage);
+      const paymentHash = decodeBolt11(bolt11)?.paymentHash;
+      requireHex32(paymentHash);
+      if (bytesToHex(sha256(hexToBytes(result.preimage))) !== paymentHash.toLowerCase()) {
+        throw new Error('NWC payment preimage does not match the invoice payment hash');
+      }
+    } catch (error) {
+      // The wallet already reported a dispatched payment: an unverified proof
+      // cannot establish failure or authorize an automatic retry.
       throw new PaymentOutcomeUnknownError((error as Error).message);
     }
     return { preimage: result.preimage };

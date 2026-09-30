@@ -146,3 +146,27 @@ test('stored relay defaults and publication markers round-trip without treating 
  assert.ok(sameRelayList(configuration,parseRelayList(relayPublicationTags(configuration))));
  assert.throws(()=>relayPublicationTags({relays:['https://invalid'],flags:{}}),/Invalid/);
 });
+
+
+test('published replaceable reads choose the lower ID on timestamp ties across cache and relay arrivals', async () => {
+  const { readPublishedEvent } = await import('../src/services/relays/readPublishedEvent.ts');
+  const { writeLocalCache } = await import('../src/services/relays/relay.ts');
+  for (const kind of [3, 10002, 10203]) {
+    const events = await Promise.all(['first', 'second'].map(content =>
+      signEvent({ pubkey, kind, created_at: 100, tags: [], content }, key)));
+    const [lower, higher] = events.sort((a, b) => a.id.localeCompare(b.id));
+    for (const order of [[higher, lower], [lower, higher]]) {
+      resetMockStorage();
+      mock(order);
+      const result = await readPublishedEvent(pubkey, kind, ['wss://test']);
+      assert.equal(result.event?.id, lower.id, `kind ${kind}: arrival order must not choose the winner`);
+    }
+    resetMockStorage();
+    await writeLocalCache(higher);
+    mock([lower]);
+    const result = await readPublishedEvent(pubkey, kind, ['wss://test']);
+    assert.equal(result.event?.id, lower.id, `kind ${kind}: a tied relay update must replace cached higher ID`);
+    mock([], true);
+    assert.equal((await readPublishedEvent(pubkey, kind, ['wss://test'])).event?.id, lower.id);
+  }
+});

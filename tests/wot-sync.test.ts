@@ -139,7 +139,7 @@ test('custom scoring is validated, applies to local and cached oracle results, a
     assert.equal(graphDetails(graph,d,2,new Set([b]),scoring)?.score,0.4);
     await saveWotSettings({enabled:true,mode:'remote',oracleUrl:'https://oracle.test',scoring});
     let requests = 0;
-    globalThis.fetch = async () => {requests++;return new Response(JSON.stringify({hops:2,paths:2}));};
+    globalThis.fetch = async () => {requests++;return new Response(JSON.stringify({hops:2,path_count:2}));};
     assert.equal(await queryWot('getTrustScore',{target:d}),0.6000000000000001);
     await saveWotSettings({enabled:true,mode:'remote',oracleUrl:'https://oracle.test',scoring:{...scoring,maxPathBonus:0}});
     assert.equal(await queryWot('getTrustScore',{target:d}),0.4);
@@ -299,7 +299,7 @@ test('overlapping paths and cycles fetch each author once per relay in a sync', 
 test('oracle public-key lists no longer have a hidden 1000-entry cap', async () => {
     const {WotOracle}=await import('../src/services/wot/oracle.ts');
     const follows=Array.from({length:1101},(_,i)=>(i+1000).toString(16).padStart(64,'0'));
-    const oracle=new WotOracle('https://oracle.test',new AbortController().signal,async()=>new Response(JSON.stringify({follows,common:follows})));
+    const oracle=new WotOracle('https://oracle.test',new AbortController().signal,async()=>new Response(JSON.stringify({follows,common_follows:follows})));
     assert.deepEqual(await oracle.follows(a),follows);
     assert.deepEqual(await oracle.common(a,b),follows);
 });

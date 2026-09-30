@@ -1,150 +1,98 @@
 # Contributing to Nostr WoT Extension
 
-Thank you for your interest in contributing! This extension is a NIP-07 signer, encrypted key vault, Lightning/WebLN wallet, and profile/mute/relay manager for Nostr web clients.
+This extension provides NIP-07 signing, an encrypted identity vault, Lightning/WebLN
+payments and an opt-in Web of Trust. Read the [Code of Conduct](CODE_OF_CONDUCT.md)
+and search existing issues before opening a bug report or feature request.
+Report security vulnerabilities privately through [SECURITY.md](SECURITY.md).
 
-## Getting Started
+## Development setup
 
-### Prerequisites
+Use **Node.js 24.15 or newer in the 24.x line** (recommended; CI uses Node 24).
+The locked test dependencies also support Node 22.22.2+ in the 22.x line and
+Node 26+. Earlier 22.x/24.x versions do not satisfy the complete toolchain's engines.
+Install npm and a supported browser; Firefox packages require desktop 140+ or Android
+142+. Chrome has no declared minimum version in the manifest; test your target version.
 
-- Node.js 18+ (for running tests)
-- Chrome or Firefox browser
-- Basic familiarity with browser extension development (MV3)
-
-### Setup
-
-```bash
-git clone https://github.com/user/nostr-wot-extension.git
+```sh
+git clone https://github.com/nostr-wot/nostr-wot-extension.git
 cd nostr-wot-extension
+npm ci
+npm run build
 ```
 
-No build step required — the extension uses plain ES modules with no bundler.
+The project uses TypeScript, React, Vite and Tailwind. Load Chrome's unpacked extension
+from **`dist/`**, not the source root. For Firefox, run `npm run package:firefox`, extract
+`nostr-wot-firefox.zip` into a separate directory, then load that directory's
+`manifest.json` through `about:debugging#/runtime/this-firefox`. Its background manifest
+differs from Chrome's. See [deployment](DEPLOY.md) for packaging and Safari instructions.
 
-### Loading the Extension
+## Project structure
 
-**Chrome:**
-1. Open `chrome://extensions`
-2. Enable "Developer mode"
-3. Click "Load unpacked" and select the project directory
+- `background.ts`, `content.ts`, `inject.ts`: background dispatch, isolated bridge and page APIs.
+- `src/entrypoints/`: popup, onboarding and prompt document shells.
+- `src/screens/`, `src/components/`, `src/hooks/`: feature UI and reusable presentation/lifecycle code.
+- `src/domain/`: feature contracts and pure decisions.
+- `src/services/`: browser, network and persistence orchestration.
+- `src/lib/`: cryptographic wrappers and browser compatibility.
+- `docs/`, `nips/`, `tests/`: implementation references, protocol proposals and regression coverage.
 
-**Firefox:**
-1. Open `about:debugging#/runtime/this-firefox`
-2. Click "Load Temporary Add-on"
-3. Select any file in the project directory (e.g., `manifest.json`)
+Read [architecture](docs/architecture.md), [message flow](docs/message-flow.md) and the
+relevant feature documentation before changing behavior. UI work follows
+[component standards](docs/component-standards.md); security-sensitive work also follows
+[the security model](docs/security.md).
 
-### Running Tests
+## Issues and pull requests
 
-```bash
+Use the bug report template for reproducible failures and the feature template for
+proposed behavior. Include the extension/browser/OS versions, installation method,
+expected result and minimal reproduction. Never attach a seed phrase, nsec, NWC URI,
+wallet API key, vault export, authentication token or unredacted private logs.
+Use synthetic accounts and invoices in examples.
+
+Fork the repository and work on a focused branch (`fix/`, `feat/` or `docs/`). Explain
+the problem and resulting behavior in your PR and link related issues. Include UI
+screenshots when useful, with private data removed. Keep commits focused and omit
+agent attribution and co-author trailers.
+
+Before adding an abstraction or dependency, search for an existing owner. Reuse shared
+components, domain types and crypto wrappers. Do not commit generated archives, `dist/`,
+secrets or local operational notes. Shared-core migrations must wait for required
+packages to be published on npm; local tarballs are not a release substitute.
+
+## Validation
+
+```sh
+npm run typecheck
+npm run lint
+npm run build
 ./tests/run.sh
 ```
 
-Tests use Node.js native `node:test` module with browser API mocks in `tests/helpers/`.
+Run targeted regressions while developing, then the full suite before submitting code.
+The full runner builds first; some browser-mocked tests keep handles open briefly after
+individual tests finish. Record command results and any checks you could not run in the
+PR. See [testing](docs/testing.md) for suite registration and focused commands.
 
-## Project Structure
+For UI changes, check collapsed/expanded states, keyboard interaction, account switching,
+lock/unlock and the supported browsers you changed. Archive packaging and Chromium smoke
+tests are separate release gates; install their browser with `npx playwright install chromium`.
+Do not use customer funds or production credentials in tests.
 
+## Security-sensitive changes
+
+Validate page inputs at the existing message boundary and preserve internal-only method
+gates. Keep signing/payment work tied to its captured account session and consent.
+Access raw private keys through scoped vault helpers and preserve zeroing. Verify relay
+event signatures and exact authentication audiences/bodies. Published payment ambiguity
+must not trigger an automatic retry. Update the current behavior docs with the change.
+
+## Client and backend registry
+
+Contribute verified client origins and backend relationships in
+[`src/data/auth-clients.json`](src/data/auth-clients.json), following the
+[evidence requirements](docs/auth-client-registry.md). Unknown relationships must remain
+unknown. Registry entries are informational and must never create signing permission.
+
+```sh
+node --import tsx --test tests/auth-client-registry.test.ts
 ```
-├── background.ts          # Service-worker dispatcher
-├── content.ts             # Isolated-world message bridge
-├── inject.ts              # Page-facing Nostr and WebLN APIs
-├── src/
-│   ├── entrypoints/       # HTML, React mounts and document shells
-│   │   ├── popup/
-│   │   ├── onboarding/
-│   │   └── prompt/
-│   ├── screens/           # Feature UI, including Wizard and Prompt
-│   ├── components/        # Shared UI controls and presentation
-│   ├── hooks/             # React hooks
-│   ├── context/           # App providers
-│   ├── domain/            # Pure feature decisions and contracts
-│   ├── services/          # Browser, network and persistence orchestration
-│   ├── constants/         # Configuration and protocol values
-│   ├── utils/             # Generic helpers
-│   ├── lib/               # Crypto primitives and browser compatibility
-│   ├── assets/            # React icons
-│   ├── styles/            # Theme and shared styles
-│   └── public/            # Packaged icons and translations
-├── docs/                  # Technical documentation
-└── tests/                 # Node.js test suite
-```
-
-## Types of Contributions
-
-### Bug Fixes
-
-1. Check existing issues first
-2. Create a failing test case if possible
-3. Fix the bug
-4. Verify existing tests still pass: `./tests/run.sh`
-
-### New Features
-
-1. Open an issue to discuss the feature first
-2. Reference the relevant NIP if applicable
-3. Follow existing patterns in the codebase
-4. Add tests for new backend logic
-
-## Pull Request Process
-
-### 1. Fork and Branch
-
-```bash
-git checkout -b feat/my-change
-```
-
-Use these branch name prefixes:
-- `feat/` — new functionality
-- `fix/` — bug fixes
-- `docs/` — documentation
-
-Use short, descriptive kebab-case branch names. Follow the existing plain-language
-commit subjects: describe the change directly, without agent names or co-author
-attributions.
-
-### 2. Make Changes
-
-- Follow existing code style (no linter configured — match surrounding code)
-- Use plain ES modules, no build tools
-- Use optional chaining (`?.`) for DOM access
-- Zero private keys after use (`privkey.fill(0)` in `try/finally`)
-- Gate privileged message handlers via `PRIVILEGED_METHODS` Set
-- No external dependencies — the extension is self-contained
-
-### 3. Test
-
-```bash
-./tests/run.sh
-```
-
-For UI changes, manually test in Chrome and Firefox:
-- Open the popup and verify all tabs work
-- Test dark mode (system preference)
-- Test with 0 accounts, 1 account, and multiple accounts
-- Test with both signing accounts and read-only accounts
-
-### 4. Submit
-
-- Write a clear PR title (e.g., "wallet: fix LNbits balance parsing")
-- Describe what changed and why
-- Include screenshots for UI changes
-- Reference any related issues
-
-## Architecture Notes
-
-Read [docs/architecture.md](docs/architecture.md) for the full technical reference. Key points:
-
-- **No build system** — files are loaded directly by the browser
-- **Message passing** — inject.js → content.js → background.js via `postMessage` and `runtime.sendMessage`
-- **Privileged methods** — vault, permission, and management operations are gated to internal extension pages via sender ID verification
-- **Per-account isolation** — signing permissions and wallet configuration are keyed per account; keys and wallet secrets live only inside the encrypted vault
-
-## Security Guidelines
-
-- Never log or expose private keys
-- Always zero `Uint8Array` private keys after use
-- Validate all inputs from web pages (content script allowlists)
-- Use `sender.id` checks for privileged operations
-- Rate-limit external-facing API methods
-- Verify event signatures before trusting relay data
-
-## Code of Conduct
-
-Be respectful, constructive, and focused on building great software. Technical disagreements are welcome; personal attacks are not.

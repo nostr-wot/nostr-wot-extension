@@ -5,7 +5,7 @@ import { once } from 'node:events';
 import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import * as nip44 from 'nostr-tools/nip44';
 import * as nip04 from 'nostr-tools/nip04';
-import { SimplePool } from 'nostr-tools/pool';
+import { SimplePool, useWebSocketImplementation as configureWebSocket } from 'nostr-tools/pool';
 import { BunkerSigner, createNostrConnectURI } from 'nostr-tools/nip46';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
@@ -14,6 +14,10 @@ import * as signerRemoteSigner from '../src/services/signing/remoteSigner.ts';
 import * as signerApprovalQueue from '../src/services/signing/approvalQueue.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
 import * as onboarding from '../src/services/background/onboarding-handlers.ts';
+
+// Keep the intentional refused-relay case without Node/undici's recursive
+// error -> close -> error path. The loopback server already uses this transport.
+configureWebSocket(WebSocket);
 
 const remoteKey = new Uint8Array(32).fill(7);
 const clientKey = new Uint8Array(32).fill(8);
@@ -272,10 +276,10 @@ test('remote cached methods stop at the dispatch boundary after lock', async t =
     const dispatch = async () => { dispatched++; return 'result'; };
     t.mock.method(BunkerSigner, 'fromBunker', () => ({
       connect: async () => {}, close: async () => { closed++; },
-      signEvent: dispatch, nip04Encrypt: dispatch, nip04Decrypt: dispatch, nip44Encrypt: dispatch, nip44Decrypt: dispatch,
+      signEvent: async (approved: typeof event) => {dispatched++;return finalizeEvent(approved,remoteKey);}, nip04Encrypt: dispatch, nip04Decrypt: dispatch, nip44Encrypt: dispatch, nip44Decrypt: dispatch,
     }));
     const acct = vault.getActiveAccount()!;
-    const data = { pubkey: peer, plaintext: 'private', ciphertext: 'ciphertext' };
+    const data = method === 'signEvent' ? event : { pubkey: peer, plaintext: 'private', ciphertext: 'ciphertext' };
     await signerRemoteSigner.handleNip46Request(acct, method, data, origin);
     assert.equal(signerRemoteSigner.isNip46Connected(acct.id), true);
     const request = signerRemoteSigner.handleNip46Request(acct, method, data, origin);
@@ -391,4 +395,31 @@ for (const authUrl of ['https://signer.example/login', 'http://signer.example/lo
   const result = await onboarding.handlers.get('onboarding_connectNip46')!({bunkerUrl:`bunker://${pubkey}?relay=${encodeURIComponent(relay.url)}`}) as {account:{pubkey:string}};
   assert.equal(result.account.pubkey,peer);
   assert.deepEqual(opened,authUrl.startsWith('https://') ? [authUrl] : []);
+});
+
+
+test('remote signing boundary preserves the request across connection waits and refuses substituted signatures',async t=>{
+  resetMockStorage();vault.lock();
+  await vault.create('password',{activeAccountId:'remote-integrity',accounts:[{
+    id:'remote-integrity',name:'Remote',type:'nip46',pubkey,privkey:null,mnemonic:null,readOnly:false,createdAt:1,
+    nip46Config:{bunkerUrl:`bunker://${pubkey}?relay=wss://relay.example`,relay:'wss://relay.example',secret:null,localPrivkey:Buffer.from(clientKey).toString('hex')},
+  }]});
+  t.after(()=>{signerRemoteSigner.disconnectNip46('remote-integrity');vault.lock();});
+  let connect!:()=>void;
+  let change=false;
+  t.mock.method(BunkerSigner,'fromBunker',()=>({
+    connect:()=>new Promise<void>(resolve=>{connect=resolve;}),close:async()=>{},
+    signEvent:async (approved:typeof event)=>{
+      if(change) approved.content='remote substitution';
+      return finalizeEvent(approved,remoteKey);
+    },
+  }));
+  const original={...event,tags:[['reviewed','original']]};
+  const request=signerRemoteSigner.handleNip46Request(vault.getActiveAccount()!,'signEvent',original,origin);
+  await until(()=>!!connect);original.content='caller mutation';original.tags[0][1]='caller mutation';connect();
+  const signed=await request;
+  assert.ok(typeof signed !== 'string');
+  assert.equal(signed.content,event.content);assert.deepEqual(signed.tags,[['reviewed','original']]);
+  change=true;
+  await assert.rejects(signerRemoteSigner.handleNip46Request(vault.getActiveAccount()!,'signEvent',event,origin),/approved event/i);
 });

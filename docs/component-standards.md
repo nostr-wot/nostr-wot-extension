@@ -6,13 +6,13 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **56**; the inventory below is checked against the component folders by the test suite.
+All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **60**; the inventory below is checked against the component folders by the test suite.
 
-**Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (opaque full-screen navigation sheet), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
+**Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (full-screen navigation by default; `placement="bottom"` fits content up to popup height over a scrim), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
-**Content** — `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
+**Content** — `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
-**Controls** — `ApprovalActions` (shared approve/reject split buttons; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
+**Controls** — `RawEventButton` (code-icon trigger and raw-data dialog composed from Modal, IconButton and TextBlock), `AuthenticationActions` (uses ApprovalActions split buttons for one-time decisions and per-site/relay-only connected-sites remembered choices), `ApprovalActions` (shared approve/reject split buttons with optional per-choice labels and approval-menu context; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (anchored action choices with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Checkbox` (native selection control with theme accent and keyboard focus), `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
 **Feedback** — `Spinner`, `ScreenReaderStatus`.
 
@@ -32,6 +32,8 @@ The recurring failure is not that a primitive is missing, it is that a feature h
 Modal and approval-sheet backdrops apply a subtle 4px blur behind the dialog, retaining their dimming and leaving dialog content sharp.
 
 Dialog entry, focus containment and opener restoration use `preventScroll` so focusing a sliding overlay cannot shift the popup's clipped canvas. Keyboard Tab navigation still scrolls controls into view within the dialog body.
+
+`OverlayPanel` only shows its close control when an `onClose` handler exists, including headers with custom actions.
 
 Shared `Modal` contains Tab and Shift+Tab within visible, enabled controls and restores the previous focused element when dismissed. Only the topmost dialog handles keyboard dismissal and focus containment; stacked dialogs respect their z-index and nested dialogs remain above their parent. If the opener has disappeared, focus returns to the remaining dialog. Keep this behavior in the shared component rather than adding competing document listeners in callers.
 
@@ -423,8 +425,10 @@ return () => browser.storage.onChanged.removeListener(onChanged);
 
 `Input`, `Select`, and `Dropdown` share 40px default / 32px compact minimum heights,
 8px corners, an opaque field surface, `--control-border`, and visible focus rings.
-`Dropdown` adapts value callbacks to the native `Select`, so arrow keys, type-ahead,
-and platform menus work without a floating panel being clipped by popup scrollers.
+`Dropdown` uses a custom themed listbox in the browser popover top layer, so
+scrolling panels cannot clip it. It preserves value callbacks, disabled choices,
+arrow/Home/End navigation, type-ahead, Escape dismissal and focus restoration.
+`Select` remains the native control for callers requiring native select semantics.
 The chevron is an SVG; Select no longer has a CSS module or a data-URI icon.
 Buttons use color feedback rather than movement or raised shadows. Disabled actions
 have no hover treatment. `IconButton` and `RemoveButton` share keyboard focus styles.
@@ -484,7 +488,7 @@ Wallet settings owns a flex-1/min-h-0 overflow-y-auto body inside OverlayPanel; 
 
 HomeWalletLayout displays the home wallet summary only when the current site is confirmed connected. Loading, errors, restricted pages and unconnected sites hide it. The account wallet remains accessible through Settings → Wallet.
 
-The approval sheet always groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
+A single pending request opens its event detail directly, with its own approve/reject controls and visible action errors. It has no queue count, bulk controls, review-list hint or close-to-list button. More than one pending request uses the approval sheet, which groups pending requests by account, website and permission, showing action, readable kind and request count. Clicking a group opens all its pending items as collapsed detail rows, with one shared approve/deny footer. The open group follows live arrivals/removals; approving snapshots the displayed IDs at click time. It uses a bounded scrolling list and the existing SiteIcon cache. “Approve shown” snapshots the visible IDs and waits for every decision; later arrivals are not included. Per-item details expand on click; group permission choices remain available. Grouping includes account identity as well as origin/permission.
 
 Shared domain contracts must not be restated in handlers or UI. The activity writer accepts `ActivityLogInput = Omit<ActivityEntry, 'timestamp'>`; stored records and UI filters use `ActivityEntry`. Complete PQ panel status extends the card contract. Account and language display types use `Pick`/`Partial` projections. Runtime-only service state and component props stay local.
 
@@ -531,7 +535,7 @@ clipboard action rather than a choice, despite having similarly named fields.
 content, including the shared box surface for encrypted messages. `DetailDisclosure`
 owns collapsed raw text/JSON sections with a native keyboard-accessible summary
 and a bounded, selectable preformatted body. It escapes content as text and is
-also reused by the activity item dialog. `TextBlock` preserves full escaped content, line breaks and selectable scrolling.
+used for inline event tags. `RawEventButton` handles complete event JSON in activity and approval dialogs. `TextBlock` preserves full escaped content, line breaks and selectable scrolling.
 Native `time` and the shared text block’s `pre` retain their semantics; decryption and vault-lock clearing remain in the detail view.
 
 `ActivityGroupDetail` and every kind-specific event preview compose shared UI
@@ -562,7 +566,7 @@ nested buttons. The welcome action uses the standard default button.
 ### Shared editor lifecycles
 
 `ImageEditorButton` owns the cover/avatar editing affordance and standard shapes.
-`ProfileSummary` is shared by profile confirmation and kind-0 event review.
+`ProfileSummary` is shared by profile confirmation, kind-0 event review and compact message sender rows.
 `useObjectUrl` owns local preview allocation and revocation on file/scope changes
 and unmount; remote image URLs still pass through URL validation.
 
@@ -668,7 +672,7 @@ Split actions use Button’s `segment="start"` / `segment="end"` presets for joi
 
 ### Appearance
 
-Settings → Appearance and language reuses Card and ChipGroup for Light, Dark, System and La Crypta.
+Settings → Appearance and language reuses Card and Dropdown for built-in themes.
 The choice saves immediately in extension-local storage, independently of accounts
 and vault state. Light remains the default. Dark follows nostr-wot.com’s gray-950
 canvas, near-black popups, gray-900 cards, neutral text and indigo accents.
@@ -698,8 +702,58 @@ explains API info, spending authority and the distinction from a login password.
 
 #### Project and custom themes
 
-Appearance uses the shared `Dropdown` value-based wrapper with an associated Theme label, preserving keyboard navigation and type-ahead. The active custom theme appears as Custom; its editor remains available below the selector. `PulseLogo` defaults to the built-in SVG rendered as a mask using the brand token, so the welcome/loading screens and static menu footer inherit the active palette. Use `pulse={false}` for the footer; custom image sources retain normal image rendering.
+Appearance uses the shared `Dropdown` custom listbox with an associated Theme label, preserving keyboard navigation and type-ahead. The active custom theme appears as Custom; its editor remains available below the selector. `PulseLogo` defaults to the built-in SVG rendered as a mask using the brand token, so the welcome/loading screens and static menu footer inherit the active palette. Use `pulse={false}` for the footer; custom image sources retain normal image rendering.
 
 Appearance includes built-in Coracle, noStrudel, YakiHonne and Nostrich palettes in addition to Light, Dark, System and La Crypta. Nostrich uses its supplied neutral black/white palette, white primary controls, semantic status text/surfaces and a separate `--zap` token for amber Lightning icons. YakiHonne uses its supplied `#EE7700` accent, black/gray surfaces and status colors. Coracle uses its supplied `#FC560E` accent, `#262626` page background and neutral/tinted/status palette. The noStrudel preset derives its light-green dark-mode actions (`#AAD238`) from the upstream primary color `#8DB600`, with neutral near-black (`#0E0E0E`) and charcoal surfaces, white text, blue toggles/input focus, amber warnings and coral destructive actions. Shared controls use `--control-accent`, `--control-focus` and `--control-knob`; other themes inherit their existing brand and elevated-surface colors. Project palettes only override the extension's semantic CSS tokens. They do not import third-party stylesheets, logos, scripts or assets.
 
 Custom themes use the same semantic-token boundary. The editor exposes every accepted color as a manual color picker and as JSON. JSON is a flat object with these required keys: `bgPage`, `bgPageSolid`, `bgHtml`, `bgElevated`, `surfaceHover`, `inputBg`, `textHeading`, `textBody`, `textSecondary`, `textMuted`, `brand`, `brandHover`, `textOnBrand`, `cardBg`, `cardBorder`, `controlBorder`, `success`, `error`, `warning`, `info`. Values are colors only. Unknown keys, missing keys and non-color CSS values are rejected. Never accept arbitrary CSS, markup, URLs or additional custom properties from imported theme JSON.
+
+
+Appearance keeps project identity separate from Light/Dark/System. Both controls
+reuse the shared custom Dropdown. Coracle, noStrudel, YakiHonne and Nostrich use
+their own paired palettes; La Crypta and custom JSON keep their one supplied
+palette, so their mode control is hidden. The saved mode is retained when switching
+through a fixed palette. Legacy Light/Dark/System choices map to the default Nostr
+WoT project without losing their mode; legacy project choices retain their dark
+appearance until the user changes it. See [palette sources](theme-handoff.md).
+
+Event detail uses the bottom placement for short content, grows upward to the popup height, then scrolls only its body while the title and decisions stay visible. Authentication event detail keeps the full event in a shared `Modal` opened by the bottom-right Show raw event code icon. Menu options use the same shared `ActionMenu` keyboard/focus behavior as ordinary approvals.
+
+`MessageRequestDetail` inside EventDetailModal renders pending encrypt/decrypt review without the redundant EventPreview heading. It uses cache-first ProfileSummary in compact mode, a click-to-reveal message surface using useTimedReveal with a 30-second lifetime, and a `RawEventButton` popup for raw request data. RawEventButton supports `onOpenChange` for loading sensitive content on demand. Compact ProfileSummary shows only the avatar/name, with the peer key shown only as a fallback when no profile is available. Message details are separated from the request explanation by a themed top border, use From for incoming messages, and label the message body Content.
+
+Grouped message approvals use sender avatar/name headings and per-message sent dates (or Date unavailable when the decrypt API supplies no date). Message review has one shared error location outside Advanced; display the actual RPC failure rather than repeating an unavailable fallback. After local NIP-17 Reveal, refresh the cached profile using the seal author, fetching missing metadata through the shared profile RPC with directory mode. Show a loading hint while fetching and the public-key fallback if no profile is available.
+
+The concealed message surface renders a blurred placeholder, not plaintext in the DOM. Clicking decrypts locally and displays content; another click or the 30-second timer discards plaintext and the decoded event. Advanced retains the original request details, but outgoing plaintext follows the same reveal lifetime and is concealed until the message is revealed.
+
+Pending approvals group existing permission/destination cards beneath one site heading via ApprovalSiteList. Site grouping is presentation only; approvals remain bound to their original groups. Cards and site sections do not shrink. The sheet fits within popup height, fixes its heading, and scrolls its actions, notices and complete site list in one bounded body.
+
+The message reveal hint is centered over the concealed surface and disappears when content is revealed. A bottom-right ring uses useTimedReveal.remainingSeconds and loses one thirtieth each second; the ring and plaintext disappear at expiry.
+
+Signing approvals use a plain-language intent sentence and a code-icon popup containing the complete event JSON. App-specific requests put the d-tag action before the app identifier. Known event kinds use intent descriptions; unrecognized kinds retain a visible warning. No first-item badge is used for a group of signing actions. Grouped signing cards have no expand arrow: their code button opens the raw event directly. Grouped requests expose unchecked native Checkbox controls outside their content; the footer approves only selected IDs or rejects all displayed requests. Unselected and newly arriving requests remain pending. Selected authentication requests use explicit once-only destination consent; remote-signer items offer cancellation only.
+
+Authentication grants use compact tables scoped to the active account, with per-row revocation. At the bottom of Permissions, site-specific grants are followed by a link opening the all-sites NIP-42 grant table in a separate popup. This table is independent of relay read/write configuration and publishing.
+
+Approval intent sentences use text-secondary with text-brand emphasis for host, action and app, parsed from trusted localized templates before inserting literal event values. Grouped summaries have no numbering/native marker and use a bottom-right chevron. Private-message review omits the redundant site/action sentence. Raw-event icons have hover titles and accessible labels, while native details retain keyboard toggling. Sender avatars reuse Avatar with safe URL/fallback handling.
+
+`DetailDisclosure` always renders native inline details. `RawEventButton` explicitly opens a portalled Modal, reusing IconButton and TextBlock with a scrollable body, Escape/backdrop/close dismissal and focus restoration. Raw JSON is mounted only while the popup is open. Message reveal and its expiry still control sensitive plaintext inside an open raw popup.
+
+Permissions uses the active account directly, without a second account selector. Site authentication grants appear below the ordinary permission sections, followed by a link to a separate all-sites relay grant popup. Shared relay grants are no longer shown in Relays settings. The published NIP-65 configuration is opened from its labelled button in a shared Modal; discovery status, read/write flags, retry and applying the published list remain inside that popup. Local relay editing stays on the settings panel.
+
+
+`usePublicProfile` shares cache-first public metadata reads between message details
+and grouped sender headings. Its `lookup` option controls directory requests:
+temporary NIP-44 wrapper keys are never sent to the directory before the decoded
+sender is known. `publicProfile`, `profileDisplayName` and `freshProfileEntry` in
+`src/domain/profile/publicProfile.ts` validate display fields and cache freshness.
+Both ProfileSummary layouts prefer nonblank display_name, then name; compact mode
+uses the shared small avatar/name row. Profile storage changes refresh the hook,
+and obsolete async replies cannot replace a newer sender.
+
+The background display cache maintains a serialized `publicProfileIndexV1` of
+profile keys and fetched timestamps, expiring entries after 30 minutes and keeping
+at most 500. A missing index triggers one legacy migration scan; routine reads
+load only the bounded index and requested profile. Pruning never reads or removes
+unrelated values. Targeted disk reads and storage-change invalidation prevent
+removed profiles from surviving as positive in-memory answers. Future timestamps
+and malformed metadata are rejected. This cache stores public metadata only;
+message plaintext remains in the timed reveal state.

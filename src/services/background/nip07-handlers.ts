@@ -1,3 +1,4 @@
+import { listAuthenticationGrants, revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { MAX_EVENT_BYTES, MAX_EVENT_TAGS, MAX_TAG_VALUES, MAX_CRYPTO_PLAINTEXT_BYTES, MAX_CRYPTO_CIPHERTEXT_LENGTH } from '@constants/signing.ts';
 import { getSigningRejections, acknowledgeSigningRejections } from '../signing/rejections.ts';
 /**
@@ -177,6 +178,13 @@ export const handlers = new Map<string, HandlerFn>([
 
     // ── Signer permission management ──
 
+    ['signer_getAuthenticationGrants', async () => listAuthenticationGrants()],
+    ['signer_revokeAuthenticationGrant', async (params) => {
+        if (typeof params.id !== 'string' || !params.id) throw new Error('Invalid authentication grant ID');
+        await revokeAuthenticationGrants({id:params.id});
+        return {ok:true};
+    }],
+
     ['signer_getPermissions', async (params) => signerPermissions.getAll(params.accountId as string)],
     ['signer_getPermissionsForDomain', async (params) => signerPermissions.getForDomain(params.domain as string, params.accountId as string)],
 
@@ -225,6 +233,11 @@ export const handlers = new Map<string, HandlerFn>([
         if (!Array.isArray(params.ids) || !params.ids.every(id => typeof id === 'string')) throw new Error('Invalid rejection IDs');
         await acknowledgeSigningRejections(params.ids as string[]);
         return { ok: true };
+    }],
+
+    ['signer_previewRequest', async params => {
+        if (typeof params.id !== 'string' || typeof params.reveal !== 'boolean') throw new Error('Invalid preview request');
+        return signerApprovalQueue.previewPendingRequest(params.id, params.reveal, params.metadataOnly === true);
     }],
 
     ['signer_getPending', async () => signerApprovalQueue.getPending()],

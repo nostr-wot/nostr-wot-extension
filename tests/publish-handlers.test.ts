@@ -9,8 +9,8 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 // Import the browser mock before any lib/ module so the loader-hook redirect
 // resolves to the already-loaded mock module (same pattern as other bg tests).
-import { resetMockStorage } from './helpers/browser-mock.ts';
-import { handlers, isPrivateHost } from '../src/services/background/publish-handlers.ts';
+import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
+import { handlers, isPrivateHost, broadcastEvent } from '../src/services/background/publish-handlers.ts';
 
 const checkRelayHealth = handlers.get('checkRelayHealth')!;
 
@@ -221,4 +221,93 @@ describe('NIP-46 session display boundary', () => {
     vault.lock();
     assert.equal(await handlers.get('nip46_getSessionInfo')!({}), null);
   });
+});
+
+
+
+it('refuses relay-list publication if the account changes during relay reads', async () => {
+  resetMockStorage();
+  await vault.destroy();
+  const main = await importNsec('01'.padStart(64, '0'), 'Main');
+  const other = await importNsec('02'.padStart(64, '0'), 'Other');
+  await vault.create('test-password-1234', { accounts: [main, other], activeAccountId: main.id });
+  await browserMock.storage.local.set({ activeAccountId: main.id });
+  await browserMock.storage.sync.set({ relays: 'wss://publish.test' });
+  const realSyncGet = browserMock.storage.sync.get;
+  const original = globalThis.WebSocket;
+  const sent: string[] = [];
+  class AckSocket {
+    onopen: (() => void) | null = null;
+    onmessage: ((event: { data: string }) => void) | null = null;
+    constructor() { queueMicrotask(() => this.onopen?.()); }
+    send(raw: string) {
+      sent.push(raw);
+      const [type, event] = JSON.parse(raw);
+      if (type === 'EVENT') queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(['OK', event.id, true, 'saved']) }));
+    }
+    close() {}
+  }
+  globalThis.WebSocket = AckSocket as unknown as typeof WebSocket;
+  let switched = false;
+  browserMock.storage.sync.get = async (keys?: string | string[] | null) => {
+    const result = await realSyncGet(keys);
+    const wanted = typeof keys === 'string' ? [keys] : keys;
+    if (!switched && Array.isArray(wanted) && wanted.includes('relays')) {
+      switched = true;
+      await vault.setActiveAccount(other.id);
+      await browserMock.storage.local.set({ activeAccountId: other.id });
+    }
+    return result;
+  };
+  try {
+    await assert.rejects(
+      () => handlers.get('publishRelayList')!({ pubkey: main.pubkey }),
+      /Account switched|session changed|Active account changed/,
+    );
+    assert.equal(switched, true);
+    assert.deepEqual(sent, [], 'the revoked account must not publish');
+  } finally {
+    browserMock.storage.sync.get = realSyncGet;
+    globalThis.WebSocket = original;
+    await vault.destroy();
+  }
+});
+
+
+it('does not send when the account session is revoked while the relay connects', async () => {
+  const original = globalThis.WebSocket;
+  const sockets: DeferredSocket[] = [];
+  const sent: string[] = [];
+  let active = true;
+  let checks = 0;
+  class DeferredSocket {
+    onopen: (() => void) | null = null;
+    onmessage: ((event: { data: string }) => void) | null = null;
+    closed = false;
+    constructor() { sockets.push(this); }
+    send(raw: string) {
+      sent.push(raw);
+      const [, event] = JSON.parse(raw);
+      queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(['OK', event.id, true, 'saved']) }));
+    }
+    close() { this.closed = true; }
+  }
+  globalThis.WebSocket = DeferredSocket as unknown as typeof WebSocket;
+  try {
+    const event: SignedEvent = { id: 'event-id', pubkey: '11'.repeat(32), sig: '22'.repeat(64), kind: 1, created_at: 1, tags: [], content: '' };
+    const pending = broadcastEvent(event, ['wss://publish.test'], () => {
+      checks++;
+      if (!active) throw new Error('Account switched');
+    });
+    assert.equal(sockets.length, 1, 'connection starts while the session is valid');
+    active = false;
+    sockets[0].onopen?.();
+    const result = await pending;
+    assert.ok(checks > 0, 'session is checked at dispatch');
+    assert.deepEqual(sent, [], 'revoked signed event must never reach the relay');
+    assert.deepEqual(result, { sent: 0, failed: 1 });
+    assert.equal(sockets[0].closed, true, 'revoked connection is closed');
+  } finally {
+    globalThis.WebSocket = original;
+  }
 });

@@ -2,7 +2,19 @@
 
 ## Release packaging
 
-The current release is **0.8.4**. Keep package and manifest versions, source-build
+**Completion means integration and publication.** When work is finished, merge the
+completed task into `main`, push `main`, and cut a versioned GitHub release with
+verified browser archives and matching source, unless León explicitly says to
+pause or keep it unpublished. Do not stop at a local commit, worktree, ZIP, or
+unmerged PR. Use isolated worktrees while developing, then integrate and remove
+them after merge, together with the merged local and remote task branches. Verify
+commit ancestry before deleting branches; never discard unmerged work. Do not include unrelated agents' unfinished branches. Report
+the pushed commit and release URL. Stable published releases trigger the Chrome
+Web Store workflow; verify that run and report the actual submission state.
+Google approval and Firefox/Safari submission remain separate; do not claim a
+GitHub release makes every store update live. Follow docs/chrome-publishing.md.
+
+The current release is **0.8.7**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
 and checksums stay outside the tracked repository. Publish new functionality in a
 new version; only replace an existing release when explicitly requested.
@@ -24,6 +36,13 @@ to know before you do:
 If a change starts in a worktree and then needs eyes in a browser, push it and build the
 branch from the main clone rather than loading a second unpacked copy — two copies of the
 extension installed at once fight over the same origins and the same vault.
+
+# Shared-core dependency policy
+
+Keep the shared-core migration off the extension's main/release branches until
+all packages required by that migration are published on npm. Do not integrate
+local `file:` tarballs or unpublished shared-package builds as a release shortcut.
+The migration work remains on its separate branch until that condition is met.
 
 # Safari Build & Install
 
@@ -139,6 +158,8 @@ control, duplicate markup, or a parallel component when an existing shared
 component can handle the interaction. If a capability is missing, extend the
 shared component with a reusable, tested API and document it. Keep styling in
 semantic theme tokens so all project themes work consistently.
+Value-based selectors use the shared custom `Dropdown`; do not replace it with a
+native `<select>` wrapper. Preserve its top-layer positioning and keyboard support.
 
 Every code change must pass through these gates. No exceptions, no shortcuts.
 

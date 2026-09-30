@@ -65,7 +65,7 @@ Source references inspected:
 - [YakiHonne WebLN consumer](https://github.com/YakiHonne/web-app/blob/58aa6af3dcd03d391ce6ba525c4c896a5f1f2b45/src/Hooks/useLightningWallets.js)
 - [NIP-47 specification](https://github.com/nostr-protocol/nips/blob/master/47.md)
 
-See [the audit](nwc-audit.md) for wire-protocol tests, encryption negotiation,
+See [the protocol reference](nwc-protocol.md) for wire-protocol tests, encryption negotiation,
 connection lifetime and payment replay safeguards, and their limits. A live
 acceptance check still needs a user-owned, limited-budget connection from each
 provider; automated tests do not move real funds.

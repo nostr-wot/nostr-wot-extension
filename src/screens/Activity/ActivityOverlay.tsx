@@ -111,6 +111,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   // hold up to 2000 raw entries (constants/activity.ts), and grouping does not
   // bound how many rows that becomes.
   const page = usePagedList(entries, PAGE_SIZE);
+  const { reset: resetPage } = page;
 
   // Reset to one page whenever the filters actually change, not whenever
   // `entries` changes identity — a background refresh under the same filters
@@ -118,8 +119,8 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
   // new array too, and that case must not yank the window back out from under
   // someone who has already clicked "show more".
   useEffect(() => {
-    page.reset();
-  }, [accountFilter, filter, typeFilter, pubkeyFilter, page.reset]);
+    resetPage();
+  }, [accountFilter, filter, typeFilter, pubkeyFilter, resetPage]);
 
   // Active filter count for badge
   const activeFilterCount = countActivityFilters({ type: typeFilter, pubkeyQuery: pubkeyFilter });
