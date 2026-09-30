@@ -5,7 +5,7 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
-- Place all-sites relay authentication and Default backend auth controls directly below All accounts in Permissions.
+- Group All accounts, all-sites relay authentication and Default backend auth in one dashboard-style card at the top of Permissions.
 
 - Add an off-by-default, account-specific backend authentication policy for exact same-origin HTTPS destinations and curated NIP-98 pairs, with an explanatory Permissions popup and denial precedence.
 - Recognize NIP-29 kind 9007 with a create-group description, group details and raw event access.

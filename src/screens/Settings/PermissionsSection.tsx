@@ -106,23 +106,21 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   const hasMultipleAccounts = accounts && accounts.length > 1;
 
   const accountScopeBlock = hasMultipleAccounts && (
-    <Container gap={3} className="pb-5 mb-3 border-b border-card-border">
-      <Card className="p-0 overflow-hidden mb-0">
-        <Container variant="row" className="justify-between py-5.5 px-7">
-          <Container variant="row" gap={4}>
-            <IconUsers size={15} className="text-brand shrink-0" />
-            <div>
-              <span className="text-md font-medium text-body">{t('perms.allAccounts')}</span>
-              <Text variant="muted" as="div" className="mt-px">
-                {allAccountsMode ? t('perms.allAccountsOnHint') : t('perms.allAccountsOffHint')}
-              </Text>
-            </div>
-          </Container>
-          <Toggle checked={allAccountsMode} onChange={(val: boolean) => {
-            void permissions.setUseGlobalDefaults(val);
-          }} />
+    <div>
+      <Container variant="row" className="justify-between py-5.5 px-7">
+        <Container variant="row" gap={4}>
+          <IconUsers size={15} className="text-brand shrink-0" />
+          <div>
+            <span className="text-md font-medium text-body">{t('perms.allAccounts')}</span>
+            <Text variant="muted" as="div" className="mt-px">
+              {allAccountsMode ? t('perms.allAccountsOnHint') : t('perms.allAccountsOffHint')}
+            </Text>
+          </div>
         </Container>
-      </Card>
+        <Toggle checked={allAccountsMode} onChange={(val: boolean) => {
+          void permissions.setUseGlobalDefaults(val);
+        }} />
+      </Container>
 
       {!allAccountsMode && isSelectedReadOnly && (
         <Container variant="box" gap={1} className="rounded-md border-card-active mb-4">
@@ -137,7 +135,7 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
           <span className="text-xs text-muted leading-normal">{t('perms.managedBySignerHint')}</span>
         </Container>
       )}
-    </Container>
+    </div>
   );
 
   // ── Add Rule modal state ──
@@ -183,11 +181,11 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
   // List view
   return (
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
-      {accountScopeBlock}
-      <Card className="p-0 overflow-hidden mb-0 shrink-0">
+      <Card className="p-0 overflow-hidden mb-0 shrink-0 [&>*+*]:[border-top:1px_solid_var(--brand-tint-active)]">
+        {accountScopeBlock}
         <ListRow leading={<IconShield size={15} className="text-brand" />} title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={() => setRelayPermissionsOpen(true)} />
+        {authenticationAccount && <DefaultBackendAuth key={authenticationAccount.id} accountId={authenticationAccount.id} />}
       </Card>
-      {authenticationAccount && <DefaultBackendAuth key={authenticationAccount.id} accountId={authenticationAccount.id} />}
 
       <Input type="search" label={t('perms.searchSites')} placeholder={t('perms.searchSites')}
         value={query} onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />

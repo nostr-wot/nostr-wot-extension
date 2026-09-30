@@ -272,6 +272,10 @@ it('Permissions orders relay and backend controls below All accounts and above s
   const heading=[...document.querySelectorAll('label')].find(element=>element.textContent===label('auth.permissions'))!;
   const allAccounts=[...document.querySelectorAll('span')].find(element=>element.textContent===label('perms.allAccounts'))!;
   const backend=document.querySelector(`[aria-label="${label('auth.defaultBackend')}"]`)!;
+  const card=link.parentElement!;
+  assert.ok(card.classList.contains('shadow-card'));
+  assert.ok(card.contains(allAccounts));assert.ok(card.contains(backend));
+  assert.equal(card.querySelectorAll('.shadow-card').length,0,'controls share one card without nested cards');
   const search=document.querySelector('input[type="search"]')!;
   for(const [before,after] of [[allAccounts,link],[link,backend],[backend,search],[search,heading]]) {
    assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import Card from '@components/Card';
 import Container from '@components/Container';
 import Text from '@components/Text';
 import Toggle from '@components/Toggle';
@@ -39,7 +38,7 @@ export default function DefaultBackendAuth({ accountId }: { accountId: string })
       setBusy(false);
     }
   };
-  return <Card className="p-0 overflow-hidden mb-0 shrink-0">
+  return <div>
     <Container variant="row" gap={3} className="justify-between py-5.5 px-7">
       <Container variant="row" gap={4}>
         <IconShield size={15} className="text-brand shrink-0" />
@@ -59,5 +58,5 @@ export default function DefaultBackendAuth({ accountId }: { accountId: string })
       <Text>{t('auth.defaultBackendExplanation')}</Text>
       <Text>{t('auth.defaultBackendLimits')}</Text>
     </Modal>, document.body)}
-  </Card>;
+  </div>;
 }
