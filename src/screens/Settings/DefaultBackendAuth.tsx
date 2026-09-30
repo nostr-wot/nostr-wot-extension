@@ -40,7 +40,7 @@ export default function DefaultBackendAuth({ accountId }: { accountId: string })
   };
   return <div>
     <Container variant="row" gap={3} className="justify-between py-5.5 px-7">
-      <Container variant="row" gap={4}>
+      <Container variant="row" gap={4} className="min-w-0 flex-1">
         <IconShield size={15} className="text-brand shrink-0" />
         <div>
           <span className="text-md font-medium text-body">{t('auth.defaultBackend')}</span>

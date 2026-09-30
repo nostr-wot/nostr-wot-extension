@@ -5,7 +5,7 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
-- Group All accounts, all-sites relay authentication and Default backend auth in one dashboard-style card at the top of Permissions.
+- Group All accounts, Default backend auth and all-sites relay authentication in one dashboard-style card at the top of Permissions, with aligned icons, labels and controls.
 
 - Add an off-by-default, account-specific backend authentication policy for exact same-origin HTTPS destinations and curated NIP-98 pairs, with an explanatory Permissions popup and denial precedence.
 - Recognize NIP-29 kind 9007 with a create-group description, group details and raw event access.

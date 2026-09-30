@@ -255,7 +255,7 @@ it('relay grant table and site permissions partition grants without hiding denia
   assert.ok(document.body.textContent!.includes('POST https://api.test'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
-it('Permissions orders relay and backend controls below All accounts and above site permissions',async t=>{
+it('Permissions groups All accounts, backend auth and relay auth in that order',async t=>{
  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
  const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
  const {AccountProvider}=await import('../src/context/AccountContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
@@ -277,7 +277,7 @@ it('Permissions orders relay and backend controls below All accounts and above s
   assert.ok(card.contains(allAccounts));assert.ok(card.contains(backend));
   assert.equal(card.querySelectorAll('.shadow-card').length,0,'controls share one card without nested cards');
   const search=document.querySelector('input[type="search"]')!;
-  for(const [before,after] of [[allAccounts,link],[link,backend],[backend,search],[search,heading]]) {
+  for(const [before,after] of [[allAccounts,backend],[backend,link],[link,search],[search,heading]]) {
    assert.ok(before);assert.ok(after);assert.ok(before.compareDocumentPosition(after)&dom.window.Node.DOCUMENT_POSITION_FOLLOWING);
   }
   assert.equal(document.querySelector('[role="dialog"]'),null);

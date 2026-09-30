@@ -7,6 +7,7 @@ import { t } from '@services/i18n/i18n.ts';
 import { countDecisions, filterKeysForAccountKind, availablePermKeys } from '@domain/permissions/permissionRules.ts';
 import Input from '@components/Input';
 import IconShield from '@assets/IconShield.tsx';
+import IconChevronRight from '@assets/IconChevronRight.tsx';
 import IconUsers from '@assets/IconUsers.tsx';
 import IconPlus from '@assets/IconPlus.tsx';
 import { useAccount } from '@context/AccountContext';
@@ -107,8 +108,8 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
 
   const accountScopeBlock = hasMultipleAccounts && (
     <div>
-      <Container variant="row" className="justify-between py-5.5 px-7">
-        <Container variant="row" gap={4}>
+      <Container variant="row" gap={3} className="justify-between py-5.5 px-7">
+        <Container variant="row" gap={4} className="min-w-0 flex-1">
           <IconUsers size={15} className="text-brand shrink-0" />
           <div>
             <span className="text-md font-medium text-body">{t('perms.allAccounts')}</span>
@@ -183,8 +184,11 @@ export default forwardRef<PermissionsSectionHandle, PermissionsSectionProps>(fun
     <Container gap={4} className="flex-1 min-h-0 overflow-y-auto py-2">
       <Card className="p-0 overflow-hidden mb-0 shrink-0 [&>*+*]:[border-top:1px_solid_var(--brand-tint-active)]">
         {accountScopeBlock}
-        <ListRow leading={<IconShield size={15} className="text-brand" />} title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')} onClick={() => setRelayPermissionsOpen(true)} />
         {authenticationAccount && <DefaultBackendAuth key={authenticationAccount.id} accountId={authenticationAccount.id} />}
+        <ListRow leading={<IconShield size={15} />} leadingChip={false}
+          className="px-7 py-5.5 gap-4" title={t('auth.relayPermissions')} subtitle={t('auth.manageRelays')}
+          trailing={<span className="w-20 flex justify-center"><IconChevronRight size={16} /></span>}
+          onClick={() => setRelayPermissionsOpen(true)} />
       </Card>
 
       <Input type="search" label={t('perms.searchSites')} placeholder={t('perms.searchSites')}
