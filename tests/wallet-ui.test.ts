@@ -583,7 +583,8 @@ it('approval sheet separates current-request approval from remembered permission
       const menu = dom.window.document.querySelector('[role="menu"]')!;
       const items = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
       assert.equal(items.length, 2, 'each pending type has its own remembered action');
-      assert.match(menu.parentElement!.className, /w-full/, 'menu matches its split button anchor');
+      assert.equal(menu.getAttribute('popover'), 'manual', 'menu escapes clipped approval panels');
+      assert.equal((menu as HTMLElement).style.minWidth, '280px', 'options have a readable width independent of the button');
       await act(async()=>items[1].click());
       assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:4',decision:allow?'allow':'deny',accountId:account.id});
       assert.equal(calls.filter(c=>c.method==='signer_savePermission').length, 1, 'other types are not granted or denied');

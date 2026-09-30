@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useLayoutEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import type { Option } from '@components/option.ts';
 import useOutsideClick from '@hooks/useOutsideClick';
 import Card from '@components/Card';
@@ -27,10 +27,40 @@ export default function ActionMenu<T extends string>({ label, options, onSelect,
     const menu = useRef<HTMLDivElement>(null);
     const id = useId();
     useOutsideClick(wrapper, () => setOpen(false), open);
-    useEffect(() => { if (open) menu.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus(); }, [open]);
+    useLayoutEffect(() => {
+        const panel = menu.current;
+        const anchor = anchorToParent ? wrapper.current?.parentElement : wrapper.current;
+        if (!open || !panel || !anchor) return;
+        panel.showPopover?.();
+        function position() {
+            const rect = anchor!.getBoundingClientRect();
+            const availableWidth = Math.max(0, window.innerWidth - 16);
+            panel!.style.width = matchAnchorWidth ? `${Math.min(rect.width, availableWidth)}px` : 'max-content';
+            panel!.style.maxWidth = `${Math.min(320, availableWidth)}px`;
+            panel!.style.minWidth = `${Math.min(280, availableWidth)}px`;
+            const width = panel!.getBoundingClientRect().width;
+            const above = Math.max(0, rect.top - 16);
+            const below = Math.max(0, window.innerHeight - rect.bottom - 16);
+            const upwards = placement === 'above' ? above >= Math.min(240, panel!.scrollHeight) || above >= below
+                : below < Math.min(240, panel!.scrollHeight) && above > below;
+            panel!.style.maxHeight = `${Math.min(240, upwards ? above : below)}px`;
+            panel!.style.left = `${Math.max(8, Math.min(align === 'start' ? rect.left : rect.right - width, window.innerWidth - width - 8))}px`;
+            panel!.style.top = `${upwards ? Math.max(8, rect.top - panel!.getBoundingClientRect().height - 8) : rect.bottom + 8}px`;
+        }
+        position();
+        panel.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus({ preventScroll: true });
+        const onScroll = (event: Event) => { if (!panel.contains(event.target as Node)) setOpen(false); };
+        window.addEventListener('resize', position);
+        document.addEventListener('scroll', onScroll, true);
+        return () => {
+            panel.hidePopover?.();
+            window.removeEventListener('resize', position);
+            document.removeEventListener('scroll', onScroll, true);
+        };
+    }, [open, anchorToParent, matchAnchorWidth, align, placement]);
     function close() {
         setOpen(false);
-        wrapper.current?.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.focus();
+        wrapper.current?.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.focus({ preventScroll: true });
     }
     async function select(value: T) {
         if (disabled || busy) return;
@@ -50,15 +80,18 @@ export default function ActionMenu<T extends string>({ label, options, onSelect,
             const current = items.indexOf(document.activeElement as HTMLButtonElement);
             const index = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
                 : (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
-            items[index]?.focus();
+            items[index]?.focus({ preventScroll: true });
         }}>
         {trigger({ disabled, 'aria-label': label, 'aria-haspopup': 'menu', 'aria-expanded': open,
             'aria-controls': open ? id : undefined, onClick: () => setOpen(value => !value) })}
-        {open && <Card variant="elevated" className={cn('absolute z-10 mb-0 p-2 max-h-60 overflow-y-auto', matchAnchorWidth ? 'w-full box-border' : 'min-w-36 w-max max-w-[min(320px,calc(100vw-32px))]', align === 'start' ? 'left-0' : 'right-0', placement === 'above' ? 'bottom-full mb-2' : 'top-full mt-2')}>
-            <div ref={menu} id={id} role="menu" aria-label={label} className="flex flex-col gap-2">
-                {options.map(option => <Button variant={tone === 'danger' ? 'danger' : 'secondary'} key={option.value} small role="menuitem" tabIndex={-1} aria-disabled={busy || disabled} onClick={() => { void select(option.value); }}>{option.label}</Button>)}
-            </div>
-            {description}
-        </Card>}
+        {open && <div ref={menu} id={id} role="menu" aria-label={label} popover="manual"
+            style={{ inset: 'auto' }} className="fixed m-0 p-0 border-0 bg-transparent overflow-y-auto">
+            <Card variant="elevated" className="mb-0 p-2">
+                <div className="flex flex-col gap-2">
+                    {options.map(option => <Button variant={tone === 'danger' ? 'danger' : 'secondary'} key={option.value} small role="menuitem" tabIndex={-1} aria-disabled={busy || disabled} onClick={() => { void select(option.value); }}>{option.label}</Button>)}
+                </div>
+                {description}
+            </Card>
+        </div>}
     </div>;
 }

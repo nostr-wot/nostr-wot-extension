@@ -91,7 +91,7 @@ must not trigger an automatic retry. Update the current behavior docs with the c
 Contribute verified client origins and backend relationships in
 [`src/data/auth-clients.json`](src/data/auth-clients.json), following the
 [evidence requirements](docs/auth-client-registry.md). Unknown relationships must remain
-unknown. Registry entries are informational and must never create signing permission.
+unknown. Registry entries never enable the default backend policy by themselves. Exact NIP-98 pairs are eligible only when a user has enabled it for their account, so review these relationships as security-sensitive changes.
 
 ```sh
 node --import tsx --test tests/auth-client-registry.test.ts

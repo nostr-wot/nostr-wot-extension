@@ -1,17 +1,24 @@
 # Nostr web client and backend registry
 
-[`src/data/auth-clients.json`](../src/data/auth-clients.json) is an informational
+[`src/data/auth-clients.json`](../src/data/auth-clients.json) is a source-evidenced
 registry of 20 representative Nostr web clients and source-evidenced HTTP services.
 It is not a measured “top 20”: no reliable, comparable active-user ranking was
 available for this selection. It includes general social clients and specialist
 publishing, streaming, lists, groups and commerce clients. Inclusion is neither
 an endorsement nor a guarantee of current availability.
 
-**The registry never authorizes signing.** It must not create grants, suppress
-prompts, trust a backend because it appears here, or expand a site's permissions.
-The requesting browser origin and the actual authentication destination remain
-separate security principals. Each account's user-approved permissions govern
-requests regardless of whether a client or backend is listed.
+**Listing alone does not authorize signing.** Default backend auth is off by default
+for each account. If a user enables it in Permissions, connected sites may use
+NIP-98 automatically for exact same-origin HTTPS destinations and exact registry
+pairs explicitly marked `nip98`. The policy covers valid endpoints and methods at
+those origins; it does not create individual grants. Other auth types, unverified
+entries, wildcard domains and relay authentication are excluded. Explicit denials
+win, and connection, identity, event validation and native-wallet restrictions
+still apply. Disabling the setting leaves explicit saved grants unchanged.
+
+Registry changes therefore change the optional policy's scope for users who have
+enabled it. Review origin relationships and protocol evidence as security-sensitive
+changes; do not infer trust from a similar hostname or a generic media service.
 
 ## Reading the data
 

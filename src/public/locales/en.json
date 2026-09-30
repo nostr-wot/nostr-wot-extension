@@ -1098,5 +1098,14 @@
   "messageReview.dateUnavailable": "Date unavailable",
   "event.showRaw": "Show raw event",
   "approval.approveSelected": "Approve selected",
-  "approval.selectRequest": "Select request"
+  "approval.selectRequest": "Select request",
+  "auth.defaultBackend": "Default backend auth",
+  "auth.defaultBackendInfo": "About default backend authentication",
+  "auth.defaultBackendExplanation": "Off by default, for the current account. When enabled, connected websites can authenticate automatically when the backend has the exact same HTTPS origin, or the website/backend pair is listed for NIP-98 in the bundled registry. Different schemes, ports and unlisted subdomains do not match.",
+  "auth.defaultBackendLimits": "This allows any valid HTTP authentication endpoint and method at those origins, without creating individual saved grants. Existing denials still block requests. Other destinations require approval; relay authentication is separate. Disabling this option stops automatic approvals but keeps explicit saved permissions and existing website sessions.",
+  "perm.createGroup": "Create group",
+  "eventIntent.createGroup": "[[{origin}]] wants to [[create a group]].",
+  "eventIntent.createNamedGroup": "[[{origin}]] wants to [[create group {group}]].",
+  "event.groupId": "Group ID",
+  "event.groupIdMissing": "Not specified"
 }

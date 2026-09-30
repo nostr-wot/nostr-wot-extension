@@ -61,6 +61,7 @@ export const COMMON_PERM_KEYS = [
   'signEvent:9734',
   'signEvent:24242',
   'signEvent:27235',
+  'signEvent:9007',
   'signEvent:30023',
   'readMessages',
   'sendMessages',

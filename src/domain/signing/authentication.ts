@@ -1,3 +1,4 @@
+import clients from '../../data/auth-clients.json';
 import type { UnsignedEvent } from '../nostr/types.ts';
 
 export type AuthenticationScope = 'once' | 'site' | 'connected-sites';
@@ -86,4 +87,10 @@ export function assertPageAuthenticationPolicy(auth: AuthenticationRequest | und
     && /^\/api\/(?:v2\/)?(?:provision|claim-username|release-username)\/?$/.test(decodeURIComponent(url.pathname))) {
     throw new Error('Native wallet authentication requires the internal wallet flow');
   }
+}
+
+/** Exact registry matching shared by the consent notice and opt-in backend policy. */
+export function findKnownAuthenticationBackend(origin: string, auth: AuthenticationRequest) {
+  return clients.find(client => client.origins.includes(origin) && client.backends.some(backend =>
+    backend.origin === auth.destination && backend.auth === auth.protocol));
 }

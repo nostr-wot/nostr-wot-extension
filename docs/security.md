@@ -606,7 +606,7 @@ Both page message ingress paths derive identity from the browser's sender, ignor
 
 Origin identifies the **requesting document**, not whichever tab happens to become active later. Browser ports are document-bound; this does not cancel all already-dispatched work after navigation. Same-origin code executing in the top-level page (including XSS or a script the client loads) shares that origin's authority. An external page cannot gain that authority merely by posting a message or embedding the client.
 
-Destination consent and strict event validation are described in [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42). Generic signing grants, registry matches, shared-account defaults and NIP-46 delegation cannot bypass HTTP (including same-origin) or relay consent. A relay-wide grant explicitly extends identification authority to every connected site for that account and relay. It never applies to HTTP auth. Destination-specific remembered rejections override allowances and are scoped to the current account and requesting site (plus HTTP method when present). The queue validates the account session before persisting a rejection, and the signer rechecks it before local or remote signing.
+Destination consent and strict event validation are described in [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42). Generic signing grants, shared-account defaults and NIP-46 delegation cannot bypass authentication consent. The separately enabled, account-specific Default backend auth policy authorizes valid NIP-98 requests for connected sites at exact same-origin HTTPS backends or exact registered NIP-98 pairs; it starts disabled and never applies to relays. A relay-wide grant explicitly extends identification authority to every connected site for that account and relay. It never applies to HTTP auth. Destination-specific remembered rejections override allowances and are scoped to the current account and requesting site (plus HTTP method when present). The queue validates the account session before persisting a rejection, and the signer rechecks it before local or remote signing.
 
 `signer_getAuthenticationGrants` and `signer_revokeAuthenticationGrant` are internal extension RPCs, automatically included in privileged-method gating. No additional browser permissions are requested.
 
@@ -633,7 +633,7 @@ HTTP grants bind the requesting origin, account, exact resource URL (including
 query bytes) and method. Legacy origin-wide allows require consent again; legacy
 denies remain effective. An optional origin/client-origin tag must equal the
 browser-derived requesting origin, but is not attestation. Client/backend registry
-entries are explanatory only and never grant permission.
+entries alone never grant permission; exact NIP-98 pairs become eligible only under the explicit Default backend auth opt-in.
 
 Remote signer results are verified against the approved immutable event snapshot:
 expected account public key, signature, kind, timestamp, content and ordered tags.

@@ -296,3 +296,72 @@ it('intent highlights keep origin/action/app literal and grouped summaries have 
  assert.ok(dom.window.document.querySelector('button[title="Show raw event"]'));
  assert.ok(!dom.window.document.body.textContent!.includes('Advanced'));dom.window.close();
 });
+it('approval options escape clipped sheets, preserve focus and dismiss without approving',async()=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const dom=new JSDOM('<div id="root" style="overflow:hidden;height:80px"></div>');
+ Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ dom.window.HTMLElement.prototype.showPopover=function(){this.dataset.topLayer='true';};
+ dom.window.HTMLElement.prototype.hidePopover=function(){delete this.dataset.topLayer;};
+ const root=createRoot(document.getElementById('root')!);const scopes:string[]=[];
+ try{
+  await act(async()=>root.render(createElement(AuthenticationActions,{authentication:{...authentication,protocol:'nip42'},onApprove:scope=>scopes.push(scope),onDeny(){},onAlwaysDeny(){}})));
+  const trigger=document.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')!;
+  await act(async()=>trigger.click());
+  const menu=document.querySelector<HTMLElement>('[role="menu"]')!;
+  assert.equal(menu.getAttribute('popover'),'manual');assert.equal(menu.dataset.topLayer,'true');
+  assert.equal(menu.querySelectorAll('[role="menuitem"]').length,2);
+  assert.equal(document.activeElement,menu.querySelector('[role="menuitem"]'));
+  await act(async()=>document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+  assert.equal(document.querySelector('[role="menu"]'),null);assert.equal(document.activeElement,trigger);assert.deepEqual(scopes,[]);
+  await act(async()=>trigger.click());
+  await act(async()=>document.dispatchEvent(new dom.window.Event('scroll')));
+  assert.equal(document.querySelector('[role="menu"]'),null);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('authentication permissions refresh after background saves and revocations without remounting',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Permissions}=await import('../src/screens/Settings/AuthenticationPermissions');
+ const {default:browser}=await import('./helpers/browser-mock');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ await browser.storage.local.set({authenticationGrants:[]});
+ t.mock.method(browser.runtime,'sendMessage',async()=>({result:(await browser.storage.local.get('authenticationGrants')).authenticationGrants}));
+ const root=createRoot(document.getElementById('root')!);
+ const grant={id:'obelisk',accountId:'a',origin:'https://obelisk.ar',protocol:'nip98',destination:'https://api.obelisk.ar',resource:'https://api.obelisk.ar/login',method:'POST',version:2,decision:'allow'};
+ try{
+  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a'})));
+  assert.equal(document.querySelectorAll('tbody tr').length,0);
+  await act(async()=>{await browser.storage.local.set({authenticationGrants:[grant,{...grant,id:'other',accountId:'b',origin:'https://other.test'}]});});
+  assert.equal(document.querySelectorAll('tbody tr').length,1);assert.ok(document.body.textContent!.includes('https://obelisk.ar'));assert.ok(document.body.textContent!.includes('POST https://api.obelisk.ar/login'));
+  await act(async()=>{await browser.storage.local.set({authenticationGrants:[]});});
+  assert.equal(document.querySelectorAll('tbody tr').length,0);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('default backend toggle is off initially, saves for the active account and explains its scope',async t=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Permissions}=await import('../src/screens/Settings/AuthenticationPermissions');
+ const {default:browser}=await import('./helpers/browser-mock');const {t:label}=await import('../src/services/i18n/i18n');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ let enabled=false;const saves:unknown[]=[];
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  if(message.method==='signer_setDefaultBackendAuth'){saves.push(message.params);enabled=message.params.enabled;return {result:{ok:true}};}
+  return {result:message.method==='signer_getDefaultBackendAuth' ? enabled : []};
+ });
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Permissions,{accounts:[{id:'a',pubkey:'a'.repeat(64)}],activeId:'a'})));
+  const toggle=document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;assert.equal(toggle.checked,false);
+  await act(async()=>toggle.click());assert.deepEqual(saves,[{accountId:'a',enabled:true}]);assert.equal(toggle.checked,true);
+  const info=document.querySelector<HTMLButtonElement>(`[aria-label="${label('auth.defaultBackendInfo')}"]`)!;
+  await act(async()=>info.click());assert.ok(document.querySelector('[role="dialog"]')!.textContent!.includes(label('auth.defaultBackendLimits')));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('kind 9007 has a create-group intent and a custom preview with raw event access',async()=>{
+ const {default:Detail}=await import('../src/components/EventDetailModal');
+ const {describeSigningIntent}=await import('../src/services/i18n/eventIntent');
+ const {t:label}=await import('../src/services/i18n/i18n');
+ const event={kind:9007,content:'A new community',tags:[['h','group-id'],['name','<img onerror=evil()>'],['about','Group description']]};
+ const intent=describeSigningIntent('https://obelisk.ar',event);assert.ok(intent.includes('<img onerror=evil()>'));
+ const html=renderToStaticMarkup(createElement(Detail,{request:{type:'signEvent',origin:'https://obelisk.ar',event,permKey:'signEvent:9007'},onApprove(){},onDeny(){}}));
+ assert.ok(html.includes('group-id'));assert.ok(html.includes('Group description'));assert.ok(html.includes('A new community'));
+ assert.ok(html.includes(label('event.showRaw')));assert.ok(!html.includes(label('event.unknownKind')));assert.ok(!html.includes('<img onerror=evil()>'));
+});

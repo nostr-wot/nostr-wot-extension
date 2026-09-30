@@ -1098,5 +1098,14 @@
   "messageReview.dateUnavailable": "Fecha no disponible",
   "event.showRaw": "Mostrar evento sin procesar",
   "approval.approveSelected": "Aprobar seleccionadas",
-  "approval.selectRequest": "Seleccionar solicitud"
+  "approval.selectRequest": "Seleccionar solicitud",
+  "auth.defaultBackend": "Autenticación predeterminada de backend",
+  "auth.defaultBackendInfo": "Acerca de la autenticación predeterminada de backend",
+  "auth.defaultBackendExplanation": "Desactivada por defecto y limitada a la cuenta actual. Al activarla, las webs conectadas pueden autenticarse automáticamente si el backend tiene exactamente el mismo origen HTTPS o si el par web/backend figura como NIP-98 en el registro incluido. Otros esquemas, puertos y subdominios no incluidos no coinciden.",
+  "auth.defaultBackendLimits": "Permite cualquier endpoint y método de autenticación HTTP válidos en esos orígenes, sin crear permisos individuales. Las denegaciones existentes prevalecen. Otros destinos requieren aprobación; la autenticación de relays es independiente. Desactivarla conserva los permisos explícitos y las sesiones existentes.",
+  "perm.createGroup": "Crear grupo",
+  "eventIntent.createGroup": "[[{origin}]] quiere [[crear un grupo]].",
+  "eventIntent.createNamedGroup": "[[{origin}]] quiere [[crear el grupo {group}]].",
+  "event.groupId": "ID del grupo",
+  "event.groupIdMissing": "Sin especificar"
 }

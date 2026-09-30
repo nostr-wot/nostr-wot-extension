@@ -6,6 +6,10 @@ import type { NostrEventDisplay } from '@domain/nostr/nostrEvent.ts';
 export function signingIntentParts(origin:string,event?:Partial<NostrEventDisplay> | null):IntentPart[] {
   const kind = event?.kind;
   const tags = event?.tags || [];
+  if (kind === 9007) {
+    const group = tags.find(tag=>tag[0] === 'name')?.[1] || tags.find(tag=>tag[0] === 'h')?.[1];
+    return intentParts(group ? 'eventIntent.createNamedGroup' : 'eventIntent.createGroup',{origin,group:group || ''});
+  }
   if (kind === 30078) {
     const identifier = tags.find(tag=>tag[0] === 'd');
     if (identifier?.[1]) return identifier[2]

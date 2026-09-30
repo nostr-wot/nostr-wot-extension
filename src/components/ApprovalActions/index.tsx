@@ -35,7 +35,7 @@ export default function ApprovalActions({ choices, requestCount, rejectCount = r
                 segment="start" onClick={() => { void action.run?.(); }}>
                 {(action.key === 'approve' ? approveLabel : rejectLabel) || t(action.label)}
             </Button>
-            <ActionMenu description={action.key === 'approve' ? approveDescription : undefined} label={t(action.options)} placement={placement} anchorToParent matchAnchorWidth
+            <ActionMenu description={action.key === 'approve' ? approveDescription : undefined} label={t(action.options)} placement={placement} anchorToParent
                 disabled={busy || !choices.some(choice => choice[action.remember])} tone={action.key === 'reject' ? 'danger' : 'neutral'}
                 options={choices.filter(choice => choice[action.remember]).map(({value, label, allowLabel, denyLabel}) => ({
                     value,

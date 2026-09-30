@@ -3,6 +3,14 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Unreleased
+
+- Add an off-by-default, account-specific backend authentication policy for exact same-origin HTTPS destinations and curated NIP-98 pairs, with an explanatory Permissions popup and denial precedence.
+- Recognize NIP-29 kind 9007 with a create-group description, group details and raw event access.
+
+- Keep approval and rejection option menus visible above clipped event sheets using a viewport-bounded top-layer popover.
+- Refresh authentication permissions when remembered grants are saved or revoked in the background.
+
 ## 0.8.7
 
 Community guides: [backend authentication](https://nostr-wot.com/en/guides/backend-authentication)

@@ -21,6 +21,7 @@ export const KIND_LABELS: Record<number, string> = {
   1063: 'File Metadata',
   1111: 'Comment',
   1984: 'Report',
+  9007: 'Create Group',
   9734: 'Zap Request',
   9735: 'Zap Receipt',
   10000: 'Mute List',

@@ -4,7 +4,7 @@ import FieldDisplay from '@components/FieldDisplay';
 import Text from '@components/Text';
 import StatusNotice from '@components/StatusNotice';
 import { t } from '@services/i18n/i18n.ts';
-import clients from '../../data/auth-clients.json';
+import { findKnownAuthenticationBackend } from '@domain/signing/authentication';
 
 export default function AuthenticationNotice({ request }: {
   request: { origin?: string; pubkey?: string; authentication?: AuthenticationRequest };
@@ -18,8 +18,7 @@ export default function AuthenticationNotice({ request }: {
   const destination = relay
     ? `${url.host}${url.pathname === '/' ? '' : url.pathname}${url.search}`
     : auth.url;
-  const known = clients.find(client => client.origins.includes(request.origin || '') &&
-    client.backends.some(backend => backend.origin === auth.destination && backend.auth === auth.protocol));
+  const known = findKnownAuthenticationBackend(request.origin || '', auth);
 
   return <Container gap={3} className="min-w-0">
     <Text variant="secondary" className="[overflow-wrap:anywhere]">

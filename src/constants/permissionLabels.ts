@@ -10,6 +10,7 @@ export const PERM_LABELS: Record<string, string> = {
   'signEvent:6': 'perm.repost',
   'signEvent:7': 'perm.reaction',
   'signEvent:1111': 'perm.comment',
+  'signEvent:9007': 'perm.createGroup',
   'signEvent:9734': 'perm.zap',
   'signEvent:24242': 'perm.blossomAuth',
   'signEvent:27235': 'perm.httpAuth',

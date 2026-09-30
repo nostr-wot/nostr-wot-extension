@@ -1098,5 +1098,14 @@
   "messageReview.dateUnavailable": "Datum nicht verfügbar",
   "event.showRaw": "Rohereignis anzeigen",
   "approval.approveSelected": "Auswahl genehmigen",
-  "approval.selectRequest": "Anfrage auswählen"
+  "approval.selectRequest": "Anfrage auswählen",
+  "auth.defaultBackend": "Standard-Backend-Authentifizierung",
+  "auth.defaultBackendInfo": "Über die Standard-Backend-Authentifizierung",
+  "auth.defaultBackendExplanation": "Standardmäßig für das aktuelle Konto deaktiviert. Wenn aktiviert, können verbundene Websites sich automatisch authentifizieren, wenn das Backend exakt denselben HTTPS-Ursprung hat oder das Website/Backend-Paar im mitgelieferten Verzeichnis für NIP-98 aufgeführt ist. Andere Protokolle, Ports und nicht aufgeführte Subdomains stimmen nicht überein.",
+  "auth.defaultBackendLimits": "Erlaubt alle gültigen HTTP-Authentifizierungsendpunkte und Methoden dieser Ursprünge, ohne einzelne Berechtigungen zu speichern. Bestehende Ablehnungen haben Vorrang. Andere Ziele benötigen Zustimmung; Relay-Authentifizierung bleibt getrennt. Deaktivieren erhält explizite Berechtigungen und bestehende Sitzungen.",
+  "perm.createGroup": "Gruppe erstellen",
+  "eventIntent.createGroup": "[[{origin}]] möchte [[eine Gruppe erstellen]].",
+  "eventIntent.createNamedGroup": "[[{origin}]] möchte [[die Gruppe {group} erstellen]].",
+  "event.groupId": "Gruppen-ID",
+  "event.groupIdMissing": "Nicht angegeben"
 }

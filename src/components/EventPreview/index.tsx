@@ -1,3 +1,4 @@
+import CreateGroupPreview from './kinds/CreateGroupPreview';
 import React from 'react';
 import { cn } from '@utils/cn.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -33,6 +34,7 @@ const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisp
   13: SealedPreview,
   1059: SealedPreview,
   30078: AppSpecificPreview,
+  9007: CreateGroupPreview,
 };
 
 const ENCRYPT_TYPES = new Set(['nip04Encrypt', 'nip04Decrypt', 'nip44Encrypt', 'nip44Decrypt']);

@@ -317,3 +317,42 @@ it('omitted ordinary tags and timestamp are normalized before review',async()=>{
   await resolveRequest(item.id,{allow:true});const result=await signing;
   assert.equal(result.created_at,item.event?.created_at);assert.deepEqual(result.tags,item.event?.tags);
 });
+it('default backend authentication is opt-in, account-specific and never creates grants',async()=>{
+ const {setDefaultBackendAuth,getDefaultBackendAuth,listAuthenticationGrants}=await import('../src/services/permissions/authentication');
+ assert.equal(await getDefaultBackendAuth('acct1'),false);
+ await setDefaultBackendAuth('acct1',true);
+ assert.equal(await getDefaultBackendAuth('other'),false);
+ const signed=await handleSignEvent(http(site+'/session?client=web'),site);
+ assert.equal(signed.kind,27235);assert.equal((await getPending()).length,0);assert.deepEqual(await listAuthenticationGrants(),[]);
+ await setDefaultBackendAuth('acct1',false);
+ const signing=handleSignEvent(http(site+'/session'),site);void signing.catch(()=>{});
+ const [request]=await pending();assert.ok(request);await resolveRequest(request.id,{allow:false});await assert.rejects(signing,/denied/i);
+});
+it('default backend authentication uses exact HTTPS NIP-98 registry pairs and preserves denials',async()=>{
+ const {setDefaultBackendAuth,getAuthenticationDecision,saveAuthenticationGrant}=await import('../src/services/permissions/authentication');
+ const {parseAuthentication}=await import('../src/domain/signing/authentication');
+ await setDefaultBackendAuth('acct1',true);
+ const auth=(url:string)=>parseAuthentication(http(url),site)!;
+ assert.equal(await getAuthenticationDecision('acct1','https://nostria.app',auth('https://api.nostria.app/login')),'allow');
+ for(const [origin,url] of [[site,'https://client.test.evil.test/login'],[site,'https://client.test:8443/login'],[site,'https://api.client.test/login'],['https://evil.test','https://api.nostria.app/login'],['https://nostria.app.evil.test','https://api.nostria.app/login'],['https://coracle.social','https://blossom.nostr.build/login']]){
+  assert.equal(await getAuthenticationDecision('acct1',origin,auth(url)),undefined,origin+' -> '+url);
+ }
+ assert.equal(await getAuthenticationDecision('acct1',site,parseAuthentication(relay(),site)!),undefined);
+ const target=auth(site+'/login');await saveAuthenticationGrant('acct1',site,target,'site',()=>{},'deny');
+ assert.equal(await getAuthenticationDecision('acct1',site,target),'deny');
+ await assert.rejects(handleSignEvent(http(site+'/login'),site),/denied/i);
+});
+it('default backend auth cannot bypass connection or identity restrictions',async()=>{
+ const {setDefaultBackendAuth}=await import('../src/services/permissions/authentication');
+ await setDefaultBackendAuth('acct1',true);
+ await assert.rejects(handleSignEvent(http('https://unconnected.test/login'),'https://unconnected.test'),/not connected/i);
+ await browser.storage.local.set({identityDisabledSites:[site]});
+ await assert.rejects(handleSignEvent(http(site+'/login'),site),/identity.*disabled/i);
+});
+it('deleting an account clears its default backend policy and vault reset clears all policies',async()=>{
+ const {setDefaultBackendAuth,getDefaultBackendAuth,revokeAuthenticationGrants}=await import('../src/services/permissions/authentication');
+ await setDefaultBackendAuth('acct1',true);await setDefaultBackendAuth('other',true);
+ await revokeAuthenticationGrants({accountId:'acct1'});
+ assert.equal(await getDefaultBackendAuth('acct1'),false);assert.equal(await getDefaultBackendAuth('other'),true);
+ await revokeAuthenticationGrants();assert.equal(await getDefaultBackendAuth('other'),false);
+});

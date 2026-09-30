@@ -1,3 +1,4 @@
+import CreateGroupPreview from '@components/EventPreview/kinds/CreateGroupPreview';
 import GroupedMessageRequests from './GroupedMessageRequests';
 import IconChevronDown from '@assets/IconChevronDown';
 import IntentText from './IntentText';
@@ -152,6 +153,7 @@ export default function EventDetailModal({
       {item.type === 'signEvent' ? (
         <div data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
           <div id={labelId} className={selectable ? 'pr-8' : ''}>{describeRequest(item)}</div>
+          {item.event?.kind === 9007 && <CreateGroupPreview event={item.event}/> }
           <div className="pt-3"><RawEventButton event={item.event || {}} /></div>
           {cancel}
         </div>
@@ -186,7 +188,7 @@ export default function EventDetailModal({
         : requests.map((item, index) => renderRequest(item, index))}
     </div>;
   } else if (request?.type === 'signEvent') {
-    eventContent = <RawEventButton event={event || {}} />;
+    eventContent = <>{event?.kind === 9007 && <CreateGroupPreview event={event}/>}<RawEventButton event={event || {}} /></>;
   } else if (request && isMessageRequest(type)) {
     eventContent = <MessageRequestDetail key={request.id} request={request} />;
   } else if (request) {
