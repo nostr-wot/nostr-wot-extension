@@ -206,3 +206,9 @@ it('zap signing, wallet access and payment require detail review instead of glob
  assert.equal(requiresIndividualReview({type:'signEvent',event:{kind:1}}),false);
  assert.equal(requiresIndividualReview({type:'getPublicKey'}),false);
 });
+
+it('legacy logins from the same site remain separate reviews', () => {
+  const authentication={protocol:'legacy-login' as const,url:'https://example.com',destination:'https://example.com',crossOrigin:false};
+  const groups=groupApprovals([req({id:'a',origin:authentication.url,authentication,permKey:'legacy'}),req({id:'b',origin:authentication.url,authentication,permKey:'legacy'})]);
+  assert.equal(groups.length,2);assert.ok(groups.every(g=>g.requests.length===1));
+});

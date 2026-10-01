@@ -3,6 +3,10 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Unreleased
+
+- Keep login available for explicitly supported clients that use a nonstandard authentication format. Show a prominent risk warning explaining that the client uses the wrong authentication standard, and ask users to contact its developers about NIP-98. Require separate one-time approval for every request; preserve frame, origin, account and timestamp checks. Backend automation and saved relay grants never authorize this format.
+
 ## 0.8.9 — 2026-10-01
 
 ### Store release notes

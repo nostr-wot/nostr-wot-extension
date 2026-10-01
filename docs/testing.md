@@ -569,3 +569,5 @@ in `tests/pqc-handlers.test.ts` and `tests/hooks-lifecycle.test.ts`.
 `tests/uninstall-feedback.test.ts` verifies registration of the fixed public
 feedback URL, safe handling of unsupported browsers, and registration failures.
 No identity or wallet information is included in the URL.
+
+Legacy website-login regressions in `authentication.test.ts`, `authentication-ui.test.ts` and `approval.test.ts` cover exact-origin/domain validation, malformed/stale requests, no saved or automatic grants, rejection, unchanged signed events, individual review grouping, danger notices and one-time-only controls.

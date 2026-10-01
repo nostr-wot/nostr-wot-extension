@@ -1,4 +1,5 @@
 import type { AuthenticationRequest } from '@domain/signing/authentication.ts';
+import IconWarning from '@assets/IconWarning';
 import Container from '@components/Container';
 import FieldDisplay from '@components/FieldDisplay';
 import Text from '@components/Text';
@@ -11,6 +12,10 @@ export default function AuthenticationNotice({ request }: {
 }) {
   const auth = request.authentication;
   if (!auth) return null;
+  if (auth.protocol === 'legacy-login') return <StatusNotice tone="error" icon={<IconWarning/>} variant="callout" label={t('auth.legacyTitle')}>
+    {t('auth.legacyWarning')}
+    <p className="mt-3">{t('auth.legacyContact')}</p>
+  </StatusNotice>;
   const relay = auth.protocol === 'nip42';
   const url = new URL(auth.url);
   // Keep non-default ports and distinct relay endpoints visible without repeating

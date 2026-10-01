@@ -134,7 +134,7 @@ export default function EventDetailModal({
   const theirPubkey = request ? request!.theirPubkey : group?.entries?.[0]?.theirPubkey;
   const entries = group?.entries || [];
 
-  const title = formatPermissionLabel(request?.authentication ? `signEvent:${request.authentication.protocol === 'nip98' ? 27235 : 22242}` : permKey || '', requests && requests.length > 1 ? undefined : event ?? undefined);
+  const title = request?.authentication?.protocol === 'legacy-login' ? t('auth.legacyTitle') : formatPermissionLabel(request?.authentication ? `signEvent:${request.authentication.protocol === 'nip98' ? 27235 : 22242}` : permKey || '', requests && requests.length > 1 ? undefined : event ?? undefined);
 
   // Approval description
   const description = request ? describeRequest(request) : null;

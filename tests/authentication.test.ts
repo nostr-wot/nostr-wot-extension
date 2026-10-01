@@ -1,3 +1,4 @@
+import { LEGACY_LOGIN_ORIGIN } from '../src/domain/signing/authentication.ts';
 import { beforeEach, afterEach, it } from 'node:test';
 import assert from 'node:assert/strict';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
@@ -430,4 +431,56 @@ it('all-site global signing approvals still require backend and relay destinatio
     await resolveRequest(item.id, {allow:false});
     await assert.rejects(signing, /denied/i);
   }
+});
+
+const legacySite = LEGACY_LOGIN_ORIGIN;
+const legacyHost = new URL(legacySite).hostname;
+const legacyLogin = (): UnsignedEvent => ({kind:22242,content:'',created_at:Math.floor(Date.now()/1000),tags:[['domain',legacyHost],['challenge','login-challenge']]});
+it('legacy website login requires individual consent every time and signs the original event', async () => {
+  const {setDefaultBackendAuth,listAuthenticationGrants}=await import('../src/services/permissions/authentication');
+  await addAllowedDomain(legacySite);
+  await permissions.save(legacySite,'signEvent',null,'allow','acct1');
+  await setDefaultBackendAuth('acct1',true);
+  for (let n=0;n<2;n++) {
+    const event=legacyLogin();const signing=handleSignEvent(event,legacySite);void signing.catch(()=>{});
+    const [item]=await pending();assert.equal(item.authentication?.protocol,'legacy-login');
+    await resolveBatch(legacySite,item.permKey!,{allow:true});assert.equal((await getPending()).length,1);
+    for (const scope of ['site','connected-sites'] as const) await assert.rejects(resolveRequest(item.id,{allow:true,authenticationScope:scope}),/authentication/i);
+    await assert.rejects(resolveRequest(item.id,{allow:false,rememberAuthenticationDeny:true}),/scope/i);
+    await resolveRequest(item.id,{allow:true,authenticationScope:'once'});
+    const signed=await signing;
+    assert.deepEqual(signed.tags,event.tags);assert.equal(signed.kind,event.kind);assert.equal(signed.created_at,event.created_at);assert.equal(signed.content,event.content);
+    assert.deepEqual(await listAuthenticationGrants(),[]);
+  }
+});
+it('legacy login rejects unknown clients, spoofed domains and ambiguous or stale formats', async () => {
+  const {parseAuthentication}=await import('../src/domain/signing/authentication');
+  for (const origin of [site,`http://${legacyHost}`,`${legacySite}:8443`,`${legacySite}.evil.test`,`https://www.${legacyHost}`,`${legacySite}/`]) {
+    assert.throws(()=>parseAuthentication(legacyLogin(),origin),/authentication/i);
+  }
+  for (const tags of [
+    [['domain','evil.test'],['challenge','x']],
+    [['domain',legacyHost],['domain',legacyHost],['challenge','x']],
+    [['domain',legacyHost],['challenge','x'],['challenge','y']],
+    [['domain',legacyHost],['challenge',' ']],
+    [['domain',legacyHost],['challenge','x','extra']],
+    [['domain',legacyHost]],
+    [...legacyLogin().tags,['relay','']],
+    [...legacyLogin().tags,['u','https://evil.test']],
+    [...legacyLogin().tags,['method','POST']],
+    [...legacyLogin().tags,['origin','https://evil.test']],
+  ]) assert.throws(()=>parseAuthentication({...legacyLogin(),tags},legacySite),/authentication/i);
+  for (const delta of [-61,61]) assert.throws(()=>parseAuthentication({...legacyLogin(),created_at:Math.floor(Date.now()/1000)+delta},legacySite),/timestamp/i);
+  assert.throws(()=>parseAuthentication({...legacyLogin(),content:'hidden'},legacySite),/content/i);
+  await assert.rejects(handleSignEvent(legacyLogin(),legacySite),/not connected/i);
+});
+it('legacy login cannot inherit grants and denial does not sign', async () => {
+  const {parseAuthentication}=await import('../src/domain/signing/authentication');
+  const {getAuthenticationDecision}=await import('../src/services/permissions/authentication');
+  const auth=parseAuthentication(legacyLogin(),legacySite)!;
+  await browser.storage.local.set({authenticationGrants:[{id:'forged',accountId:'acct1',origin:legacySite,protocol:'legacy-login',destination:legacySite,version:2,resource:legacySite}]});
+  assert.equal(await getAuthenticationDecision('acct1',legacySite,auth),undefined);
+  await addAllowedDomain(legacySite);
+  const signing=handleSignEvent(legacyLogin(),legacySite);void signing.catch(()=>{});
+  const [item]=await pending();await resolveRequest(item.id,{allow:false});await assert.rejects(signing,/denied/i);
 });

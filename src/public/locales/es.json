@@ -1160,5 +1160,9 @@
   "walletReview.paymentEffect": "Aprobar paga esta factura. Tu cartera puede añadir comisiones de enrutamiento.",
   "walletReview.accessEffect": "Permite que este sitio se conecte a tu cartera y lea la información disponible. Los pagos tienen reglas de aprobación separadas.",
   "approval.sensitiveReviewHint": "Revisa por separado las solicitudes de autenticación, zaps y cartera. No se incluyen en Aprobar todo.",
-  "perm.lightningPayment": "Pago Lightning"
+  "perm.lightningPayment": "Pago Lightning",
+  "auth.legacyTitle": "Inicio de sesión web antiguo",
+  "auth.legacyWarning": "Potencialmente inseguro: este sitio usa el tipo 22242 para un inicio de sesión web no estándar. La firma indica un dominio, pero no vincula una URL exacta del backend ni un método HTTP. Aprueba solo si confías en este sitio. Debes aprobar cada solicitud por separado.",
+  "auth.legacyContact": "Contacta con los desarrolladores del sitio y pídeles que usen NIP-98 (tipo 27235) para la autenticación del backend.",
+  "auth.legacyApprove": "Aprobar acceso antiguo una vez"
 }

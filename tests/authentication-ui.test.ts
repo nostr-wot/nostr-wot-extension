@@ -696,3 +696,29 @@ it('account completion shows a compact summary and distinguishes seed-derived ac
  const remote=renderToStaticMarkup(createElement(Done,{account:{...account,type:'nip46'},onDone(){}}));
  assert.ok(remote.includes(label('wizard.doneAccountSummary',{name:account.name})));assert.ok(!remote.includes(label('wizard.doneDerivedSummary',{name:account.name})));
 });
+
+it('legacy login displays a danger notice and only one-time approval or denial', async () => {
+ const auth={protocol:'legacy-login' as const,url:'https://example.com',destination:'https://example.com',crossOrigin:false};
+ const {default:Detail}=await import('../src/components/EventDetailModal');
+ const html=renderToStaticMarkup(createElement(Detail,{request:{type:'signEvent',origin:auth.url,authentication:auth},onAuthenticate(){},onAlwaysDeny(){},onDeny(){}}));
+ const {t:label}=await import('../src/services/i18n/i18n');
+ for(const text of ['auth.legacyTitle','auth.legacyWarning','auth.legacyContact','auth.legacyApprove']) assert.ok(html.includes(label(text)),text);
+ assert.ok(html.includes('text-error'));
+ for(const text of ['auth.approveAlways','auth.approveAllSites','approval.approveOptions','approval.rejectOptions','perm.relayAuth']) assert.ok(!html.includes(text),text);
+ const {JSDOM}=await import('jsdom');const dom=new JSDOM('<div id="root"></div>');
+ Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const {createRoot}=await import('react-dom/client');const root=createRoot(document.getElementById('root')!);const decisions:string[]=[];
+ try {
+  await act(async()=>root.render(createElement(AuthenticationActions,{authentication:auth,onApprove:scope=>decisions.push(scope),onDeny:()=>decisions.push('deny')})));
+  const buttons=document.querySelectorAll('button');assert.equal(buttons.length,2);
+  await act(async()=>buttons[0].click());await act(async()=>buttons[1].click());assert.deepEqual(decisions,['once','deny']);
+ } finally {await act(async()=>root.unmount());dom.window.close();}
+});
+
+it('legacy login card does not mislabel the website request as relay authentication', async () => {
+ const {default:Card}=await import('../src/screens/Approval/ApprovalCard');
+ const authentication={protocol:'legacy-login' as const,url:'https://example.com',destination:'https://example.com',crossOrigin:false};
+ const html=renderToStaticMarkup(createElement(Card,{group:{origin:authentication.url,method:'signEvent',permKey:'legacy',requests:[{id:'legacy',type:'signEvent',origin:authentication.url,eventKind:22242,authentication,timestamp:0}]},onClick(){}}));
+ assert.ok(!html.includes('(22242)'));assert.ok(!html.includes('Relay Auth'));
+ const {t}=await import('../src/services/i18n/i18n');assert.ok(html.includes(t('auth.legacyTitle')));
+});

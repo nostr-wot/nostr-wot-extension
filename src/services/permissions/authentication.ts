@@ -39,6 +39,8 @@ function matchesGrant(grant: AuthenticationGrant, accountId: string, origin: str
   return grant.decision === 'deny';
 }
 export async function getAuthenticationDecision(accountId: string, origin: string, auth: AuthenticationRequest): Promise<'allow' | 'deny' | undefined> {
+  // Legacy website login always requires fresh, explicit consent.
+  if (auth.protocol === 'legacy-login') return undefined;
   const matching = (await listAuthenticationGrants()).filter(grant => matchesGrant(grant,accountId,origin,auth));
   // A site-specific rejection takes precedence over a shared relay allowance.
   if (matching.some(grant => grant.decision === 'deny')) return 'deny';

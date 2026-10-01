@@ -43,7 +43,7 @@ export default function ApprovalCard({ group, onClick, onCancel, hideSite = fals
               {isNip46 && <IconSync size={12} className="animate-spin [animation-duration:1.5s] shrink-0" />}
               {isNip46 ? t('approval.awaitingSigner') : firstReq?.authentication ? t('auth.review') : label}
             </Container>}
-            {!hideSite && !isNip46 && kind !== undefined && <Text as="span" variant="secondary" className="text-xs text-menu-subtitle">
+            {!hideSite && !isNip46 && firstReq?.authentication?.protocol !== 'legacy-login' && kind !== undefined && <Text as="span" variant="secondary" className="text-xs text-menu-subtitle">
               {formatPermissionLabel(group.method)} · {KIND_LABELS[kind] || `Kind ${kind}`} ({kind})
             </Text>}
             {group.requests.length === 1 && (kind === 9734 || firstReq?.type === 'webln_sendPayment') && <Text as="span" className="text-brand font-semibold tabular-nums">{amount ? `${formatMsats(amount,getLanguage())} sats` : t('zapReview.amountUnknown')}</Text>}

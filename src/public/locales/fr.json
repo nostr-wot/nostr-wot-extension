@@ -1160,5 +1160,9 @@
   "walletReview.paymentEffect": "Approuver paie cette facture. Votre portefeuille peut ajouter des frais de routage.",
   "walletReview.accessEffect": "Autorise ce site à se connecter à votre portefeuille et à lire les informations disponibles. Les paiements suivent des règles distinctes.",
   "approval.sensitiveReviewHint": "Examinez séparément les demandes d’authentification, de zap et de portefeuille. Elles sont exclues de Tout approuver.",
-  "perm.lightningPayment": "Paiement Lightning"
+  "perm.lightningPayment": "Paiement Lightning",
+  "auth.legacyTitle": "Connexion web héritée",
+  "auth.legacyWarning": "Potentiellement dangereux : ce site utilise le type 22242 pour une connexion web non standard. La signature indique un domaine, mais ne lie ni une URL précise du serveur ni une méthode HTTP. Approuvez uniquement si vous faites confiance à ce site. Chaque demande nécessite une approbation distincte.",
+  "auth.legacyContact": "Contactez les développeurs du site et demandez-leur d’utiliser NIP-98 (type 27235) pour l’authentification du serveur.",
+  "auth.legacyApprove": "Approuver une fois ce login hérité"
 }

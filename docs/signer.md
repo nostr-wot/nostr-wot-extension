@@ -260,6 +260,12 @@ NIP-42 challenges are supplied by the client; only the relay can bind them to it
 
 Authentication revalidation includes identity-disabled sites after approval/unlock, before both local signing and remote delegation.
 
+### Legacy website login compatibility
+
+Some clients use kind 22242 with `domain` and `challenge` for website login, which does not follow either NIP-42 relay authentication or NIP-98 HTTP authentication. Limited compatibility lets users continue while clearly warning that the client uses the wrong authentication standard and asking its developers to correct it. Only the exact production origin configured in `src/domain/signing/authentication.ts` qualifies. The browser-verified origin must match that restriction, with exactly one matching `domain` and one nonblank `challenge`. For example, an eligible origin `https://example.com` would require `domain=example.com`; this illustrative domain is not an additional allowance. Only optional matching `origin`/`client-origin` metadata is permitted; relay tags and other fields are not accepted in this format. Empty content and a 60-second timestamp window are required and rechecked before signing. Normal top-level-frame, connection, identity and account checks still apply.
+
+The prompt calls this **Legacy website login**, shows a danger warning and asks users to contact the site's developers to adopt NIP-98 (kind 27235). Approval signs the original event unchanged, once only. Every request gets a separate review; no remembered approval/denial or backend/relay automation applies. Other malformed authentication remains rejected. The displayed origin identifies the caller, not a signed backend endpoint: this format does not bind a URL, HTTP method or request body. The site must validate the challenge and domain; the extension cannot guarantee how the server consumes or reuses the signed event.
+
 ## Local pending-message review
 
 NIP-04/NIP-44 approval details show a cached peer profile (sender for decrypt,

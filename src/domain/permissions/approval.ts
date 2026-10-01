@@ -84,7 +84,7 @@ function group(
 
 /** Actionable requests, grouped by origin and the permission they need. */
 export function groupApprovals(requests: PendingRequest[]): ApprovalGroup[] {
-  return group(requests, (r) => r.permKey || r.type);
+  return group(requests, (r) => r.authentication?.protocol === 'legacy-login' ? `${r.permKey}::${r.id}` : r.permKey || r.type);
 }
 
 /** In-flight NIP-46 requests, grouped by origin and method. */

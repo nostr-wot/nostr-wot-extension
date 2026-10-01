@@ -1160,5 +1160,9 @@
   "walletReview.paymentEffect": "Approving pays this invoice. Your wallet may add routing fees.",
   "walletReview.accessEffect": "Allows this site to connect to your wallet and read supported wallet information. Payments follow separate approval rules.",
   "approval.sensitiveReviewHint": "Review authentication, zap and wallet requests separately. They are excluded from Approve all.",
-  "perm.lightningPayment": "Lightning payment"
+  "perm.lightningPayment": "Lightning payment",
+  "auth.legacyTitle": "Legacy website login",
+  "auth.legacyWarning": "Potentially unsafe: this site uses kind 22242 for a nonstandard website login. The signature names a domain but does not bind an exact backend URL or HTTP method. Approve only if you trust this site. You must approve each request separately.",
+  "auth.legacyContact": "Contact this site’s developers and ask them to use NIP-98 (kind 27235) for backend authentication.",
+  "auth.legacyApprove": "Approve legacy login once"
 }

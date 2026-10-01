@@ -1,9 +1,12 @@
 import clients from '../../data/auth-clients.json';
 import type { UnsignedEvent } from '../nostr/types.ts';
 
+// Exact production origin eligible for the narrowly scoped compatibility exception.
+export const LEGACY_LOGIN_ORIGIN = 'https://aqstr.com';
+
 export type AuthenticationScope = 'once' | 'site' | 'connected-sites';
 export interface AuthenticationRequest {
-  protocol: 'nip98' | 'nip42';
+  protocol: 'nip98' | 'nip42' | 'legacy-login';
   /** Exact signed URL for review and HTTP permission lookup, including query bytes. */
   url: string;
   destination: string;
@@ -29,6 +32,19 @@ export function parseAuthentication(event: UnsignedEvent, origin: string, now = 
     if (event.tags?.some(item => item[0] === name) && tag(event, name) !== origin) {
       throw new Error(`Invalid authentication ${name} tag`);
     }
+  }
+  // Compatibility is explicit, not a fallback for arbitrary malformed relay auth.
+  // This explicitly supported client uses domain/challenge kind 22242 for website login.
+  if (relay && !event.tags?.some(item => item[0] === 'relay') && event.tags?.some(item => item[0] === 'domain')) {
+    if (origin !== LEGACY_LOGIN_ORIGIN || tag(event, 'domain') !== new URL(origin).hostname
+      || event.tags.some(item => !['domain', 'challenge', 'origin', 'client-origin'].includes(item[0]))) {
+      throw new Error('Invalid legacy authentication domain or format');
+    }
+    if (!tag(event, 'challenge').trim()) throw new Error('Invalid authentication challenge tag');
+    if (!Number.isInteger(event.created_at) || Math.abs(now - event.created_at) > 60) throw new Error('Invalid authentication timestamp');
+    if (event.content !== '') throw new Error('Invalid authentication content');
+    // This URL describes the verified caller, NOT an endpoint bound by the signature.
+    return {protocol:'legacy-login', url:origin, destination:origin, crossOrigin:false};
   }
   const raw = tag(event, relay ? 'relay' : 'u');
   let url: URL;
@@ -62,6 +78,7 @@ export function authenticationKey(auth: AuthenticationRequest): string {
 }
 
 export function validAuthenticationScope(auth: AuthenticationRequest, scope: unknown): scope is AuthenticationScope {
+  if (auth.protocol === 'legacy-login') return scope === 'once';
   return scope === 'once' || scope === 'site' || (scope === 'connected-sites' && auth.protocol === 'nip42');
 }
 

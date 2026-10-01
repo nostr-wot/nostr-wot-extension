@@ -1160,5 +1160,9 @@
   "walletReview.paymentEffect": "Die Genehmigung bezahlt diese Rechnung. Deine Wallet kann Routinggebühren hinzufügen.",
   "walletReview.accessEffect": "Erlaubt dieser Website, sich mit deiner Wallet zu verbinden und verfügbare Wallet-Informationen zu lesen. Für Zahlungen gelten separate Regeln.",
   "approval.sensitiveReviewHint": "Prüfe Authentifizierungs-, Zap- und Wallet-Anfragen separat. Sie sind von Alle genehmigen ausgeschlossen.",
-  "perm.lightningPayment": "Lightning-Zahlung"
+  "perm.lightningPayment": "Lightning-Zahlung",
+  "auth.legacyTitle": "Veraltete Website-Anmeldung",
+  "auth.legacyWarning": "Möglicherweise unsicher: Diese Website verwendet Typ 22242 für eine nicht standardisierte Anmeldung. Die Signatur nennt eine Domain, bindet aber keine genaue Backend-URL oder HTTP-Methode. Nur genehmigen, wenn du dieser Website vertraust. Jede Anfrage muss einzeln genehmigt werden.",
+  "auth.legacyContact": "Bitte die Entwickler dieser Website, NIP-98 (Typ 27235) für die Backend-Authentifizierung zu verwenden.",
+  "auth.legacyApprove": "Veraltete Anmeldung einmal erlauben"
 }

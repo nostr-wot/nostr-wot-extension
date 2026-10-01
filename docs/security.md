@@ -610,6 +610,10 @@ Destination consent and strict event validation are described in [signer.md](sig
 
 `signer_getAuthenticationGrants` and `signer_revokeAuthenticationGrant` are internal extension RPCs, automatically included in privileged-method gating. No additional browser permissions are requested.
 
+### Legacy website login exception
+
+The explicitly supported legacy website-login format is documented in [signer.md](signer.md#legacy-website-login-compatibility). It is classified as `legacy-login`, never as relay or NIP-98 authentication. It requires a fresh individual approval with a danger notice and cannot inherit or persist grants. Its hostname binding is weaker than NIP-98's exact URL/method binding; users are asked to contact the site's developers. Origin/frame/account checks remain in force. This exception does not relax validation of other malformed events.
+
 ### Approval and profile lifecycle
 
 Key scopes zero temporary bytes on success and failure; they do not themselves

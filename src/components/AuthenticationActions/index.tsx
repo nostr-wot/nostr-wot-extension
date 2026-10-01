@@ -1,4 +1,6 @@
 import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
+import Button, { ButtonDanger } from '@components/Button';
+import Container from '@components/Container';
 import ApprovalActions from '@components/ApprovalActions';
 import { t } from '@services/i18n/i18n.ts';
 
@@ -6,6 +8,10 @@ export default function AuthenticationActions({authentication,requestCount=1,bus
   authentication:AuthenticationRequest;requestCount?:number;busy?:boolean;
   onApprove?:(scope:AuthenticationScope)=>void;onDeny?:()=>void;onAlwaysDeny?:()=>void;
 }) {
+  if (authentication.protocol === 'legacy-login') return <Container variant="row" gap={4} className="justify-end flex-wrap">
+    <ButtonDanger small disabled={busy || !onApprove} onClick={() => onApprove?.('once')}>{t('auth.legacyApprove')}</ButtonDanger>
+    <Button small variant="secondary" disabled={busy || !onDeny} onClick={onDeny}>{t('auth.reject')}</Button>
+  </Container>;
   const choices = [{
     value:'site',label:'',allowLabel:t('auth.approveAlways'),denyLabel:t('auth.rejectAlways'),
     onAlwaysAllow:onApprove ? () => onApprove('site') : undefined,onAlwaysDeny,
