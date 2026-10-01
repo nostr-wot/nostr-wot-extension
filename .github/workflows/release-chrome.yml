@@ -56,7 +56,4 @@ jobs:
           CHROME_WEBSTORE_CLIENT_SECRET: ${{ secrets.CHROME_WEBSTORE_CLIENT_SECRET }}
           CHROME_WEBSTORE_REFRESH_TOKEN: ${{ secrets.CHROME_WEBSTORE_REFRESH_TOKEN }}
           CHROME_WEBSTORE_PUBLISHER_ID: ${{ vars.CHROME_WEBSTORE_PUBLISHER_ID }}
-          # One-time replacement explicitly authorized for this release. Clear the
-          # variable after success; other releases cannot cancel this submission.
-          REPLACE_PENDING_VERSION: ${{ github.event.release.tag_name == 'v0.8.7' && vars.CHROME_WEBSTORE_REPLACE_VERSION || '' }}
         run: node scripts/publish-chrome.mjs "$CHROME_ARCHIVE"

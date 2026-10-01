@@ -55,19 +55,17 @@ submitted version with matching archive markers and notes is skipped. If only
 metadata is incomplete, a rerun can finish it without uploading another version.
 An existing version without matching source/package markers is left untouched.
 
-The workflow refuses a newer version, a different listed version awaiting review,
-a rejected/disabled matching version, a validation failure, or a build mismatch.
-It never deletes versions or cancels another submission. Resolve conflicts in the
-[developer dashboard](https://addons.mozilla.org/en-US/developers/addon/nostr-wot-extension/versions)
-before rerunning the failed workflow. A rerun still requires a published release
+The workflow refuses a newer version, a rejected/disabled matching version, a validation failure, or a build mismatch.
+Older listed versions awaiting review do not block a newer release. The publisher
+submits the newer version through Mozilla’s Version Create API without deleting
+version history. No per-release override or workflow edit is needed. A rerun still requires a published release
 and passing CI; it does not bypass the release gate.
 
 Writes are not automatically retried. After a network error, inspect the dashboard
 before rerunning: Mozilla may have accepted a request whose response was lost. An
 orphaned validation upload is not a submitted version; a rerun may validate a new
 upload, but it checks for an existing submitted version first. If version creation
-succeeded, its hash markers let the rerun safely resume metadata. No automatic
-rollback or store-version replacement is performed.
+succeeded, its hash markers let the rerun safely resume metadata. No automatic rollback or deletion is performed.
 
 The implementation uses Mozilla's [Add-ons API](https://mozilla.github.io/addons-server/topics/api/addons.html)
 and [JWT authentication](https://mozilla.github.io/addons-server/topics/api/auth.html).
@@ -76,3 +74,10 @@ duplicate refusal, pagination, credential boundaries and validation failures.
 
 Upload IDs accept Mozilla’s compact hexadecimal UUID representation as well as
 the canonical hyphenated form. Both are validated before building polling URLs.
+
+For an already-published release whose original workflow predates a tooling fix,
+use **Recover published store release** with its tag and `firefox`. `inspect`
+reads version/status fields without mutations; `submit` uses current main tooling
+with the original verified release source and packages. It shares the normal
+Mozilla concurrency group and retains the exact-release CI and reproducibility gates.
+Ordinary new releases submit automatically without this recovery step.

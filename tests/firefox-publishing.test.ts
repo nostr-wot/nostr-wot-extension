@@ -73,7 +73,7 @@ for (const changed of ['source', 'approval_notes', 'channel'] as const) test(`re
  await assert.rejects(publishFirefox(o, env, mock.fetcher));
  assert.ok(mock.calls.every(c => !c.options.method));
 });
-for (const existing of [{ version: '0.8.6', channel: 'listed', file: { status: 'unreviewed' } }, { version: '0.9.0', channel: 'listed', file: { status: 'public' } }]) test(`refuses conflicting version ${existing.version}`, async t => {
+for (const existing of [{ version: '0.9.0', channel: 'listed', file: { status: 'public' } }]) test(`refuses conflicting version ${existing.version}`, async t => {
  const mock = api([addon, { results: [existing], next: null }]);
  await assert.rejects(publishFirefox(fixture(t), env, mock.fetcher));
  assert.equal(mock.calls.length, 2);
@@ -233,4 +233,35 @@ test('recognizes Mozilla linkified release notes on save and rerun', async t => 
  const rerun=api([addon,{results:[linked],next:null},linked]);
  assert.equal(await publishFirefox(o,env,rerun.fetcher),'ALREADY_SUBMITTED');
  assert.ok(rerun.calls.every(c=>!c.options.method));
+});
+
+test('inspection lists versions without submitting', async t => {
+ const old = {version:'0.8.6',channel:'listed',file:{status:'unreviewed'}};
+ const mock=api([addon,{results:[old],next:null}]);
+ assert.deepEqual(JSON.parse(await publishFirefox(fixture(t),{...env,STORE_INSPECT_ONLY:'true'},mock.fetcher)),[{version:'0.8.6',channel:'listed',status:'unreviewed'}]);
+ assert.equal(mock.calls.length,2);
+});
+test('automatically supersedes an older Mozilla review without deleting history', async t => {
+ const o=fixture(t),saved=detail(o),old={version:'0.8.6',channel:'listed',file:{status:'unreviewed'}};
+ const mock=api([addon,{results:[old],next:null},validated,saved,saved,saved]);
+ assert.equal(await publishFirefox(o,env,mock.fetcher),'SUBMITTED');
+ assert.ok(mock.calls.every(c=>c.options.method!=='DELETE'));
+});
+test('never supersedes a newer Mozilla version', async t => {
+ for(const version of ['0.8.8','0.9.0']) {
+  const mock=api([addon,{results:[{version,channel:'listed',file:{status:'unreviewed'}}],next:null}]);
+  await assert.rejects(publishFirefox(fixture(t),env,mock.fetcher));
+  assert.equal(mock.calls.length,2);
+ }
+});
+test('recovery only targets published tested releases and shares store concurrency', () => {
+ const workflow=readFileSync(new URL('../.github/workflows/recover-store-release.yml',import.meta.url),'utf8');
+ assert.match(workflow,/workflow_dispatch:/);
+ assert.match(workflow,/default: inspect/);
+ assert.match(workflow,/github.ref == 'refs\/heads\/main'/);
+ assert.match(workflow,/chrome-web-store/);assert.match(workflow,/mozilla-addons/);
+ assert.match(workflow,/cancel-in-progress: false/);
+ assert.ok(workflow.indexOf('prepare-store-release.mjs')<workflow.indexOf('secrets.AMO_JWT_SECRET'));
+ assert.match(workflow,/cp -R scripts/);
+ assert.match(workflow,/--commit "\$GITHUB_SHA"/);
 });

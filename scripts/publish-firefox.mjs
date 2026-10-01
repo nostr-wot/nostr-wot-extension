@@ -18,13 +18,8 @@ export function amoToken(env, now = Math.floor(Date.now() / 1000)) {
   const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({ iss: env.AMO_JWT_ISSUER, jti: randomUUID(), iat: now, exp: now + 60 })}`;
   return `${unsigned}.${createHmac('sha256', env.AMO_JWT_SECRET).update(unsigned).digest('base64url')}`;
 }
-export function compareVersions(a, b) {
-  assert.match(a, /^\d+\.\d+\.\d+$/, 'Unsupported existing AMO version; inspect dashboard');
-  assert.match(b, /^\d+\.\d+\.\d+$/);
-  const x = a.split('.').map(BigInt), y = b.split('.').map(BigInt);
-  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1;
-  return 0;
-}
+export { compareVersions } from './store-version.mjs';
+import { compareVersions } from './store-version.mjs';
 
 /** No mutation retries; reruns resume only an exact, marked submission. */
 export async function publishFirefox(options, env, fetcher = fetch, sleep = delay) {
@@ -58,6 +53,7 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
     versions.push(...data.results); next = data.next;
   }
   assert.ok(!next, 'Mozilla version list exceeded limit');
+  if (env.STORE_INSPECT_ONLY === 'true') return JSON.stringify(versions.map(v => ({ version: v.version, channel: v.channel, status: v.file?.status, disabled: v.is_disabled })));
   const existing = versions.find(v => v.version === version);
   if (existing) {
     assert.ok(Number.isSafeInteger(existing.id) && existing.id > 0, 'Invalid existing Mozilla version ID');
@@ -70,7 +66,6 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
   }
   for (const v of versions) {
     assert.ok(compareVersions(v.version, version) < 0, 'A newer or conflicting Mozilla version exists');
-    assert.ok(!(v.channel === 'listed' && v.file?.status === 'unreviewed'), 'A different Mozilla submission is awaiting review; no upload attempted');
   }
   const form = new FormData();
   form.set('channel', 'listed');

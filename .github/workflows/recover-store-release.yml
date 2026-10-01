@@ -1,0 +1,89 @@
+name: Recover published store release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable published release (vX.Y.Z)
+        required: true
+      store:
+        description: Store to inspect or resume
+        type: choice
+        options: [chrome, firefox]
+        required: true
+      operation:
+        description: Inspect is read-only; submit resumes the verified release
+        type: choice
+        options: [inspect, submit]
+        default: inspect
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ inputs.store == 'chrome' && 'chrome-web-store' || 'mozilla-addons' }}
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    if: github.repository == 'nostr-wot/nostr-wot-extension' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      STORE_INSPECT_ONLY: ${{ inputs.operation == 'inspect' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, Node 24
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5, Node 24
+        with:
+          node-version: 24
+      - name: Require successful CI for recovery tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run list --workflow tests.yml --commit "$GITHUB_SHA" --event push --limit 30 --json conclusion,headSha |
+            jq -e --arg sha "$GITHUB_SHA" 'any(.[]; .headSha == $sha and .conclusion == "success")'
+      - name: Preserve recovery tooling and require tested published release
+        run: |
+          cp -R scripts "$RUNNER_TEMP/store-tooling"
+          node scripts/prepare-store-release.mjs
+      - run: npm ci
+      - name: Verify Firefox archive, exact source, reproducible build and notes
+        if: inputs.store == 'firefox'
+        run: node scripts/prepare-firefox-release.mjs "$RUNNER_TEMP/firefox-release"
+      - name: Verify Chrome archive and worker
+        if: inputs.store == 'chrome'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx playwright install --with-deps chromium
+          mkdir -p "$RUNNER_TEMP/chrome-release"
+          archive="nostr-wot-chrome-$RELEASE_VERSION.zip"
+          gh release download "$RELEASE_TAG" --pattern "$archive" --pattern SHA256SUMS --dir "$RUNNER_TEMP/chrome-release"
+          cd "$RUNNER_TEMP/chrome-release"
+          awk -v name="$archive" '$2 == name || $2 == "*" name {print}' SHA256SUMS > chrome.sha256
+          [[ $(wc -l < chrome.sha256) -eq 1 ]]
+          sha256sum --check --strict chrome.sha256
+          echo "VERIFIED_SHA256=$(cut -d ' ' -f1 chrome.sha256)" >> "$GITHUB_ENV"
+          echo "CHROME_ARCHIVE=$RUNNER_TEMP/chrome-release/$archive" >> "$GITHUB_ENV"
+          cd "$GITHUB_WORKSPACE"
+          node scripts/smoke-chrome.mjs "$RUNNER_TEMP/chrome-release/$archive"
+      - name: Inspect or resume Chrome submission
+        if: inputs.store == 'chrome'
+        env:
+          CHROME_WEBSTORE_CLIENT_ID: ${{ secrets.CHROME_WEBSTORE_CLIENT_ID }}
+          CHROME_WEBSTORE_CLIENT_SECRET: ${{ secrets.CHROME_WEBSTORE_CLIENT_SECRET }}
+          CHROME_WEBSTORE_REFRESH_TOKEN: ${{ secrets.CHROME_WEBSTORE_REFRESH_TOKEN }}
+          CHROME_WEBSTORE_PUBLISHER_ID: ${{ vars.CHROME_WEBSTORE_PUBLISHER_ID }}
+        run: node "$RUNNER_TEMP/store-tooling/publish-chrome.mjs" "$CHROME_ARCHIVE"
+      - name: Inspect or resume Mozilla submission
+        if: inputs.store == 'firefox'
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: node "$RUNNER_TEMP/store-tooling/publish-firefox.mjs" "$RUNNER_TEMP/firefox-release/publish-metadata.json"

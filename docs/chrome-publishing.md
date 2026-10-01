@@ -9,8 +9,8 @@ to main and have a successful push run of `tests.yml`. Both store workflows use
 `scripts/prepare-store-release.mjs` for this exact-commit release gate.
 
 The final Node 24 step calls Google's Web Store **v2** API. It rechecks the ZIP
-checksum, skips versions already submitted or published, refuses to overwrite a different
-pending/staged submission without explicit authorization, uploads only to `gfmefgdkmjpjinecjchlangpamhclhdo`, waits for successful
+checksum, skips versions already submitted or published, automatically supersedes strictly older
+pending/staged submissions, uploads only to `gfmefgdkmjpjinecjchlangpamhclhdo`, waits for successful
 upload processing, then submits for review with automatic publication after
 approval. Google review still controls when users receive the update. Existing
 store visibility and rollout settings are preserved. Store warnings stop submission.
@@ -85,8 +85,7 @@ API, including explicit asynchronous upload handling before submission.
 The concurrency group is global to this Chrome store item, with
 `cancel-in-progress: false`. A newer release cannot interrupt an in-progress
 upload. GitHub's concurrency queue keeps at most one running and one pending run;
-it does not guarantee FIFO delivery of several queued releases. Avoid publishing
-multiple versions while a previous version is being processed or reviewed.
+it does not guarantee FIFO delivery of several queued releases. A queued newer release supersedes an older review; a stale run refuses to overwrite a newer store version.
 
 Before any upload, the script reads the store status. If this version is already
 published or pending/staged, it succeeds with `ALREADY_PUBLISHED` or
@@ -99,19 +98,13 @@ another workflow. This release workflow expects publication from the GitHub UI
 or `gh` authenticated as a maintainer. A future automated release creator must
 use an appropriate GitHub App token and preserve these checks.
 
-## Version-scoped replacement support
+## Automatic review replacement
 
-The workflow contains a compatibility exception for replacing version `0.8.6`
-with `0.8.7`, controlled by **CHROME_WEBSTORE_REPLACE_VERSION**. This describes
-code behavior, not the current store state or authorization for a new cancellation. Only the `v0.8.7` release passes this variable to the
-publisher. After local/CI/archive/browser checks pass, the script will cancel
-only if every pending distribution channel reports exactly that version; it
-re-reads status to confirm cancellation before uploading 0.8.7. A different
-pending version is an error, with no cancellation or upload.
-
-Remove the replacement variable after the successful submission. Future releases
-cannot use this exception. Replacing any future review requires a separately
-reviewed, explicit authorization; the default is to stop, not cancel it.
+A new stable release automatically cancels an older pending/staged review after
+all package checks pass. Every reported channel must have an older numeric version.
+The script confirms cancellation before upload. A newer version, missing version
+metadata or ambiguous version format stops the run without cancelling anything.
+There are no per-release replacement variables or workflow edits.
 
 ## Failure recovery
 
@@ -123,11 +116,16 @@ After a network error during upload/submission, inspect the developer dashboard
 before retrying: Google may already have received it. The script does not retry
 mutations automatically. If already submitted, rerunning is a no-op based on the
 version check. If uploaded but not submitted, inspect the draft and API error
-before deciding whether to retry; Google may reject a duplicate upload. An
-unexpected review is preserved unless the precise replacement above is authorized.
+before deciding whether to retry; Google may reject a duplicate upload. Older reviews are handled automatically as described above.
 
 Tests in `tests/chrome-publishing.test.ts` cover OAuth refresh, synchronous and
 asynchronous upload, failure/timeout gates, identity/version/checksum mismatch,
-no mutation retries, duplicate-run no-ops and precisely scoped cancellation.
+no mutation retries, duplicate-run no-ops and older-version-only cancellation.
 Mocked tests don't prove live authorization: verify the configured credentials
 with Google's read-only `fetchStatus` before the first submission.
+
+The **Recover published store release** workflow can inspect or resume an existing
+stable release if its original workflow predates a tooling fix. Select the release
+tag, store and operation. It uses current main publishing code with the original
+verified release archives; it neither recreates the release nor changes its tag.
+It shares the normal store concurrency group. Ordinary new releases need no dispatch.

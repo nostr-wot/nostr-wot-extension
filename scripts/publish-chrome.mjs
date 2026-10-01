@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
+import { compareVersions } from './store-version.mjs';
 import { verifyPackage } from './verify-package.mjs';
 
 export const EXTENSION_ID = 'gfmefgdkmjpjinecjchlangpamhclhdo';
@@ -25,7 +26,7 @@ export async function accessToken(env, fetcher = fetch) {
 }
 
 // No automatic retries of mutations: an uncertain response needs dashboard inspection.
-export async function publishChrome({ archive, version, sha256, publisher, token, replaceVersion }, fetcher = fetch, sleep = delay) {
+export async function publishChrome({ archive, version, sha256, publisher, token, inspectOnly }, fetcher = fetch, sleep = delay) {
   assert.match(publisher ?? '', /^[a-zA-Z0-9_-]+$/, 'Missing/invalid CHROME_WEBSTORE_PUBLISHER_ID');
   assert.ok(token, 'Missing Chrome Web Store access token');
   assert.match(sha256 ?? '', /^[a-f0-9]{64}$/, 'Missing verified SHA256');
@@ -47,17 +48,25 @@ export async function publishChrome({ archive, version, sha256, publisher, token
     return data;
   }
   const current = await request(`/v2/${name}:fetchStatus`);
+  if (inspectOnly) return JSON.stringify({ published: current.publishedItemRevisionStatus, submitted: current.submittedItemRevisionStatus });
   const channels = revision => revision?.distributionChannels ?? [];
   const hasVersion = revision => channels(revision).some(channel => channel.crxVersion === version);
+  for (const revision of [current.publishedItemRevisionStatus, current.submittedItemRevisionStatus]) {
+    for (const channel of channels(revision)) assert.ok(compareVersions(channel.crxVersion, version) <= 0, 'A newer Chrome version exists; no changes attempted');
+  }
   if (hasVersion(current.publishedItemRevisionStatus)) return 'ALREADY_PUBLISHED';
   const submitted = current.submittedItemRevisionStatus;
   if (['PENDING_REVIEW', 'STAGED'].includes(submitted?.state)) {
     if (hasVersion(submitted)) return 'ALREADY_SUBMITTED';
-    assert.ok(replaceVersion && replaceVersion !== version && channels(submitted).length > 0 &&
-      channels(submitted).every(channel => channel.crxVersion === replaceVersion),
+    assert.ok(channels(submitted).length > 0 &&
+      channels(submitted).every(channel => compareVersions(channel.crxVersion, version) < 0),
     'A different submission is pending; no upload or cancellation attempted');
     await request(`/v2/${name}:cancelSubmission`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, false);
-    const afterCancel = await request(`/v2/${name}:fetchStatus`);
+    let afterCancel = await request(`/v2/${name}:fetchStatus`);
+    for (let attempt = 0; ['PENDING_REVIEW', 'STAGED'].includes(afterCancel.submittedItemRevisionStatus?.state) && attempt < 30; attempt++) {
+      await sleep(2000);
+      afterCancel = await request(`/v2/${name}:fetchStatus`);
+    }
     assert.ok(!['PENDING_REVIEW', 'STAGED'].includes(afterCancel.submittedItemRevisionStatus?.state),
       'Cancellation not confirmed; no upload attempted');
   }
@@ -84,7 +93,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const state = await publishChrome({
       archive: process.argv[2], version: process.env.RELEASE_VERSION,
       sha256: process.env.VERIFIED_SHA256, publisher: process.env.CHROME_WEBSTORE_PUBLISHER_ID,
-      token: await accessToken(process.env), replaceVersion: process.env.REPLACE_PENDING_VERSION,
+      token: await accessToken(process.env), inspectOnly: process.env.STORE_INSPECT_ONLY === 'true',
     });
     console.log(`Chrome Web Store submission: ${state}. Google review controls public availability.`);
   } catch (error) {

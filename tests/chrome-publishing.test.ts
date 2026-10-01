@@ -108,22 +108,37 @@ test('duplicate release run skips the version already in review', async t => {
   assert.equal(await publishChrome(fixture(t), mock.fetcher), 'ALREADY_SUBMITTED');
   assert.equal(mock.calls.length, 1);
 });
-test('cancels only the explicitly authorized previous version before upload', async t => {
+test('automatically cancels an older review before uploading a newer release', async t => {
   const mock = api([
     { submittedItemRevisionStatus: { state: 'PENDING_REVIEW', distributionChannels: [{ crxVersion: '0.8.5' }] } },
     {}, {}, { uploadState: 'SUCCEEDED', crxVersion: '0.8.6' }, { state: 'PENDING_REVIEW' },
   ], false);
-  assert.equal(await publishChrome({ ...fixture(t), replaceVersion: '0.8.5' }, mock.fetcher), 'PENDING_REVIEW');
+  assert.equal(await publishChrome(fixture(t), mock.fetcher), 'PENDING_REVIEW');
   assert.deepEqual(mock.calls.map(c => c.url.split(':').pop()), ['fetchStatus', 'cancelSubmission', 'fetchStatus', 'upload', 'publish']);
 });
-test('refuses to cancel a different version than authorized', async t => {
-  const mock = api([{ submittedItemRevisionStatus: { state: 'PENDING_REVIEW', distributionChannels: [{ crxVersion: '0.8.4' }] } }], false);
-  await assert.rejects(publishChrome({ ...fixture(t), replaceVersion: '0.8.5' }, mock.fetcher), /different submission/);
+test('refuses to cancel a newer version', async t => {
+  const mock = api([{ submittedItemRevisionStatus: { state: 'PENDING_REVIEW', distributionChannels: [{ crxVersion: '0.8.7' }] } }], false);
+  await assert.rejects(publishChrome(fixture(t), mock.fetcher), /newer Chrome/);
   assert.equal(mock.calls.length, 1);
 });
 test('does not upload until cancellation is confirmed', async t => {
   const pending = { submittedItemRevisionStatus: { state: 'PENDING_REVIEW', distributionChannels: [{ crxVersion: '0.8.5' }] } };
-  const mock = api([pending, {}, pending], false);
-  await assert.rejects(publishChrome({ ...fixture(t), replaceVersion: '0.8.5' }, mock.fetcher), /Cancellation not confirmed/);
-  assert.equal(mock.calls.length, 3);
+  const mock = api([pending, {}, ...Array.from({ length: 31 }, () => pending)], false);
+  await assert.rejects(publishChrome(fixture(t), mock.fetcher, async () => {}), /Cancellation not confirmed/);
+  assert.equal(mock.calls.length, 33);
+});
+
+test('inspection reports review status without uploading or cancelling', async t => {
+  const submitted = { state: 'PENDING_REVIEW', distributionChannels: [{ crxVersion: '0.8.5' }] };
+  const mock = api([{ submittedItemRevisionStatus: submitted }], false);
+  const result = await publishChrome({ ...fixture(t), inspectOnly: true }, mock.fetcher);
+  assert.deepEqual(JSON.parse(result), { submitted });
+  assert.equal(mock.calls.length, 1);
+});
+
+test('waits for asynchronous cancellation without repeating the mutation', async t => {
+ const pending={submittedItemRevisionStatus:{state:'PENDING_REVIEW',distributionChannels:[{crxVersion:'0.8.5'}]}};
+ const mock=api([pending,{},pending,{}, {uploadState:'SUCCEEDED'}, {state:'PENDING_REVIEW'}],false);
+ assert.equal(await publishChrome(fixture(t),mock.fetcher,async()=>{}),'PENDING_REVIEW');
+ assert.equal(mock.calls.filter(c=>c.url.endsWith(':cancelSubmission')).length,1);
 });

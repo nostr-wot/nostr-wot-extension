@@ -3,6 +3,11 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Publishing automation
+
+- Automatically supersede older store reviews when publishing a newer stable release, skip duplicate submissions and reject stale downgrades. Remove release-specific Chrome replacement variables.
+- Add a recovery entry point for existing published releases, preserving their verified packages, source and exact-commit CI checks while using corrected publishing tooling.
+
 ## 0.8.8 — 2026-10-01
 
 ### Store release notes

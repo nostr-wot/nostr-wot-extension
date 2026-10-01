@@ -76,7 +76,9 @@ when preparing a submission.
 
 Stable published GitHub releases trigger the [publishing workflow](chrome-publishing.md).
 Drafts, tags alone, pushes and prereleases do not submit to the store. Submission is not
-approval, and store availability must be checked separately.
+approval, and store availability must be checked separately. Both store publishers
+handle older review submissions automatically, skip the same submitted version and
+refuse to overwrite newer versions. No version-specific workflow edits are required.
 
 `npm run package:chrome` validates the actual ZIP and starts it in disposable Chromium:
 it requires a service-worker background, no Firefox-only settings, matching version and
