@@ -66,6 +66,7 @@ The central coordinator. Runs as a **service worker** on Chrome and a **backgrou
 **Dependency rules:** Handler modules import from `state.ts`, feature services, domain models and low-level libraries, and may import exported functions from sibling handler modules (e.g., `nip07-handlers` imports `logActivity` from `activity-handlers`). No circular dependency chains exist.
 
 Responsibilities of `background.ts`:
+- Registers `https://nostr-wot.com/uninstall` with `runtime.setUninstallURL` on each worker start. Chrome and Firefox open the optional website feedback form after removal. Unsupported APIs are skipped; registration failures do not interrupt startup. The URL contains no identity, wallet data or tracking parameters.
 - Handler map assembly from all `src/services/background/*-handlers.ts` modules
 - `loadConfig()` -- initializes `state.config` (myPubkey, relays) and ensures an active account exists in `browser.storage.local`
 - Startup IIFEs: `loadConfig()`, permission migration, vault auto-unlock, `approvalQueue.cleanupStale()`. The auto-unlock is registered through `vault.beginStartupUnlock()` so request paths can await it instead of mistaking the cold-start window for a locked vault (see [Security](security.md))

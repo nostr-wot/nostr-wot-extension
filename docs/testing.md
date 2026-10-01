@@ -563,3 +563,9 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/hooks-
 PQ publication regressions cover socket-free home reads with missing/stale caches,
 account isolation, and a mounted home-to-settings transition with account switching
 in `tests/pqc-handlers.test.ts` and `tests/hooks-lifecycle.test.ts`.
+
+### Uninstall feedback
+
+`tests/uninstall-feedback.test.ts` verifies registration of the fixed public
+feedback URL, safe handling of unsupported browsers, and registration failures.
+No identity or wallet information is included in the URL.

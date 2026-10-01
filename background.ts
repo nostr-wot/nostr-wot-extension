@@ -1,3 +1,4 @@
+import { registerUninstallFeedback } from './src/services/background/uninstall-feedback.ts';
 import { getPageRequestOrigin } from './src/domain/signing/requestOrigin.ts';
 import { openInstalledWelcome } from './src/services/appearance/install.ts';
 import { NIP07_SIGNING_METHODS, MAX_IN_FLIGHT_PER_ORIGIN, MAX_IN_FLIGHT_GLOBAL } from '@constants/signing.ts';
@@ -389,6 +390,9 @@ void vault.beginStartupUnlock(async () => {
 void browser.storage.session.remove('accountSwitchTrace').catch(() => {});
 
 installWotAutoSync();
+
+// Register on every worker start, covering fresh installs and existing users.
+void registerUninstallFeedback(browser.runtime);
 
 // Register synchronously so Chrome delivers the first-install event to this worker.
 browser.runtime.onInstalled.addListener(details => {
