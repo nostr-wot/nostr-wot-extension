@@ -22,11 +22,13 @@ import { t } from '@services/i18n/i18n';
 import PermissionsDetailLayout from './PermissionsDetailLayout';
 import PermissionRulesList from './PermissionRulesList';
 import AddRuleModal from './AddRuleModal';
+import GlobalRules from './GlobalRules';
 import DeclinedSites, { type DeclinedSite } from './DeclinedSites';
 
 /** Only the browser's current website is editable; there is no site-list route. */
-export default function RulesScreen({ onBack }: { onBack: () => void }) {
+export default function RulesScreen({ onBack, onOpenGlobalRules }: { onBack: () => void; onOpenGlobalRules?: () => void }) {
   const { activeId } = useAccount();
+  const [globalOpen, setGlobalOpen] = useState(false);
   const { data, loading, error, refresh } = useAsyncResource<{domain:string|null; declined?:DeclinedSite}>({domain:null}, {
     load: async (patch, current) => {
       const {domain, restricted} = await resolveActiveTabDomain();
@@ -37,6 +39,7 @@ export default function RulesScreen({ onBack }: { onBack: () => void }) {
     },
   });
   useStorageWatch([{area:'local',keys:['dismissedDomains']},{area:'session',keys:['sessionDismissedDomains']}], refresh);
+  if (globalOpen) return <GlobalRules onBack={onBack} onOpenSiteRules={() => setGlobalOpen(false)} />;
   return <OverlayPanel title={t('perms.rules')} onBack={onBack}>
     {loading ? <Text variant="hint">{t('common.loading')}</Text> : error ? <>
       <FormError>{error}</FormError><Button small onClick={() => void refresh()}>{t('common.retry')}</Button>
@@ -45,11 +48,11 @@ export default function RulesScreen({ onBack }: { onBack: () => void }) {
         <Text>{data.domain}</Text>
         <DeclinedSites key={data.declined.domain} site={data.declined} onChange={refresh} />
       </Container>
-      : <SiteRulesEditor key={`${data.domain}:${activeId}`} domain={data.domain} />}
+      : <SiteRulesEditor key={`${data.domain}:${activeId}`} domain={data.domain} onOpenGlobalRules={onOpenGlobalRules || (() => setGlobalOpen(true))} />}
   </OverlayPanel>;
 }
 
-function SiteRulesEditor({domain}:{domain:string}) {
+function SiteRulesEditor({domain,onOpenGlobalRules}:{domain:string;onOpenGlobalRules:()=>void}) {
   const { accounts, activeId } = useAccount();
   const permissions = usePermissions();
   const account = accounts?.find(account => account.id === activeId);
@@ -77,8 +80,8 @@ function SiteRulesEditor({domain}:{domain:string}) {
     finally { setBusy(false); }
   };
   return <>
-    <PermissionsDetailLayout domain={domain} actions={<Container variant="row" className="justify-between">
-      <Button small disabled={!activeId || !permissions.loaded} onClick={() => setAddOpen(true)}><IconPlus size={12} /> {t('perms.addRule')}</Button>
+    <PermissionsDetailLayout domain={domain} headerAction={<Button small disabled={!activeId || !permissions.loaded} onClick={() => setAddOpen(true)}><IconPlus size={12} /> {t('perms.addRule')}</Button>} actions={<Container variant="row" className="justify-between">
+      <Button small onClick={onOpenGlobalRules}><IconGlobe size={15} /> {t('perms.globalRules')}</Button>
       <ButtonDanger small disabled={!activeId || !permissions.loaded} onClick={() => setResetOpen(true)}>{t('perms.resetSiteRules')}</ButtonDanger>
     </Container>}>
       {keys.length ? <PermissionRulesList keys={keys} permissions={rules} inheritedKeys={inheritedKeys} accountMode onChange={save} />

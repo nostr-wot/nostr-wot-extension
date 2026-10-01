@@ -1146,5 +1146,6 @@
   "auth.defaultBackendActiveHint": "Verbundene Websites können sich automatisch bei HTTPS-Backends derselben Origin oder registrierten Website-Backend-Paaren authentifizieren. Gespeicherte Ablehnungen gelten weiterhin. Diese Regel erstellt keine einzelnen Einträge in der Liste unten.",
   "auth.defaultBackendRulesLink": "Regeln zur automatischen Authentifizierung und Backend-Verzeichnis ansehen",
   "wizard.doneDerivedSummary": "Dein neues Konto heißt „{name}“ und wurde aus deiner Haupt-Seed-Phrase abgeleitet. Sein öffentlicher Schlüssel ist",
-  "wizard.doneAccountSummary": "Dein Konto heißt „{name}“. Sein öffentlicher Schlüssel ist"
+  "wizard.doneAccountSummary": "Dein Konto heißt „{name}“. Sein öffentlicher Schlüssel ist",
+  "perms.goToCurrentSite": "Zu den Regeln der aktuellen Website"
 }

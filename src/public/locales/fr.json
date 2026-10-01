@@ -1146,5 +1146,6 @@
   "auth.defaultBackendActiveHint": "Les sites connectés peuvent s’authentifier automatiquement auprès des backends HTTPS de même origine ou des paires site/backend répertoriées. Les refus enregistrés restent applicables. Cette politique ne crée pas d’entrées individuelles ci-dessous.",
   "auth.defaultBackendRulesLink": "Voir les règles d’authentification automatique et le registre des backends",
   "wizard.doneDerivedSummary": "Votre nouveau compte est « {name} », dérivé de votre phrase de récupération principale. Sa clé publique est",
-  "wizard.doneAccountSummary": "Votre compte est « {name} ». Sa clé publique est"
+  "wizard.doneAccountSummary": "Votre compte est « {name} ». Sa clé publique est",
+  "perms.goToCurrentSite": "Aller aux règles du site actuel"
 }

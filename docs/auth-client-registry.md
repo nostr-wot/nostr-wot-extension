@@ -14,7 +14,7 @@ pairs explicitly marked `nip98`. The policy covers valid endpoints and methods a
 those origins; it does not create individual grants. Other auth types, unverified
 entries, wildcard domains and relay authentication are excluded. Explicit denials
 win, and connection, identity, event validation and native-wallet restrictions
-still apply. Disabling the setting leaves explicit saved grants unchanged.
+still apply. Disabling the setting leaves explicit saved grants unchanged. The Backend authentication screen displays the enabled policy above saved grants and links here; policy approvals do not create individual rows. The information popup beside the toggle links here too.
 
 Registry changes therefore change the optional policy's scope for users who have
 enabled it. Review origin relationships and protocol evidence as security-sensitive

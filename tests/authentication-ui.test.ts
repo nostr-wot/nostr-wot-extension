@@ -539,8 +539,11 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   assert.equal([...document.querySelectorAll('p')].filter(element=>element.textContent===label('perms.inheritedRule')).length,Object.keys(raw._global._default).length);
   assert.ok(!document.body.textContent!.includes(label('perms.accountRule')));
   assert.equal(document.querySelector('input[type="search"]'),null);
-  await act(async()=>back().click());
-  await act(async()=>button(label('perms.globalRulesHint')).click());
+  assert.ok(button(label('perms.addRule')).parentElement!.parentElement!.textContent!.includes('https://site.test'),'add rule shares site header');
+  await act(async()=>button(label('perms.globalRules')).click());
+  await act(async()=>button(label('perms.goToCurrentSite')).click());
+  assert.ok(document.body.textContent!.includes('https://site.test'));
+  await act(async()=>button(label('perms.globalRules')).click());
   assert.equal(document.querySelector('input[type="search"]'),null);
   assert.ok(!document.body.textContent!.includes('https://site.test'));
   assert.ok(document.body.textContent!.includes(label('perms.globalRulesInfo')));

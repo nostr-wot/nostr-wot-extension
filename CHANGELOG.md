@@ -3,48 +3,40 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
+## 0.8.8 — 2026-10-01
 
-- Simplify account completion with a bottom-aligned summary and copyable public key.
+### Store release notes
 
-- Load suggested follow profiles through the shared directory cache without blocking onboarding. Simplify sub-account previews with compact copyable keys and an accent-colored Advanced control.
+- Manage shared Global rules and the current website's overrides in dedicated screens. Existing shared rules migrate automatically; resets ask for confirmation and stay on the current screen.
+- Optional Default backend auth starts off for each account. It supports exact same-origin HTTPS backends and verified NIP-98 registry pairs, with saved denials taking priority. The backend screen shows its status and policy link.
+- Manage relay authentication by relay and selected connected apps, or explicitly all connected sites. Deselecting an app switches to specific-site approval; clearing all selections revokes allows.
+- Clearer signing previews, compact approval menus, consistent Deny labels and group-creation event support.
+- Improved account setup with cached public profiles, copyable keys, clearer Advanced controls and a compact completion summary. Profile image edit controls remain readable over light and dark photos.
 
-- Add breathing room between the Nostr Connect tabs and both the QR code and Bunker URL content.
+### Permissions and authentication
 
-- Show enabled Default backend auth on the Backend authentication screen, with its scope and a link to the automatic-authentication rules and backend registry.
+- Replace the All accounts switch and saved-site list with Global rules and current-tab Site rules. Gray rows inherit the visible global defaults; colored rows show account/site overrides. Editing an inherited rule creates an override, and Use inherited default removes it.
+- Migrate legacy shared defaults once into the global bucket, preserving conflicting site choices as explicit overrides and removing hidden account-wide layers. New-account setup uses globals or copies site overrides. Connection consent and authentication grants remain separate.
+- Confirm Reset site overrides and Reset all account overrides. Site resets refresh in place and leave only global inheritance; authentication grants are preserved. Declined current sites have a duration editor for one week, one month, one year or forever.
+- Place Add rule beside the site name, with a Global rules footer link and a Go to current site rules button in the global editor. Use distinct icons and aligned navigation rows.
+- Add an off-by-default, account-specific NIP-98 policy for connected websites at exact same-origin HTTPS destinations or registry pairs explicitly verified for NIP-98. The policy covers valid paths and methods, preserves denial precedence and never creates individual saved grants. Disabling it leaves explicit grants intact.
+- Show enabled policy status and the rules/registry link above the backend grants table. Refresh saved grants and policy status after background changes, scoped to the active account.
+- Give backend and relay authentication separate menu screens with back navigation and information controls. Group relay grants by destination with site counts, all-sites scope and denial exceptions.
+- Allow removing individual apps from an all-sites relay grant, switching to a specific-site set. Empty selections revoke allows while preserving denials. Saves work with a locked vault and reject stale account sessions.
 
-- Migrate old shared permission rules into Global rules once, remove the legacy storage layers, and preserve conflicting site choices as visible overrides. Resetting overrides leaves only global inheritance on the same screen. New accounts inherit globals and can copy site overrides.
+### Request review and account setup
 
-- Open Site rules directly for the current browser tab and remove the saved-site list. Prompt users to visit a website when no web tab is available. Confirm resets and keep the current site editor open afterward. Use backend- and relay-specific permission labels.
+- Keep split-button menus visible above clipped approval sheets with viewport-bounded popovers; use compact labels and consistent Deny wording.
+- Show note content and supported event-specific previews in single and grouped signing review, including repost text. Keep raw metadata in the code-icon popup. Recognize NIP-29 kind 9007 with a create-group intent and preview.
+- Remove the redundant seed-account row in sub-account creation. Display shortened npub and hex keys below their labels with full-value copy buttons. Move the accent-colored, marker-free Advanced control beneath the keys with clear spacing before the path editor.
+- Load follow suggestions through the shared verified purplepag.es profile reader and bounded cache (30 minutes, up to 500 profiles). Display avatar/name when available without blocking selection or skipping.
+- Add spacing below both Nostr Connect tabs. Bottom-align the completion summary and Get Started action, with a copyable public key and seed-derivation wording only for derived sub-accounts.
+- Use high-contrast image-edit captions independent of theme accent foreground colors, with light and dark outlines for visibility over cover photos.
 
-- Distinguish Permissions menu options with individual SVG icons while preserving consistent alignment and theme colors.
+### Documentation and publishing
 
-- Global rules now opens a direct editor above Site rules, without a website header or intermediate site list. Explicit global defaults apply across connected sites and accounts; existing site-specific account overrides keep their scope. Back returns directly to Permissions.
-
-- Use Deny, Denied and Always deny consistently across approval controls, permission rules and statuses.
-
-- Make approval dropdowns compact with shorter site-scoped choices and no repeated event names for a single action.
-
-- Show full note content and kind-specific previews directly in signing approvals, including grouped requests and embedded repost text. Keep raw event metadata behind the code button.
-
-- Move searchable site permissions into Rules and replace All accounts with Global rules. Show inherited rules in muted styling and account overrides in color; allow reverting individual or all account overrides to global defaults.
-- Preserve existing effective permissions during the inheritance migration, keeping previously inactive approvals from becoming active. Rule resets preserve backend and relay authentication grants.
-
-- Allow deselecting individual sites from an all-sites relay grant, switching to specific-site approval. Allow revoking all relay approvals while the vault is locked and explain failed or stale saves.
-
-- Move backend authentication grants into a dedicated screen opened from the top Permissions menu, with back navigation and an information guide.
-
-- Unify relay authentication approvals in a dedicated settings screen with relay summaries, approved-site selection, back navigation and an information guide.
-
-- Include declined sites in the searchable Permissions list with their expiry and individual week, month, year or forever duration controls.
-
-- Group All accounts, Default backend auth and all-sites relay authentication in one dashboard-style card at the top of Permissions, with aligned icons, labels and controls.
-
-- Add an off-by-default, account-specific backend authentication policy for exact same-origin HTTPS destinations and curated NIP-98 pairs, with an explanatory Permissions popup and denial precedence.
-- Recognize NIP-29 kind 9007 with a create-group description, group details and raw event access.
-
-- Keep approval and rejection option menus visible above clipped event sheets using a viewport-bounded top-layer popover.
-- Refresh authentication permissions when remembered grants are saved or revoked in the background.
+- Update account, permission, cache, UI and reviewer documentation, and the website's localized authentication, permissions and account-setup guides. Remove obsolete site-list and all-sites-popup instructions and stale UI screenshots from the affected guides.
+- Ship separately generated and verified Chrome and Firefox packages with matching source, build instructions and checksums. Stable GitHub releases trigger the existing serialized Chrome and Mozilla submission workflows only after successful CI on the release commit.
 
 ## 0.8.7
 

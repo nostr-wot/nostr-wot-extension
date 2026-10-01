@@ -18,7 +18,7 @@ import AddRuleModal from './AddRuleModal';
 import PermissionRulesList from './PermissionRulesList';
 
 /** Shared defaults have no selected website or website-list navigation. */
-export default function GlobalRules({ onBack }: { onBack: () => void }) {
+export default function GlobalRules({ onBack, onOpenSiteRules }: { onBack: () => void; onOpenSiteRules?: () => void }) {
   const permissions = usePermissions();
   const rules = permissions.getForBucket(GLOBAL_RULES_SCOPE);
   const [addOpen, setAddOpen] = useState(false);
@@ -45,6 +45,7 @@ export default function GlobalRules({ onBack }: { onBack: () => void }) {
         : <EmptyState icon={<IconShield size={24} />} text={t('perms.noRules')} />}
       <ButtonDanger small onClick={() => setResetOpen(true)}>{t('perms.resetAccountRules')}</ButtonDanger>
       <FormError>{error}</FormError>
+      {onOpenSiteRules && <Button small onClick={onOpenSiteRules}>{t('perms.goToCurrentSite')}</Button>}
     </Container>
     {addOpen && <AddRuleModal availableKeys={availablePermKeys(COMMON_PERM_KEYS.filter(key => !['signEvent:22242', 'signEvent:24242', 'signEvent:27235'].includes(key)), rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
     {resetOpen && createPortal(<ConfirmDialog title={t('perms.resetAccountRules')} message={t('perms.resetAccountRulesHint')}

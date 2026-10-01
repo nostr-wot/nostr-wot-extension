@@ -214,6 +214,10 @@ it('shared image controls accept local previews but reject unsafe remote sources
   const html = renderToStaticMarkup(createElement(ImageEditorButton,{...props,previewUrl:'blob:local'}));
   assert.match(html,/src="blob:local"/);
   assert.match(html,/aria-label="Change avatar"/);
+  for(const variant of ['cover','avatar'] as const){
+    const image=renderToStaticMarkup(createElement(ImageEditorButton,{...props,variant,src:'https://example.test/dark-cover.jpg'}));
+    assert.ok(image.includes('bg-[#fff]'));assert.ok(image.includes('text-[#111]'));assert.ok(image.includes('border-[#111]'));assert.ok(!image.includes('text-on-brand'));
+  }
   assert.doesNotMatch(renderToStaticMarkup(createElement(ImageEditorButton,{...props,previewUrl:'javascript:bad',src:'javascript:bad'})),/javascript:/);
 });
 it('shared profile summary tolerates malformed remote fields and escapes text', () => {

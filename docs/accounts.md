@@ -60,3 +60,13 @@ For accounts without private keys (`npub`, some `external`), the `vault_getActiv
 ## Import input helpers
 
 `src/domain/accounts/importInput.ts` owns `ImportType` and `detectImportType`, shared format detection for import routing and hints. Detection accepts encrypted/private-key prefixes, 64-character hex and 12/24-word candidates; it does not validate checksums or the BIP-39 wordlist. Account creation and decryption retain those checks. `src/utils/text.ts` provides generic whitespace-aware `countWords`, reused by the import UI, vault seed export and post-quantum seed-length checks. Format constants live in `src/constants/accounts.ts`.
+
+## Account setup and public previews
+
+Nostr Connect offers QR Code and Bunker URL tabs with shared spacing before their content. The NIP-46 identity's signing key remains with the remote signer; returned signed events are checked against the approved request.
+
+When a recovery phrase already exists, Create New opens New Sub-Account. The proposed name is editable. Public npub and hex values appear below their labels in accent color, abbreviated in the middle; each copy icon copies the complete value. Advanced appears below the keys as a marker-free accent control and expands the derivation-path editor with a gap before its fields. There is no redundant Seed account row. Changing the path invalidates the preview until a fresh result arrives; see [custom identity paths](https://nostr-wot.com/en/guides/custom-identity-paths).
+
+Follow suggestions load through `usePublicProfile` and compact `ProfileSummary`. Fresh public metadata is reused; missing profiles use verified kind:0 lookup through `wss://purplepag.es`. The shared cache lasts 30 minutes and retains at most 500 entries. An unavailable profile uses the shortened key and an initial. Directory requests contain the public author key, not private keys or messages; profile pictures load separately from safe HTTP(S) URLs. Loading never blocks selecting people or Skip for now.
+
+The completion screen aligns its summary and Get Started action at the bottom. It shows the account name and a shortened, copyable public key without a metadata table. Only the sub-account creation flow describes derivation from the main seed phrase. Setup can use global rules or copy another account's site overrides; authentication grants remain separate. See [signer permissions](signer.md#5-permission-cascade----srcservicespermissionspermissionsts).

@@ -1146,5 +1146,6 @@
   "auth.defaultBackendActiveHint": "I siti connessi possono autenticarsi automaticamente con backend HTTPS della stessa origine o coppie sito/backend registrate. I rifiuti salvati restano validi. Questa regola non crea singole voci nell’elenco sottostante.",
   "auth.defaultBackendRulesLink": "Visualizza le regole di autenticazione automatica e il registro dei backend",
   "wizard.doneDerivedSummary": "Il tuo nuovo account è «{name}», derivato dalla frase seed principale. La sua chiave pubblica è",
-  "wizard.doneAccountSummary": "Il tuo account è «{name}». La sua chiave pubblica è"
+  "wizard.doneAccountSummary": "Il tuo account è «{name}». La sua chiave pubblica è",
+  "perms.goToCurrentSite": "Vai alle regole del sito attuale"
 }

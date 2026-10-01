@@ -64,3 +64,5 @@ and retains at most 500 fresh entries. Reads target the requested profile key; a
 storage scan is reserved for migration when the index is absent. Future timestamps
 and expired entries are rejected. Message sender lookups can explicitly use the public
 `wss://purplepag.es` directory; this is distinct from configured-relay profile editing.
+
+Follow suggestions and approval sender profiles share the public display-profile cache and directory lookup. Onboarding lookup is asynchronous and never disables Skip or selection. See [account setup](accounts.md#account-setup-and-public-previews).

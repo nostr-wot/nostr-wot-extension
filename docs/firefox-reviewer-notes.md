@@ -14,7 +14,9 @@ create an identity and set a vault password. Local onboarding/signing needs no
 project login or invitation. Connect a Nostr client using browser-extension sign-in.
 Review ordinary signing and authentication separately; revoke grants in Permissions.
 HTTP grants bind site, account, exact URL and method. Relay grants cover one site
-or explicitly all connected sites. Lock/switch accounts to invalidate old approvals.
+or explicitly all connected sites. Default backend auth starts off; when enabled,
+connected sites may use exact same-origin HTTPS or verified NIP-98 registry pairs.
+Saved denials win. The backend screen shows policy status and its rules link. Lock/switch accounts to invalidate old approvals.
 
 The Firefox build uses background scripts. storage, activeTab and alarms support
 vault/settings, current-site controls and scheduled work. Content scripts expose

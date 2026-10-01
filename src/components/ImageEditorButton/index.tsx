@@ -28,7 +28,7 @@ export default function ImageEditorButton({ variant, label, src, previewUrl, fal
   return <button type="button" aria-label={label} onClick={onClick} className={cn(BASE, SHAPE[variant])}>
     {image ? <img src={image} alt="" className="w-full h-full object-cover" />
       : variant === 'avatar' && <span className="text-display font-bold text-brand uppercase">{fallback}</span>}
-    <span aria-hidden="true" className={cn('absolute flex items-center justify-center bg-scrim text-on-brand', CAPTION[variant])}>
+    <span aria-hidden="true" className={cn('absolute flex items-center justify-center bg-[#fff] text-[#111] border border-[#111] shadow-[0_0_0_1px_#fff]', CAPTION[variant])}>
       <IconCamera size={14} />{variant === 'cover' && label}
     </span>
   </button>;

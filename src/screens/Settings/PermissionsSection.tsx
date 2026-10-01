@@ -27,8 +27,8 @@ export default forwardRef<PermissionsSectionHandle>(function PermissionsSection(
     if (screen === 'relay' && relayRef.current?.goBack()) return true;
     back(); return true;
   } }));
-  if (screen === 'rules') return <RulesScreen key={activeId} onBack={back} />;
-  if (screen === 'global') return <GlobalRules onBack={back} />;
+  if (screen === 'rules') return <RulesScreen key={activeId} onBack={back} onOpenGlobalRules={() => setScreen('global')} />;
+  if (screen === 'global') return <GlobalRules onBack={back} onOpenSiteRules={() => setScreen('rules')} />;
   if (screen === 'backend' && account) return <BackendAuthentication key={account.id} accounts={accounts || []} activeId={activeId} onBack={back} />;
   if (screen === 'relay' && account) return <RelayAuthentication key={account.id} ref={relayRef} accountId={account.id} onBack={back} />;
   const rows = [
