@@ -2,18 +2,24 @@
 
 ## Release packaging
 
-**Completion means integration and publication.** When work is finished, merge the
-completed task into `main`, push `main`, and cut a versioned GitHub release with
-verified browser archives and matching source, unless León explicitly says to
-pause or keep it unpublished. Do not stop at a local commit, worktree, ZIP, or
-unmerged PR. Use isolated worktrees while developing, then integrate and remove
-them after merge, together with the merged local and remote task branches. Verify
-commit ancestry before deleting branches; never discard unmerged work. Do not include unrelated agents' unfinished branches. Report
-the pushed commit and release URL. Stable published releases trigger the Chrome
-Web Store workflow; verify that run and report the actual submission state.
-Stable published releases also trigger Mozilla submission with matching source and reviewer notes.
-Google/Mozilla approval and Safari submission remain separate; do not claim a
-GitHub release makes every store update live. Follow docs/chrome-publishing.md and docs/firefox-publishing.md.
+**Every release requires León's explicit confirmation for that release.**
+Completing a task authorizes tests, builds and integration into `main`, but does
+not authorize creating a GitHub release (including a draft), publishing it,
+submitting to a store, replacing a store review, or retrying a store submission.
+Prepare and verify the changes and packages, then ask before taking any of those
+release actions. Prior approval for a different release is not continuing approval.
+Stable published releases automatically trigger Chrome and Mozilla submission;
+explain this when requesting release confirmation. Never trigger those workflows
+as an implicit completion step.
+
+Use isolated worktrees while developing, then integrate and remove them after
+merge, together with merged local and remote task branches. Verify commit ancestry
+before deleting branches; never discard unmerged work or include another agent's
+unfinished branch. Report the pushed commit and local build location. After an
+explicitly approved release, verify the workflows and report the actual store
+submission state. Follow docs/chrome-publishing.md and docs/firefox-publishing.md.
+Google/Mozilla approval and Safari submission remain separate; a GitHub release
+does not make every store update live.
 
 The current release is **0.8.9**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
