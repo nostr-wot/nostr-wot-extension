@@ -72,6 +72,10 @@ Chrome and Safari disclosures consistent with actual code. Reference Mozilla's
 and [data transmission policy](https://extensionworkshop.com/documentation/publish/add-on-policies/#data-collection-and-transmission-disclosure-and-control)
 when preparing a submission.
 
+### Optional uninstall feedback
+
+Supported browsers open the public uninstall feedback page after removal. The registered URL contains no account identifiers, wallet data or tracking parameters. The survey is optional; only submitting the website form sends the entered feedback and optional email address to the project team. Normal website requests still reach the website server.
+
 ## Chrome
 
 Stable published GitHub releases trigger the [publishing workflow](chrome-publishing.md).

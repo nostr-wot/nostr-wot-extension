@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nostr WoT Extension",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "browser_specific_settings": {
     "gecko": {
       "id": "nostr-wot-extension@nostr-wot.com",
