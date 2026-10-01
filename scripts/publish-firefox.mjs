@@ -29,7 +29,9 @@ import { compareVersions } from './store-version.mjs';
 
 /** No mutation retries; reruns resume only an exact, marked submission. */
 export async function publishFirefox(options, env, fetcher = fetch, sleep = delay) {
-  const { archive, source, version, archiveHash, sourceHash, approvalNotes, releaseNotes } = options;
+  const { archive, source, version, archiveHash, sourceHash, approvalNotes, releaseNotes: rawReleaseNotes } = options;
+  // This is a changelog section label, not user-facing release content. AMO drops it.
+  const releaseNotes = rawReleaseNotes?.replace(/^### Store release notes[ \t]*\r?\n/, '').trim();
   assert.match(version, /^\d+\.\d+\.\d+$/);
   const checked = verifyPackage(archive, 'firefox', version);
   assert.equal(checked.manifest.browser_specific_settings.gecko.id, ADDON_ID, 'Wrong Firefox add-on');

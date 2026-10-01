@@ -278,3 +278,17 @@ for (const modified of [false,true]) test(`Mozilla-rendered bullet notes retain 
   assert.ok(mock.calls.every(c=>!c.options.method));
  }
 });
+
+for (const changed of [false, true]) test(`store-note section label is omitted without losing release content (changed=${changed})`, async t => {
+ const o=fixture(t);o.releaseNotes='### Store release notes\n\n- First fix.\n\n- Second fix.';
+ const saved=detail(o),rendered={...saved,release_notes:{'en-US':'<ul><li>First fix.</li><li>'+(changed?'Changed fix.':'Second fix.')+'</li></ul>'}};
+ const mock=api([addon,{results:[rendered],next:null},rendered,saved,rendered]);
+ if(changed) {
+  await assert.rejects(publishFirefox(o,env,mock.fetcher),/Release notes were not saved/);
+  const patch=mock.calls.find(c=>c.options.method==='PATCH');
+  assert.equal(JSON.parse(String(patch?.options.body)).release_notes['en-US'],'- First fix.\n\n- Second fix.');
+ } else {
+  assert.equal(await publishFirefox(o,env,mock.fetcher),'ALREADY_SUBMITTED');
+  assert.ok(mock.calls.every(c=>!c.options.method));
+ }
+});
