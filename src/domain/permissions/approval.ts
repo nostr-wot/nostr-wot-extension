@@ -154,3 +154,9 @@ export function currentApprovalGroup(selection: ApprovalGroup | null, groups: Ap
     && group.permKey === selection.permKey
     && group.requests[0]?.accountId === selection.requests[0]?.accountId) ?? null;
 }
+
+/** Money-related and authentication requests require their own detail review. */
+export function requiresIndividualReview(request: Pick<PendingRequest, 'type' | 'authentication' | 'event'>): boolean {
+  return !!request.authentication || request.type === 'webln_sendPayment' || request.type === 'webln_enable'
+    || (request.type === 'signEvent' && request.event?.kind === 9734);
+}

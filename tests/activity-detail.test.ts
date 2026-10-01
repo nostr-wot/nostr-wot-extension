@@ -230,3 +230,63 @@ it('approval details offer the same bulk action for one or many requests of one 
   assert.match(html,/approval.followReplacementWarning/);
   assert.match(html,/text-error/);
  });
+
+import { zapPreview } from '../src/domain/nostr/zapPreview';
+import { formatMsats, paymentMsats } from '../src/domain/wallet/amount';
+it('zap amount uses millisatoshis without rounding away fractional sats', () => {
+  assert.equal(formatMsats('21000','en'),'21');
+  assert.equal(formatMsats('1','en'),'0.001');
+  assert.equal(formatMsats('21001234','en'),'21,001.234');
+  assert.equal(formatMsats('21001234','de'),'21.001,234');
+  assert.equal(formatMsats('9007199254740991999','en'),'9,007,199,254,740,991.999');
+  assert.equal(paymentMsats(1.001),'1001');
+  for(const amount of [undefined,NaN,Infinity,0,-1,1e30]) assert.equal(paymentMsats(amount),null);
+});
+it('zap display never guesses ambiguous or malformed amount/recipient tags', () => {
+  const p='a'.repeat(64);
+  assert.deepEqual(zapPreview({tags:[['amount','21000'],['p',p]]}),{amountMsats:'21000',recipient:p});
+  for(const value of ['', '0', '-1','1.5','1e3','999'.repeat(100)]) assert.equal(zapPreview({tags:[['amount',value]]}).amountMsats,null);
+  assert.equal(zapPreview({tags:[['amount','21000'],['amount','21000']]}).amountMsats,null);
+  assert.equal(zapPreview({tags:[['amount','1000','9000']]}).amountMsats,null);
+  assert.equal(zapPreview({tags:[['p',p],['p','b'.repeat(64)]]}).recipient,null);
+  assert.equal(zapPreview({tags:[['p','invalid']]}).recipient,null);
+  assert.equal(zapPreview({}).amountMsats,null);
+});
+it('zap approval visibly shows amount, recipient, comment and signing/payment distinction before raw event', () => {
+ const html=renderToStaticMarkup(createElement(EventPreview,{type:'signEvent',approval:true,event:{kind:9734,content:'<script>thanks</script>',tags:[['amount','21000'],['p','a'.repeat(64)]]}}));
+ const dom=new JSDOM(html),text=dom.window.document.body.textContent!;
+ assert.match(text,/21 sats/);assert.match(text,/zapReview.signingOnly/);assert.match(text,/event.recipient/);
+ assert.ok(text.includes('aaaaaaaaaaaaaaaa'));assert.ok(text.includes('<script>thanks</script>'));
+ assert.doesNotMatch(html,/<script>/);assert.ok(html.indexOf('21')<html.indexOf('event.showRaw'));
+ dom.window.close();
+});
+it('wallet payment approvals show invoice amounts even inside grouped requests', async () => {
+ const {default:Detail}=await import('../src/components/EventDetailModal');
+ const request={id:'payment',type:'webln_sendPayment',origin:'https://site.test',walletAmount:21.001};
+ for(const requests of [undefined,[request,{...request,id:'second',walletAmount:42}]]) {
+  const html=renderToStaticMarkup(createElement(Detail,{request,requests,onApprove(){},onDeny(){}}));
+  const dom=new JSDOM(html),text=dom.window.document.body.textContent!;
+  assert.match(text,/21\.001 sats/);assert.match(text,/walletReview.paymentEffect/);
+  assert.doesNotMatch(html,/<details|event.noEventData|webln_sendPayment/);
+  if(requests) assert.match(text,/42 sats/);
+  dom.window.close();
+ }
+});
+it('wallet access explains its scope and unknown amounts never appear as zero sats', async () => {
+ const {default:Detail}=await import('../src/components/EventDetailModal');
+ const access=renderToStaticMarkup(createElement(Detail,{request:{type:'webln_enable'}}));
+ assert.match(access,/walletReview.accessEffect/);assert.doesNotMatch(access,/event.noEventData|webln_enable/);
+ const unknown=renderToStaticMarkup(createElement(Detail,{request:{type:'webln_sendPayment',walletAmount:0}}));
+ assert.match(unknown,/zapReview.amountUnknown/);assert.doesNotMatch(unknown,/>0 /);
+});
+
+it('single zap and payment queue cards expose their amount before opening detail', async () => {
+ const {default:Card}=await import('../src/screens/Approval/ApprovalCard');
+ for(const request of [
+  {id:'zap',type:'signEvent',event:{kind:9734,tags:[['amount','21000']]},origin:'https://site.test',timestamp:0},
+  {id:'payment',type:'webln_sendPayment',walletAmount:21,origin:'https://site.test',timestamp:0},
+ ]) {
+  const html=renderToStaticMarkup(createElement(Card,{group:{origin:request.origin,method:request.type,permKey:request.type,requests:[request]},onClick(){},hideSite:true}));
+  assert.match(html,/21 sats/);
+ }
+});

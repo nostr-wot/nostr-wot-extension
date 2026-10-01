@@ -290,7 +290,7 @@ A loading hint appears during lookup; missing or unavailable profiles retain the
 
 The message surface hides again after 30 seconds using the same timed-reveal hook as private-key export. Concealed content is a placeholder; plaintext and the decoded event are discarded on timeout or click-to-hide.
 
-Pending signEvent review opens the full event in a code-button popup and describes intent above it, including app action then app name for kind 30078. Grouped ordinary requests expose checkboxes and approve only selected request IDs, leaving unchecked siblings pending; Reject all applies to the group. Authentication destination review remains separate from ordinary bulk approval.
+Pending signEvent review opens the full event in a code-button popup and describes intent above it, including app action then app name for kind 30078. Grouped ordinary requests expose checkboxes and approve only selected request IDs, leaving unchecked siblings pending; Reject all applies to the group. Authentication, zap signing, wallet access and payment review remain separate from queue-wide bulk approval.
 
 ## Authentication integrity and native wallet policy
 
@@ -321,4 +321,20 @@ and [relay authentication](https://nostr-wot.com/en/guides/relay-authentication)
 
 Declined connection requests are edited from Permissions → Site rules while visiting that site. There is no saved-site search/list. The current site's dismissal editor offers one week, one month, one year or forever, starting when saved, or removes the dismissal so it can ask again. Neither action grants connection or signing permission. Existing session dismissals remain effective until the browser restarts.
 
-Signing approvals show note content directly, with preserved line breaks and bounded scrolling. Single and grouped requests reuse the event-kind preview components for profile changes, notes/replies, contact lists, deletions, reposts, reactions, sealed messages and group creation. Embedded repost content is displayed as escaped text. Other event content falls back to escaped text; authentication and app-action summaries remain concise. Technical kind/tag metadata stays behind the raw-event code button.
+Signing approvals show note content directly, with preserved line breaks and bounded scrolling. Single and grouped requests reuse the event-kind preview components for profile changes, notes/replies, contact lists, deletions, reposts, reactions, sealed messages group creation and zap requests. Embedded repost content is displayed as escaped text. Other event content falls back to escaped text; authentication and app-action summaries remain concise. Technical kind/tag metadata stays behind the raw-event code button.
+
+### Zap and wallet review
+
+Kind 9734 uses a dedicated preview: amount in sats (the signed tag is in millisats),
+recipient through the shared public-profile cache, optional escaped comment and
+an explanation that signing does not pay the invoice. Missing, invalid or duplicate
+amount/recipient tags are shown as unavailable rather than guessed. Fractional sats
+are retained. The code button still exposes the complete event.
+
+WebLN payment detail renders the queued BOLT11-decoded `walletAmount`, including
+all grouped payment amounts without expanding a disclosure. Wallet connection
+requests explain that wallet information access is separate from payment approval.
+The queue-wide Approve all excludes authentication, zap signing and wallet requests;
+open those requests to review their own decisions. A single zap can legitimately
+involve identity access, signing, wallet connection and payment, according to saved
+permissions. These are separate capabilities, not interchangeable approvals.

@@ -1147,5 +1147,18 @@
   "auth.defaultBackendRulesLink": "Regeln zur automatischen Authentifizierung und Backend-Verzeichnis ansehen",
   "wizard.doneDerivedSummary": "Dein neues Konto heißt „{name}“ und wurde aus deiner Haupt-Seed-Phrase abgeleitet. Sein öffentlicher Schlüssel ist",
   "wizard.doneAccountSummary": "Dein Konto heißt „{name}“. Sein öffentlicher Schlüssel ist",
-  "perms.goToCurrentSite": "Zu den Regeln der aktuellen Website"
+  "perms.goToCurrentSite": "Zu den Regeln der aktuellen Website",
+  "eventIntent.zap": "[[{origin}]] möchte [[eine Zap-Anfrage signieren]].",
+  "zapReview.amount": "Zap-Betrag",
+  "zapReview.amountUnknown": "Betrag fehlt oder ist ungültig",
+  "zapReview.recipientUnknown": "Empfänger fehlt oder ist mehrdeutig",
+  "zapReview.comment": "Kommentar",
+  "zapReview.signingOnly": "Das Signieren bezahlt die Anfrage nicht. Deine Wallet autorisiert die Zahlung separat.",
+  "walletReview.amount": "Rechnungsbetrag",
+  "walletReview.payment": "[[{origin}]] möchte [[eine Lightning-Rechnung bezahlen]].",
+  "walletReview.access": "[[{origin}]] möchte [[sich mit deiner Wallet verbinden]].",
+  "walletReview.paymentEffect": "Die Genehmigung bezahlt diese Rechnung. Deine Wallet kann Routinggebühren hinzufügen.",
+  "walletReview.accessEffect": "Erlaubt dieser Website, sich mit deiner Wallet zu verbinden und verfügbare Wallet-Informationen zu lesen. Für Zahlungen gelten separate Regeln.",
+  "approval.sensitiveReviewHint": "Prüfe Authentifizierungs-, Zap- und Wallet-Anfragen separat. Sie sind von Alle genehmigen ausgeschlossen.",
+  "perm.lightningPayment": "Lightning-Zahlung"
 }

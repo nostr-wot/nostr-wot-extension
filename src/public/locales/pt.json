@@ -1147,5 +1147,18 @@
   "auth.defaultBackendRulesLink": "Ver regras de autenticação automática e registo de backends",
   "wizard.doneDerivedSummary": "Sua nova conta é “{name}”, derivada da sua frase-semente principal. Sua chave pública é",
   "wizard.doneAccountSummary": "Sua conta é “{name}”. Sua chave pública é",
-  "perms.goToCurrentSite": "Ir às regras do site atual"
+  "perms.goToCurrentSite": "Ir às regras do site atual",
+  "eventIntent.zap": "[[{origin}]] quer [[assinar um pedido de zap]].",
+  "zapReview.amount": "Valor do zap",
+  "zapReview.amountUnknown": "Valor não especificado ou inválido",
+  "zapReview.recipientUnknown": "Destinatário não especificado ou ambíguo",
+  "zapReview.comment": "Comentário",
+  "zapReview.signingOnly": "Assinar este pedido não o paga. A sua carteira autoriza o pagamento separadamente.",
+  "walletReview.amount": "Valor da fatura",
+  "walletReview.payment": "[[{origin}]] quer [[pagar uma fatura Lightning]].",
+  "walletReview.access": "[[{origin}]] quer [[ligar-se à sua carteira]].",
+  "walletReview.paymentEffect": "Aprovar paga esta fatura. A sua carteira pode acrescentar taxas de encaminhamento.",
+  "walletReview.accessEffect": "Permite que este site se ligue à sua carteira e leia as informações disponíveis. Os pagamentos seguem regras de aprovação separadas.",
+  "approval.sensitiveReviewHint": "Reveja separadamente os pedidos de autenticação, zap e carteira. Não estão incluídos em Aprovar tudo.",
+  "perm.lightningPayment": "Pagamento Lightning"
 }

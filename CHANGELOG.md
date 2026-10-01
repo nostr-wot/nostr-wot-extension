@@ -3,7 +3,22 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Publishing automation
+## 0.8.9 — 2026-10-01
+
+### Store release notes
+
+- Show zap amounts in sats, including fractional sats, alongside the recipient and comment. Clearly distinguish signing a zap request from paying its invoice.
+- Show Lightning invoice amounts in individual and grouped payment approvals, and explain wallet connection access. Missing or ambiguous amounts are never presented as zero.
+- Require separate detail review for zap and wallet requests instead of including them in the queue’s Approve all action.
+- Automatically supersede older store reviews and recognize Mozilla’s formatted release notes, with duplicate-submission and downgrade protection.
+
+### Approval clarity
+
+- Reuse the verified public-profile cache for zap recipients. Keep raw event inspection available and escape comments as text.
+- Keep amounts visible on single-request queue cards and on every grouped payment, without expanding a section. Preserve the existing signing, wallet-access and payment permission boundaries.
+- Translate the new review copy into all six extension languages.
+
+### Publishing automation
 
 - Verify Mozilla-rendered changelog lists by their text and item boundaries, so successful submissions are not reported as failures merely because Markdown became HTML.
 

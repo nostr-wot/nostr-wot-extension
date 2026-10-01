@@ -1147,5 +1147,18 @@
   "auth.defaultBackendRulesLink": "Visualizza le regole di autenticazione automatica e il registro dei backend",
   "wizard.doneDerivedSummary": "Il tuo nuovo account è «{name}», derivato dalla frase seed principale. La sua chiave pubblica è",
   "wizard.doneAccountSummary": "Il tuo account è «{name}». La sua chiave pubblica è",
-  "perms.goToCurrentSite": "Vai alle regole del sito attuale"
+  "perms.goToCurrentSite": "Vai alle regole del sito attuale",
+  "eventIntent.zap": "[[{origin}]] vuole [[firmare una richiesta di zap]].",
+  "zapReview.amount": "Importo dello zap",
+  "zapReview.amountUnknown": "Importo non specificato o non valido",
+  "zapReview.recipientUnknown": "Destinatario non specificato o ambiguo",
+  "zapReview.comment": "Commento",
+  "zapReview.signingOnly": "Firmare questa richiesta non la paga. Il portafoglio autorizza il pagamento separatamente.",
+  "walletReview.amount": "Importo della fattura",
+  "walletReview.payment": "[[{origin}]] vuole [[pagare una fattura Lightning]].",
+  "walletReview.access": "[[{origin}]] vuole [[collegarsi al tuo portafoglio]].",
+  "walletReview.paymentEffect": "Approvare paga questa fattura. Il portafoglio può aggiungere commissioni di instradamento.",
+  "walletReview.accessEffect": "Consente al sito di collegarsi al portafoglio e leggere le informazioni disponibili. I pagamenti seguono regole di approvazione separate.",
+  "approval.sensitiveReviewHint": "Esamina separatamente le richieste di autenticazione, zap e portafoglio. Sono escluse da Approva tutto.",
+  "perm.lightningPayment": "Pagamento Lightning"
 }

@@ -1147,5 +1147,18 @@
   "auth.defaultBackendRulesLink": "Voir les règles d’authentification automatique et le registre des backends",
   "wizard.doneDerivedSummary": "Votre nouveau compte est « {name} », dérivé de votre phrase de récupération principale. Sa clé publique est",
   "wizard.doneAccountSummary": "Votre compte est « {name} ». Sa clé publique est",
-  "perms.goToCurrentSite": "Aller aux règles du site actuel"
+  "perms.goToCurrentSite": "Aller aux règles du site actuel",
+  "eventIntent.zap": "[[{origin}]] souhaite [[signer une demande de zap]].",
+  "zapReview.amount": "Montant du zap",
+  "zapReview.amountUnknown": "Montant non précisé ou invalide",
+  "zapReview.recipientUnknown": "Destinataire non précisé ou ambigu",
+  "zapReview.comment": "Commentaire",
+  "zapReview.signingOnly": "Signer cette demande ne la paie pas. Votre portefeuille autorise le paiement séparément.",
+  "walletReview.amount": "Montant de la facture",
+  "walletReview.payment": "[[{origin}]] souhaite [[payer une facture Lightning]].",
+  "walletReview.access": "[[{origin}]] souhaite [[se connecter à votre portefeuille]].",
+  "walletReview.paymentEffect": "Approuver paie cette facture. Votre portefeuille peut ajouter des frais de routage.",
+  "walletReview.accessEffect": "Autorise ce site à se connecter à votre portefeuille et à lire les informations disponibles. Les paiements suivent des règles distinctes.",
+  "approval.sensitiveReviewHint": "Examinez séparément les demandes d’authentification, de zap et de portefeuille. Elles sont exclues de Tout approuver.",
+  "perm.lightningPayment": "Paiement Lightning"
 }

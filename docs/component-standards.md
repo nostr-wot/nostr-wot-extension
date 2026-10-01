@@ -6,11 +6,11 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **60**; the inventory below is checked against the component folders by the test suite.
+All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **62**; the inventory below is checked against the component folders by the test suite.
 
 **Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (full-screen navigation by default; `placement="bottom"` fits content up to popup height over a scrim), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
-**Content** — `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
+**Content** — `ApprovalAmount`, `WalletRequestPreview`, `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
 **Controls** — `RawEventButton` (code-icon trigger and raw-data dialog composed from Modal, IconButton and TextBlock), `AuthenticationActions` (uses ApprovalActions split buttons for one-time decisions and per-site/relay-only connected-sites remembered choices), `ApprovalActions` (shared approve/reject split buttons with optional per-choice labels and approval-menu context; remembered per-type choices open above detail footers and below sheet headers), `ActionMenu` (viewport-bounded top-layer popover for anchored action choices, with keyboard navigation and outside dismissal), `ImageEditorButton`, `CopyButton`, `Button`, `IconButton`, `LinkButton`, `Input`, `Checkbox` (native selection control with theme accent and keyboard focus), `Textarea`, `InputRow`, `Select`, `Toggle`, `Tabs`, `Chip`, `ChipGroup`, `ListRow`, `ActionTile`, `SeedWord`, `EditableList`, `RemoveButton`, `ScrollWheelPicker`, `LanguageWheel`, `PasswordPairFields`.
 
@@ -781,3 +781,14 @@ The wizard completion screen aligns its heading, summary and action to the botto
 Image-editor captions use a fixed white surface, dark text and a dark border with a white outer outline. This two-tone treatment remains legible over light or dark photos and is independent of theme accent foreground colors. Site rules places Add rule at the right of the site header; its footer links to Global rules. Global rules offers Go to current site rules below its content. Both menu and dashboard entry points support these links without introducing a site list.
 
 ChangePasswordPanel interprets the vault password-change RPC success field as `ok`. A successful change displays confirmation before closing; a failed request keeps the form available for correction and retry.
+
+### Zap and wallet approval amounts
+
+`ApprovalAmount` is shared by kind-9734 `ZapPreview` and `WalletRequestPreview`.
+Use `formatMsats` for exact millisatoshi-to-sat display and `paymentMsats` for the
+background-decoded WebLN amount. Do not reuse `WalletBalance`, which intentionally
+rounds a balance to whole sats. `ZapPreview` reuses the public profile presentation
+and bounded `TextBlock`; raw event inspection remains owned by `EventPreview`.
+Amount parsing is display-only and never invents a value from duplicate tags.
+`requiresIndividualReview` excludes financial and authentication requests from the
+queue-wide bulk action; their detail screens retain explicit request selection.

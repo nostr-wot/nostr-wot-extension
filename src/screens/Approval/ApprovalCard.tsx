@@ -1,3 +1,6 @@
+import { zapPreview } from '@domain/nostr/zapPreview';
+import { paymentMsats, formatMsats } from '@domain/wallet/amount';
+import { getLanguage } from '@services/i18n/i18n';
 import AuthenticationNotice from '@components/AuthenticationNotice';
 import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import { t } from '@services/i18n/i18n.ts';
@@ -27,6 +30,9 @@ export default function ApprovalCard({ group, onClick, onCancel, hideSite = fals
   const isNip46 = group.nip46InFlight;
   const kind = firstReq?.eventKind ?? firstReq?.event?.kind;
 
+  const amount = firstReq?.type === 'webln_sendPayment' ? paymentMsats(firstReq.walletAmount)
+    : kind === 9734 ? zapPreview(firstReq?.event || {}).amountMsats : null;
+
   return (
     <Card variant="flat" className="p-0 mb-0 overflow-hidden shrink-0">
       <Container variant="row" gap={2}>
@@ -40,6 +46,7 @@ export default function ApprovalCard({ group, onClick, onCancel, hideSite = fals
             {!hideSite && !isNip46 && kind !== undefined && <Text as="span" variant="secondary" className="text-xs text-menu-subtitle">
               {formatPermissionLabel(group.method)} · {KIND_LABELS[kind] || `Kind ${kind}`} ({kind})
             </Text>}
+            {group.requests.length === 1 && (kind === 9734 || firstReq?.type === 'webln_sendPayment') && <Text as="span" className="text-brand font-semibold tabular-nums">{amount ? `${formatMsats(amount,getLanguage())} sats` : t('zapReview.amountUnknown')}</Text>}
             {!isNip46 && group.requests.length > 1 && <Text variant="muted" as="span">
               {t('approval.requests', { count: group.requests.length })}
             </Text>}

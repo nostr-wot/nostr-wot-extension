@@ -1,3 +1,4 @@
+import WalletRequestPreview from '@components/WalletRequestPreview';
 import GroupedMessageRequests from './GroupedMessageRequests';
 import IconChevronDown from '@assets/IconChevronDown';
 import IntentText from './IntentText';
@@ -51,6 +52,7 @@ interface ActivityGroup {
  *  type error. */
 interface ApprovalRequest {
   id?: string;
+  walletAmount?: number;
   authentication?: AuthenticationRequest;
   followReplacementCount?: number;
   followReplacementNewCount?: number;
@@ -154,6 +156,11 @@ export default function EventDetailModal({
           <div className="pt-3"><EventPreview type="signEvent" event={item.event || {}} approval /></div>
           {cancel}
         </div>
+      ) : item.type === 'webln_sendPayment' || item.type === 'webln_enable' ? (
+        <div data-approval-request={item.id ?? index} className="rounded-panel border border-card-border p-5">
+          <div id={labelId} className={selectable ? 'pr-8 pb-3' : 'pb-3'}>{requestLabel}</div>
+          <WalletRequestPreview type={item.type} walletAmount={item.walletAmount}/>
+        </div>
       ) : (
         <details data-approval-request={item.id ?? index} className="group/request rounded-panel border border-card-border p-5">
           <summary id={labelId} className={`${selectable ? 'pr-8 ' : ''}flex flex-col gap-2 cursor-pointer text-md list-none [&::-webkit-details-marker]:hidden [&::marker]:content-['']`}>
@@ -186,6 +193,8 @@ export default function EventDetailModal({
     </div>;
   } else if (request?.type === 'signEvent') {
     eventContent = <EventPreview type="signEvent" event={event || {}} approval />;
+  } else if (request && (type === 'webln_sendPayment' || type === 'webln_enable')) {
+    eventContent = <WalletRequestPreview type={type} walletAmount={request.walletAmount}/>;
   } else if (request && isMessageRequest(type)) {
     eventContent = <MessageRequestDetail key={request.id} request={request} />;
   } else if (request) {
@@ -217,7 +226,7 @@ export default function EventDetailModal({
           {request && !request.authentication && (
             <div className={CLS.summary}>
               {type !== 'signEvent' && <div className={CLS.methodBadge}>{title}</div>}
-              {description && !isMessageRequest(type) && !(type === 'signEvent' && requests && requests.length > 1) && <p className={CLS.description}>{description}</p>}
+              {description && !isMessageRequest(type) && !(requests && requests.length > 1) && <p className={CLS.description}>{description}</p>}
             </div>
           )}
 
@@ -278,6 +287,10 @@ export default function EventDetailModal({
 function describeRequest(req: ApprovalRequest): ReactNode {
   const origin = req.origin || '?';
   switch (req.type) {
+    case 'webln_sendPayment':
+      return <IntentText parts={intentParts('walletReview.payment',{origin})}/>;
+    case 'webln_enable':
+      return <IntentText parts={intentParts('walletReview.access',{origin})}/>;
     case 'getPublicKey':
       return <IntentText parts={intentParts('approval.detail.readProfileDesc',{origin})}/>;
     case 'signEvent':

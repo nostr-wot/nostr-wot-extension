@@ -199,3 +199,10 @@ it('open approval groups follow new arrivals and removals without crossing ident
  assert.equal(currentApprovalGroup(selected,groups.slice(1)),null);
  assert.equal(currentApprovalGroup(null,groups),null);
 });
+
+import { requiresIndividualReview } from '../src/domain/permissions/approval';
+it('zap signing, wallet access and payment require detail review instead of global bulk approval', () => {
+ for(const request of [{type:'webln_enable'},{type:'webln_sendPayment'},{type:'signEvent',event:{kind:9734}}]) assert.equal(requiresIndividualReview(request),true);
+ assert.equal(requiresIndividualReview({type:'signEvent',event:{kind:1}}),false);
+ assert.equal(requiresIndividualReview({type:'getPublicKey'}),false);
+});

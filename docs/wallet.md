@@ -326,6 +326,19 @@ HTTPS enforcement and rate limiting apply (same rules as NIP-07).
 
 ## 7. Permission Model
 
+### Approval presentation
+
+Zap signing (NIP-57 kind 9734), connecting a wallet and paying an invoice have
+separate consent. Clients can request them close together. Signing review shows
+the requested zap amount, recipient profile and comment; payment review shows
+the invoice amount decoded by the background. A signature does not itself transfer
+funds. Wallet rules may already authorize a payment, so another prompt is not
+promised. Routing fees may be added by the provider.
+
+Pending queue cards show single-request amounts. Grouped payment details show each
+amount before any action or expansion. Unknown amounts display an explicit label,
+not zero sats. Money-related requests are excluded from queue-wide Approve all.
+
 ### 7.1 WebLN Permissions
 
 Same structure as NIP-07, stored per-domain per-account:

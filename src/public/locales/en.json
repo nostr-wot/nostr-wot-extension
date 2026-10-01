@@ -1147,5 +1147,18 @@
   "auth.defaultBackendRulesLink": "View automatic authentication rules and backend registry",
   "wizard.doneDerivedSummary": "Your new account is “{name}”, derived from your main seed phrase. Its public key is",
   "wizard.doneAccountSummary": "Your account is “{name}”. Its public key is",
-  "perms.goToCurrentSite": "Go to current site rules"
+  "perms.goToCurrentSite": "Go to current site rules",
+  "eventIntent.zap": "[[{origin}]] wants to [[sign a zap request]].",
+  "zapReview.amount": "Zap amount",
+  "zapReview.amountUnknown": "Amount not specified or invalid",
+  "zapReview.recipientUnknown": "Recipient not specified or ambiguous",
+  "zapReview.comment": "Comment",
+  "zapReview.signingOnly": "Signing this request does not pay it. Payment is authorized separately by your wallet.",
+  "walletReview.amount": "Invoice amount",
+  "walletReview.payment": "[[{origin}]] wants to [[pay a Lightning invoice]].",
+  "walletReview.access": "[[{origin}]] wants to [[connect to your wallet]].",
+  "walletReview.paymentEffect": "Approving pays this invoice. Your wallet may add routing fees.",
+  "walletReview.accessEffect": "Allows this site to connect to your wallet and read supported wallet information. Payments follow separate approval rules.",
+  "approval.sensitiveReviewHint": "Review authentication, zap and wallet requests separately. They are excluded from Approve all.",
+  "perm.lightningPayment": "Lightning payment"
 }

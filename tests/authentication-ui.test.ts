@@ -90,14 +90,14 @@ it('mounted sheet excludes authentication from bulk approval and resolves only r
  try{
   await act(async()=>root.render(render()));
   assert.ok(document.body.textContent!.includes('approval.pendingRequests'));
-  assert.ok(document.body.textContent!.includes('auth.reviewHint'));
+  assert.ok(document.body.textContent!.includes('approval.sensitiveReviewHint'));
   assert.ok(button('approval.rejectAll'));
   await act(async()=>button('approval.approveOnce')!.click());
   assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params.id),['ordinary']);
   assert.equal(button('approval.rejectAll'),undefined);
   assert.ok(button('approval.approve'));
   assert.ok(!document.body.textContent!.includes('approval.pendingRequests'));
-  assert.ok(!document.body.textContent!.includes('auth.reviewHint'));
+  assert.ok(!document.body.textContent!.includes('approval.sensitiveReviewHint'));
   pending.push({...auth,id:'late'});
   await act(async()=>{(document.querySelector('[aria-label="approval.approveOptions"]') as HTMLButtonElement).click();});
   await act(async()=>button('auth.approveAlways')!.click());
@@ -154,7 +154,7 @@ for (const mode of ['auth', 'ordinary', 'nip46'] as const) {
   const button=(text:string)=>[...document.querySelectorAll('button')].find(b=>b.textContent===text);
   try{
    await act(async()=>root.render(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(PermissionsProvider,null,createElement(Overlay))))));
-   for(const key of ['approval.pendingRequests','approval.rejectAll','auth.reviewHint'])assert.ok(!document.body.textContent!.includes(key),key);
+   for(const key of ['approval.pendingRequests','approval.rejectAll','approval.sensitiveReviewHint'])assert.ok(!document.body.textContent!.includes(key),key);
    assert.equal(document.querySelector('[aria-label="common.close"]'),null);
    const label=mode==='nip46'?'approval.cancelNip46':mode==='auth'?'auth.reject':'approval.deny';assert.ok(button(label));
    await act(async()=>button(label)!.click());assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(button(label));

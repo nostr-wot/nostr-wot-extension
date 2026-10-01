@@ -22,6 +22,8 @@ export const PERM_LABELS: Record<string, string> = {
 
 /** Fallback labels for wire method names (used when permKey is unavailable). */
 export const WIRE_METHOD_LABELS: Record<string, string> = {
+  'webln_enable': 'wallet.connectWallet',
+  'webln_sendPayment': 'perm.lightningPayment',
   'signEvent': 'approval.signEvent',
   'nip04Encrypt': 'activity.sendMessage',
   'nip04Decrypt': 'activity.readMessage',

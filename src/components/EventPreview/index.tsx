@@ -1,3 +1,4 @@
+import ZapPreview from './kinds/ZapPreview';
 import TextBlock from '@components/TextBlock';
 import CreateGroupPreview from './kinds/CreateGroupPreview';
 import React from 'react';
@@ -36,6 +37,7 @@ const KIND_RENDERERS: Record<number, React.ComponentType<{ event: NostrEventDisp
   1059: SealedPreview,
   30078: AppSpecificPreview,
   9007: CreateGroupPreview,
+  9734: ZapPreview,
 };
 
 const ENCRYPT_TYPES = new Set(['nip04Encrypt', 'nip04Decrypt', 'nip44Encrypt', 'nip44Decrypt']);

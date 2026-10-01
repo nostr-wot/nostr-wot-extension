@@ -7,7 +7,7 @@ import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { currentApprovalGroup, resolveDisplayedRequests, type ApprovalGroup } from '@domain/permissions/approval.ts';
+import { currentApprovalGroup, resolveDisplayedRequests, requiresIndividualReview, type ApprovalGroup } from '@domain/permissions/approval.ts';
 import { type PendingRequest } from '@domain/signing/types.ts';
 import ApprovalSiteList from './ApprovalSiteList';
 import useApprovalQueue from '@hooks/useApprovalQueue.ts';
@@ -38,7 +38,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
     closeAndRefresh,
   } = useApprovalQueue({ onRequestUnlock, onUnlockWaitersChange });
 
-  const ordinaryGroups = groups.filter(group => !group.requests.some(request => request.authentication));
+  const ordinaryGroups = groups.filter(group => !group.requests.some(requiresIndividualReview));
   const totalCount = [...groups, ...nip46Groups].reduce((n, group) => n + group.requests.length, 0);
   const singleRequest = totalCount === 1;
   const selectedGroup = singleRequest ? groups[0] ?? null : currentApprovalGroup(groupSelection, groups);
@@ -148,7 +148,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
             label: formatPermissionLabel(group.permKey, group.requests[0]?.event),
             onAlwaysAllow: () => handleAlwaysAllow(group), onAlwaysDeny: () => handleAlwaysDeny(group),
           }))}/> : groups.length > 0 ? <ButtonDanger disabled={busy} onClick={handleRejectAll}>{t('approval.rejectAll')}</ButtonDanger> : null}</div>
-        {groups.some(group => group.requests.some(request => request.authentication)) && <Text variant="hint">{t('auth.reviewHint')}</Text>}
+        {groups.some(group => group.requests.some(requiresIndividualReview)) && <Text variant="hint">{t('approval.sensitiveReviewHint')}</Text>}
         <FormError className="py-3 px-6 text-center">{actionError}</FormError>
         {ordinaryGroups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
           <Text variant="muted" as="div" className="pt-2 px-6 pb-4 text-center">
