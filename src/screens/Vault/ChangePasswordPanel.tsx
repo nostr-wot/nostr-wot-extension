@@ -20,8 +20,8 @@ export default function ChangePasswordPanel({ onClose }: { onClose: () => void }
     if (!cpCurrent) { setCpError(t('key.enterCurrentPassword')); return; }
     if (!cpPair.ready) return;
     try {
-      const result = await rpc<{ success?: boolean; error?: string }>('vault_changePassword', { currentPassword: cpCurrent, newPassword: cpPair.password });
-      if (result?.success) {
+      const result = await rpc<{ ok?: boolean; error?: string }>('vault_changePassword', { currentPassword: cpCurrent, newPassword: cpPair.password });
+      if (result?.ok) {
         setCpSuccess(true);
         setTimeout(handleClose, 1500);
       } else {

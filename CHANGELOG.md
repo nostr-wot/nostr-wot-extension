@@ -7,6 +7,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ### Store release notes
 
+- Correct the confirmation shown after a successful vault password change.
+
 - Manage shared Global rules and the current website's overrides in dedicated screens. Existing shared rules migrate automatically; resets ask for confirmation and stay on the current screen.
 - Optional Default backend auth starts off for each account. It supports exact same-origin HTTPS backends and verified NIP-98 registry pairs, with saved denials taking priority. The backend screen shows its status and policy link.
 - Manage relay authentication by relay and selected connected apps, or explicitly all connected sites. Deselecting an app switches to specific-site approval; clearing all selections revokes allows.
@@ -25,6 +27,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 - Allow removing individual apps from an all-sites relay grant, switching to a specific-site set. Empty selections revoke allows while preserving denials. Saves work with a locked vault and reject stale account sessions.
 
 ### Request review and account setup
+
+- Read the vault password-change response correctly, showing success after a completed change and retaining retryable errors for failures.
 
 - Keep split-button menus visible above clipped approval sheets with viewport-bounded popovers; use compact labels and consistent Deny wording.
 - Show note content and supported event-specific previews in single and grouped signing review, including repost text. Keep raw metadata in the code-icon popup. Recognize NIP-29 kind 9007 with a create-group intent and preview.

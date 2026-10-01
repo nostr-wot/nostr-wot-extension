@@ -82,3 +82,52 @@ it('change-password panel starts with an invalid pair and disabled save action',
   assert.match(html,/key.confirmNewPw/);
   assert.match(html,/<button[^>]*disabled=""[^>]*>common.save<\/button>/);
 });
+
+it('change-password panel recognizes the vault RPC result and keeps errors retryable', async t => {
+  const { JSDOM } = await import('jsdom');
+  const { act } = await import('react');
+  const { default: browser } = await import('./helpers/browser-mock');
+  const dom = new JSDOM('<div id="root"></div>');
+  const names = ['window', 'document', 'HTMLElement', 'IS_REACT_ACT_ENVIRONMENT'];
+  const prior = new Map(names.map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+  for (const [key, value] of Object.entries({ window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true })) {
+    Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
+  }
+  const { createRoot } = await import('react-dom/client');
+  const root = createRoot(document.getElementById('root')!);
+  let fail = true, closed = 0;
+  const calls: unknown[] = [];
+  t.mock.method(browser.runtime, 'sendMessage', async (message: unknown) => {
+    calls.push(message);
+    return fail ? { error: 'Current password is incorrect' } : { result: { ok: true } };
+  });
+  try {
+    await act(async () => root.render(createElement(ChangePasswordPanel, { onClose() { closed++; } })));
+    const edit = async (placeholder: string, value: string) => act(async () => {
+      const input = document.querySelector<HTMLInputElement>(`input[placeholder="${placeholder}"]`)!;
+      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    });
+    await edit('key.currentPw', 'old-password');
+    await edit('key.newPwMinChars', 'new-password');
+    await edit('key.confirmNewPw', 'new-password');
+    const save = () => [...document.querySelectorAll('button')].find(b => b.textContent === 'common.save')!;
+    assert.equal(save().disabled, false);
+    await act(async () => save().click());
+    assert.match(document.body.textContent!, /key.failedChangePassword/);
+    assert.equal(closed, 0);
+    fail = false;
+    await act(async () => save().click());
+    assert.match(document.body.textContent!, /key.passwordChanged/);
+    assert.doesNotMatch(document.body.textContent!, /key.failedChangePassword/);
+    assert.deepEqual(calls.at(-1), { method: 'vault_changePassword', params: { currentPassword: 'old-password', newPassword: 'new-password' } });
+    await new Promise(resolve => setTimeout(resolve, 1550));
+    assert.equal(closed, 1);
+  } finally {
+    await act(async () => root.unmount()); dom.window.close();
+    for (const [key, descriptor] of prior) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
+    }
+  }
+});
