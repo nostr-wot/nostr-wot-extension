@@ -45,7 +45,9 @@ markers; the publisher checks that before making an API call. Full build/reviewe
 guides remain in the source archive, and release notes use a separate field with the same limit.
 The API submission attaches source and
 reviewer notes during version creation, then saves translated release notes and
-reads the version back to verify both notes and the source attachment.
+reads the version back to verify both notes and the source attachment. Release-note
+comparison accounts for Mozilla rendering Markdown bullets as HTML lists and
+linkifying URLs, while still rejecting changed or missing text.
 
 ## Duplicate protection and recovery
 

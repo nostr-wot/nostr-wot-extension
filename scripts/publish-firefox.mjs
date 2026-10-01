@@ -9,8 +9,14 @@ import { verifyPackage } from './verify-package.mjs';
 export const ADDON_ID = 'nostr-wot-extension@nostr-wot.com';
 const ORIGIN = 'https://addons.mozilla.org';
 const API = '/api/v5/';
-// AMO linkifies URLs and wraps outbound links in its redirect service. Compare visible text.
-const releaseText = value => typeof value === 'string' ? value.replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\r\n?/g, '\n') : '';
+// AMO renders Markdown lists/paragraphs and linkifies URLs. Compare their text
+// while preserving list item boundaries and refusing missing/changed content.
+const releaseText = value => typeof value === 'string' ? value
+  .replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '$1')
+  .replace(/<\/?ul>/gi, '\n').replace(/<li>/gi, '- ').replace(/<\/li>/gi, '\n')
+  .replace(/<\/?p>/gi, '\n')
+  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/\r\n?/g, '\n').split('\n').map(line => line.trim()).filter(Boolean).join('\n') : '';
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export function amoToken(env, now = Math.floor(Date.now() / 1000)) {
   assert.ok(env.AMO_JWT_ISSUER && env.AMO_JWT_SECRET, 'Missing Mozilla credentials');

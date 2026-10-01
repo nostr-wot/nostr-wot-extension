@@ -265,3 +265,16 @@ test('recovery only targets published tested releases and shares store concurren
  assert.match(workflow,/cp -R scripts/);
  assert.match(workflow,/--commit "\$GITHUB_SHA"/);
 });
+
+for (const modified of [false,true]) test(`Mozilla-rendered bullet notes retain exact content (modified=${modified})`, async t => {
+ const o=fixture(t);o.releaseNotes='- First fix.\n\n- Second fix.\n\nFull changelog: https://example.test/changes';
+ const saved=detail(o),rendered={...saved,release_notes:{'en-US':'<ul><li>First fix.</li><li>'+ (modified?'Changed text.':'Second fix.') +'</li></ul>\nFull changelog: <a href="https://outgoing.mozilla.org/redirect">https://example.test/changes</a>'}};
+ const mock=api([addon,{results:[rendered],next:null},rendered,saved,rendered]);
+ if(modified) {
+  await assert.rejects(publishFirefox(o,env,mock.fetcher),/Release notes were not saved/);
+  assert.equal(mock.calls.filter(c=>c.options.method==='PATCH').length,1);
+ } else {
+  assert.equal(await publishFirefox(o,env,mock.fetcher),'ALREADY_SUBMITTED');
+  assert.ok(mock.calls.every(c=>!c.options.method));
+ }
+});
