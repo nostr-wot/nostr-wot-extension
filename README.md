@@ -12,7 +12,7 @@ locally managed identity keys stay in the extension's signing flow.
 ## Install
 
 - **Chrome:** [Chrome Web Store](https://chromewebstore.google.com/detail/nostr-wot-extension/gfmefgdkmjpjinecjchlangpamhclhdo)
-- **Firefox:** [Build and temporary installation](CONTRIBUTING.md#development-setup)
+- **Firefox:** [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/nostr-wot-extension/)
 - **Source builds and Safari:** [Build and installation instructions](DEPLOY.md)
 
 ## Get started
