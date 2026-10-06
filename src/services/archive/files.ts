@@ -21,7 +21,7 @@ import {
 } from '@constants/archive.ts';
 import type { ArchiveRecord } from '@domain/archive/types.ts';
 import type { SignedEvent } from '@domain/nostr/types.ts';
-import { eventBelongs, shouldArchive } from '@domain/archive/policy.ts';
+import { eventBelongs } from '@domain/archive/policy.ts';
 import { verifyEvent } from '@lib/crypto/nip01.ts';
 import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
@@ -34,6 +34,7 @@ interface Session {
   revision: number;
   expires: number;
   mode: 'export' | 'import';
+  plain: boolean;
   key?: CryptoKey;
   password?: string;
   salt?: string;
@@ -176,15 +177,15 @@ function checked(accountId: string, id: string, mode: Session['mode']): Session 
 function begin(
   accountId: string,
   pubkey: string,
-  password: string,
+  password: string | undefined,
   mode: Session['mode'],
 ): { sessionId: string; session: Session } {
   if (vault.isLocked()) throw new Error('Vault is locked');
   if (
     !/^[0-9a-f]{64}$/.test(pubkey) ||
-    typeof password !== 'string' ||
+    (password !== undefined && (typeof password !== 'string' ||
     password.length < MIN_ARCHIVE_PASSWORD_LENGTH ||
-    password.length > MAX_ARCHIVE_PASSWORD_LENGTH
+    password.length > MAX_ARCHIVE_PASSWORD_LENGTH))
   )
     throw new Error('Use an archive password of at least 8 characters');
   for (const [id, session] of sessions)
@@ -200,6 +201,7 @@ function begin(
     revision: vault.getSessionRevision(),
     expires: Date.now() + ARCHIVE_FILE_SESSION_MS,
     mode,
+    plain: password === undefined,
     index: 0,
     count: 0,
     bytes: 0,
@@ -213,12 +215,13 @@ function begin(
 export async function beginArchiveExport(
   accountId: string,
   pubkey: string,
-  password: string,
+  password?: string,
 ): Promise<{ sessionId: string }> {
   const { sessionId, session } = begin(accountId, pubkey, password, 'export');
+  if (session.plain) return { sessionId };
   try {
     session.salt = encode(random(ARCHIVE_SALT_BYTES));
-    session.key = await keyFor(password, session.salt);
+    session.key = await keyFor(password!, session.salt);
     checked(accountId, sessionId, 'export');
     session.header = await seal(session, 'header', {
       format: ARCHIVE_FILE_FORMAT,
@@ -231,6 +234,30 @@ export async function beginArchiveExport(
     throw error;
   }
 }
+async function readExportRecords(session: Session): Promise<ArchiveRecord[]> {
+  const records: ArchiveRecord[] = [];
+  let chunkBytes = 0;
+  while (records.length < ARCHIVE_EXPORT_CHUNK_RECORDS && !session.exhausted) {
+    const page = await readArchivePage(session.accountId, session.after, 1);
+    if (!page.records.length) {
+      session.exhausted = true;
+      break;
+    }
+    const stored = page.records[0];
+    const record = {
+      event: sanitizeEvent(stored.event),
+      sources: stored.sources,
+      savedAt: stored.savedAt,
+    };
+    const size = encoder.encode(JSON.stringify(record)).length;
+    if (records.length && chunkBytes + size > MAX_ARCHIVE_RECORD_BYTES) break;
+    records.push(record);
+    chunkBytes += size;
+    session.after = record.event.id;
+    session.exhausted = !page.next;
+  }
+  return records;
+}
 export async function exportArchivePage(
   accountId: string,
   sessionId: string,
@@ -238,33 +265,23 @@ export async function exportArchivePage(
   const session = checked(accountId, sessionId, 'export');
   return session.busy.run(async () => {
     checked(accountId, sessionId, 'export');
+    if (session.plain) {
+      const records = await readExportRecords(session);
+      const line = records.map(record => JSON.stringify(record.event)).join('\n');
+      session.bytes += encoder.encode(line).length + 1;
+      if (session.bytes > MAX_ARCHIVE_FILE_BYTES) throw new Error('Archive file exceeds size limit');
+      checked(accountId, sessionId, 'export');
+      const done = !!session.exhausted;
+      if (done) sessions.delete(sessionId);
+      return { line, done };
+    }
     let line: string;
     let done = false;
     if (session.header) {
       line = session.header;
       session.header = undefined;
     } else if (!session.exhausted) {
-      const records: ArchiveRecord[] = [];
-      let chunkBytes = 0;
-      while (records.length < ARCHIVE_EXPORT_CHUNK_RECORDS && !session.exhausted) {
-        const page = await readArchivePage(accountId, session.after, 1);
-        if (!page.records.length) {
-          session.exhausted = true;
-          break;
-        }
-        const stored = page.records[0];
-        const record = {
-          event: sanitizeEvent(stored.event),
-          sources: stored.sources,
-          savedAt: stored.savedAt,
-        };
-        const size = encoder.encode(JSON.stringify(record)).length;
-        if (records.length && chunkBytes + size > MAX_ARCHIVE_RECORD_BYTES) break;
-        records.push(record);
-        chunkBytes += size;
-        session.after = record.event.id;
-        session.exhausted = !page.next;
-      }
+      const records = await readExportRecords(session);
       if (records.length) {
         line = await seal(session, 'data', { index: session.index++, previous: session.previous, records });
         session.count += records.length;
@@ -296,10 +313,17 @@ export async function exportArchivePage(
 export async function beginArchiveImport(
   accountId: string,
   pubkey: string,
-  password: string,
+  password?: string,
 ): Promise<{ sessionId: string }> {
   const { sessionId, session } = begin(accountId, pubkey, password, 'import');
   session.password = password;
+  if (session.plain) {
+    // Plain input is sealed before staging; its temporary key never leaves this session.
+    session.key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    checked(accountId, sessionId, 'import');
+    session.firstPrevious = '';
+    session.footerPrevious = '';
+  }
   return { sessionId };
 }
 function sanitizeEvent(value: unknown): SignedEvent {
@@ -336,7 +360,7 @@ async function validateRecords(value: unknown, pubkey: string): Promise<ArchiveR
   const result: ArchiveRecord[] = [];
   for (const item of value) {
     const event = sanitizeEvent(item?.event);
-    if (!eventBelongs(event, pubkey, true) || !shouldArchive(event) || !(await verifyEvent(event)))
+    if (!eventBelongs(event, pubkey, true) || !(await verifyEvent(event)))
       throw new Error('Archive contains an invalid signature or unrelated event');
     if (
       !Array.isArray(item.sources) ||
@@ -364,6 +388,22 @@ export async function importArchiveChunk(
   return session.busy.run(async () => {
     checked(accountId, sessionId, 'import');
     if (session.ended) throw new Error('Unexpected data after archive footer');
+    if (session.plain) {
+      if (typeof line !== 'string' || encoder.encode(line).length > MAX_ARCHIVE_LINE_BYTES) throw new Error('Archive chunk too large');
+      session.bytes += encoder.encode(line).length + 1;
+      if (session.bytes > MAX_ARCHIVE_FILE_BYTES) throw new Error('Archive file exceeds size limit');
+      let event: unknown;
+      try { event = JSON.parse(line); } catch { throw new Error('Invalid archive file'); }
+      const records = await validateRecords([{ event, sources: [], savedAt: Date.now() }], session.pubkey);
+      const sealed = await seal(session, 'data', { index: session.index, previous: session.previous, records });
+      checked(accountId, sessionId, 'import');
+      await stage(sessionId, session.index, sealed);
+      session.index++;
+      session.count += records.length;
+      session.previous = await hash(sealed);
+      session.footerPrevious = session.previous;
+      return { count: session.count };
+    }
     const value = envelope(line);
     if (session.bytes + encoder.encode(line).length > MAX_ARCHIVE_FILE_BYTES)
       throw new Error('Archive file exceeds size limit');
@@ -406,7 +446,7 @@ export async function finishArchiveImport(accountId: string, sessionId: string):
   const session = checked(accountId, sessionId, 'import');
   return session.busy.run(async () => {
     checked(accountId, sessionId, 'import');
-    if (!session.ended) throw new Error('Incomplete archive: authenticated footer is missing');
+    if (!session.plain && !session.ended) throw new Error('Incomplete archive: authenticated footer is missing');
     try {
       let previous = session.firstPrevious;
       // Recheck the authenticated chain from staging before writing any archive data.
@@ -444,7 +484,7 @@ export async function cancelArchiveFiles(accountId?: string): Promise<void> {
     await clearStaging(id);
   }
 }
-// Staging contains only password-encrypted, authenticated file chunks, never events or keys.
+// Staging contains only authenticated ciphertext, never plaintext events or keys.
 let stagingInitialized: Promise<void> | undefined;
 function stagingDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

@@ -3,6 +3,11 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Unreleased
+
+- Download and import ordinary signed-event NDJSON without a file password; verify account ownership and signatures before merging, while retaining support for old encrypted exports.
+- Open Archive download and import dialogs above the full extension popup instead of inside the card.
+
 ## 0.8.11 — 2026-10-06
 
 ### Store release notes

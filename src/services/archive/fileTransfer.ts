@@ -2,7 +2,7 @@ import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { MAX_ARCHIVE_FILE_BYTES, MAX_ARCHIVE_LINE_BYTES } from '@constants/archive.ts';
 
-export async function importArchiveFile(file: File, password: string, accountId: string): Promise<number> {
+export async function importArchiveFile(file: File, password: string | undefined, accountId: string): Promise<number> {
   if (file.size > MAX_ARCHIVE_FILE_BYTES) throw new Error(t('archive.fileTooLarge'));
   const { sessionId } = await rpc<{ sessionId: string }>('archive_importBegin', { accountId, password });
   let reader: ReadableStreamDefaultReader<string> | undefined;
@@ -40,7 +40,7 @@ export async function importArchiveFile(file: File, password: string, accountId:
   }
 }
 
-export async function downloadArchive(password: string, accountId: string): Promise<Blob> {
+export async function downloadArchive(password: string | undefined, accountId: string): Promise<Blob> {
   const { sessionId } = await rpc<{ sessionId: string }>('archive_exportBegin', { accountId, password });
   const lines: string[] = [];
   let bytes = 0;
@@ -49,7 +49,7 @@ export async function downloadArchive(password: string, accountId: string): Prom
       const page = await rpc<{ line: string; done: boolean }>('archive_exportPage', { accountId, sessionId });
       bytes += new TextEncoder().encode(page.line).byteLength + 1;
       if (bytes > MAX_ARCHIVE_FILE_BYTES) throw new Error(t('archive.fileTooLarge'));
-      lines.push(page.line + '\n');
+      if (page.line) lines.push(page.line + '\n');
       if (page.done) break;
     }
     return new Blob(lines, { type: 'application/x-ndjson' });
@@ -57,4 +57,15 @@ export async function downloadArchive(password: string, accountId: string): Prom
     await rpc('archive_fileCancel', { accountId, sessionId }).catch(() => {});
     throw error;
   }
+}
+
+/** Legacy encrypted files advertise their envelope in the first bounded line. */
+export async function archiveFileNeedsPassword(file: File): Promise<boolean> {
+  if (file.size > MAX_ARCHIVE_FILE_BYTES) throw new Error(t('archive.fileTooLarge'));
+  const first = (await file.slice(0, MAX_ARCHIVE_LINE_BYTES).text()).split('\n').find(line => line.trim());
+  if (!first) return false;
+  try {
+    const value = JSON.parse(first);
+    return value?.v === 1 && value?.type === 'header' && typeof value?.ct === 'string';
+  } catch { return false; }
 }

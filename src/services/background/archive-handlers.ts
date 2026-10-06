@@ -62,7 +62,8 @@ async function finishFile(id: string, sessionId?: string) {
   if (previous && previous.expires > Date.now() && !vault.isLocked())
     await saveArchiveProgress(id, previous.progress, previous.copyResult);
 }
-function password(value: unknown): string {
+function password(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
   if (
     typeof value !== 'string' ||
     value.length < MIN_ARCHIVE_PASSWORD_LENGTH ||

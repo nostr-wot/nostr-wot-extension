@@ -80,3 +80,26 @@ it('file session expiry is fixed even while pages are actively requested', async
     time += 61 * 1000; await assert.rejects(exportArchivePage('a', sessionId), /expired/);
   } finally { Date.now = now; }
 });
+it('password-free exports contain only signed events and imports merge them after validation', async () => {
+  await commitArchiveBatch('a', [{ event: signed, sources: ['wss://one.example'], savedAt: 1 }]);
+  const outgoing = await beginArchiveExport('a', pubkey);
+  const page = await exportArchivePage('a', outgoing.sessionId);
+  assert.deepEqual(JSON.parse(page.line), signed);
+  assert.equal(page.done, true);
+  const incoming = await beginArchiveImport('b', pubkey);
+  await importArchiveChunk('b', incoming.sessionId, page.line);
+  await importArchiveChunk('b', incoming.sessionId, page.line);
+  assert.equal((await archiveSummary('b')).count, 0);
+  await finishArchiveImport('b', incoming.sessionId);
+  assert.equal((await archiveSummary('b')).count, 1);
+});
+it('plain imports reject forged and unrelated events before any merge', async () => {
+  const incoming = await beginArchiveImport('b', pubkey);
+  await importArchiveChunk('b', incoming.sessionId, JSON.stringify(signed));
+  await assert.rejects(importArchiveChunk('b', incoming.sessionId, JSON.stringify({ ...signed, content: 'forged' })), /signature/);
+  assert.equal((await archiveSummary('b')).count, 0);
+  await cancelArchiveFiles('b');
+  const unrelated = await signEvent({ kind: 1, created_at: 1, content: 'other', tags: [] }, new Uint8Array(32).fill(2));
+  const other = await beginArchiveImport('b', pubkey);
+  await assert.rejects(importArchiveChunk('b', other.sessionId, JSON.stringify(unrelated)), /unrelated/);
+});

@@ -1,10 +1,9 @@
 import { MIN_ARCHIVE_PASSWORD_LENGTH, MAX_ARCHIVE_PASSWORD_LENGTH } from '@constants/archive.ts';
 import { type ReactNode, useRef, useState } from 'react';
-import { downloadArchive, importArchiveFile } from '@services/archive/fileTransfer.ts';
+import { createPortal } from 'react-dom';
+import { downloadArchive, importArchiveFile, archiveFileNeedsPassword } from '@services/archive/fileTransfer.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
 import { t } from '@services/i18n/i18n.ts';
-import usePasswordPair from '@hooks/usePasswordPair.ts';
-import PasswordPairFields from '@components/PasswordPairFields';
 import Input from '@components/Input';
 import Button from '@components/Button';
 import Container from '@components/Container';
@@ -29,7 +28,9 @@ export default function ArchiveFiles({
   trailingAction?: ReactNode;
 }) {
   const [mode, setMode] = useState<'download' | 'import' | null>(null);
-  const pair = usePasswordPair(MIN_ARCHIVE_PASSWORD_LENGTH);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [checkingFile, setCheckingFile] = useState(false);
+  const selection = useRef(0);
   const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -39,10 +40,30 @@ export default function ArchiveFiles({
   function close() {
     if (busy) return;
     setMode(null);
-    pair.reset();
+    selection.current++;
+    setNeedsPassword(false);
+    setCheckingFile(false);
     setPassword('');
     setFile(null);
     setError('');
+  }
+  async function chooseFile(next: File | null) {
+    const revision = ++selection.current;
+    setFile(null);
+    setPassword('');
+    setNeedsPassword(false);
+    setError('');
+    setCheckingFile(true);
+    try {
+      const encrypted = next ? await archiveFileNeedsPassword(next) : false;
+      if (selection.current !== revision) return;
+      setNeedsPassword(encrypted);
+      setFile(next);
+    } catch (e) {
+      if (selection.current === revision) setError((e as Error).message);
+    } finally {
+      if (selection.current === revision) setCheckingFile(false);
+    }
   }
   async function submit() {
     setBusy(true);
@@ -50,16 +71,18 @@ export default function ArchiveFiles({
     setNotice('');
     try {
       if (mode === 'download') {
-        const blob = await downloadArchive(pair.password, accountId);
+        const blob = await downloadArchive(undefined, accountId);
         downloadFile(blob, 'nostr-archive.ndjson');
         setNotice(t('archive.downloaded'));
       } else {
-        const count = await importArchiveFile(file!, password, accountId);
+        const count = await importArchiveFile(file!, needsPassword ? password : undefined, accountId);
         setNotice(t('archive.imported', { count }));
         await onChanged();
       }
       setMode(null);
-      pair.reset();
+      selection.current++;
+      setNeedsPassword(false);
+      setCheckingFile(false);
       setPassword('');
       setFile(null);
     } catch (e) {
@@ -95,19 +118,15 @@ export default function ArchiveFiles({
         {trailingAction}
       </Container>
       {notice && <Text role="status">{notice}</Text>}
-      {mode && (
+      {mode && createPortal(
         <Modal
           title={t(`archive.${mode}`)}
           onClose={close}
           footer={
             <Button
               disabled={
-                busy ||
-                (mode === 'download'
-                  ? !pair.ready || pair.password.length > MAX_ARCHIVE_PASSWORD_LENGTH
-                  : password.length < MIN_ARCHIVE_PASSWORD_LENGTH ||
-                    password.length > MAX_ARCHIVE_PASSWORD_LENGTH ||
-                    !file)
+                busy || checkingFile || (mode === 'import' && (!file || (needsPassword &&
+                  (password.length < MIN_ARCHIVE_PASSWORD_LENGTH || password.length > MAX_ARCHIVE_PASSWORD_LENGTH))))
               }
               onClick={() => void submit()}
             >
@@ -116,31 +135,23 @@ export default function ArchiveFiles({
           }
         >
           <Container gap={5}>
-            <Text>{t('archive.fileHint')}</Text>
-            {mode === 'download' ? (
-              <PasswordPairFields
-                pair={pair}
-                passwordPlaceholder={t('archive.filePassword')}
-                confirmPlaceholder={t('archive.confirmPassword')}
-                disabled={busy}
-              />
-            ) : (
+            <Text>{t(mode === 'import' ? 'archive.importHint' : 'archive.fileHint')}</Text>
+            {mode === 'import' && (
               <>
-                <Input
+                {needsPassword && <Input
                   label={t('archive.filePassword')}
-                  hint={t('key.reqMinChars')}
                   maxLength={MAX_ARCHIVE_PASSWORD_LENGTH}
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={busy}
-                />
+                />}
                 <input
                   ref={fileInput}
                   type="file"
                   accept=".ndjson,.jsonl,.json"
                   className="hidden"
-                  onChange={(event) => setFile(event.target.files?.[0] || null)}
+                  onChange={(event) => void chooseFile(event.target.files?.[0] || null)}
                   disabled={busy}
                 />
                 <Button variant="secondary" disabled={busy} onClick={() => fileInput.current?.click()}>
@@ -151,7 +162,7 @@ export default function ArchiveFiles({
             )}
             <FormError>{error}</FormError>
           </Container>
-        </Modal>
+        </Modal>, document.body
       )}
     </Container>
   );

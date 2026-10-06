@@ -1,6 +1,6 @@
 # Archive
 
-Archive keeps an encrypted local copy of signed Nostr events for an account. It is available in Settings → Archive. It stores events, not recovery phrases or private keys; export your recovery material separately. Browser storage can be removed or evicted, so keep an encrypted archive file outside the browser when you need an independent copy.
+Archive keeps an encrypted local copy of signed Nostr events for an account. It is available in Settings → Archive. It stores events, not recovery phrases or private keys; export your recovery material separately. Browser storage can be removed or evicted, so keep an archive file outside the browser when you need an independent copy.
 
 ## Using Archive
 
@@ -20,9 +20,9 @@ After sync, a compact status distinguishes Complete, Incomplete, Error and Not s
 
 ## Export and import
 
-**Download archive** downloads a password-encrypted `.ndjson` archive. Choose a separate password of at least eight characters and keep it safe: the extension cannot recover it. **Import** accepts the same format for the matching public key. Imports verify the signed events, account ownership, chunk order and authenticated end marker before merging any events. Duplicate event IDs merge without duplicating the stored event.
+**Download archive** downloads ordinary signed events as `.ndjson`, one JSON event per line, without a file password. Private messages retain their protocol ciphertext; private keys and local relay metadata are not exported. **Import** accepts signed-event NDJSON for the selected account, checks ownership and signatures, then merges only after the complete input has been validated. Duplicate IDs do not create extra records. Old password-encrypted exports remain readable, with a password field shown only when such a file is selected. Both dialogs mount above the full popup rather than inside the Archive card.
 
-A file export holds a stable local archive while generating its chunks. File operations expire after ten minutes and stop when the vault locks. Files and local archives are bounded at 512 MiB; browser quota may be smaller. Export is chunked over extension RPC, but the popup assembles the encrypted download in memory. If a storage failure or lock interrupts the final import merge, already merged valid events remain; retrying the file safely deduplicates them.
+A file export holds a stable local archive while generating its chunks. File operations expire after ten minutes and stop when the vault locks. Files and local archives are bounded at 512 MiB; browser quota may be smaller. Export is chunked over extension RPC, but the popup assembles the download in memory. If a storage failure or lock interrupts the final import merge, already merged valid events remain; retrying the file safely deduplicates them.
 
 ## Migrate archive
 
@@ -59,3 +59,5 @@ Recoverable authentication failures receive up to three bounded attempts on fres
 Migration verification requests at most one public profile event using an ordinary Nostr filter. It requires the relay to finish the query and never publishes a test event; an artificial epoch cutoff is avoided because some relays leave that query unanswered.
 
 The Migrate archive card contains its own live status, result counters and pause control. Start migration verifies the destination and opens the event-count confirmation before publishing. The upper card continues to show relay sync results.
+
+Plain imports are sealed with a fresh, session-only AES-GCM key before temporary staging in IndexedDB. The staging chain is checked before merging, so event bodies remain encrypted locally. Ordinary NDJSON has no authenticated end marker: invalid or partial JSON is rejected, but a file ending between valid event lines is a valid subset. Legacy encrypted files retain their authenticated header, chunk-order and footer checks.

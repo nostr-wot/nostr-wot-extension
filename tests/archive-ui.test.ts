@@ -8,7 +8,7 @@ import browser from './helpers/browser-mock.ts';
 import { RelaysProvider } from '../src/context/RelaysContext.tsx';
 import { archiveRelayUrls } from '../src/domain/archive/settings.ts';
 import { AccountArchive } from '../src/screens/Archive/index.tsx';
-import { downloadArchive, importArchiveFile } from '../src/services/archive/fileTransfer.ts';
+import { downloadArchive, importArchiveFile, archiveFileNeedsPassword } from '../src/services/archive/fileTransfer.ts';
 import { type ArchiveState } from '../src/domain/archive/types.ts';
 
 function mount() {
@@ -394,4 +394,25 @@ test('migration failures open a details popup with event IDs and relay reasons',
     assert.match(dialog.textContent!, /blocked: relay policy/);
     assert.ok(dialog.textContent!.includes('ab'.repeat(32)));
   } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+
+test('archive file dialogs cover the popup and require no password for ordinary files', async context => {
+  const { dom, root } = mount();
+  context.mock.method(browser.runtime, 'sendMessage', async () => ({ result: initial() }));
+  try {
+    await act(async () => root.render(createElement(RelaysProvider, null, createElement(AccountArchive, { accountId: 'a' }))));
+    for (const label of ['archive.download', 'archive.import']) {
+      await act(async () => button(label).click());
+      const dialog = document.querySelector('[role="dialog"]')!;
+      assert.equal(dialog.parentElement?.parentElement, document.body);
+      assert.equal(dialog.querySelector('input[type="password"]'), null);
+      await act(async () => button('common.close').click());
+    }
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+test('only legacy encrypted archive headers request a password', async () => {
+  assert.equal(await archiveFileNeedsPassword(new File(['{"kind":1}\n'], 'events.ndjson')), false);
+  assert.equal(await archiveFileNeedsPassword(new File(['{"v":1,"type":"header","ct":"encrypted"}\n'], 'old.ndjson')), true);
+  assert.equal(await archiveFileNeedsPassword(new File(['not json'], 'invalid.ndjson')), false);
 });
