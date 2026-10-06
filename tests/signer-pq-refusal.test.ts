@@ -100,10 +100,13 @@ describe('post-quantum on a NIP-46 account', () => {
   it('still routes a classic nip44 encrypt to the bunker', async () => {
     // The guard must be scoped to post-quantum. If it leaked into the classic path it
     // would break every remote-signer account's ordinary DMs.
+    const payload = localAccount({ id: 'n1', type: 'nip46', privkey: null });
+    payload.activeAccountId = 'n1';
+    await vault.create(TEST_PASSWORD, payload);
     await permissions.save('chat.com', 'nip44Encrypt', null, 'allow');
     await assert.rejects(
       signer.handleNip44Encrypt(THEIR_PUBKEY_HEX, 'hello', 'chat.com'),
-      (err: Error) => !/post-quantum/.test(err.message),
+      { message: 'No NIP-46 config' },
       'a classic request must fail for bunker reasons, not post-quantum ones',
     );
   });

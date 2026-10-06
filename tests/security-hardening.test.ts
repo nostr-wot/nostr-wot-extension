@@ -92,23 +92,20 @@ describe('security: NIP-04 error normalization', () => {
     }
   });
 
-  it('wrong key produces generic error', async () => {
-    const privkey = randomBytes(32);
-    const theirPrivkey = randomBytes(32);
-    const theirPubkey = getPublicKey(theirPrivkey);
-    const wrongPrivkey = randomBytes(32);
-
-    const encrypted = await nip04Encrypt('hello', privkey, theirPubkey);
-
+  it('normalizes a wrong-key decryption failure with a fixed CBC fixture', async () => {
+    // CBC has no authentication: random wrong-key decryptions occasionally have
+    // valid padding. This fixed fixture exercises the error path deterministically.
+    const sender = new Uint8Array(32).fill(1);
+    const recipient = new Uint8Array(32).fill(2);
+    const wrong = new Uint8Array(32).fill(3);
+    const encrypted = '75PIQHs6uLR6w1araUAd8w==?iv=VMphja6ic97VDe0X2RS8Yw==';
     try {
-      await nip04Decrypt(encrypted, wrongPrivkey, getPublicKey(privkey));
-      assert.fail('Should have thrown');
-    } catch (err: any) {
-      assert.strictEqual(err.message, 'Decryption failed');
+      assert.equal(await nip04Decrypt(encrypted, recipient, getPublicKey(sender)), 'hello');
+      await assert.rejects(() => nip04Decrypt(encrypted, wrong, getPublicKey(sender)), { message: 'Decryption failed' });
     } finally {
-      privkey.fill(0);
-      theirPrivkey.fill(0);
-      wrongPrivkey.fill(0);
+      sender.fill(0);
+      recipient.fill(0);
+      wrong.fill(0);
     }
   });
 });

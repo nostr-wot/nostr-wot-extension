@@ -490,6 +490,8 @@ relay-fallback coverage without Node/undici's recursive error/close teardown.
 The theme handoff suite also verifies that theme persistence precedes native popup opening, refused popups retain the theme for manual opening without a separate page or retries, and failed storage writes still allow a popup attempt.
 ## Dependency ranges
 
+The test-only DOM dependency is pinned to jsdom 30.0.1. With 30.1.2, opening the approval action menu stalls the Node 24 UI test; the same test completes with 30.0.1 and the newer React version. Keep the menu focus and dismissal regression test enabled when evaluating a future jsdom upgrade. This dependency is not bundled in the extension. The classic remote-signer routing fixture must create an unlocked vault; otherwise the production unlock gate correctly waits for user input that this test never provides.
+
 Every suite above runs against the versions `package-lock.json` pins, because that is what `npm ci` installs — and what a plain `npm install` installs too. The lockfile is the pin and it holds; this section is not about ordinary builds.
 
 It is about the caret ranges in `package.json` being a published promise that the code works with anything they admit. Whoever resolves from the ranges instead of the lockfile gets software nobody here has run: `npm update`, a clone whose lockfile was dropped, a package manager that does not read `package-lock.json`, an automated dependency bump, or another project reusing `src/lib/crypto/`. A suite that only ever sees the pinned versions cannot notice when that promise stops being true.
@@ -504,7 +506,7 @@ Three things close the gap, at different levels:
 
 - **`tests/crypto/scrypt-maxmem.test.ts`** does not restate any version's expression, because that would only move the coupling one version along and would still be blind to a release that raises the charge again. It binary-searches the **installed** library for the smallest `maxmem` it will accept, and requires the bound to clear that with headroom to spare. It therefore fails on the old formula whichever version is installed, and fails one revision *before* a future noble breaks users rather than after. A separate assertion pins the bound below `N + p + SCRYPT_MAXMEM_SLACK_BLOCKS` blocks, because headroom is only free while it stays a small constant — slack scaling with `N` would authorise a multiple of the V table, and `log_n` comes from the payload.
 - **`tests/crypto/nip49.test.ts`** round-trips against `nostr-tools`' independent NIP-49 implementation in both directions, across every `key_security_byte` the spec defines and cost factors either side of the one we write. Before that, every test decoded with our own decoder, so a systematic encoder error would have round-tripped happily through all of them.
-- **The `crypto-latest-deps` job** in `.github/workflows/tests.yml` installs with `npm install --no-package-lock` — note that plain `npm install` would *not* float, since it honours the lockfile — then typechecks, builds, and re-runs crypto, vault, signer, NIP-46, NWC and generated-asset suites. It also runs weekly on a schedule, so upstream breakage is normally found on `main` rather than by whichever pull request happens to come next.
+- **The `crypto-latest-deps` job** in `.github/workflows/tests.yml` installs with `npm install --no-package-lock` — note that plain `npm install` would *not* float, since it honours the lockfile — then typechecks, builds, and re-runs crypto, vault, signer, NIP-46, NWC and generated-asset suites. It also runs weekly on a schedule, so upstream breakage is normally found on `main` rather than by whichever pull request happens to come next. Its vault, signer and hardening group runs one test file at a time to bound concurrent KDF and DOM worker resource use.
 
 Known gap, deliberately not closed here: three tests in `tests/wot-relay-transport.test.ts` call `mock.method(schnorr, 'verify', …)`, and `@noble/curves` froze that export in 2.2.0, so they fail on any version `^2.0.1` admits above 2.0.1. Production is unaffected — our code only calls schnorr and never patches it — and the fix is for those tests to use an injected verifier seam alongside the existing `_createSocket` and `_timeoutMs`, rather than reaching into the library. Those suites are consequently not in the floating job yet.
 
@@ -571,3 +573,20 @@ in `tests/pqc-handlers.test.ts` and `tests/hooks-lifecycle.test.ts`.
 ### Legacy website login
 
 Legacy website-login regressions in `authentication.test.ts`, `authentication-ui.test.ts` and `approval.test.ts` cover exact-origin/domain validation, malformed/stale requests, no saved or automatic grants, rejection, unchanged signed events, individual review grouping, danger notices and one-time-only controls.
+
+### Archive
+
+Archive UI coverage in `tests/archive-ui.test.ts` exercises confirmation and retry for deletion, storage-driven status refresh, explicit opt-in defaults, relay URL validation, encrypted file line boundaries, import finalization ordering and size/failure rejection. `tests/wizardMachine.test.ts` verifies account paths finish without an Archive prompt and restores a previously saved Archive step directly to completion.
+
+Archive service coverage:
+
+- `tests/archive-authentication.test.ts` verifies account/session scoping, explicit relay authentication and passive signing that preserves the vault lock deadline.
+- `tests/archive-background.test.ts` exercises privileged RPCs, worker resumption, partial relay failures, transaction failures, locking, scheduling and relay copying against controlled sockets.
+- `tests/archive-files.test.ts` checks encrypted round trips, passwords, account binding, tampering, truncation, ordering, invalid signatures and file-session expiration.
+- `tests/archive-policy.test.ts` pins ownership, encrypted-message eligibility, expiration and deletion/replacement copy exclusions.
+- `tests/archive-reconcile.test.ts` checks optional NIP-77 reconciliation, bounded missing-ID recovery and safe pagination fallback.
+- `tests/archive-storage.test.ts` checks encrypted records, account separation, deduplication, policy indexes and atomic rollback on quota or lock failures.
+- `tests/archive-sync.test.ts` covers relay-group validation, overlap ranges, inclusive timestamp pagination and checkpoint failure behavior.
+- `tests/archive-transport.test.ts` covers shared subscriptions, cancellation, signed-event validation and same-connection authentication and publication acknowledgements.
+
+The Chrome package smoke test also opens a popup with its language preference read deliberately stalled. It must render readable bundled fallback text within five seconds. Theme-handoff unit tests cover initialization rejection, indefinite waits and late recovery without recreating the React root.
