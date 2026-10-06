@@ -1251,5 +1251,22 @@
   "archive.relayColumn": "Relais",
   "archive.addedColumn": "Ajoutés",
   "archive.resultColumn": "Résultat",
-  "archive.incomplete": "Incomplet"
+  "archive.incomplete": "Incomplet",
+  "passkey.title": "Clé d’accès",
+  "passkey.create": "Créer avec une clé d’accès",
+  "passkey.createDesc": "Protégez une nouvelle identité avec votre appareil sans noter de phrase de récupération.",
+  "passkey.restore": "Restaurer le coffre avec une clé d’accès",
+  "passkey.restoreDesc": "Choisissez votre fichier de récupération chiffré, puis utilisez une des clés d’accès qu’il contient.",
+  "passkey.unlock": "Déverrouiller avec une clé d’accès",
+  "passkey.lostAccess": "Vous avez perdu votre clé d’accès ?",
+  "passkey.backup": "Enregistrez votre fichier de récupération",
+  "passkey.backupDesc": "Votre clé d’accès et ce fichier chiffré sont tous deux nécessaires pour restaurer votre identité après une réinstallation ou sur un autre appareil. Conservez le fichier hors de cette extension. Téléchargez une nouvelle copie après avoir ajouté des comptes ou modifié les clés. Les archives d’événements ne sauvegardent pas vos clés.",
+  "passkey.download": "Télécharger le fichier de récupération",
+  "passkey.confirmBackup": "J’ai conservé le fichier en lieu sûr et je comprends que ma clé d’accès est aussi nécessaire.",
+  "passkey.account": "Compte Nostr",
+  "passkey.explanation": "Nous générons votre identité sur cet appareil et la chiffrons avec votre clé d’accès. Le navigateur proposera les fournisseurs compatibles, tels que Mots de passe Apple ou le Gestionnaire de mots de passe Google. Un fichier de récupération chiffré est également nécessaire. Si le fournisseur ne peut pas chiffrer le coffre, choisissez la configuration avec une phrase de récupération.",
+  "passkey.add": "Ajouter une clé d’accès",
+  "passkey.added": "Clé ajoutée. Téléchargez un nouveau fichier de récupération pour l’inclure.",
+  "passkey.invalidBackup": "Fichier de récupération invalide ou trop volumineux.",
+  "passkey.unlockDescription": "Déverrouillez avec votre clé d’accès enregistrée pour continuer."
 }

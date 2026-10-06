@@ -1,3 +1,4 @@
+import PasskeySelector from '@components/PasskeySelector';
 import { useState, useEffect, useCallback, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -52,7 +53,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
     onUnlocked?.();
   }, [vault, onUnlocked]);
 
-  const { password, setPassword, error, loading, lockedUntil, inputRef, unlock, reset, focus } =
+  const { passkeySelection, passkey, checkingMethod, password, setPassword, error, loading, lockedUntil, inputRef, unlock, reset, focus } =
     useVaultUnlock({
       onSuccess: handleSuccess,
       messages: {
@@ -69,7 +70,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
   // seconds — the single most-used gate in the product reading as dead. Enter
   // could also fire a second vault_unlock mid-flight, and a wrong password then
   // counted twice against the persisted brute-force guard.
-  const busy = loading || isLockedOut;
+  const busy = loading || checkingMethod || isLockedOut;
 
   // Auto-unlock for "Never" mode vaults (encrypted with empty password)
   useEffect(() => {
@@ -134,8 +135,9 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           />
           <div className="text-lg font-semibold text-heading">{displayName}</div>
         </Container>
-        <Text variant="secondary" as="div" className="text-sm text-center mb-8">{message || t('unlock.vaultLocked')}</Text>
-        <input
+        <Text variant="secondary" as="div" className="text-sm text-center mb-8">{message || t(passkey ? 'passkey.unlockDescription' : 'unlock.vaultLocked')}</Text>
+        <PasskeySelector {...passkeySelection} />
+      {!passkey && !checkingMethod && <input
           ref={inputRef}
           type="password"
           className="w-full py-5 px-6 text-md bg-input border border-card-active rounded-md text-heading mb-4 box-border focus:outline-none focus:border-[rgba(99,102,241,0.5)]"
@@ -145,7 +147,7 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
           onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !busy && unlock()}
           autoComplete="off"
           disabled={busy}
-        />
+        />}
         <FormError>{error}</FormError>
         {unlockWaiters && unlockWaiters.length > 0 && (
           <Container gap={2} className="w-full mt-4">
@@ -177,12 +179,12 @@ export default function UnlockModal({ visible, fullScreen, message, unlockWaiter
             </ButtonSecondary>
           )}
           <Button className="flex-1" small onClick={unlock} disabled={busy}>
-            {loading ? t('common.loading') : t('common.unlock')}
+            {loading || checkingMethod ? t('common.loading') : t(passkey ? 'passkey.unlock' : 'common.unlock')}
           </Button>
         </Container>
         {fullScreen && !confirmReset && (
           <LinkButton className="block w-full mt-6 text-center hover:text-error" onClick={() => setConfirmReset(true)}>
-            {t('unlock.forgotPassword')}
+            {t(passkey ? 'passkey.lostAccess' : 'unlock.forgotPassword')}
           </LinkButton>
         )}
         {fullScreen && confirmReset && (

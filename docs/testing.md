@@ -589,4 +589,8 @@ Archive service coverage:
 - `tests/archive-sync.test.ts` covers relay-group validation, overlap ranges, inclusive timestamp pagination and checkpoint failure behavior.
 - `tests/archive-transport.test.ts` covers shared subscriptions, cancellation, signed-event validation and same-connection authentication and publication acknowledgements.
 
+### Passkey vaults
+
+`tests/passkey-vault.test.ts` covers encrypted storage, wrong credentials, corrupted ciphertext, independent credentials, file recovery, no-overwrite behavior, automatic-lock mode safety, legacy password compatibility, lifecycle cancellation and seed-free onboarding responses. `tests/passkey-client.test.ts` checks dedicated RP selection, required user verification, PRF failure, fresh assertion after registration and transient buffer clearing. `tests/passkey-ui.test.ts` and wizard tests cover recovery acknowledgement and settings behavior. `node scripts/smoke-passkey.mjs` runs against the built extension in a disposable Chromium profile with a virtual PRF authenticator. It exercises the actual creation UI, recovery download, lock/unlock and file restoration, verifying that the public key is unchanged. CI runs it after installing Chromium. Browser-provider support must also be checked with a real credential provider; a virtual Chromium authenticator validates the WebAuthn flow but does not certify Apple or Google synchronization or recovery.
+
 The Chrome package smoke test also opens a popup with its language preference read deliberately stalled. It must render readable bundled fallback text within five seconds. Theme-handoff unit tests cover initialization rejection, indefinite waits and late recovery without recreating the React root.

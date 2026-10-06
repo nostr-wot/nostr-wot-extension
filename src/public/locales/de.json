@@ -1251,5 +1251,22 @@
   "archive.relayColumn": "Relay",
   "archive.addedColumn": "Neu",
   "archive.resultColumn": "Ergebnis",
-  "archive.incomplete": "Unvollständig"
+  "archive.incomplete": "Unvollständig",
+  "passkey.title": "Passkey",
+  "passkey.create": "Mit Passkey erstellen",
+  "passkey.createDesc": "Schütze eine neue Identität mit deinem Gerät, ohne Wiederherstellungswörter aufzuschreiben.",
+  "passkey.restore": "Passkey-Tresor wiederherstellen",
+  "passkey.restoreDesc": "Wähle deine verschlüsselte Wiederherstellungsdatei und verwende einen der darin enthaltenen Passkeys.",
+  "passkey.unlock": "Mit Passkey entsperren",
+  "passkey.lostAccess": "Keinen Zugriff mehr auf deinen Passkey?",
+  "passkey.backup": "Wiederherstellungsdatei speichern",
+  "passkey.backupDesc": "Du brauchst deinen Passkey und diese verschlüsselte Datei, um deine Identität auf einem anderen Gerät oder nach einer Neuinstallation wiederherzustellen. Speichere die Datei außerhalb dieser Erweiterung. Lade nach neuen Konten oder geänderten Schlüsseln eine neue Kopie herunter. Ereignisarchive sichern deine Schlüssel nicht.",
+  "passkey.download": "Wiederherstellungsdatei herunterladen",
+  "passkey.confirmBackup": "Ich habe die Datei sicher gespeichert und weiß, dass ich auch meinen Passkey benötige.",
+  "passkey.account": "Nostr-Konto",
+  "passkey.explanation": "Wir erzeugen deine Identität auf diesem Gerät und verschlüsseln sie mit deinem Passkey. Dein Browser bietet unterstützte Anbieter wie Apple Passwörter oder den Google Passwortmanager an. Eine verschlüsselte Wiederherstellungsdatei ist ebenfalls erforderlich. Wenn dein Anbieter den Tresor nicht verschlüsseln kann, wähle die Einrichtung mit Wiederherstellungsphrase.",
+  "passkey.add": "Weiteren Passkey hinzufügen",
+  "passkey.added": "Passkey hinzugefügt. Lade eine neue Wiederherstellungsdatei herunter, die ihn enthält.",
+  "passkey.invalidBackup": "Ungültige oder zu große Wiederherstellungsdatei.",
+  "passkey.unlockDescription": "Entsperre mit deinem gespeicherten Passkey, um fortzufahren."
 }

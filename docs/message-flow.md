@@ -440,3 +440,7 @@ invoke this native wallet authentication path or supply trusted origin metadata.
 ## Archive requests
 
 Internal `archive_*` RPCs resolve a selected vault account and route to archive services. Settings and job transitions are serialized; network work runs in bounded, resumable slices. Websites cannot invoke these methods. Signed relay events are verified before encrypted storage, and copying preserves the signed event unchanged. See [Archive](archive.md).
+
+### Passkey vault messages
+
+Passkey enrollment and assertions run in the trusted extension UI with user verification. The UI sends only the credential ID, PRF salt and transient PRF output to `onboarding_createVault`; the background obtains the generated seed from the existing pending-onboarding store. `onboarding_generateAccount({ hideMnemonic: true })` keeps that seed out of the wizard response. All vault RPCs remain internal-page-only, including `vault_getPasskey`, `vault_listPasskeys`, `vault_unlockPasskey`, `vault_addPasskey`, `vault_exportPasskeyBackup` and `vault_restorePasskeyBackup`. They are not exposed through NIP-07, WebLN or the website bridge. PRF responses are never logged or persisted. Unlocking uses the existing failure guard, session checks and approval-queue notification. Recovery metadata is validated before WebAuthn and the encrypted payload is authenticated before any restore write.

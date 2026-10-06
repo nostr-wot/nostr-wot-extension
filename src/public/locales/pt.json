@@ -1251,5 +1251,22 @@
   "archive.relayColumn": "Relay",
   "archive.addedColumn": "Adicionados",
   "archive.resultColumn": "Resultado",
-  "archive.incomplete": "Incompleto"
+  "archive.incomplete": "Incompleto",
+  "passkey.title": "Chave de acesso",
+  "passkey.create": "Criar com chave de acesso",
+  "passkey.createDesc": "Proteja uma nova identidade com o dispositivo sem anotar palavras de recuperação.",
+  "passkey.restore": "Restaurar cofre com chave de acesso",
+  "passkey.restoreDesc": "Escolha seu arquivo de recuperação criptografado e use uma das chaves de acesso incluídas nele.",
+  "passkey.unlock": "Desbloquear com chave de acesso",
+  "passkey.lostAccess": "Perdeu o acesso à sua chave?",
+  "passkey.backup": "Salve seu arquivo de recuperação",
+  "passkey.backupDesc": "Sua chave de acesso e este arquivo criptografado são necessários para recuperar sua identidade em outro dispositivo ou após reinstalar. Guarde o arquivo fora desta extensão. Baixe uma nova cópia após adicionar contas ou alterar chaves. O arquivo de eventos não salva suas chaves.",
+  "passkey.download": "Baixar arquivo de recuperação",
+  "passkey.confirmBackup": "Salvei o arquivo em um local seguro e entendo que também preciso da chave de acesso.",
+  "passkey.account": "Conta Nostr",
+  "passkey.explanation": "Geramos sua identidade neste dispositivo e a criptografamos com sua chave de acesso. O navegador oferecerá provedores compatíveis, como Senhas da Apple ou Gerenciador de senhas do Google. Você também precisa de um arquivo de recuperação criptografado. Se seu provedor não puder criptografar o cofre, escolha a configuração com frase de recuperação.",
+  "passkey.add": "Adicionar outra chave de acesso",
+  "passkey.added": "Chave adicionada. Baixe um novo arquivo de recuperação para incluí-la.",
+  "passkey.invalidBackup": "Arquivo de recuperação inválido ou muito grande.",
+  "passkey.unlockDescription": "Desbloqueie com sua chave de acesso salva para continuar."
 }

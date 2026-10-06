@@ -134,3 +134,27 @@ test('unknown restored steps and unsupported methods cannot strand the wizard', 
   assert.equal(restored.step, WizardStep.Done);
   assert.equal(reducer(restored, { type: 'DONE' }).step, WizardStep.Done);
 });
+
+test('passkey creation requires encrypted recovery backup before following or archive, without mnemonic or password steps', () => {
+  const created = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'passkey' } },
+    { type: 'CREATED', payload: { account: { id: 'passkey-account' } } },
+  ], { hasAccounts: false });
+  assert.equal(created.step, WizardStep.PasskeyBackup);
+  assert.equal(created.ctx.mnemonic, null);
+  assert.equal(reducer(created, { type: 'BACK' }).step, WizardStep.PasskeyBackup);
+  const following = reducer(created, { type: 'DONE' });
+  assert.equal(following.step, WizardStep.FollowSuggestions);
+  assert.equal(reducer(following, { type: 'BACK' }).step, WizardStep.PasskeyBackup);
+  assert.equal(reducer(following, { type: 'DONE' }).step, WizardStep.Done);
+});
+
+test('restoring a passkey vault finishes without creating another account or password', () => {
+  const restored = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'passkeyRestore' } },
+    { type: 'DONE', payload: { account: { id: 'restored' } } },
+  ], { hasAccounts: false });
+  assert.equal(restored.step, WizardStep.Done);
+  assert.deepEqual(restored.ctx.account, { id: 'restored' });
+  assert.equal(restored.ctx.mnemonic, null);
+});

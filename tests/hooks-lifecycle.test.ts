@@ -154,7 +154,8 @@ it('key action ignores an abandoned auto-unlock result instead of refreshing its
  } finally { await view.close(); }
 });
 
-it('localized unlock messages do not restart consumers when only their object identity changes', async () => {
+it('localized unlock messages do not restart consumers when only their object identity changes', async t => {
+ t.mock.method(browser.runtime, 'sendMessage', async () => ({ result: [] }));
  const view = await mount(); let unlock!: ReturnType<typeof useVaultUnlock>;
  const success = () => {};
  function Probe({ language }: { language: string }) {

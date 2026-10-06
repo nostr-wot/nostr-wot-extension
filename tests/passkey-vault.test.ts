@@ -1,0 +1,153 @@
+import { beforeEach, afterEach, describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import browser, { resetMockStorage } from './helpers/browser-mock.ts';
+import * as vault from '../src/services/vault/vault.ts';
+import { handlers } from '../src/services/background/vault-handlers.ts';
+import { handlers as onboarding } from '../src/services/background/onboarding-handlers.ts';
+import { arrayToBase64 } from '../src/lib/crypto/utils.ts';
+import { parsePasskeyBackup, validatePasskeyInput } from '../src/domain/vault/passkey.ts';
+import { wrapVaultKey, unwrapVaultKey } from '../src/services/vault/passkeyEncryption.ts';
+import type { PasskeyInput } from '../src/domain/vault/passkey.ts';
+import type { VaultPayload } from '../src/domain/vault/types.ts';
+
+const input = (n = 1): PasskeyInput => ({ credentialId: arrayToBase64(new Uint8Array(32).fill(n)), prfSalt: arrayToBase64(new Uint8Array(32).fill(n + 1)), prf: arrayToBase64(new Uint8Array(32).fill(n + 2)) });
+const payload = (): VaultPayload => ({ accounts: [{ id: 'test', name: 'Test', type: 'nsec', pubkey: 'a'.repeat(64), privkey: 'b'.repeat(64), mnemonic: null, nip46Config: null, readOnly: false, createdAt: 1 }], activeAccountId: 'test' });
+const record = async () => (await browser.storage.local.get('keyVault')).keyVault as any;
+
+describe('passkey vault encryption and lifecycle', () => {
+  beforeEach(() => { vault.lock(); resetMockStorage(); });
+  afterEach(() => vault.lock());
+
+  it('keeps secrets out of storage, refuses passwords, unlocks with PRF after saving', async () => {
+    await vault.create('', payload(), input());
+    const stored = await record();
+    assert.equal(stored.version, 2);
+    assert.equal(stored.protection, 'passkey');
+    assert.equal(stored.salt, undefined);
+    assert.equal(JSON.stringify(stored).includes(input().prf), false);
+    assert.equal(JSON.stringify(stored).includes('b'.repeat(64)), false);
+    await vault.addAccount({ ...payload().accounts[0], id: 'second' });
+    assert.deepEqual((await record()).passkeys, stored.passkeys);
+    vault.lock();
+    assert.equal(await vault.unlock(''), false);
+    assert.equal(await vault.unlock('anypassword'), false);
+    assert.equal(await vault.unlockPasskey(input(3)), false);
+    assert.equal(await vault.unlockPasskey({ ...input(), prf: input(4).prf }), false);
+    assert.equal(await vault.unlockPasskey(input()), true);
+    assert.equal(vault.listAccounts().length, 2);
+    await vault.withPrivkey('test', async bytes => assert.equal(bytes.length, 32));
+  });
+
+  it('rejects unsupported PRF, tampering and wrong credential bindings', async () => {
+    assert.throws(() => validatePasskeyInput({ ...input(), prf: '' }));
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    const wrapped = await wrapVaultKey(bytes, input());
+    assert.deepEqual(await unwrapVaultKey(wrapped, input()), bytes);
+    await assert.rejects(unwrapVaultKey(wrapped, input(4)));
+    await assert.rejects(unwrapVaultKey({ ...wrapped, prfSalt: input(4).prfSalt }, input()));
+    await vault.create('', payload(), input());
+    const saved = await record();
+    saved.ciphertext = arrayToBase64(new Uint8Array(32));
+    await browser.storage.local.set({ keyVault: saved });
+    vault.lock();
+    assert.equal(await vault.unlockPasskey(input()), false);
+    assert.equal(vault.isLocked(), true);
+  });
+
+  it('adds an independent credential without changing identity and restores using that credential', async () => {
+    await vault.create('', payload(), input());
+    await vault.addPasskey(input(), input(5));
+    assert.equal((await vault.listPasskeys()).length, 2);
+    await assert.rejects(vault.addPasskey(input(), input(5)), /already added/);
+    const backup = await vault.exportPasskeyBackup();
+    assert.equal(parsePasskeyBackup(backup).passkeys.length, 2);
+    await assert.rejects(vault.restorePasskeyBackup(backup, input()), /already exists/);
+    await vault.destroy();
+    await assert.rejects(vault.restorePasskeyBackup(backup, input(7)));
+    assert.equal(await vault.exists(), false);
+    await vault.restorePasskeyBackup(backup, input(5));
+    assert.equal(vault.getActivePubkey(), 'a'.repeat(64));
+    vault.lock();
+    assert.equal(await vault.unlockPasskey(input()), true);
+  });
+
+  it('keeps password vaults compatible and cannot silently downgrade passkey protection', async () => {
+    await vault.create('password123', payload());
+    assert.equal(await vault.getPasskey(), null);
+    vault.lock();
+    assert.equal(await vault.unlock('password123'), true);
+    await vault.destroy();
+    await vault.create('', payload(), input());
+    await assert.rejects(vault.reEncrypt('password456'), /do not use a password/);
+    await assert.rejects(handlers.get('vault_setAutoLock')!({ ms: 0 }), /automatic locking/);
+    await browser.storage.local.set({ autoLockMs: 0 });
+    await vault.restoreAutoLockSetting();
+    await handlers.get('vault_setAutoLock')!({ ms: 60000, password: 'password456' });
+    assert.equal((await record()).protection, 'passkey');
+    await assert.rejects(vault.create('', payload(), input(4)), /already exists/);
+  });
+
+  it('fails closed on malformed backup or a locked export', async () => {
+    assert.throws(() => parsePasskeyBackup('{}'));
+    assert.throws(() => parsePasskeyBackup('x'.repeat(16 * 1024 * 1024 + 1)));
+    await vault.create('', payload(), input());
+    const backup = JSON.parse(await vault.exportPasskeyBackup());
+    backup.vault.rpId = 'example.com';
+    assert.throws(() => parsePasskeyBackup(JSON.stringify(backup)));
+    vault.lock();
+    await assert.rejects(vault.exportPasskeyBackup(), /locked/);
+  });
+
+  it('uses the same file-size limit for export and import', async () => {
+    await vault.create('', payload(), input());
+    const saved = await record();
+    saved.ciphertext = arrayToBase64(new Uint8Array(13 * 1024 * 1024));
+    await browser.storage.local.set({ keyVault: saved });
+    await assert.rejects(vault.exportPasskeyBackup(), /size limit/);
+  });
+
+  it('can replace an unlocked empty vault after the last account is removed', async () => {
+    await vault.create('password123', payload());
+    await vault.removeAccount('test');
+    await vault.create('', payload(), input());
+    assert.equal((await record()).protection, 'passkey');
+  });
+
+  it('reset clears onboarding state so recovery can start from the method screen', async () => {
+    await vault.create('', payload(), input());
+    await browser.storage.session.set({ wizardState: { step: 'passkeyBackup' }, wizardCreateData: { account: 'old' } });
+    await handlers.get('vault_destroy')!({});
+    const session = await browser.storage.session.get(['wizardState', 'wizardCreateData']);
+    assert.equal(session.wizardState, undefined);
+    assert.equal(session.wizardCreateData, undefined);
+  });
+
+  it('a concurrent lock wins over a pending passkey unlock', async () => {
+    await vault.create('', payload(), input());
+    vault.lock();
+    const original = browser.storage.local.get;
+    let entered!: () => void, release!: () => void;
+    const started = new Promise<void>(r => { entered = r; });
+    const gate = new Promise<void>(r => { release = r; });
+    browser.storage.local.get = async (...args) => { const result = await original(...args); entered(); await gate; return result; };
+    try {
+      const unlocking = vault.unlockPasskey(input());
+      await started; vault.lock(); release();
+      assert.equal(await unlocking, false);
+      assert.equal(vault.isLocked(), true);
+    } finally { release(); browser.storage.local.get = original; }
+  });
+
+  it('onboarding never returns the seed for the passkey path and can retry invalid enrollment', async () => {
+    const generated = await onboarding.get('onboarding_generateAccount')!({ hideMnemonic: true }) as any;
+    assert.ok(generated.account.pubkey);
+    assert.equal(generated.mnemonic, undefined);
+    assert.equal(generated.account.privkey, undefined);
+    await assert.rejects(onboarding.get('onboarding_createVault')!({ account: generated.account, passkey: { ...input(), prf: '' } }));
+    assert.equal(await vault.exists(), false);
+    await onboarding.get('onboarding_createVault')!({ account: generated.account, passkey: input(), autoLockMinutes: 15 });
+    assert.equal(vault.getActivePubkey(), generated.account.pubkey);
+    vault.lock();
+    assert.equal(await handlers.get('vault_unlockPasskey')!({ ...input() }), true);
+  });
+});

@@ -1,3 +1,5 @@
+import { WIZARD_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
+import type { PasskeyInput, PasskeyProof } from '@domain/vault/passkey.ts';
 import { revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { countWords } from '@utils/text.ts';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
@@ -56,35 +58,51 @@ async function recordUnlockFailure(): Promise<void> {
     await browser.storage.local.set({ [UNLOCK_GUARD_KEY]: guard });
 }
 
+async function unlockVault(password?: string, proof?: PasskeyProof): Promise<boolean> {
+    const guard = await readUnlockGuard();
+    if (guard.lockedUntil > Date.now()) {
+        const secondsLeft = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
+        throw new Error(`Too many failed attempts. Try again in ${secondsLeft}s`);
+    }
+    const unlockResult = proof ? await vault.unlockPasskey(proof) : await vault.unlock(password!);
+    if (!unlockResult) {
+        await recordUnlockFailure();
+    }
+    if (unlockResult) {
+        await browser.storage.local.remove(UNLOCK_GUARD_KEY);
+        // Re-arm the persisted auto-lock interval (not the 15-min default that
+        // _autoLockMs resets to on every service-worker cold start). See bug #10.
+        await vault.restoreAutoLockSetting();
+        const unlockData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        if (unlockData.activeAccountId) {
+            try {
+                await vault.setActiveAccount(unlockData.activeAccountId);
+            } catch {
+                vault.clearActiveAccount();
+            }
+        }
+        await signerApprovalQueue.onVaultUnlocked();
+    }
+    return unlockResult;
+}
+
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
-    ['vault_unlock', async (params) => {
-        const guard = await readUnlockGuard();
-        if (guard.lockedUntil > Date.now()) {
-            const secondsLeft = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
-            throw new Error(`Too many failed attempts. Try again in ${secondsLeft}s`);
-        }
-        const unlockResult = await vault.unlock(params.password as string);
-        if (!unlockResult) {
-            await recordUnlockFailure();
-        }
-        if (unlockResult) {
-            await browser.storage.local.remove(UNLOCK_GUARD_KEY);
-            // Re-arm the persisted auto-lock interval (not the 15-min default that
-            // _autoLockMs resets to on every service-worker cold start). See bug #10.
-            await vault.restoreAutoLockSetting();
-            const unlockData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
-            if (unlockData.activeAccountId) {
-                try {
-                    await vault.setActiveAccount(unlockData.activeAccountId);
-                } catch {
-                    vault.clearActiveAccount();
-                }
-            }
-            await signerApprovalQueue.onVaultUnlocked();
-        }
-        return unlockResult;
+    ['vault_unlock', async params => unlockVault(params.password as string)],
+    ['vault_unlockPasskey', async params => unlockVault(undefined, params as unknown as PasskeyProof)],
+    ['vault_getPasskey', async () => vault.getPasskey()],
+    ['vault_listPasskeys', async () => vault.listPasskeys()],
+    ['vault_exportPasskeyBackup', async () => vault.exportPasskeyBackup()],
+    ['vault_addPasskey', async params => {
+        await vault.addPasskey(params.existing as PasskeyProof, params.passkey as PasskeyInput);
+        return { ok: true };
+    }],
+    ['vault_restorePasskeyBackup', async params => {
+        await vault.restorePasskeyBackup(params.backup as string, params as unknown as PasskeyProof);
+        const restored = vault.listAccounts();
+        await syncActivePubkey();
+        return { accounts: restored, account: restored.find(a => a.id === vault.getActiveAccountId()) };
     }],
 
     ['vault_lock', async () => {
@@ -113,6 +131,12 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_exists', async () => vault.exists()],
 
     ['vault_setAutoLock', async (params) => {
+        if (await vault.getPasskey()) {
+            if (typeof params.ms !== 'number' || !Number.isFinite(params.ms) || params.ms <= 0) throw new Error('Passkey vaults require automatic locking');
+            vault.setAutoLockTimeout(params.ms);
+            await browser.storage.local.set({ autoLockMs: params.ms });
+            return { result: true };
+        }
         const prevMs = ((await browser.storage.local.get(['autoLockMs'])) as Record<string, number>).autoLockMs ?? DEFAULT_AUTO_LOCK_MS;
         const wasNever = prevMs === 0;
         const willBeNever = params.ms === 0;
@@ -311,6 +335,7 @@ export const handlers = new Map<string, HandlerFn>([
         await revokeAuthenticationGrants();
         await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
+        await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';
         return { ok: true };

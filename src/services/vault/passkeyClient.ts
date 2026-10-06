@@ -1,0 +1,58 @@
+import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS } from '@constants/passkey.ts';
+import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
+import { parsePasskeyBackup, type PasskeyInput, type PasskeyMetadata, type PasskeyProof } from '@domain/vault/passkey.ts';
+
+type PrfExtensions = AuthenticationExtensionsClientInputs & { prf: { eval: { first: BufferSource } } };
+type PrfResult = AuthenticationExtensionsClientOutputs & { prf?: { enabled?: boolean; results?: { first: ArrayBuffer } } };
+
+export function passkeysAvailable(): boolean {
+  return typeof PublicKeyCredential !== 'undefined' && typeof navigator.credentials?.create === 'function' && typeof navigator.credentials?.get === 'function';
+}
+
+function requireSupport(): void {
+  if (!passkeysAvailable()) throw new Error('Passkeys are unavailable in this browser. Use password setup instead.');
+}
+
+/** No network service or website script participates in vault unlocking. */
+export async function authenticatePasskey(metadata: PasskeyMetadata): Promise<PasskeyProof> {
+  requireSupport();
+  const credential = await navigator.credentials.get({ publicKey: {
+    rpId: PASSKEY_RP_ID,
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials: [{ type: 'public-key', id: base64ToArray(metadata.credentialId) as BufferSource }],
+    userVerification: 'required', timeout: PASSKEY_TIMEOUT_MS,
+    extensions: { prf: { eval: { first: base64ToArray(metadata.prfSalt) as BufferSource } } } as PrfExtensions,
+  } }) as PublicKeyCredential | null;
+  if (!credential || arrayToBase64(new Uint8Array(credential.rawId)) !== metadata.credentialId) throw new Error('Passkey request cancelled or credential did not match');
+  const output = (credential.getClientExtensionResults() as PrfResult).prf?.results?.first;
+  if (!output || output.byteLength !== 32) throw new Error('This passkey provider cannot encrypt a vault (PRF is unavailable). Use another provider or password setup.');
+  const bytes = new Uint8Array(output);
+  try { return { credentialId: metadata.credentialId, prf: arrayToBase64(bytes) }; }
+  finally { bytes.fill(0); }
+}
+
+export async function createPasskey(name: string): Promise<PasskeyInput> {
+  requireSupport();
+  const salt = crypto.getRandomValues(new Uint8Array(32));
+  const credential = await navigator.credentials.create({ publicKey: {
+    rp: { id: PASSKEY_RP_ID, name: 'Nostr WoT Vault' },
+    user: { id: crypto.getRandomValues(new Uint8Array(32)), name: name.trim() || 'Nostr WoT', displayName: name.trim() || 'Nostr WoT' },
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+    authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+    attestation: 'none', timeout: PASSKEY_TIMEOUT_MS,
+    extensions: { prf: { eval: { first: salt } } } as PrfExtensions,
+  } }) as PublicKeyCredential | null;
+  if (!credential) throw new Error('Passkey creation cancelled');
+  const initial = (credential.getClientExtensionResults() as PrfResult).prf;
+  // Do not keep a registration PRF output. Always prove this credential can be used again.
+  if (initial?.results?.first) new Uint8Array(initial.results.first).fill(0);
+  const metadata = { credentialId: arrayToBase64(new Uint8Array(credential.rawId)), prfSalt: arrayToBase64(salt) };
+  return { ...metadata, ...await authenticatePasskey(metadata) };
+}
+
+export function parsePasskeyBackupMetadata(text: string): PasskeyMetadata {
+  const record = parsePasskeyBackup(text);
+  const { credentialId, prfSalt } = record.passkeys[0];
+  return { credentialId, prfSalt };
+}

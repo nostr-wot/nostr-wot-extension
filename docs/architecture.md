@@ -182,7 +182,7 @@ From `manifest.json` (MV3):
 }
 ```
 
-There is no `optional_permissions` key. `host_permissions` contains only `https://nostr-wot.com/*`, used for the project-site bridge/tab discovery. Connecting another website does not request a host grant. `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
+There is no `optional_permissions` key. `host_permissions` contains `https://nostr-wot.com/*` for the project-site bridge/tab discovery and `https://passkeys.nostr-wot.com/*` for the dedicated vault WebAuthn RP. Connecting another website does not request a host grant. `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
 
 Firefox-specific settings (`browser_specific_settings`):
 ```json
@@ -290,5 +290,9 @@ settings controls. No background RPC, site permission or account migration is ne
 Account-scoped archiving composes the vault private-cache encryption, the shared relay transport, browser alarms and existing UI primitives. Domain policy lives in `domain/archive`; storage, resumable work and encrypted file sessions live in `services/archive`. The background is the sole archive writer. See [Archive](archive.md) for the lifecycle and data boundaries.
 
 Archive configuration and limits are defined in `constants/archive.ts`, its explicit copy allowlist in `constants/archive-policy.ts`, and versioned encryption parameters in `constants/crypto/archive.ts`. UI and background consumers import these directly. Pure relay filtering and NIP-01 replacement ordering live in `domain/relays/filter.ts` and `domain/nostr/eventOrdering.ts`; Archive, live relay reads and follow-list protection reuse them. `services/archive/fileTransfer.ts` owns popup-side file/RPC orchestration, while `screens/Archive/ArchiveFiles.tsx` owns the dialog. Archive is configured from Settings rather than onboarding; `WizardStep` in `constants/wizard.ts` names every transition and screen, retaining the existing persisted string values.
+
+### Passkey vault ownership
+
+`domain/vault/passkey.ts` owns credential/record contracts and bounded recovery-file validation; `constants/passkey.ts` owns the RP, encryption context and limits. `services/vault/passkeyClient.ts` handles browser WebAuthn only, while `passkeyEncryption.ts` wraps random vault keys. The existing vault service owns the unlocked session and serializes create, save, additional-credential and restore writes. Onboarding and vault handlers reuse the existing internal-page privilege boundary. The shared unlock hook and credential selector serve popup, prompt, key export and account-addition flows. Security settings reuse the same recovery download component as onboarding.
 
 Popup preference initialization is bounded to 1.5 seconds before mounting with bundled English defaults. Delayed initialization refreshes the existing React root without remounting it. Theme and language failures cannot prevent first render; the existing splash timing is unchanged.

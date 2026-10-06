@@ -15,6 +15,7 @@ import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@context/VaultContext';
 
+import PasskeySection from './PasskeySection';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 import StatusNotice from '@components/StatusNotice';
@@ -26,6 +27,7 @@ interface SecuritySectionProps {
 }
 
 export default function SecuritySection({ onChangePassword }: SecuritySectionProps) {
+  const [passkey, setPasskey] = useState<boolean | null>(null);
   const [autoLockMs, setAutoLockMs] = useState<number>(DEFAULT_AUTO_LOCK_MS);
   const [pendingMs, setPendingMs] = useState<number | null>(null);
   // The pair for "turning auto-lock on" (never → timed). Disabling it
@@ -38,6 +40,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
   const vault = useVault();
 
   useEffect(() => {
+    rpc('vault_getPasskey').then((metadata) => setPasskey(!!metadata)).catch(() => {});
     rpc<number>('vault_getAutoLock').then((ms) => {
       if (typeof ms === 'number') setAutoLockMs(ms);
     }).catch(() => {});
@@ -47,6 +50,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
   // Does this selection require password confirmation?
   const needsPassword = (ms: number): boolean => {
+    if (passkey) return false;
     const wasNever = autoLockMs === 0;
     const willBeNever = ms === 0;
     return wasNever !== willBeNever;
@@ -113,12 +117,13 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
   return (
     <Container gap={4} className="flex-1 py-2">
+      {passkey && <PasskeySection locked={vault.locked} />}
       {vault.exists && (
         <Card>
           <SectionLabel>{t('security.autoLock')}</SectionLabel>
           <SectionHint>{t('security.autoLockDesc')}</SectionHint>
           <ChipGroup
-            options={AUTO_LOCK_OPTIONS.map((opt: AutoLockOption) => ({ value: opt.ms, label: t(opt.labelKey) }))}
+            options={AUTO_LOCK_OPTIONS.filter((option) => passkey === false || option.ms !== 0).map((opt: AutoLockOption) => ({ value: opt.ms, label: t(opt.labelKey) }))}
             value={displayMs}
             onChange={handleChipSelect}
           />
@@ -169,7 +174,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
         </Card>
       )}
 
-      {vault.exists && !vault.locked && !isNever && (
+      {vault.exists && !vault.locked && !isNever && passkey === false && (
         <ListRow
           variant="standalone"
           leadingChip={false}
