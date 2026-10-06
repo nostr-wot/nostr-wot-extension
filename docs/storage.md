@@ -57,3 +57,7 @@ Managed by privileged methods `wallet_setAutoApproveThreshold` and `wallet_getAu
 `src/services/wot/snapshots.ts` commits the large payload before publishing its summary pointer and serializes mutations. Failed writes retain the prior completed snapshot; abandoned generations are cleaned up. Legacy experimental local-storage snapshots migrate when read. Account identity must match the snapshot root before queries use it.
 
 The settings database table exposes estimated payload sizes and resync/delete actions per account. Deleting the shared public-list cache preserves snapshots; deleting a snapshot preserves identity keys and accounts. Removal is blocked while sync is running. Disabling WoT preserves stored graphs. Private decrypted mute entries are not saved in either graph store. See [WoT storage and sync](wot.md).
+
+## Account event archive
+
+The account event archive uses its own encrypted IndexedDB database, independently of the profile cache and WoT graph. It stores original signed events, encrypted message envelopes, deduplication indexes and per-relay coverage checkpoints. Small settings and resumable job metadata live in local extension storage. See [Archive](archive.md) for encryption, bounds, import/export and deletion behavior.

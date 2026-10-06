@@ -1,3 +1,4 @@
+import { WizardStep } from '../src/constants/wizard.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { reducer, createInitialState, type WizardState, type WizardOptions } from '../src/domain/wizard/wizardMachine.ts';
@@ -13,7 +14,7 @@ const fresh = () => createInitialState({ skipLang: true }); // starts at 'method
 // These tests lock in that the flow never routes through it and lands correctly.
 
 test('wotSync is never reachable from any onboarding path', () => {
-  // create -> verify -> password -> followSuggestions -> done (no accounts yet)
+  // create -> verify -> password -> followSuggestions -> archive (no accounts yet)
   const created = run(fresh(), [
     { type: 'SELECT', payload: { method: 'create' } },
     { type: 'CREATED', payload: { account: { id: 'a' }, mnemonic: 'seed words' } },
@@ -35,7 +36,7 @@ test('create flow with existing accounts ends at permCopy (not wotSync)', () => 
   assert.equal(s.step, 'permCopy');
 });
 
-test('import flow goes password -> done (no accounts), skipping wotSync', () => {
+test('import flow goes password -> archive (no accounts), skipping wotSync', () => {
   const s = run(fresh(), [
     { type: 'SELECT', payload: { method: 'import' } },
     { type: 'IMPORTED', payload: { account: { id: 'i' }, upgradeId: null } },
@@ -53,7 +54,7 @@ test('import flow with existing accounts goes password -> permCopy', () => {
   assert.equal(s.step, 'permCopy');
 });
 
-test('upgraded import still goes straight to done', () => {
+test('upgraded import still goes through completion', () => {
   const s = run(fresh(), [
     { type: 'SELECT', payload: { method: 'import' } },
     { type: 'IMPORTED', payload: { account: { id: 'i' }, upgradeId: 'up1' } },
@@ -62,7 +63,7 @@ test('upgraded import still goes straight to done', () => {
   assert.equal(s.step, 'done');
 });
 
-test('watch-only (npub) goes straight to done / permCopy, not wotSync', () => {
+test('watch-only (npub) goes through completion / permCopy, not wotSync', () => {
   const noAcct = run(fresh(), [
     { type: 'SELECT', payload: { method: 'npub' } },
     { type: 'DONE', payload: { account: { id: 'n' } } },
@@ -76,7 +77,7 @@ test('watch-only (npub) goes straight to done / permCopy, not wotSync', () => {
   assert.equal(withAcct.step, 'permCopy');
 });
 
-test('subaccount flow reaches followSuggestions then done, no wotSync', () => {
+test('subaccount flow reaches followSuggestions then completion, no wotSync', () => {
   const s = run(fresh(), [
     { type: 'SELECT', payload: { method: 'create' } }, // hasGeneratedAccount -> subaccount
     { type: 'CREATED', payload: { account: { id: 'sub' } } },
@@ -105,4 +106,31 @@ test('permCopy BACK returns to the right prior step (no wotSync)', () => {
     { type: 'BACK' },
   ], { hasGeneratedAccount: false, hasAccounts: true });
   assert.equal(importPath.step, 'password');
+});
+
+for (const method of ['create', 'import', 'npub', 'nip46']) {
+  test(`${method}: permissions lead directly to completion`, () => {
+    const state = { ...fresh(), step: WizardStep.PermissionCopy, ctx: { ...fresh().ctx, method, account: { id: 'a' } } };
+    const archive = reducer(state, { type: 'DONE' }, { hasAccounts: true });
+    assert.equal(archive.step, 'done');
+    assert.equal(reducer(archive, { type: 'BACK' }).step, 'done');
+    assert.equal(reducer(archive, { type: 'DONE' }).step, 'done');
+  });
+}
+test('NIP-46 reaches completion after password with no existing account', () => {
+  const state = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'nip46' } },
+    { type: 'DONE', payload: { account: { id: 'remote' } } },
+    { type: 'SET' },
+  ], { hasAccounts: false });
+  assert.equal(state.step, 'done');
+});
+
+test('unknown restored steps and unsupported methods cannot strand the wizard', () => {
+  const state = createInitialState({ skipLang: true });
+  assert.equal(reducer(state, { type: 'RESTORE', payload: { step: 'missing', ctx: state.ctx } }), state);
+  assert.equal(reducer(state, { type: 'SELECT', payload: { method: 'missing' } }), state);
+  const restored = reducer(state, { type: 'RESTORE', payload: { step: 'archive', ctx: state.ctx } });
+  assert.equal(restored.step, WizardStep.Done);
+  assert.equal(reducer(restored, { type: 'DONE' }).step, WizardStep.Done);
 });

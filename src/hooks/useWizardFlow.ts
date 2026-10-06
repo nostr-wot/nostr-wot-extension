@@ -1,4 +1,4 @@
-import { WIZARD_STORAGE_KEY as STORAGE_KEY, WIZARD_PERSIST_TTL_MS as PERSIST_TTL_MS } from '@constants/wizard.ts';
+import { WizardStep, WIZARD_STORAGE_KEY as STORAGE_KEY, WIZARD_PERSIST_TTL_MS as PERSIST_TTL_MS } from '@constants/wizard.ts';
 import { useReducer, useCallback, useRef, useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import {
@@ -7,10 +7,10 @@ import {
 } from '@domain/wizard/wizardMachine.ts';
 import type { WizardState, WizardAction, WizardOptions, WizardContext } from '@domain/wizard/wizardMachine.ts';
 
-const NON_PERSIST_STEPS = ['lang', 'welcome', 'method', 'done'];
+const NON_PERSIST_STEPS: WizardStep[] = [WizardStep.Language, WizardStep.Welcome, WizardStep.Method, WizardStep.Done];
 
 interface UseWizardFlowOptions {
-  initialStep?: string;
+  initialStep?: WizardStep;
   skipLang?: boolean;
   hasAccounts?: boolean;
   hasGeneratedAccount?: boolean;
@@ -18,7 +18,7 @@ interface UseWizardFlowOptions {
 }
 
 interface UseWizardFlowResult {
-  step: string;
+  step: WizardStep;
   context: WizardContext;
   account: unknown | null;
   mnemonic: string | null;
@@ -38,7 +38,7 @@ interface UseWizardFlowResult {
  * wizard survives popup close/reopen (e.g. user clicks away to check seed file).
  */
 export default function useWizardFlow({
-  initialStep = 'lang',
+  initialStep = WizardStep.Language,
   skipLang = false,
   hasAccounts = false,
   hasGeneratedAccount = false,
@@ -107,9 +107,9 @@ export default function useWizardFlow({
   }, [persist]);
 
   const { step, ctx } = state;
-  const showBack = step !== (skipLang ? 'method' : initialStep)
-    && step !== 'done'
-    && !(step === 'method' && !ctx.visitedPreMethod);
+  const showBack = step !== (skipLang ? WizardStep.Method : initialStep)
+    && step !== WizardStep.Done
+    && !(step === WizardStep.Method && !ctx.visitedPreMethod);
 
   return {
     step,

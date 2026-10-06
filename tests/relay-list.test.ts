@@ -1,4 +1,4 @@
-import { test, afterEach } from 'node:test';
+import { test, afterEach, mock as nodeMock } from 'node:test';
 import assert from 'node:assert/strict';
 import { resetMockStorage } from './helpers/browser-mock.ts';
 import { fetchRelayList } from '../src/services/background/relay-list-handlers.ts';
@@ -10,26 +10,46 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 const key = new Uint8Array(32).fill(7);
 const pubkey = bytesToHex(schnorr.getPublicKey(key));
 const original = globalThis.WebSocket;
-afterEach(() => { globalThis.WebSocket = original; resetMockStorage(); });
+const activeMockSockets = new Set<{ close(): void }>();
+function disconnectMocks() {
+  // Report actual socket closure so the shared broker retires the previous fixture.
+  for (const socket of [...activeMockSockets]) socket.close();
+  activeMockSockets.clear();
+}
+afterEach(() => { disconnectMocks(); nodeMock.timers.reset(); globalThis.WebSocket = original; resetMockStorage(); });
 function mock(events: unknown[], fail = false) {
+  disconnectMocks();
   let closed = 0;
+  let subscriptionsClosed = 0;
   class Socket {
     onopen: (() => void) | null = null;
     onmessage: ((e: {data: string}) => void) | null = null;
     onerror: (() => void) | null = null;
-    constructor() { queueMicrotask(() => this.onopen?.()); }
+    onclose: ((event: CloseEvent) => void) | null = null;
+    readyState = 0;
+    constructor() {
+      activeMockSockets.add(this);
+      queueMicrotask(() => { if (this.readyState !== 3) { this.readyState = 1; this.onopen?.(); } });
+    }
     send(raw: string) {
-      const sub = JSON.parse(raw)[1];
+      const [type, sub] = JSON.parse(raw);
+      if (type === 'CLOSE') { subscriptionsClosed++; return; }
+      if (type !== 'REQ') return;
       queueMicrotask(() => {
+        if (this.readyState !== 1) return;
         if (fail) { this.onerror?.(); return; }
         for (const event of events) this.onmessage?.({data: JSON.stringify(['EVENT', sub, event])});
         this.onmessage?.({data: JSON.stringify(['EOSE', sub])});
       });
     }
-    close() { closed++; }
+    close() {
+      if (this.readyState === 3) return;
+      this.readyState = 3; closed++; activeMockSockets.delete(this);
+      this.onclose?.({ reason: 'Test relay disconnected' } as CloseEvent);
+    }
   }
   globalThis.WebSocket = Socket as unknown as typeof WebSocket;
-  return () => closed;
+  return { closed: () => closed, subscriptionsClosed: () => subscriptionsClosed };
 }
 test('NIP-65 markers, duplicate flags, empty events and configuration comparison', () => {
   const parsed = parseRelayList([['r','wss://a','read'],['r','wss://a','write'],['r','wss://b','read'],['r','wss://c'],['r','https://bad'],['r','wss://bad','invalid']]);
@@ -38,14 +58,20 @@ test('NIP-65 markers, duplicate flags, empty events and configuration comparison
   assert.ok(sameRelayList(parsed, {...parsed,relays:[...parsed.relays].reverse()}));
   assert.equal(sameRelayList(parsed, {...parsed,flags:{}}), false);
 });
-test('newest signed kind 10002 wins and all discovery sockets close', async () => {
+test('newest signed kind 10002 wins, subscriptions close immediately and idle sockets close after grace', async () => {
   const old = await signEvent({pubkey,kind:10002,created_at:1,tags:[['r','wss://old']],content:''}, key);
   const latest = await signEvent({pubkey,kind:10002,created_at:2,tags:[['r','wss://new','write']],content:''}, key);
-  const closed = mock([latest, old, {...latest, created_at:999}]);
+  nodeMock.timers.enable({ apis: ['setTimeout'] });
+  const sockets = mock([latest, old, {...latest, created_at:999}]);
   const result = await fetchRelayList(pubkey,['wss://test','wss://test']);
   assert.equal(result.event?.id, latest.id);
   assert.equal(result.reachable,true);
-  assert.ok(closed() > 0);
+  assert.equal(sockets.subscriptionsClosed(), 1, 'the finite discovery lease sends CLOSE immediately');
+  assert.equal(sockets.closed(), 0, 'physical connection remains reusable during idle grace');
+  nodeMock.timers.tick(499);
+  assert.equal(sockets.closed(), 0);
+  nodeMock.timers.tick(1);
+  assert.equal(sockets.closed(), 1, 'idle physical connection closes after 500 ms');
 });
 test('missing, unreachable and a published empty list are distinct', async () => {
   mock([]);

@@ -1,4 +1,5 @@
-import { liveQuery, writeLocalCache, isNewerReplaceable } from './relay.ts';
+import { isNewerReplaceable } from '@domain/nostr/eventOrdering.ts';
+import { liveQuery, writeLocalCache } from './relay.ts';
 import { verifyEvent } from '../../lib/crypto/nip01.ts';
 import type { SignedEvent } from '../../domain/nostr/types.ts';
 

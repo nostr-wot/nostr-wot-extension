@@ -1,6 +1,7 @@
+import { isNewerReplaceable } from '../src/domain/nostr/eventOrdering.ts';
 import { beforeEach, describe, it, mock } from 'node:test';
 import { strict as assert } from 'node:assert';
-import { liveQuery, isNewerReplaceable } from '../src/services/relays/relay.ts';
+import { liveQuery } from '../src/services/relays/relay.ts';
 import { createRelayPool } from '../src/services/relays/pool.ts';
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { resetMockStorage } from './helpers/browser-mock.ts';

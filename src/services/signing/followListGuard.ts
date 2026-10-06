@@ -1,8 +1,9 @@
+import { isNewerReplaceable } from '@domain/nostr/eventOrdering.ts';
 import browser from '@lib/browser.ts';
 import type { UnsignedEvent, SignedEvent } from '@domain/nostr/types.ts';
 import { DEFAULT_RELAYS } from '@constants/relays.ts';
 import { SIGNED_FOLLOW_LIST_PREFIX } from '@constants/signing.ts';
-import { readLocalCache, isNewerReplaceable } from '@services/relays/relay.ts';
+import { readLocalCache } from '@services/relays/relay.ts';
 import { readPublishedEvent } from '@services/relays/readPublishedEvent.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
 import { verifyEvent } from '@lib/crypto/nip01.ts';

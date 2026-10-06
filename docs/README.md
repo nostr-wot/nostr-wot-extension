@@ -28,6 +28,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | [Backend authentication](https://nostr-wot.com/en/guides/backend-authentication) | Website/API boundaries, consent scopes and native wallet protections |
 | [Relay authentication](https://nostr-wot.com/en/guides/relay-authentication) | Relay consent, all-sites grants and revocation |
 | [Accounts](accounts.md) | Account types, registry, switching |
+| [Archive](archive.md) | Manual and automatic event archiving, encrypted files and copying to relays |
 | [Signer](signer.md) | NIP-07 signing flow, permission cascade, prompt system, NIP-46 |
 
 ### Lightning Wallet
@@ -84,3 +85,4 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `@lib` -> `src/lib` — cryptographic primitives and the browser compatibility shim, never React
 - `@assets` -> `src/assets`
 - Browser document shells live in `src/entrypoints/`; the shared wizard lives at `src/screens/Wizard/` — `@models` and `@shared` no longer exist; `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/`
+

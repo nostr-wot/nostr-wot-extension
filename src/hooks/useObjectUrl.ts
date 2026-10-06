@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createObjectUrlResource } from '@services/media/objectUrl.ts';
+import { createObjectUrlResource } from '@utils/objectUrl.ts';
 
 /** Revoke previews on file replacement, scope change and unmount. No URL is created during render. */
 export default function useObjectUrl(blob: Blob | null, scope: unknown = null) {

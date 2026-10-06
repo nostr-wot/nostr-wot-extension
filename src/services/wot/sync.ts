@@ -1,3 +1,4 @@
+import { isNewerReplaceable } from '@domain/nostr/eventOrdering.ts';
 import { MUTE_LIST_CACHE } from '@constants/relays.ts';
 import { cacheKey, seedRelayCache, type CachedAnswer } from '@services/relays/relayCache.ts';
 import type { MuteListRead } from '@domain/mutes/muteList.ts';
@@ -5,7 +6,7 @@ import { commitSnapshot } from './snapshots.ts';
 import { readPublicListBatch, savePublicLists, type PublicLists } from './public-lists.ts';
 import { createRelayPool } from '@services/relays/pool.ts';
 import browser from '@lib/browser.ts';
-import { liveQuery, isNewerReplaceable } from '@services/relays/relay.ts';
+import { liveQuery } from '@services/relays/relay.ts';
 import { configuredRelayUrls, parseRelayList } from '@domain/relays/relayList.ts';
 import { WOT_SYNC_BATCH_SIZE, WOT_MAX_SYNC_RELAYS, WOT_MAX_RELAYS_PER_AUTHOR, WOT_LIST_FRESH_MS, WOT_FULL_REFRESH_MS } from '@constants/wot.ts';
 import type { WotGraph } from '@domain/wot/types.ts';

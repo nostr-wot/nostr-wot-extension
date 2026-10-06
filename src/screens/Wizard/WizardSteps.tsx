@@ -1,3 +1,4 @@
+import { WizardStep } from '@constants/wizard.ts';
 import React from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import IconChevronLeft from '@assets/IconChevronLeft.tsx';
@@ -19,7 +20,7 @@ import PermissionCopyStep from './PermissionCopyStep';
 import DoneStep from './DoneStep';
 
 interface WizardFlow {
-  step: string;
+  step: WizardStep;
   context?: { method: string | null };
   account: unknown;
   mnemonic: string | null;
@@ -41,49 +42,49 @@ function buildSteps(
   onLangSelect: ((code: string) => void) | null,
   onDone: () => void,
   { hasAccounts, hasGeneratedAccount }: { hasAccounts?: boolean; hasGeneratedAccount?: boolean } = {},
-): Record<string, StepConfig> {
+): Record<WizardStep, StepConfig> {
   return {
-    lang: {
+    [WizardStep.Language]: {
       noHeader: true,
       content: onLangSelect ? <LangStep onSelect={onLangSelect} /> : null,
     },
-    welcome: {
+    [WizardStep.Welcome]: {
       noHeader: true,
       content: null, // welcome screen handled externally by OnboardingApp
     },
-    method: {
+    [WizardStep.Method]: {
       title: hasAccounts ? t('wizard.addAccount') : t('wizard.getStarted'),
       content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} />,
     },
-    import: {
+    [WizardStep.Import]: {
       title: t('wizard.importKey'),
       content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} />,
     },
-    npub: {
+    [WizardStep.WatchOnly]: {
       title: t('wizard.watchOnly'),
       content: <NpubStep onNext={(acct: any) => flow.send('DONE', { account: acct })} />,
     },
-    nip46: {
+    [WizardStep.NostrConnect]: {
       title: t('wizard.nostrConnect'),
       content: <Nip46Step onNext={(acct: any) => flow.send('DONE', { account: acct })} />,
     },
-    create: {
+    [WizardStep.Create]: {
       title: t('wizard.createIdentity'),
       content: <CreateStep onNext={(acct: any, seed: string) => flow.send('CREATED', { account: acct, mnemonic: seed })} />,
     },
-    subaccount: {
+    [WizardStep.Subaccount]: {
       title: t('wizard.subAccountTitle'),
       content: <SubAccountStep onNext={(acct: any) => flow.send('CREATED', { account: acct })} />,
     },
-    backup: {
+    [WizardStep.Backup]: {
       title: t('wizard.backUpKeys'),
       content: <BackupStep mnemonic={flow.mnemonic} onNext={() => flow.send('DONE')} />,
     },
-    verify: {
+    [WizardStep.Verify]: {
       title: t('wizard.verifyBackup'),
       content: <VerifyStep mnemonic={flow.mnemonic} onVerified={() => flow.send('VERIFIED')} />,
     },
-    password: {
+    [WizardStep.Password]: {
       title: t('wizard.setPassword'),
       content: (
         <PasswordStep
@@ -93,15 +94,15 @@ function buildSteps(
         />
       ),
     },
-    followSuggestions: {
+    [WizardStep.FollowSuggestions]: {
       title: t('wizard.followSuggestions'),
       content: <FollowSuggestionsStep onNext={() => flow.send('DONE')} />,
     },
-    permCopy: {
+    [WizardStep.PermissionCopy]: {
       title: t('wizard.copyPermissions'),
       content: <PermissionCopyStep account={flow.account as any} onNext={() => flow.send('DONE')} />,
     },
-    done: {
+    [WizardStep.Done]: {
       title: t('wizard.allSet'),
       content: <DoneStep account={flow.account as any} derived={hasGeneratedAccount && flow.context?.method === 'create' && !flow.mnemonic} onDone={onDone} />,
     },
@@ -124,8 +125,8 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
   if (!active?.content) return null;
 
   // When user has accounts, back on the method step should close the wizard
-  const showBack = flow.showBack || (flow.step === 'method' && !!hasAccounts);
-  const handleBack = (flow.step === 'method' && hasAccounts) ? onClose : flow.goBack;
+  const showBack = (flow.showBack || (flow.step === WizardStep.Method && !!hasAccounts));
+  const handleBack = (flow.step === WizardStep.Method && hasAccounts) ? onClose : flow.goBack;
 
   return (
     <>

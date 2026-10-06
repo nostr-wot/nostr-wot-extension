@@ -15,3 +15,5 @@ recipes stay in their owning modules. Shared types belong in `src/domain/`;
 behavior belongs in domain rules, services or generic utilities, not this folder.
 Import directly from the defining module. Do not add forwarding re-exports or
 barrel files; consumers should make ownership explicit.
+
+Archive settings, schedule options and resource limits live in `archive.ts`; the deliberately bounded copy allowlist lives in `archive-policy.ts` and uses the dependency's named Nostr kinds. It must not be derived from UI labels or the dependency's entire kind catalog. Versioned archive encryption parameters live in `crypto/archive.ts`. Wizard navigation uses the `WizardStep` enum in `wizard.ts`, whose string values are persisted and must remain stable.

@@ -1,3 +1,4 @@
+import { WizardStep } from '@constants/wizard.ts';
 /**
  * Pure wizard state machine -- no React dependencies.
  *
@@ -15,7 +16,7 @@ export interface WizardContext {
 }
 
 export interface WizardState {
-  step: string;
+  step: WizardStep;
   ctx: WizardContext;
 }
 
@@ -25,14 +26,14 @@ export interface WizardAction {
 }
 
 export interface WizardOptions {
-  initialStep?: string;
+  initialStep?: WizardStep;
   skipLang?: boolean;
   hasAccounts?: boolean;
   hasGeneratedAccount?: boolean;
 }
 
 interface TransitionResult {
-  step: string;
+  step: WizardStep;
   ctx?: Partial<WizardContext>;
 }
 
@@ -42,110 +43,111 @@ type TransitionHandler = (
   options: WizardOptions
 ) => TransitionResult | null;
 
-const TRANSITIONS: Record<string, Record<string, TransitionHandler>> = {
-  lang: {
-    NEXT: (_ctx) => ({ step: 'method', ctx: { visitedPreMethod: true } }),
+const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
+  [WizardStep.Language]: {
+    NEXT: (_ctx) => ({ step: WizardStep.Method, ctx: { visitedPreMethod: true } }),
   },
 
-  welcome: {
-    NEXT: (_ctx) => ({ step: 'method', ctx: { visitedPreMethod: true } }),
+  [WizardStep.Welcome]: {
+    NEXT: (_ctx) => ({ step: WizardStep.Method, ctx: { visitedPreMethod: true } }),
   },
 
-  method: {
+  [WizardStep.Method]: {
     SELECT: (_ctx, { method }, { hasGeneratedAccount }) => {
-      const step = (method === 'create' && hasGeneratedAccount) ? 'subaccount' : method as string;
+      const step = (method === 'create' && hasGeneratedAccount) ? WizardStep.Subaccount : method as WizardStep;
+      if (![WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
       return { step, ctx: { method: method as string } };
     },
     BACK: (ctx, _payload, { initialStep }) =>
       ctx.visitedPreMethod ? { step: initialStep! } : null,
   },
 
-  create: {
+  [WizardStep.Create]: {
     CREATED: (_ctx, { account, mnemonic }) => ({
-      step: 'verify',
+      step: WizardStep.Verify,
       ctx: { account: account as unknown, mnemonic: mnemonic as string },
     }),
-    BACK: () => ({ step: 'method' }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
-  subaccount: {
+  [WizardStep.Subaccount]: {
     CREATED: (_ctx, { account }) => ({
-      step: 'followSuggestions',
+      step: WizardStep.FollowSuggestions,
       ctx: { account: account as unknown },
     }),
-    BACK: () => ({ step: 'method' }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
-  import: {
+  [WizardStep.Import]: {
     IMPORTED: (_ctx, { account, upgradeId }) => ({
-      step: 'password',
+      step: WizardStep.Password,
       ctx: { account: account as unknown, upgradeId: upgradeId as string },
     }),
-    BACK: () => ({ step: 'method' }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
-  npub: {
+  [WizardStep.WatchOnly]: {
     DONE: (_ctx, { account }, { hasAccounts }) => ({
-      step: hasAccounts ? 'permCopy' : 'done',
+      step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done,
       ctx: { account: account as unknown },
     }),
-    BACK: () => ({ step: 'method' }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
-  nip46: {
-    DONE: (_ctx, { account }) => ({ step: 'password', ctx: { account: account as unknown } }),
-    BACK: () => ({ step: 'method' }),
+  [WizardStep.NostrConnect]: {
+    DONE: (_ctx, { account }) => ({ step: WizardStep.Password, ctx: { account: account as unknown } }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
-  backup: {
-    DONE: () => ({ step: 'verify' }),
-    BACK: () => ({ step: 'create' }),
+  [WizardStep.Backup]: {
+    DONE: () => ({ step: WizardStep.Verify }),
+    BACK: () => ({ step: WizardStep.Create }),
   },
 
-  verify: {
-    VERIFIED: () => ({ step: 'password' }),
-    BACK: () => ({ step: 'create' }),
+  [WizardStep.Verify]: {
+    VERIFIED: () => ({ step: WizardStep.Password }),
+    BACK: () => ({ step: WizardStep.Create }),
   },
 
-  password: {
+  [WizardStep.Password]: {
     SET: (ctx, { upgraded }, { hasAccounts }) => {
-      if (upgraded) return { step: 'done' };
+      if (upgraded) return { step: WizardStep.Done };
       // Only show follow suggestions for new identity creation
-      if (ctx.method === 'create') return { step: 'followSuggestions' };
-      return { step: hasAccounts ? 'permCopy' : 'done' };
+      if (ctx.method === 'create') return { step: WizardStep.FollowSuggestions };
+      return { step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done };
     },
     BACK: (ctx) => {
-      if (ctx.method === 'create') return { step: 'verify' };
-      if (ctx.method === 'import') return { step: 'import' };
-      if (ctx.method === 'nip46') return { step: 'nip46' };
-      return { step: 'method' };
+      if (ctx.method === 'create') return { step: WizardStep.Verify };
+      if (ctx.method === 'import') return { step: WizardStep.Import };
+      if (ctx.method === 'nip46') return { step: WizardStep.NostrConnect };
+      return { step: WizardStep.Method };
     },
   },
 
-  followSuggestions: {
-    DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? 'permCopy' : 'done' }),
+  [WizardStep.FollowSuggestions]: {
+    DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done }),
     BACK: (ctx, _payload, { hasGeneratedAccount }) => {
       // Subaccounts skip password, go back to subaccount step
-      if (ctx.method === 'create' && hasGeneratedAccount) return { step: 'subaccount' };
-      return { step: 'password' };
+      if (ctx.method === 'create' && hasGeneratedAccount) return { step: WizardStep.Subaccount };
+      return { step: WizardStep.Password };
     },
   },
 
-  permCopy: {
-    DONE: () => ({ step: 'done' }),
+  [WizardStep.PermissionCopy]: {
+    DONE: () => ({ step: WizardStep.Done }),
     BACK: (ctx) => {
-      if (ctx.method === 'create') return { step: 'followSuggestions' };
-      return { step: 'password' };
+      if (ctx.method === 'create') return { step: WizardStep.FollowSuggestions };
+      return { step: WizardStep.Password };
     },
   },
 
-  done: {
+  [WizardStep.Done]: {
     // terminal -- no transitions
   },
 };
 
-export function createInitialState({ initialStep = 'lang', skipLang = false }: WizardOptions = {}): WizardState {
-  const step = skipLang ? 'method' : initialStep;
+export function createInitialState({ initialStep = WizardStep.Language, skipLang = false }: WizardOptions = {}): WizardState {
+  const step = skipLang ? WizardStep.Method : initialStep;
   return {
     step,
     ctx: {
@@ -164,8 +166,10 @@ export function reducer(state: WizardState, action: WizardAction, options: Wizar
   }
 
   if (action.type === 'RESTORE' && action.payload) {
+    const restoredStep = action.payload.step === 'archive' ? WizardStep.Done : action.payload.step;
+    if (!Object.values(WizardStep).includes(restoredStep as WizardStep)) return state;
     return {
-      step: action.payload.step as string,
+      step: restoredStep as WizardStep,
       ctx: action.payload.ctx as unknown as WizardContext,
     };
   }

@@ -36,7 +36,7 @@ import { getWotState, handleWotRequest, handlers } from '../src/services/backgro
 import { syncWotGraph, isWotSyncing } from '../src/services/wot/sync.ts';
 import { WOT_GRAPH_PREFIX, WOT_SYNC_STATUS_KEY } from '../src/constants/wot.ts';
 const originalFetch = globalThis.fetch, originalSocket = globalThis.WebSocket;
-afterEach(async () => { invalidateWot(); resetMockStorage(); await resetWotDatabase(); globalThis.fetch = originalFetch; globalThis.WebSocket = originalSocket; });
+afterEach(async () => { disconnectRelaySockets(); invalidateWot(); resetMockStorage(); await resetWotDatabase(); globalThis.fetch = originalFetch; globalThis.WebSocket = originalSocket; });
 async function setup(mode: 'local' | 'remote' | 'hybrid' = 'local') {
     await browser.storage.local.set({ accounts: [{ id: 'a', pubkey: a, type: 'npub' }], activeAccountId: 'a', allowedDomains: ['https://site.test'], [WOT_GRAPH_PREFIX + 'a']: graph });
     await browser.storage.sync.set({ myPubkey: a });
@@ -256,7 +256,7 @@ test('disabling or switching accounts rejects an in-flight oracle result', async
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { schnorr } from '@noble/curves/secp256k1.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
-import { relaySocket } from './helpers/wot-relay.ts';
+import { relaySocket, disconnectRelaySockets } from './helpers/wot-relay.ts';
 test('manual sync verifies events, uses both layers, retains cache on failure and does no automatic work', async () => {
     const key = new Uint8Array(32).fill(7), otherKey = new Uint8Array(32).fill(8);
     const root = bytesToHex(schnorr.getPublicKey(key)), other = bytesToHex(schnorr.getPublicKey(otherKey));
@@ -291,7 +291,7 @@ test('manual sync verifies events, uses both layers, retains cache on failure an
     await seedRelayCache(MUTE_LIST_CACHE, root, { ...muteList([c]), createdAt: 20 });
     await syncWotGraph();
     assert.deepEqual([...(await readWotMutes('sync', root)).people], [c]);
-    assert.ok(sockets().closed >= 1);
+    assert.equal(sockets().subscriptionsClosed, sockets().requests.length, 'each finite sync request releases its subscription while the physical socket remains reusable');
     relaySocket([], true);
     await assert.rejects(syncWotGraph(), /previous graph retained/);
     assert.equal(await queryWot('getDistance', { target: d }), 2);

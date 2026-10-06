@@ -436,3 +436,7 @@ Authorization header and the separate transaction token in X-Nostr-Transaction.
 The proxy verifies all commitments and atomically consumes the nonce before the
 wallet mutation. See [the v2 contract](wallet-auth-v2.md). Website signEvent cannot
 invoke this native wallet authentication path or supply trusted origin metadata.
+
+## Archive requests
+
+Internal `archive_*` RPCs resolve a selected vault account and route to archive services. Settings and job transitions are serialized; network work runs in bounded, resumable slices. Websites cannot invoke these methods. Signed relay events are verified before encrypted storage, and copying preserves the signed event unchanged. See [Archive](archive.md).

@@ -42,10 +42,13 @@ import { handlers as pqcHandlers } from './src/services/background/pqc-handlers.
 
 import { handlers as wotHandlers, handleWotRequest } from './src/services/background/wot-handlers.ts';
 
+import { handlers as archiveHandlers } from './src/services/background/archive-handlers.ts';
+import { installArchiveAutoSync } from './src/services/archive/automatic.ts';
+
 // ── Assemble handler map ──
 
 const allHandlers = new Map<string, HandlerFn>();
-const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers, wotHandlers];
+const handlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers, wotHandlers, archiveHandlers];
 for (const group of handlerGroups) {
     for (const [method, fn] of group) {
         if (allHandlers.has(method)) {
@@ -62,7 +65,7 @@ allHandlers.set('configUpdated', async () => {
 });
 
 // Auto-derive PRIVILEGED_METHODS from all handler maps (no manual allowlist needed)
-const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers, wotHandlers];
+const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, walletHandlers, nip07Handlers, onboardingHandlers, pqcHandlers, wotHandlers, archiveHandlers];
 setPrivilegedMethods(buildPrivilegedMethods(...privilegedHandlerGroups));
 // Also add configUpdated and other locally-defined handlers
 PRIVILEGED_METHODS.add('configUpdated');
@@ -390,6 +393,7 @@ void vault.beginStartupUnlock(async () => {
 void browser.storage.session.remove('accountSwitchTrace').catch(() => {});
 
 installWotAutoSync();
+installArchiveAutoSync();
 
 // Register on every worker start, covering fresh installs and existing users.
 void registerUninstallFeedback(browser.runtime);

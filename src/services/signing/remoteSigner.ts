@@ -75,7 +75,7 @@ async function initializeClient(acct: SafeAccount, client: RemoteClient): Promis
   }
 }
 
-async function getNip46Client(acct: SafeAccount, session: AccountSession): Promise<RemoteClient> {
+async function getNip46Client(acct: SafeAccount, session: AccountSession, connectedOnly = false): Promise<RemoteClient> {
   assertAccountSession(session);
   // Register lazily: vault and signer modules share initialization dependencies.
   if (!lockCleanupRegistered) {
@@ -86,6 +86,7 @@ async function getNip46Client(acct: SafeAccount, session: AccountSession): Promi
   if (client && client.session.revision !== session.revision) {
     disconnectNip46(acct.id); client = undefined;
   }
+  if (connectedOnly && (!client?.connected || client.disposed)) throw new Error('Remote signer is not connected');
   if (!client) {
     client = { session, disposed: false, connected: false, cancellations: new Set(), connection: undefined as unknown as Promise<BunkerSigner> };
     _nip46Clients.set(acct.id, client);
@@ -100,19 +101,19 @@ async function getNip46Client(acct: SafeAccount, session: AccountSession): Promi
  * Forward a signing/crypto request to the remote NIP-46 signer.
  * NIP-46 ephemeral keys live in memory for the session lifetime (held by BunkerSigner).
  */
-export async function handleNip46Request(acct: SafeAccount, method: string, data: unknown, _origin: string): Promise<SignedEvent | string> {
+export async function handleNip46Request(acct: SafeAccount, method: string, data: unknown, _origin: string, options: { connectedOnly?: boolean } = {}): Promise<SignedEvent | string> {
   const session = captureAccountSession(acct.id);
   assertAccountSession(session);
   if (method === 'signEvent') {
     const result = await signVerifiedRemoteEvent(data as UnsignedEvent, acct.pubkey, async approved => {
-      const client = await getNip46Client(acct, session);
+      const client = await getNip46Client(acct, session, options.connectedOnly);
       assertAccountSession(session);
       return duringSession(client, () => client.signer!.signEvent(approved));
     });
     assertAccountSession(session);
     return result;
   }
-  const client = await getNip46Client(acct, session);
+  const client = await getNip46Client(acct, session, options.connectedOnly);
   assertAccountSession(session);
   return duringSession(client, async () => {
     const signer = client.signer!;

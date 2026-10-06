@@ -204,7 +204,7 @@ it('PQ key paste reuses a labelled, bounded textarea and retains the native file
 
 import ImageEditorButton from '../src/components/ImageEditorButton';
 import ProfileSummary from '../src/components/ProfileSummary';
-import { createObjectUrlResource } from '../src/services/media/objectUrl';
+import { createObjectUrlResource } from '../src/utils/objectUrl';
 import useObjectUrl from '../src/hooks/useObjectUrl';
 import useTransientState from '../src/hooks/useTransientState';
 import useAsyncScope from '../src/hooks/useAsyncScope';
@@ -279,10 +279,16 @@ it('PQ import decrypts uploaded backups, retries wrong passwords, and still impo
     Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value')!.set!.call(input,value);
     input.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
   });
-  const submit=async()=>act(async()=>{
-    button().click();
-    await new Promise(resolve=>setTimeout(resolve,250));
-  });
+  const submitAndWait = async (control: HTMLButtonElement) => {
+    await act(async () => control.click());
+    const deadline = Date.now() + 10_000;
+    const fileInput = () => dom.window.document.querySelector<HTMLInputElement>('input[type=file]')!;
+    while (fileInput().disabled && Date.now() < deadline) {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    }
+    assert.equal(fileInput().disabled, false, 'import must finish before asserting its result');
+  };
+  const submit = () => submitAndWait(button());
   try {
     await act(async()=>root.render(createElement(AccountProvider,null,createElement(PqcProvider,null,createElement(PqcImportPanel)))));
     await upload(encrypted);
@@ -311,10 +317,7 @@ it('PQ import decrypts uploaded backups, retries wrong passwords, and still impo
     });
     await act(async()=>root.render(createElement(ImportStep,{onNext:(...args:any[])=>advanced.push(args)})));
     const wizardSubmit=()=>Array.from(dom.window.document.querySelectorAll('button')).find(b=>['common.continue','wizard.decryptContinue'].includes(b.textContent!))!;
-    const importWizard=async()=>act(async()=>{
-      wizardSubmit().click();
-      await new Promise(resolve=>setTimeout(resolve,250));
-    });
+    const importWizard = () => submitAndWait(wizardSubmit());
     const seed='abandon '.repeat(11)+'about';
     await upload(await encryptBackup(seed,'export password'));
     assert.equal(wizardSubmit().disabled,true);

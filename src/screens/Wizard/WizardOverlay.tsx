@@ -1,3 +1,4 @@
+import { WizardStep } from '@constants/wizard.ts';
 import { useState, useEffect } from 'react';
 import { isLanguageChosen } from '@services/i18n/i18n.ts';
 import { rpc } from '@services/rpc.ts';
@@ -26,7 +27,7 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
   }, [visible, canClose]);
 
   const flow = useWizardFlow({
-    initialStep: 'lang',
+    initialStep: WizardStep.Language,
     skipLang: isLanguageChosen(),
     hasAccounts: canClose,
     hasGeneratedAccount,

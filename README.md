@@ -26,6 +26,7 @@ locally managed identity keys stay in the extension's signing flow.
 
 ## Features
 
+- **Account Archive:** Save an encrypted local copy of your events, sync selected relays manually or automatically, export/import encrypted files, and migrate eligible events to another relay. See [Archive](docs/archive.md).
 - **Identity and signing:** Create a 24-word seed, import an existing key or seed,
   connect a NIP-46 remote signer, or add a watch-only account. Use NIP-07 signing
   and encrypted-message operations with compatible clients.

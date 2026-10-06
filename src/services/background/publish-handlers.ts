@@ -4,6 +4,7 @@
  * @module services/background/publish-handlers
  */
 
+import { publishRelay } from '../relays/transport.ts';
 import browser from '../../lib/browser.ts';
 import { configuredRelayUrls, relayPublicationTags, type RelayConfiguration } from '../../domain/relays/relayList.ts';
 import { writeLocalCache } from '../relays/relay.ts';
@@ -17,56 +18,8 @@ import type { UnsignedEvent, SignedEvent } from '../../domain/nostr/types.ts';
 // ── Event Broadcasting ──
 
 export async function broadcastEvent(signedEvent: SignedEvent, relayUrls: string[], assertSession?: () => void): Promise<{ sent: number; failed: number }> {
-    const results = { sent: 0, failed: 0 };
-
-    const promises = relayUrls.map(url => new Promise<void>((resolve) => {
-        try {
-            const ws = new WebSocket(url);
-            const timeout = setTimeout(() => {
-                try { ws.close(); } catch { /* ignored */ }
-                results.failed++;
-                resolve();
-            }, 5000);
-
-            ws.onopen = () => {
-                try {
-                    assertSession?.();
-                    ws.send(JSON.stringify(['EVENT', signedEvent]));
-                } catch {
-                    clearTimeout(timeout);
-                    try { ws.close(); } catch { /* ignored */ }
-                    results.failed++;
-                    resolve();
-                    return;
-                }
-            };
-
-            ws.onmessage = (e) => {
-                try {
-                    const msg = JSON.parse(e.data);
-                    if (msg[0] === 'OK' && msg[1] === signedEvent.id) {
-                        clearTimeout(timeout);
-                        if (msg[2] === true) results.sent++;
-                        else results.failed++;
-                        try { ws.close(); } catch { /* ignored */ }
-                        resolve();
-                    }
-                } catch { /* ignored */ }
-            };
-
-            ws.onerror = () => {
-                clearTimeout(timeout);
-                results.failed++;
-                resolve();
-            };
-        } catch {
-            results.failed++;
-            resolve();
-        }
-    }));
-
-    await Promise.all(promises);
-    return results;
+    const results = await Promise.all(relayUrls.map(url => publishRelay(url, signedEvent, { assertSession })));
+    return { sent: results.filter(result => result.accepted).length, failed: results.filter(result => !result.accepted).length };
 }
 
 // ── Relay health check helpers ──

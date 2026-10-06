@@ -1,3 +1,5 @@
+import { isNewerReplaceable } from '@domain/nostr/eventOrdering.ts';
+import { createSharedRelaySocket } from './pool.ts';
 import { RELAY_TIMEOUT_MS } from '@constants/relays.ts';
 /**
  * liveQuery — streaming relay utility for progressive profile loading.
@@ -18,15 +20,6 @@ export function isReplaceable(kind: number): boolean {
   return kind === 0 || kind === 3 ||
     (kind >= 10000 && kind <= 19999) ||
     (kind >= 30000 && kind <= 39999);
-}
-
-/** NIP-01 replacement ordering, shared by transport and graph ingestion. */
-export function isNewerReplaceable(
-  candidate: Pick<SignedEvent, 'created_at' | 'id'>,
-  current: Pick<SignedEvent, 'created_at' | 'id'>,
-): boolean {
-  return candidate.created_at > current.created_at ||
-    (candidate.created_at === current.created_at && candidate.id < current.id);
 }
 
 export function replaceableKey(kind: number, pubkey: string): string {
@@ -118,7 +111,7 @@ export async function* liveQuery(
   let eoseCount = 0;
   const totalRelays = relays.length;
   const queue = createAsyncQueue<LiveEvent | { type: '_done' }>();
-  const createSocket = options._createSocket || ((url: string) => new WebSocket(url));
+  const createSocket = options._createSocket || createSharedRelaySocket;
 
   function checkExhausted() {
     if (eoseCount >= totalRelays) {

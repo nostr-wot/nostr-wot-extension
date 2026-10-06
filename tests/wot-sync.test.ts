@@ -3,7 +3,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import browser from '../src/lib/browser.ts';
 import { resetMockStorage, hasAlarm } from './helpers/browser-mock.ts';
-import { relaySocket } from './helpers/wot-relay.ts';
+import { relaySocket, disconnectRelaySockets } from './helpers/wot-relay.ts';
 import { signEvent } from '../src/lib/crypto/nip01.ts';
 import { getPublicKey } from '../src/lib/crypto/secp256k1.ts';
 import { bytesToHex } from '../src/lib/crypto/utils.ts';
@@ -18,7 +18,7 @@ import { seedRelayCache } from '../src/services/relays/relayCache.ts';
 import { MUTE_LIST_CACHE } from '../src/constants/relays.ts';
 let eventTimeBase = 0;
 const originalSocket = globalThis.WebSocket, originalFetch = globalThis.fetch;
-afterEach(async () => { eventTimeBase = 0; invalidateWot(); resetMockStorage(); await resetWotDatabase(); globalThis.WebSocket = originalSocket; globalThis.fetch = originalFetch; });
+afterEach(async () => { disconnectRelaySockets(); eventTimeBase = 0; invalidateWot(); resetMockStorage(); await resetWotDatabase(); globalThis.WebSocket = originalSocket; globalThis.fetch = originalFetch; });
 const keys = [31, 32, 33, 34].map(n => new Uint8Array(32).fill(n));
 const [a,b,c,d] = keys.map(key => bytesToHex(getPublicKey(key)));
 async function event(index: number, kind: number, time: number, follows: string[]) {

@@ -6,6 +6,7 @@ import IconPlus from '@assets/IconPlus.tsx';
 
 interface InputRowProps {
   value: string;
+  list?: string;
   onChange: React.ChangeEventHandler<HTMLInputElement>;
   placeholder?: string;
   onSubmit?: () => void;
@@ -18,7 +19,7 @@ interface InputRowProps {
 }
 
 export default function InputRow({ value, onChange, placeholder, onSubmit, buttonLabel,
-  add = false, disabled = false, error, mono = false, className = '',
+  list, add = false, disabled = false, error, mono = false, className = '',
 }: InputRowProps) {
   const blocked = disabled || !value.trim() || !!error;
   const submit = () => { if (!blocked) onSubmit?.(); };
@@ -27,6 +28,7 @@ export default function InputRow({ value, onChange, placeholder, onSubmit, butto
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <Input
+            list={list}
             placeholder={placeholder} aria-label={placeholder || buttonLabel}
             value={value} onChange={onChange} error={error}
             onKeyDown={event => {

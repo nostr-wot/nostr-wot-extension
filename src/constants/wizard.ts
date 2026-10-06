@@ -22,3 +22,20 @@ export const PENDING_KEYS = [
 
 export const WIZARD_STORAGE_KEY = 'wizardState';
 export const WIZARD_PERSIST_TTL_MS = ONBOARDING_PENDING_TTL_MS;
+
+export enum WizardStep {
+  Language = 'lang',
+  Welcome = 'welcome',
+  Method = 'method',
+  Create = 'create',
+  Subaccount = 'subaccount',
+  Import = 'import',
+  WatchOnly = 'npub',
+  NostrConnect = 'nip46',
+  Backup = 'backup',
+  Verify = 'verify',
+  Password = 'password',
+  FollowSuggestions = 'followSuggestions',
+  PermissionCopy = 'permCopy',
+  Done = 'done',
+}

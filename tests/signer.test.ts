@@ -1873,7 +1873,7 @@ it('follow replacement guard counts unique people, verifies evidence and queries
   const { followCount, followReplacementCount, rememberSignedFollowList } = await import('../src/services/signing/followListGuard.ts');
   const { signEvent } = await import('../src/lib/crypto/nip01.ts');
   const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
-  const { relaySocket } = await import('./helpers/wot-relay.ts');
+  const { relaySocket, disconnectRelaySockets } = await import('./helpers/wot-relay.ts');
   const { SIGNED_FOLLOW_LIST_PREFIX } = await import('../src/constants/signing.ts');
   resetMockStorage();
   const socket = globalThis.WebSocket;
@@ -1903,7 +1903,7 @@ it('follow replacement guard counts unique people, verifies evidence and queries
     assert.equal(await followReplacementCount({...input,tags:[]},TEST_PUBKEY_HEX),1,'clearing the last remaining follow also warns');
     await rememberSignedFollowList(previous); // Older signed requests must not undo the newer baseline.
     assert.equal(await followReplacementCount(input,TEST_PUBKEY_HEX),undefined,'a confirmed singleton does not keep triggering from signed evidence');
-  } finally { globalThis.WebSocket=socket; }
+  } finally { disconnectRelaySockets(); globalThis.WebSocket=socket; }
 });
 
 it('dangerous follow replacements can be rejected for local and remote accounts before signing', async () => {

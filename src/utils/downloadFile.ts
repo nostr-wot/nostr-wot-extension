@@ -1,3 +1,5 @@
+import { createObjectUrlResource } from '@utils/objectUrl.ts';
+import { BLOB_DOWNLOAD_REVOKE_MS } from '@constants/media.ts';
 /**
  * Trigger a file download from the popup UI.
  *
@@ -21,16 +23,21 @@
  *    base64 overhead and lack of streaming are not a concern.
  */
 export function downloadFile(
-  content: string,
+  content: string | Blob,
   filename: string,
   mime: string = 'application/octet-stream'
 ): void {
-  const bytes = new TextEncoder().encode(content);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  const url = `data:${mime};base64,${btoa(binary)}`;
+  // Large archives must not be expanded into a base64 data URI in popup memory.
+  const resource = typeof content === 'string' ? undefined : createObjectUrlResource(new Blob([content], { type: mime }));
+  let url = resource?.url;
+  if (typeof content === 'string') {
+    const bytes = new TextEncoder().encode(content);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    url = `data:${mime};base64,${btoa(binary)}`;
+  }
   const a = document.createElement('a');
-  a.href = url;
+  a.href = url!;
   a.download = filename;
   a.rel = 'noopener';
   a.style.display = 'none';
@@ -38,6 +45,6 @@ export function downloadFile(
   try {
     a.click();
   } finally {
-    setTimeout(() => a.remove(), 1000);
+    setTimeout(() => { a.remove(); resource?.dispose(); }, resource ? BLOB_DOWNLOAD_REVOKE_MS : 1000);
   }
 }

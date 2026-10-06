@@ -1,5 +1,7 @@
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, useId, ChangeEvent } from 'react';
 import { t } from '@services/i18n/i18n.ts';
+import IconButton from '@components/IconButton';
+import IconPlus from '@assets/IconPlus';
 import InputRow from '@components/InputRow';
 import RemoveButton from '@components/RemoveButton';
 import Container from '@components/Container';
@@ -9,6 +11,8 @@ import { SectionLabel } from '@components/SectionLabel';
 interface EditableListProps {
   /** Optional section label; when set, renders a <SectionLabel> above the list. */
   label?: string;
+  suggestions?: readonly string[];
+  collapseAdd?: boolean;
   items: string[];
   /** Render the item's main text node (defaults to the raw string). */
   renderItem?: (item: string) => React.ReactNode;
@@ -46,6 +50,8 @@ interface EditableListProps {
  */
 export default function EditableList({
   label,
+  suggestions = [],
+  collapseAdd = false,
   items,
   renderItem,
   leading,
@@ -64,6 +70,8 @@ export default function EditableList({
   error,
 }: EditableListProps) {
   const controlled = inputValue !== undefined;
+  const listId = useId();
+  const [adding, setAdding] = useState(false);
   const [value, setValue] = useState('');
   const [internalError, setInternalError] = useState('');
 
@@ -83,19 +91,28 @@ export default function EditableList({
     setInternalError('');
     setValue('');
     onAdd?.(normalized);
+    setAdding(false);
   };
 
   /* Controlled callers own the input value, so most read their own state and
      ignore the argument — but `onAdd` is typed as taking one, and handing it
      straight to InputRow's zero-arg `onSubmit` passed `undefined` to anyone who
      did read it. Pass the value we already have. */
-  const submitControlled = () => { if (canAdd) onAdd?.(normalized!); };
+  const submitControlled = () => {
+    if (canAdd) onAdd?.(normalized!);
+  };
 
   const body = (
     <>
       <Container as="ul" gap={2} className="list-none m-0 p-0">
         {items.map((item) => (
-          <Container as="li" variant="row" gap={4} key={item} className="px-6 py-4 border border-card-border bg-card rounded-panel">
+          <Container
+            as="li"
+            variant="row"
+            gap={4}
+            key={item}
+            className="px-6 py-4 border border-card-border bg-card rounded-panel"
+          >
             {leading?.(item)}
             <Text as="span" className="flex-1 text-sm text-heading truncate min-w-0" title={item}>
               {renderItem ? renderItem(item) : item}
@@ -105,19 +122,48 @@ export default function EditableList({
           </Container>
         ))}
       </Container>
-      <InputRow
-        value={controlled ? inputValue! : value}
-        onChange={controlled
-          ? onInputChange!
-          : (e: ChangeEvent<HTMLInputElement>) => { setValue(e.target.value); setInternalError(''); }}
-        placeholder={placeholder}
-        onSubmit={controlled ? submitControlled : handleInternalAdd}
-        buttonLabel={buttonLabel}
-        add
-        disabled={!canAdd}
-        error={(controlled ? error : internalError) || (rawValue && !normalized ? (invalidMsg || t('mutes.invalidEntry')) : '')}
-        mono={mono}
-      />
+      {collapseAdd && !adding ? (
+        <IconButton
+          size="large"
+          tone="brand"
+          disabled={disabled}
+          title={buttonLabel}
+          aria-label={buttonLabel}
+          onClick={() => setAdding(true)}
+        >
+          <IconPlus aria-hidden="true" />
+        </IconButton>
+      ) : (
+        <InputRow
+          list={listId}
+          value={controlled ? inputValue! : value}
+          onChange={
+            controlled
+              ? onInputChange!
+              : (e: ChangeEvent<HTMLInputElement>) => {
+                  setValue(e.target.value);
+                  setInternalError('');
+                }
+          }
+          placeholder={placeholder}
+          onSubmit={controlled ? submitControlled : handleInternalAdd}
+          buttonLabel={buttonLabel}
+          add
+          disabled={!canAdd}
+          error={
+            (controlled ? error : internalError) ||
+            (rawValue && !normalized ? invalidMsg || t('mutes.invalidEntry') : '')
+          }
+          mono={mono}
+        />
+      )}
+      <datalist id={listId}>
+        {suggestions
+          .filter((item) => !items.includes(item))
+          .map((item) => (
+            <option key={item} value={item} />
+          ))}
+      </datalist>
       {hint && items.length === 0 && <Text variant="hint">{hint}</Text>}
     </>
   );

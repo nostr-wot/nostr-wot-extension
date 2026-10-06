@@ -1,6 +1,12 @@
 import type { SignedEvent } from '../../src/domain/nostr/types.ts';
+const activeSockets = new Set<{ close(): void }>();
+export function disconnectRelaySockets() {
+    for (const socket of [...activeSockets]) socket.close();
+    activeSockets.clear();
+}
 export function relaySocket(events: SignedEvent[], fail = false) {
-    let calls = 0, closed = 0;
+    disconnectRelaySockets();
+    let calls = 0, closed = 0, subscriptionsClosed = 0;
     const requests: string[][] = [];
     const filtersSeen: Array<Array<{authors?:string[];kinds?:number[];since?:number}>> = [];
     class Socket {
@@ -9,14 +15,17 @@ export function relaySocket(events: SignedEvent[], fail = false) {
             data: string;
         }) => void) | null = null;
         onerror: (() => void) | null = null;
-        onclose: (() => void) | null = null;
-        constructor() { calls++; queueMicrotask(() => this.onopen?.()); }
+        onclose: ((event: CloseEvent) => void) | null = null;
+        readyState = 0;
+        constructor() { calls++; activeSockets.add(this); queueMicrotask(() => { if (this.readyState !== 3) { this.readyState = 1; this.onopen?.(); } }); }
         send(raw: string) {
             const [type, id, ...filters] = JSON.parse(raw);
+            if (type === 'CLOSE') { subscriptionsClosed++; return; }
             if (type !== 'REQ') return;
             filtersSeen.push(filters);
             requests.push([...new Set<string>(filters.flatMap((filter: {authors?:string[]})=>filter.authors || []))]);
             queueMicrotask(() => {
+                if (this.readyState !== 1) return;
                 if (fail) {
                     this.onerror?.();
                     return;
@@ -27,8 +36,12 @@ export function relaySocket(events: SignedEvent[], fail = false) {
                 this.onmessage?.({ data: JSON.stringify(['EOSE', id]) });
             });
         }
-        close() { closed++; }
+        close() {
+            if (this.readyState === 3) return;
+            this.readyState = 3; closed++; activeSockets.delete(this);
+            this.onclose?.({ reason: 'Test relay disconnected' } as CloseEvent);
+        }
     }
     globalThis.WebSocket = Socket as unknown as typeof WebSocket;
-    return () => ({ calls, closed, requests, filters:filtersSeen });
+    return () => ({ calls, closed, subscriptionsClosed, requests, filters:filtersSeen });
 }

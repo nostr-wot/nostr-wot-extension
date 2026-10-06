@@ -284,3 +284,11 @@ settings controls. No background RPC, site permission or account migration is ne
 ## Authentication destination policy
 
 `domain/signing/authentication.ts` owns strict NIP-98/NIP-42 parsing and explicit scope validation; `domain/signing/requestOrigin.ts` owns browser-attested top-level origin checks. `services/permissions/authentication.ts` stores account-specific destination grants under a serialized write lock, separately from generic signing defaults. The existing signer and approval queue enforce these checks for local and remote accounts; existing permission lifecycle functions revoke grants. The informational `data/auth-clients.json` registry is used only for approval context. See [signer.md](signer.md#authentication-destinations-nip-98-and-nip-42) and [registry contribution instructions](auth-client-registry.md).
+
+## Archive service
+
+Account-scoped archiving composes the vault private-cache encryption, the shared relay transport, browser alarms and existing UI primitives. Domain policy lives in `domain/archive`; storage, resumable work and encrypted file sessions live in `services/archive`. The background is the sole archive writer. See [Archive](archive.md) for the lifecycle and data boundaries.
+
+Archive configuration and limits are defined in `constants/archive.ts`, its explicit copy allowlist in `constants/archive-policy.ts`, and versioned encryption parameters in `constants/crypto/archive.ts`. UI and background consumers import these directly. Pure relay filtering and NIP-01 replacement ordering live in `domain/relays/filter.ts` and `domain/nostr/eventOrdering.ts`; Archive, live relay reads and follow-list protection reuse them. `services/archive/fileTransfer.ts` owns popup-side file/RPC orchestration, while `screens/Archive/ArchiveFiles.tsx` owns the dialog. Archive is configured from Settings rather than onboarding; `WizardStep` in `constants/wizard.ts` names every transition and screen, retaining the existing persisted string values.
+
+Popup preference initialization is bounded to 1.5 seconds before mounting with bundled English defaults. Delayed initialization refreshes the existing React root without remounting it. Theme and language failures cannot prevent first render; the existing splash timing is unchanged.

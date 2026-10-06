@@ -64,10 +64,10 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
    * @param accountId - defaults to active account
    * @returns 32-byte private key
    */
-  function getPrivkey(accountId?: string): Uint8Array | null {
+  function getPrivkey(accountId?: string, touchActivity = true): Uint8Array | null {
     const _decrypted = readPayload();
     if (!_decrypted) throw new Error('Vault is locked');
-    resetAutoLock();
+    if (touchActivity) resetAutoLock();
 
     const id = accountId || _decrypted.activeAccountId;
     const acct = _decrypted.accounts.find(a => a.id === id);
@@ -91,8 +91,9 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
   async function withPrivkey<T>(
     accountId: string | undefined,
     fn: (privkey: Uint8Array) => Promise<T>,
+    options: { touchActivity?: boolean } = {},
   ): Promise<T> {
-    const privkey = getPrivkey(accountId);
+    const privkey = getPrivkey(accountId, options.touchActivity !== false);
     if (!privkey) throw new Error('No private key for this account');
     try {
       return await fn(privkey);

@@ -20,3 +20,17 @@ export const RELAY_TIMEOUT_MS = 4000;
 
 export const NIP46_RELAYS = ['wss://relay.nsec.app', ...DEFAULT_RELAYS];
 export const RELAY_CACHE_PREFIX = 'relayCache_';
+
+export const RELAY_POOL_IDLE_MS = 500;
+export const MAX_RELAY_CONNECTIONS = 64;
+export const MAX_RELAY_LEASES = 128;
+export const MAX_RELAY_FRAME_BYTES = 1024 * 1024;
+export const MAX_RELAY_QUERY_BYTES = 16 * 1024 * 1024;
+export const MAX_RELAY_QUERY_EVENTS = 5000;
+export const MAX_RELAY_QUEUE = 1024;
+export const MAX_RELAY_AUTH_CHALLENGE_LENGTH = 4096;
+export const MAX_RECONCILIATION_LOCAL_EVENTS = 50000;
+export const MAX_RECONCILIATION_MISSING_IDS = 5000;
+
+/** Bound waiting for a challenge or AUTH acknowledgment independently of the read. */
+export const RELAY_AUTH_TIMEOUT_MS = 3000;

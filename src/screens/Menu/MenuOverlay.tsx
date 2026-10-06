@@ -1,3 +1,4 @@
+import ArchiveSection from '@screens/Archive';
 import AppearanceSection from '@screens/Settings/AppearanceSection';
 import PulseLogo from '@components/PulseLogo';
 import IconSettings from '@assets/IconSettings.tsx';
@@ -62,6 +63,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   }, [visible, initialSection]);
 
   const menuItems: MenuItem[] = [
+    { id: 'archive', label: t('archive.title'), desc: t('archive.menuDesc'), icon: <IconDownload /> },
     {
       id: 'security',
       label: t('settings.security'),
@@ -97,6 +99,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
 
   const sectionTitles: Record<string, string> = {
     'experimental-wot': t('wot.title'),
+    archive: t('archive.title'),
     appearance: t('appearance.title'),
     security: t('settings.security'),
     network: t('network.relays'),
@@ -129,6 +132,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
 
   const renderSection = (): ReactNode => {
     switch (currentSection) {
+      case 'archive': return <ArchiveSection key={active?.id} />;
       case 'appearance':
         return <AppearanceSection />;
       case 'security':

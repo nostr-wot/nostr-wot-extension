@@ -1,3 +1,4 @@
+import { WizardStep } from '@constants/wizard.ts';
 import WelcomeStep from '@screens/Wizard/WelcomeStep';
 import { rpcNotify } from '@services/rpc.ts';
 import '@styles/tailwind.css';
@@ -5,11 +6,11 @@ import useWizardFlow from '@hooks/useWizardFlow.ts';
 import WizardSteps from '@screens/Wizard/WizardSteps';
 
 export default function OnboardingApp() {
-  const flow = useWizardFlow({ initialStep: 'welcome' });
+  const flow = useWizardFlow({ initialStep: WizardStep.Welcome });
 
   const handleDone = () => { rpcNotify('configUpdated'); window.close(); };
 
-  if (flow.step === 'welcome') {
+  if (flow.step === WizardStep.Welcome) {
     return <WelcomeStep onStart={() => flow.send('NEXT')} />;
   }
 

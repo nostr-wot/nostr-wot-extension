@@ -654,3 +654,7 @@ once to build it; subsequent lookups read the index and requested profile. Expir
 future-dated and evicted entries are excluded, and storage changes invalidate UI
 and worker caches. Raw-event dialogs share one explicit component; they do not
 change signing or reveal permissions.
+
+## Archive boundaries
+
+Archive is an internal extension feature: all archive RPCs are privileged, file imports verify signatures and account ownership, and event bodies remain encrypted in IndexedDB. Archive answers relay authentication challenges for the selected account during user-configured sync or migration; it never inherits website grants. Lock/session changes cancel jobs; local AUTH signing does not keep the vault unlocked. Copying to a relay requires a separate confirmed action and preserves the original signatures. See [Archive](archive.md) for metadata visibility, import failure behavior and copy exclusions.

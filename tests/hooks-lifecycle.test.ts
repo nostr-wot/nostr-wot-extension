@@ -1,3 +1,5 @@
+import { AccountProvider, useAccount } from '../src/context/AccountContext';
+import { WizardStep } from '../src/constants/wizard.ts';
 import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { act, createElement, type ReactNode } from 'react';
@@ -242,7 +244,7 @@ it('wizard persistence retains a restored mid-flow step and clears it at entry p
  const { default: useWizardFlow } = await import('../src/hooks/useWizardFlow');
  const { createInitialState } = await import('../src/domain/wizard/wizardMachine');
  const { WIZARD_STORAGE_KEY } = await import('../src/constants/wizard');
- const saved = createInitialState({ initialStep: 'import' });
+ const saved = createInitialState({ initialStep: WizardStep.Import });
  await browser.storage.session.set({ [WIZARD_STORAGE_KEY]: { ...saved, ts: Date.now() } });
  const view = await mount(); let flow!: ReturnType<typeof useWizardFlow>;
  function Probe() { flow = useWizardFlow({ persist: true }); return createElement('span', null, flow.step); }
@@ -334,5 +336,27 @@ it('PQ home reads only cached evidence; entering settings refreshes once and acc
   current = accounts[1]; confirmed = false;
   await act(async () => { await browser.storage.local.set({ activeAccountId: 'b' }); });
   assert.deepEqual(reads.filter(read => !read.cached).map(read => read.account), ['a', 'b']);
+ } finally { await view.close(); }
+});
+
+it('account context renders local identity while profile relay requests remain unanswered', async t => {
+ const view = await mount();
+ resetMockStorage();
+ const pubkey = 'ab'.repeat(32);
+ await browser.storage.local.set({ accounts: [{ id: 'local', name: 'Local account', pubkey, type: 'npub', readOnly: true }], activeAccountId: 'local', profileCache: { [pubkey]: { name: 'Cached profile' } } });
+ let profileRequests = 0;
+ t.mock.method(browser.runtime, 'sendMessage', async ({ method }: { method: string }) => {
+  assert.equal(method, 'getProfileMetadata');
+  profileRequests++;
+  return new Promise(() => {});
+ });
+ function Identity() {
+  const account = useAccount();
+  return createElement('span', null, account.active?.name, ' / ', account.cachedProfile?.name);
+ }
+ try {
+  await view.render(createElement(AccountProvider, null, createElement(Identity)));
+  assert.equal(document.body.textContent, 'Local account / Cached profile');
+  assert.equal(profileRequests, 1);
  } finally { await view.close(); }
 });
