@@ -35,6 +35,18 @@ export async function smokeChrome(archive, version) {
       ]);
     });
     assert.ok(response && !response.error && Array.isArray(response.result), 'Popup getAllowedDomains RPC failed');
+    // A storage read stalled during update/startup must not leave an empty root.
+    const recovery = await context.newPage();
+    await recovery.addInitScript(() => {
+      const original = globalThis.chrome.storage.sync.get.bind(globalThis.chrome.storage.sync);
+      globalThis.chrome.storage.sync.get = (keys, ...args) => Array.isArray(keys) && keys.includes('language')
+        ? new Promise(() => {})
+        : original(keys, ...args);
+    });
+    await recovery.goto(`chrome-extension://${id}/${manifest.action.default_popup}`);
+    await recovery.waitForFunction(() => globalThis.document.querySelector('#root')?.childElementCount > 0, undefined, { timeout: 5000 });
+    await recovery.getByText('No accounts', { exact: true }).waitFor({ timeout: 5000 });
+    await recovery.close();
     console.log(`Chrome ZIP smoke passed: worker started, popup rendered, connection-status RPC answered. SHA256 ${sha256}`);
     return sha256;
   } finally {

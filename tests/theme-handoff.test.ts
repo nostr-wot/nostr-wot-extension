@@ -87,3 +87,25 @@ describe('download theme handoff', () => {
     assert.equal(popups, 1);
   });
 });
+
+it('popup mounts even if preference initialization never responds and refreshes when it recovers', async () => {
+  const { startPopup } = await import('../src/services/appearance/popupStartup.ts');
+  let resolve!: () => void;
+  let rendered = 0;
+  const stalled = new Promise<void>(done => { resolve = done; });
+  startPopup(() => stalled, () => { rendered++; }, 10);
+  await new Promise(done => setTimeout(done, 25));
+  assert.equal(rendered, 1);
+  resolve();
+  await new Promise(done => setTimeout(done, 0));
+  assert.equal(rendered, 2);
+});
+it('popup mounts once after failed or successful preference initialization', async () => {
+  const { startPopup } = await import('../src/services/appearance/popupStartup.ts');
+  for (const initialize of [async () => {}, async () => { throw new Error('storage unavailable'); }]) {
+    let rendered = 0;
+    startPopup(initialize, () => { rendered++; }, 10);
+    await new Promise(done => setTimeout(done, 25));
+    assert.equal(rendered, 1);
+  }
+});

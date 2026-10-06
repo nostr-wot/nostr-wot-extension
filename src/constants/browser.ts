@@ -18,3 +18,6 @@ export const FAVICON_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** One background recovery attempt after an account-switch reload. */
 export const ACCOUNT_SWITCH_POPUP_RECOVERY_MS = 100;
+
+/** Maximum preference-loading delay before the popup renders with bundled defaults. */
+export const POPUP_PREFERENCES_TIMEOUT_MS = 1500;

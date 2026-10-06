@@ -1,3 +1,4 @@
+import english from '../../public/locales/en.json';
 import { SUPPORTED_LANGUAGES, DEFAULT_LANG } from '@constants/i18n.ts';
 // services/i18n/i18n.ts — Internationalization module
 // Flat key-value JSON locale files, {param} interpolation
@@ -11,6 +12,11 @@ import browser from '../../lib/browser.ts';
 const localeCache: Record<string, Record<string, string>> = {};
 let currentLang: string = DEFAULT_LANG;
 let currentStrings: Record<string, string> = {};
+
+/** Supply readable text when popup preference initialization has not completed. */
+export function ensureDefaultLocale(): void {
+  if (!Object.keys(currentStrings).length) currentStrings = english;
+}
 let langWasChosen: boolean = false;
 
 async function loadLocale(lang: string): Promise<Record<string, string>> {
