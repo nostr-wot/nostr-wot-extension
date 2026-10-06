@@ -1,6 +1,6 @@
-# Build instructions — Nostr WoT 0.8.10
+# Build instructions — Nostr WoT 0.8.11
 
-Use the attached `nostr-wot-source-0.8.10.zip`, which includes the release's working source and lockfile. Use that archive to reproduce the packaged release; do not use an older GitHub tag or assume the latest main matches its contents.
+Use the attached `nostr-wot-source-0.8.11.zip`, which includes the release's working source and lockfile. Use that archive to reproduce the packaged release; do not use an older GitHub tag or assume the latest main matches its contents.
 
 Requirements: Node.js 22.22.2+ in the 22.x line, 24.15+ in the 24.x line (recommended; CI uses Node 24), or 26+, npm, and macOS or Linux with the `zip` and `unzip` utilities installed. Extract the source into an empty folder:
 

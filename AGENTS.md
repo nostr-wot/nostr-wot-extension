@@ -21,7 +21,7 @@ submission state. Follow docs/chrome-publishing.md and docs/firefox-publishing.m
 Google/Mozilla approval and Safari submission remain separate; a GitHub release
 does not make every store update live.
 
-The current release is **0.8.10**. Keep package and manifest versions, source-build
+The current release is **0.8.11**. Keep package and manifest versions, source-build
 instructions, changelog and upload archives consistent. Generated publishing notes
 and checksums stay outside the tracked repository. Publish new functionality in a
 new version; only replace an existing release when explicitly requested.

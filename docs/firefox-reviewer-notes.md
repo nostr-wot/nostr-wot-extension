@@ -6,7 +6,7 @@ Build on Linux or macOS with npm, zip/unzip and Node 24.15+ in 24.x, 22.22.2+ in
 
 Use a clean Firefox profile and disposable identity. Open the toolbar popup, create an identity and set a vault password. No project login or invitation is needed. Connect a Nostr client using browser-extension sign-in. Review signing/authentication separately and revoke grants in Permissions. HTTP grants bind site, account, exact URL and method. Relay grants cover one site or explicitly all connected sites. Default backend auth starts off; enabling it allows exact same-origin HTTPS or registered NIP-98 pairs for connected sites. Saved denials win. Locking or switching accounts invalidates old approvals.
 
-This version adds narrowly restricted legacy website-login compatibility with a prominent risk warning, one-time consent and developer guidance to adopt NIP-98. It cannot use saved grants or backend automation. It also registers a fixed uninstall URL opening an optional feedback form; no identity, wallet data or tracking parameters are appended. Survey submission is voluntary.
+This version adds encrypted Account Archive in Settings with manual/scheduled relay reads, optional relay authentication, encrypted file import/export and confirmed migration to a user-selected relay. Archive sync never deletes existing events. Migration verifies a bounded Nostr query before publishing original signed events. The popup also falls back to bundled English if preference initialization stalls. Account onboarding does not configure Archive.
 
 Firefox uses background scripts. storage, activeTab and alarms support vault/settings, current-site controls and scheduled work. Content scripts expose NIP-07/WebLN. Host access to nostr-wot.com supports installation setup.
 

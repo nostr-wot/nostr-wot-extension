@@ -3,6 +3,32 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## 0.8.11 — 2026-10-06
+
+### Store release notes
+
+- Add Account Archive in Settings: manual or scheduled sync across all selected relays, encrypted local storage, relay groups and resumable checkpoints.
+- Sync relays concurrently with shared deduplicated storage. Show event counts, archive size, progress, error details and independent per-relay retries.
+- Export and import password-encrypted archives. Migrate eligible original signed events to a verified destination after confirmation, retry failures once after the first pass, and inspect remaining failed events.
+- Authenticate archive queries when relays request it, including responses prefixed with `ERROR:`. Retry recoverable failures up to three times and report relay configuration failures accurately.
+- Prevent stalled language or theme initialization from leaving the popup blank by rendering bundled defaults after a bounded wait.
+
+### Archive
+
+- Configure hourly, daily or weekly automatic sync, or sync manually. Archive settings use profile relays by default, reusable relay groups and validated custom relay URLs. Archive does not add an onboarding step.
+- Preserve existing records and per-relay checkpoints during retries. Event counts include verified events already stored; the archive total stays deduplicated. Continue active work between bounded slices without waiting for another alarm.
+- Keep migration progress, results and pause controls inside Migrate archive. Start migration checks the destination with a normal bounded query and opens a confirmation before publishing. Migration preserves local data and original signatures, and skips ineligible events.
+- Resume the failed-event retry pass after worker interruption. Show remaining event IDs, kinds, dates, relay responses and attempt counts in Failed events.
+
+### Popup startup
+
+- Render bundled English and theme defaults after 1.5 seconds if preference initialization stalls, then apply saved preferences when available. Preserve the existing splash and fade timing.
+
+### Maintenance
+
+- Pin the test-only DOM dependency to a working version and make the remote-signer refusal fixture use an unlocked test vault, preventing stalled compatibility tests without weakening production unlock checks.
+- Document Archive storage, authentication, import/export and migration boundaries, and update source-build and Mozilla reviewer instructions.
+
 ## 0.8.10 — 2026-10-02
 
 ### Store release notes
