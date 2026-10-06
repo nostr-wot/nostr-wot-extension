@@ -292,3 +292,13 @@ for (const changed of [false, true]) test(`store-note section label is omitted w
   assert.ok(mock.calls.every(c=>!c.options.method));
  }
 });
+
+for (const changed of [false, true]) test(`publishes section titles and inline code as lossless plain text (changed=${changed})`, async t => {
+ const o=fixture(t);o.releaseNotes='### Store release notes\n\n### Archive\n\n- Handle `ERROR:` responses.\n\n### Startup\n\n- Render defaults.';
+ const saved=detail(o), rendered={...saved,release_notes:{'en-US':`<p>Archive</p><ul><li>Handle ${changed?'OTHER:':'ERROR:'} responses.</li></ul><p>Startup</p><ul><li>Render defaults.</li></ul>`}};
+ const mock=api([addon,{results:[{...saved,release_notes:null}],next:null},{...saved,release_notes:null},saved,rendered]);
+ if(changed) await assert.rejects(publishFirefox(o,env,mock.fetcher),/Release notes were not saved/);
+ else assert.equal(await publishFirefox(o,env,mock.fetcher),'SUBMITTED');
+ const patch=mock.calls.find(c=>c.options.method==='PATCH');
+ assert.equal(JSON.parse(String(patch?.options.body)).release_notes['en-US'],'Archive\n\n- Handle ERROR: responses.\n\nStartup\n\n- Render defaults.');
+});
