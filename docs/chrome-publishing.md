@@ -129,3 +129,8 @@ stable release if its original workflow predates a tooling fix. Select the relea
 tag, store and operation. It uses current main publishing code with the original
 verified release archives; it neither recreates the release nor changes its tag.
 It shares the normal store concurrency group. Ordinary new releases need no dispatch.
+
+
+## OAuth failures
+
+A failed token exchange now reports only a recognized OAuth error code, never the response body or error description. HTTP 400 alone does not establish that a token expired. Verify that the client ID, client secret and refresh token belong to the same OAuth client; replacing a client does not rebind an existing refresh token. `invalid_client` points to client authentication, while `invalid_grant` requires checking the token/client pairing and the token’s validity. Diagnose this before retrying the store upload or asking for new consent.

@@ -62,7 +62,7 @@ export function prepareFirefox(directory, version, commit, run = execFileSync) {
   compareArchives(archive, resolve('nostr-wot-firefox.zip'));
   const changelog = changelogFor(readFileSync('CHANGELOG.md', 'utf8'), version);
   const releaseNotes = releaseNotesFor(changelog, commit);
-  const approvalNotes = [`Nostr WoT ${version}\nSource commit: ${commit}`, readFileSync('docs/firefox-reviewer-notes.md', 'utf8').trim(), 'Full build instructions: SOURCE_BUILD.md in the attached source archive. The complete changelog is supplied as release notes.'].join('\n\n');
+  const approvalNotes = [`Nostr WoT ${version}\nSource commit: ${commit}`, readFileSync('docs/firefox-reviewer-notes.md', 'utf8').trim(), 'Build: SOURCE_BUILD.md.'].join('\n\n');
   const metadata = { archive, source, version, archiveHash, sourceHash, approvalNotes, releaseNotes };
   writeFileSync(join(root, 'publish-metadata.json'), JSON.stringify(metadata));
   writeFileSync(join(root, 'reviewer-notes.txt'), approvalNotes);

@@ -302,3 +302,21 @@ for (const changed of [false, true]) test(`publishes section titles and inline c
  const patch=mock.calls.find(c=>c.options.method==='PATCH');
  assert.equal(JSON.parse(String(patch?.options.body)).release_notes['en-US'],'Archive\n\n- Handle ERROR: responses.\n\nStartup\n\n- Render defaults.');
 });
+
+
+test('current reviewer instructions fit with commit, CRLF and both archive hashes, including recovery', async t => {
+ const o = fixture(t);
+ const body = readFileSync('docs/firefox-reviewer-notes.md', 'utf8').trim();
+ const header = `Nostr WoT ${o.version}\nSource commit: ${'a'.repeat(40)}`;
+ const concise = [header, body, 'Build: SOURCE_BUILD.md.'].join('\n\n');
+ const saved = detail({ ...o, approvalNotes: concise });
+ assert.ok(saved.approval_notes.replace(/\r?\n/g, '\r\n').length <= 3000);
+ for (const footer of ['Build: SOURCE_BUILD.md.', 'Full build instructions: SOURCE_BUILD.md in the attached source archive. The complete changelog is supplied as release notes.']) {
+  o.approvalNotes = [header, body, footer].join('\n\n');
+  const mock = api([addon, empty, validated, saved, saved, saved]);
+  assert.equal(await publishFirefox(o, env, mock.fetcher), 'SUBMITTED');
+  const sent = (mock.calls[3].options.body as FormData).get('approval_notes');
+  assert.equal(sent, saved.approval_notes);
+  assert.ok(String(sent).includes(body));
+ }
+});

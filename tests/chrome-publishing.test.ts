@@ -142,3 +142,13 @@ test('waits for asynchronous cancellation without repeating the mutation', async
  assert.equal(await publishChrome(fixture(t),mock.fetcher,async()=>{}),'PENDING_REVIEW');
  assert.equal(mock.calls.filter(c=>c.url.endsWith(':cancelSubmission')).length,1);
 });
+
+
+for (const code of ['invalid_client', 'invalid_grant', 'invalid_request', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope', 'secret-value', null]) test(`OAuth diagnostics only expose recognized error codes: ${code}`, async () => {
+ await assert.rejects(accessToken(oauth, async () => new Response(JSON.stringify({ error: code, error_description: 'sensitive-details', access_token: 'secret-value' }), { status: 400 })), error => {
+  assert.ok(error instanceof Error);
+  assert.ok(error.message.includes(`(${code === null || code === 'secret-value' ? 'unknown_error' : code})`));
+  assert.doesNotMatch(error.message, /sensitive-details|secret-value/);
+  return true;
+ });
+});

@@ -19,7 +19,13 @@ export async function accessToken(env, fetcher = fetch) {
       client_secret: env.CHROME_WEBSTORE_CLIENT_SECRET, refresh_token: env.CHROME_WEBSTORE_REFRESH_TOKEN,
     }),
   });
-  assert.ok(response.ok, `Google OAuth HTTP ${response.status}; check or renew the configured credentials`);
+  if (!response.ok) {
+    // Only recognized protocol codes are safe to log; descriptions can echo secrets.
+    const failure = await response.json().catch(() => null);
+    const codes = ['invalid_client', 'invalid_grant', 'invalid_request', 'unauthorized_client', 'unsupported_grant_type', 'invalid_scope'];
+    const code = codes.includes(failure?.error) ? failure.error : 'unknown_error';
+    assert.fail(`Google OAuth HTTP ${response.status} (${code}); verify the client ID, client secret and refresh token belong to the same OAuth client`);
+  }
   const data = await response.json();
   assert.ok(typeof data.access_token === 'string' && data.access_token, 'Google did not return an access token');
   return data.access_token;

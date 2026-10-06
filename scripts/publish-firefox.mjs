@@ -42,7 +42,10 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
   assert.equal(digest(sourceBytes), sourceHash, 'Source archive changed after verification');
   assert.ok(approvalNotes?.trim() && releaseNotes?.trim(), 'Missing reviewer or release notes');
   const marker = `Firefox SHA256: ${archiveHash}\nSource SHA256: ${sourceHash}`;
-  const notes = `${approvalNotes.trim()}\n\n${marker}`;
+  // Older released metadata repeats build/changelog instructions. Keep recovery
+  // within AMO's field limit without dropping any reviewer-written instructions.
+  const reviewerNotes = approvalNotes.trim().replace(/Full build instructions: SOURCE_BUILD\.md in the attached source archive\. The complete changelog is supplied as release notes\.$/, 'Build: SOURCE_BUILD.md.');
+  const notes = `${reviewerNotes}\n\n${marker}`;
   assert.ok(releaseNotes.length <= 3000, 'Mozilla release notes exceed 3000 characters');
   assert.ok(notes.replace(/\r?\n/g, '\r\n').length <= 3000, 'Mozilla reviewer notes exceed 3000 characters');
   async function request(path, init = {}) {
