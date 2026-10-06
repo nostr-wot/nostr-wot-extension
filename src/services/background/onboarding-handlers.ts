@@ -1,3 +1,4 @@
+import type { PasskeyInput } from '@domain/vault/passkey.ts';
 import { MAX_ACCOUNT_NAME_LENGTH } from '@constants/accounts.ts';
 import { NIP46_RELAYS } from '@constants/relays.ts';
 import {
@@ -634,11 +635,11 @@ export const handlers = new Map<string, HandlerFn>([
         return { ok: true };
     }],
 
-    ['onboarding_generateAccount', async () => {
+    ['onboarding_generateAccount', async (params) => {
         const { account: acct, mnemonic } = await accounts.generateNewAccount();
         const safeAcct = toSafeAccount(acct);
         await setPendingOnboardingAccount(acct);
-        return { account: safeAcct, mnemonic };
+        return params.hideMnemonic ? { account: safeAcct } : { account: safeAcct, mnemonic };
     }],
 
     ['onboarding_checkExistingSeed', async () => {
@@ -749,13 +750,19 @@ export const handlers = new Map<string, HandlerFn>([
         if (!fullAccount.privkey && fullAccount.type !== 'npub' && fullAccount.type !== 'nip46') {
             throw new Error('Cannot create vault: private key was lost. Please re-import your nsec.');
         }
-        await setPendingOnboardingAccount(null);
+        if (params.name !== undefined) {
+            if (typeof params.name !== 'string' || params.name.trim().length > MAX_ACCOUNT_NAME_LENGTH) throw new Error('Invalid account name');
+            fullAccount.name = params.name.trim() || fullAccount.name;
+        }
 
         const payload = {
             accounts: [fullAccount],
             activeAccountId: fullAccount.id
         };
-        await vault.create(params.password as string, payload);
+        const passkey = params.passkey as PasskeyInput | undefined;
+        if (passkey && params.autoLockMinutes !== undefined && (typeof params.autoLockMinutes !== 'number' || !Number.isFinite(params.autoLockMinutes) || params.autoLockMinutes <= 0)) throw new Error('Passkey vaults require automatic locking');
+        await vault.create(passkey ? '' : params.password as string, payload, passkey);
+        await setPendingOnboardingAccount(null);
         if (params.autoLockMinutes !== undefined) {
             vault.setAutoLockTimeout((params.autoLockMinutes as number) * 60 * 1000);
             await browser.storage.local.set({ autoLockMs: (params.autoLockMinutes as number) * 60 * 1000 });

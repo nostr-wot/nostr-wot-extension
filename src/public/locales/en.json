@@ -1250,5 +1250,22 @@
   "archive.relayColumn": "Relay",
   "archive.addedColumn": "Added",
   "archive.resultColumn": "Result",
-  "archive.incomplete": "Incomplete"
+  "archive.incomplete": "Incomplete",
+  "passkey.title": "Passkey",
+  "passkey.create": "Create with passkey",
+  "passkey.createDesc": "Use your device to protect a new identity without writing down seed words.",
+  "passkey.restore": "Restore passkey vault",
+  "passkey.restoreDesc": "Choose your encrypted recovery file, then use any passkey included in it.",
+  "passkey.unlock": "Unlock with passkey",
+  "passkey.lostAccess": "Lost access to your passkey?",
+  "passkey.backup": "Save your recovery file",
+  "passkey.backupDesc": "Your passkey and this encrypted file are both required to recover your identity on another device or after reinstalling. Store the file somewhere safe outside this extension. Download a new copy after adding accounts or changing keys. Event archives do not back up your keys.",
+  "passkey.download": "Download recovery file",
+  "passkey.confirmBackup": "I saved the file somewhere safe and understand I also need my passkey.",
+  "passkey.account": "Nostr account",
+  "passkey.explanation": "We generate your identity privately on this device and encrypt it with your passkey. Your browser will offer supported providers, such as Apple Passwords or Google Password Manager. An encrypted recovery file is required too. If your provider cannot encrypt a vault, choose the recovery-phrase setup instead.",
+  "passkey.add": "Add another passkey",
+  "passkey.added": "Passkey added. Download a new recovery file to include it.",
+  "passkey.invalidBackup": "Invalid or oversized recovery file.",
+  "passkey.unlockDescription": "Unlock with your saved passkey to continue."
 }

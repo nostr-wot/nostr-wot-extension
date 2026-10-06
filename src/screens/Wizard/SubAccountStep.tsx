@@ -1,3 +1,4 @@
+import PasskeySelector from '@components/PasskeySelector';
 import { useState, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -37,6 +38,9 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   // unthrottled password oracle while every other unlock in the product was
   // throttled.
   const {
+    passkeySelection,
+    passkey,
+    checkingMethod,
     password,
     setPassword,
     error: unlockError,
@@ -79,9 +83,10 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
     return (
       <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.subAccountTitle')}</Heading>
-        <Text variant="secondary" className="mb-8">{t('unlock.vaultLocked')}</Text>
+        <Text variant="secondary" className="mb-8">{t(passkey ? 'passkey.unlockDescription' : 'unlock.vaultLocked')}</Text>
 
-        <div className="mb-6">
+        <PasskeySelector {...passkeySelection} />
+        {!passkey && !checkingMethod && <div className="mb-6">
           <SectionLabel>{t('wizard.password')}</SectionLabel>
           <Input
             type="password"
@@ -92,13 +97,13 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
             onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlock()}
             autoFocus
           />
-        </div>
+        </div>}
 
         <FormError>{unlockError}</FormError>
 
         <Container variant="row" gap={4} stickyFooter>
-          <Button className="flex-1" onClick={unlock} disabled={unlocking || !password}>
-            {unlocking ? t('common.loading') : t('common.unlock')}
+          <Button className="flex-1" onClick={unlock} disabled={unlocking || checkingMethod || (!passkey && !password)}>
+            {unlocking ? t('common.loading') : t(passkey ? 'passkey.unlock' : 'common.unlock')}
           </Button>
         </Container>
       </Container>

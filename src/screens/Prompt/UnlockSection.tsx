@@ -1,6 +1,8 @@
+import PasskeySelector from '@components/PasskeySelector';
 import { useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
+import Button from '@components/Button';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
 import { isVaultOpen } from '@domain/vault/vaultAutoUnlock.ts';
 
@@ -9,7 +11,7 @@ interface UnlockSectionProps {
 }
 
 export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
-  const { password, setPassword, error, setError, loading, lockedUntil, inputRef, unlock } =
+  const { passkeySelection, passkey, checkingMethod, password, setPassword, error, setError, loading, lockedUntil, inputRef, unlock } =
     useVaultUnlock({ onSuccess: onUnlocked, messages: { lockedOut: t('unlock.lockedOut') } });
 
   const isLockedOut = lockedUntil > Date.now();
@@ -35,7 +37,8 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
   return (
     <div className="p-5 bg-[rgba(217,119,6,0.1)] border border-[rgba(217,119,6,0.15)] rounded-md flex flex-col gap-3">
       <span className="text-sm font-bold uppercase tracking-[0.5px] text-warning">{t('prompt.vaultLocked')}</span>
-      <input
+      <PasskeySelector {...passkeySelection} />
+      {!passkey && !checkingMethod && <input
         ref={inputRef}
         className="w-full p-5 border border-card-active rounded-sm bg-input text-heading text-lg outline-none focus:border-brand focus:shadow-[var(--focus-ring)]"
         type="password"
@@ -45,7 +48,8 @@ export default function UnlockSection({ onUnlocked }: UnlockSectionProps) {
         onChange={(e: ChangeEvent<HTMLInputElement>) => { setPassword(e.target.value); setError(''); }}
         onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && !isLockedOut && unlock()}
         disabled={loading || isLockedOut}
-      />
+      />}
+      {passkey && <Button onClick={unlock} disabled={loading || isLockedOut}>{t('passkey.unlock')}</Button>}
       {error && <span className="text-sm text-error">{error}</span>}
     </div>
   );

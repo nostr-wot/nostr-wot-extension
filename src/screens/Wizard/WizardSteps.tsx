@@ -10,6 +10,7 @@ import MethodStep from './MethodStep';
 import ImportStep from './ImportStep';
 import NpubStep from './NpubStep';
 import Nip46Step from './Nip46Step';
+import PasskeyStep, { PasskeyBackupStep } from './PasskeyStep';
 import CreateStep from './CreateStep';
 import SubAccountStep from './SubAccountStep';
 import VerifyStep from './VerifyStep';
@@ -54,7 +55,7 @@ function buildSteps(
     },
     [WizardStep.Method]: {
       title: hasAccounts ? t('wizard.addAccount') : t('wizard.getStarted'),
-      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} />,
+      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} hasAccounts={hasAccounts} />,
     },
     [WizardStep.Import]: {
       title: t('wizard.importKey'),
@@ -67,6 +68,18 @@ function buildSteps(
     [WizardStep.NostrConnect]: {
       title: t('wizard.nostrConnect'),
       content: <Nip46Step onNext={(acct: any) => flow.send('DONE', { account: acct })} />,
+    },
+    [WizardStep.Passkey]: {
+      title: t('passkey.create'),
+      content: <PasskeyStep onNext={(account) => flow.send('CREATED', { account })} />,
+    },
+    [WizardStep.PasskeyRestore]: {
+      title: t('passkey.restore'),
+      content: <PasskeyStep restore onNext={(account) => flow.send('DONE', { account })} />,
+    },
+    [WizardStep.PasskeyBackup]: {
+      title: t('passkey.backup'),
+      content: <PasskeyBackupStep onNext={() => flow.send('DONE')} />,
     },
     [WizardStep.Create]: {
       title: t('wizard.createIdentity'),
@@ -125,7 +138,7 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
   if (!active?.content) return null;
 
   // When user has accounts, back on the method step should close the wizard
-  const showBack = (flow.showBack || (flow.step === WizardStep.Method && !!hasAccounts));
+  const showBack = flow.step !== WizardStep.PasskeyBackup && (flow.showBack || (flow.step === WizardStep.Method && !!hasAccounts));
   const handleBack = (flow.step === WizardStep.Method && hasAccounts) ? onClose : flow.goBack;
 
   return (

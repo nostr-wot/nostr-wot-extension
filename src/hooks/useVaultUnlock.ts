@@ -1,7 +1,12 @@
+import browser from '@lib/browser.ts';
+import { VAULT_STORAGE_KEY } from '@constants/vault.ts';
 import { UNLOCK_FAILURES_PER_LOCKOUT as LOCKOUT_THRESHOLD } from '@constants/vault.ts';
 import { UNLOCK_LOCKOUT_STEPS_MS as LOCKOUT_DURATIONS } from '@constants/vault.ts';
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import useAsyncScope from '@hooks/useAsyncScope';
+import type { PasskeySelectorProps } from '@components/PasskeySelector';
+import type { PasskeyMetadata } from '@domain/vault/passkey.ts';
+import { authenticatePasskey } from '@services/vault/passkeyClient.ts';
 import { rpc } from '@services/rpc.ts';
 
 interface VaultUnlockMessages {
@@ -17,6 +22,9 @@ interface UseVaultUnlockOptions {
 }
 
 interface UseVaultUnlockResult {
+  passkeySelection: PasskeySelectorProps;
+  passkey: boolean;
+  checkingMethod: boolean;
   password: string;
   setPassword: (pw: string) => void;
   error: string;
@@ -57,6 +65,21 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
     lockedOut: lockedOut ?? DEFAULT_MESSAGES.lockedOut,
   }), [enterPassword, wrongPassword, unlockFailed, lockedOut]);
   const scope = useAsyncScope();
+  const [credentials, setCredentials] = useState<PasskeyMetadata[]>([]);
+  const [selectedCredential, setSelectedCredential] = useState('');
+  const metadata = credentials.find((credential) => credential.credentialId === selectedCredential) || credentials[0];
+  const [checkingMethod, setCheckingMethod] = useState(true);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      setCheckingMethod(true);
+      rpc<PasskeyMetadata[]>('vault_listPasskeys').then((value) => { if (active) setCredentials(Array.isArray(value) ? value : []); }).catch(() => {}).finally(() => { if (active) setCheckingMethod(false); });
+    };
+    const changed = (changes: Record<string, unknown>, area: string) => { if (area === 'local' && VAULT_STORAGE_KEY in changes) refresh(); };
+    refresh();
+    browser.storage.onChanged.addListener(changed);
+    return () => { active = false; browser.storage.onChanged.removeListener(changed); };
+  }, []);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -105,12 +128,23 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
       return false;
     }
 
-    if (!password) { setError(msg.enterPassword); return false; }
+    if (checkingMethod || loading) return false;
+    if (!metadata && !password) { setError(msg.enterPassword); return false; }
     const current = scope.start();
     setLoading(true);
     setError('');
     try {
-      const ok = await rpc<boolean>('vault_unlock', { password });
+      let ok: boolean;
+      if (metadata) {
+        const proof = await authenticatePasskey(metadata);
+        try {
+          if (!current()) return false;
+          ok = await rpc<boolean>('vault_unlockPasskey', proof);
+        }
+        finally { proof.prf = ''; }
+      } else {
+        ok = await rpc<boolean>('vault_unlock', { password });
+      }
       if (ok) {
         _failCount = 0;
         _lockedUntil = 0;
@@ -140,7 +174,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
     } finally {
       if (current()) setLoading(false);
     }
-  }, [password, onSuccess, msg, scope]);
+  }, [password, onSuccess, msg, scope, metadata, checkingMethod, loading]);
 
-  return { password, setPassword, error, setError, loading, lockedUntil, inputRef, unlock, reset, focus };
+  return { passkeySelection: { credentials, value: metadata?.credentialId || '', onChange: setSelectedCredential, disabled: loading }, passkey: !!metadata, checkingMethod, password, setPassword, error, setError, loading, lockedUntil, inputRef, unlock, reset, focus };
 }

@@ -3,6 +3,11 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Next release
+
+- Create a locally generated account with a PRF-capable passkey, without displaying a recovery phrase or requiring a vault password. Keep password-based setup available.
+- Add passkey vault recovery files, restoration with an enrolled passkey, and additional passkeys in Security settings. Require automatic locking and reject unsupported encryption providers without a password fallback.
+
 ## 0.8.11 — 2026-10-06
 
 ### Store release notes

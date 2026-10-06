@@ -1,3 +1,4 @@
+import PasskeySelector from '@components/PasskeySelector';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import StatusNotice from '@components/StatusNotice';
@@ -140,9 +141,10 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
     return (
       <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.addToVault')}</Heading>
-        <Text variant="secondary" className="mb-8">{t('unlock.vaultLocked')}</Text>
+        <Text variant="secondary" className="mb-8">{t(unlockForm.passkey ? 'passkey.unlockDescription' : 'unlock.vaultLocked')}</Text>
 
-        <div className="mb-6">
+        <PasskeySelector {...unlockForm.passkeySelection} />
+        {!unlockForm.passkey && !unlockForm.checkingMethod && <div className="mb-6">
           <SectionLabel>{t('wizard.password')}</SectionLabel>
           <Input
             type="password"
@@ -153,13 +155,13 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
             onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlockForm.unlock()}
             autoFocus
           />
-        </div>
+        </div>}
 
         <FormError>{unlockForm.error}</FormError>
 
         <Container variant="row" gap={4} stickyFooter>
-          <Button className="flex-1" onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
-            {unlockForm.loading ? t('common.loading') : t('common.unlock')}
+          <Button className="flex-1" onClick={unlockForm.unlock} disabled={unlockForm.loading || unlockForm.checkingMethod || (!unlockForm.passkey && !unlockForm.password)}>
+            {unlockForm.loading ? t('common.loading') : t(unlockForm.passkey ? 'passkey.unlock' : 'common.unlock')}
           </Button>
         </Container>
       </Container>

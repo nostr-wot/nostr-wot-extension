@@ -26,10 +26,15 @@ interface Method {
 interface MethodStepProps {
   onSelect: (id: string) => void;
   hasGeneratedAccount?: boolean;
+  hasAccounts?: boolean;
 }
 
-export default function MethodStep({ onSelect, hasGeneratedAccount }: MethodStepProps) {
+export default function MethodStep({ onSelect, hasGeneratedAccount, hasAccounts }: MethodStepProps) {
   const METHODS: Method[] = [
+    ...(!hasAccounts ? [
+      { id: 'passkey', label: t('passkey.create'), desc: t('passkey.createDesc'), icon: METHOD_ICONS.import, primary: true },
+      { id: 'passkeyRestore', label: t('passkey.restore'), desc: t('passkey.restoreDesc'), icon: METHOD_ICONS.import },
+    ] : []),
     {
       id: 'create',
       label: hasGeneratedAccount ? t('wizard.createSubAccount') : t('wizard.createNew'),

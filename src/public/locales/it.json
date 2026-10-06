@@ -1250,5 +1250,22 @@
   "archive.relayColumn": "Relay",
   "archive.addedColumn": "Aggiunti",
   "archive.resultColumn": "Risultato",
-  "archive.incomplete": "Incompleto"
+  "archive.incomplete": "Incompleto",
+  "passkey.title": "Passkey",
+  "passkey.create": "Crea con passkey",
+  "passkey.createDesc": "Proteggi una nuova identità con il dispositivo senza annotare parole di recupero.",
+  "passkey.restore": "Ripristina il vault con passkey",
+  "passkey.restoreDesc": "Scegli il file di recupero cifrato, poi usa una delle passkey incluse.",
+  "passkey.unlock": "Sblocca con passkey",
+  "passkey.lostAccess": "Hai perso l’accesso alla passkey?",
+  "passkey.backup": "Salva il file di recupero",
+  "passkey.backupDesc": "Servono sia la passkey sia questo file cifrato per recuperare l’identità su un altro dispositivo o dopo una reinstallazione. Conserva il file fuori dall’estensione. Scarica una nuova copia dopo aver aggiunto account o cambiato chiavi. L’archivio degli eventi non salva le chiavi.",
+  "passkey.download": "Scarica il file di recupero",
+  "passkey.confirmBackup": "Ho salvato il file al sicuro e so che serve anche la passkey.",
+  "passkey.account": "Account Nostr",
+  "passkey.explanation": "Generiamo l’identità su questo dispositivo e la cifriamo con la passkey. Il browser offrirà i provider compatibili, come Password di Apple o Gestore delle password di Google. Serve anche un file di recupero cifrato. Se il provider non può cifrare il vault, scegli la configurazione con frase di recupero.",
+  "passkey.add": "Aggiungi un’altra passkey",
+  "passkey.added": "Passkey aggiunta. Scarica un nuovo file di recupero per includerla.",
+  "passkey.invalidBackup": "File di recupero non valido o troppo grande.",
+  "passkey.unlockDescription": "Sblocca con la passkey salvata per continuare."
 }

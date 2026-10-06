@@ -55,13 +55,24 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.Method]: {
     SELECT: (_ctx, { method }, { hasGeneratedAccount }) => {
       const step = (method === 'create' && hasGeneratedAccount) ? WizardStep.Subaccount : method as WizardStep;
-      if (![WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
+      if (![WizardStep.Passkey, WizardStep.PasskeyRestore, WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
       return { step, ctx: { method: method as string } };
     },
     BACK: (ctx, _payload, { initialStep }) =>
       ctx.visitedPreMethod ? { step: initialStep! } : null,
   },
 
+  [WizardStep.Passkey]: {
+    CREATED: (_ctx, { account }) => ({ step: WizardStep.PasskeyBackup, ctx: { account } }),
+    BACK: () => ({ step: WizardStep.Method }),
+  },
+  [WizardStep.PasskeyRestore]: {
+    DONE: (_ctx, { account }) => ({ step: WizardStep.Done, ctx: { account } }),
+    BACK: () => ({ step: WizardStep.Method }),
+  },
+  [WizardStep.PasskeyBackup]: {
+    DONE: () => ({ step: WizardStep.FollowSuggestions }),
+  },
   [WizardStep.Create]: {
     CREATED: (_ctx, { account, mnemonic }) => ({
       step: WizardStep.Verify,
@@ -127,6 +138,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.FollowSuggestions]: {
     DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done }),
     BACK: (ctx, _payload, { hasGeneratedAccount }) => {
+      if (ctx.method === 'passkey') return { step: WizardStep.PasskeyBackup };
       // Subaccounts skip password, go back to subaccount step
       if (ctx.method === 'create' && hasGeneratedAccount) return { step: WizardStep.Subaccount };
       return { step: WizardStep.Password };

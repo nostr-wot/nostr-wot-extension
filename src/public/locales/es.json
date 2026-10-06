@@ -1250,5 +1250,22 @@
   "archive.relayColumn": "Relé",
   "archive.addedColumn": "Añadidos",
   "archive.resultColumn": "Resultado",
-  "archive.incomplete": "Incompleto"
+  "archive.incomplete": "Incompleto",
+  "passkey.title": "Clave de acceso",
+  "passkey.create": "Crear con clave de acceso",
+  "passkey.createDesc": "Protege una identidad nueva con tu dispositivo sin anotar palabras de recuperación.",
+  "passkey.restore": "Restaurar bóveda con clave de acceso",
+  "passkey.restoreDesc": "Elige tu archivo de recuperación cifrado y usa cualquiera de las claves de acceso incluidas en él.",
+  "passkey.unlock": "Desbloquear con clave de acceso",
+  "passkey.lostAccess": "¿Perdiste acceso a tu clave?",
+  "passkey.backup": "Guarda el archivo de recuperación",
+  "passkey.backupDesc": "Necesitas tanto tu clave de acceso como este archivo cifrado para recuperar tu identidad en otro dispositivo o tras reinstalar. Guarda el archivo fuera de esta extensión. Descarga una copia nueva cuando añadas cuentas o cambies claves. El archivo de eventos no guarda tus claves.",
+  "passkey.download": "Descargar archivo de recuperación",
+  "passkey.confirmBackup": "He guardado el archivo en un lugar seguro y entiendo que también necesito mi clave de acceso.",
+  "passkey.account": "Cuenta Nostr",
+  "passkey.explanation": "Generamos tu identidad en este dispositivo y la ciframos con tu clave de acceso. El navegador ofrecerá proveedores compatibles, como Contraseñas de Apple o el Gestor de contraseñas de Google. También necesitas un archivo de recuperación cifrado. Si tu proveedor no puede cifrar la bóveda, elige la configuración con frase de recuperación.",
+  "passkey.add": "Añadir otra clave de acceso",
+  "passkey.added": "Clave añadida. Descarga un archivo de recuperación nuevo para incluirla.",
+  "passkey.invalidBackup": "Archivo de recuperación inválido o demasiado grande.",
+  "passkey.unlockDescription": "Desbloquea con tu clave de acceso guardada para continuar."
 }

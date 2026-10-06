@@ -79,6 +79,7 @@
     }
   ],
   "host_permissions": [
-    "https://nostr-wot.com/*"
+    "https://nostr-wot.com/*",
+    "https://passkeys.nostr-wot.com/*"
   ]
 }

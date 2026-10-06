@@ -1,3 +1,4 @@
+import PasskeySelector from '@components/PasskeySelector';
 import NsecExportPanel from './NsecExportPanel';
 import SeedExportPanel from './SeedExportPanel';
 import ChangePasswordPanel from './ChangePasswordPanel';
@@ -27,6 +28,7 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
   const titles: Record<string, string> = { nsec: t('key.exportTitle'), ncryptsec: t('key.exportEncTitle'), seed: t('key.exportSeedTitle'), changePassword: t('key.changePasswordTitle') };
 
   const {
+    passkey, checkingMethod, loading, passkeySelection,
     password: unlockPw,
     setPassword: setUnlockPw,
     error: unlockError,
@@ -69,18 +71,19 @@ export default function KeyActionModal({ action, onClose }: KeyActionModalProps)
         {needsUnlock ? (
           <Container gap={5}>
             <SectionLabel inline>{t('key.unlockToContinue')}</SectionLabel>
-            <Input
+            <PasskeySelector {...passkeySelection} />
+            {!passkey && !checkingMethod && <Input
               type="password"
               showToggle
               placeholder={t('key.vaultPassword')}
               value={unlockPw}
               onChange={(e: ChangeEvent<HTMLInputElement>) => setUnlockPw(e.target.value)}
               onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleUnlock()}
-            />
+            />}
             <FormError>{unlockError}</FormError>
             <Container variant="row" gap={4} className="justify-end mt-2">
               <ButtonSecondary small onClick={handleClose}>{t('common.cancel')}</ButtonSecondary>
-              <Button small onClick={handleUnlock}>{t('common.unlock')}</Button>
+              <Button small onClick={handleUnlock} disabled={loading || checkingMethod}>{t(passkey ? 'passkey.unlock' : 'common.unlock')}</Button>
             </Container>
           </Container>
         ) : action === 'nsec' ? (

@@ -4,7 +4,7 @@
 
 The vault encrypts sensitive account data (private keys, mnemonics) at rest using Web Crypto APIs.
 
-**Encryption scheme:**
+**Password vault encryption scheme:**
 
 1. User password fed to PBKDF2 with SHA-256, **600,000 iterations**, random 32-byte salt, producing a 256-bit AES key.
 
@@ -22,6 +22,18 @@ The vault encrypts sensitive account data (private keys, mnemonics) at rest usin
     "ciphertext": "<base64>"
 }
 ```
+
+### Passkey vaults
+
+Passkey onboarding generates a random NIP-06 seed in the background and does not return the mnemonic to the wizard. It stores the same encrypted account payload as password onboarding, including seed material needed for sub-accounts. It does not put the seed into Apple Passwords or Google Password Manager.
+
+Version 2 passkey records use a random 256-bit AES-GCM vault key. Each enrolled credential wraps that key using its 32-byte WebAuthn PRF output, HKDF-SHA-256 with a random per-credential salt and the context `nostr-wot/vault/passkey-wrap/v1`, and AES-GCM with a fresh IV. The wrapping authenticated data binds the credential ID, PRF salt, RP ID and format context. Imported vault keys are nonextractable; temporary raw-key and PRF byte buffers are cleared after use. Transient RPC strings cannot be reliably erased by JavaScript, so this provides no guarantee against a compromised trusted extension page or unlocked process.
+
+The RP ID is `passkeys.nostr-wot.com`, with an explicit matching host permission. The parent marketing origin cannot request credentials for this child RP. The extension makes WebAuthn calls directly; there is no hosted authentication bridge, seed upload or authentication server. Control of that dedicated RP and extensions granted its host permission remain part of the trust boundary. User verification and discoverable credentials are required. Registration must be followed by a successful PRF assertion before any vault is saved. Support depends on the browser, operating system and selected credential provider; a general passkey API check does not establish PRF support. Unsupported combinations fail before creating an account, with no weaker fallback.
+
+Passkey vaults cannot unlock through a password or use Never lock. Timed locking, worker termination, key zeroing, private-cache encryption, pending approvals and session invalidation use the existing vault lifecycle. Changing the locking interval never converts a passkey vault to password protection. Existing password records are unchanged.
+
+A downloaded recovery file contains encrypted vault data, wrapped keys and public credential metadata. Restoring requires both that file and one of its enrolled passkeys; syncing the passkey alone does not back up the vault. Restoration validates and decrypts the whole file before saving, refuses to replace an existing vault or accounts, and resets automatic locking to 15 minutes. The same serialized-file size bound applies to export and import. Security settings can add up to eight credentials after authenticating an existing credential. Download a new recovery file after adding a credential or changing vault contents: earlier files are snapshots and do not include those changes. The event Archive does not back up identity keys. No cloud backup is provided by this feature.
 
 **Auto-lock**: Configurable timeout (default 15 minutes / 900,000ms). When the timer fires, `lock()` zeroes all in-memory key material and sets `_decrypted = null` and `_cryptoKey = null`. It also writes `LOCK_STATE_KEY` (`vaultLockStateAt`, `src/constants/vault.ts`) to `storage.local`, fire-and-forget, because locking left no trace an open popup could observe: `VaultContext` re-checked only when the active account changed, so a popup sitting open past the interval went on rendering unlocked UI over a locked vault — and an incoming request that queued an unlock waiter produced no prompt at all, since the surface that raises one only does so when it believes the vault is locked. The request simply timed out after two minutes with no UI ever shown. `storage.onChanged` is the only channel that carries this: runtime messages are not delivered back to the document that sent them, and a background broadcast reaches only a popup already listening. The background script also calls `clearWalletProviders()` on lock to disconnect and discard cached wallet provider instances. On Chrome, service worker termination also naturally clears memory. When the vault auto-locks, a full-screen overlay blocks all UI until the password is entered.
 
