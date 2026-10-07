@@ -1264,7 +1264,7 @@
   "passkey.download": "Descargar archivo de recuperación",
   "passkey.confirmBackup": "He guardado el archivo en un lugar seguro y entiendo que también necesito mi clave de acceso.",
   "passkey.account": "Cuenta Nostr",
-  "passkey.explanation": "Elige un proveedor de passkeys en tu navegador. Ciframos tu nueva identidad e intentamos guardar sus datos de recuperación junto a la passkey. Solo se exige un archivo si no podemos verificar ese almacenamiento.",
+  "passkey.explanation": "Elige un proveedor de passkeys en tu navegador. Ciframos tu nueva identidad e intentamos guardar sus datos de recuperación junto a la passkey.",
   "passkey.add": "Añadir otra clave de acceso",
   "passkey.added": "Passkey añadida. Guarda los datos de recuperación en ella o descarga un archivo actualizado.",
   "passkey.invalidBackup": "Archivo de recuperación inválido o demasiado grande.",
@@ -1291,5 +1291,6 @@
   "passkey.recoverySnapshot": "La recuperación es una copia de tus cuentas y claves. Vuelve a guardarla tras añadir o eliminar cuentas o passkeys. El proveedor controla su disponibilidad en otros dispositivos. El archivo de eventos es independiente.",
   "passkey.usePasskey": "Usar passkey",
   "passkey.useFile": "Usar un archivo de recuperación",
-  "passkey.recoveryTitle": "Guardar datos de recuperación"
+  "passkey.recoveryTitle": "Guardar datos de recuperación",
+  "wizard.importShort": "Importar"
 }

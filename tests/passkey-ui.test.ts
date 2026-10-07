@@ -89,44 +89,32 @@ test('closing the unlock screen while passkey verification runs never unlocks th
   }
 });
 
-test('first setup screen has creation cards and direct import without specialized options', async () => {
+test('setup groups three compact secondary choices below creation and an or divider', async () => {
  const { dom, root } = mount(); const selected: string[] = [];
  try {
   await act(async () => root.render(createElement(MethodStep, { hasAccounts: false, onSelect: id => selected.push(id) })));
-  assert.doesNotMatch(document.body.textContent!, /passkey.restore|wizard.watchOnly|wizard.nostrConnect/);
-  assert.ok(button('wizard.importKeyBackup'));
-  assert.ok(button('wizard.moreOptions'));
-  await act(async () => button('wizard.importKeyBackup').click());
-  assert.deepEqual(selected, ['import']);
- } finally { await act(async () => root.unmount()); dom.window.close(); }
-});
-
-
-test('more options exposes specialized methods and hides passkey restoration for existing vaults', async () => {
- const { dom, root } = mount(); const selected: string[] = [];
- try {
-  await act(async () => root.render(createElement(MethodStep, { moreOptions: true, hasAccounts: false, onSelect: id => selected.push(id) })));
-  assert.doesNotMatch(document.body.textContent!, /passkey.create|wizard.createWithPhrase|wizard.importExisting/);
-  for (const [label, method] of [['wizard.nostrConnect', 'nip46'], ['passkey.restore', 'passkeyRestore'], ['wizard.watchOnly', 'npub']]) {
-   const node = [...document.querySelectorAll('button')].find(node => node.textContent?.startsWith(label))!;
-   await act(async () => node.click());
-   assert.equal(selected.at(-1), method);
+  assert.ok(button('passkey.create'));
+  assert.ok(button('wizard.createWithPhrase'));
+  assert.equal(!!button('wizard.moreOptions'), false);
+  assert.match(document.body.textContent!, /common.or/);
+  const row = document.querySelector('[data-account-alternatives]')!;
+  assert.equal(row.querySelectorAll('button').length, 3);
+  for (const [label, method] of [['wizard.importShort', 'import'], ['wizard.watchOnly', 'npub'], ['wizard.nostrConnect', 'nip46']]) {
+    await act(async () => button(label).click());
+    assert.equal(selected.at(-1), method);
   }
-  await act(async () => root.render(createElement(MethodStep, { moreOptions: true, hasAccounts: true, onSelect: () => {} })));
-  assert.doesNotMatch(document.body.textContent!, /passkey.restore/);
  } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
-
 
 test('add account offers direct account methods instead of new-vault setup', async () => {
  const { dom, root } = mount();
  try {
   await act(async () => root.render(createElement(MethodStep, { hasAccounts: true, hasGeneratedAccount: true, onSelect: () => {} })));
   assert.ok(button('wizard.createAnother'));
-  assert.ok(button('wizard.importKeyBackup'));
+  assert.ok(button('wizard.importShort'));
   assert.ok(button('wizard.nostrConnect'));
   assert.ok(button('wizard.watchOnly'));
-  assert.equal(button('wizard.moreOptions'), undefined);
+  assert.equal(!!button('wizard.moreOptions'), false);
   assert.match(document.body.textContent!, /wizard.addAccountIntro/);
  } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
@@ -217,4 +205,13 @@ test('closing recovery save aborts the request and cannot advance onboarding', a
     await act(async () => root.unmount());
     await act(async () => finish({ result: '{}' }));
   } finally { dom.window.close(); }
+});
+
+test('passkey setup uses a default name without asking for an account or credential name', async () => {
+  const { dom, root } = mount();
+  try {
+    await act(async () => root.render(createElement(PasskeyStep, { onNext: () => {} })));
+    assert.equal(document.querySelector('input[type="text"], #passkey-name'), null);
+    assert.ok(button('passkey.create'));
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
 });

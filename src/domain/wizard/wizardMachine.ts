@@ -60,7 +60,6 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       if (![WizardStep.Passkey, WizardStep.PasskeyRestore, WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
       return { step, ctx: { method: method as string } };
     },
-    MORE_OPTIONS: () => ({ step: WizardStep.MoreOptions }),
     BACK: (ctx, _payload, { initialStep }) =>
       ctx.visitedPreMethod ? { step: initialStep! } : null,
   },
@@ -81,7 +80,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
   [WizardStep.PasskeyRestore]: {
     DONE: (_ctx, { account }) => ({ step: WizardStep.Done, ctx: { account } }),
-    BACK: () => ({ step: WizardStep.MoreOptions }),
+    BACK: () => ({ step: WizardStep.Import }),
   },
   [WizardStep.PasskeyBackup]: {
     DONE: (_ctx, { saved }) => ({ step: WizardStep.FollowSuggestions, ctx: { passkeyRecoverySaved: saved === true } }),
@@ -103,6 +102,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
 
   [WizardStep.Import]: {
+    RESTORE_PASSKEY: (_ctx, _payload, { hasAccounts }) => hasAccounts ? null : ({ step: WizardStep.PasskeyRestore, ctx: { method: 'passkeyRestore' } }),
     IMPORTED: (_ctx, { account, upgradeId }) => ({
       step: WizardStep.Password,
       ctx: { account: account as unknown, upgradeId: upgradeId as string },
@@ -115,12 +115,12 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done,
       ctx: { account: account as unknown },
     }),
-    BACK: () => ({ step: WizardStep.MoreOptions }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
   [WizardStep.NostrConnect]: {
     DONE: (_ctx, { account }) => ({ step: WizardStep.Password, ctx: { account: account as unknown } }),
-    BACK: () => ({ step: WizardStep.MoreOptions }),
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
   [WizardStep.Backup]: {
@@ -191,7 +191,7 @@ export function reducer(state: WizardState, action: WizardAction, options: Wizar
   }
 
   if (action.type === 'RESTORE' && action.payload) {
-    const restoredStep = action.payload.step === 'archive' ? WizardStep.Done : action.payload.step;
+    const restoredStep = action.payload.step === 'archive' ? WizardStep.Done : action.payload.step === WizardStep.MoreOptions ? WizardStep.Method : action.payload.step;
     if (!Object.values(WizardStep).includes(restoredStep as WizardStep)) return state;
     return {
       step: restoredStep as WizardStep,

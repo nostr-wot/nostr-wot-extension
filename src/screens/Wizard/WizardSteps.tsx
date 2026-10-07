@@ -55,15 +55,15 @@ function buildSteps(
     },
     [WizardStep.Method]: {
       title: hasAccounts ? t('wizard.addAccount') : t('wizard.getStarted'),
-      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} hasAccounts={hasAccounts} onMoreOptions={() => flow.send('MORE_OPTIONS')} />,
+      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} hasAccounts={hasAccounts} />,
     },
     [WizardStep.MoreOptions]: {
-      title: t('wizard.moreOptions'),
-      content: <MethodStep moreOptions onSelect={(method) => flow.send('SELECT', { method })} hasAccounts={hasAccounts} />,
+      title: t('wizard.getStarted'),
+      content: <MethodStep onSelect={(method) => flow.send('SELECT', { method })} hasAccounts={hasAccounts} />,
     },
     [WizardStep.Import]: {
       title: t('wizard.importKey'),
-      content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} />,
+      content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} onRestorePasskey={hasAccounts ? undefined : () => flow.send('RESTORE_PASSKEY')} />,
     },
     [WizardStep.WatchOnly]: {
       title: t('wizard.watchOnly'),

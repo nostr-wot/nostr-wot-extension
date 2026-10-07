@@ -5,7 +5,6 @@ import { parsePasskeyBackup, type PasskeyMetadata } from '@domain/vault/passkey.
 import { PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
 import PasskeySelector from '@components/PasskeySelector';
 import { createPasskey, authenticatePasskey } from '@services/vault/passkeyClient.ts';
-import { MAX_ACCOUNT_NAME_LENGTH } from '@constants/accounts.ts';
 import type { SafeAccount } from '@domain/accounts/types.ts';
 import Button from '@components/Button';
 import Input from '@components/Input';
@@ -36,7 +35,6 @@ export function PasskeyBackupStep({ onNext, blobSupported = false, saved = false
 
 export default function PasskeyStep({ restore = false, onNext }: { restore?: boolean; onNext: (account: SafeAccount, blobSupported?: boolean) => void }) {
   const [useFile, setUseFile] = useState(false);
-  const [name, setName] = useState('');
   const [backup, setBackup] = useState('');
   const [credentials, setCredentials] = useState<PasskeyMetadata[]>([]);
   const [selected, setSelected] = useState('');
@@ -59,11 +57,11 @@ export default function PasskeyStep({ restore = false, onNext }: { restore?: boo
         } finally { credential.prf = ''; }
       } else {
         // Start WebAuthn from the user's gesture before the background round trip.
-        const passkey = await createPasskey(name.trim() || t('passkey.account'));
+        const passkey = await createPasskey(t('passkey.account'));
         try {
           const result = await rpc<{ account: SafeAccount }>('onboarding_generateAccount', { hideMnemonic: true });
-          const account = { ...result.account, name: name.trim() || result.account.name };
-          await rpc('onboarding_createVault', { account, name: name.trim() || account.name, passkey, autoLockMinutes: 15 });
+          const account = result.account;
+          await rpc('onboarding_createVault', { account, name: account.name, passkey, autoLockMinutes: 15 });
           onNext(account, passkey.largeBlobSupported === true);
         } finally { passkey.prf = ''; }
       }
@@ -72,12 +70,12 @@ export default function PasskeyStep({ restore = false, onNext }: { restore?: boo
   };
   return <Container gap={6} className="flex-1">
     <Text variant="secondary">{t(restore ? 'passkey.restoreDesc' : 'passkey.explanation')}</Text>
-    {restore ? useFile && <><SectionLabel htmlFor="passkey-file">{t('passkey.backup')}</SectionLabel><Input id="passkey-file" type="file" accept=".json,application/json" disabled={busy} onChange={async (e) => {
+    {restore && useFile && <><SectionLabel htmlFor="passkey-file">{t('passkey.backup')}</SectionLabel><Input id="passkey-file" type="file" accept=".json,application/json" disabled={busy} onChange={async (e) => {
       setError(''); setBackup(''); setCredentials([]); setSelected('');
       const file = e.target.files?.[0];
       if (!file) return;
       try { if (file.size > PASSKEY_MAX_BACKUP_BYTES) throw new Error(t('passkey.invalidBackup')); const text = await file.text(); const record = parsePasskeyBackup(text); setCredentials(record.passkeys); setSelected(record.passkeys[0].credentialId); setBackup(text); } catch (error) { setError((error as Error).message); }
-    }} /></> : <><SectionLabel htmlFor="passkey-name">{t('wizard.accountName')}</SectionLabel><Input id="passkey-name" value={name} maxLength={MAX_ACCOUNT_NAME_LENGTH} disabled={busy} onChange={(e) => setName(e.target.value)} /></>}
+    }} /></>}
     {restore && useFile && <PasskeySelector credentials={credentials} value={selected} onChange={setSelected} disabled={busy} />}
     {restore && <LinkButton disabled={busy} onClick={() => { setUseFile(!useFile); setError(''); }}>{t(useFile ? 'passkey.usePasskey' : 'passkey.useFile')}</LinkButton>}
     <FormError>{error}</FormError>

@@ -446,6 +446,17 @@ export async function destroy(): Promise<void> {
   });
 }
 
+/** Called after confirmed account removal; public metadata never authorizes vault deletion. */
+export async function destroyIfEmpty(): Promise<boolean> {
+  return mutations.run(async () => {
+    if (!_decrypted || _decrypted.accounts.length !== 0) return false;
+    lock();
+    await browser.storage.local.remove(STORAGE_KEY);
+    for (const listener of destroyListeners) await listener();
+    return true;
+  });
+}
+
 /**
  * Check if a vault exists in storage
  */

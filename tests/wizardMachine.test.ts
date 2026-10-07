@@ -159,19 +159,19 @@ test('restoring a passkey vault finishes without creating another account or pas
   assert.equal(restored.ctx.mnemonic, null);
 });
 
-test('more options adds a step only for specialized account methods', () => {
+test('secondary methods are direct, passkey recovery belongs to Import, and old More options state migrates', () => {
   const start = fresh();
-  for (const method of ['create', 'passkey', 'import']) {
-    assert.equal(reducer(start, { type: 'SELECT', payload: { method } }).step, method);
+  for (const method of ['create', 'passkey', 'import', 'npub', 'nip46']) {
+    const next = reducer(start, { type: 'SELECT', payload: { method } });
+    assert.equal(next.step, method);
+    if (['npub', 'nip46'].includes(method)) assert.equal(reducer(next, { type: 'BACK' }).step, 'method');
   }
-  const more = reducer(start, { type: 'MORE_OPTIONS' });
-  assert.equal(more.step, 'moreOptions');
-  for (const method of ['npub', 'nip46', 'passkeyRestore']) {
-    const selected = reducer(more, { type: 'SELECT', payload: { method } });
-    assert.equal(selected.step, method);
-    assert.equal(reducer(selected, { type: 'BACK' }).step, 'moreOptions');
-  }
-  assert.equal(reducer(more, { type: 'BACK' }).step, 'method');
+  const importing = reducer(start, { type: 'SELECT', payload: { method: 'import' } });
+  const restore = reducer(importing, { type: 'RESTORE_PASSKEY' });
+  assert.equal(restore.step, 'passkeyRestore');
+  assert.equal(reducer(restore, { type: 'BACK' }).step, 'import');
+  assert.equal(reducer(importing, { type: 'RESTORE_PASSKEY' }, { hasAccounts: true }), importing);
+  assert.equal(reducer(start, { type: 'RESTORE', payload: { step: 'moreOptions', ctx: start.ctx } }).step, 'method');
 });
 
 test('verified passkey storage survives navigation without requiring a file', () => {

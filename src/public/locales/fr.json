@@ -1264,7 +1264,7 @@
   "passkey.download": "Télécharger le fichier de récupération",
   "passkey.confirmBackup": "J’ai conservé le fichier en lieu sûr et je comprends que ma clé d’accès est aussi nécessaire.",
   "passkey.account": "Compte Nostr",
-  "passkey.explanation": "Choisissez un fournisseur de passkeys dans votre navigateur. Nous chiffrons votre nouvelle identité et essayons d’enregistrer ses données de récupération avec la passkey. Un fichier est exigé uniquement si cet enregistrement ne peut pas être vérifié.",
+  "passkey.explanation": "Choisissez un fournisseur de passkeys dans votre navigateur. Nous chiffrons votre nouvelle identité et essayons d’enregistrer ses données de récupération avec la passkey.",
   "passkey.add": "Ajouter une clé d’accès",
   "passkey.added": "Passkey ajoutée. Enregistrez les données de récupération dans celle-ci ou téléchargez un fichier actualisé.",
   "passkey.invalidBackup": "Fichier de récupération invalide ou trop volumineux.",
@@ -1291,5 +1291,6 @@
   "passkey.recoverySnapshot": "La récupération est une copie de vos comptes et clés. Enregistrez-la à nouveau après avoir ajouté ou supprimé des comptes ou passkeys. Le fournisseur contrôle sa disponibilité sur les autres appareils. L’archive des événements est distincte.",
   "passkey.usePasskey": "Utiliser la passkey",
   "passkey.useFile": "Utiliser un fichier de récupération",
-  "passkey.recoveryTitle": "Enregistrer les données de récupération"
+  "passkey.recoveryTitle": "Enregistrer les données de récupération",
+  "wizard.importShort": "Importer"
 }

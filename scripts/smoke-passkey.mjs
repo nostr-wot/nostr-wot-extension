@@ -31,15 +31,15 @@ try {
     return response.result;
   }, { method, params });
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'More options', exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Import', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).count(), 0);
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/onboarding.png` });
-  await page.getByRole('button', { name: 'More options', exact: false }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
   await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).waitFor();
-  if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/more-options.png` });
+  if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/import.png` });
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'Create with passkey', exact: false }).click();
-  await page.locator('#passkey-name').fill('Synthetic passkey account');
+  assert.equal(await page.locator('#passkey-name').count(), 0);
   await page.getByRole('button', { name: 'Create with passkey', exact: true }).click();
   if (blobRecovery) {
     await page.getByRole('button', { name: 'Skip for now', exact: true }).waitFor();
@@ -48,7 +48,7 @@ try {
     await page.getByRole('button', { name: 'Download recovery file', exact: true }).waitFor();
   }
   const accounts = await rpc('vault_listAccounts');
-  assert.equal(accounts[0].name, 'Synthetic passkey account');
+  assert.ok(accounts[0].name);
   assert.equal(accounts[0].mnemonic, undefined);
   const publicKey = accounts[0].pubkey;
   let backup;
@@ -72,15 +72,12 @@ try {
     await rpc('vault_lock');
   }
   await page.reload();
-  // An existing encrypted vault still requires authentication after restart.
-  if (!blobRecovery) {
-    await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).click();
-    await page.waitForFunction(async () => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_isLocked', params: {} })).result === false);
-  }
+  assert.equal(await rpc('vault_exists'), false);
+  assert.equal(await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).count(), 0);
   // Language preference can survive vault removal; handle both onboarding entries.
-  await page.waitForFunction(() => globalThis.document.body.innerText.includes('More options') || globalThis.document.body.innerText.includes('English'));
-  if (!await page.getByRole('button', { name: 'More options', exact: false }).count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'More options', exact: false }).click();
+  await page.waitForFunction(() => globalThis.document.body.innerText.includes('Create with passkey') || globalThis.document.body.innerText.includes('English'));
+  if (!await page.getByRole('button', { name: 'Import', exact: true }).count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
   const restore = page.getByRole('button', { name: 'Restore passkey vault', exact: false });
   await restore.click();
   if (!blobRecovery) {
@@ -92,6 +89,17 @@ try {
   await page.getByText("You're all set!", { exact: true }).waitFor();
   const restoredKey = await rpc('vault_getActivePubkey');
   assert.equal(restoredKey, publicKey);
+  // Older installations may retain an encrypted empty vault. Opening setup must
+  // not prompt for unlocking, nor silently delete a vault based on public metadata.
+  await rpc('vault_destroy');
+  await rpc('vault_create', { password: 'synthetic-empty-vault', payload: { accounts: [], activeAccountId: null } });
+  await rpc('vault_lock');
+  await page.reload();
+  await page.getByRole('button', { name: 'Import', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  assert.equal(await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).count(), 0);
+  assert.equal(await rpc('vault_exists'), true);
+  assert.equal(await rpc('vault_isLocked'), true);
   console.log(`Passkey browser smoke passed: PRF enrollment, seed-free creation, ${blobRecovery ? 'verified blob storage and fresh-install discovery' : 'file fallback and empty-vault restore'}, lock/unlock preserve identity.`);
 } finally {
   await context?.close();

@@ -1264,7 +1264,7 @@
   "passkey.download": "Download recovery file",
   "passkey.confirmBackup": "I saved the file somewhere safe and understand I also need my passkey.",
   "passkey.account": "Nostr account",
-  "passkey.explanation": "Choose a passkey provider in your browser. We encrypt your new identity and try to save its recovery data alongside the passkey. A recovery file is required only if that storage cannot be verified.",
+  "passkey.explanation": "Choose a passkey provider in your browser. We encrypt your new identity and try to save its recovery data alongside the passkey.",
   "passkey.add": "Add another passkey",
   "passkey.added": "Passkey added. Save recovery data to it or download an updated recovery file.",
   "passkey.invalidBackup": "Invalid or oversized recovery file.",
@@ -1291,5 +1291,6 @@
   "passkey.recoverySnapshot": "Recovery is a snapshot of your accounts and keys. Save it again after adding or removing accounts or passkeys. Your provider controls availability on other devices. Event archives are separate.",
   "passkey.usePasskey": "Use passkey",
   "passkey.useFile": "Use a recovery file",
-  "passkey.recoveryTitle": "Save recovery data"
+  "passkey.recoveryTitle": "Save recovery data",
+  "wizard.importShort": "Import"
 }

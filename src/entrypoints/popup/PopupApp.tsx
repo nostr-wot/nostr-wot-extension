@@ -85,8 +85,8 @@ function PopupInner() {
       .catch(() => {});
   }, []);
 
-  // Auto-show unlock screen when vault is locked
-  const vaultLockScreen = vault.exists && vault.locked && vault.autoLockEnabled;
+  // Empty-account setup does not require unlocking; background operations still verify the vault.
+  const vaultLockScreen = account.accounts?.length !== 0 && vault.exists && vault.locked && vault.autoLockEnabled;
 
   useEffect(() => {
     if (vaultLockScreen && (activeOverlay === 'activity' || activeOverlay === 'menu')) setActiveOverlay(null);

@@ -1264,7 +1264,7 @@
   "passkey.download": "Wiederherstellungsdatei herunterladen",
   "passkey.confirmBackup": "Ich habe die Datei sicher gespeichert und weiß, dass ich auch meinen Passkey benötige.",
   "passkey.account": "Nostr-Konto",
-  "passkey.explanation": "Wähle einen Passkey-Anbieter im Browser. Wir verschlüsseln deine neue Identität und versuchen, ihre Wiederherstellungsdaten beim Passkey zu speichern. Eine Datei ist nur erforderlich, wenn sich diese Speicherung nicht bestätigen lässt.",
+  "passkey.explanation": "Wähle einen Passkey-Anbieter im Browser. Wir verschlüsseln deine neue Identität und versuchen, ihre Wiederherstellungsdaten beim Passkey zu speichern.",
   "passkey.add": "Weiteren Passkey hinzufügen",
   "passkey.added": "Passkey hinzugefügt. Speichere die Wiederherstellungsdaten darin oder lade eine aktualisierte Datei herunter.",
   "passkey.invalidBackup": "Ungültige oder zu große Wiederherstellungsdatei.",
@@ -1291,5 +1291,6 @@
   "passkey.recoverySnapshot": "Die Wiederherstellung ist eine Momentaufnahme deiner Konten und Schlüssel. Speichere sie nach dem Hinzufügen oder Entfernen von Konten oder Passkeys erneut. Der Anbieter bestimmt die Verfügbarkeit auf anderen Geräten. Das Ereignisarchiv ist davon getrennt.",
   "passkey.usePasskey": "Passkey verwenden",
   "passkey.useFile": "Wiederherstellungsdatei verwenden",
-  "passkey.recoveryTitle": "Wiederherstellungsdaten speichern"
+  "passkey.recoveryTitle": "Wiederherstellungsdaten speichern",
+  "wizard.importShort": "Importieren"
 }

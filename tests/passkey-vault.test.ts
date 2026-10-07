@@ -106,6 +106,23 @@ describe('passkey vault encryption and lifecycle', () => {
     await assert.rejects(vault.exportPasskeyBackup(), /size limit/);
   });
 
+  it('only deletes a vault whose decrypted contents prove it is empty', async () => {
+    await vault.create('', payload(), input());
+    await browser.storage.local.set({ accounts: [] });
+    assert.equal(await vault.destroyIfEmpty(), false);
+    vault.lock();
+    assert.equal(await vault.destroyIfEmpty(), false);
+    await vault.unlockPasskey(input());
+    await vault.removeAccount('test');
+    const backup = await record();
+    vault.lock();
+    assert.equal(await vault.destroyIfEmpty(), false);
+    assert.deepEqual(await record(), backup);
+    await vault.unlockPasskey(input());
+    assert.equal(await vault.destroyIfEmpty(), true);
+    assert.equal(await vault.exists(), false);
+  });
+
   it('can replace an unlocked empty vault after the last account is removed', async () => {
     await vault.create('password123', payload());
     await vault.removeAccount('test');
