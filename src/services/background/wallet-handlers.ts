@@ -7,6 +7,7 @@ import type { ConnectionDraft } from '@domain/wallet/app-connections.ts';
 
 import { linkInvoiceNote, applyPaymentNotes, savePaymentNote, recordPaymentSuccess, getPaymentNotices, acknowledgePaymentNotices } from '../wallet/payment-records.ts';
 import { parseLightningAddress } from '../../domain/wallet/lnurl.ts';
+import { maxFeeMsatFor } from '../../domain/wallet/fee.ts';
 import browser from '../../lib/browser.ts';
 import { readWalletDisplayCache, updateWalletDisplayCache, resetWalletDisplayCache, walletDisplayRevision } from '../wallet/display-cache.ts';
 import * as vault from '../vault/vault.ts';
@@ -160,7 +161,28 @@ export const handlers = new Map<string, HandlerFn>([
         const data = await browser.storage.local.get(`walletThreshold_${acct.id}`) as Record<string, number>;
         const threshold = data[`walletThreshold_${acct.id}`] || 0;
         assertCurrent();
-        const autoApproved = await reserveAutomaticPayment(acct.id, invoiceAmountMsats, threshold);
+        // A silent payment spends the routing fee as surely as it spends the amount, so
+        // the allowance has to count both. Where the wallet can quote a fee, it is
+        // reserved with the amount and the send carries a ceiling. Where it cannot be
+        // established, the payment stops being silent: an unbounded fee on a payment
+        // nobody is watching is the case this guard exists for.
+        //
+        // A wallet with no quote at all (NIP-47 defines none) keeps the old behaviour
+        // rather than losing silent payments entirely.
+        let maxFeeMsat: number | undefined;
+        let autoApproved = false;
+        if (!provider.quoteSend) {
+          autoApproved = await reserveAutomaticPayment(acct.id, invoiceAmountMsats, threshold);
+        } else if (invoiceAmountMsats > 0) {
+          // Guarded on a known amount: reserving a fee alone against an undecodable
+          // invoice would silently approve a payment of unknown size.
+          const { feeMsat } = await provider.quoteSend(paymentRequest);
+          assertCurrent();
+          if (feeMsat !== null) {
+            maxFeeMsat = maxFeeMsatFor(invoiceAmountMsats);
+            autoApproved = await reserveAutomaticPayment(acct.id, invoiceAmountMsats + feeMsat, threshold);
+          }
+        }
 
         assertCurrent();
         if (!autoApproved) {
@@ -184,7 +206,13 @@ export const handlers = new Map<string, HandlerFn>([
         assertCurrent();
         await linkInvoiceNote(acct.id, paymentRequest, assertCurrent);
         assertCurrent();
-        const result = await provider.payInvoice(paymentRequest);
+        // The ceiling rides only on the silent path. A payment the user was shown and
+        // approved is their decision, and a constant should not veto it with an error
+        // they cannot override.
+        const result = await provider.payInvoice(
+          paymentRequest,
+          autoApproved && maxFeeMsat !== undefined ? { maxFeeMsat } : undefined,
+        );
         // Receipt persistence is best-effort after settlement. A storage failure
         // must never turn a successful payment into an error inviting a retry.
         await recordPaymentSuccess(acct.id, origin, invoiceAmountSats, assertCurrent).catch(() => {});

@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { NwcProvider } from '../../src/services/wallet/nwc.ts';
 import type { NwcCryptoDeps } from '../../src/services/wallet/nwc.ts';
 import type { UnsignedEvent, SignedEvent } from '../../src/domain/nostr/types.ts';
+import type { WalletProvider } from '../../src/domain/wallet/types.ts';
 
 // ── Test constants ──
 
@@ -1476,4 +1477,51 @@ describe('NWC capability discovery lifecycle', () => {
     const relays = Array.from({ length: 6 }, (_, i) => `relay=wss://relay${i}.example`).join('&');
     assert.throws(() => NwcProvider.parseConnectionString(`nostr+walletconnect://${WALLET_PUBKEY}?${relays}&secret=${SECRET_HEX}`), /at most 5 relays/);
   });
+});
+
+// NIP-47 pay_invoice carries no fee limit and NWC has no pre-flight quote, so this
+// provider cannot honour a ceiling. Silently dropping one would be worse than not
+// offering the option: the caller would believe a bound was applied.
+describe('NWC and the send ceiling it cannot honour', () => {
+  beforeEach(() => {
+    MockWebSocket.reset();
+    eventIdCounter = 0;
+    (globalThis as any).WebSocket = MockWebSocket as any;
+  });
+  afterEach(() => { (globalThis as any).WebSocket = OriginalWebSocket; });
+
+  /**
+   * Connect a provider through the mock socket, as the suite above does, and report
+   * how many messages connecting itself sent. Only the delta after that says whether
+   * a payment was dispatched; connect() subscribes, so the baseline is not zero.
+   */
+  async function connected() {
+    const provider = createProvider();
+    const connecting = provider.connect();
+    const ws = latestWs();
+    ws.simulateOpen();
+    await connecting;
+    const baseline = ws.sentMessages.length;
+    return { provider, ws, sentSinceConnect: () => ws.sentMessages.length - baseline };
+  }
+
+  it('has no quote method, which is how a caller detects it cannot bound a fee', () => {
+    // Seen through the interface a caller holds, the capability is simply absent.
+    const provider: WalletProvider = createProvider();
+    assert.equal(provider.quoteSend, undefined);
+  });
+
+  it('refuses a requested ceiling instead of paying without one', async () => {
+    const { provider, sentSinceConnect } = await connected();
+
+    await assert.rejects(
+      provider.payInvoice(makeNwcInvoice(), { maxFeeMsat: 1_000 }),
+      /PAYMENT_FEE_UNKNOWN/,
+    );
+
+    // The refusal happens before anything is dispatched.
+    assert.equal(sentSinceConnect(), 0);
+    provider.disconnect();
+  });
+
 });

@@ -12,6 +12,16 @@ scripts only read a section whose heading is that exact version.
 
 - Open the popup faster: less code loads before it appears, and the splash ends as soon as your accounts are read.
 - Fix the popup sometimes staying on "Loading…" after the browser had been idle.
+- Automatic payments now count the routing fee against your spending allowance, and ask you first when the fee cannot be checked in advance.
+
+### Wallet fees
+
+- A silent WebLN payment reserves the quoted routing fee along with the invoice amount against the rolling 24-hour allowance. Fees used to escape it entirely, so an allowance could be overspent by exactly the fees.
+- Where the wallet cannot establish the fee before sending, the payment stops being silent and is queued for approval instead. An unbounded fee on a payment nobody is watching is the case this guards.
+- An unattended payment carries a fee ceiling: `WALLET_MAX_FEE_PERCENT` of the amount, floored at `WALLET_MAX_FEE_FLOOR_MSATS` so a percentage of a small invoice cannot refuse an ordinary payment. The provider refuses before dispatch if the quote exceeds it. A payment the user was shown and approved is not subject to the ceiling.
+- `WalletProvider.payInvoice` takes an optional `{ maxFeeMsat }`, and an optional `quoteSend()` reports the fee beforehand. The *absence* of `quoteSend` is the capability signal: NWC has no pre-flight quote in NIP-47 and omits it, and refuses a requested ceiling rather than sending unbounded. Wallets without a quote keep paying silently as before, so NWC users lose nothing.
+- LNbits quotes through `GET /api/v1/payments/fee-reserve`, asking once per deployment and not again where it answers 404 — the endpoint is new to `zaps.nostr-wot.com` and absent from older proxies and other instances.
+- An invoice whose amount cannot be decoded is never approved silently, fee or no fee.
 
 ### Popup startup
 

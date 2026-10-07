@@ -713,6 +713,8 @@
   "wallet.paymentSent": "Paiement envoyé",
   "wallet.paymentInFlight": "Ce paiement est déjà en cours d'envoi.",
   "wallet.paymentOutcomeUnknown": "Le résultat du paiement est inconnu. Consultez l’historique de votre portefeuille avant de lancer un autre paiement. Les paiements supplémentaires dans cette fenêtre sont bloqués.",
+  "wallet.paymentFeeTooHigh": "Les frais d’acheminement de ce paiement dépassaient la limite autorisée ; rien n’a été envoyé.",
+  "wallet.paymentFeeUnknown": "Ce portefeuille n’a pas pu confirmer les frais d’acheminement à l’avance ; le paiement n’a pas été envoyé.",
   "wallet.checkFailed": "Impossible de vérifier votre portefeuille. Réessayez.",
   "wallet.paymentReceived": "Paiement reçu !",
   "wallet.transactions": "Transactions",

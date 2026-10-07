@@ -1,7 +1,7 @@
 import { decodeBolt11 } from '@domain/wallet/bolt11.ts';
 import { transactionMemo } from '@domain/wallet/transaction-memo.ts';
 import { PaymentOutcomeUnknownError } from './payment-errors.ts';
-import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@constants/wallet.ts';
+import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS, PAYMENT_FEE_UNKNOWN } from '@constants/wallet.ts';
 /**
  * NWC (Nostr Wallet Connect, NIP-47) wallet provider
  *
@@ -14,7 +14,7 @@ import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@co
  */
 
 import type { UnsignedEvent, SignedEvent } from '../../domain/nostr/types.ts';
-import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
+import type { WalletProvider, WalletProviderInfo, Transaction, PayInvoiceOptions } from '../../domain/wallet/types.ts';
 import { hexToBytes, bytesToHex, sha256 } from '../../lib/crypto/utils.ts';
 import { verifyEvent as verifyEventNip01 } from '../../lib/crypto/nip01.ts';
 
@@ -169,7 +169,11 @@ export class NwcProvider implements WalletProvider {
     return { balance: Math.round(result.balance / 1000) };
   }
 
-  async payInvoice(bolt11: string): Promise<{ preimage: string }> {
+  async payInvoice(bolt11: string, opts?: PayInvoiceOptions): Promise<{ preimage: string }> {
+    // NIP-47 pay_invoice carries no fee limit and there is no pre-flight quote, so a
+    // ceiling cannot be honoured here. Refuse it: sending anyway would tell the caller
+    // a bound was applied when none was. The absent quoteSend says so in advance.
+    if (opts?.maxFeeMsat !== undefined) throw new Error(PAYMENT_FEE_UNKNOWN);
     const result = (await this.sendRequest('pay_invoice', { invoice: bolt11 })) as {
       preimage: string;
     };

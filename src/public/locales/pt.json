@@ -713,6 +713,8 @@
   "wallet.paymentSent": "Pagamento enviado",
   "wallet.paymentInFlight": "Esse pagamento já está sendo enviado.",
   "wallet.paymentOutcomeUnknown": "O resultado do pagamento é desconhecido. Verifique o histórico da sua carteira antes de iniciar outro pagamento. Outros pagamentos nesta janela estão bloqueados.",
+  "wallet.paymentFeeTooHigh": "A taxa de roteamento deste pagamento era maior que o permitido, então nada foi enviado.",
+  "wallet.paymentFeeUnknown": "Esta carteira não conseguiu confirmar a taxa de roteamento antecipadamente, então o pagamento não foi enviado.",
   "wallet.checkFailed": "Não foi possível verificar sua carteira. Tente novamente.",
   "wallet.paymentReceived": "Pagamento recebido!",
   "wallet.transactions": "Transações",

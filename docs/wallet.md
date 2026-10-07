@@ -123,6 +123,13 @@ interface WalletProvider {
   `http://localhost` / `http://127.0.0.1` (see `docs/security.md` §15)
 - Endpoints: `GET /api/v1/wallet` (balance), `POST /api/v1/payments` (pay/create invoice), `GET /api/v1/payments` (transactions),
   `GET /api/v1/payments/fee-reserve?invoice=<bolt11>` (fee ceiling, `{"fee_reserve": <msat>}`)
+- `quoteSend()` reads that endpoint and is asked once per deployment: older proxies and
+  other LNbits instances answer 404, and are not asked again. A null fee means this
+  deployment cannot quote, never that the fee is zero.
+- `payInvoice(bolt11, { maxFeeMsat })` quotes first and refuses before dispatch if the
+  fee exceeds the ceiling (`PAYMENT_FEE_TOO_HIGH`) or cannot be established
+  (`PAYMENT_FEE_UNKNOWN`). No backend here accepts a fee limit on the payment itself,
+  so the bound is enforced on this side or not at all.
 
 ### 4.3 Provider Factory (`index.ts`)
 

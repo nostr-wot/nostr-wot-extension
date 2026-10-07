@@ -713,6 +713,8 @@
   "wallet.paymentSent": "Pago enviado",
   "wallet.paymentInFlight": "Ese pago ya se está enviando.",
   "wallet.paymentOutcomeUnknown": "No se conoce el resultado del pago. Revisa el historial de tu cartera antes de iniciar otro pago. Los pagos adicionales en este diálogo están bloqueados.",
+  "wallet.paymentFeeTooHigh": "La comisión de enrutamiento de este pago superaba el límite permitido, así que no se envió nada.",
+  "wallet.paymentFeeUnknown": "Esta cartera no pudo confirmar la comisión de enrutamiento por adelantado, así que el pago no se envió.",
   "wallet.checkFailed": "No se pudo comprobar tu monedero. Inténtalo de nuevo.",
   "wallet.paymentReceived": "¡Pago recibido!",
   "wallet.transactions": "Transacciones",
