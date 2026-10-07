@@ -232,6 +232,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     const {default:AccountDropdown}=await import('../src/screens/TopBar/AccountDropdown');
     let closed=0, removedId='';
     const sendMock=t.mock.method(browser.runtime,'sendMessage',async(message: {method?:string;params?:{accountId?:string}})=>{
+      if(message.method === 'vault_getAccountRemovalInfo') return {result:{warning:'account.removeMainSeed',relatedCount:1}};
       if(message.method === 'vault_removeAccount') {
         removedId=message.params?.accountId || '';
         return {error:'Removal failed'};
@@ -243,7 +244,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     await act(async()=>remove.click());
     const dialogs=dom.window.document.querySelectorAll('[role="dialog"]');
     assert.equal(dialogs.length,2);
-    assert.match(dialogs[1].textContent || '',/account.removeSeedWarning/);
+    assert.match(dialogs[1].textContent || '',/account.removeMainSeed/);
     assert.doesNotMatch(dialogs[1].textContent || '',/account.removeKeyWarning/);
     assert.equal(dialogs[0].contains(dialogs[1]),false,'confirmation must not be inside the scrolling picker');
     const {readFileSync}=await import('node:fs');

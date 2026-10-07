@@ -71,6 +71,6 @@ export default function PasskeyStep({ restore = false, onNext }: { restore?: boo
     }} /></> : <><SectionLabel htmlFor="passkey-name">{t('wizard.accountName')}</SectionLabel><Input id="passkey-name" value={name} maxLength={MAX_ACCOUNT_NAME_LENGTH} disabled={busy} onChange={(e) => setName(e.target.value)} /></>}
     {restore && <PasskeySelector credentials={credentials} value={selected} onChange={setSelected} disabled={busy} />}
     <FormError>{error}</FormError>
-    <Container stickyFooter><Button onClick={submit} disabled={busy || (restore && !backup)}>{t(busy ? 'common.loading' : restore ? 'passkey.restore' : 'passkey.create')}</Button></Container>
+    <Container stickyFooter><Button onClick={submit} disabled={busy || (restore && !backup)}>{t(busy ? 'common.loading' : error ? 'common.retry' : restore ? 'passkey.restore' : 'passkey.create')}</Button></Container>
   </Container>;
 }

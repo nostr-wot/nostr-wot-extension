@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import type { AccountRemovalInfo } from '@domain/accounts/types.ts';
+import { useEffect, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { useAccount } from '@context/AccountContext';
@@ -27,7 +28,19 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
   const [error, setError] = useState('');
   const [removing, setRemoving] = useState<boolean>(false);
   const confirmAccount = confirmId ? (accounts || []).find((a) => a.id === confirmId) : null;
+  const [removalInfo, setRemovalInfo] = useState<AccountRemovalInfo | null>(null);
   const isWriteAccount = confirmAccount && !confirmAccount.readOnly && confirmAccount.type !== 'npub';
+
+  useEffect(() => {
+    let cancelled = false;
+    setRemovalInfo(null);
+    if (confirmAccount?.type === 'generated') {
+      rpc<AccountRemovalInfo>('vault_getAccountRemovalInfo', { accountId: confirmAccount.id })
+        .then(info => { if (!cancelled && info?.warning) setRemovalInfo(info); })
+        .catch(() => { if (!cancelled) setError(t('common.error')); });
+    }
+    return () => { cancelled = true; };
+  }, [confirmAccount?.id, confirmAccount?.type]);
 
   const handleRemove = async () => {
     if (!confirmId || removing) return;
@@ -65,7 +78,7 @@ export default function AccountDropdown({ onClose, onAddAccount }: AccountDropdo
     {confirmAccount && <ConfirmDialog
       title={t('account.removeTitle', { name: profileCache[confirmAccount.pubkey]?.name || confirmAccount.name || '' })}
       message={<>{t('account.removeWarning')}{isWriteAccount &&
-        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>{t(confirmAccount.type === 'generated' ? 'account.removeSeedWarning' : 'account.removeKeyWarning')}</StatusNotice>}
+        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>{t(confirmAccount.type === 'generated' ? removalInfo?.warning || 'account.removeSeedWarning' : 'account.removeKeyWarning', { count: removalInfo?.relatedCount || 0 })}</StatusNotice>}
         {confirmAccount.derivationPath && <FieldDisplay mono label={t('wizard.derivationPath')} value={confirmAccount.derivationPath} />}
       </>}
       danger busy={removing} error={error} confirmLabel={t('common.remove')}

@@ -10,7 +10,7 @@ export function passkeysAvailable(): boolean {
 }
 
 function requireSupport(): void {
-  if (!passkeysAvailable()) throw new Error('Passkeys are unavailable in this browser. Use password setup instead.');
+  if (!passkeysAvailable()) throw new Error('Passkeys are unavailable in this browser. Use seed phrase setup instead.');
 }
 
 /** No network service or website script participates in vault unlocking. */
@@ -25,7 +25,7 @@ export async function authenticatePasskey(metadata: PasskeyMetadata): Promise<Pa
   } }) as PublicKeyCredential | null;
   if (!credential || arrayToBase64(new Uint8Array(credential.rawId)) !== metadata.credentialId) throw new Error('Passkey request cancelled or credential did not match');
   const output = (credential.getClientExtensionResults() as PrfResult).prf?.results?.first;
-  if (!output || output.byteLength !== 32) throw new Error('This passkey provider cannot encrypt a vault (PRF is unavailable). Use another provider or password setup.');
+  if (!output || output.byteLength !== 32) throw new Error('This passkey provider cannot encrypt a vault (PRF is unavailable). Retry and choose another provider in the browser, or use seed phrase setup.');
   const bytes = new Uint8Array(output);
   try { return { credentialId: metadata.credentialId, prf: arrayToBase64(bytes) }; }
   finally { bytes.fill(0); }
@@ -39,6 +39,7 @@ export async function createPasskey(name: string): Promise<PasskeyInput> {
     user: { id: crypto.getRandomValues(new Uint8Array(32)), name: name.trim() || 'Nostr WoT', displayName: name.trim() || 'Nostr WoT' },
     challenge: crypto.getRandomValues(new Uint8Array(32)),
     pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+    // Leave attachment and provider hints unset: the browser owns provider selection.
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     attestation: 'none', timeout: PASSKEY_TIMEOUT_MS,
     extensions: { prf: { eval: { first: salt } } } as PrfExtensions,

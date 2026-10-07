@@ -5,7 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Next release
 
-- Simplify account setup to direct passkey and recovery-phrase creation, with import below and specialized methods on a separate More options screen.
+- Restore explanatory introductions and clear option cards, separate Add Account choices from first-time setup, and label seed-based creation “Create with a seed phrase”.
+- Explain account removal based on actual seed relationships and allow passkey recovery into an authenticated empty vault after the final account is removed.
+
+- Let the browser choose available passkey providers and offer an explicit retry after failed enrollment without creating an account.
 
 - Create a locally generated account with a PRF-capable passkey, without displaying a recovery phrase or requiring a vault password. Keep password-based setup available.
 - Add passkey vault recovery files, restoration with an enrolled passkey, and additional passkeys in Security settings. Require automatic locking and reject unsupported encryption providers without a password fallback.

@@ -113,6 +113,43 @@ describe('passkey vault encryption and lifecycle', () => {
     assert.equal((await record()).protection, 'passkey');
   });
 
+  it('restores after removing the last account, including after a lock, without losing data on failure', async () => {
+    await vault.create('', payload(), input());
+    const backup = await vault.exportPasskeyBackup();
+    await vault.removeAccount('test');
+    await browser.storage.local.set({ accounts: [], activeAccountId: null });
+    const empty = await record();
+    await assert.rejects(vault.restorePasskeyBackup(backup, input(7)));
+    assert.deepEqual(await record(), empty);
+    await vault.restorePasskeyBackup(backup, input());
+    assert.equal(vault.getActivePubkey(), 'a'.repeat(64));
+    await vault.removeAccount('test');
+    await browser.storage.local.set({ accounts: [], activeAccountId: null });
+    vault.lock();
+    await vault.restorePasskeyBackup(backup, input());
+    assert.equal(vault.getActivePubkey(), 'a'.repeat(64));
+    vault.lock();
+    await browser.storage.local.set({ accounts: [], activeAccountId: null });
+    await assert.rejects(vault.restorePasskeyBackup(backup, input()), /already exists/);
+  });
+
+  it('removal information distinguishes independent seeds, main and derived accounts', async () => {
+    const account = { ...payload().accounts[0], type: 'generated' as const, mnemonic: 'synthetic shared seed', derivationIndex: 0 };
+    await vault.create('', { accounts: [account], activeAccountId: account.id }, input());
+    assert.equal(vault.getAccountRemovalInfo(account.id).warning, 'account.removeOnlySeed');
+    await vault.addAccount({ ...account, id: 'child', derivationIndex: 1 });
+    await vault.addAccount({ ...account, id: 'other', mnemonic: 'different seed' });
+    assert.deepEqual(vault.getAccountRemovalInfo(account.id), { warning: 'account.removeMainSeed', relatedCount: 1 });
+    assert.equal(vault.getAccountRemovalInfo('child').warning, 'account.removeDerivedSeed');
+    assert.equal(vault.getAccountRemovalInfo('other').warning, 'account.removeOnlySeed');
+    await vault.removeAccount(account.id);
+    assert.equal(vault.getAccountRemovalInfo('child').warning, 'account.removeOnlySeed');
+    await vault.addAccount({ ...account, id: 'sibling', derivationIndex: 2 });
+    assert.equal(vault.getAccountRemovalInfo('child').warning, 'account.removeSiblingSeed');
+    vault.lock();
+    assert.throws(() => vault.getAccountRemovalInfo('child'), /locked/);
+  });
+
   it('reset clears onboarding state so recovery can start from the method screen', async () => {
     await vault.create('', payload(), input());
     await browser.storage.session.set({ wizardState: { step: 'passkeyBackup' }, wizardCreateData: { account: 'old' } });

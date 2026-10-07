@@ -601,14 +601,31 @@ export async function addPasskey(existing: PasskeyProof, passkey: PasskeyInput):
   });
 }
 
-/** Authenticate and decrypt the entire file before writing anything; never overwrite a vault. */
+/** Authenticate the file before writing; only an authenticated empty vault may be replaced. */
 export async function restorePasskeyBackup(text: string, proof: PasskeyProof): Promise<void> {
   const record = parsePasskeyBackup(text);
   const revision = sessionRevision;
   await mutations.run(async () => {
     assertRevision(revision);
-    if (await exists()) throw new Error('A vault already exists. Restore in a fresh installation.');
-    const local = await browser.storage.local.get('accounts');
+    const local = await browser.storage.local.get(['accounts', STORAGE_KEY]);
+    if (local[STORAGE_KEY]) {
+      if (_decrypted) {
+        if (_decrypted.accounts.length) throw new Error('A vault already exists with accounts. Remove them before restoring.');
+      } else {
+        // Public account metadata alone cannot prove an encrypted vault is empty.
+        // A matching enrolled passkey must authenticate its encrypted contents.
+        const existing = local[STORAGE_KEY];
+        validatePasskeyRecord(existing);
+        const currentWrapper = existing.passkeys.find(p => p.credentialId === proof.credentialId);
+        if (!currentWrapper) throw new Error('Unlock the existing vault before restoring.');
+        const currentBytes = await unwrapVaultKey(currentWrapper, proof);
+        try {
+          const currentKey = await importVaultKey(currentBytes);
+          const currentPayload = JSON.parse(await decrypt(currentKey, base64ToArray(existing.iv), base64ToArray(existing.ciphertext))) as VaultPayload;
+          if (!Array.isArray(currentPayload.accounts) || currentPayload.accounts.length) throw new Error('A vault already exists with accounts. Remove them before restoring.');
+        } finally { currentBytes.fill(0); }
+      }
+    }
     if (Array.isArray(local.accounts) && local.accounts.length) throw new Error('Accounts already exist on this device');
     const wrapper = record.passkeys.find(p => p.credentialId === proof.credentialId);
     if (!wrapper) throw new Error('Passkey does not belong to this backup');
@@ -621,6 +638,9 @@ export async function restorePasskeyBackup(text: string, proof: PasskeyProof): P
       // Parsing memory accounts before persistence also checks key encodings.
       memory = { cacheKeyBytes: base64ToArray(payload.cacheKey), accounts: payload.accounts.map(toMemoryAccount), activeAccountId: payload.activeAccountId };
       assertRevision(revision);
+      const latest = await browser.storage.local.get('accounts');
+      assertRevision(revision);
+      if (_decrypted?.accounts.length || (Array.isArray(latest.accounts) && latest.accounts.length)) throw new Error('Accounts already exist on this device');
       await browser.storage.local.set({ [STORAGE_KEY]: record, autoLockMs: AUTO_LOCK_DEFAULT_MS, accounts: payload.accounts.map(toSafeAccount), activeAccountId: payload.activeAccountId });
       assertRevision(revision);
       zeroDecryptedKeys();
@@ -645,7 +665,7 @@ export const { setImportedPqKeys, clearImportedPqKeys, withImportedPqKeys, hasIm
 export const {
   getActivePubkey, getActiveAccountId, getActiveAccount, getActiveAccountWithWallet,
   getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, getAccountForRemoteSigning, listAccounts,
-  addAccount, removeAccount, setActiveAccount, clearActiveAccount,
+  addAccount, getAccountRemovalInfo, removeAccount, setActiveAccount, clearActiveAccount,
   updateAccountNip46Keys, updateAccountWalletConfig,
 } = createAccountAccess(() => _decrypted, save, resetAutoLock, invalidateSession);
 

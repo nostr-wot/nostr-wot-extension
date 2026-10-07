@@ -39,6 +39,9 @@ describe('WebAuthn PRF client', () => {
     assert.equal(calls[0].rp.id, PASSKEY_RP_ID);
     assert.equal(calls[0].authenticatorSelection.userVerification, 'required');
     assert.equal(calls[0].authenticatorSelection.residentKey, 'required');
+    assert.equal(calls[0].authenticatorSelection.authenticatorAttachment, undefined);
+    assert.equal(calls[0].hints, undefined);
+    assert.equal(calls[1].allowCredentials[0].transports, undefined);
     assert.equal(calls[1].rpId, PASSKEY_RP_ID);
     assert.equal(calls[1].userVerification, 'required');
     assert.notDeepEqual(calls[0].challenge, calls[1].challenge);

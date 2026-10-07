@@ -4,7 +4,7 @@ import { createElement, act } from 'react';
 import { JSDOM } from 'jsdom';
 import { createRoot } from 'react-dom/client';
 import browser from './helpers/browser-mock.ts';
-import { PasskeyBackupStep } from '../src/screens/Wizard/PasskeyStep.tsx';
+import PasskeyStep, { PasskeyBackupStep } from '../src/screens/Wizard/PasskeyStep.tsx';
 import MethodStep from '../src/screens/Wizard/MethodStep.tsx';
 import UnlockSection from '../src/screens/Prompt/UnlockSection.tsx';
 
@@ -13,7 +13,7 @@ function mount() {
   Object.assign(globalThis, { window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement, IS_REACT_ACT_ENVIRONMENT: true });
   return { dom, root: createRoot(document.getElementById('root')!) };
 }
-const button = (label: string) => [...document.querySelectorAll('button')].find(node => node.textContent === label)!;
+const button = (label: string) => [...document.querySelectorAll('button')].find(node => node.textContent === label || node.querySelector('strong')?.textContent === label)!;
 
 test('passkey recovery download alone does not skip acknowledgement and never recreates the vault', async context => {
   const { dom, root } = mount(); const calls: string[] = []; let completed = 0;
@@ -88,14 +88,14 @@ test('closing the unlock screen while passkey verification runs never unlocks th
   }
 });
 
-test('first setup screen has two creation choices and direct import without specialized options', async () => {
+test('first setup screen has creation cards and direct import without specialized options', async () => {
  const { dom, root } = mount(); const selected: string[] = [];
  try {
   await act(async () => root.render(createElement(MethodStep, { hasAccounts: false, onSelect: id => selected.push(id) })));
   assert.doesNotMatch(document.body.textContent!, /passkey.restore|wizard.watchOnly|wizard.nostrConnect/);
-  assert.ok(button('wizard.importExisting'));
+  assert.ok(button('wizard.importKeyBackup'));
   assert.ok(button('wizard.moreOptions'));
-  await act(async () => button('wizard.importExisting').click());
+  await act(async () => button('wizard.importKeyBackup').click());
   assert.deepEqual(selected, ['import']);
  } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
@@ -114,4 +114,41 @@ test('more options exposes specialized methods and hides passkey restoration for
   await act(async () => root.render(createElement(MethodStep, { moreOptions: true, hasAccounts: true, onSelect: () => {} })));
   assert.doesNotMatch(document.body.textContent!, /passkey.restore/);
  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+
+test('add account offers direct account methods instead of new-vault setup', async () => {
+ const { dom, root } = mount();
+ try {
+  await act(async () => root.render(createElement(MethodStep, { hasAccounts: true, hasGeneratedAccount: true, onSelect: () => {} })));
+  assert.ok(button('wizard.createAnother'));
+  assert.ok(button('wizard.importKeyBackup'));
+  assert.ok(button('wizard.nostrConnect'));
+  assert.ok(button('wizard.watchOnly'));
+  assert.equal(button('wizard.moreOptions'), undefined);
+  assert.match(document.body.textContent!, /wizard.addAccountIntro/);
+ } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+
+test('cancelled provider selection offers a user-driven retry without creating an account', async context => {
+  const { dom, root } = mount(); const calls: string[] = []; let prompts = 0;
+  const oldCredentials = Object.getOwnPropertyDescriptor(navigator, 'credentials');
+  const oldPublicKey = Object.getOwnPropertyDescriptor(globalThis, 'PublicKeyCredential');
+  Object.defineProperty(globalThis, 'PublicKeyCredential', { configurable: true, value: class {} });
+  Object.defineProperty(navigator, 'credentials', { configurable: true, value: { create: async () => { prompts++; return null; }, get: async () => null } });
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => { calls.push(message.method); return { result: null }; });
+  try {
+    await act(async () => root.render(createElement(PasskeyStep, { onNext: () => assert.fail('cancelled enrollment must not continue') })));
+    await act(async () => button('passkey.create').click());
+    assert.equal(prompts, 1);
+    assert.ok(button('common.retry'));
+    await act(async () => button('common.retry').click());
+    assert.equal(prompts, 2);
+    assert.deepEqual(calls, []);
+  } finally {
+    await act(async () => root.unmount()); dom.window.close();
+    if (oldCredentials) Object.defineProperty(navigator, 'credentials', oldCredentials); else Reflect.deleteProperty(navigator, 'credentials');
+    if (oldPublicKey) Object.defineProperty(globalThis, 'PublicKeyCredential', oldPublicKey); else Reflect.deleteProperty(globalThis, 'PublicKeyCredential');
+  }
 });

@@ -30,10 +30,10 @@ try {
     return response.result;
   }, { method, params });
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'More options', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'More options', exact: false }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).count(), 0);
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/onboarding.png` });
-  await page.getByRole('button', { name: 'More options', exact: true }).click();
+  await page.getByRole('button', { name: 'More options', exact: false }).click();
   await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).waitFor();
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/more-options.png` });
   await page.getByRole('button', { name: 'Back', exact: true }).click();
@@ -55,12 +55,16 @@ try {
   await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).click();
   await page.waitForFunction(async () => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_isLocked', params: {} })).result === false);
   assert.equal(await rpc('vault_getActivePubkey'), publicKey);
-  await rpc('vault_destroy');
+  await rpc('vault_removeAccount', { accountId: accounts[0].id });
+  await rpc('vault_lock');
   await page.reload();
+  // An existing encrypted vault still requires authentication after restart.
+  await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).click();
+  await page.waitForFunction(async () => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_isLocked', params: {} })).result === false);
   // Language preference can survive vault removal; handle both onboarding entries.
   await page.waitForFunction(() => globalThis.document.body.innerText.includes('More options') || globalThis.document.body.innerText.includes('English'));
-  if (!await page.getByRole('button', { name: 'More options', exact: true }).count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: 'More options', exact: true }).click();
+  if (!await page.getByRole('button', { name: 'More options', exact: false }).count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'More options', exact: false }).click();
   const restore = page.getByRole('button', { name: 'Restore passkey vault', exact: false });
   await restore.click();
   await page.locator('#passkey-file').setInputFiles({ name: 'vault.json', mimeType: 'application/json', buffer: Buffer.from(backup) });

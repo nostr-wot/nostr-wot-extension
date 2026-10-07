@@ -175,6 +175,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['vault_listAccounts', async () => vault.listAccounts()],
+    ['vault_getAccountRemovalInfo', async (params) => vault.getAccountRemovalInfo(params.accountId as string)],
 
     ['vault_addAccount', async (params) => {
         await vault.addAccount(params.account as Account);
@@ -218,6 +219,7 @@ export const handlers = new Map<string, HandlerFn>([
         if (nextPubkey) await browser.storage.sync.set({ myPubkey: nextPubkey });
         else await browser.storage.sync.remove('myPubkey');
         await browser.storage.local.set(updates);
+        if (!rmAccts.length) await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
         if (rmLocalData.activeAccountId === removedId) {
             // Removing the active account changes the active identity — same
             // invalidation as an explicit switch.
