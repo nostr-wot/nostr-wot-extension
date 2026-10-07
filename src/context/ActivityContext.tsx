@@ -1,7 +1,7 @@
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { useRef, type ReactNode } from 'react';
-import { rpc } from '@services/rpc.ts';
+import { rpcRead } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
 import type { ActivityEntry } from '@domain/activity/activity.ts';
@@ -51,7 +51,7 @@ export function ActivityProvider({ visible, children }: ActivityProviderProps) {
       enabled: visible,
       load: async (patch, isCurrent) => {
         const run = revision.current;
-        const log = await rpc<ActivityEntry[]>('getActivityLog') || [];
+        const log = await rpcRead<ActivityEntry[]>('getActivityLog') || [];
         if (run === revision.current && isCurrent()) patch({ log });
       },
     },

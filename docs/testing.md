@@ -65,7 +65,8 @@ the last group running for about two minutes even after most tests finish.
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
 | `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers |
 | `tests/relay.test.ts` | Relay utilities, liveQuery streaming, inbound event signature verification (forged events rejected), exhaustion when relays close without EOSE |
-| `tests/rpc.test.ts` | Popup `rpc()` transport: envelope unwrapping, Chrome wakeup-rejection retry, Safari undefined-response retry (throws `RpcError` instead of resolving `undefined`) |
+| `tests/rpc.test.ts` | Popup `rpc()` transport: envelope unwrapping, Chrome wakeup-rejection retry, Safari undefined-response retry (throws `RpcError` instead of resolving `undefined`), per-attempt timeout for `rpcRead` (re-sends a stalled read, fails instead of hanging, never re-sends a plain `rpc()`) |
+| `tests/i18n-init.test.ts` | `initI18n()` on the popup's startup path: English is not fetched, a stalled `storage.sync` cannot delay a language `storage.local` already has, synced changes are copied into local |
 | `tests/delete-recreate.test.ts` | Delete last account / destroy vault → re-run onboarding (`onboarding_generateAccount` + `onboarding_createVault`), incl. simulated service-worker restart |
 | `tests/publish-handlers.test.ts` | `checkRelayHealth` SSRF hardening (scheme allowlist, private-host rejection) |
 | `tests/safeUrl.test.ts` | `safeImageUrl` sanitizer for untrusted profile image URLs |

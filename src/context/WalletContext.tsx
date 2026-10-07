@@ -1,11 +1,11 @@
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { walletDisplayKey, type WalletDisplayCache } from '@domain/wallet/display-cache.ts';
-const readWalletDisplayCache = (accountId: string) => rpc<WalletDisplayCache | null>('wallet_readDisplayCache', { accountId });
+const readWalletDisplayCache = (accountId: string) => rpcRead<WalletDisplayCache | null>('wallet_readDisplayCache', { accountId });
 import type { Transaction } from '@domain/wallet/types.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { rpc } from '@services/rpc.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
 import { useAccount } from './AccountContext';
@@ -222,7 +222,7 @@ export async function loadWalletDisplay(
   patch: (next: Partial<ConfigData>) => void,
   isCurrent: () => boolean,
   read: () => Promise<WalletDisplayCache | null> = () => readWalletDisplayCache(accountId),
-  check: () => Promise<string | false> = () => rpc<string | false>('wallet_hasConfig'),
+  check: () => Promise<string | false> = () => rpcRead<string | false>('wallet_hasConfig'),
 ): Promise<void> {
   const cached = await read().catch(() => null);
   if (!isCurrent()) return;

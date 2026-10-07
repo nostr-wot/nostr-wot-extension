@@ -12,9 +12,12 @@ import { cn } from '@utils/cn.ts';
 // plain utility here resolves the conflict before the class string ever
 // reaches the DOM: cn() drops TopoBg's `relative` in favour of this `absolute`
 // because both belong to the same `position` group.
+/** How long the splash takes to fade out once it is hidden. */
+export const SPLASH_FADE_MS = 200;
+
 const SPLASH_BASE =
   'absolute inset-0 z-splash flex flex-col items-center justify-center bg-glass-heavy ' +
-  'backdrop-blur-[16px] [transition:opacity_0.4s_ease]';
+  'backdrop-blur-[16px] [transition:opacity_0.2s_ease]';
 const FADE_OUT = 'opacity-0 pointer-events-none';
 
 interface SplashProps {

@@ -9,7 +9,10 @@ import type { SupportedLanguage } from '../../domain/i18n/types.ts';
 // polyfill. Both read a bare `chrome` at module load, so importing this module
 // anywhere without the extension globals threw before it did anything.
 import browser from '../../lib/browser.ts';
-const localeCache: Record<string, Record<string, string>> = {};
+// English ships inside the bundle already (ensureDefaultLocale needs it), so
+// seed it: fetching and parsing locales/en.json again only delayed the popup's
+// first render, and English is the language most popups open in.
+const localeCache: Record<string, Record<string, string>> = { [DEFAULT_LANG]: english };
 let currentLang: string = DEFAULT_LANG;
 let currentStrings: Record<string, string> = {};
 
@@ -59,17 +62,27 @@ export function t(key: string, params?: Record<string, string | number>): string
  */
 export async function initI18n(): Promise<string> {
   try {
-    // Try sync first, fall back to local
+    // Local answers first and decides. storage.sync can take seconds on its
+    // first access after the browser starts, and it used to be awaited before
+    // local was even asked, in front of the popup's first render. setLanguage
+    // writes both areas, so they only differ after a change on another synced
+    // device; that value is copied into local and applies on the next open.
+    const syncRead = browser.storage.sync.get(['language'])
+      .then((data: Record<string, unknown>) => data.language as string | undefined)
+      .catch(() => undefined);
     let lang: string | undefined;
     try {
-      const data = await browser.storage.sync.get(['language']);
+      const data = await browser.storage.local.get(['language']);
       lang = data.language as string | undefined;
-    } catch { /* sync unavailable */ }
-    if (!lang) {
-      try {
-        const data = await browser.storage.local.get(['language']);
-        lang = data.language as string | undefined;
-      } catch { /* local unavailable */ }
+    } catch { /* local unavailable */ }
+    if (lang) {
+      const localLang = lang;
+      void syncRead.then((synced) => {
+        if (synced && synced !== localLang) browser.storage.local.set({ language: synced }).catch(() => {});
+      });
+    } else {
+      lang = await syncRead;
+      if (lang) browser.storage.local.set({ language: lang }).catch(() => {});
     }
     currentLang = lang || DEFAULT_LANG;
     langWasChosen = !!lang;
