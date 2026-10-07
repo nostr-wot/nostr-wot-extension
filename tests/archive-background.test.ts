@@ -501,6 +501,9 @@ it('explorer bounds pages and summaries while keeping full event detail', async 
   const first = await call('archive_explore', { filter: { tab: 'all', query: '' } });
   assert.equal(first.records.length, 40); assert.equal(first.scanned, 40); assert.ok(first.next);
   assert.equal(first.records[0].excerpt.length, 1024);
+  const unmatched = await call('archive_explore', { filter: { tab: 'all', query: 'nothing matches this phrase' } });
+  assert.equal(unmatched.records.length, 0);
+  assert.deepEqual(unmatched.kinds, [1]);
   const detail = await call('archive_event', { id: first.records[0].event.id }); assert.ok(detail.event.content.length > 2048);
   const second = await call('archive_explore', { filter: { tab: 'all', query: '' }, after: first.next });
   assert.equal(second.records.length, 1); assert.equal(second.next, undefined);

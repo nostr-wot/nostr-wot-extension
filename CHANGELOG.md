@@ -5,7 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Next release
 
-- Add a full-page Archive event explorer, opened from its action icon, with accurate filtered totals, paginated batched search, a table with kind-specific columns and filters, cached profiles, private-message reveal, advanced event and relay details, confirmed local selection deletion, and compact encrypted relay provenance.
+- Exclude app data and authentication events from archive storage, imports and migration.
+- Add a full-page Archive event explorer, opened from its action icon, with accurate filtered totals, paginated batched search, a table with kind-specific columns and filters, cached profiles, inline private-message reveal and page-wide decryption, dedicated latest-profile/contact/relay views, advanced event and relay details, confirmed local selection deletion, and compact encrypted relay provenance.
 
 - Add a vault-wide Use passkey switch inside Auto-lock for existing enrollments, with current-credential verification and preserved accounts and archive keys. Keep recovery actions compact and replace browser cancellation errors with clear retry guidance.
 

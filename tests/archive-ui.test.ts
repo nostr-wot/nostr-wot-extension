@@ -433,9 +433,9 @@ test('explorer searches, shows full detail and confirms local deletion without l
   try {
     await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', total: 1, onChanged: async () => { changed++; } })));
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
-    assert.ok(button('archive.explorer.likes'));
-    assert.ok(button('archive.explorer.reposts'));
-    assert.ok(button('Profile Metadata'));
+    assert.equal(button('archive.explorer.likes'), undefined);
+    assert.equal(button('archive.explorer.reposts'), undefined);
+    assert.equal(button('Profile Metadata'), undefined);
     assert.ok(document.querySelector('table'));
     assert.ok(!document.body.textContent!.includes('A readable archived note'));
     assert.match(document.querySelector('thead')!.textContent!, /archive.explorer.eventId/);
@@ -491,10 +491,11 @@ test('explorer counts all matching events independently of scanned records and p
     const tab = message.params.filter.tab;
     return { result: { records: page.filter(record => tab === 'all' || (tab === 'notes' ? record.event.kind === 1 : record.event.kind === 4)), scanned: page.length, next: start + 40 < records.length ? page.at(-1)!.event.id : undefined } };
   });
+  let newest = '';
   let next!: () => void;
   function Harness({ tab }: { tab: 'all' | 'notes' | 'messages' }) {
     const result = useArchiveExplorer('a', { tab, query: '' }, 0);
-    next = result.nextPage;
+    next = result.nextPage; newest = result.latest?.event.id || '';
     return createElement('span', null, JSON.stringify({ scanned: result.scanned, matched: result.matching, shown: result.records.length, page: result.page }));
   }
   const read = () => JSON.parse(document.getElementById('root')!.textContent!);
@@ -502,6 +503,7 @@ test('explorer counts all matching events independently of scanned records and p
     await act(async () => root.render(createElement(Harness, { tab: 'all' })));
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
     assert.deepEqual(read(), { scanned: 159, matched: 159, shown: 40, page: 0 });
+    assert.equal(newest, records[158].event.id);
     await act(async () => next());
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
     assert.deepEqual(read(), { scanned: 159, matched: 159, shown: 40, page: 1 });
@@ -526,12 +528,82 @@ test('message table reveals only after its explicit row action', async context =
   });
   try {
     await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', total: 1, onChanged: async () => {} })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
     await act(async () => button('archive.explorer.messages').click());
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
     assert.match(document.querySelector('thead')!.textContent!, /archive.explorer.to/);
     assert.equal(reveals, 0);
-    await act(async () => button('archive.explorer.reveal').click());
+    await act(async () => button('archive.explorer.decrypt').click());
     assert.equal(reveals, 1);
-    assert.match(document.querySelector('[role="dialog"]')!.textContent!, /A private message/);
+    assert.match(document.querySelector('tbody')!.textContent!, /A private message/);
+    assert.equal(document.querySelector('[role="dialog"]'), null);
+    assert.equal(button('archive.explorer.reveal'), undefined);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('page decryption continues after one failure and discards late plaintext after navigation', async context => {
+  const { default: useArchiveMessages } = await import('../src/hooks/useArchiveMessages.ts');
+  const { dom, root } = mount();
+  const calls: string[] = []; let finish!: (value: unknown) => void;
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    calls.push(message.params.id);
+    if (message.params.id === 'bad') return { error: 'Cannot decrypt' };
+    if (message.params.id === 'late') return new Promise(resolve => { finish = resolve; });
+    return { result: { plaintext: 'Decoded ' + message.params.id } };
+  });
+  let controller!: ReturnType<typeof useArchiveMessages>;
+  function Harness({ scope }: { scope: string }) {
+    controller = useArchiveMessages('a', scope);
+    return createElement('div', null, JSON.stringify(controller.messages));
+  }
+  try {
+    await act(async () => root.render(createElement(Harness, { scope: 'first' })));
+    await act(async () => controller.revealAll(['bad', 'good', 'good']));
+    assert.deepEqual(calls, ['bad', 'good']);
+    assert.match(document.body.textContent!, /Cannot decrypt/);
+    assert.match(document.body.textContent!, /Decoded good/);
+    let pending!: Promise<void>;
+    await act(async () => { pending = controller.revealAll(['late', 'never']); });
+    await act(async () => root.render(createElement(Harness, { scope: 'second' })));
+    await act(async () => { finish({ result: { plaintext: 'Sensitive late text' } }); await pending; });
+    assert.ok(!document.body.textContent!.includes('Sensitive'));
+    assert.ok(!calls.includes('never'));
+    assert.deepEqual(controller.messages, {});
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('latest profile displays all saved fields and contact list shows identities with update date', async context => {
+  const { default: ArchiveLatestEvent } = await import('../src/screens/Archive/ArchiveLatestEvent.tsx');
+  const { dom, root } = mount();
+  const pubkey = 'f'.repeat(64);
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => ({ result: { event: { id: message.params.id, pubkey, created_at: 1700000000, kind: message.params.id === 'profile' ? 0 : message.params.id === 'relays' ? 10002 : 3, content: JSON.stringify({ name: 'Profile name', about: 'Biography', custom_field: 'Custom value', picture: 'javascript:alert(1)', untrusted: '<img src=x onerror=alert(1)>' }), tags: message.params.id === 'relays' ? [['r', 'wss://read.example', 'read'], ['r', 'wss://both.example']] : [['p', pubkey]], sig: '' }, sources: [], savedAt: 1 } }));
+  try {
+    await act(async () => root.render(createElement(ArchiveLatestEvent, { key: 'profile', id: 'profile', accountId: 'a', query: '', onDetails: () => {} })));
+    assert.match(document.body.textContent!, /custom_field/);
+    assert.match(document.body.textContent!, /Custom value/);
+    assert.equal(document.querySelector('img'), null);
+    assert.match(document.body.textContent!, /<img src=x onerror=alert\(1\)>/);
+    assert.match(document.body.textContent!, /Biography/);
+    assert.match(document.body.textContent!, /archive.explorer.updated/);
+    await act(async () => root.render(createElement(ArchiveLatestEvent, { key: 'contacts', id: 'contacts', accountId: 'a', query: '', onDetails: () => {} })));
+    assert.equal(document.querySelectorAll('li').length, 1);
+    assert.match(document.body.textContent!, /ffffffffff/);
+    assert.match(document.body.textContent!, /archive.explorer.updated/);
+    await act(async () => root.render(createElement(ArchiveLatestEvent, { key: 'relays', id: 'relays', accountId: 'a', query: '', onDetails: () => {} })));
+    assert.match(document.body.textContent!, /wss:\/\/read.example/);
+    assert.match(document.body.textContent!, /archive.explorer.readWrite/);
+    assert.equal(document.querySelectorAll('li').length, 2);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('large contact lists render a bounded first batch', async context => {
+  const { default: ArchiveLatestEvent } = await import('../src/screens/Archive/ArchiveLatestEvent.tsx');
+  const { dom, root } = mount();
+  context.mock.method(browser.runtime, 'sendMessage', async () => ({ result: { event: { kind: 3, created_at: 1, content: '', tags: Array.from({ length: 45 }, (_, index) => ['p', index.toString(16).padStart(64, '0')]) }, sources: [], savedAt: 1 } }));
+  try {
+    await act(async () => root.render(createElement(ArchiveLatestEvent, { id: 'contacts', accountId: 'a', query: '', onDetails: () => {} })));
+    assert.equal(document.querySelectorAll('li').length, 40);
+    await act(async () => button('common.showMore').click());
+    assert.equal(document.querySelectorAll('li').length, 45);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });

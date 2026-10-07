@@ -22,7 +22,7 @@ export async function exploreArchive(accountId: string, input: unknown, cursor?:
   return { records: page.records.filter(record => matchesArchivedEvent(record, filter) || (query && matchesArchivedEvent(record, { ...filter, query: '' }) && [record.event.pubkey, ...record.event.tags.filter(tag => tag[0] === 'p').slice(0, ARCHIVE_EXPLORER_PEOPLE_LIMIT).map(tag => tag[1])].some(key => {
     const profile = cachedPublicProfile(profiles, key);
     return profileDisplayName(profile, '').toLowerCase().includes(query);
-  }))).map(({ event }) => ({ event: { id: event.id, pubkey: event.pubkey, kind: event.kind, created_at: event.created_at }, recipients: event.tags.filter(tag => tag[0] === 'p' && /^[a-f0-9]{64}$/.test(tag[1] || '')).slice(0, ARCHIVE_EXPLORER_PEOPLE_LIMIT).map(tag => tag[1]), excerpt: archiveMessage(event.kind) ? '' : event.content.slice(0, ARCHIVE_EXPLORER_SUMMARY_LENGTH) })), next: page.next, scanned: page.records.length };
+  }))).map(({ event }) => ({ event: { id: event.id, pubkey: event.pubkey, kind: event.kind, created_at: event.created_at }, recipients: event.tags.filter(tag => tag[0] === 'p' && /^[a-f0-9]{64}$/.test(tag[1] || '')).slice(0, ARCHIVE_EXPLORER_PEOPLE_LIMIT).map(tag => tag[1]), excerpt: archiveMessage(event.kind) ? '' : event.content.slice(0, ARCHIVE_EXPLORER_SUMMARY_LENGTH) })), kinds: [...new Set(page.records.map(record => record.event.kind))], next: page.next, scanned: page.records.length };
 }
 export async function revealArchivedMessage(accountId: string, pubkey: string, id: unknown) {
   if (typeof id !== 'string') throw new Error('Invalid event ID');

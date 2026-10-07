@@ -1339,5 +1339,12 @@
   "archive.explorer.eventId": "ID de l’événement",
   "archive.explorer.content": "Contenu",
   "archive.explorer.likes": "Mentions J’aime",
-  "archive.explorer.reposts": "Republications"
+  "archive.explorer.reposts": "Republications",
+  "archive.explorer.decryptAll": "Tout déchiffrer",
+  "archive.explorer.decryptPage": "Déchiffrer les messages de cette page",
+  "archive.explorer.decrypt": "Cliquer pour déchiffrer",
+  "archive.explorer.updated": "Dernière mise à jour",
+  "archive.explorer.read": "Lecture",
+  "archive.explorer.write": "Écriture",
+  "archive.explorer.readWrite": "Lecture et écriture"
 }
