@@ -8,7 +8,7 @@ import {
   MAX_ARCHIVE_BYTES,
 } from '@constants/archive.ts';
 import type { ArchiveRecord, ArchiveCheckpoint } from '@domain/archive/types.ts';
-import { canCopyEvent, replacementKey } from '@domain/archive/policy.ts';
+import { canCopyEvent, replacementKey, shouldArchive } from '@domain/archive/policy.ts';
 import { sealPrivateValue, openPrivateValue } from '../storage/private-cache.ts';
 import * as vault from '../vault/vault.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
@@ -157,6 +157,7 @@ export async function commitArchiveBatch(
       const prepared: Row[] = [];
       const unique = new Map<string, ArchiveRecord>();
       for (const record of records) {
+        if (!shouldArchive(record.event)) continue;
         if (!/^[0-9a-f]{64}$/.test(record.event.id)) throw new Error('Invalid archive event ID');
         const prior = unique.get(record.event.id);
         unique.set(record.event.id, {

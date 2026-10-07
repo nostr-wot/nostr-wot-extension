@@ -147,3 +147,9 @@ it('legacy records retain provenance and compact on their next commit', async ()
   await commitArchiveBatch('a', [{ ...event, sources: ['wss://two.example'] }]);
   assert.deepEqual((await readArchivePage('a')).records[0].sources, ['wss://one.example', 'wss://two.example']);
 });
+
+it('storage excludes app data and auth even if a caller bypasses sync filtering', async () => {
+  await commitArchiveBatch('a', [record('1', 30078), record('2', 22242), record('3', 27235), record('4')]);
+  assert.equal((await archiveSummary('a')).count, 1);
+  assert.deepEqual((await readArchivePage('a')).records.map(record => record.event.kind), [1]);
+});

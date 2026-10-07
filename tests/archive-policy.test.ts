@@ -12,7 +12,7 @@ it('only archives authored events and explicit private envelopes', () => {
   assert.equal(eventBelongs(event({ kind: 14 }), 'a'.repeat(64), true), false);
 });
 it('copy excludes authentication, ephemeral, expired, private and unknown by default', () => {
-  for (const kind of [22242, 27235, 20000, 23194]) { assert.equal(shouldArchive(event({ kind })), false); assert.equal(canCopyEvent(event({ kind }), true, true), false); }
+  for (const kind of [30078, 22242, 27235, 20000, 23194]) { assert.equal(shouldArchive(event({ kind })), false); assert.equal(canCopyEvent(event({ kind }), true, true), false); }
   assert.equal(canCopyEvent(event({ kind: 1059 })), false);
   assert.equal(canCopyEvent(event({ kind: 1059 }), true), true);
   assert.equal(canCopyEvent(event({ kind: 9999 })), false);
@@ -21,7 +21,7 @@ it('copy excludes authentication, ephemeral, expired, private and unknown by def
   assert.equal(canCopyEvent(event({ tags: [['expiration', '10']] }), false, false, 11), false);
 });
 it('keeps the explicit copy policy independent of display labels and kind catalogs', () => {
-  const allowed = [0, 1, 3, 4, 5, 6, 7, 16, 1059, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10015, 10030, 10050, 10063, 30000, 30001, 30002, 30003, 30004, 30023, 30024, 30078];
+  const allowed = [0, 1, 3, 4, 5, 6, 7, 16, 1059, 10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10015, 10030, 10050, 10063, 30000, 30001, 30002, 30003, 30004, 30023, 30024];
   for (const kind of allowed) assert.equal(canCopyEvent(event({ kind }), true), true, `kind ${kind}`);
   for (const kind of [8, 9007, 9734, 30311]) assert.equal(canCopyEvent(event({ kind }), true), false, `kind ${kind}`);
   for (const kind of [13, 14, 20000, 22242, 27235, 29999]) assert.equal(canCopyEvent(event({ kind }), true, true), false);
@@ -38,6 +38,7 @@ it('explorer filters kinds, message formats and public search without matching c
   const { matchesArchivedEvent } = await import('../src/domain/archive/explorer.ts');
   const record = { event: event({ content: 'Hello world', tags: [['t', 'nostr']] }), sources: ['wss://relay.example'], savedAt: 1 };
   const filter = { tab: 'all' as const, query: 'HELLO' };
+  for (const kind of [4, 9, 10, 42, 1059, 21059]) assert.equal(matchesArchivedEvent({ ...record, event: { ...record.event, kind } }, { tab: 'messages', query: '' }), true);
   assert.equal(matchesArchivedEvent(record, filter), true);
   for (const kind of [0, 6, 7, 30023]) assert.equal(matchesArchivedEvent({ ...record, event: { ...record.event, kind } }, { tab: 'other', query: '' }), false);
   assert.equal(matchesArchivedEvent(record, { ...filter, tab: 'messages' }), false);

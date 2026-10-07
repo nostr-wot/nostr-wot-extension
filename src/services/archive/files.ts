@@ -21,7 +21,7 @@ import {
 } from '@constants/archive.ts';
 import type { ArchiveRecord } from '@domain/archive/types.ts';
 import type { SignedEvent } from '@domain/nostr/types.ts';
-import { eventBelongs } from '@domain/archive/policy.ts';
+import { eventBelongs, shouldArchive } from '@domain/archive/policy.ts';
 import { verifyEvent } from '@lib/crypto/nip01.ts';
 import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
@@ -362,6 +362,7 @@ async function validateRecords(value: unknown, pubkey: string): Promise<ArchiveR
     const event = sanitizeEvent(item?.event);
     if (!eventBelongs(event, pubkey, true) || !(await verifyEvent(event)))
       throw new Error('Archive contains an invalid signature or unrelated event');
+    if (!shouldArchive(event)) throw new Error('App data and ephemeral authentication events cannot be imported into the archive');
     if (
       !Array.isArray(item.sources) ||
       item.sources.length > MAX_ARCHIVE_RECORD_SOURCES ||

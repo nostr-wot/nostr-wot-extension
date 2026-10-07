@@ -17,7 +17,7 @@ export function eventBelongs(event: SignedEvent, pubkey: string, includeMessages
   return event.pubkey === pubkey;
 }
 export function shouldArchive(event: SignedEvent): boolean {
-  return !kinds.isEphemeralKind(event.kind);
+  return event.kind !== kinds.Application && !kinds.isEphemeralKind(event.kind);
 }
 export function replacementKey(event: SignedEvent): string | undefined {
   if (kinds.isReplaceableKind(event.kind)) return `${event.kind}:${event.pubkey}:`;
