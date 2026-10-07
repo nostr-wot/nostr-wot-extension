@@ -73,7 +73,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
     let active = true;
     const refresh = () => {
       setCheckingMethod(true);
-      rpcRead<PasskeyMetadata[]>('vault_listPasskeys').then((value) => { if (active) setCredentials(Array.isArray(value) ? value : []); }).catch(() => {}).finally(() => { if (active) setCheckingMethod(false); });
+      rpcRead<PasskeyMetadata[]>('vault_listPasskeys', { forUnlock: true }).then((value) => { if (active) setCredentials(Array.isArray(value) ? value : []); }).catch(() => {}).finally(() => { if (active) setCheckingMethod(false); });
     };
     const changed = (changes: Record<string, unknown>, area: string) => { if (area === 'local' && VAULT_STORAGE_KEY in changes) refresh(); };
     refresh();

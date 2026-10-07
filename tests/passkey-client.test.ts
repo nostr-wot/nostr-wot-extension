@@ -18,6 +18,13 @@ afterEach(() => {
 });
 
 describe('WebAuthn PRF client', () => {
+  it('turns browser cancellation into concise retry guidance without the specification URL', async () => {
+    install(async () => { throw new DOMException('See https://www.w3.org/TR/webauthn-2/', 'NotAllowedError'); });
+    await assert.rejects(authenticatePasskey(metadata), error => {
+      assert.equal((error as Error).message, 'passkey.cancelled');
+      return true;
+    });
+  });
   it('detects unavailable APIs without starting enrollment', async () => {
     Object.defineProperty(globalThis, 'PublicKeyCredential', { configurable: true, value: undefined });
     assert.equal(passkeysAvailable(), false);

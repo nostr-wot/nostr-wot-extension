@@ -300,3 +300,5 @@ Popup preference initialization is bounded to 1.5 seconds before mounting with b
 Language initialization and explicit changes use a revision guard so delayed startup reads or locale loads cannot replace a newer user choice.
 
 Passkey discovery in the shared unlock hook uses the same bounded background-read retries as popup status providers. Unlock and vault creation continue to use ordinary RPC calls without read timeouts.
+
+`vault.changeProtection` serializes verified switching between existing passkey enrollment and password protection. Dormant encrypted wrappers survive password rotation and None mode; private-cache keys and all accounts remain unchanged. Unlock metadata reads exclude dormant credentials, while Security reads the full enrollment for its Use passkey switch.

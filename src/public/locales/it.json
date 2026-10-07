@@ -1292,5 +1292,13 @@
   "passkey.usePasskey": "Usa passkey",
   "passkey.useFile": "Usa un file di recupero",
   "passkey.recoveryTitle": "Salva i dati di recupero",
-  "wizard.importShort": "Importa"
+  "wizard.importShort": "Importa",
+  "security.unlockMethodHint": "Protegge tutti gli account di questo archivio sicuro.",
+  "security.switchToPassword": "Imposta una nuova password, poi verifica la passkey attuale. Le copie di recupero esistenti mantengono la protezione originale.",
+  "security.switchToPasskey": "Verifica la password attuale e la passkey registrata. Gli account saranno conservati. Il blocco automatico sarà attivato.",
+  "security.recovery": "Recupero",
+  "security.recoveryHint": "Salva una nuova copia dopo aver modificato account o chiavi.",
+  "passkey.cancelled": "Richiesta passkey annullata o scaduta. Riprova.",
+  "security.usePasskey": "Usa passkey",
+  "security.noRegisteredPasskey": "Nessuna passkey registrata in questo archivio sicuro."
 }

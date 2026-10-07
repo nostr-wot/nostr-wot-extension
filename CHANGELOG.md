@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Next release
 
+- Add a vault-wide Use passkey switch inside Auto-lock for existing enrollments, with current-credential verification and preserved accounts and archive keys. Keep recovery actions compact and replace browser cancellation errors with clear retry guidance.
+
 - Reduce passkey setup prompts by reusing registration encryption output and accepting the provider’s explicit recovery-storage confirmation instead of requesting a separate readback.
 
 - Reduce popup startup work with lazy-loaded screens, minified JavaScript, local language reads and bounded background-read retries, including passkey detection. Keep newer language choices when startup reads finish late.

@@ -826,3 +826,5 @@ Passkey creation delegates provider selection to the browser without attachment 
 Passkey creation uses a default credential label and the generated account name without a name input. Credential user IDs remain random and unique; provider-wide name enumeration is not exposed by WebAuthn. Empty-account popup setup takes precedence over automatic unlock presentation, while the background still enforces all vault access and replacement checks.
 
 The language and completion wizard screens keep 16 px (`pb-8`) below their primary buttons, including the single-language variant. Completion content remains bottom-aligned above that inset.
+
+Security keeps a single Use passkey Toggle inside Auto-lock, scoped to the vault and disabled without enrolled credentials. The shared Modal, password-pair fields and credential selector handle verified switching. Recovery remains a compact card shown only with active passkey protection, with InfoTooltip for snapshot details and spaced secondary actions. Native WebAuthn cancellation and timeout errors share concise localized retry guidance rather than exposing specification URLs.

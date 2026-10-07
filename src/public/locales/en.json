@@ -1292,5 +1292,13 @@
   "passkey.usePasskey": "Use passkey",
   "passkey.useFile": "Use a recovery file",
   "passkey.recoveryTitle": "Save recovery data",
-  "wizard.importShort": "Import"
+  "wizard.importShort": "Import",
+  "security.unlockMethodHint": "This protects all accounts in this vault.",
+  "security.switchToPassword": "Set a new password, then verify your current passkey. Existing recovery copies remain usable with their original protection.",
+  "security.switchToPasskey": "Verify your current password and registered passkey. Your accounts stay unchanged. Automatic locking will be enabled.",
+  "security.recovery": "Recovery",
+  "security.recoveryHint": "Save a fresh copy after changing accounts or keys.",
+  "passkey.cancelled": "Passkey request cancelled or timed out. Try again.",
+  "security.usePasskey": "Use passkey",
+  "security.noRegisteredPasskey": "No passkey is registered in this vault."
 }

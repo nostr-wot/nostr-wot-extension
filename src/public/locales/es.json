@@ -1292,5 +1292,13 @@
   "passkey.usePasskey": "Usar passkey",
   "passkey.useFile": "Usar un archivo de recuperación",
   "passkey.recoveryTitle": "Guardar datos de recuperación",
-  "wizard.importShort": "Importar"
+  "wizard.importShort": "Importar",
+  "security.unlockMethodHint": "Protege todas las cuentas de esta bóveda.",
+  "security.switchToPassword": "Define una contraseña nueva y verifica tu passkey actual. Las copias de recuperación existentes conservan su protección original.",
+  "security.switchToPasskey": "Verifica tu contraseña actual y tu passkey registrada. Tus cuentas se conservan. Se activará el bloqueo automático.",
+  "security.recovery": "Recuperación",
+  "security.recoveryHint": "Guarda una copia nueva tras cambiar cuentas o claves.",
+  "passkey.cancelled": "La solicitud de passkey se canceló o caducó. Inténtalo de nuevo.",
+  "security.usePasskey": "Usar passkey",
+  "security.noRegisteredPasskey": "No hay una passkey registrada en esta bóveda."
 }

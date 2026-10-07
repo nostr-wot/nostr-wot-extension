@@ -238,3 +238,26 @@ test('passkey discovery retries an unanswered cold-worker read', async context =
     assert.equal(document.querySelector('input[type="password"]'), null);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
+
+
+test('use-passkey switch is unavailable without enrollment and checks password before browser verification', async context => {
+  const { default: UnlockMethod } = await import('../src/screens/Settings/UnlockMethodSection');
+  const { dom, root } = mount();
+  const methods: string[] = [];
+  let enrolled = false;
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    methods.push(message.method);
+    if (message.method === 'vault_listPasskeys') return { result: enrolled ? [{ credentialId: 'AQID', prfSalt: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' }] : [] };
+    return { result: false };
+  });
+  try {
+    await act(async () => root.render(createElement(UnlockMethod, { passkey: false, locked: false, neverLock: true, onChanged() {} })));
+    assert.equal((document.querySelector('input[type="checkbox"]') as HTMLInputElement).disabled, true);
+    enrolled = true;
+    await act(async () => root.render(createElement(UnlockMethod, { key: 'enrolled', passkey: false, locked: false, neverLock: true, onChanged() {} })));
+    await act(async () => (document.querySelector('input[type="checkbox"]') as HTMLInputElement).click());
+    await act(async () => button('common.confirm').click());
+    assert.match(document.body.textContent!, /key.wrongPassword/);
+    assert.equal(methods.includes('vault_changeProtection'), false);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});

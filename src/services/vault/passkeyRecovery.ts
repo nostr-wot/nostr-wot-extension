@@ -1,7 +1,7 @@
 import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS, PASSKEY_MAX_BLOB_BYTES } from '@constants/passkey.ts';
 import { parsePasskeyBackup, type PasskeyProof } from '@domain/vault/passkey.ts';
 import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
-import { authenticatePasskey, passkeysAvailable } from './passkeyClient.ts';
+import { authenticatePasskey, passkeysAvailable, requestPasskey } from './passkeyClient.ts';
 
 type BlobInput = AuthenticationExtensionsClientInputs & { largeBlob: { read: true } | { write: BufferSource } };
 type BlobOutput = AuthenticationExtensionsClientOutputs & { largeBlob?: { written?: boolean; blob?: ArrayBuffer } };
@@ -9,13 +9,13 @@ type BlobOutput = AuthenticationExtensionsClientOutputs & { largeBlob?: { writte
 /** The browser selects the provider; a write must target exactly one credential. */
 async function requestBlob(largeBlob: BlobInput['largeBlob'], credentialId?: string, signal?: AbortSignal): Promise<PublicKeyCredential> {
   if (!passkeysAvailable()) throw new Error('Passkeys are unavailable in this browser.');
-  const credential = await navigator.credentials.get({ signal, publicKey: {
+  const credential = await requestPasskey(() => navigator.credentials.get({ signal, publicKey: {
     rpId: PASSKEY_RP_ID,
     challenge: crypto.getRandomValues(new Uint8Array(32)),
     ...(credentialId ? { allowCredentials: [{ type: 'public-key' as const, id: base64ToArray(credentialId) as BufferSource }] } : {}),
     userVerification: 'required', timeout: PASSKEY_TIMEOUT_MS,
     extensions: { largeBlob } as BlobInput,
-  } }) as PublicKeyCredential | null;
+  } })) as PublicKeyCredential | null;
   if (!credential || (credentialId && arrayToBase64(new Uint8Array(credential.rawId)) !== credentialId)) throw new Error('Passkey request cancelled or credential did not match');
   return credential;
 }

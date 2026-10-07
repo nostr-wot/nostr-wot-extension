@@ -504,6 +504,8 @@ async function reEncryptNow(newPassword: string, revision: number): Promise<void
     throw new Error('Password must be at least 8 characters');
   }
 
+  const previous = (await browser.storage.local.get(STORAGE_KEY))[STORAGE_KEY] as Record<string, unknown>;
+  assertRevision(revision);
   const salt = crypto.getRandomValues(new Uint8Array(32));
   const iterations = iterationsFor(newPassword);
   const newKey = await deriveKey(newPassword, salt, iterations);
@@ -515,6 +517,7 @@ async function reEncryptNow(newPassword: string, revision: number): Promise<void
   await browser.storage.local.set({
     [STORAGE_KEY]: {
       version: VAULT_VERSION,
+      ...(previous.registeredPasskeys ? { registeredPasskeys: previous.registeredPasskeys } : {}),
       iterations,
       salt: arrayToBase64(salt),
       iv: arrayToBase64(iv),
@@ -567,13 +570,16 @@ async function saveNow(revision: number): Promise<void> {
 export async function listPasskeys(): Promise<PasskeyMetadata[]> {
   const data = await browser.storage.local.get(STORAGE_KEY);
   const record = data[STORAGE_KEY] as Record<string, unknown> | undefined;
-  if (record?.protection !== 'passkey') return [];
-  validatePasskeyRecord(record);
-  return record.passkeys.map(({ credentialId, prfSalt }) => ({ credentialId, prfSalt }));
+  if (!record) return [];
+  const enrolled = record.protection === 'passkey' ? record : record.registeredPasskeys ? { ...record, ...(record.registeredPasskeys as object), version: PASSKEY_VAULT_VERSION, protection: 'passkey' } : null;
+  if (!enrolled) return [];
+  validatePasskeyRecord(enrolled);
+  return enrolled.passkeys.map(({ credentialId, prfSalt }) => ({ credentialId, prfSalt }));
 }
 
 export async function getPasskey(): Promise<PasskeyMetadata | null> {
-  return (await listPasskeys())[0] ?? null;
+  const stored = (await browser.storage.local.get(STORAGE_KEY))[STORAGE_KEY] as Record<string, unknown> | undefined;
+  return stored?.protection === 'passkey' ? (await listPasskeys())[0] ?? null : null;
 }
 
 export async function exportPasskeyBackup(): Promise<string> {
@@ -698,4 +704,62 @@ export async function withCacheKey<T>(operation: (key: CryptoKey) => Promise<T>)
     assertRevision(revision);
     return result;
   } finally { bytes.fill(0); }
+}
+
+/** Switch only between an existing passkey enrollment and password protection. */
+export async function changeProtection(options: { currentPassword?: string; currentPasskey?: PasskeyProof; password?: string; usePasskey: boolean }): Promise<boolean> {
+  if (typeof options.usePasskey !== 'boolean') throw new Error('Invalid unlock method');
+  const revision = sessionRevision;
+  return mutations.run(async () => {
+    assertRevision(revision);
+    if (!_cryptoKey || !_decrypted) throw new Error('Vault is locked');
+    const stored = (await browser.storage.local.get(STORAGE_KEY))[STORAGE_KEY] as Record<string, any>;
+    assertRevision(revision);
+    const wasPasskey = stored?.protection === 'passkey';
+    if (wasPasskey === options.usePasskey) throw new Error('Unlock method already selected');
+    if (!options.usePasskey && (typeof options.password !== 'string' || options.password.length < 8)) throw new Error('Password must be at least 8 characters');
+    const enrollment = wasPasskey ? stored : stored?.registeredPasskeys;
+    if (!enrollment) throw new Error('No passkey registered');
+    // Validate dormant enrollment using the same bounded wrapper contract.
+    const enrolled = { ...stored, ...enrollment, version: PASSKEY_VAULT_VERSION, protection: 'passkey' };
+    validatePasskeyRecord(enrolled);
+    const wrapper = enrolled.passkeys.find(p => p.credentialId === options.currentPasskey?.credentialId);
+    if (!wrapper || !options.currentPasskey) return false;
+    let bytes: Uint8Array | undefined;
+    try {
+      let key: CryptoKey;
+      try {
+        bytes = await unwrapVaultKey(wrapper, options.currentPasskey);
+        key = await importVaultKey(bytes);
+        if (wasPasskey) {
+          await decrypt(key, base64ToArray(stored.iv), base64ToArray(stored.ciphertext));
+        } else {
+          if (typeof options.currentPassword !== 'string') return false;
+          const currentKey = await deriveKey(options.currentPassword, base64ToArray(stored.salt), stored.iterations ?? PBKDF2_ITERATIONS_LEGACY);
+          await decrypt(currentKey, base64ToArray(stored.iv), base64ToArray(stored.ciphertext));
+        }
+      } catch { return false; }
+      assertRevision(revision);
+      let protection: Record<string, unknown>;
+      if (options.usePasskey) {
+        protection = { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: PASSKEY_RP_ID, passkeys: enrolled.passkeys };
+      } else {
+        const salt = crypto.getRandomValues(new Uint8Array(32));
+        const iterations = iterationsFor(options.password!);
+        key = await deriveKey(options.password!, salt, iterations);
+        protection = { version: VAULT_VERSION, salt: arrayToBase64(salt), iterations, registeredPasskeys: { rpId: PASSKEY_RP_ID, passkeys: enrolled.passkeys } };
+      }
+      assertRevision(revision);
+      const encrypted = await encrypt(key, JSON.stringify(toStoragePayload(_decrypted!)));
+      const autoLockMs = _autoLockMs > 0 ? _autoLockMs : AUTO_LOCK_DEFAULT_MS;
+      assertRevision(revision);
+      await browser.storage.local.set({ [STORAGE_KEY]: { ...protection, iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext) }, autoLockMs });
+      assertRevision(revision);
+      _cryptoKey = key;
+      _kdfIterations = options.usePasskey ? PBKDF2_ITERATIONS : iterationsFor(options.password!);
+      _autoLockMs = autoLockMs;
+      resetAutoLock(); armKeepAlive(); noteLockStateChanged();
+      return true;
+    } finally { bytes?.fill(0); }
+  });
 }

@@ -1,3 +1,4 @@
+import { t } from '@services/i18n/i18n.ts';
 import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS } from '@constants/passkey.ts';
 import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
 import { parsePasskeyBackup, type PasskeyInput, type PasskeyMetadata, type PasskeyProof } from '@domain/vault/passkey.ts';
@@ -16,13 +17,13 @@ function requireSupport(): void {
 /** No network service or website script participates in vault unlocking. */
 export async function authenticatePasskey(metadata: PasskeyMetadata): Promise<PasskeyProof> {
   requireSupport();
-  const credential = await navigator.credentials.get({ publicKey: {
+  const credential = await requestPasskey(() => navigator.credentials.get({ publicKey: {
     rpId: PASSKEY_RP_ID,
     challenge: crypto.getRandomValues(new Uint8Array(32)),
     allowCredentials: [{ type: 'public-key', id: base64ToArray(metadata.credentialId) as BufferSource }],
     userVerification: 'required', timeout: PASSKEY_TIMEOUT_MS,
     extensions: { prf: { eval: { first: base64ToArray(metadata.prfSalt) as BufferSource } } } as PrfExtensions,
-  } }) as PublicKeyCredential | null;
+  } })) as PublicKeyCredential | null;
   if (!credential || arrayToBase64(new Uint8Array(credential.rawId)) !== metadata.credentialId) throw new Error('Passkey request cancelled or credential did not match');
   const output = (credential.getClientExtensionResults() as PrfResult).prf?.results?.first;
   return { credentialId: metadata.credentialId, prf: encodePrf(output) };
@@ -38,7 +39,7 @@ function encodePrf(output: ArrayBuffer | undefined): string {
 export async function createPasskey(name: string): Promise<PasskeyInput> {
   requireSupport();
   const salt = crypto.getRandomValues(new Uint8Array(32));
-  const credential = await navigator.credentials.create({ publicKey: {
+  const credential = await requestPasskey(() => navigator.credentials.create({ publicKey: {
     rp: { id: PASSKEY_RP_ID, name: 'Nostr WoT Vault' },
     user: { id: crypto.getRandomValues(new Uint8Array(32)), name: name.trim() || 'Nostr WoT', displayName: name.trim() || 'Nostr WoT' },
     challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -47,7 +48,7 @@ export async function createPasskey(name: string): Promise<PasskeyInput> {
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     attestation: 'none', timeout: PASSKEY_TIMEOUT_MS,
     extensions: { largeBlob: { support: 'preferred' }, prf: { eval: { first: salt } } } as PrfExtensions,
-  } }) as PublicKeyCredential | null;
+  } })) as PublicKeyCredential | null;
   if (!credential) throw new Error('Passkey creation cancelled');
   const initial = (credential.getClientExtensionResults() as PrfResult).prf;
   const metadata = { credentialId: arrayToBase64(new Uint8Array(credential.rawId)), prfSalt: arrayToBase64(salt) };
@@ -60,4 +61,13 @@ export function parsePasskeyBackupMetadata(text: string): PasskeyMetadata {
   const record = parsePasskeyBackup(text);
   const { credentialId, prfSalt } = record.passkeys[0];
   return { credentialId, prfSalt };
+}
+
+/** Browsers deliberately use NotAllowedError for both cancellation and timeout. */
+export async function requestPasskey<T>(request: () => Promise<T>): Promise<T> {
+  try { return await request(); }
+  catch (error) {
+    if (error instanceof Error && (error.name === 'NotAllowedError' || error.name === 'AbortError')) throw new Error(t('passkey.cancelled'));
+    throw error;
+  }
 }

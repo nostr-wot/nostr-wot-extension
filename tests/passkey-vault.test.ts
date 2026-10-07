@@ -18,6 +18,70 @@ describe('passkey vault encryption and lifecycle', () => {
   beforeEach(() => { vault.lock(); resetMockStorage(); });
   afterEach(() => vault.lock());
 
+  it('toggles registered passkeys without losing accounts, cache keys or enrollment', async () => {
+    await vault.create('', payload(), input());
+    const enrolled = (await record()).passkeys;
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const cache = await vault.withCacheKey(key => crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode('archive')));
+    assert.equal(await vault.changeProtection({ usePasskey: false, currentPasskey: input(9), password: 'new-password' }), false);
+    assert.equal(await vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: 'new-password' }), true);
+    assert.equal(await vault.getPasskey(), null);
+    assert.equal((await vault.listPasskeys()).length, 1);
+    assert.deepEqual((await record()).registeredPasskeys.passkeys, enrolled);
+    vault.lock();
+    assert.equal(await vault.unlockPasskey(input()), false);
+    assert.equal(await vault.unlock('new-password'), true);
+    await vault.reEncrypt('changed-password');
+    const before = await record();
+    assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: 'wrong-password', currentPasskey: input() }), false);
+    assert.deepEqual(await record(), before);
+    assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: 'changed-password', currentPasskey: input(9) }), false);
+    assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: 'changed-password', currentPasskey: input() }), true);
+    assert.deepEqual((await record()).passkeys, enrolled);
+    vault.lock();
+    assert.equal(await vault.unlock('changed-password'), false);
+    assert.equal(await vault.unlockPasskey(input()), true);
+    await vault.withPrivkey('test', async bytes => assert.equal(Buffer.from(bytes).toString('hex'), 'b'.repeat(64)));
+    const restored = await vault.withCacheKey(key => crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cache));
+    assert.equal(new TextDecoder().decode(restored), 'archive');
+  });
+
+  it('does not enroll a passkey through the unlock switch', async () => {
+    await vault.create('original-password', payload());
+    await assert.rejects(vault.changeProtection({ usePasskey: true, currentPassword: 'original-password', currentPasskey: input() }), /No passkey/);
+  });
+
+  it('leaves the old protection usable if saving the replacement fails', async context => {
+    await vault.create('', payload(), input());
+    const before = await record();
+    context.mock.method(browser.storage.local, 'set', async () => { throw new Error('storage failed'); });
+    await assert.rejects(vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: 'new-password' }), /storage failed/);
+    assert.deepEqual(await record(), before);
+    context.mock.restoreAll();
+    vault.lock();
+    assert.equal(await vault.unlockPasskey(input()), true);
+  });
+
+  it('protection-change RPC counts wrong current credentials toward lockout', async () => {
+    await vault.create('', payload(), input());
+    const change = handlers.get('vault_changeProtection')!;
+    for (let i = 0; i < 5; i++) await assert.rejects(change({ usePasskey: false, currentPasskey: input(9), password: 'new-password' }), /incorrect/);
+    await assert.rejects(change({ usePasskey: false, currentPasskey: input(), password: 'new-password' }), /Too many/);
+    assert.ok(await vault.getPasskey());
+  });
+
+  it('preserves enrollment across never-lock and refuses switching a locked vault', async () => {
+    await vault.create('', payload(), input());
+    await vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: 'new-password' });
+    await handlers.get('vault_setAutoLock')!({ ms: 0, currentPassword: 'new-password' });
+    assert.equal((await vault.listPasskeys()).length, 1);
+    vault.lock();
+    await assert.rejects(vault.changeProtection({ usePasskey: true, currentPassword: '', currentPasskey: input() }), /locked/);
+    assert.equal(await vault.unlock(''), true);
+    await vault.changeProtection({ usePasskey: true, currentPassword: '', currentPasskey: input() });
+    assert.ok((await browser.storage.local.get('autoLockMs')).autoLockMs > 0);
+  });
+
   it('keeps secrets out of storage, refuses passwords, unlocks with PRF after saving', async () => {
     await vault.create('', payload(), input());
     const stored = await record();

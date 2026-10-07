@@ -1292,5 +1292,13 @@
   "passkey.usePasskey": "Usar passkey",
   "passkey.useFile": "Usar arquivo de recuperação",
   "passkey.recoveryTitle": "Salvar dados de recuperação",
-  "wizard.importShort": "Importar"
+  "wizard.importShort": "Importar",
+  "security.unlockMethodHint": "Protege todas as contas deste cofre.",
+  "security.switchToPassword": "Defina uma nova senha e verifique sua passkey atual. As cópias de recuperação existentes mantêm a proteção original.",
+  "security.switchToPasskey": "Verifique sua senha atual e sua passkey registrada. Suas contas serão mantidas. O bloqueio automático será ativado.",
+  "security.recovery": "Recuperação",
+  "security.recoveryHint": "Salve uma nova cópia após alterar contas ou chaves.",
+  "passkey.cancelled": "A solicitação de passkey foi cancelada ou expirou. Tente novamente.",
+  "security.usePasskey": "Usar passkey",
+  "security.noRegisteredPasskey": "Não há passkey registrada neste cofre."
 }

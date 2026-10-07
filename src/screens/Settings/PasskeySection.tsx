@@ -7,6 +7,8 @@ import PasskeySelector from '@components/PasskeySelector';
 import Card from '@components/Card';
 import Button from '@components/Button';
 import Text from '@components/Text';
+import Container from '@components/Container';
+import InfoTooltip from '@components/InfoTooltip';
 import FormError from '@components/FormError';
 import { SectionLabel } from '@components/SectionLabel';
 import PasskeyRecoverySave from '@components/PasskeyRecoverySave';
@@ -41,11 +43,16 @@ export default function PasskeySection({ locked }: { locked: boolean }) {
     } catch (error) { setError((error as Error).message); }
     finally { setBusy(false); }
   };
-  return <Card>
-    <SectionLabel>{t('passkey.title')}</SectionLabel>
-    <Text variant="secondary" className="mb-6">{t('passkey.recoverySnapshot')}</Text>
-    {!locked && <><PasskeySelector credentials={credentials} value={selected || credentials[0]?.credentialId || ''} onChange={(value) => { setSelected(value); setSaveNewCredential(false); }} disabled={busy} /><Button small onClick={add} disabled={busy || !credentials.length} className="mb-6">{t(busy ? 'common.loading' : 'passkey.add')}</Button><PasskeyRecoverySave autoStart={saveNewCredential} credentialId={selected || credentials[0]?.credentialId} disabled={busy} /><PasskeyBackupDownload /></>}
-    {added && <Text variant="secondary" role="status" className="mt-4">{t('passkey.added')}</Text>}
+  const selectedId = selected || credentials[0]?.credentialId;
+  return <Container gap={6}>
+    <Card>
+      <Container gap={5}>
+        <SectionLabel>{t('security.recovery')}<InfoTooltip text={t('passkey.recoverySnapshot')} /></SectionLabel>
+        <Text variant="secondary">{t('security.recoveryHint')}</Text>
+        {!locked && <><PasskeySelector credentials={credentials} value={selectedId || ''} onChange={value => { setSelected(value); setSaveNewCredential(false); }} disabled={busy} /><Button small variant="secondary" onClick={add} disabled={busy || !credentials.length} className="self-start">{t(busy ? 'common.loading' : 'passkey.add')}</Button><PasskeyRecoverySave compact autoStart={saveNewCredential} credentialId={selectedId} disabled={busy} /><PasskeyBackupDownload compact /></>}
+      </Container>
+    </Card>
+    {added && <Text variant="secondary" role="status">{t('passkey.added')}</Text>}
     <FormError>{error}</FormError>
-  </Card>;
+  </Container>;
 }

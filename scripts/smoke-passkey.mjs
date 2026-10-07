@@ -99,6 +99,27 @@ try {
   await page.getByText("You're all set!", { exact: true }).waitFor();
   const restoredKey = await rpc('vault_getActivePubkey');
   assert.equal(restoredKey, publicKey);
+  await page.getByRole('button', { name: 'Get Started', exact: true }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByText('Security', { exact: true }).click();
+  const usePasskey = page.getByRole('checkbox', { name: 'Use passkey', exact: true });
+  await usePasskey.waitFor({ state: 'attached' });
+  await page.waitForFunction(() => globalThis.document.querySelector('input[aria-label="Use passkey"]')?.checked === true);
+  if (process.env.PASSKEY_SMOKE_SCREENSHOTS) { await page.waitForTimeout(700); await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/security.png` }); }
+  await usePasskey.locator('..').click();
+  const dialog = page.getByRole('dialog');
+  await dialog.locator('input[type="password"]').nth(0).fill('synthetic-switch-password');
+  await dialog.locator('input[type="password"]').nth(1).fill('synthetic-switch-password');
+  await dialog.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await page.waitForFunction(() => globalThis.document.querySelector('input[aria-label="Use passkey"]')?.checked === false);
+  assert.equal((await rpc('vault_listPasskeys')).length, 1);
+  assert.deepEqual(await rpc('vault_listPasskeys', { forUnlock: true }), []);
+  await usePasskey.locator('..').click();
+  await dialog.getByPlaceholder('Current password', { exact: true }).fill('synthetic-switch-password');
+  await dialog.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await page.waitForFunction(() => globalThis.document.querySelector('input[aria-label="Use passkey"]')?.checked === true);
+  assert.equal(await rpc('vault_getActivePubkey'), publicKey);
+  console.log('Security switch passed: password and passkey round trip preserves identity and enrollment.');
   // Older installations may retain an encrypted empty vault. Opening setup must
   // not prompt for unlocking, nor silently delete a vault based on public metadata.
   await rpc('vault_destroy');

@@ -16,6 +16,7 @@ import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@context/VaultContext';
 
 import PasskeySection from './PasskeySection';
+import UnlockMethodSection from './UnlockMethodSection';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 import StatusNotice from '@components/StatusNotice';
@@ -39,12 +40,13 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
   const [loading, setLoading] = useState<boolean>(false);
   const vault = useVault();
 
-  useEffect(() => {
+  const refresh = () => {
     rpc('vault_getPasskey').then((metadata) => setPasskey(!!metadata)).catch(() => {});
     rpc<number>('vault_getAutoLock').then((ms) => {
       if (typeof ms === 'number') setAutoLockMs(ms);
     }).catch(() => {});
-  }, []);
+  };
+  useEffect(refresh, []);
 
   const isNever = autoLockMs === 0;
 
@@ -117,7 +119,6 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
 
   return (
     <Container gap={4} className="flex-1 py-2">
-      {passkey && <PasskeySection locked={vault.locked} />}
       {vault.exists && (
         <Card>
           <SectionLabel>{t('security.autoLock')}</SectionLabel>
@@ -127,6 +128,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
             value={displayMs}
             onChange={handleChipSelect}
           />
+
+          {vault.exists && passkey !== null && <UnlockMethodSection passkey={passkey} locked={vault.locked} neverLock={isNever} onChanged={() => { refresh(); void vault.checkState(); }} />}
 
           {showSetPassword && (
             <Container gap={5} className="mt-6 pt-6 border-t border-brand-tint-active">
@@ -173,6 +176,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
           )}
         </Card>
       )}
+
+      {passkey && <PasskeySection locked={vault.locked} />}
 
       {vault.exists && !vault.locked && !isNever && passkey === false && (
         <ListRow

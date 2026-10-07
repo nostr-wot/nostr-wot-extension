@@ -8,8 +8,8 @@ import Text from '@components/Text';
 import Container from '@components/Container';
 
 /** Shared by onboarding and Security; success requires the provider to confirm the write. */
-export default function PasskeyRecoverySave({ credentialId, autoStart = false, disabled = false, onSaved, onUnavailable }: {
-  credentialId?: string; autoStart?: boolean; disabled?: boolean; onSaved?: () => void; onUnavailable?: () => void;
+export default function PasskeyRecoverySave({ credentialId, autoStart = false, disabled = false, compact = false, onSaved, onUnavailable }: {
+  credentialId?: string; compact?: boolean; autoStart?: boolean; disabled?: boolean; onSaved?: () => void; onUnavailable?: () => void;
 }) {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   const active = useRef<AbortController | null>(null);
@@ -35,7 +35,7 @@ export default function PasskeyRecoverySave({ credentialId, autoStart = false, d
     return () => { active.current?.abort(); active.current = null; };
   }, [autoStart, save]);
   return <Container gap={3}>
-    <Button disabled={disabled || status === 'saving'} onClick={save}>{t(status === 'saving' ? 'passkey.savingRecovery' : 'passkey.saveRecovery')}</Button>
+    <Button small={compact} variant={compact ? "secondary" : "primary"} disabled={disabled || status === 'saving'} onClick={save}>{t(status === 'saving' ? 'passkey.savingRecovery' : 'passkey.saveRecovery')}</Button>
     {status === 'saved' && <Text variant="secondary" role="status">{t('passkey.recoverySaved')}</Text>}
     {status === 'failed' && <Text variant="secondary" role="status">{t('passkey.recoveryFallback')}</Text>}
   </Container>;

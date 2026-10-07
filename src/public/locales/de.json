@@ -1292,5 +1292,13 @@
   "passkey.usePasskey": "Passkey verwenden",
   "passkey.useFile": "Wiederherstellungsdatei verwenden",
   "passkey.recoveryTitle": "Wiederherstellungsdaten speichern",
-  "wizard.importShort": "Importieren"
+  "wizard.importShort": "Importieren",
+  "security.unlockMethodHint": "Schützt alle Konten in diesem Tresor.",
+  "security.switchToPassword": "Lege ein neues Passwort fest und bestätige deinen aktuellen Passkey. Vorhandene Wiederherstellungskopien behalten ihren ursprünglichen Schutz.",
+  "security.switchToPasskey": "Bestätige dein aktuelles Passwort und deinen registrierten Passkey. Deine Konten bleiben erhalten. Die automatische Sperre wird aktiviert.",
+  "security.recovery": "Wiederherstellung",
+  "security.recoveryHint": "Speichere nach Änderungen an Konten oder Schlüsseln eine neue Kopie.",
+  "passkey.cancelled": "Passkey-Anfrage abgebrochen oder abgelaufen. Versuche es erneut.",
+  "security.usePasskey": "Passkey verwenden",
+  "security.noRegisteredPasskey": "In diesem Tresor ist kein Passkey registriert."
 }

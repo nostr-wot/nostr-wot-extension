@@ -6,7 +6,7 @@ import Button from '@components/Button';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 
-export default function PasskeyBackupDownload({ onDownloaded }: { onDownloaded?: () => void }) {
+export default function PasskeyBackupDownload({ onDownloaded, compact = false }: { onDownloaded?: () => void; compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const download = async () => {
@@ -20,5 +20,5 @@ export default function PasskeyBackupDownload({ onDownloaded }: { onDownloaded?:
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   };
-  return <Container gap={3}><Button onClick={download} disabled={busy}>{t(busy ? 'common.loading' : 'passkey.download')}</Button><FormError>{error}</FormError></Container>;
+  return <Container gap={3}><Button small={compact} variant={compact ? "secondary" : "primary"} onClick={download} disabled={busy}>{t(busy ? 'common.loading' : 'passkey.download')}</Button><FormError>{error}</FormError></Container>;
 }

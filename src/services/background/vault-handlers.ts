@@ -91,8 +91,19 @@ async function unlockVault(password?: string, proof?: PasskeyProof): Promise<boo
 export const handlers = new Map<string, HandlerFn>([
     ['vault_unlock', async params => unlockVault(params.password as string)],
     ['vault_unlockPasskey', async params => unlockVault(undefined, params as unknown as PasskeyProof)],
+    ['vault_changeProtection', async params => {
+        const guard = await readUnlockGuard();
+        if (guard.lockedUntil > Date.now()) throw new Error('Too many failed attempts. Try again later.');
+        const changed = await vault.changeProtection(params as Parameters<typeof vault.changeProtection>[0]);
+        if (!changed) {
+            await recordUnlockFailure();
+            throw new Error('Current credential is incorrect');
+        }
+        await browser.storage.local.remove(UNLOCK_GUARD_KEY);
+        return { ok: true };
+    }],
     ['vault_getPasskey', async () => vault.getPasskey()],
-    ['vault_listPasskeys', async () => vault.listPasskeys()],
+    ['vault_listPasskeys', async params => params.forUnlock && !await vault.getPasskey() ? [] : vault.listPasskeys()],
     ['vault_exportPasskeyBackup', async () => vault.exportPasskeyBackup()],
     ['vault_addPasskey', async params => {
         await vault.addPasskey(params.existing as PasskeyProof, params.passkey as PasskeyInput);
@@ -142,19 +153,18 @@ export const handlers = new Map<string, HandlerFn>([
         const willBeNever = params.ms === 0;
 
         if (wasNever !== willBeNever) {
-            const payload = vault.getDecryptedPayload();
             if (wasNever) {
                 if (!params.password || (params.password as string).length < 8) {
                     throw new Error('Password required (min 8 characters)');
                 }
-                await vault.create(params.password as string, payload!);
+                await vault.reEncrypt(params.password as string);
             } else {
                 if (!params.currentPassword) {
                     throw new Error('Current password required');
                 }
                 const ok = await vault.unlock(params.currentPassword as string);
                 if (!ok) throw new Error('Current password is incorrect');
-                await vault.create('', payload!);
+                await vault.reEncrypt('');
             }
         }
 

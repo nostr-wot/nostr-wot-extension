@@ -1292,5 +1292,13 @@
   "passkey.usePasskey": "Utiliser la passkey",
   "passkey.useFile": "Utiliser un fichier de récupération",
   "passkey.recoveryTitle": "Enregistrer les données de récupération",
-  "wizard.importShort": "Importer"
+  "wizard.importShort": "Importer",
+  "security.unlockMethodHint": "Protège tous les comptes de ce coffre.",
+  "security.switchToPassword": "Définissez un nouveau mot de passe, puis vérifiez votre passkey actuelle. Les copies de récupération existantes conservent leur protection initiale.",
+  "security.switchToPasskey": "Vérifiez votre mot de passe actuel et votre passkey enregistrée. Vos comptes seront conservés. Le verrouillage automatique sera activé.",
+  "security.recovery": "Récupération",
+  "security.recoveryHint": "Enregistrez une nouvelle copie après toute modification des comptes ou clés.",
+  "passkey.cancelled": "Demande de passkey annulée ou expirée. Réessayez.",
+  "security.usePasskey": "Utiliser une passkey",
+  "security.noRegisteredPasskey": "Aucune passkey enregistrée dans ce coffre."
 }
