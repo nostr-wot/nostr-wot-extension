@@ -39,6 +39,7 @@ it('explorer filters kinds, message formats and public search without matching c
   const record = { event: event({ content: 'Hello world', tags: [['t', 'nostr']] }), sources: ['wss://relay.example'], savedAt: 1 };
   const filter = { tab: 'all' as const, query: 'HELLO' };
   assert.equal(matchesArchivedEvent(record, filter), true);
+  for (const kind of [0, 6, 7, 30023]) assert.equal(matchesArchivedEvent({ ...record, event: { ...record.event, kind } }, { tab: 'other', query: '' }), false);
   assert.equal(matchesArchivedEvent(record, { ...filter, tab: 'messages' }), false);
   assert.equal(matchesArchivedEvent(record, { ...filter, kind: 9999 }), false);
   assert.equal(matchesArchivedEvent(record, { ...filter, query: 'relay.example' }), true);

@@ -13,7 +13,7 @@ export function matchesArchivedEvent(record: ArchiveRecord, filter: ArchiveExplo
   if (filter.kind !== undefined && event.kind !== filter.kind) return false;
   if (filter.tab === 'notes' && event.kind !== 1 && event.kind !== 30023) return false;
   if (filter.tab === 'messages' && !archiveMessage(event.kind)) return false;
-  if (filter.tab === 'other' && (archiveMessage(event.kind) || event.kind === 1 || event.kind === 30023)) return false;
+  if (filter.tab === 'other' && (archiveMessage(event.kind) || KIND_LABELS[event.kind] !== undefined)) return false;
   const query = filter.query.trim().toLowerCase();
   return !query || [event.id, event.pubkey, String(event.kind), archiveKindLabel(event.kind), ...record.sources,
     ...event.tags.flat(), ...(archiveMessage(event.kind) ? [] : [event.content])].some(value => value.toLowerCase().includes(query));
@@ -23,4 +23,5 @@ export function matchesArchivedEvent(record: ArchiveRecord, filter: ArchiveExplo
 export interface ArchiveExplorerItem {
   event: Pick<SignedEvent, 'id' | 'pubkey' | 'kind' | 'created_at'>;
   excerpt: string;
+  recipients?: string[];
 }

@@ -1334,5 +1334,10 @@
   "archive.explorer.next": "Weiter",
   "archive.explorer.results": "Suchergebnisse",
   "archive.explorer.account": "Konto",
-  "archive.explorer.lock": "Tresor sperren"
+  "archive.explorer.lock": "Tresor sperren",
+  "archive.explorer.date": "Datum",
+  "archive.explorer.eventId": "Ereignis-ID",
+  "archive.explorer.content": "Inhalt",
+  "archive.explorer.likes": "Likes",
+  "archive.explorer.reposts": "Reposts"
 }

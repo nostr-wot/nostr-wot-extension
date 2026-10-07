@@ -1334,5 +1334,10 @@
   "archive.explorer.next": "Seguinte",
   "archive.explorer.results": "Resultados da pesquisa",
   "archive.explorer.account": "Conta",
-  "archive.explorer.lock": "Bloquear cofre"
+  "archive.explorer.lock": "Bloquear cofre",
+  "archive.explorer.date": "Data",
+  "archive.explorer.eventId": "ID do evento",
+  "archive.explorer.content": "Conteúdo",
+  "archive.explorer.likes": "Curtidas",
+  "archive.explorer.reposts": "Republicações"
 }

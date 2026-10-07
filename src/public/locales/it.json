@@ -1334,5 +1334,10 @@
   "archive.explorer.next": "Successiva",
   "archive.explorer.results": "Risultati di ricerca",
   "archive.explorer.account": "Account",
-  "archive.explorer.lock": "Blocca cassaforte"
+  "archive.explorer.lock": "Blocca cassaforte",
+  "archive.explorer.date": "Data",
+  "archive.explorer.eventId": "ID evento",
+  "archive.explorer.content": "Contenuto",
+  "archive.explorer.likes": "Mi piace",
+  "archive.explorer.reposts": "Ripubblicazioni"
 }

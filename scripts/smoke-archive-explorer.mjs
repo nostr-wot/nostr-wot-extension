@@ -44,6 +44,8 @@ try {
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.waitForURL('**/src/entrypoints/archive/index.html?accountId=*');
   await popup.close();
+  await page.getByText('3 matching events', { exact: true }).waitFor();
+  await page.getByRole('tab', { name: 'Notes', exact: true }).click();
   await page.getByText('A note from the archive 1', { exact: true }).waitFor();
   assert.equal(await page.getByText('Archive test', { exact: true }).count() > 0, true);
   if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) { await page.waitForTimeout(500); await page.screenshot({ animations: 'disabled', path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/explorer.png` }); }
@@ -51,10 +53,10 @@ try {
   await page.waitForFunction(() => globalThis.document.documentElement.dataset.theme === 'dark');
   if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) { await page.waitForTimeout(500); await page.screenshot({ animations: 'disabled', path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/explorer-dark.png` }); }
   const explorer = page.locator('main').last();
-  await page.getByText('3 matching events', { exact: true }).waitFor();
-  await explorer.getByRole('tab', { name: 'Other', exact: true }).click();
+  await page.getByText('2 matching events', { exact: true }).waitFor();
+  await explorer.getByRole('tab', { name: 'Others', exact: true }).click();
   await explorer.getByText('A note from the archive 1', { exact: true }).waitFor({ state: 'detached' });
-  await page.getByText('Custom event payload', { exact: true }).waitFor();
+  await page.getByText('1 matching events', { exact: true }).waitFor();
   await explorer.getByRole('button', { name: 'See details', exact: true }).click();
   await page.getByRole('tab', { name: 'Advanced', exact: true }).click();
   await page.getByText('Source unknown (for example, imported from a file).', { exact: true }).waitFor();
@@ -66,13 +68,14 @@ try {
   await page.getByText('No matching events.', { exact: true }).waitFor();
   assert.equal((await rpc('archive_getState', { accountId })).count, 2);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= 390), true);
   if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/explorer-mobile.png` });
   await rpc('vault_lock');
-  await page.getByRole('tab', { name: 'Other', exact: true }).waitFor({ state: 'detached' });
+  await page.getByRole('tab', { name: 'Others', exact: true }).waitFor({ state: 'detached' });
   await page.reload();
   await page.locator('input[type=password]').waitFor();
-  assert.equal(await page.getByRole('tab', { name: 'Other', exact: true }).count(), 0);
+  assert.equal(await page.getByRole('tab', { name: 'Others', exact: true }).count(), 0);
   await rpc('vault_unlock', { password: 'synthetic-smoke-password' });
   await page.getByText('2 unique events in this archive', { exact: true }).waitFor();
   console.log('Archive explorer: import, search, details, local deletion and lock passed');

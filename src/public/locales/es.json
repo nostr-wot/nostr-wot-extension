@@ -1334,5 +1334,10 @@
   "archive.explorer.next": "Siguiente",
   "archive.explorer.results": "Resultados de búsqueda",
   "archive.explorer.account": "Cuenta",
-  "archive.explorer.lock": "Bloquear bóveda"
+  "archive.explorer.lock": "Bloquear bóveda",
+  "archive.explorer.date": "Fecha",
+  "archive.explorer.eventId": "ID del evento",
+  "archive.explorer.content": "Contenido",
+  "archive.explorer.likes": "Me gusta",
+  "archive.explorer.reposts": "Republicaciones"
 }

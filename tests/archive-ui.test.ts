@@ -433,6 +433,15 @@ test('explorer searches, shows full detail and confirms local deletion without l
   try {
     await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', total: 1, onChanged: async () => { changed++; } })));
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.ok(button('archive.explorer.likes'));
+    assert.ok(button('archive.explorer.reposts'));
+    assert.ok(button('Profile Metadata'));
+    assert.ok(document.querySelector('table'));
+    assert.ok(!document.body.textContent!.includes('A readable archived note'));
+    assert.match(document.querySelector('thead')!.textContent!, /archive.explorer.eventId/);
+    await act(async () => button('archive.explorer.notes').click());
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.match(document.querySelector('thead')!.textContent!, /archive.explorer.content/);
     assert.match(document.body.textContent!, /A readable archived note/);
     await act(async () => button('archive.details').click());
     await act(async () => button('archive.explorer.advanced').click());
@@ -502,5 +511,27 @@ test('explorer counts all matching events independently of scanned records and p
     await act(async () => root.render(createElement(Harness, { tab: 'messages' })));
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
     assert.deepEqual(read(), { scanned: 159, matched: 100, shown: 40, page: 0 });
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('message table reveals only after its explicit row action', async context => {
+  const { ArchiveExplorerContent } = await import('../src/screens/Archive/ArchiveExplorerScreen.tsx');
+  const { dom, root } = mount(); let reveals = 0;
+  const event = { id: 'd'.repeat(64), pubkey: 'e'.repeat(64), kind: 4, created_at: 1, content: 'ciphertext', tags: [['p', 'f'.repeat(64)]], sig: 'a'.repeat(128) };
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    if (message.method === 'archive_explore') return { result: { records: [{ event, excerpt: '', recipients: ['f'.repeat(64)] }], scanned: 1 } };
+    if (message.method === 'archive_event') return { result: { event, sources: [], savedAt: 1 } };
+    if (message.method === 'archive_reveal') { reveals++; return { result: { plaintext: 'A private message', senderPubkey: event.pubkey } }; }
+    throw new Error(message.method);
+  });
+  try {
+    await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', total: 1, onChanged: async () => {} })));
+    await act(async () => button('archive.explorer.messages').click());
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.match(document.querySelector('thead')!.textContent!, /archive.explorer.to/);
+    assert.equal(reveals, 0);
+    await act(async () => button('archive.explorer.reveal').click());
+    assert.equal(reveals, 1);
+    assert.match(document.querySelector('[role="dialog"]')!.textContent!, /A private message/);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });

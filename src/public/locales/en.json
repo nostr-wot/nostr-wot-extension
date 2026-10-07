@@ -1308,7 +1308,7 @@
   "archive.explorer.all": "All",
   "archive.explorer.notes": "Notes",
   "archive.explorer.messages": "Messages",
-  "archive.explorer.other": "Other",
+  "archive.explorer.other": "Others",
   "archive.explorer.simple": "Simple",
   "archive.explorer.advanced": "Advanced",
   "archive.explorer.from": "From",
@@ -1334,5 +1334,10 @@
   "archive.explorer.next": "Next",
   "archive.explorer.results": "Search results",
   "archive.explorer.account": "Account",
-  "archive.explorer.lock": "Lock vault"
+  "archive.explorer.lock": "Lock vault",
+  "archive.explorer.date": "Date",
+  "archive.explorer.eventId": "Event ID",
+  "archive.explorer.content": "Content",
+  "archive.explorer.likes": "Likes",
+  "archive.explorer.reposts": "Reposts"
 }

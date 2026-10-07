@@ -29,7 +29,7 @@ export function ArchivePerson({ pubkey, label }: { pubkey: string; label?: strin
   </Container>;
 }
 interface Revealed { plaintext: string; senderPubkey?: string; decryptedEvent?: Record<string, unknown> }
-export default function ArchiveEventDetail({ record, accountId, onClose }: { record: ArchiveRecord; accountId: string; onClose: () => void }) {
+export default function ArchiveEventDetail({ record, accountId, onClose, revealOnOpen = false }: { revealOnOpen?: boolean; record: ArchiveRecord; accountId: string; onClose: () => void }) {
   const [tab, setTab] = useState('simple');
   const [revealed, setRevealed] = useState<Revealed | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,6 +49,15 @@ export default function ArchiveEventDetail({ record, accountId, onClose }: { rec
     catch (e) { if (live.current) setError((e as Error).message); }
     finally { if (live.current) setBusy(false); }
   }
+  const didReveal = useRef(false);
+  useEffect(() => {
+    if (revealOnOpen && message && !didReveal.current) {
+      didReveal.current = true;
+      void reveal();
+    }
+    // This detail component is keyed by event ID; revealing requires an explicit row action.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealOnOpen]);
   return createPortal(<Modal maxWidth={840} title={archiveKindLabel(event.kind)} onClose={onClose}>
     <Container gap={5}>
       <Tabs variant="segmented" value={tab} onChange={setTab} options={['simple', 'advanced'].map(value => ({ value, label: t(`archive.explorer.${value}`) }))} />
