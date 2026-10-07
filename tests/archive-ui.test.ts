@@ -316,7 +316,7 @@ test('failed relay rows are red, show fetched counts and size, and keep sibling 
   } finally { release(); await act(async () => root.unmount()); dom.window.close(); }
 });
 
-test('active archive work shows loading and live counts in the screen and relay details', async context => {
+test('active archive work shows loading with event counts only in relay details', async context => {
   const { dom, root } = mount();
   const relay = 'wss://configured.test/';
   const state: ArchiveState = { ...initial(), pendingRelays: [relay], progress: { phase: 'syncing', fetched: 100, relay, relayResults: [{ relay, success: false, errors: [], fetched: 100 }] } };
@@ -324,7 +324,7 @@ test('active archive work shows loading and live counts in the screen and relay 
   try {
     await act(async () => root.render(createElement(AccountArchive, { accountId: 'a' })));
     assert.ok(document.querySelector('.animate-spin'));
-    assert.ok(document.body.textContent!.includes('100 archive.fetched'));
+    assert.ok(!document.body.textContent!.includes('archive.fetched'));
     await act(async () => button('archive.details').click());
     assert.ok(document.querySelector('[role="dialog"] .animate-spin'));
     assert.equal(document.querySelector('tbody tr')!.children[1].textContent, '100');

@@ -156,7 +156,6 @@ export function AccountArchive({ accountId }: { accountId: string }) {
         ) : (
           <FormError>{!migration && state.progress.error}</FormError>
         )}
-        {running && state.progress.phase === 'syncing' && <Text variant="muted" aria-live="polite">{state.progress.fetched.toLocaleString()} {t('archive.fetched')}</Text>}
         <ArchiveFiles
           accountId={accountId}
           disabled={disabled}
