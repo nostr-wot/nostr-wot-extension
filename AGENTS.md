@@ -44,6 +44,25 @@ If a change starts in a worktree and then needs eyes in a browser, push it and b
 branch from the main clone rather than loading a second unpacked copy — two copies of the
 extension installed at once fight over the same origins and the same vault.
 
+# Popup startup rules
+
+The popup must appear fast and must never wait forever on the background service
+worker, which Chrome tears down after ~30 s idle and whose restart can stall.
+
+- **Mount reads never use a bare `rpc()`.** If the background handler only reads
+  `storage.local`, read the key directly (`useBrowserStorage` or
+  `storage.local.get`). Otherwise use `rpcRead()`, which re-sends an unanswered
+  attempt and fails after the third. `rpcRead` is for side-effect-free reads
+  only; writes stay on `rpc()` and must never be sent twice.
+  See docs/component-standards.md §10.
+- **Overlays that are never the first thing on screen are `React.lazy` chunks**
+  in `PopupApp.tsx`, rendered once requested via `useLatch`. Do not add static
+  imports of heavy screens to the popup shell.
+- **Builds are minified (JS only; CSS is not).** To understand behaviour, read
+  `src/`, not `dist/`. Mozilla reviews the source archive, which must keep
+  rebuilding the packages byte for byte; `npm run package:chrome` and
+  `npm run package:firefox` verify that.
+
 # Shared-core dependency policy
 
 Keep the shared-core migration off the extension's main/release branches until

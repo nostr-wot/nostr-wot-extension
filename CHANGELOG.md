@@ -3,6 +3,29 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Unreleased
+
+Rename this heading to the next version when it is released; the release
+scripts only read a section whose heading is that exact version.
+
+### Store release notes
+
+- Open the popup faster: less code loads before it appears, and the splash ends as soon as your accounts are read.
+- Fix the popup sometimes staying on "Loading…" after the browser had been idle.
+
+### Popup startup
+
+- The home card reads the connected-site lists from local storage instead of asking the background service worker, so a stalled worker start can no longer leave it on "Loading…".
+- Startup reads that still need the background (vault state, permissions, wallet display cache, post-quantum status, activity log, pending requests) use `rpcRead()`: an attempt unanswered after 4 seconds is sent again, and after the third the read fails visibly instead of waiting forever. Writes are never re-sent.
+- Language loading reads `storage.local` without waiting on `storage.sync`; a language changed on another synced device applies on the next open. Bundled English is no longer fetched again.
+- Menu, filters, activity, wizard, edit profile and rules screens load the first time they open.
+- The splash shows for 200–600 ms depending on when the account list is read, instead of a fixed 600 ms, and fades in 200 ms instead of 400 ms. The tab screenshot behind the popup is taken after the fade.
+- The popup wakes the background as it starts, so a cold worker starts while the popup renders.
+
+### Build
+
+- JavaScript is minified. Code loaded before the popup appears drops from 1.57 MB to 475 KB, and the background script from 889 KB to 437 KB. CSS stays unminified. Mozilla reviewers use the attached source, which still rebuilds the packages exactly; `SOURCE_BUILD.md` and the reviewer notes say so.
+
 ## 0.8.12 — 2026-10-07
 
 ### Store release notes
