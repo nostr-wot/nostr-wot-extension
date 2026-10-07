@@ -7,7 +7,7 @@ import Button from '@components/Button';
 import Text from '@components/Text';
 import Container from '@components/Container';
 
-/** Shared by onboarding and Security; success always means write plus exact readback. */
+/** Shared by onboarding and Security; success requires the provider to confirm the write. */
 export default function PasskeyRecoverySave({ credentialId, autoStart = false, disabled = false, onSaved, onUnavailable }: {
   credentialId?: string; autoStart?: boolean; disabled?: boolean; onSaved?: () => void; onUnavailable?: () => void;
 }) {

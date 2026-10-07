@@ -142,7 +142,7 @@ test('cancelled provider selection offers a user-driven retry without creating a
   }
 });
 
-test('onboarding skips the recovery file only after blob write and readback, otherwise requires it', async context => {
+test('onboarding skips the recovery file only after provider-confirmed blob write, otherwise requires it', async context => {
   const { dom, root } = mount();
   const id = new Uint8Array([1, 2, 3]);
   const backup = JSON.stringify({ format: 'nostr-wot-passkey-vault', vault: {
@@ -163,7 +163,7 @@ test('onboarding skips the recovery file only after blob write and readback, oth
   try {
     await act(async () => root.render(createElement(PasskeyBackupStep, { blobSupported: true, onNext: saved => completed.push(!!saved) })));
     assert.deepEqual(completed, [true]);
-    assert.equal(reads, 1);
+    assert.equal(reads, 0);
     assert.equal(button('passkey.download'), undefined);
     canWrite = false;
     await act(async () => root.render(createElement(PasskeyBackupStep, { key: 'failure', blobSupported: true, onNext: () => assert.fail('must require file') })));

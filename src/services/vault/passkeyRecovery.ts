@@ -26,7 +26,7 @@ function readBlob(credential: PublicKeyCredential): Uint8Array {
   return new Uint8Array(blob);
 }
 
-/** Save the existing encrypted format, then verify a separate read before skipping file recovery. */
+/** Save the encrypted format; WebAuthn written=true confirms storage without a second prompt. */
 export async function savePasskeyRecovery(backup: string, credentialId: string, signal?: AbortSignal): Promise<void> {
   const record = parsePasskeyBackup(backup);
   if (!record.passkeys.some(key => key.credentialId === credentialId)) throw new Error('Passkey does not belong to this backup');
@@ -34,8 +34,7 @@ export async function savePasskeyRecovery(backup: string, credentialId: string, 
   if (bytes.byteLength > PASSKEY_MAX_BLOB_BYTES) throw new Error('Recovery data exceeds the passkey storage limit. Download a recovery file instead.');
   const written = await requestBlob({ write: bytes }, credentialId, signal);
   if ((written.getClientExtensionResults() as BlobOutput).largeBlob?.written !== true) throw new Error('This provider could not save recovery data. Download a recovery file instead.');
-  const actual = readBlob(await requestBlob({ read: true }, credentialId, signal));
-  if (actual.length !== bytes.length || !actual.every((byte, i) => byte === bytes[i])) throw new Error('Recovery verification failed. Download a recovery file instead.');
+
 }
 
 /** Discover on a fresh install, bind the blob to its credential, then prove PRF access. */

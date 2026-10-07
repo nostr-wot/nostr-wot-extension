@@ -40,6 +40,13 @@ try {
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'Create with passkey', exact: false }).click();
   assert.equal(await page.locator('#passkey-name').count(), 0);
+  await page.evaluate(() => {
+    globalThis.passkeyRequestCount = 0;
+    for (const method of ['create', 'get']) {
+      const original = navigator.credentials[method].bind(navigator.credentials);
+      navigator.credentials[method] = (...args) => { globalThis.passkeyRequestCount++; return original(...args); };
+    }
+  });
   await page.getByRole('button', { name: 'Create with passkey', exact: true }).click();
   if (blobRecovery) {
     await page.getByRole('button', { name: 'Skip for now', exact: true }).waitFor();
@@ -47,6 +54,9 @@ try {
   } else {
     await page.getByRole('button', { name: 'Download recovery file', exact: true }).waitFor();
   }
+  const setupRequests = await page.evaluate(() => globalThis.passkeyRequestCount);
+  assert.ok(setupRequests <= (blobRecovery ? 3 : 2), `Too many setup requests: ${setupRequests}`);
+  console.log(`Passkey setup requested ${setupRequests} browser credential operations.`);
   const accounts = await rpc('vault_listAccounts');
   assert.ok(accounts[0].name);
   assert.equal(accounts[0].mnemonic, undefined);
@@ -100,7 +110,7 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).count(), 0);
   assert.equal(await rpc('vault_exists'), true);
   assert.equal(await rpc('vault_isLocked'), true);
-  console.log(`Passkey browser smoke passed: PRF enrollment, seed-free creation, ${blobRecovery ? 'verified blob storage and fresh-install discovery' : 'file fallback and empty-vault restore'}, lock/unlock preserve identity.`);
+  console.log(`Passkey browser smoke passed: PRF enrollment, seed-free creation, ${blobRecovery ? 'confirmed blob storage and fresh-install discovery' : 'file fallback and empty-vault restore'}, lock/unlock preserve identity.`);
 } finally {
   await context?.close();
   await rm(directory, { recursive: true, force: true });

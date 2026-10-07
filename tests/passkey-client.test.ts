@@ -23,7 +23,7 @@ describe('WebAuthn PRF client', () => {
     assert.equal(passkeysAvailable(), false);
     await assert.rejects(createPasskey('Test'), /unavailable/);
   });
-  it('requires verified credential use after registration, with dedicated RP and fresh challenges', async () => {
+  it('obtains PRF with a separate assertion only when registration supplies no result', async () => {
     const calls: any[] = [];
     const result = new Uint8Array(32).fill(9);
     install(async options => {
@@ -50,6 +50,13 @@ describe('WebAuthn PRF client', () => {
     assert.equal(credential.prf, arrayToBase64(new Uint8Array(32).fill(9)));
     assert.ok(result.every(n => n === 0));
   });
+  it('reuses the verified registration PRF without another biometric request', async () => {
+    const result = new Uint8Array(32).fill(9);
+    install(async () => { assert.fail('registration already supplied PRF'); }, async () => ({ rawId: id.buffer, getClientExtensionResults: () => ({ prf: { results: { first: result.buffer } }, largeBlob: { supported: true } }) }));
+    const credential = await createPasskey('Test');
+    assert.equal(credential.prf, arrayToBase64(new Uint8Array(32).fill(9)));
+    assert.ok(result.every(n => n === 0));
+  });
   it('refuses cancellation, other credentials and missing PRF without downgrade', async () => {
     install(async () => null);
     await assert.rejects(authenticatePasskey(metadata), /cancelled/);
@@ -71,7 +78,7 @@ describe('passkey-attached recovery', () => {
     passkeys: [{ ...metadata, iv: arrayToBase64(new Uint8Array(12)), ciphertext: arrayToBase64(new Uint8Array(48)) }],
     iv: arrayToBase64(new Uint8Array(12)), ciphertext: arrayToBase64(new Uint8Array(16)),
   } });
-  it('writes only encrypted recovery and verifies exact readback with the same credential', async () => {
+  it('writes encrypted recovery with one verified request and requires provider confirmation', async () => {
     const { savePasskeyRecovery } = await import('../src/services/vault/passkeyRecovery.ts');
     const calls: any[] = [];
     install(async ({ publicKey }) => {
@@ -82,18 +89,13 @@ describe('passkey-attached recovery', () => {
       return { rawId: id.buffer, getClientExtensionResults: () => ({ largeBlob: publicKey.extensions.largeBlob.write ? { written: true } : { blob: new TextEncoder().encode(backup).buffer } }) };
     });
     await savePasskeyRecovery(backup, metadata.credentialId);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 1);
     assert.equal(new TextDecoder().decode(calls[0].extensions.largeBlob.write), backup);
-    assert.equal(calls[1].extensions.largeBlob.read, true);
   });
-  it('fails closed on refused writes, absent or mismatched readback, and wrong credentials', async () => {
+  it('fails closed on refused or unconfirmed writes and wrong credentials', async () => {
     const { savePasskeyRecovery } = await import('../src/services/vault/passkeyRecovery.ts');
     for (const result of [{}, { largeBlob: { written: false } }]) {
       install(async () => ({ rawId: id.buffer, getClientExtensionResults: () => result }));
-      await assert.rejects(savePasskeyRecovery(backup, metadata.credentialId));
-    }
-    for (const blob of [undefined, new TextEncoder().encode('{}').buffer]) {
-      install(async ({ publicKey }) => ({ rawId: id.buffer, getClientExtensionResults: () => ({ largeBlob: publicKey.extensions.largeBlob.write ? { written: true } : { blob } }) }));
       await assert.rejects(savePasskeyRecovery(backup, metadata.credentialId));
     }
     install(async () => ({ rawId: new Uint8Array([9]).buffer }));

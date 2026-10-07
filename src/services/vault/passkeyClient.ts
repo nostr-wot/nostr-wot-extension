@@ -25,9 +25,13 @@ export async function authenticatePasskey(metadata: PasskeyMetadata): Promise<Pa
   } }) as PublicKeyCredential | null;
   if (!credential || arrayToBase64(new Uint8Array(credential.rawId)) !== metadata.credentialId) throw new Error('Passkey request cancelled or credential did not match');
   const output = (credential.getClientExtensionResults() as PrfResult).prf?.results?.first;
+  return { credentialId: metadata.credentialId, prf: encodePrf(output) };
+}
+
+function encodePrf(output: ArrayBuffer | undefined): string {
   if (!output || output.byteLength !== 32) throw new Error('This passkey provider cannot encrypt a vault (PRF is unavailable). Retry and choose another provider in the browser, or use seed phrase setup.');
   const bytes = new Uint8Array(output);
-  try { return { credentialId: metadata.credentialId, prf: arrayToBase64(bytes) }; }
+  try { return arrayToBase64(bytes); }
   finally { bytes.fill(0); }
 }
 
@@ -46,10 +50,10 @@ export async function createPasskey(name: string): Promise<PasskeyInput> {
   } }) as PublicKeyCredential | null;
   if (!credential) throw new Error('Passkey creation cancelled');
   const initial = (credential.getClientExtensionResults() as PrfResult).prf;
-  // Do not keep a registration PRF output. Always prove this credential can be used again.
-  if (initial?.results?.first) new Uint8Array(initial.results.first).fill(0);
   const metadata = { credentialId: arrayToBase64(new Uint8Array(credential.rawId)), prfSalt: arrayToBase64(salt) };
-  return { ...metadata, ...await authenticatePasskey(metadata), largeBlobSupported: (credential.getClientExtensionResults() as PrfResult).largeBlob?.supported === true };
+  // Registration already requires user verification; reuse its PRF when supplied.
+  const proof = initial?.results?.first ? { credentialId: metadata.credentialId, prf: encodePrf(initial.results.first) } : await authenticatePasskey(metadata);
+  return { ...metadata, ...proof, largeBlobSupported: (credential.getClientExtensionResults() as PrfResult).largeBlob?.supported === true };
 }
 
 export function parsePasskeyBackupMetadata(text: string): PasskeyMetadata {
