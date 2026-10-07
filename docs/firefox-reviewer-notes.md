@@ -1,6 +1,6 @@
 # Mozilla reviewer notes
 
-Nostr WoT is a Manifest V3 Nostr identity signer and optional Lightning wallet. Matching TypeScript/React source and package-lock.json are attached. Vite bundles local code; network responses are data, not executable code.
+Nostr WoT is a Manifest V3 Nostr identity signer and optional Lightning wallet. Matching TypeScript/React source and package-lock.json are attached. Vite minifies local code; network responses are data, not executable code.
 
 Build on Linux or macOS with npm, zip/unzip and Node 24.15+ in 24.x, 22.22.2+ in 22.x, or 26+: run npm ci, then npm run package:firefox. The output is nostr-wot-firefox.zip. SOURCE_BUILD.md has reproduction instructions. The workflow compares all rebuilt files with the submitted archive.
 
