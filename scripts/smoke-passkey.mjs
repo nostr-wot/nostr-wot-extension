@@ -10,7 +10,7 @@ const extension = resolve(process.argv[2] || 'dist');
 let context;
 try {
   context = await chromium.launchPersistentContext(directory, {
-    channel: 'chromium', headless: true, acceptDownloads: true,
+    channel: 'chromium', headless: true, acceptDownloads: true, viewport: { width: 380, height: 600 },
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
@@ -30,6 +30,13 @@ try {
     return response.result;
   }, { method, params });
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'More options', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).count(), 0);
+  if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/onboarding.png` });
+  await page.getByRole('button', { name: 'More options', exact: true }).click();
+  await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).waitFor();
+  if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/more-options.png` });
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'Create with passkey', exact: false }).click();
   await page.locator('#passkey-name').fill('Synthetic passkey account');
   await page.getByRole('button', { name: 'Create with passkey', exact: true }).click();
@@ -50,10 +57,11 @@ try {
   assert.equal(await rpc('vault_getActivePubkey'), publicKey);
   await rpc('vault_destroy');
   await page.reload();
+  // Language preference can survive vault removal; handle both onboarding entries.
+  await page.waitForFunction(() => globalThis.document.body.innerText.includes('More options') || globalThis.document.body.innerText.includes('English'));
+  if (!await page.getByRole('button', { name: 'More options', exact: true }).count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('button', { name: 'More options', exact: true }).click();
   const restore = page.getByRole('button', { name: 'Restore passkey vault', exact: false });
-  // The language choice may already be saved by the first onboarding flow.
-  await page.waitForFunction(() => globalThis.document.body.innerText.includes('Restore passkey vault') || globalThis.document.body.innerText.includes('English'));
-  if (!await restore.count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await restore.click();
   await page.locator('#passkey-file').setInputFiles({ name: 'vault.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
   await page.getByRole('button', { name: 'Restore passkey vault', exact: true }).click();

@@ -158,3 +158,18 @@ test('restoring a passkey vault finishes without creating another account or pas
   assert.deepEqual(restored.ctx.account, { id: 'restored' });
   assert.equal(restored.ctx.mnemonic, null);
 });
+
+test('more options adds a step only for specialized account methods', () => {
+  const start = fresh();
+  for (const method of ['create', 'passkey', 'import']) {
+    assert.equal(reducer(start, { type: 'SELECT', payload: { method } }).step, method);
+  }
+  const more = reducer(start, { type: 'MORE_OPTIONS' });
+  assert.equal(more.step, 'moreOptions');
+  for (const method of ['npub', 'nip46', 'passkeyRestore']) {
+    const selected = reducer(more, { type: 'SELECT', payload: { method } });
+    assert.equal(selected.step, method);
+    assert.equal(reducer(selected, { type: 'BACK' }).step, 'moreOptions');
+  }
+  assert.equal(reducer(more, { type: 'BACK' }).step, 'method');
+});

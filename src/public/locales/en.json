@@ -1268,5 +1268,12 @@
   "passkey.add": "Add another passkey",
   "passkey.added": "Passkey added. Download a new recovery file to include it.",
   "passkey.invalidBackup": "Invalid or oversized recovery file.",
-  "passkey.unlockDescription": "Unlock with your saved passkey to continue."
+  "passkey.unlockDescription": "Unlock with your saved passkey to continue.",
+  "wizard.createAccountTitle": "Create your account",
+  "wizard.createWithPhrase": "Create with a recovery phrase",
+  "wizard.phraseShort": "Back up your account with recovery words.",
+  "wizard.passkeyShort": "Use a compatible device or password manager.",
+  "wizard.importExisting": "Already have an account? Import it",
+  "wizard.moreOptions": "More options",
+  "wizard.restorePasskeyShort": "Use a recovery file and its enrolled passkey."
 }

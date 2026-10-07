@@ -55,7 +55,11 @@ function buildSteps(
     },
     [WizardStep.Method]: {
       title: hasAccounts ? t('wizard.addAccount') : t('wizard.getStarted'),
-      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} hasAccounts={hasAccounts} />,
+      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} hasAccounts={hasAccounts} onMoreOptions={() => flow.send('MORE_OPTIONS')} />,
+    },
+    [WizardStep.MoreOptions]: {
+      title: t('wizard.moreOptions'),
+      content: <MethodStep moreOptions onSelect={(method) => flow.send('SELECT', { method })} hasAccounts={hasAccounts} />,
     },
     [WizardStep.Import]: {
       title: t('wizard.importKey'),

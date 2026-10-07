@@ -1268,5 +1268,12 @@
   "passkey.add": "Weiteren Passkey hinzufügen",
   "passkey.added": "Passkey hinzugefügt. Lade eine neue Wiederherstellungsdatei herunter, die ihn enthält.",
   "passkey.invalidBackup": "Ungültige oder zu große Wiederherstellungsdatei.",
-  "passkey.unlockDescription": "Entsperre mit deinem gespeicherten Passkey, um fortzufahren."
+  "passkey.unlockDescription": "Entsperre mit deinem gespeicherten Passkey, um fortzufahren.",
+  "wizard.createAccountTitle": "Erstelle dein Konto",
+  "wizard.createWithPhrase": "Mit Wiederherstellungsphrase erstellen",
+  "wizard.phraseShort": "Bewahre die Wörter zur Wiederherstellung deines Kontos auf.",
+  "wizard.passkeyShort": "Nutze ein kompatibles Gerät oder einen Passwortmanager.",
+  "wizard.importExisting": "Du hast schon ein Konto? Importiere es",
+  "wizard.moreOptions": "Weitere Optionen",
+  "wizard.restorePasskeyShort": "Nutze eine Wiederherstellungsdatei und den zugehörigen Passkey."
 }

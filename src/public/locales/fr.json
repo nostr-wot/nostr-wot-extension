@@ -1268,5 +1268,12 @@
   "passkey.add": "Ajouter une clé d’accès",
   "passkey.added": "Clé ajoutée. Téléchargez un nouveau fichier de récupération pour l’inclure.",
   "passkey.invalidBackup": "Fichier de récupération invalide ou trop volumineux.",
-  "passkey.unlockDescription": "Déverrouillez avec votre clé d’accès enregistrée pour continuer."
+  "passkey.unlockDescription": "Déverrouillez avec votre clé d’accès enregistrée pour continuer.",
+  "wizard.createAccountTitle": "Créez votre compte",
+  "wizard.createWithPhrase": "Créer avec une phrase de récupération",
+  "wizard.phraseShort": "Conservez les mots pour récupérer votre compte.",
+  "wizard.passkeyShort": "Utilisez un appareil ou un gestionnaire de mots de passe compatible.",
+  "wizard.importExisting": "Vous avez déjà un compte ? Importez-le",
+  "wizard.moreOptions": "Autres options",
+  "wizard.restorePasskeyShort": "Utilisez un fichier de récupération et sa clé d’accès."
 }

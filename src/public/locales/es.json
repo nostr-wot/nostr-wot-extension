@@ -1268,5 +1268,12 @@
   "passkey.add": "Añadir otra clave de acceso",
   "passkey.added": "Clave añadida. Descarga un archivo de recuperación nuevo para incluirla.",
   "passkey.invalidBackup": "Archivo de recuperación inválido o demasiado grande.",
-  "passkey.unlockDescription": "Desbloquea con tu clave de acceso guardada para continuar."
+  "passkey.unlockDescription": "Desbloquea con tu clave de acceso guardada para continuar.",
+  "wizard.createAccountTitle": "Crea tu cuenta",
+  "wizard.createWithPhrase": "Crear con una frase de recuperación",
+  "wizard.phraseShort": "Guarda las palabras para recuperar tu cuenta.",
+  "wizard.passkeyShort": "Usa un dispositivo o gestor de contraseñas compatible.",
+  "wizard.importExisting": "¿Ya tienes una cuenta? Impórtala",
+  "wizard.moreOptions": "Más opciones",
+  "wizard.restorePasskeyShort": "Usa un archivo de recuperación y su clave de acceso."
 }

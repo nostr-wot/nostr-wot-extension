@@ -87,3 +87,31 @@ test('closing the unlock screen while passkey verification runs never unlocks th
     dom.window.close();
   }
 });
+
+test('first setup screen has two creation choices and direct import without specialized options', async () => {
+ const { dom, root } = mount(); const selected: string[] = [];
+ try {
+  await act(async () => root.render(createElement(MethodStep, { hasAccounts: false, onSelect: id => selected.push(id) })));
+  assert.doesNotMatch(document.body.textContent!, /passkey.restore|wizard.watchOnly|wizard.nostrConnect/);
+  assert.ok(button('wizard.importExisting'));
+  assert.ok(button('wizard.moreOptions'));
+  await act(async () => button('wizard.importExisting').click());
+  assert.deepEqual(selected, ['import']);
+ } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+
+test('more options exposes specialized methods and hides passkey restoration for existing vaults', async () => {
+ const { dom, root } = mount(); const selected: string[] = [];
+ try {
+  await act(async () => root.render(createElement(MethodStep, { moreOptions: true, hasAccounts: false, onSelect: id => selected.push(id) })));
+  assert.doesNotMatch(document.body.textContent!, /passkey.create|wizard.createWithPhrase|wizard.importExisting/);
+  for (const [label, method] of [['wizard.nostrConnect', 'nip46'], ['passkey.restore', 'passkeyRestore'], ['wizard.watchOnly', 'npub']]) {
+   const node = [...document.querySelectorAll('button')].find(node => node.textContent?.startsWith(label))!;
+   await act(async () => node.click());
+   assert.equal(selected.at(-1), method);
+  }
+  await act(async () => root.render(createElement(MethodStep, { moreOptions: true, hasAccounts: true, onSelect: () => {} })));
+  assert.doesNotMatch(document.body.textContent!, /passkey.restore/);
+ } finally { await act(async () => root.unmount()); dom.window.close(); }
+});

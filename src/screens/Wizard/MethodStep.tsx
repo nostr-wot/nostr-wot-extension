@@ -2,79 +2,48 @@ import React from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import IconPlus from '@assets/IconPlus.tsx';
 import IconKey from '@assets/IconKey.tsx';
+import IconShield from '@assets/IconShield.tsx';
 import IconEye from '@assets/IconEye.tsx';
 import IconLink from '@assets/IconLink.tsx';
-import Card from '@components/Card';
+import IconDownload from '@assets/IconDownload.tsx';
+import ActionTile from '@components/ActionTile';
+import LinkButton from '@components/LinkButton';
 import Heading from '@components/Heading';
 import Container from '@components/Container';
-
-const METHOD_ICONS: Record<string, React.ReactNode> = {
-  create: <IconPlus />,
-  import: <IconKey />,
-  npub: <IconEye />,
-  nip46: <IconLink />,
-};
 
 interface Method {
   id: string;
   label: string;
   desc: string;
-  primary?: boolean;
   icon: React.ReactNode;
 }
 
 interface MethodStepProps {
   onSelect: (id: string) => void;
+  onMoreOptions?: () => void;
+  moreOptions?: boolean;
   hasGeneratedAccount?: boolean;
   hasAccounts?: boolean;
 }
 
-export default function MethodStep({ onSelect, hasGeneratedAccount, hasAccounts }: MethodStepProps) {
-  const METHODS: Method[] = [
-    ...(!hasAccounts ? [
-      { id: 'passkey', label: t('passkey.create'), desc: t('passkey.createDesc'), icon: METHOD_ICONS.import, primary: true },
-      { id: 'passkeyRestore', label: t('passkey.restore'), desc: t('passkey.restoreDesc'), icon: METHOD_ICONS.import },
-    ] : []),
-    {
-      id: 'create',
-      label: hasGeneratedAccount ? t('wizard.createSubAccount') : t('wizard.createNew'),
-      desc: hasGeneratedAccount ? t('wizard.createSubAccountDesc') : t('wizard.createNewDesc'),
-      primary: true,
-      icon: METHOD_ICONS.create,
-    },
-    { id: 'import', label: t('wizard.importKeyBackup'), desc: t('wizard.importKeyBackupDesc'), icon: METHOD_ICONS.import },
-    { id: 'npub', label: t('wizard.watchOnly'), desc: t('wizard.watchOnlyDesc'), icon: METHOD_ICONS.npub },
-    { id: 'nip46', label: t('wizard.nostrConnect'), desc: t('wizard.nostrConnectDesc'), icon: METHOD_ICONS.nip46 },
+export default function MethodStep({ onSelect, onMoreOptions, moreOptions = false, hasGeneratedAccount, hasAccounts }: MethodStepProps) {
+  const methods: Method[] = moreOptions ? [
+    { id: 'nip46', label: t('wizard.nostrConnect'), desc: t('wizard.nostrConnectDesc'), icon: <IconLink /> },
+    ...(!hasAccounts ? [{ id: 'passkeyRestore', label: t('passkey.restore'), desc: t('wizard.restorePasskeyShort'), icon: <IconDownload /> }] : []),
+    { id: 'npub', label: t('wizard.watchOnly'), desc: t('wizard.watchOnlyDesc'), icon: <IconEye /> },
+  ] : [
+    ...(!hasAccounts ? [{ id: 'passkey', label: t('passkey.create'), desc: t('wizard.passkeyShort'), icon: <IconShield /> }] : []),
+    { id: 'create', label: t(hasGeneratedAccount ? 'wizard.createSubAccount' : 'wizard.createWithPhrase'), desc: t(hasGeneratedAccount ? 'wizard.createSubAccountDesc' : 'wizard.phraseShort'), icon: hasGeneratedAccount ? <IconPlus /> : <IconKey /> },
   ];
 
-  return (
-    <Container className="flex-1">
-      <Heading className="mb-3">{t('wizard.chooseSetup')}</Heading>
-      <Container gap={4} className="mt-auto pb-12">
-        {METHODS.map((m, i) => (
-          <React.Fragment key={m.id}>
-            {i === 1 && (
-              <Container variant="row" gap={6} className="py-2">
-                <div className="flex-1 h-px bg-card-border" />
-                <span className="text-xs font-semibold text-muted uppercase">{t('common.or')}</span>
-                <div className="flex-1 h-px bg-card-border" />
-              </Container>
-            )}
-            <Card
-              as="button"
-              variant="raised"
-              className={`flex items-center gap-7 w-full p-8 mb-0 cursor-pointer text-left transition-all hover:bg-glass-heavy hover:translate-x-2 ${m.primary ? 'border-brand bg-glass-heavy shadow-[0_4px_20px_rgba(99,102,241,0.14)]' : ''}`}
-              onClick={() => onSelect(m.id)}
-            >
-              <div className="w-18 h-18 rounded-panel bg-brand-light text-brand flex items-center justify-center shrink-0">{m.icon}</div>
-              <div className="flex flex-col">
-                <strong className="block text-lg font-semibold text-heading mb-1">{m.label}</strong>
-                <span className="text-xs text-menu-subtitle">{m.desc}</span>
-              </div>
-            </Card>
-          </React.Fragment>
-        ))}
-      </Container>
+  return <Container gap={5} className="flex-1 pb-6">
+    {!moreOptions && <Heading>{t(hasAccounts ? 'wizard.addAccount' : 'wizard.createAccountTitle')}</Heading>}
+    <Container gap={4}>
+      {methods.map(method => <ActionTile key={method.id} icon={method.icon} title={method.label} description={method.desc} onClick={() => onSelect(method.id)} />)}
     </Container>
-  );
+    {!moreOptions && <Container gap={2}>
+      <LinkButton tone="brand" className="min-h-11 text-sm" onClick={() => onSelect('import')}>{t('wizard.importExisting')}</LinkButton>
+      <LinkButton tone="brand" className="min-h-11 text-sm" onClick={onMoreOptions}>{t('wizard.moreOptions')}</LinkButton>
+    </Container>}
+  </Container>;
 }

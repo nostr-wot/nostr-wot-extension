@@ -1268,5 +1268,12 @@
   "passkey.add": "Aggiungi un’altra passkey",
   "passkey.added": "Passkey aggiunta. Scarica un nuovo file di recupero per includerla.",
   "passkey.invalidBackup": "File di recupero non valido o troppo grande.",
-  "passkey.unlockDescription": "Sblocca con la passkey salvata per continuare."
+  "passkey.unlockDescription": "Sblocca con la passkey salvata per continuare.",
+  "wizard.createAccountTitle": "Crea il tuo account",
+  "wizard.createWithPhrase": "Crea con una frase di recupero",
+  "wizard.phraseShort": "Conserva le parole per recuperare il tuo account.",
+  "wizard.passkeyShort": "Usa un dispositivo o un gestore di password compatibile.",
+  "wizard.importExisting": "Hai già un account? Importalo",
+  "wizard.moreOptions": "Altre opzioni",
+  "wizard.restorePasskeyShort": "Usa un file di recupero e la passkey associata."
 }

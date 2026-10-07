@@ -58,8 +58,19 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       if (![WizardStep.Passkey, WizardStep.PasskeyRestore, WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
       return { step, ctx: { method: method as string } };
     },
+    MORE_OPTIONS: () => ({ step: WizardStep.MoreOptions }),
     BACK: (ctx, _payload, { initialStep }) =>
       ctx.visitedPreMethod ? { step: initialStep! } : null,
+  },
+
+  [WizardStep.MoreOptions]: {
+    SELECT: (_ctx, { method }, { hasAccounts }) => {
+      const step = method as WizardStep;
+      if (![WizardStep.WatchOnly, WizardStep.NostrConnect, WizardStep.PasskeyRestore].includes(step)) return null;
+      if (hasAccounts && step === WizardStep.PasskeyRestore) return null;
+      return { step, ctx: { method: method as string } };
+    },
+    BACK: () => ({ step: WizardStep.Method }),
   },
 
   [WizardStep.Passkey]: {
@@ -68,7 +79,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
   [WizardStep.PasskeyRestore]: {
     DONE: (_ctx, { account }) => ({ step: WizardStep.Done, ctx: { account } }),
-    BACK: () => ({ step: WizardStep.Method }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
   [WizardStep.PasskeyBackup]: {
     DONE: () => ({ step: WizardStep.FollowSuggestions }),
@@ -102,12 +113,12 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done,
       ctx: { account: account as unknown },
     }),
-    BACK: () => ({ step: WizardStep.Method }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
 
   [WizardStep.NostrConnect]: {
     DONE: (_ctx, { account }) => ({ step: WizardStep.Password, ctx: { account: account as unknown } }),
-    BACK: () => ({ step: WizardStep.Method }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
 
   [WizardStep.Backup]: {

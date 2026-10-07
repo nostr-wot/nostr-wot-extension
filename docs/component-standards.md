@@ -812,3 +812,8 @@ The popup keeps its 600 ms splash and 400 ms fade. Its shell renders after local
 ### Passkey controls
 
 `PasskeySelector` reuses `Dropdown` to choose among enrolled credentials and appears only when there is more than one. `PasskeyBackupDownload` reuses `Button`, `FormError` and the shared download helper in onboarding and Security settings. `Input` accepts file inputs for bounded recovery imports. Passkey setup uses the shared wizard enum and state machine, preserving its created-account state through the recovery-download step; no mnemonic or PRF output is persisted in wizard state.
+
+
+### Compact account setup
+
+The wizard method screen reuses `ActionTile` for passkey and recovery-phrase creation, with `LinkButton` for direct import and More options. Remote signers, passkey recovery-file restoration and watch-only accounts live on the separate `WizardStep.MoreOptions` screen; Back returns through that screen. Existing vaults retain sub-account creation and do not offer creation or restoration of another passkey vault. Browser WebAuthn availability does not certify a configured credential provider or PRF support; enrollment verifies PRF before saving a vault.

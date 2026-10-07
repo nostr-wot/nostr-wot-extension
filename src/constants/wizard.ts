@@ -27,6 +27,7 @@ export enum WizardStep {
   Language = 'lang',
   Welcome = 'welcome',
   Method = 'method',
+  MoreOptions = 'moreOptions',
   Create = 'create',
   Passkey = 'passkey',
   PasskeyRestore = 'passkeyRestore',
