@@ -5,8 +5,17 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Next release
 
-- Exclude app data and authentication events from archive storage, imports and migration.
-- Add a full-page Archive event explorer, opened from its action icon, with accurate filtered totals, paginated batched search, a table with kind-specific columns and filters, cached profiles, inline private-message reveal and page-wide decryption, dedicated latest-profile/contact/relay views, advanced event and relay details, confirmed local selection deletion, and compact encrypted relay provenance.
+### Archive
+
+- Open the event explorer in a full browser tab from an Archive action icon, with accurate totals and paginated results.
+- Show events in a table with horizontal tabs only for kinds present in the archive. Keep keyword search and type filters together below the tabs.
+- Group public chats and private messages under Messages. Reveal encrypted content inline on click or decrypt the current page, while displaying sender and recipient information.
+- Show the latest profile, contacts and relay list in dedicated views with update dates. Bound contact rendering and reuse cached profile names.
+- Add advanced event details, compact relay-source tracking and confirmed local event deletion.
+- Exclude app data and authentication events from new archive storage, imports and migration. Reject imports containing excluded events before committing records.
+- Remove the redundant fetched-event counter below sync status.
+
+### Passkeys and onboarding
 
 - Add a vault-wide Use passkey switch inside Auto-lock for existing enrollments, with current-credential verification and preserved accounts and archive keys. Keep recovery actions compact and replace browser cancellation errors with clear retry guidance.
 
