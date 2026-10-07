@@ -101,3 +101,44 @@ describe('rpc: Chrome wakeup-rejection handling', () => {
     assert.strictEqual(calls, 1);
   });
 });
+
+describe('rpc: per-attempt timeout for reads', () => {
+
+
+  it('re-sends an attempt the worker never answers, then returns the answer', async () => {
+    let calls = 0;
+    sendImpl = () => {
+      calls++;
+      // First attempt: a worker start that stalls, so the message is never answered.
+      if (calls === 1) return new Promise(() => {});
+      return Promise.resolve({ result: ['example.com'] });
+    };
+    const res = await rpc<string[]>('getAllowedDomains', {}, { attemptTimeoutMs: 20 });
+    assert.deepStrictEqual(res, ['example.com']);
+    assert.strictEqual(calls, 2);
+  });
+
+  it('fails with RpcError instead of hanging when no attempt is ever answered', async () => {
+    let calls = 0;
+    sendImpl = () => { calls++; return new Promise(() => {}); };
+    await assert.rejects(
+      () => rpc('vault_isLocked', {}, { attemptTimeoutMs: 20 }),
+      (err: Error) => {
+        assert.strictEqual(err.name, 'RpcError');
+        assert.match(err.message, /did not answer in time/);
+        return true;
+      },
+    );
+    assert.strictEqual(calls, 3);
+  });
+
+  it('never times out a call made without the option', async () => {
+    let calls = 0;
+    sendImpl = () => {
+      calls++;
+      return new Promise((resolve) => setTimeout(() => resolve({ result: 'late' }), 60));
+    };
+    assert.strictEqual(await rpc('vault_unlock', { password: 'x' }), 'late');
+    assert.strictEqual(calls, 1, 'a write must not be sent twice');
+  });
+});

@@ -7,7 +7,7 @@ import useAsyncScope from '@hooks/useAsyncScope';
 import type { PasskeySelectorProps } from '@components/PasskeySelector';
 import type { PasskeyMetadata } from '@domain/vault/passkey.ts';
 import { authenticatePasskey } from '@services/vault/passkeyClient.ts';
-import { rpc } from '@services/rpc.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
 
 interface VaultUnlockMessages {
   enterPassword?: string;
@@ -73,7 +73,7 @@ export default function useVaultUnlock({ onSuccess, messages }: UseVaultUnlockOp
     let active = true;
     const refresh = () => {
       setCheckingMethod(true);
-      rpc<PasskeyMetadata[]>('vault_listPasskeys').then((value) => { if (active) setCredentials(Array.isArray(value) ? value : []); }).catch(() => {}).finally(() => { if (active) setCheckingMethod(false); });
+      rpcRead<PasskeyMetadata[]>('vault_listPasskeys').then((value) => { if (active) setCredentials(Array.isArray(value) ? value : []); }).catch(() => {}).finally(() => { if (active) setCheckingMethod(false); });
     };
     const changed = (changes: Record<string, unknown>, area: string) => { if (area === 'local' && VAULT_STORAGE_KEY in changes) refresh(); };
     refresh();

@@ -1,5 +1,5 @@
 import { useCallback, type ReactNode } from 'react';
-import { rpc } from '@services/rpc.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
@@ -70,7 +70,7 @@ export { useVault };
 export async function loadVaultState(
   patch: (next: Partial<VaultData>) => void,
   isCurrent: () => boolean,
-  request: typeof rpc = rpc,
+  request: typeof rpc = rpcRead,
 ): Promise<void> {
   try {
     const [existsResult, lockedResult, autoLockMs, acctType] = await Promise.all([

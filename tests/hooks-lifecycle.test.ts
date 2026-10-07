@@ -8,6 +8,8 @@ import browser, { resetMockStorage } from './helpers/browser-mock.ts';
 import ScrollWheelPicker from '../src/components/ScrollWheelPicker';
 import { useAnimatedVisible } from '../src/hooks/useAnimatedVisible';
 import useVaultUnlock from '../src/hooks/useVaultUnlock';
+import useSiteState from '../src/hooks/useSiteState';
+import { useLatch } from '../src/hooks/useLatch';
 import PasswordStep from '../src/screens/Wizard/PasswordStep';
 import UnlockSection from '../src/screens/Prompt/UnlockSection';
 import KeyActionModal from '../src/screens/Vault/KeyActionModal';
@@ -359,5 +361,44 @@ it('account context renders local identity while profile relay requests remain u
   await view.render(createElement(AccountProvider, null, createElement(Identity)));
   assert.equal(document.body.textContent, 'Local account / Cached profile');
   assert.equal(profileRequests, 1);
+ } finally { await view.close(); }
+});
+
+it('site state resolves from storage while the background never answers', async () => {
+ resetMockStorage();
+ await browser.storage.local.set({ allowedDomains: ['https://example.com'], identityDisabledSites: [] });
+ const originalQuery = browser.tabs.query;
+ const originalSend = browser.runtime.sendMessage;
+ let sent = 0;
+ browser.tabs.query = () => Promise.resolve([{ id: 7, url: 'https://example.com/page' }]) as never;
+ // A worker start that stalls: every message is held forever.
+ browser.runtime.sendMessage = () => { sent++; return new Promise(() => {}); };
+ const view = await mount();
+ let seen: { siteState: string | null; identityEnabled: boolean } | null = null;
+ function Probe() { seen = useSiteState({ id: 'a1' } as never); return null; }
+ try {
+  await view.render(createElement(Probe));
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  assert.equal(seen!.siteState, 'connected');
+  assert.equal(seen!.identityEnabled, true);
+  assert.equal(sent, 0, 'the home card must not wait on the background');
+ } finally {
+  await view.close();
+  browser.tabs.query = originalQuery;
+  browser.runtime.sendMessage = originalSend;
+ }
+});
+
+it('latch stays true after its value goes back to false', async () => {
+ const view = await mount();
+ const seen: boolean[] = [];
+ function Probe({ value }: { value: boolean }) { seen.push(useLatch(value)); return null; }
+ try {
+  await view.render(createElement(Probe, { value: false }));
+  assert.equal(seen.at(-1), false, 'never requested: nothing to load');
+  await view.render(createElement(Probe, { value: true }));
+  assert.equal(seen.at(-1), true);
+  await view.render(createElement(Probe, { value: false }));
+  assert.equal(seen.at(-1), true, 'closing keeps it mounted for its exit animation');
  } finally { await view.close(); }
 });

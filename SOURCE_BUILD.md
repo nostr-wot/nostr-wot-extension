@@ -14,7 +14,7 @@ npm run package:chrome
 
 The outputs are `nostr-wot-firefox.zip` and `nostr-wot-chrome.zip`. Firefox packaging changes the background to scripts and keeps native data consent metadata. Chrome packaging removes Firefox-only settings. Both commands use isolated staging directories and leave `dist/` untouched. The Chrome ZIP must also pass a real Chromium worker/popup/RPC smoke test.
 
-Compare extracted files rather than ZIP checksums, since ZIP entry timestamps vary. Dependencies are pinned in package-lock.json. Keep the included nips/ documentation and .gitignore in place: Tailwind also scans repository text when generating CSS. Vite bundles TypeScript and React without minification. Runtime network calls exchange data, not remote executable code.
+Compare extracted files rather than ZIP checksums, since ZIP entry timestamps vary. Dependencies are pinned in package-lock.json. Keep the included nips/ documentation and .gitignore in place: Tailwind also scans repository text when generating CSS. Vite bundles and minifies TypeScript and React (CSS is left unminified), and esbuild bundles and minifies the background script. The build is deterministic, so the rebuilt files match the packaged ones; read the source in this archive rather than the minified output. Runtime network calls exchange data, not remote executable code.
 
 See docs/deployment.md for the consent declarations and network destinations. See [the security model](docs/security.md) and [testing guide](docs/testing.md) for current protections and verification commands.
 

@@ -51,7 +51,7 @@ function bundleServiceWorker(): Plugin {
         bundle: true,
         format: 'iife',
         target: 'es2022',
-        minify: false,
+        minify: true,
         write: false,
         platform: 'browser',
         absWorkingDir: outDir,
@@ -89,7 +89,10 @@ export default defineConfig({
     'process.env.NODE_ENV': JSON.stringify('production'),
   },
   build: {
-    minify: false,
+    minify: true,
+    // JS only. The CSS is small, and the regression tests read the generated
+    // stylesheet and recognise it by Tailwind's banner, which minifying strips.
+    cssMinify: false,
     outDir: 'dist',
     emptyOutDir: true,
     rollupOptions: {

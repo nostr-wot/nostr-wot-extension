@@ -215,3 +215,26 @@ test('passkey setup uses a default name without asking for an account or credent
     assert.ok(button('passkey.create'));
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
+
+
+test('passkey discovery retries an unanswered cold-worker read', async context => {
+  const { dom, root } = mount();
+  const realTimeout = globalThis.setTimeout;
+  context.mock.method(globalThis, 'setTimeout', (callback: any, delay?: number, ...args: any[]) => realTimeout(callback, delay === 4000 ? 1 : delay, ...args));
+  let attempts = 0;
+  context.mock.method(browser.runtime, 'sendMessage', (message: any) => {
+    if (message.method === 'vault_listPasskeys') {
+      attempts++;
+      if (attempts === 1) return new Promise(() => {});
+      return Promise.resolve({ result: [{ credentialId: 'AQID', prfSalt: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=' }] });
+    }
+    return Promise.resolve({ result: true });
+  });
+  try {
+    await act(async () => root.render(createElement(UnlockSection, { onUnlocked: () => {} })));
+    await act(async () => new Promise(resolve => realTimeout(resolve, 25)));
+    assert.equal(attempts, 2);
+    assert.equal(!!button('passkey.unlock'), true);
+    assert.equal(document.querySelector('input[type="password"]'), null);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});

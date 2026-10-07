@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import browser from '@lib/browser.ts';
-import { rpc } from '@services/rpc.ts';
+import { rpcRead } from '@services/rpc.ts';
 import type { PendingRequest } from '@domain/signing/types.ts';
 
 /**
@@ -15,7 +15,7 @@ export default function usePendingCount(): number {
     async function checkPending() {
       const run = ++pendingRunRef.current;
       try {
-        const pending: PendingRequest[] = await rpc('signer_getPending') || [];
+        const pending: PendingRequest[] = await rpcRead('signer_getPending') || [];
         if (run !== pendingRunRef.current) return;
         const actionable = pending.filter((r) => (r.needsPermission || r.waitingForUnlock) && !r.nip46InFlight);
         setPendingCount(actionable.length);

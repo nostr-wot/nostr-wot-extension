@@ -1,7 +1,6 @@
 import { hasSiteScope } from '@domain/site/siteScope.ts';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
-import { rpc } from '@services/rpc.ts';
 import { resolveActiveTabDomain } from '@services/browser/activeTabDomain.ts';
 import { resolveSiteState } from '@domain/site/siteState.ts';
 import type { Account } from '@domain/accounts/account.ts';
@@ -42,14 +41,19 @@ export default function useSiteState(active: Account | null) {
       resolvedDomain = d;
       setDomain(d);
 
-      const [allowedR, identityR] = await Promise.allSettled([
-        rpc<string[]>('getAllowedDomains'),
-        rpc<string[]>('getIdentityDisabledSites'),
-      ]);
+      // Read straight from storage.local, not through the background. Both
+      // handlers are plain reads of these two keys, and asking for them by RPC
+      // put the home card behind a cold service worker: on a stalled start it
+      // said "Loading…" for as long as the popup stayed open. GlobeButton
+      // dropped the same RPC for the same reason.
+      let allowedDomains: string[] | null = null;
+      let identityDisabled: string[] = [];
+      try {
+        const data = await browser.storage.local.get(['allowedDomains', 'identityDisabledSites']);
+        allowedDomains = (data.allowedDomains as string[] | undefined) || [];
+        identityDisabled = (data.identityDisabledSites as string[] | undefined) || [];
+      } catch { /* resolveSiteState turns the missing allowlist into 'error' */ }
       if (!current()) return;
-
-      const allowedDomains = allowedR.status === 'fulfilled' ? (allowedR.value || []) : null;
-      const identityDisabled = identityR.status === 'fulfilled' ? (identityR.value || []) : [];
 
       const state = resolveSiteState(allowedDomains, d);
       if (state === 'error') {

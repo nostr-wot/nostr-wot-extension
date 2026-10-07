@@ -232,6 +232,7 @@ All shared hooks live in `src/hooks/`, one hook per file — outside any feature
 | `useStorageWatch(matchers, onChange)` | Re-run on `storage.onChanged` for given (area, key) pairs |
 | `usePagedList(items, pageSize)` | A growing rendered prefix of an already-loaded array |
 | `usePasswordPair(minLength?)` | The "new password, twice" pair, with `ready` derived rather than stored |
+| `useLatch(value)` | False until `value` is first true, then true for the rest of the mount (lazy overlays) |
 | `useApprovalQueue()`, `useSiteState()`, `usePendingCount()`, `useWalletBanner()` | Feature reads, each extracted from a component that was doing it inline |
 
 `useBrowserStorage(key, default, area)` was documented here for a long time before it existed, so two components each hand-rolled its exact body rather than finding it. It is written now. **Pass the area** — most keys are `local`, but `relays` is `sync`, and a listener that ignores the area reacts to writes it should not see.
@@ -419,6 +420,8 @@ return () => browser.storage.onChanged.removeListener(onChanged);
 **Colours and strings come from the palette and the catalogue, and both are enforced.** `tests/theme-tokens.test.ts` asserts every `var(--x)` in `src` resolves against a definition, because CSS fails silently here — a `var()` naming nothing, with no fallback, invalidates its whole declaration and the property is dropped (that is why the InfoTooltip bubble rendered transparent), and one *with* a fallback is quieter but no better: the fallback becomes the real value, the palette has no say, and two files reaching for the same idea drift apart. `tests/i18n-keys.test.ts` scans the **source** for what `t()` is actually asked for — including the dynamic families, enumerated from the unions that drive them — rather than comparing locales against `en`. Comparing against `en` is provably too weak: `wizard.type.nsec` was missing from *every* locale including `en`, so first-run importers read the raw key as their account type in all six languages and a locales-vs-en test passed the whole time.
 
 **No mount effect may open a socket.** Relay and NWC round trips on popup open put the slowest relay on the path to first paint. Ask the background for a cached answer and let it refresh behind.
+
+**A mount read must not be able to wait forever.** Chrome holds a message sent to a service worker that is still starting, and a start that stalls never answers it, so a plain `rpc()` on mount could leave a section on "Loading…" for as long as the popup stayed open. Two ways out, in order of preference. If the background's handler only reads `storage.local`, read the key directly (`useBrowserStorage`, or `storage.local.get` in a hook): `useSiteState` and `GlobeButton` both do this for `allowedDomains`. Otherwise use `rpcRead()`, which sends an unanswered attempt again after `READ_ATTEMPT_TIMEOUT_MS` and fails with an `RpcError` after the third. `rpcRead` is for side-effect-free reads only; a write sent twice can happen twice, so writes stay on `rpc()`.
 
 
 ## Form controls and validation
@@ -807,7 +810,7 @@ Sync completion shows a compact Complete, Incomplete, Error or Not synced status
 
 The main Archive card omits the last queried URL, raw fetched count and warning banner. Relay details show total archive data size and a table with relay, fetched events and result. Errors appear in red; incomplete coverage without errors appears in yellow, and never-attempted relays say Not synced. Each retry has independent button state; additional relays remain actionable and display Queued until their turn. Fetched counts include valid events already in storage, while stored records remain deduplicated. Older runs without counters show a dash. Other relays’ results are retained when retrying one relay.
 
-The popup keeps its 600 ms splash and 400 ms fade. Its shell renders after local theme and bundled locale initialization; individual sections handle their own loading state. AccountContext reads local identity and cached profiles before its background metadata requests finish. Archive work runs independently of vault startup, and unanswered relays must not delay local popup reads.
+The popup splash stays at least 200 ms and ends once `AccountContext` has read the account list, or at 600 ms at the latest, then fades for 200 ms (`SPLASH_FADE_MS`). The tab screenshot behind the popup is captured only after that fade. Overlays that are never the first thing a popup shows (menu, filters, activity, wizard, edit profile, rules) are `React.lazy` chunks, rendered once first requested (`useLatch`) and kept mounted afterwards for their exit animation; `ApprovalOverlay` and `UnlockModal` stay in the initial bundle. Its shell renders after local theme and bundled locale initialization; individual sections handle their own loading state. AccountContext reads local identity and cached profiles before its background metadata requests finish. Archive work runs independently of vault startup, and unanswered relays must not delay local popup reads.
 
 ### Passkey controls
 
