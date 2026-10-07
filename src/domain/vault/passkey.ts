@@ -2,7 +2,7 @@ import { PASSKEY_RP_ID, PASSKEY_VAULT_VERSION, PASSKEY_MAX_BACKUP_BYTES, PASSKEY
 
 export interface PasskeyMetadata { credentialId: string; prfSalt: string; }
 /** PRF output is transient secret material: never persist or log this request. */
-export interface PasskeyInput extends PasskeyMetadata { prf: string; }
+export interface PasskeyInput extends PasskeyMetadata { prf: string; largeBlobSupported?: boolean; }
 export interface PasskeyProof { credentialId: string; prf: string; }
 export interface PasskeyWrapper extends PasskeyMetadata { iv: string; ciphertext: string; }
 export interface PasskeyVaultRecord {

@@ -6,3 +6,6 @@ export const PASSKEY_TIMEOUT_MS = 120_000;
 export const PASSKEY_MAX_BACKUP_BYTES = 16 * 1024 * 1024;
 export const PASSKEY_MAX_CREDENTIALS = 8;
 export const PASSKEY_KDF_CONTEXT = 'nostr-wot/vault/passkey-wrap/v1';
+
+/** Bound provider recovery independently from file import; smaller provider quotas fall back to a file. */
+export const PASSKEY_MAX_BLOB_BYTES = 64 * 1024;

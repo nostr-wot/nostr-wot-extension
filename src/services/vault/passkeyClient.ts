@@ -2,8 +2,8 @@ import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS } from '@constants/passkey.ts';
 import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
 import { parsePasskeyBackup, type PasskeyInput, type PasskeyMetadata, type PasskeyProof } from '@domain/vault/passkey.ts';
 
-type PrfExtensions = AuthenticationExtensionsClientInputs & { prf: { eval: { first: BufferSource } } };
-type PrfResult = AuthenticationExtensionsClientOutputs & { prf?: { enabled?: boolean; results?: { first: ArrayBuffer } } };
+type PrfExtensions = AuthenticationExtensionsClientInputs & { largeBlob?: { support: 'preferred' }; prf: { eval: { first: BufferSource } } };
+type PrfResult = AuthenticationExtensionsClientOutputs & { largeBlob?: { supported?: boolean }; prf?: { enabled?: boolean; results?: { first: ArrayBuffer } } };
 
 export function passkeysAvailable(): boolean {
   return typeof PublicKeyCredential !== 'undefined' && typeof navigator.credentials?.create === 'function' && typeof navigator.credentials?.get === 'function';
@@ -42,14 +42,14 @@ export async function createPasskey(name: string): Promise<PasskeyInput> {
     // Leave attachment and provider hints unset: the browser owns provider selection.
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     attestation: 'none', timeout: PASSKEY_TIMEOUT_MS,
-    extensions: { prf: { eval: { first: salt } } } as PrfExtensions,
+    extensions: { largeBlob: { support: 'preferred' }, prf: { eval: { first: salt } } } as PrfExtensions,
   } }) as PublicKeyCredential | null;
   if (!credential) throw new Error('Passkey creation cancelled');
   const initial = (credential.getClientExtensionResults() as PrfResult).prf;
   // Do not keep a registration PRF output. Always prove this credential can be used again.
   if (initial?.results?.first) new Uint8Array(initial.results.first).fill(0);
   const metadata = { credentialId: arrayToBase64(new Uint8Array(credential.rawId)), prfSalt: arrayToBase64(salt) };
-  return { ...metadata, ...await authenticatePasskey(metadata) };
+  return { ...metadata, ...await authenticatePasskey(metadata), largeBlobSupported: (credential.getClientExtensionResults() as PrfResult).largeBlob?.supported === true };
 }
 
 export function parsePasskeyBackupMetadata(text: string): PasskeyMetadata {

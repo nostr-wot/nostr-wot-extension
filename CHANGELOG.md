@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Next release
 
+- Save encrypted recovery data alongside compatible passkeys and verify readback, requiring a recovery file only when passkey storage fails or is unavailable. Restore directly from a passkey and refresh its recovery snapshot in Security settings.
+
 - Restore explanatory introductions and clear option cards, separate Add Account choices from first-time setup, and label seed-based creation “Create with a seed phrase”.
 - Explain account removal based on actual seed relationships and allow passkey recovery into an authenticated empty vault after the final account is removed.
 

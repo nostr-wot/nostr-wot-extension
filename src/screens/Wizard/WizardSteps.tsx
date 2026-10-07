@@ -22,7 +22,7 @@ import DoneStep from './DoneStep';
 
 interface WizardFlow {
   step: WizardStep;
-  context?: { method: string | null };
+  context?: { method: string | null; passkeyBlobSupported?: boolean; passkeyRecoverySaved?: boolean };
   account: unknown;
   mnemonic: string | null;
   upgradeId: string | null;
@@ -75,15 +75,15 @@ function buildSteps(
     },
     [WizardStep.Passkey]: {
       title: t('passkey.create'),
-      content: <PasskeyStep onNext={(account) => flow.send('CREATED', { account })} />,
+      content: <PasskeyStep onNext={(account, blobSupported) => flow.send('CREATED', { account, blobSupported })} />,
     },
     [WizardStep.PasskeyRestore]: {
       title: t('passkey.restore'),
       content: <PasskeyStep restore onNext={(account) => flow.send('DONE', { account })} />,
     },
     [WizardStep.PasskeyBackup]: {
-      title: t('passkey.backup'),
-      content: <PasskeyBackupStep onNext={() => flow.send('DONE')} />,
+      title: t('passkey.recoveryTitle'),
+      content: <PasskeyBackupStep blobSupported={flow.context?.passkeyBlobSupported} saved={flow.context?.passkeyRecoverySaved} onNext={(saved) => flow.send('DONE', { saved })} />,
     },
     [WizardStep.Create]: {
       title: t('wizard.createIdentity'),

@@ -173,3 +173,17 @@ test('more options adds a step only for specialized account methods', () => {
   }
   assert.equal(reducer(more, { type: 'BACK' }).step, 'method');
 });
+
+test('verified passkey storage survives navigation without requiring a file', () => {
+  const created = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'passkey' } },
+    { type: 'CREATED', payload: { account: { id: 'passkey-account' }, blobSupported: true } },
+  ], {});
+  assert.equal(created.ctx.passkeyBlobSupported, true);
+  assert.equal(created.ctx.passkeyRecoverySaved, false);
+  const following = reducer(created, { type: 'DONE', payload: { saved: true } });
+  assert.equal(following.step, WizardStep.FollowSuggestions);
+  const back = reducer(following, { type: 'BACK' });
+  assert.equal(back.step, WizardStep.PasskeyBackup);
+  assert.equal(back.ctx.passkeyRecoverySaved, true);
+});

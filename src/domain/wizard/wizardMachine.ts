@@ -13,6 +13,8 @@ export interface WizardContext {
   mnemonic: string | null;
   upgradeId: string | null;
   visitedPreMethod: boolean;
+  passkeyBlobSupported?: boolean;
+  passkeyRecoverySaved?: boolean;
 }
 
 export interface WizardState {
@@ -74,7 +76,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
 
   [WizardStep.Passkey]: {
-    CREATED: (_ctx, { account }) => ({ step: WizardStep.PasskeyBackup, ctx: { account } }),
+    CREATED: (_ctx, { account, blobSupported }) => ({ step: WizardStep.PasskeyBackup, ctx: { account, passkeyBlobSupported: blobSupported === true, passkeyRecoverySaved: false } }),
     BACK: () => ({ step: WizardStep.Method }),
   },
   [WizardStep.PasskeyRestore]: {
@@ -82,7 +84,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
     BACK: () => ({ step: WizardStep.MoreOptions }),
   },
   [WizardStep.PasskeyBackup]: {
-    DONE: () => ({ step: WizardStep.FollowSuggestions }),
+    DONE: (_ctx, { saved }) => ({ step: WizardStep.FollowSuggestions, ctx: { passkeyRecoverySaved: saved === true } }),
   },
   [WizardStep.Create]: {
     CREATED: (_ctx, { account, mnemonic }) => ({
