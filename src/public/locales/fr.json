@@ -1322,8 +1322,17 @@
   "archive.explorer.select": "Sélectionner l’événement {id}",
   "archive.explorer.delete": "Supprimer {count} événements sélectionnés",
   "archive.explorer.deleteWarning": "Supprimer ces événements uniquement de l’archive de cet appareil ? Rien ne sera supprimé des relais. La synchronisation est suspendue ; une synchronisation ou importation ultérieure peut les télécharger à nouveau.",
-  "archive.explorer.scanned": "{count} événements parcourus · triés par ID",
   "archive.explorer.metadata": "Métadonnées de l’événement",
   "archive.explorer.empty": "Aucun événement correspondant.",
-  "archive.explorer.more": "Afficher plus"
+  "archive.explorer.total": "{count} événements uniques dans cette archive",
+  "archive.explorer.matches": "{count} événements correspondants",
+  "archive.explorer.matchesSoFar": "{count} résultats trouvés pour le moment",
+  "archive.explorer.searchProgress": "Recherche dans {count} événements archivés sur {total}…",
+  "archive.explorer.showing": "Affichage de {from} à {to}",
+  "archive.explorer.selectPage": "Sélectionner cette page",
+  "archive.explorer.previous": "Précédent",
+  "archive.explorer.next": "Suivant",
+  "archive.explorer.results": "Résultats de recherche",
+  "archive.explorer.account": "Compte",
+  "archive.explorer.lock": "Verrouiller le coffre"
 }

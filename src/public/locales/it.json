@@ -1322,8 +1322,17 @@
   "archive.explorer.select": "Seleziona evento {id}",
   "archive.explorer.delete": "Elimina {count} eventi selezionati",
   "archive.explorer.deleteWarning": "Rimuovere questi eventi solo dall’archivio di questo dispositivo? Non verrà eliminato nulla dai relay. La sincronizzazione viene sospesa; una sincronizzazione o importazione futura potrebbe scaricarli di nuovo.",
-  "archive.explorer.scanned": "{count} eventi cercati · ordinati per ID",
   "archive.explorer.metadata": "Metadati dell’evento",
   "archive.explorer.empty": "Nessun evento corrispondente.",
-  "archive.explorer.more": "Mostra altro"
+  "archive.explorer.total": "{count} eventi unici in questo archivio",
+  "archive.explorer.matches": "{count} eventi corrispondenti",
+  "archive.explorer.matchesSoFar": "{count} risultati trovati finora",
+  "archive.explorer.searchProgress": "Ricerca in {count} di {total} eventi archiviati…",
+  "archive.explorer.showing": "Visualizzati {from}–{to}",
+  "archive.explorer.selectPage": "Seleziona questa pagina",
+  "archive.explorer.previous": "Precedente",
+  "archive.explorer.next": "Successiva",
+  "archive.explorer.results": "Risultati di ricerca",
+  "archive.explorer.account": "Account",
+  "archive.explorer.lock": "Blocca cassaforte"
 }

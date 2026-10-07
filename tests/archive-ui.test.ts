@@ -39,7 +39,8 @@ test('archive screen requires confirmation to clear, refreshes local changes, an
     await act(async () => root.render(createElement(RelaysProvider, null, createElement(AccountArchive, { accountId: 'a' }))));
     assert.ok(document.body.textContent!.includes('archive.localWarning'));
     const sync = button('archive.sync');
-    assert.equal(sync.nextElementSibling, button('archive.settings'));
+    assert.equal(sync.nextElementSibling, button('archive.explorer.title'));
+    assert.equal(button('archive.explorer.title').nextElementSibling, button('archive.settings'));
     await act(async () => button('archive.clear').click());
     assert.equal(clears, 0);
     await act(async () => button('common.cancel').click()); assert.equal(clears, 0);
@@ -430,7 +431,7 @@ test('explorer searches, shows full detail and confirms local deletion without l
     throw new Error(message.method);
   });
   try {
-    await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', onBack() { assert.fail('must stay in explorer'); }, onChanged: async () => { changed++; } })));
+    await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', total: 1, onChanged: async () => { changed++; } })));
     await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
     assert.match(document.body.textContent!, /A readable archived note/);
     await act(async () => button('archive.details').click());
@@ -468,5 +469,38 @@ test('closed or changed explorer searches ignore late responses', async context 
     assert.equal(document.getElementById('root')!.textContent, '7');
     await act(async () => release({ result: { records: [], scanned: 99 } }));
     assert.equal(document.getElementById('root')!.textContent, '7');
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('explorer counts all matching events independently of scanned records and page size', async context => {
+  const { default: useArchiveExplorer } = await import('../src/hooks/useArchiveExplorer.ts');
+  const { dom, root } = mount();
+  const records = Array.from({ length: 159 }, (_, index) => ({ event: { id: index.toString(16).padStart(64, '0'), pubkey: 'a'.repeat(64), kind: index < 39 ? 1 : index < 139 ? 4 : 9999, created_at: index }, excerpt: 'sample' }));
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    const start = message.params.after ? records.findIndex(record => record.event.id === message.params.after) + 1 : 0;
+    const page = records.slice(start, start + 40);
+    const tab = message.params.filter.tab;
+    return { result: { records: page.filter(record => tab === 'all' || (tab === 'notes' ? record.event.kind === 1 : record.event.kind === 4)), scanned: page.length, next: start + 40 < records.length ? page.at(-1)!.event.id : undefined } };
+  });
+  let next!: () => void;
+  function Harness({ tab }: { tab: 'all' | 'notes' | 'messages' }) {
+    const result = useArchiveExplorer('a', { tab, query: '' }, 0);
+    next = result.nextPage;
+    return createElement('span', null, JSON.stringify({ scanned: result.scanned, matched: result.matching, shown: result.records.length, page: result.page }));
+  }
+  const read = () => JSON.parse(document.getElementById('root')!.textContent!);
+  try {
+    await act(async () => root.render(createElement(Harness, { tab: 'all' })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.deepEqual(read(), { scanned: 159, matched: 159, shown: 40, page: 0 });
+    await act(async () => next());
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.deepEqual(read(), { scanned: 159, matched: 159, shown: 40, page: 1 });
+    await act(async () => root.render(createElement(Harness, { tab: 'notes' })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.deepEqual(read(), { scanned: 159, matched: 39, shown: 39, page: 0 });
+    await act(async () => root.render(createElement(Harness, { tab: 'messages' })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.deepEqual(read(), { scanned: 159, matched: 100, shown: 40, page: 0 });
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });

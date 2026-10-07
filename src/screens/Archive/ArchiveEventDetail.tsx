@@ -49,7 +49,7 @@ export default function ArchiveEventDetail({ record, accountId, onClose }: { rec
     catch (e) { if (live.current) setError((e as Error).message); }
     finally { if (live.current) setBusy(false); }
   }
-  return createPortal(<Modal title={archiveKindLabel(event.kind)} onClose={onClose}>
+  return createPortal(<Modal maxWidth={840} title={archiveKindLabel(event.kind)} onClose={onClose}>
     <Container gap={5}>
       <Tabs variant="segmented" value={tab} onChange={setTab} options={['simple', 'advanced'].map(value => ({ value, label: t(`archive.explorer.${value}`) }))} />
       {tab === 'simple' ? <>

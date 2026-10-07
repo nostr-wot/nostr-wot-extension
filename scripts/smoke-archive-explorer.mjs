@@ -12,7 +12,7 @@ let context;
 try {
   context = await chromium.launchPersistentContext(directory, { channel: 'chromium', headless: true, viewport: { width: 380, height: 600 }, args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`] });
   const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
-  const page = await context.newPage();
+  let page = await context.newPage();
   await page.goto(`chrome-extension://${new URL(worker.url()).host}/src/entrypoints/popup/index.html`);
   const rpc = (method, params = {}) => page.evaluate(async ({ method, params }) => {
     const response = await globalThis.chrome.runtime.sendMessage({ method, params });
@@ -37,14 +37,21 @@ try {
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByText('Archive', { exact: true }).click();
+  const opened = context.waitForEvent('page');
   await page.getByRole('button', { name: 'Explore events', exact: true }).click();
+  const popup = page;
+  page = await opened;
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await page.waitForURL('**/src/entrypoints/archive/index.html?accountId=*');
+  await popup.close();
   await page.getByText('A note from the archive 1', { exact: true }).waitFor();
   assert.equal(await page.getByText('Archive test', { exact: true }).count() > 0, true);
   if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) { await page.waitForTimeout(500); await page.screenshot({ animations: 'disabled', path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/explorer.png` }); }
   await page.evaluate(() => globalThis.chrome.storage.local.set({ appearanceTheme: 'dark' }));
   await page.waitForFunction(() => globalThis.document.documentElement.dataset.theme === 'dark');
   if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) { await page.waitForTimeout(500); await page.screenshot({ animations: 'disabled', path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/explorer-dark.png` }); }
-  const explorer = page.locator('[class*="fixed inset-2"]');
+  const explorer = page.locator('main').last();
+  await page.getByText('3 matching events', { exact: true }).waitFor();
   await explorer.getByRole('tab', { name: 'Other', exact: true }).click();
   await explorer.getByText('A note from the archive 1', { exact: true }).waitFor({ state: 'detached' });
   await page.getByText('Custom event payload', { exact: true }).waitFor();
@@ -53,12 +60,20 @@ try {
   await page.getByText('Source unknown (for example, imported from a file).', { exact: true }).waitFor();
   if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) { await page.waitForTimeout(500); await page.screenshot({ animations: 'disabled', path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/detail.png` }); }
   await page.getByRole('button', { name: 'Close', exact: true }).last().click();
-  await explorer.getByRole('checkbox').check();
+  await explorer.getByRole('checkbox').first().check();
   await page.getByRole('button', { name: 'Delete 1 selected events', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await page.getByText('No matching events.', { exact: true }).waitFor();
   assert.equal((await rpc('archive_getState', { accountId })).count, 2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= 390), true);
+  if (process.env.ARCHIVE_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.ARCHIVE_SMOKE_SCREENSHOTS}/explorer-mobile.png` });
   await rpc('vault_lock');
   await page.getByRole('tab', { name: 'Other', exact: true }).waitFor({ state: 'detached' });
+  await page.reload();
+  await page.locator('input[type=password]').waitFor();
+  assert.equal(await page.getByRole('tab', { name: 'Other', exact: true }).count(), 0);
+  await rpc('vault_unlock', { password: 'synthetic-smoke-password' });
+  await page.getByText('2 unique events in this archive', { exact: true }).waitFor();
   console.log('Archive explorer: import, search, details, local deletion and lock passed');
 } finally { await context?.close(); await rm(directory, { recursive: true, force: true }); }

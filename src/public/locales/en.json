@@ -1322,8 +1322,17 @@
   "archive.explorer.select": "Select event {id}",
   "archive.explorer.delete": "Delete {count} selected events",
   "archive.explorer.deleteWarning": "Remove these events from this device’s archive only? Nothing will be deleted from relays. Sync is paused; a future sync or import may download them again.",
-  "archive.explorer.scanned": "{count} events searched · results in archive ID order",
   "archive.explorer.metadata": "Event metadata",
   "archive.explorer.empty": "No matching events.",
-  "archive.explorer.more": "Show more"
+  "archive.explorer.total": "{count} unique events in this archive",
+  "archive.explorer.matches": "{count} matching events",
+  "archive.explorer.matchesSoFar": "{count} matches found so far",
+  "archive.explorer.searchProgress": "Searching {count} of {total} archived events…",
+  "archive.explorer.showing": "Showing {from}–{to}",
+  "archive.explorer.selectPage": "Select this page",
+  "archive.explorer.previous": "Previous",
+  "archive.explorer.next": "Next",
+  "archive.explorer.results": "Search results",
+  "archive.explorer.account": "Account",
+  "archive.explorer.lock": "Lock vault"
 }

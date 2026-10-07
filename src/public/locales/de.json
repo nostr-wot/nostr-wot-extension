@@ -1322,8 +1322,17 @@
   "archive.explorer.select": "Ereignis {id} auswählen",
   "archive.explorer.delete": "{count} ausgewählte Ereignisse löschen",
   "archive.explorer.deleteWarning": "Diese Ereignisse nur aus dem Archiv dieses Geräts entfernen? Auf Relays wird nichts gelöscht. Die Synchronisierung wird pausiert; spätere Synchronisierungen oder Importe können sie erneut herunterladen.",
-  "archive.explorer.scanned": "{count} Ereignisse durchsucht · nach ID sortiert",
   "archive.explorer.metadata": "Ereignismetadaten",
   "archive.explorer.empty": "Keine passenden Ereignisse.",
-  "archive.explorer.more": "Mehr anzeigen"
+  "archive.explorer.total": "{count} eindeutige Ereignisse in diesem Archiv",
+  "archive.explorer.matches": "{count} passende Ereignisse",
+  "archive.explorer.matchesSoFar": "Bisher {count} Treffer gefunden",
+  "archive.explorer.searchProgress": "{count} von {total} archivierten Ereignissen werden durchsucht…",
+  "archive.explorer.showing": "Anzeige {from}–{to}",
+  "archive.explorer.selectPage": "Diese Seite auswählen",
+  "archive.explorer.previous": "Zurück",
+  "archive.explorer.next": "Weiter",
+  "archive.explorer.results": "Suchergebnisse",
+  "archive.explorer.account": "Konto",
+  "archive.explorer.lock": "Tresor sperren"
 }

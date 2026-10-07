@@ -1322,8 +1322,17 @@
   "archive.explorer.select": "Selecionar evento {id}",
   "archive.explorer.delete": "Eliminar {count} eventos selecionados",
   "archive.explorer.deleteWarning": "Remover estes eventos apenas do arquivo deste dispositivo? Nada será eliminado dos relays. A sincronização é pausada; uma sincronização ou importação futura pode descarregá-los novamente.",
-  "archive.explorer.scanned": "{count} eventos pesquisados · ordenados por ID",
   "archive.explorer.metadata": "Metadados do evento",
   "archive.explorer.empty": "Nenhum evento correspondente.",
-  "archive.explorer.more": "Mostrar mais"
+  "archive.explorer.total": "{count} eventos únicos neste arquivo",
+  "archive.explorer.matches": "{count} eventos correspondentes",
+  "archive.explorer.matchesSoFar": "{count} resultados encontrados até agora",
+  "archive.explorer.searchProgress": "A pesquisar {count} de {total} eventos arquivados…",
+  "archive.explorer.showing": "A mostrar {from}–{to}",
+  "archive.explorer.selectPage": "Selecionar esta página",
+  "archive.explorer.previous": "Anterior",
+  "archive.explorer.next": "Seguinte",
+  "archive.explorer.results": "Resultados da pesquisa",
+  "archive.explorer.account": "Conta",
+  "archive.explorer.lock": "Bloquear cofre"
 }
