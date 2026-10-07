@@ -1,6 +1,6 @@
 import { RELAY_CACHE_PREFIX } from '@constants/relays.ts';
 import { useCallback, type ReactNode } from 'react';
-import { rpc } from '@services/rpc.ts';
+import { rpcRead } from '@services/rpc.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import { mergePqcStatus, mergePqcPublished } from '@domain/pqc/pqcState.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
@@ -57,7 +57,7 @@ export function PqcProvider({ children }: PqcProviderProps) {
       deps: [active?.id],
       enabled: !!active?.id,
       load: async (patch, isCurrent) => {
-        const nextStatus = await rpc<PqcPanelStatus>('pqc_getStatus');
+        const nextStatus = await rpcRead<PqcPanelStatus>('pqc_getStatus');
         if (!isCurrent() || nextStatus.pubkey !== active?.pubkey) return;
         patch(previous => mergePqcStatus(previous, nextStatus));
 
@@ -68,7 +68,7 @@ export function PqcProvider({ children }: PqcProviderProps) {
           return;
         }
 
-        const nextPublished = await rpc<PqcPublished | null>('pqc_checkPublished', { cachedOnly: true }).catch(() => null);
+        const nextPublished = await rpcRead<PqcPublished | null>('pqc_checkPublished', { cachedOnly: true }).catch(() => null);
         if (!isCurrent()) return;
         patch(previous => ({ published: mergePqcPublished(previous.published, nextPublished) }));
       },

@@ -315,7 +315,8 @@ it('generic utilities do not depend on feature domains, services or browser/cryp
 it('shared wizard screens belong to screens rather than an entry-point directory', () => {
   assert.equal(existsSync(join(ROOT, 'src/wizard')), false);
   for (const host of ['src/entrypoints/popup/PopupApp.tsx','src/entrypoints/onboarding/OnboardingApp.tsx']) {
-    assert.match(readFileSync(join(ROOT, host), 'utf8'), /from ['"]@screens\/Wizard\//);
+    // A static import, or the popup's lazy import('@screens/Wizard/...').
+    assert.match(readFileSync(join(ROOT, host), 'utf8'), /(from|import\()\s*['"]@screens\/Wizard\//);
   }
   assert.ok(existsSync(join(ROOT, 'src/screens/Wizard/WizardSteps.tsx')));
   assert.doesNotMatch(readFileSync(join(ROOT, 'tsconfig.json'), 'utf8'), /@wizard/);

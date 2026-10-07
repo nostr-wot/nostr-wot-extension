@@ -897,6 +897,7 @@ it('wallet connection help can be dismissed, remembered and reopened while guide
       [{ url: 'https://nostr-wot.com/guides/lnbits-wallet-setup#lnbits-api', active: false }],
     ]);
     const { setLanguage } = await import('../src/services/i18n/i18n');
+    const { default: english } = await import('../src/public/locales/en.json', { with: { type: 'json' } });
     t.mock.method(globalThis, 'fetch', async () => new Response('{}'));
     for (const language of ['en', 'es', 'de', 'fr', 'it', 'pt', 'unsupported']) {
       await ui.act(async () => { await setLanguage(language); });
@@ -906,11 +907,15 @@ it('wallet connection help can be dismissed, remembered and reopened while guide
         ['wallet.lnbitsNwcGuide', 'lnbits-wallet-setup#lnbits-nwc'],
         ['wallet.lnbitsApiGuide', 'lnbits-wallet-setup#lnbits-api'],
       ]) {
-        await ui.act(async () => ui.button(label).click());
+        // English is bundled, so a render after setLanguage('en') labels the
+        // buttons in English; setLanguage does not re-render, so they keep it
+        // until something does. The mocked fetch leaves other languages on keys.
+        await ui.act(async () => (ui.button(label) ?? ui.button((english as Record<string, string>)[label])).click());
         assert.deepEqual(created.mock.calls.at(-1)!.arguments, [{ url: `https://nostr-wot.com${prefix}/guides/${path}`, active: false }]);
       }
     }
-    await ui.act(async () => { await setLanguage('en'); });
+    // Back to bare keys, which is what the rest of this file renders with.
+    await ui.act(async () => { await setLanguage('unsupported'); });
     await ui.act(async () => ui.button('common.gotIt').click());
     assert.equal(ui.dom.window.document.querySelector('input')!.value, 'draft-connection', 'help and background guides preserve the connection draft');
   } finally { await ui.cleanup(); }

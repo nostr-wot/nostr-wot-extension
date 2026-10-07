@@ -8,3 +8,9 @@ export const WAKEUP_ERROR_PATTERNS = [
   'The message port closed before a response was received',
   'Extension context invalidated',
 ];
+
+// How long rpcRead() waits for one attempt before sending it again. A cold
+// worker evaluates its bundle and, in never-lock mode, finishes the startup
+// unlock (PBKDF2) before answering; that is well under a second on ordinary
+// hardware, so four seconds only trips on a start that has stalled.
+export const READ_ATTEMPT_TIMEOUT_MS = 4000;

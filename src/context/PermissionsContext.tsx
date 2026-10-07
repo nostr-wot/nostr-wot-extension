@@ -1,6 +1,6 @@
 import { effectiveSitePermissions, sitePermissionBucket } from '@domain/site/siteScope.ts';
 import { useCallback, type ReactNode } from 'react';
-import { rpc } from '@services/rpc.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
 import createRequiredContext from '@utils/createRequiredContext.ts';
@@ -45,8 +45,10 @@ export function PermissionsProvider({ children }: PermissionsProviderProps) {
     { rawPerms: {}, useGlobalDefaults: true, loaded: false },
     {
       load: async (patch) => {
-        const raw = await rpc<RawPerms>('signer_getPermissionsRaw');
-        const defaults = await rpc<boolean>('signer_getUseGlobalDefaults');
+        const [raw, defaults] = await Promise.all([
+          rpcRead<RawPerms>('signer_getPermissionsRaw'),
+          rpcRead<boolean>('signer_getUseGlobalDefaults'),
+        ]);
         patch({ rawPerms: raw || {}, useGlobalDefaults: defaults !== false, loaded: true });
       },
     },

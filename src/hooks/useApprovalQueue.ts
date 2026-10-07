@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
-import { rpc } from '@services/rpc.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
 import { useAccount } from '@context/AccountContext';
 import { requestMatchesAccount, partitionPending, groupApprovals, currentApprovalGroup, groupNip46, liveIds, isRequestLive, type ApprovalGroup } from '@domain/permissions/approval.ts';
 import { type PendingRequest } from '@domain/signing/types.ts';
@@ -66,7 +66,7 @@ export default function useApprovalQueue({ onRequestUnlock, onUnlockWaitersChang
     if (!account) return;
     const current = () => run === runRef.current && activeRef.current?.id === account.id;
 
-    const pending: PendingRequest[] = await rpc('signer_getPending') || [];
+    const pending: PendingRequest[] = await rpcRead('signer_getPending') || [];
     if (!current()) return;
 
     const filtered = pending.filter(request => requestMatchesAccount(request, account));
