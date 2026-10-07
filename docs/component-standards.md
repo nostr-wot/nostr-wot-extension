@@ -828,3 +828,5 @@ Passkey creation uses a default credential label and the generated account name 
 The language and completion wizard screens keep 16 px (`pb-8`) below their primary buttons, including the single-language variant. Completion content remains bottom-aligned above that inset.
 
 Security keeps a single Use passkey Toggle inside Auto-lock, scoped to the vault and disabled without enrolled credentials. The shared Modal, password-pair fields and credential selector handle verified switching. Recovery remains a compact card shown only with active passkey protection, with InfoTooltip for snapshot details and spaced secondary actions. Native WebAuthn cancellation and timeout errors share concise localized retry guidance rather than exposing specification URLs.
+
+Read-only archive details reuse `EventPreview` with `technical={false}` when a separate Advanced tab holds the signed JSON, metadata and relay provenance. Approval views retain their existing complete event controls. `usePublicProfile({ lookup: false, allowStale: true })` permits cached display names in private archive review without a directory lookup.

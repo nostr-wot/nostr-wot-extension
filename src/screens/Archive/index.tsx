@@ -1,3 +1,4 @@
+import ArchiveExplorerScreen from './ArchiveExplorerScreen';
 import { ARCHIVE_INTERVAL_OPTIONS } from '@constants/archive.ts';
 import { formatBytes } from '@utils/format/bytes.ts';
 import { useState, useRef, useId } from 'react';
@@ -61,6 +62,7 @@ export function AccountArchive({ accountId }: { accountId: string }) {
     }
   }
   const [error, setError] = useState('');
+  const [showExplorer, setShowExplorer] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [showFailures, setShowFailures] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -155,6 +157,7 @@ export function AccountArchive({ accountId }: { accountId: string }) {
           <FormError>{!migration && state.progress.error}</FormError>
         )}
         {running && state.progress.phase === 'syncing' && <Text variant="muted" aria-live="polite">{state.progress.fetched.toLocaleString()} {t('archive.fetched')}</Text>}
+        {state.count > 0 && <Button variant="secondary" small onClick={() => setShowExplorer(true)}>{t('archive.explorer.title')}</Button>}
         <ArchiveFiles
           accountId={accountId}
           disabled={disabled}
@@ -195,6 +198,7 @@ export function AccountArchive({ accountId }: { accountId: string }) {
           }
         />
       </Card>
+      {showExplorer && <ArchiveExplorerScreen accountId={accountId} onBack={() => setShowExplorer(false)} onChanged={refresh} />}
       {showDetails && (
         <Modal
           title={t('archive.details')}

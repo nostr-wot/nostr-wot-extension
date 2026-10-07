@@ -416,3 +416,57 @@ test('only legacy encrypted archive headers request a password', async () => {
   assert.equal(await archiveFileNeedsPassword(new File(['{"v":1,"type":"header","ct":"encrypted"}\n'], 'old.ndjson')), true);
   assert.equal(await archiveFileNeedsPassword(new File(['not json'], 'invalid.ndjson')), false);
 });
+
+test('explorer searches, shows full detail and confirms local deletion without leaving the screen', async context => {
+  const { ArchiveExplorerContent } = await import('../src/screens/Archive/ArchiveExplorerScreen.tsx');
+  const { dom, root } = mount();
+  const event = { id: 'a'.repeat(64), pubkey: 'b'.repeat(64), kind: 1, content: 'A readable archived note', created_at: 1, tags: [], sig: 'c'.repeat(128) };
+  const record = { event, sources: ['wss://source.example'], savedAt: 1 };
+  let deleted = false, changed = 0;
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    if (message.method === 'archive_explore') return { result: { records: deleted ? [] : [{ event, excerpt: event.content }], scanned: 1 } };
+    if (message.method === 'archive_event') return { result: record };
+    if (message.method === 'archive_deleteEvents') { assert.deepEqual(message.params.ids, [event.id]); deleted = true; return { result: { deleted: 1 } }; }
+    throw new Error(message.method);
+  });
+  try {
+    await act(async () => root.render(createElement(ArchiveExplorerContent, { accountId: 'a', onBack() { assert.fail('must stay in explorer'); }, onChanged: async () => { changed++; } })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.match(document.body.textContent!, /A readable archived note/);
+    await act(async () => button('archive.details').click());
+    await act(async () => button('archive.explorer.advanced').click());
+    assert.match(document.body.textContent!, /wss:\/\/source.example/);
+    assert.match(document.body.textContent!, /cccccccc/);
+    await act(async () => button('common.close').click());
+    await act(async () => document.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+    await act(async () => button('archive.explorer.delete').click());
+    assert.equal(deleted, false);
+    await act(async () => button('common.confirm').click());
+    assert.equal(deleted, true); assert.equal(changed, 1);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)); });
+    assert.match(document.body.textContent!, /archive.explorer.empty/);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('closed or changed explorer searches ignore late responses', async context => {
+  const { default: useArchiveExplorer } = await import('../src/hooks/useArchiveExplorer.ts');
+  const { dom, root } = mount();
+  let release!: (response: unknown) => void;
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    if (message.params.filter.query === 'old') return new Promise(resolve => { release = resolve; });
+    return { result: { records: [], scanned: 7 } };
+  });
+  function Harness({ query }: { query: string }) {
+    const result = useArchiveExplorer('a', { tab: 'all', query }, 0);
+    return createElement('span', null, result.scanned);
+  }
+  try {
+    await act(async () => root.render(createElement(Harness, { query: 'old' })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 230)); });
+    await act(async () => root.render(createElement(Harness, { query: 'new' })));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 230)); });
+    assert.equal(document.getElementById('root')!.textContent, '7');
+    await act(async () => release({ result: { records: [], scanned: 99 } }));
+    assert.equal(document.getElementById('root')!.textContent, '7');
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});

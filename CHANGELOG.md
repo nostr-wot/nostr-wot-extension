@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Next release
 
+- Add an Archive event explorer with batched search, event-type tabs, cached profiles, private-message reveal, advanced event and relay details, confirmed local selection deletion, and compact encrypted relay provenance.
+
 - Add a vault-wide Use passkey switch inside Auto-lock for existing enrollments, with current-credential verification and preserved accounts and archive keys. Keep recovery actions compact and replace browser cancellation errors with clear retry guidance.
 
 - Reduce passkey setup prompts by reusing registration encryption output and accepting the provider’s explicit recovery-storage confirmation instead of requesting a separate readback.

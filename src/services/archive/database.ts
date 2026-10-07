@@ -19,6 +19,7 @@ interface Row {
   accountId: string;
   id: string;
   bytes: number;
+  encoding?: 2;
   value: Envelope;
 }
 interface Meta {
@@ -29,11 +30,10 @@ interface Meta {
 }
 function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(ARCHIVE_DATABASE, 1);
+    const request = indexedDB.open(ARCHIVE_DATABASE, 2);
     request.onupgradeneeded = () => {
-      request.result.createObjectStore('records', { keyPath: ['accountId', 'id'] });
-      request.result.createObjectStore('metadata', { keyPath: 'accountId' });
-      request.result.createObjectStore('policy', { keyPath: ['accountId', 'id'] });
+      for (const name of ['records', 'policy']) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name, { keyPath: ['accountId', 'id'] });
+      for (const name of ['metadata', 'relays']) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name, { keyPath: 'accountId' });
     };
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve(request.result);
@@ -80,17 +80,37 @@ function policyKeys(record: ArchiveRecord): { key: string; value: PolicyValue }[
   return result;
 }
 const aad = (account: string, id: string) => `archive:${JSON.stringify([account, id])}`;
-async function rows(account: string, after: string | undefined, limit: number): Promise<Row[]> {
+interface StoredRecord extends Omit<ArchiveRecord, 'sources'> { sourceIds: number[] }
+interface RelayDictionary { accountId: string; value: Envelope }
+async function relayDictionary(db: IDBDatabase, accountId: string): Promise<string[]> {
+  const tx = db.transaction('relays');
+  const done = completion(tx);
+  const row = await request(tx.objectStore('relays').get(accountId)) as RelayDictionary | undefined;
+  await done;
+  return row ? openPrivateValue<string[]>(aad(accountId, 'relays'), row.value) : [];
+}
+async function decodeRecord(accountId: string, row: Row, dictionary: string[]): Promise<ArchiveRecord> {
+  const value = await openPrivateValue<ArchiveRecord | StoredRecord>(aad(accountId, row.id), row.value);
+  if ('sources' in value) return value; // Version-one records migrate when next written.
+  return { event: value.event, savedAt: value.savedAt, sources: value.sourceIds.map(id => {
+    if (!Number.isInteger(id) || !dictionary[id]) throw new Error('Invalid archive relay reference');
+    return dictionary[id];
+  }) };
+}
+async function rows(account: string, after: string | undefined, limit: number): Promise<{ page: Row[]; dictionary: string[] }> {
   const db = await database();
   try {
-    const tx = db.transaction('records');
+    // Read references and dictionary from the same snapshot while sync is writing.
+    const tx = db.transaction(['records', 'relays']);
     const done = completion(tx);
-    const value = await request(tx.objectStore('records').getAll(range(account, after), limit));
+    const [page, dictionaryRow] = await Promise.all([
+      request(tx.objectStore('records').getAll(range(account, after), limit)) as Promise<Row[]>,
+      request(tx.objectStore('relays').get(account)) as Promise<RelayDictionary | undefined>,
+    ]);
     await done;
-    return value;
-  } finally {
-    db.close();
-  }
+    const dictionary = dictionaryRow ? await openPrivateValue<string[]>(aad(account, 'relays'), dictionaryRow.value) : [];
+    return { page, dictionary };
+  } finally { db.close(); }
 }
 export async function archiveSummary(accountId: string): Promise<Omit<Meta, 'accountId'>> {
   const db = await database();
@@ -113,11 +133,9 @@ export async function readArchivePage(
   assertSession(revision);
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_ARCHIVE_BATCH)
     throw new Error('Invalid archive page size');
-  const page = await rows(accountId, after, limit + 1);
+  const { page, dictionary } = await rows(accountId, after, limit + 1);
   const selected = page.slice(0, limit);
-  const records = await Promise.all(
-    selected.map((row) => openPrivateValue<ArchiveRecord>(aad(accountId, row.id), row.value)),
-  );
+  const records = await Promise.all(selected.map(row => decodeRecord(accountId, row, dictionary)));
   assertSession(revision);
   return { records, ...(page.length > limit ? { next: selected.at(-1)!.id } : {}) };
 }
@@ -134,6 +152,8 @@ export async function commitArchiveBatch(
     assertSession(revision, signal);
     const db = await database();
     try {
+      const dictionary = await relayDictionary(db, accountId);
+      const previousDictionarySize = dictionary.length;
       const prepared: Row[] = [];
       const unique = new Map<string, ArchiveRecord>();
       for (const record of records) {
@@ -171,21 +191,27 @@ export async function commitArchiveBatch(
       for (const [index, record] of [...unique.values()].entries()) {
         const oldRow = oldRows[index];
         const old = oldRow
-          ? await openPrivateValue<ArchiveRecord>(aad(accountId, oldRow.id), oldRow.value)
+          ? await decodeRecord(accountId, oldRow, dictionary)
           : undefined;
         const merged = {
           ...record,
           savedAt: old?.savedAt ?? record.savedAt,
           sources: [...new Set([...(old?.sources ?? []), ...record.sources])].sort(),
         };
-        if (old && merged.sources.length === old.sources.length) continue;
-        const bytes = new TextEncoder().encode(JSON.stringify(merged)).length;
+        if (oldRow?.encoding === 2 && old && merged.sources.length === old.sources.length) continue;
+        const stored: StoredRecord = { event: merged.event, savedAt: merged.savedAt, sourceIds: merged.sources.map(url => {
+          let id = dictionary.indexOf(url);
+          if (id < 0) { id = dictionary.length; dictionary.push(url); }
+          return id;
+        }) };
+        const bytes = new TextEncoder().encode(JSON.stringify(stored)).length;
         if (bytes > MAX_ARCHIVE_RECORD_BYTES) throw new Error('Archive event too large');
         prepared.push({
           accountId,
           id: record.event.id,
           bytes,
-          value: await sealPrivateValue(aad(accountId, record.event.id), merged),
+          encoding: 2,
+          value: await sealPrivateValue(aad(accountId, record.event.id), stored),
         });
         addedBytes += bytes - (oldRow?.bytes ?? 0);
         if (!oldRow) addedCount++;
@@ -204,7 +230,8 @@ export async function commitArchiveBatch(
         });
       }
       assertSession(revision, signal);
-      const tx = db.transaction(['records', 'metadata', 'policy'], 'readwrite');
+      const dictionaryValue = dictionary.length !== previousDictionarySize ? await sealPrivateValue(aad(accountId, 'relays'), dictionary) : undefined;
+      const tx = db.transaction(['records', 'metadata', 'policy', 'relays'], 'readwrite');
       const done = completion(tx);
       const abort = () => {
         try {
@@ -225,6 +252,7 @@ export async function commitArchiveBatch(
         };
         assertSession(revision, signal);
         if (meta.bytes + addedBytes > MAX_ARCHIVE_BYTES) throw new Error('Archive storage limit reached');
+        if (dictionaryValue) tx.objectStore('relays').put({ accountId, value: dictionaryValue });
         for (const row of prepared) tx.objectStore('records').put(row);
         for (const row of policyRows) tx.objectStore('policy').put(row);
         const checkpoints = checkpoint
@@ -255,11 +283,12 @@ export async function clearArchive(accountId: string): Promise<void> {
   await mutex.run(async () => {
     const db = await database();
     try {
-      const tx = db.transaction(['records', 'metadata', 'policy'], 'readwrite');
+      const tx = db.transaction(['records', 'metadata', 'policy', 'relays'], 'readwrite');
       const done = completion(tx);
       tx.objectStore('records').delete(range(accountId));
       tx.objectStore('policy').delete(range(accountId));
       tx.objectStore('metadata').delete(accountId);
+      tx.objectStore('relays').delete(accountId);
       await done;
     } finally {
       db.close();
@@ -270,11 +299,12 @@ export async function clearAllArchives(): Promise<void> {
   await mutex.run(async () => {
     const db = await database();
     try {
-      const tx = db.transaction(['records', 'metadata', 'policy'], 'readwrite');
+      const tx = db.transaction(['records', 'metadata', 'policy', 'relays'], 'readwrite');
       const done = completion(tx);
       tx.objectStore('records').clear();
       tx.objectStore('policy').clear();
       tx.objectStore('metadata').clear();
+      tx.objectStore('relays').clear();
       await done;
     } finally {
       db.close();
@@ -319,4 +349,56 @@ export async function canCopyRecord(
   } finally {
     db.close();
   }
+}
+
+/** Retrieve only an existing account-scoped record; never decrypt caller-supplied events. */
+export async function readArchiveRecord(accountId: string, id: string): Promise<ArchiveRecord> {
+  if (!/^[0-9a-f]{64}$/.test(id)) throw new Error('Invalid event ID');
+  const revision = vault.getSessionRevision();
+  assertSession(revision);
+  const db = await database();
+  try {
+    const tx = db.transaction(['records', 'relays']);
+    const done = completion(tx);
+    const [row, dictionaryRow] = await Promise.all([
+      request(tx.objectStore('records').get([accountId, id])) as Promise<Row | undefined>,
+      request(tx.objectStore('relays').get(accountId)) as Promise<RelayDictionary | undefined>,
+    ]);
+    await done;
+    const dictionary = dictionaryRow ? await openPrivateValue<string[]>(aad(accountId, 'relays'), dictionaryRow.value) : [];
+    if (!row) throw new Error('Archived event is no longer available');
+    const record = await decodeRecord(accountId, row, dictionary);
+    assertSession(revision);
+    return record;
+  } finally { db.close(); }
+}
+
+/** Local removal only. Keep policy tombstones so removing history cannot resurrect revoked events during migration. */
+export async function deleteArchiveRecords(accountId: string, input: unknown): Promise<number> {
+  const ids = input as string[];
+  if (!Array.isArray(ids) || !ids.length || ids.length > MAX_ARCHIVE_BATCH || ids.some(id => typeof id !== 'string' || !/^[0-9a-f]{64}$/.test(id))) throw new Error('Invalid archive selection');
+  const revision = vault.getSessionRevision();
+  return mutex.run(async () => {
+    assertSession(revision);
+    const db = await database();
+    try {
+      const tx = db.transaction(['records', 'metadata'], 'readwrite');
+      const done = completion(tx);
+      const off = vault.onLock(() => { try { tx.abort(); } catch { /* finished */ } });
+      try {
+        const store = tx.objectStore('records');
+        const [meta, selected] = await Promise.all([
+          request(tx.objectStore('metadata').get(accountId)) as Promise<Meta | undefined>,
+          Promise.all([...new Set(ids)].map(id => request(store.get([accountId, id])) as Promise<Row | undefined>)),
+        ]);
+        assertSession(revision);
+        const found = selected.filter((row): row is Row => !!row);
+        for (const row of found) store.delete([accountId, row.id]);
+        if (meta) tx.objectStore('metadata').put({ ...meta, count: meta.count - found.length, bytes: meta.bytes - found.reduce((total, row) => total + row.bytes, 0) });
+        await done;
+        return found.length;
+      } catch (error) { try { tx.abort(); } catch { /* finished */ } await done.catch(() => {}); throw error; }
+      finally { off(); }
+    } finally { db.close(); }
+  });
 }

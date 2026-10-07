@@ -33,3 +33,15 @@ it('uses the protocol range boundaries for replacement and ephemeral events', ()
   assert.equal(shouldArchive(event({ kind: 19999 })), true);
   assert.equal(shouldArchive(event({ kind: 30000 })), true);
 });
+
+it('explorer filters kinds, message formats and public search without matching ciphertext', async () => {
+  const { matchesArchivedEvent } = await import('../src/domain/archive/explorer.ts');
+  const record = { event: event({ content: 'Hello world', tags: [['t', 'nostr']] }), sources: ['wss://relay.example'], savedAt: 1 };
+  const filter = { tab: 'all' as const, query: 'HELLO' };
+  assert.equal(matchesArchivedEvent(record, filter), true);
+  assert.equal(matchesArchivedEvent(record, { ...filter, tab: 'messages' }), false);
+  assert.equal(matchesArchivedEvent(record, { ...filter, kind: 9999 }), false);
+  assert.equal(matchesArchivedEvent(record, { ...filter, query: 'relay.example' }), true);
+  assert.equal(matchesArchivedEvent({ ...record, event: { ...record.event, kind: 1059 } }, filter), false);
+  assert.equal(matchesArchivedEvent({ ...record, event: { ...record.event, kind: 9999 } }, { tab: 'other', query: 'Kind 9999' }), true);
+});

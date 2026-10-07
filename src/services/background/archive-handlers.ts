@@ -1,3 +1,4 @@
+import { exploreArchive, revealArchivedMessage } from '../archive/explorer.ts';
 import {
   MIN_ARCHIVE_PASSWORD_LENGTH,
   MAX_ARCHIVE_PASSWORD_LENGTH,
@@ -29,7 +30,7 @@ import {
   pauseArchiveCopy,
   suspendArchiveCopy,
 } from '../archive/copy.ts';
-import { clearArchive } from '../archive/database.ts';
+import { clearArchive, deleteArchiveRecords, readArchiveRecord } from '../archive/database.ts';
 import * as files from '../archive/files.ts';
 
 async function pause(id: string) {
@@ -78,6 +79,10 @@ function session(value: unknown): string {
 }
 /** Registered only in the privileged background handler map, never the page bridge. */
 export const handlers = new Map<string, HandlerFn>([
+  ['archive_deleteEvents', async p => { const account = await archiveAccount(p.accountId); await pause(account.id); const deleted = await deleteArchiveRecords(account.id, p.ids); await notifyArchive(); return { deleted }; }],
+  ['archive_event', async p => { const account = await archiveAccount(p.accountId); if (typeof p.id !== 'string') throw new Error('Invalid event ID'); return readArchiveRecord(account.id, p.id); }],
+  ['archive_explore', async p => exploreArchive((await archiveAccount(p.accountId)).id, p.filter, p.after)],
+  ['archive_reveal', async p => { const account = await archiveAccount(p.accountId); return revealArchivedMessage(account.id, account.pubkey, p.id); }],
   ['archive_getState', async (p) => getArchiveState(p.accountId)],
   ['archive_sources', async (p) => archiveSources((await archiveAccount(p.accountId)).id)],
   [
@@ -221,6 +226,7 @@ export const handlers = new Map<string, HandlerFn>([
 ]);
 
 const mutations = new Set([
+  'archive_deleteEvents',
   'archive_configure',
   'archive_sync',
   'archive_pause',

@@ -106,3 +106,44 @@ it('repeated events from the same relay do not rewrite encrypted records', async
   assert.equal(writes, 0);
   assert.equal((await readArchivePage('a')).records[0].savedAt, 1);
 });
+
+it('stores source IDs with an encrypted per-account dictionary and resolves duplicate sources', async () => {
+  const { openPrivateValue } = await import('../src/services/storage/private-cache.ts');
+  await commitArchiveBatch('a', [record('1'), record('2')]);
+  const db = await new Promise<IDBDatabase>(resolve => { const request = indexedDB.open(ARCHIVE_DATABASE); request.onsuccess = () => resolve(request.result); });
+  const read = (store: string, key: IDBValidKey) => new Promise<any>(resolve => { const request = db.transaction(store).objectStore(store).get(key); request.onsuccess = () => resolve(request.result); });
+  const row = await read('records', ['a', '1'.repeat(64)]);
+  const dictionary = await read('relays', 'a');
+  assert.equal(JSON.stringify(dictionary).includes('wss://'), false);
+  assert.deepEqual(await openPrivateValue('archive:["a","relays"]', dictionary.value), ['wss://one.example']);
+  const decoded = await openPrivateValue<any>(`archive:${JSON.stringify(['a', '1'.repeat(64)])}`, row.value);
+  assert.deepEqual(decoded.sourceIds, [0]); assert.equal(decoded.sources, undefined);
+  db.close();
+});
+it('selected local deletion is account-scoped, idempotent and retains migration safety indexes', async () => {
+  const { deleteArchiveRecords, readArchiveRecord } = await import('../src/services/archive/database.ts');
+  const old = record('1', 0, [], 10), latest = record('2', 0, [], 20);
+  await commitArchiveBatch('a', [old, latest]); await commitArchiveBatch('b', [latest]);
+  const before = await archiveSummary('a');
+  assert.equal(await deleteArchiveRecords('a', [latest.event.id, latest.event.id]), 1);
+  assert.equal((await archiveSummary('a')).count, 1); assert.ok((await archiveSummary('a')).bytes < before.bytes);
+  assert.equal(await canCopyRecord('a', old), false);
+  assert.equal((await readArchiveRecord('b', latest.event.id)).event.id, latest.event.id);
+  await assert.rejects(readArchiveRecord('a', latest.event.id));
+  assert.equal(await deleteArchiveRecords('a', [latest.event.id]), 0);
+  await assert.rejects(deleteArchiveRecords('a', ['bad']));
+  await assert.rejects(deleteArchiveRecords('a', Array(101).fill(old.event.id)));
+  vault.lock(); await assert.rejects(deleteArchiveRecords('a', [old.event.id]));
+});
+it('legacy records retain provenance and compact on their next commit', async () => {
+  const { sealPrivateValue } = await import('../src/services/storage/private-cache.ts');
+  const event = record('1');
+  await commitArchiveBatch('a', [event]);
+  const db = await new Promise<IDBDatabase>(resolve => { const request = indexedDB.open(ARCHIVE_DATABASE); request.onsuccess = () => resolve(request.result); });
+  const value = await sealPrivateValue(`archive:${JSON.stringify(['a', event.event.id])}`, event);
+  await new Promise<void>(resolve => { const tx = db.transaction('records', 'readwrite'); tx.objectStore('records').put({ accountId: 'a', id: event.event.id, bytes: JSON.stringify(event).length, value }); tx.oncomplete = () => resolve(); });
+  db.close();
+  assert.deepEqual((await readArchivePage('a')).records[0], event);
+  await commitArchiveBatch('a', [{ ...event, sources: ['wss://two.example'] }]);
+  assert.deepEqual((await readArchivePage('a')).records[0].sources, ['wss://one.example', 'wss://two.example']);
+});

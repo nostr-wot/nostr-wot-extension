@@ -453,3 +453,7 @@ Passkey-attached recovery uses WebAuthn in the trusted extension UI. The shared 
 After confirmed last-account removal, `vault_removeAccount` invokes the vault’s serialized `destroyIfEmpty` check. Only authenticated, decrypted emptiness permits removal of the encrypted record and its private-cache lifecycle cleanup. Public metadata or a locked vault never authorizes this cleanup.
 
 `vault_changeProtection` is an internal extension-page RPC for the Auto-lock Use passkey switch. It verifies the existing credential, applies the shared failure lockout, and calls the serialized vault conversion. `vault_listPasskeys` with `forUnlock: true` returns no credentials while password protection is selected; ordinary listing includes dormant registrations for Security.
+
+### Archive explorer
+
+Internal extension pages use `archive_explore` for bounded encrypted-record scans, `archive_event` for full stored event details, `archive_reveal` for explicit local message decryption, and `archive_deleteEvents` for confirmed local removal. Every handler validates the account; page scripts cannot call these methods. Event IDs are resolved only within that account. Deletion pauses archive jobs and serializes with other archive mutations; it does not publish anything.

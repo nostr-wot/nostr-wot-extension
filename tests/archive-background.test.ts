@@ -437,3 +437,71 @@ it('unfinished sync slices continue without waiting for an alarm', async () => {
   await until(async () => (await call('archive_getState')).progress.phase === 'complete');
   assert.equal((await archiveSummary(accountId)).count, 1);
 });
+
+it('explorer RPCs stay privileged, bound pages and reject malformed or cross-account reveal', async () => {
+  const event = await signed();
+  await commitArchiveBatch(accountId, [{ event, sources: [relay], savedAt: Date.now() }]);
+  const methods = buildPrivilegedMethods(handlers);
+  for (const method of ['archive_explore', 'archive_reveal', 'archive_deleteEvents']) assert.ok(methods.has(method));
+  const page = await call('archive_explore', { filter: { tab: 'all', query: 'archived' } });
+  assert.equal(page.records.length, 1); assert.equal(page.scanned, 1);
+  await assert.rejects(call('archive_explore', { filter: { tab: 'all', query: 'x'.repeat(201) } }));
+  await assert.rejects(call('archive_explore', { filter: { tab: 'all', query: '' }, after: 'bad' }));
+  await assert.rejects(call('archive_explore', { accountId: 'missing', filter: { tab: 'all', query: '' } }));
+  await assert.rejects(call('archive_reveal', { id: event.id }), /not an encrypted message/);
+  await assert.rejects(call('archive_reveal', { id: 'f'.repeat(64) }), /no longer available/);
+  await call('archive_deleteEvents', { ids: [event.id] });
+  assert.equal((await archiveSummary(accountId)).count, 0);
+  assert.equal(published.length, 0);
+});
+
+it('reveals archived NIP-04 content only with the account key and returns full detail separately', async () => {
+  const { nip04Encrypt } = await import('../src/lib/crypto/nip04.ts');
+  const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+  const peer = await importNsec('08'.repeat(32), 'Peer');
+  const content = await nip04Encrypt('Only in the details view', new Uint8Array(32).fill(8), hexToBytes(pubkey));
+  const event = await signEvent({ kind: 4, content, created_at: 10, tags: [['p', pubkey]] }, new Uint8Array(32).fill(8));
+  await commitArchiveBatch(accountId, [{ event, sources: [relay], savedAt: 1 }]);
+  const revealed = await call('archive_reveal', { id: event.id });
+  assert.equal(revealed.plaintext, 'Only in the details view'); assert.equal(revealed.senderPubkey, peer.pubkey);
+  const detail = await call('archive_event', { id: event.id }); assert.deepEqual(detail.event, event);
+  vault.lock(); await assert.rejects(call('archive_reveal', { id: event.id }));
+});
+
+it('explorer searches cached names without starting profile relay queries', async () => {
+  const event = await signed();
+  await commitArchiveBatch(accountId, [{ event, sources: [], savedAt: 1 }]);
+  await browser.storage.local.set({ [`profile_${pubkey}`]: { metadata: { display_name: 'Archive Owner' }, fetchedAt: 0 } });
+  const page = await call('archive_explore', { filter: { tab: 'all', query: 'archive owner' } });
+  assert.equal(page.records.length, 1); assert.equal(queriedRelays.length, 0);
+});
+
+it('explorer reveals a gift-wrap sender only after validating the inner seal', async () => {
+  const { nip44Encrypt } = await import('../src/lib/crypto/nip44.ts');
+  const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
+  const peer = await importNsec('08'.repeat(32), 'Peer');
+  const wrapper = await importNsec('07'.repeat(32), 'Wrapper');
+  const rumor = { kind: 14, pubkey: peer.pubkey, created_at: 20, tags: [['p', pubkey]], content: 'Private hello' };
+  const content = await nip44Encrypt(JSON.stringify(rumor), new Uint8Array(32).fill(8), hexToBytes(pubkey));
+  const seal = await signEvent({ kind: 13, created_at: 10, tags: [], content }, new Uint8Array(32).fill(8));
+  for (const valid of [true, false]) {
+    const encrypted = await nip44Encrypt(JSON.stringify(valid ? seal : { ...seal, sig: '0'.repeat(128) }), new Uint8Array(32).fill(7), hexToBytes(pubkey));
+    const event = await signEvent({ kind: 1059, created_at: 10, tags: [['p', pubkey]], content: encrypted }, new Uint8Array(32).fill(7));
+    await commitArchiveBatch(accountId, [{ event, sources: [], savedAt: 1 }]);
+    if (valid) {
+      const result = await call('archive_reveal', { id: event.id });
+      assert.equal(result.plaintext, 'Private hello'); assert.equal(result.senderPubkey, peer.pubkey); assert.notEqual(result.senderPubkey, wrapper.pubkey);
+      assert.deepEqual(result.decryptedEvent, rumor);
+    } else await assert.rejects(call('archive_reveal', { id: event.id }), /signature/);
+  }
+});
+it('explorer bounds pages and summaries while keeping full event detail', async () => {
+  const records = await Promise.all(Array.from({ length: 41 }, async (_, index) => ({ event: await signed(1, `${index}:` + 'x'.repeat(2048)), sources: [], savedAt: 1 })));
+  await commitArchiveBatch(accountId, records);
+  const first = await call('archive_explore', { filter: { tab: 'all', query: '' } });
+  assert.equal(first.records.length, 40); assert.equal(first.scanned, 40); assert.ok(first.next);
+  assert.equal(first.records[0].excerpt.length, 1024);
+  const detail = await call('archive_event', { id: first.records[0].event.id }); assert.ok(detail.event.content.length > 2048);
+  const second = await call('archive_explore', { filter: { tab: 'all', query: '' }, after: first.next });
+  assert.equal(second.records.length, 1); assert.equal(second.next, undefined);
+});
