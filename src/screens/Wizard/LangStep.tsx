@@ -67,7 +67,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
           <span className="text-[26px] font-heavy text-heading tracking-[-0.3px]">Nostr WoT</span>
         </Container>
         <div className="h-px bg-card-border mx-12" />
-        <Container gap={6} className="pt-10 px-8 pb-4 items-center">
+        <Container gap={6} className="pt-10 px-8 pb-8 items-center">
           <Card variant="flat" className="flex items-center gap-4 w-full max-w-[260px] px-7 h-22 mb-0 bg-glass-heavy cursor-pointer transition-colors hover:border-brand">
             <span className="flex-1 text-lg font-semibold text-heading">{lang.flag} {lang.native}</span>
           </Card>
@@ -90,7 +90,7 @@ export default function LangStep({ onSelect }: LangStepProps) {
         <span className="text-[26px] font-heavy text-heading tracking-[-0.3px]">Nostr WoT</span>
       </Container>
       <div className="h-px bg-card-border mx-12" />
-      <Container gap={6} className="pt-10 px-8 pb-4 items-center">
+      <Container gap={6} className="pt-10 px-8 pb-8 items-center">
         {/* Dropdown trigger -- cycles prompt translations or shows selection.
             Card gives it native button semantics (keyboard activation, focus)
             for free, dropping the hand-rolled role/tabIndex/onKeyDown trio. */}

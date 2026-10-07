@@ -20,7 +20,7 @@ interface DoneStepProps {
 
 export default function DoneStep({ account, onDone, derived = false }: DoneStepProps) {
   return (
-    <Container className="flex-1 justify-end">
+    <Container className="flex-1 justify-end pb-8">
       <Heading className="mb-3">{t('wizard.yourAllSet')}</Heading>
       <Text variant="secondary" className="mb-8">
         {t('wizard.identityReady')}
