@@ -9,6 +9,7 @@ export class Nip46Connection {
 
   constructor() {
     const sockets = new Set<WebSocket>();
+    const cancelPendingConnections = new Set<() => void>();
     let poolDisposed = false;
     const closeSocket = (socket: WebSocket) => {
       if (socket.readyState === 0 || socket.readyState === 1) {
@@ -32,10 +33,21 @@ export class Nip46Connection {
     class OwnedPool extends SimplePool {
       override async ensureRelay(url: string, params?: Parameters<SimplePool['ensureRelay']>[1]) {
         if (poolDisposed) throw new Error('NIP-46 transport disposed');
-        return super.ensureRelay(url, params);
+        let cancel!: () => void;
+        const disposed = new Promise<never>((_, reject) => {
+          cancel = () => reject(new Error('NIP-46 transport disposed'));
+        });
+        cancelPendingConnections.add(cancel);
+        try {
+          return await Promise.race([super.ensureRelay(url, params), disposed]);
+        } finally {
+          cancelPendingConnections.delete(cancel);
+        }
       }
       override destroy(): void {
         poolDisposed = true;
+        for (const cancel of cancelPendingConnections) cancel();
+        cancelPendingConnections.clear();
         try { super.destroy(); } catch { /* Still close all captured sockets below. */ } finally {
           // nostr-tools Relay.close() does not close CONNECTING sockets. Retain
           // these handles even when a failed ensureRelay already removed a relay.
