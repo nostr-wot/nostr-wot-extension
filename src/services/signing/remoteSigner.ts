@@ -1,3 +1,4 @@
+import { Nip46Connection } from './nip46Connection.ts';
 import { signVerifiedRemoteEvent } from './remoteEventVerifier.ts';
 import * as vault from '../vault/vault.ts';
 import browser from '@lib/browser.ts';
@@ -14,6 +15,7 @@ interface RemoteClient {
   signer?: BunkerSigner;
   secretKey?: Uint8Array;
   connection: Promise<BunkerSigner>;
+  transport: Nip46Connection;
   disposed: boolean;
   connected: boolean;
   cancellations: Set<(error: Error) => void>;
@@ -54,7 +56,8 @@ async function initializeClient(acct: SafeAccount, client: RemoteClient): Promis
       await vault.updateAccountNip46Keys(acct.id, bytesToHex(secretKey), bytesToHex(getPublicKey(secretKey)));
       assertClient(client);
     }
-    const signer = BunkerSigner.fromBunker(secretKey, bp, {
+    const signer = client.transport.attach(BunkerSigner.fromBunker(secretKey, bp, {
+      pool: client.transport.pool,
       onauth(url: string) {
         try { assertClient(client); } catch { return; }
         if (!url.startsWith('https://')) {
@@ -63,7 +66,7 @@ async function initializeClient(acct: SafeAccount, client: RemoteClient): Promis
         }
         void browser.tabs.create({ url });
       },
-    });
+    }));
     client.signer = signer;
     await duringSession(client, () => signer.connect());
     assertClient(client);
@@ -88,7 +91,7 @@ async function getNip46Client(acct: SafeAccount, session: AccountSession, connec
   }
   if (connectedOnly && (!client?.connected || client.disposed)) throw new Error('Remote signer is not connected');
   if (!client) {
-    client = { session, disposed: false, connected: false, cancellations: new Set(), connection: undefined as unknown as Promise<BunkerSigner> };
+    client = { transport: new Nip46Connection(), session, disposed: false, connected: false, cancellations: new Set(), connection: undefined as unknown as Promise<BunkerSigner> };
     _nip46Clients.set(acct.id, client);
     client.connection = initializeClient(acct, client);
   }
@@ -160,6 +163,6 @@ export function disconnectNip46(accountId: string): void {
   client.disposed = true;
   for (const cancel of client.cancellations) cancel(new Error('NIP-46 disconnected'));
   client.cancellations.clear();
-  void client.signer?.close().catch(() => {});
+  client.transport.dispose();
   client.secretKey?.fill(0);
 }

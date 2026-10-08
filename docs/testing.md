@@ -591,3 +591,7 @@ Archive service coverage:
 - `tests/archive-transport.test.ts` covers shared subscriptions, cancellation, signed-event validation and same-connection authentication and publication acknowledgements.
 
 The Chrome package smoke test also opens a popup with its language preference read deliberately stalled. It must render readable bundled fallback text within five seconds. Theme-handoff unit tests cover initialization rejection, indefinite waits and late recovery without recreating the React root.
+
+### NIP-46 transport lifetime
+
+`tests/nip46-lifecycle.test.ts` uses the installed `BunkerSigner` and `SimplePool` with fake WebSockets; it opens no network connections. It counts live sockets across repeated successful and failed pairing attempts, concurrent initialization, remote-client reuse, vault locking, cancellation, expiry without popup polling, and a CONNECTING socket that refuses closure and opens later. It also checks that disposing an attempt does not destroy a caller-owned shared pool. The loopback integration suite verifies genuine encrypted request/response signing and observes socket closure before reconnecting.
