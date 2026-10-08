@@ -678,6 +678,42 @@ describe('NwcProvider', () => {
       assert.equal(result.balance, 800); // 800000 msats = 800 sats
     });
 
+    it('rejects a pending request immediately when the relay refuses its event', async () => {
+      mock.timers.enable({ apis: ['setTimeout'] });
+
+      try {
+        const balancePromise = provider.getBalance();
+        await flushAsync();
+        const sentEvent = JSON.parse(ws.sentMessages[0])[1] as SignedEvent;
+
+        ws.simulateMessage(JSON.stringify([
+          'OK', sentEvent.id, false, 'banned: too many rate-limit violations, try again later',
+        ]));
+        mock.timers.tick(60_001);
+
+        await assert.rejects(balancePromise, /NWC relay rejected request: banned: too many rate-limit violations/);
+      } finally {
+        mock.timers.reset();
+      }
+    });
+
+    it('treats a relay refusal as a definite payment rejection, not an unknown outcome', async () => {
+      mock.timers.enable({ apis: ['setTimeout'] });
+
+      try {
+        const paymentPromise = provider.payInvoice(makeNwcInvoice());
+        await flushAsync();
+        const sentEvent = JSON.parse(ws.sentMessages[0])[1] as SignedEvent;
+
+        ws.simulateMessage(JSON.stringify(['OK', sentEvent.id, false, 'rate-limited']));
+        mock.timers.tick(60_001);
+
+        await assert.rejects(paymentPromise, /NWC relay rejected request: rate-limited/);
+      } finally {
+        mock.timers.reset();
+      }
+    });
+
     it('ignores events without matching e tag', async () => {
       const balancePromise = provider.getBalance();
       await flushAsync();

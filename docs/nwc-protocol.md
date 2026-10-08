@@ -76,5 +76,4 @@ node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/wallet
 
 Tests use synthetic credentials/invoices and do not move real funds. They do not certify
 live providers, relay availability, browser worker survival, QR hardware or store packages.
-Optional NWC extensions are not implemented. Negative relay publication acknowledgements
-are not separately interpreted; without a wallet response the request reaches its deadline.
+Optional NWC extensions are not implemented. A negative relay `OK` for a pending event now rejects the request immediately with the relay reason; a positive `OK` only confirms relay acceptance, so the client still waits for the encrypted wallet response. A definite relay refusal is reported separately from a wallet-response timeout, including for payments.
