@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { WebSocketServer, WebSocket } from 'ws';
 import { once } from 'node:events';
@@ -18,6 +18,9 @@ import * as onboarding from '../src/services/background/onboarding-handlers.ts';
 // Keep the intentional refused-relay case without Node/undici's recursive
 // error -> close -> error path. The loopback server already uses this transport.
 configureWebSocket(WebSocket);
+const originalWebSocket = globalThis.WebSocket;
+globalThis.WebSocket = WebSocket as unknown as typeof globalThis.WebSocket;
+after(() => { globalThis.WebSocket = originalWebSocket; });
 
 const remoteKey = new Uint8Array(32).fill(7);
 const clientKey = new Uint8Array(32).fill(8);
@@ -163,6 +166,7 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
   });
   await t.test('disconnect reconnects with the persisted client identity',async()=>{
     signerRemoteSigner.disconnectNip46('remote');
+    await until(() => relay.subscriptions.size === 0);
     const start=relay.requests.length;
     const pending=signer.handleSignEvent({...event},origin);
     await until(()=>relay.requests.slice(start).some(r=>r.method==='sign_event'));
@@ -171,7 +175,9 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
     await relay.approve(relay.requests.slice(start).find(r=>r.method==='sign_event')!); await pending;
   });
   await t.test('locked vault sends nothing until unlock and clears its waiter',async()=>{
-    vault.lock(); const start=relay.requests.length;
+    vault.lock();
+    await until(() => relay.subscriptions.size === 0);
+    const start=relay.requests.length;
     const pending=signer.handleSignEvent({...event},origin);
     await until(async()=>((await browser.storage.session.get('signerPending')).signerPending as {waitingForUnlock?:boolean}[]).some(r=>r.waitingForUnlock));
     assert.equal(relay.requests.length,start);

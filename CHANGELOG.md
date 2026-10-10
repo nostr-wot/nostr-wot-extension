@@ -3,7 +3,35 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Next release
+## Unreleased
+
+### Store release notes
+
+- Open the popup faster: less code loads before it appears, and the splash ends as soon as your accounts are read.
+- Fix the popup sometimes staying on "Loading…" after the browser had been idle.
+- Automatic payments now count the routing fee against your spending allowance, and ask you first when the fee cannot be checked in advance.
+
+### Wallet fees
+
+- A silent WebLN payment reserves the quoted routing fee along with the invoice amount against the rolling 24-hour allowance. Fees used to escape it entirely, so an allowance could be overspent by exactly the fees.
+- Where the wallet cannot establish the fee before sending, the payment stops being silent and is queued for approval instead. An unbounded fee on a payment nobody is watching is the case this guards.
+- An unattended payment carries a fee ceiling: `WALLET_MAX_FEE_PERCENT` of the amount, floored at `WALLET_MAX_FEE_FLOOR_MSATS` so a percentage of a small invoice cannot refuse an ordinary payment. The provider refuses before dispatch if the quote exceeds it. A payment the user was shown and approved is not subject to the ceiling.
+- `WalletProvider.payInvoice` takes an optional `{ maxFeeMsat }`, and an optional `quoteSend()` reports the fee beforehand. The *absence* of `quoteSend` is the capability signal: NWC has no pre-flight quote in NIP-47 and omits it, and refuses a requested ceiling rather than sending unbounded. Wallets without a quote keep paying silently as before, so NWC users lose nothing.
+- LNbits quotes through `GET /api/v1/payments/fee-reserve`, asking once per deployment and not again where it answers 404 — the endpoint is new to `zaps.nostr-wot.com` and absent from older proxies and other instances.
+- An invoice whose amount cannot be decoded is never approved silently, fee or no fee.
+
+### Popup startup
+
+- The home card reads the connected-site lists from local storage instead of asking the background service worker, so a stalled worker start can no longer leave it on "Loading…".
+- Startup reads that still need the background (vault state, permissions, wallet display cache, post-quantum status, activity log, pending requests) use `rpcRead()`: an attempt unanswered after 4 seconds is sent again, and after the third the read fails visibly instead of waiting forever. Writes are never re-sent.
+- Language loading reads `storage.local` without waiting on `storage.sync`; a language changed on another synced device applies on the next open. Bundled English is no longer fetched again.
+- Menu, filters, activity, wizard, edit profile and rules screens load the first time they open.
+- The splash shows for 200–600 ms depending on when the account list is read, instead of a fixed 600 ms, and fades in 200 ms instead of 400 ms. The tab screenshot behind the popup is taken after the fade.
+- The popup wakes the background as it starts, so a cold worker starts while the popup renders.
+
+### Build
+
+- JavaScript is minified. Code loaded before the popup appears drops from 1.57 MB to 475 KB, and the background script from 889 KB to 437 KB. CSS stays unminified. Mozilla reviewers use the attached source, which still rebuilds the packages exactly; `SOURCE_BUILD.md` and the reviewer notes say so.
 
 ### Archive
 

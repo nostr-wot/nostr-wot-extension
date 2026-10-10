@@ -713,6 +713,8 @@
   "wallet.paymentSent": "Pagamento inviato",
   "wallet.paymentInFlight": "Questo pagamento è già in corso di invio.",
   "wallet.paymentOutcomeUnknown": "L’esito del pagamento è sconosciuto. Controlla la cronologia del portafoglio prima di avviare un altro pagamento. Ulteriori pagamenti in questa finestra sono bloccati.",
+  "wallet.paymentFeeTooHigh": "La commissione di routing di questo pagamento superava il limite consentito, quindi non è stato inviato nulla.",
+  "wallet.paymentFeeUnknown": "Questo portafoglio non ha potuto confermare in anticipo la commissione di routing, quindi il pagamento non è stato inviato.",
   "wallet.checkFailed": "Impossibile verificare il tuo portafoglio. Riprova.",
   "wallet.paymentReceived": "Pagamento ricevuto!",
   "wallet.transactions": "Transazioni",

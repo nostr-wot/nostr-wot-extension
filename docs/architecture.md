@@ -302,3 +302,9 @@ Language initialization and explicit changes use a revision guard so delayed sta
 Passkey discovery in the shared unlock hook uses the same bounded background-read retries as popup status providers. Unlock and vault creation continue to use ordinary RPC calls without read timeouts.
 
 `vault.changeProtection` serializes verified switching between existing passkey enrollment and password protection. Dormant encrypted wrappers survive password rotation and None mode; private-cache keys and all accounts remain unchanged. Unlock metadata reads exclude dormant credentials, while Security reads the full enrollment for its Use passkey switch.
+
+### NIP-46 transport lifetime
+
+`services/signing/nip46Connection.ts` owns a dedicated relay pool and its WebSockets for each onboarding attempt or cached remote signer. Closing a `BunkerSigner` only closes its subscriptions, so the owner also destroys the pool, closes connecting sockets, and rejects new connections after disposal. A delayed socket opening after cancellation is closed before the relay can accept the open event. Caller-owned shared pools remain outside this ownership boundary.
+
+QR onboarding initialization and status mutations are serialized to keep one live attempt. The attempt is disposed on completion, failure, cancellation, or its five-minute expiry, including when the popup stops polling. Remote signing shares one cached connection per account and disposes it on initialization failure, disconnect, account change, or vault lock.

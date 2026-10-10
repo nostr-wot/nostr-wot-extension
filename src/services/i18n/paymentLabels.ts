@@ -1,5 +1,5 @@
 import { t } from './i18n.ts';
-import { PAYMENT_IN_FLIGHT, PAYMENT_OUTCOME_UNKNOWN } from '@constants/wallet.ts';
+import { PAYMENT_IN_FLIGHT, PAYMENT_OUTCOME_UNKNOWN, PAYMENT_FEE_TOO_HIGH, PAYMENT_FEE_UNKNOWN } from '@constants/wallet.ts';
 import { describeInvoiceExpiry } from '@domain/wallet/invoiceExpiry.ts';
 
 /**
@@ -15,6 +15,8 @@ export function paymentErrorMessage(e: unknown): string {
   const message = (e as Error)?.message || '';
   if (message.includes(PAYMENT_IN_FLIGHT)) return t('wallet.paymentInFlight');
   if (message.includes(PAYMENT_OUTCOME_UNKNOWN)) return t('wallet.paymentOutcomeUnknown');
+  if (message.includes(PAYMENT_FEE_TOO_HIGH)) return t('wallet.paymentFeeTooHigh');
+  if (message.includes(PAYMENT_FEE_UNKNOWN)) return t('wallet.paymentFeeUnknown');
   return message;
 }
 

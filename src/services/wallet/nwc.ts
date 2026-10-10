@@ -1,7 +1,7 @@
 import { decodeBolt11 } from '@domain/wallet/bolt11.ts';
 import { transactionMemo } from '@domain/wallet/transaction-memo.ts';
 import { PaymentOutcomeUnknownError } from './payment-errors.ts';
-import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@constants/wallet.ts';
+import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS, PAYMENT_FEE_UNKNOWN } from '@constants/wallet.ts';
 /**
  * NWC (Nostr Wallet Connect, NIP-47) wallet provider
  *
@@ -14,7 +14,7 @@ import { NWC_REQUEST_TIMEOUT_MS, NWC_INFO_TIMEOUT_MS, NWC_MAX_RELAYS } from '@co
  */
 
 import type { UnsignedEvent, SignedEvent } from '../../domain/nostr/types.ts';
-import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
+import type { WalletProvider, WalletProviderInfo, Transaction, PayInvoiceOptions } from '../../domain/wallet/types.ts';
 import { hexToBytes, bytesToHex, sha256 } from '../../lib/crypto/utils.ts';
 import { verifyEvent as verifyEventNip01 } from '../../lib/crypto/nip01.ts';
 
@@ -70,6 +70,13 @@ class UnsupportedNwcEncryptionError extends Error {
 class NwcRequestError extends Error {
   constructor(readonly code: string, message: string) {
     super(`NWC error (${code}): ${message}`);
+  }
+}
+
+class NwcRelayRejectionError extends Error {
+  constructor(reason: string) {
+    const safeReason = reason.replace(/\p{Cc}/gu, ' ').trim().slice(0, 200);
+    super(`NWC relay rejected request: ${safeReason || 'event not accepted'}`);
   }
 }
 
@@ -169,7 +176,11 @@ export class NwcProvider implements WalletProvider {
     return { balance: Math.round(result.balance / 1000) };
   }
 
-  async payInvoice(bolt11: string): Promise<{ preimage: string }> {
+  async payInvoice(bolt11: string, opts?: PayInvoiceOptions): Promise<{ preimage: string }> {
+    // NIP-47 pay_invoice carries no fee limit and there is no pre-flight quote, so a
+    // ceiling cannot be honoured here. Refuse it: sending anyway would tell the caller
+    // a bound was applied when none was. The absent quoteSend says so in advance.
+    if (opts?.maxFeeMsat !== undefined) throw new Error(PAYMENT_FEE_UNKNOWN);
     const result = (await this.sendRequest('pay_invoice', { invoice: bolt11 })) as {
       preimage: string;
     };
@@ -452,7 +463,7 @@ export class NwcProvider implements WalletProvider {
     this.cancellations.add(cancel);
     try { return await Promise.race([this.performRequest(method, params, () => { dispatched = true; }), canceled]); }
     catch (error) {
-      if (method === 'pay_invoice' && dispatched && !(error instanceof NwcRequestError)) {
+      if (method === 'pay_invoice' && dispatched && !(error instanceof NwcRequestError) && !(error instanceof NwcRelayRejectionError)) {
         throw new PaymentOutcomeUnknownError(error instanceof Error ? error.message : String(error));
       }
       throw error;
@@ -510,9 +521,20 @@ export class NwcProvider implements WalletProvider {
       return; // Ignore non-JSON messages
     }
 
-    if (!Array.isArray(parsed) || parsed[0] !== 'EVENT' || !parsed[2]) {
+    if (!Array.isArray(parsed)) return;
+
+    if (parsed[0] === 'OK') {
+      const [_, eventId, accepted, reason] = parsed;
+      if (typeof eventId !== 'string' || accepted !== false) return;
+      const entry = this.pending.get(eventId);
+      if (!entry) return;
+      clearTimeout(entry.timer);
+      this.pending.delete(eventId);
+      entry.reject(new NwcRelayRejectionError(typeof reason === 'string' ? reason : 'event not accepted'));
       return;
     }
+
+    if (parsed[0] !== 'EVENT' || !parsed[2]) return;
 
     const event = parsed[2] as SignedEvent;
     if (!event || event.kind !== 23195 || typeof event.content !== 'string' ||

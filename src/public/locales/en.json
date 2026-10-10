@@ -713,6 +713,8 @@
   "wallet.paymentSent": "Payment sent!",
   "wallet.paymentInFlight": "That payment is already being sent.",
   "wallet.paymentOutcomeUnknown": "The payment outcome is unknown. Check your wallet history before starting another payment. Further payments in this dialog are blocked.",
+  "wallet.paymentFeeTooHigh": "The routing fee for this payment was higher than allowed, so nothing was sent.",
+  "wallet.paymentFeeUnknown": "This wallet could not confirm the routing fee in advance, so the payment was not sent.",
   "wallet.checkFailed": "Could not check your wallet. Try again.",
   "wallet.paymentReceived": "Payment received!",
   "wallet.transactions": "Transactions",

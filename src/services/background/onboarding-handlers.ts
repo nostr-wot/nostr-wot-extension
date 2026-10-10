@@ -28,6 +28,8 @@ import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import { toSafeAccount } from '../../domain/accounts/account.ts';
 import type { Account } from '../../domain/accounts/types.ts';
 import { resolveRemoteAccount } from '../signing/remoteAccount.ts';
+import { Nip46Connection } from '../signing/nip46Connection.ts';
+import { AsyncLock } from '../../utils/asyncLock.ts';
 
 // ── NostrConnect sessions ──
 
@@ -40,8 +42,21 @@ interface NostrConnectSession {
     relays: string[];
     error: Error | null;
     abortController: AbortController;
+    connection: Nip46Connection;
+    expiryTimer: ReturnType<typeof setTimeout> | null;
 }
 const _nostrConnectSessions = new Map<string, NostrConnectSession>();
+const nostrConnectLock = new AsyncLock();
+
+function disposeNostrConnectSession(sessionId: string): void {
+    const session = _nostrConnectSessions.get(sessionId);
+    if (!session) return;
+    _nostrConnectSessions.delete(sessionId);
+    if (session.expiryTimer) clearTimeout(session.expiryTimer);
+    session.abortController.abort();
+    session.connection.dispose();
+    session.secretKey.fill(0);
+}
 
 // ── NIP-46 nip46 dependency injection (for tests) ──
 //
@@ -62,12 +77,12 @@ export function __setNip46Deps(deps?: Partial<Nip46Deps>): void {
 
 /**
  * Test seam: drop the in-memory live-session Map and pending-onboarding memory
- * WITHOUT aborting/closing the signers, simulating an MV3 service-worker
- * suspension that loses RAM but keeps browser.storage.session. After this,
+ * while closing its transports, simulating destruction of the old worker.
+ * The persisted mirror survives. After this,
  * `ensureLiveSession` / `getPendingOnboardingAccount` must rebuild from storage.
  */
 export function __simulateServiceWorkerRestart(): void {
-    _nostrConnectSessions.clear();
+    for (const sessionId of _nostrConnectSessions.keys()) disposeNostrConnectSession(sessionId);
     _pendingOnboardingAccount = null;
     _pendingOnboardingSetAt = 0;
     if (_pendingOnboardingTimer) { clearTimeout(_pendingOnboardingTimer); _pendingOnboardingTimer = null; }
@@ -184,48 +199,50 @@ function ensureLiveSession(persisted: PersistedNcSession): NostrConnectSession {
 
     const secretKey = hexToBytes(persisted.secretKeyHex);
     const abortController = new AbortController();
+    const connection = new Nip46Connection();
     const session: NostrConnectSession = {
-        signerPromise: null!,
-        signer: null,
-        secretKey,
-        localPubkey: persisted.localPubkey,
-        relays: persisted.relays,
-        error: null,
-        abortController,
+        signerPromise: null!, signer: null, secretKey,
+        localPubkey: persisted.localPubkey, relays: persisted.relays,
+        error: null, abortController, connection, expiryTimer: null,
     };
-
-    session.signerPromise = _nip46Deps.BunkerSigner.fromURI(
-        secretKey,
-        persisted.nostrconnectUri,
-        { onauth(url: string) {
-            if (!url.startsWith('https://')) {
-                console.warn('[NIP-46] rejected non-HTTPS auth_url:', url);
-                return;
-            }
-            void browser.tabs.create({ url });
-        } },
-        abortController.signal
-    );
-    session.signerPromise
-        .then(async signer => {
-            const account = await resolveRemoteAccount(signer, session.secretKey);
-            if (session.abortController.signal.aborted) return;
+    _nostrConnectSessions.set(persisted.sessionId, session);
+    const expire = () => {
+        // Stop network activity immediately, even if a storage operation owns the lock.
+        disposeNostrConnectSession(persisted.sessionId);
+        void nostrConnectLock.run(() => deleteNcSession(persisted.sessionId)).catch(() => {});
+    };
+    session.expiryTimer = setTimeout(expire, Math.max(0, persisted.createdAt + NC_TTL_MS - Date.now()));
+    if (typeof session.expiryTimer === 'object' && 'unref' in session.expiryTimer) session.expiryTimer.unref();
+    session.signerPromise = Promise.resolve().then(() => {
+        if (abortController.signal.aborted) throw new Error('Nostr Connect cancelled');
+        return _nip46Deps.BunkerSigner.fromURI(secretKey, persisted.nostrconnectUri, {
+            pool: connection.pool,
+            onauth(url: string) {
+                if (!abortController.signal.aborted && url.startsWith('https://')) void browser.tabs.create({ url });
+            },
+        }, abortController.signal);
+    });
+    void session.signerPromise.then(async signer => {
+        connection.attach(signer);
+        const account = await resolveRemoteAccount(signer, secretKey);
+        if (abortController.signal.aborted) return;
+        await nostrConnectLock.run(async () => {
+            if (_nostrConnectSessions.get(persisted.sessionId) !== session) return;
             session.account = account;
             session.signer = signer;
-            updateNcSessionStatus(persisted.sessionId, {
-                status: 'connected',
-                signerPubkey: signer.bp.pubkey,
-            }).catch(() => {});
-        })
-        .catch(err => {
-            session.error = err;
-            updateNcSessionStatus(persisted.sessionId, {
-                status: 'error',
-                errorMessage: err?.message || String(err),
-            }).catch(() => {});
+            await updateNcSessionStatus(persisted.sessionId, { status: 'connected', signerPubkey: signer.bp.pubkey });
         });
-
-    _nostrConnectSessions.set(persisted.sessionId, session);
+    }).catch(async err => {
+        if (abortController.signal.aborted) return;
+        await nostrConnectLock.run(async () => {
+            if (_nostrConnectSessions.get(persisted.sessionId) !== session) return;
+            session.error = err;
+            await updateNcSessionStatus(persisted.sessionId, { status: 'error', errorMessage: err?.message || String(err) });
+        });
+    }).finally(() => {
+        connection.dispose();
+        secretKey.fill(0);
+    }).catch(() => { /* A failed storage write must not escape the session cleanup. */ });
     return session;
 }
 
@@ -475,19 +492,21 @@ export const handlers = new Map<string, HandlerFn>([
         const pointer = await parseBunkerInput(input);
         if (!pointer || !pointer.relays.length) throw new Error('Invalid bunker URL: missing relay');
         const secretKey = randomBytes(32);
+        const connection = new Nip46Connection();
         try {
-            const signer = _nip46Deps.BunkerSigner.fromBunker(secretKey, pointer, {
+            const signer = connection.attach(_nip46Deps.BunkerSigner.fromBunker(secretKey, pointer, {
+                pool: connection.pool,
                 onauth(url: string) {
                     if (url.startsWith('https://')) void browser.tabs.create({ url });
                 },
-            });
+            }));
             const acct = await resolveRemoteAccount(signer, secretKey, true);
             await setPendingOnboardingAccount(acct);
             return { account: toSafeAccount(acct) };
-        } finally { secretKey.fill(0); }
+        } finally { connection.dispose(); secretKey.fill(0); }
     }],
 
-    ['onboarding_initNostrConnect', async () => {
+    ['onboarding_initNostrConnect', async () => nostrConnectLock.run(async () => {
         // Resume a still-valid waiting session instead of orphaning it. The popup
         // re-inits on mount (e.g. after the SW suspended during a QR scan); if a
         // 'waiting' mirror is still alive, rebuild its live signer and hand back
@@ -504,12 +523,7 @@ export const handlers = new Map<string, HandlerFn>([
         }
 
         // Clean up existing sessions (live + persisted mirrors)
-        for (const [oldId, oldSession] of _nostrConnectSessions) {
-            oldSession.abortController.abort();
-            if (oldSession.signer) oldSession.signer.close().catch(() => {});
-            oldSession.secretKey.fill(0);
-            _nostrConnectSessions.delete(oldId);
-        }
+        for (const oldId of _nostrConnectSessions.keys()) disposeNostrConnectSession(oldId);
         for (const s of stored) {
             await deleteNcSession(s.sessionId);
         }
@@ -541,64 +555,25 @@ export const handlers = new Map<string, HandlerFn>([
             createdAt: Date.now(),
         });
 
-        const abortController = new AbortController();
-        const session: NostrConnectSession = {
-            signerPromise: null!,
-            signer: null,
-            secretKey: ncSecretKey,
-            localPubkey: ncLocalPubkey,
-            relays: NIP46_RELAYS,
-            error: null,
-            abortController,
-        };
-
-        session.signerPromise = _nip46Deps.BunkerSigner.fromURI(
-            ncSecretKey,
-            nostrconnectUri,
-            { onauth(url: string) {
-                if (!url.startsWith('https://')) {
-                    console.warn('[NIP-46] rejected non-HTTPS auth_url:', url);
-                    return;
-                }
-                void browser.tabs.create({ url });
-            } },
-            abortController.signal
-        );
-        session.signerPromise
-            .then(async signer => {
-                const account = await resolveRemoteAccount(signer, session.secretKey);
-                if (session.abortController.signal.aborted) return;
-                session.account = account;
-                session.signer = signer;
-                updateNcSessionStatus(sessionId, {
-                    status: 'connected',
-                    signerPubkey: signer.bp.pubkey,
-                }).catch(() => {});
-            })
-            .catch(err => {
-                session.error = err;
-                updateNcSessionStatus(sessionId, {
-                    status: 'error',
-                    errorMessage: err?.message || String(err),
-                }).catch(() => {});
-            });
-
-        _nostrConnectSessions.set(sessionId, session);
+        ensureLiveSession({ sessionId, secretKeyHex: bytesToHex(ncSecretKey), localPubkey: ncLocalPubkey, relays: NIP46_RELAYS, nostrconnectUri, status: 'waiting', createdAt: now });
+        ncSecretKey.fill(0);
         return { nostrconnectUri, sessionId };
-    }],
+    })],
 
-    ['onboarding_pollNostrConnect', async (params) => {
+    ['onboarding_pollNostrConnect', async (params) => nostrConnectLock.run(async () => {
         const sessionId = params.sessionId as string;
         const persisted = await loadNcSession(sessionId);
-        if (!persisted) return { expired: true };
+        if (!persisted) { disposeNostrConnectSession(sessionId); return { expired: true }; }
 
         if (Date.now() - persisted.createdAt >= NC_TTL_MS) {
+            disposeNostrConnectSession(sessionId);
             await deleteNcSession(sessionId);
             return { expired: true };
         }
 
         // A previous poll (or the .catch wiring) already recorded a fatal error.
         if (persisted.status === 'error') {
+            disposeNostrConnectSession(sessionId);
             await deleteNcSession(sessionId);
             return { error: persisted.errorMessage || 'Connection failed' };
         }
@@ -608,32 +583,26 @@ export const handlers = new Map<string, HandlerFn>([
 
         if (session.signer) {
             const acct = session.account!;
-            _nostrConnectSessions.delete(sessionId);
+            disposeNostrConnectSession(sessionId);
             await deleteNcSession(sessionId);
             await setPendingOnboardingAccount(acct);
             const safeNc = toSafeAccount(acct);
             return { connected: true, account: safeNc };
         }
         if (session.error) {
-            _nostrConnectSessions.delete(sessionId);
+            disposeNostrConnectSession(sessionId);
             await deleteNcSession(sessionId);
             return { error: session.error.message || 'Connection failed' };
         }
         return { connected: false };
-    }],
+    })],
 
-    ['onboarding_cancelNostrConnect', async (params) => {
+    ['onboarding_cancelNostrConnect', async (params) => nostrConnectLock.run(async () => {
         const sessionId = params.sessionId as string;
-        const session2 = _nostrConnectSessions.get(sessionId);
-        if (session2) {
-            session2.abortController.abort();
-            if (session2.signer) session2.signer.close().catch(() => {});
-            session2.secretKey.fill(0);
-            _nostrConnectSessions.delete(sessionId);
-        }
+        disposeNostrConnectSession(sessionId);
         await deleteNcSession(sessionId);
         return { ok: true };
-    }],
+    })],
 
     ['onboarding_generateAccount', async (params) => {
         const { account: acct, mnemonic } = await accounts.generateNewAccount();

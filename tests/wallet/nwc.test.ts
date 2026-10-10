@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { NwcProvider } from '../../src/services/wallet/nwc.ts';
 import type { NwcCryptoDeps } from '../../src/services/wallet/nwc.ts';
 import type { UnsignedEvent, SignedEvent } from '../../src/domain/nostr/types.ts';
+import type { WalletProvider } from '../../src/domain/wallet/types.ts';
 
 // ── Test constants ──
 
@@ -675,6 +676,42 @@ describe('NwcProvider', () => {
 
       const result = await balancePromise;
       assert.equal(result.balance, 800); // 800000 msats = 800 sats
+    });
+
+    it('rejects a pending request immediately when the relay refuses its event', async () => {
+      mock.timers.enable({ apis: ['setTimeout'] });
+
+      try {
+        const balancePromise = provider.getBalance();
+        await flushAsync();
+        const sentEvent = JSON.parse(ws.sentMessages[0])[1] as SignedEvent;
+
+        ws.simulateMessage(JSON.stringify([
+          'OK', sentEvent.id, false, 'banned: too many rate-limit violations, try again later',
+        ]));
+        mock.timers.tick(60_001);
+
+        await assert.rejects(balancePromise, /NWC relay rejected request: banned: too many rate-limit violations/);
+      } finally {
+        mock.timers.reset();
+      }
+    });
+
+    it('treats a relay refusal as a definite payment rejection, not an unknown outcome', async () => {
+      mock.timers.enable({ apis: ['setTimeout'] });
+
+      try {
+        const paymentPromise = provider.payInvoice(makeNwcInvoice());
+        await flushAsync();
+        const sentEvent = JSON.parse(ws.sentMessages[0])[1] as SignedEvent;
+
+        ws.simulateMessage(JSON.stringify(['OK', sentEvent.id, false, 'rate-limited']));
+        mock.timers.tick(60_001);
+
+        await assert.rejects(paymentPromise, /NWC relay rejected request: rate-limited/);
+      } finally {
+        mock.timers.reset();
+      }
     });
 
     it('ignores events without matching e tag', async () => {
@@ -1476,4 +1513,51 @@ describe('NWC capability discovery lifecycle', () => {
     const relays = Array.from({ length: 6 }, (_, i) => `relay=wss://relay${i}.example`).join('&');
     assert.throws(() => NwcProvider.parseConnectionString(`nostr+walletconnect://${WALLET_PUBKEY}?${relays}&secret=${SECRET_HEX}`), /at most 5 relays/);
   });
+});
+
+// NIP-47 pay_invoice carries no fee limit and NWC has no pre-flight quote, so this
+// provider cannot honour a ceiling. Silently dropping one would be worse than not
+// offering the option: the caller would believe a bound was applied.
+describe('NWC and the send ceiling it cannot honour', () => {
+  beforeEach(() => {
+    MockWebSocket.reset();
+    eventIdCounter = 0;
+    (globalThis as any).WebSocket = MockWebSocket as any;
+  });
+  afterEach(() => { (globalThis as any).WebSocket = OriginalWebSocket; });
+
+  /**
+   * Connect a provider through the mock socket, as the suite above does, and report
+   * how many messages connecting itself sent. Only the delta after that says whether
+   * a payment was dispatched; connect() subscribes, so the baseline is not zero.
+   */
+  async function connected() {
+    const provider = createProvider();
+    const connecting = provider.connect();
+    const ws = latestWs();
+    ws.simulateOpen();
+    await connecting;
+    const baseline = ws.sentMessages.length;
+    return { provider, ws, sentSinceConnect: () => ws.sentMessages.length - baseline };
+  }
+
+  it('has no quote method, which is how a caller detects it cannot bound a fee', () => {
+    // Seen through the interface a caller holds, the capability is simply absent.
+    const provider: WalletProvider = createProvider();
+    assert.equal(provider.quoteSend, undefined);
+  });
+
+  it('refuses a requested ceiling instead of paying without one', async () => {
+    const { provider, sentSinceConnect } = await connected();
+
+    await assert.rejects(
+      provider.payInvoice(makeNwcInvoice(), { maxFeeMsat: 1_000 }),
+      /PAYMENT_FEE_UNKNOWN/,
+    );
+
+    // The refusal happens before anything is dispatched.
+    assert.equal(sentSinceConnect(), 0);
+    provider.disconnect();
+  });
+
 });

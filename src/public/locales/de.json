@@ -713,6 +713,8 @@
   "wallet.paymentSent": "Zahlung gesendet",
   "wallet.paymentInFlight": "Diese Zahlung wird bereits gesendet.",
   "wallet.paymentOutcomeUnknown": "Der Ausgang der Zahlung ist unbekannt. Prüfe deinen Wallet-Verlauf, bevor du eine weitere Zahlung startest. Weitere Zahlungen in diesem Dialog sind gesperrt.",
+  "wallet.paymentFeeTooHigh": "Die Routing-Gebühr für diese Zahlung war höher als erlaubt, daher wurde nichts gesendet.",
+  "wallet.paymentFeeUnknown": "Diese Wallet konnte die Routing-Gebühr nicht vorab bestätigen, daher wurde die Zahlung nicht gesendet.",
   "wallet.checkFailed": "Deine Wallet konnte nicht geprüft werden. Versuche es erneut.",
   "wallet.paymentReceived": "Zahlung erhalten!",
   "wallet.transactions": "Transaktionen",

@@ -63,6 +63,32 @@ export const PAYMENT_IN_FLIGHT = 'PAYMENT_IN_FLIGHT';
 /** Published payment without a trustworthy final response; never automatically retry. */
 export const PAYMENT_OUTCOME_UNKNOWN = 'PAYMENT_OUTCOME_UNKNOWN';
 
+/** A quoted routing fee exceeded the ceiling the caller asked for; nothing was sent. */
+export const PAYMENT_FEE_TOO_HIGH = 'PAYMENT_FEE_TOO_HIGH';
+
+/**
+ * A fee ceiling was asked for and this wallet cannot establish the fee, so the
+ * payment was refused rather than sent unbounded. NWC has no pre-flight quote at
+ * all; an LNbits deployment answers one only if it exposes
+ * `GET /api/v1/payments/fee-reserve`.
+ */
+export const PAYMENT_FEE_UNKNOWN = 'PAYMENT_FEE_UNKNOWN';
+
+/**
+ * Share of an invoice a routing fee may consume on an unattended payment.
+ *
+ * A ceiling rather than a budget: it exists to stop an invoice whose fee is absurd
+ * relative to what is being sent, not to shave basis points. Fees also count against
+ * the rolling automatic allowance, which is the separate, per-user limit.
+ */
+export const WALLET_MAX_FEE_PERCENT = 1;
+
+/**
+ * Floor under that share, because a percentage of a tiny invoice is smaller than any
+ * real routing fee and would refuse ordinary payments. 10 sats.
+ */
+export const WALLET_MAX_FEE_FLOOR_MSATS = 10_000;
+
 export const EMPTY_TX_FILTERS: TxFilters = { direction: 'all', dateFrom: '', dateTo: '' };
 
 export const PROVIDER_LABELS: Record<string, string> = {

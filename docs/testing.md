@@ -597,3 +597,7 @@ Archive service coverage:
 The Chrome package smoke test also opens a popup with its language preference read deliberately stalled. It must render readable bundled fallback text within five seconds. Theme-handoff unit tests cover initialization rejection, indefinite waits and late recovery without recreating the React root.
 
 Passkey tests cover protection round trips, wrong current credentials, storage failure, preserved encrypted cache data and enrollment through password changes and None mode. UI coverage checks the disabled switch without enrollment and password verification before WebAuthn. Browser smoke also exercises the real Security switch in both directions.
+
+### NIP-46 transport lifetime
+
+`tests/nip46-lifecycle.test.ts` uses the installed `BunkerSigner` and `SimplePool` with fake WebSockets; it opens no network connections. It counts live sockets across repeated successful and failed pairing attempts, concurrent initialization, remote-client reuse, vault locking, cancellation, expiry without popup polling, and a CONNECTING socket that refuses closure and opens later. It also checks that disposing an attempt does not destroy a caller-owned shared pool. The loopback integration suite verifies genuine encrypted request/response signing and observes socket closure before reconnecting.

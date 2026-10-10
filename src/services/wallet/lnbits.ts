@@ -5,7 +5,8 @@ import { transactionMemo } from '@domain/wallet/transaction-memo.ts';
  */
 
 import { PaymentOutcomeUnknownError } from './payment-errors.ts';
-import type { WalletProvider, WalletProviderInfo, Transaction } from '../../domain/wallet/types.ts';
+import type { WalletProvider, WalletProviderInfo, Transaction, PayInvoiceOptions, FeeQuote } from '../../domain/wallet/types.ts';
+import { PAYMENT_FEE_TOO_HIGH, PAYMENT_FEE_UNKNOWN } from '@constants/wallet.ts';
 
 import type { FetchFn } from '@services/http/types.ts';
 import { secureWalletUrl, walletHttp } from '@services/http/wallet.ts';
@@ -23,6 +24,14 @@ export class LnbitsProvider implements WalletProvider {
   private readonly lifetime = new AbortController();
   private readonly fetchFn: FetchFn;
   private _connected = false;
+  /**
+   * Whether this instance answers the fee-reserve endpoint.
+   *
+   * null until asked, then cached, because the answer is a property of the
+   * deployment rather than of the invoice. Older proxy builds and LNbits instances
+   * that do not expose it answer 404 once and are not asked again.
+   */
+  private feeReserveReachable: boolean | null = null;
 
   constructor(config: LnbitsConfig, fetchFn?: FetchFn) {
     this.instanceUrl = config.instanceUrl.replace(/\/+$/, '');
@@ -66,7 +75,48 @@ export class LnbitsProvider implements WalletProvider {
     return { balance: Math.round(data.balance / 1000) };
   }
 
-  async payInvoice(bolt11: string): Promise<{ preimage: string }> {
+  /**
+   * The ceiling LNbits would apply to this payment, in msat, or null.
+   *
+   * `GET /api/v1/payments/fee-reserve?invoice=<bolt11>` answers
+   * `{"fee_reserve": <msat>}`, and that is the `fee_limit_msat` LNbits passes to its
+   * funding source — a genuine ceiling on what the payment can cost, not a guess at
+   * what a route will cost. Already msat, and deliberately not converted: it is the
+   * one figure on this API that is msat where a reader expects sats.
+   */
+  async quoteSend(bolt11: string): Promise<FeeQuote> {
+    if (this.feeReserveReachable === false) return { feeMsat: null };
+    try {
+      const data = await this.request<{ fee_reserve?: unknown }>(
+        'GET',
+        `/api/v1/payments/fee-reserve?invoice=${encodeURIComponent(bolt11)}`,
+      );
+      const reserve = data?.fee_reserve;
+      if (typeof reserve !== 'number' || !Number.isSafeInteger(reserve) || reserve < 0) {
+        this.feeReserveReachable = false;
+        return { feeMsat: null };
+      }
+      this.feeReserveReachable = true;
+      return { feeMsat: reserve };
+    } catch (error) {
+      // Only a deployment that says the path does not exist is remembered. A timeout,
+      // a disconnect or a 5xx is this moment's problem, not this deployment's, and
+      // caching it would keep asking the user to approve every later payment by hand.
+      // walletHttp reports a refused status as `<prefix>: <status>`.
+      if (/(^|\D)404$/.test((error as Error)?.message ?? '')) this.feeReserveReachable = false;
+      return { feeMsat: null };
+    }
+  }
+
+  async payInvoice(bolt11: string, opts?: PayInvoiceOptions): Promise<{ preimage: string }> {
+    // A ceiling is enforced here, before dispatch, because LNbits accepts no fee
+    // limit on the payment itself. An unquotable fee refuses the payment: sending it
+    // anyway would report a bound that was never applied.
+    if (opts?.maxFeeMsat !== undefined) {
+      const { feeMsat } = await this.quoteSend(bolt11);
+      if (feeMsat === null) throw new Error(PAYMENT_FEE_UNKNOWN);
+      if (feeMsat > opts.maxFeeMsat) throw new Error(PAYMENT_FEE_TOO_HIGH);
+    }
     const data = await this.request<{ preimage?: string; status?: string; pending?: boolean }>('POST', '/api/v1/payments', {
       out: true,
       bolt11,

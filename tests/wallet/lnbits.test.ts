@@ -444,3 +444,124 @@ it('LNbits historical zap metadata exposes the message without requiring a separ
   const provider=new LnbitsProvider({instanceUrl:'https://wallet.example',adminKey:'key'},mockFetch(rows));
   assert.deepEqual((await provider.listTransactions()).map(tx=>tx.memo),['Thanks for the post!','Original memo','Original memo','Explicit comment','Original memo']);
 });
+
+// A routing fetch mock: answers by path, 404s anything unrouted (an LNbits or proxy
+// that does not expose the endpoint), and records every request so a test can prove
+// a payment was never dispatched.
+function routingFetch(routes: Record<string, unknown>) {
+  const seen: { path: string; method: string; search: string; key?: string }[] = [];
+  const fn = async (url: string, init?: RequestInit) => {
+    const parsed = new URL(url);
+    seen.push({
+      path: parsed.pathname,
+      method: init?.method ?? 'GET',
+      search: parsed.search,
+      key: (init?.headers as Record<string, string> | undefined)?.['X-Api-Key'],
+    });
+    const body = routes[parsed.pathname];
+    const status = body === undefined ? 404 : 200;
+    return new Response(JSON.stringify(body ?? { detail: 'Not found' }), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  return { fn, seen };
+}
+
+const FEE_RESERVE = '/api/v1/payments/fee-reserve';
+const PAYMENTS = '/api/v1/payments';
+const SETTLED = { status: 'success', preimage: 'ab'.repeat(32) };
+
+describe('LnbitsProvider fee quoting and the send ceiling', () => {
+  const config = { instanceUrl: 'https://lnbits.example.com', adminKey: 'testapikey123' };
+  const INVOICE = 'lnbc10u1p3pj257pp5qqqsyqcyq5rqwzqfqypq';
+
+  describe('quoteSend', () => {
+    it('reports the reserve in msat, asking with the invoice and the key in the header', async () => {
+      const { fn, seen } = routingFetch({ [FEE_RESERVE]: { fee_reserve: 2_500 } });
+      const provider = new LnbitsProvider(config, fn);
+
+      assert.deepEqual(await provider.quoteSend(INVOICE), { feeMsat: 2_500 });
+      assert.equal(seen.length, 1);
+      assert.equal(seen[0].method, 'GET');
+      assert.equal(seen[0].key, 'testapikey123');
+      assert.equal(new URLSearchParams(seen[0].search).get('invoice'), INVOICE);
+    });
+
+    it('reports an unknown fee where the endpoint is absent, and stops asking', async () => {
+      const { fn, seen } = routingFetch({});
+      const provider = new LnbitsProvider(config, fn);
+
+      assert.deepEqual(await provider.quoteSend(INVOICE), { feeMsat: null });
+      assert.deepEqual(await provider.quoteSend(INVOICE), { feeMsat: null });
+      // Reachability is a property of the deployment, so it is asked once, not per payment.
+      assert.equal(seen.length, 1);
+    });
+
+    it('does not give up on quoting because of a failure that is not the endpoint missing', async () => {
+      // A blip must not disable fee quoting for the life of the provider: with the
+      // handler asking the user whenever a fee is unknown, caching a timeout would
+      // turn one bad moment into a prompt on every later automatic payment.
+      let attempt = 0;
+      const fn = async () => {
+        attempt++;
+        if (attempt === 1) throw new Error('network down');
+        return new Response(JSON.stringify({ fee_reserve: 2_500 }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      };
+      const provider = new LnbitsProvider(config, fn);
+
+      assert.deepEqual(await provider.quoteSend(INVOICE), { feeMsat: null });
+      assert.deepEqual(await provider.quoteSend(INVOICE), { feeMsat: 2_500 });
+    });
+
+    it('treats a reserve that is not a whole non-negative number as unknown', async () => {
+      for (const fee_reserve of [-1, 1.5, 'free', null, Number.MAX_VALUE]) {
+        const { fn } = routingFetch({ [FEE_RESERVE]: { fee_reserve } });
+        const provider = new LnbitsProvider(config, fn);
+        assert.deepEqual(await provider.quoteSend(INVOICE), { feeMsat: null }, `accepted ${fee_reserve}`);
+      }
+    });
+  });
+
+  describe('payInvoice with a ceiling', () => {
+    it('does not quote at all when no ceiling is asked for', async () => {
+      const { fn, seen } = routingFetch({ [PAYMENTS]: SETTLED });
+      const provider = new LnbitsProvider(config, fn);
+
+      await provider.payInvoice(INVOICE);
+
+      assert.deepEqual(seen.map(r => `${r.method} ${r.path}`), [`POST ${PAYMENTS}`]);
+    });
+
+    it('pays when the quoted fee is within the ceiling', async () => {
+      const { fn, seen } = routingFetch({ [FEE_RESERVE]: { fee_reserve: 1_000 }, [PAYMENTS]: SETTLED });
+      const provider = new LnbitsProvider(config, fn);
+
+      const result = await provider.payInvoice(INVOICE, { maxFeeMsat: 1_000 });
+
+      assert.equal(result.preimage, SETTLED.preimage);
+      assert.deepEqual(seen.map(r => `${r.method} ${r.path}`), [`GET ${FEE_RESERVE}`, `POST ${PAYMENTS}`]);
+    });
+
+    it('refuses before sending when the quoted fee exceeds the ceiling', async () => {
+      const { fn, seen } = routingFetch({ [FEE_RESERVE]: { fee_reserve: 1_001 }, [PAYMENTS]: SETTLED });
+      const provider = new LnbitsProvider(config, fn);
+
+      await assert.rejects(provider.payInvoice(INVOICE, { maxFeeMsat: 1_000 }), /PAYMENT_FEE_TOO_HIGH/);
+
+      // The whole point: no money left the wallet.
+      assert.deepEqual(seen.map(r => r.path), [FEE_RESERVE]);
+    });
+
+    it('refuses before sending when a ceiling is asked for but the fee cannot be known', async () => {
+      const { fn, seen } = routingFetch({ [PAYMENTS]: SETTLED });
+      const provider = new LnbitsProvider(config, fn);
+
+      await assert.rejects(provider.payInvoice(INVOICE, { maxFeeMsat: 1_000 }), /PAYMENT_FEE_UNKNOWN/);
+
+      assert.deepEqual(seen.map(r => r.path), [FEE_RESERVE]);
+    });
+  });
+});
