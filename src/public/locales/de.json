@@ -1030,7 +1030,7 @@
   "theme.lacrypta": "La Crypta",
   "appearance.title": "Darstellung und Sprache",
   "wallet.appsTitle": "App-Verbindungen",
-  "wallet.appsHint": "Verbinde Apps wie Primal mit dieser Wallet. Jede Verbindung hat ein eigenes Ausgabenlimit. Sie bleiben beim Schließen oder Trennen der Erweiterung aktiv.",
+  "wallet.appsHint": "Verbinde Apps mit dieser Wallet. Jede Verbindung hat ein eigenes Ausgabenlimit. Sie bleiben beim Schließen oder Trennen der Erweiterung aktiv.",
   "wallet.appsUnavailable": "Verbindungen konnten nicht geladen werden. Dieser LNbits-Server benötigt die Nostr-WoT-Verbindungsverwaltung. Aktualisiere zum erneuten Versuch.",
   "wallet.appsCreateFailed": "Die Erstellung wurde nicht bestätigt. Aktualisiere die Liste, bevor du eine weitere Verbindung erstellst.",
   "wallet.appsReadFailed": "Verbindung konnte nicht gelesen werden. Aktualisiere die Liste und versuche es erneut.",

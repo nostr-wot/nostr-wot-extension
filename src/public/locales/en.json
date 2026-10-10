@@ -1030,7 +1030,7 @@
   "theme.lacrypta": "La Crypta",
   "appearance.title": "Appearance and language",
   "wallet.appsTitle": "App connections",
-  "wallet.appsHint": "Connect apps such as Primal to this wallet. Each connection has its own spending limit. Connections remain active when you close or disconnect the extension.",
+  "wallet.appsHint": "Connect apps to this wallet. Each connection has its own spending limit. Connections remain active when you close or disconnect the extension.",
   "wallet.appsUnavailable": "Could not load connections. This LNbits server needs Nostr WoT connection management enabled. Refresh to retry.",
   "wallet.appsCreateFailed": "Creation was not confirmed. Refresh the list before creating another connection.",
   "wallet.appsReadFailed": "Could not read this connection. Refresh the list and try again.",
