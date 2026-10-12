@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { crx, type ManifestV3Export } from '@crxjs/vite-plugin';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, copyFileSync } from 'fs';
 import { build as esbuild } from 'esbuild';
 import { NIP07_CALL_TIMEOUT_MS, WEBLN_CALL_TIMEOUT_MS } from './src/constants/signing.ts';
 import manifest from './manifest.json' with { type: 'json' };
@@ -34,6 +34,7 @@ function bundleServiceWorker(): Plugin {
       outDir = resolve(config.root, config.build.outDir);
     },
     async closeBundle() {
+      for (const notice of ['LICENSE', 'NOTICE']) copyFileSync(resolve(__dirname, notice), resolve(outDir, notice));
       const mf = resolve(outDir, 'manifest.json');
       if (!existsSync(mf)) return;
 

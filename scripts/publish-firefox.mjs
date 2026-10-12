@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createHmac, createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -40,6 +41,10 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
   assert.equal(checked.sha256, archiveHash, 'Firefox archive changed after verification');
   const sourceBytes = readFileSync(source);
   assert.equal(digest(sourceBytes), sourceHash, 'Source archive changed after verification');
+  // Derive terms from the verified release source, including retries of older MIT releases.
+  const licenseText = execFileSync('unzip', ['-p', source, 'LICENSE'], { encoding: 'utf8', maxBuffer: 128 * 1024 });
+  const license = /^MIT License\s/.test(licenseText) ? 'MIT' : /GNU GENERAL PUBLIC LICENSE\s+Version 3, 29 June 2007/.test(licenseText) ? 'GPL-3.0-only' : undefined;
+  assert.ok(license, 'Unsupported source license; no version submitted');
   assert.ok(approvalNotes?.trim() && releaseNotes?.trim(), 'Missing reviewer or release notes');
   const marker = `Firefox SHA256: ${archiveHash}\nSource SHA256: ${sourceHash}`;
   // Older released metadata repeats build/changelog instructions. Keep recovery
@@ -97,7 +102,7 @@ export async function publishFirefox(options, env, fetcher = fetch, sleep = dela
   const submission = new FormData();
   submission.set('upload', uuid);
   submission.set('source', new Blob([sourceBytes], { type: 'application/zip' }), `nostr-wot-source-${version}.zip`);
-  submission.set('license', 'MIT');
+  submission.set('license', license);
   submission.set('approval_notes', notes);
   const created = await request(`${base}versions/`, { method: 'POST', body: submission });
   return await metadata(created);
