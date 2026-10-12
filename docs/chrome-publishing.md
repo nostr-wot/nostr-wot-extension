@@ -134,3 +134,7 @@ It shares the normal store concurrency group. Ordinary new releases need no disp
 ## OAuth failures
 
 A failed token exchange now reports only a recognized OAuth error code, never the response body or error description. HTTP 400 alone does not establish that a token expired. Verify that the client ID, client secret and refresh token belong to the same OAuth client; replacing a client does not rebind an existing refresh token. `invalid_client` points to client authentication, while `invalid_grant` requires checking the token/client pairing and the token’s validity. Diagnose this before retrying the store upload or asking for new consent.
+
+## License information
+
+Project-owned code and documentation use GNU GPLv3 only (`GPL-3.0-only`); builds include `LICENSE` and `NOTICE`. Keep the Chrome Web Store description consistent with the uploaded version and link to the corresponding source. Store listing text is managed through the developer dashboard. Earlier MIT releases keep their original terms.
