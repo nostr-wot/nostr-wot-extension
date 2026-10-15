@@ -28,14 +28,14 @@ export default function MethodStep({ onSelect, hasGeneratedAccount, hasAccounts 
   return <Container gap={5} className="flex-1 pb-6">
     <Heading>{t(hasAccounts ? 'wizard.addAccountIntro' : 'wizard.chooseSetup')}</Heading>
     <Container gap={4} className="mt-auto pt-6">
-      {creation.map(method => <ActionTile key={method.id}
+      {creation.map((method, index) => <ActionTile key={method.id} raised primary={index === 0}
         icon={<div className="w-14 h-14 rounded-panel bg-brand-light text-brand flex items-center justify-center shrink-0">{method.icon}</div>}
         title={method.label} description={method.desc} onClick={() => onSelect(method.id)} />)}
       <div className="flex items-center gap-4 text-muted text-sm" role="separator">
         <span className="flex-1 border-t border-divider" />{t('common.or')}<span className="flex-1 border-t border-divider" />
       </div>
       <div className="grid grid-cols-3 gap-3" data-account-alternatives>
-        {alternatives.map(method => <ActionTile key={method.id} compact icon={method.icon} title={method.label} onClick={() => onSelect(method.id)} />)}
+        {alternatives.map(method => <ActionTile key={method.id} raised compact icon={method.icon} title={method.label} onClick={() => onSelect(method.id)} />)}
       </div>
     </Container>
   </Container>;

@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Restore the original translucent account-choice cards and soft shadows while retaining the compact Import, Watch-only and Nostr Connect row.
+
 - Open approval and unlock prompts when Chrome hides the active site URL, including private-message requests using Nostr Connect.
 
 ### Store release notes

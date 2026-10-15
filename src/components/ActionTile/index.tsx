@@ -1,5 +1,6 @@
 import React from 'react';
 import Container from '@components/Container';
+import Card from '@components/Card';
 import Text from '@components/Text';
 import { cn } from '@utils/cn.ts';
 
@@ -15,6 +16,8 @@ interface ActionTileProps {
   title: React.ReactNode;
   description?: React.ReactNode;
   compact?: boolean;
+  raised?: boolean;
+  primary?: boolean;
   onClick: () => void;
   disabled?: boolean;
 }
@@ -25,14 +28,16 @@ interface ActionTileProps {
  * wizard's backup-method tiles, split across BackupStep and CreateStep —
  * were hand-rolled with only the icon and copy differing.
  */
-export default function ActionTile({ icon, title, description, onClick, disabled, compact = false }: ActionTileProps) {
-  return (
-    <button type="button" className={cn(TILE, compact && 'min-w-0 flex-col justify-center gap-3 px-3 py-4 text-center')} onClick={onClick} disabled={disabled}>
+export default function ActionTile({ icon, title, description, onClick, disabled, compact = false, raised = false, primary = false }: ActionTileProps) {
+  const className = cn(TILE, compact && 'min-w-0 flex-col justify-center gap-3 px-3 py-4 text-center', raised && 'mb-0 bg-glass rounded-lg hover:bg-glass-heavy hover:translate-x-2 motion-reduce:transform-none', primary && 'border-brand bg-glass-heavy');
+  const content = <>
       {icon}
       <Container>
         <strong className={cn('text-md font-semibold text-heading', compact && 'text-sm break-words')}>{title}</strong>
         {description && <Text variant="muted" as="span" className="text-menu-subtitle">{description}</Text>}
       </Container>
-    </button>
-  );
+  </>;
+  return raised
+    ? <Card as="button" variant="raised" className={className} onClick={onClick} disabled={disabled}>{content}</Card>
+    : <button type="button" className={className} onClick={onClick} disabled={disabled}>{content}</button>;
 }

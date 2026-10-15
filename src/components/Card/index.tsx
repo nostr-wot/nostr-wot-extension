@@ -18,6 +18,7 @@ interface CardProps extends React.HTMLAttributes<HTMLElement> {
   as?: 'div' | 'button';
   className?: string;
   children?: React.ReactNode;
+  disabled?: boolean;
 }
 
 const BASE = 'border border-card-border rounded-lg p-7 mb-6';

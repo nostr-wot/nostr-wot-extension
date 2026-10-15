@@ -7,6 +7,7 @@ import browser from './helpers/browser-mock.ts';
 import PasskeyStep, { PasskeyBackupStep } from '../src/screens/Wizard/PasskeyStep.tsx';
 import PasskeyRecoverySave from '../src/components/PasskeyRecoverySave';
 import MethodStep from '../src/screens/Wizard/MethodStep.tsx';
+import ActionTile from '../src/components/ActionTile';
 import UnlockSection from '../src/screens/Prompt/UnlockSection.tsx';
 
 function mount() {
@@ -99,6 +100,14 @@ test('setup groups three compact secondary choices below creation and an or divi
   assert.match(document.body.textContent!, /common.or/);
   const row = document.querySelector('[data-account-alternatives]')!;
   assert.equal(row.querySelectorAll('button').length, 3);
+  for (const card of document.querySelectorAll('button')) {
+    assert.ok(card.classList.contains('bg-glass') || card.classList.contains('bg-glass-heavy'));
+    assert.ok(card.classList.contains('shadow-card'));
+    assert.ok(card.classList.contains('hover:translate-x-2'));
+    assert.ok(card.classList.contains('hover:bg-glass-heavy'));
+  }
+  assert.ok(button('passkey.create').classList.contains('border-brand'));
+  assert.ok(row.classList.contains('grid-cols-3'), 'keep the compact alternatives row');
   for (const [label, method] of [['wizard.importShort', 'import'], ['wizard.watchOnly', 'npub'], ['wizard.nostrConnect', 'nip46']]) {
     await act(async () => button(label).click());
     assert.equal(selected.at(-1), method);
@@ -259,5 +268,19 @@ test('use-passkey switch is unavailable without enrollment and checks password b
     await act(async () => button('common.confirm').click());
     assert.match(document.body.textContent!, /key.wrongPassword/);
     assert.equal(methods.includes('vault_changeProtection'), false);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+
+test('raised action cards preserve native disabled behavior', async () => {
+  const { dom, root } = mount(); let clicks = 0;
+  try {
+    await act(async () => root.render(createElement(ActionTile, { raised: true, disabled: true, icon: null, title: 'Choice', onClick: () => clicks++ })));
+    assert.equal(button('Choice').disabled, true);
+    await act(async () => button('Choice').click());
+    assert.equal(clicks, 0);
+    await act(async () => root.render(createElement(ActionTile, { raised: true, icon: null, title: 'Choice', onClick: () => clicks++ })));
+    await act(async () => button('Choice').click());
+    assert.equal(clicks, 1);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
