@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Open approval and unlock prompts when Chrome hides the active site URL, including private-message requests using Nostr Connect.
+
 - License project-owned code and documentation under GNU GPLv3 only, preserve existing notices, include license files in browser packages, and derive Firefox license metadata from each release source.
 
 Rename this heading to the next version when it is released; the release
