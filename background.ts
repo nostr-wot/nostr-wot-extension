@@ -1,3 +1,4 @@
+import { rememberTabOrigin, forgetTabOrigin } from './src/services/browser/tabOrigins.ts';
 import { registerUninstallFeedback } from './src/services/background/uninstall-feedback.ts';
 import { getPageRequestOrigin } from './src/domain/signing/requestOrigin.ts';
 import { openInstalledWelcome } from './src/services/appearance/install.ts';
@@ -27,8 +28,6 @@ import {
     handlers as domainHandlers,
     isDomainAllowed,
     isDomainDismissed,
-    rememberTabOrigin,
-    forgetTabOrigin,
     releaseLegacyHostGrants,
     isWeblnAllowed,
     waitForConnectDecision,

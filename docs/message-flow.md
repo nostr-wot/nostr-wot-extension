@@ -76,6 +76,8 @@ If the user clicks Connect, the domain is added to `allowedDomains` and the bloc
 
 ---
 
+Approval and vault-unlock prompts also work when Chrome withholds the active tab URL. The popup opener uses the active tab ID and the origin already verified from its top-frame content-script connection as a fallback. A readable tab URL takes precedence, and disconnecting the port removes the fallback. Remote-signer requests that need unlocking therefore open the prompt without requiring a manual click on the extension; Nostr Connect still handles message approval at the remote signer.
+
 ## 4c. WebLN Domain Gating
 
 WebLN methods are gated behind a **WebLN-specific consent list** (`weblnAllowedDomains`), separate from the NIP-07 domain allowlist. A site that is only NIP-07-connected (e.g. it called `getPublicKey`) cannot read the wallet — it must call `webln.enable()` first.

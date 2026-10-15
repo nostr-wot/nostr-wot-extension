@@ -1,6 +1,7 @@
 import { POPUP_CONTEXT_KEY } from '@constants/browser.ts';
 
 import browser from '@lib/browser.ts';
+import { getTabOrigin } from './tabOrigins.ts';
 import { requestIsFromActiveTab } from '../../domain/site/originMatchesActiveTab.ts';
 
 export interface PopupContext {
@@ -21,7 +22,14 @@ export interface PopupContext {
 export async function openPopupForActiveTab(origin: string, requestingTabId?: number): Promise<void> {
   try {
     const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
-    if (!requestIsFromActiveTab(activeTab, origin, requestingTabId)) return;
+    // Chrome may hide tab.url until a user invokes the extension. Reuse the
+    // origin already verified from the top-frame content-script port instead.
+    // A readable URL wins after navigation; disconnect removes the fallback.
+    const activeContext = activeTab && {
+      ...activeTab,
+      url: activeTab.url ?? getTabOrigin(activeTab.id) ?? undefined,
+    };
+    if (!requestIsFromActiveTab(activeContext, origin, requestingTabId)) return;
 
     // Tell the popup which site it is being opened for. It cannot reliably work that out
     // by itself: tabs.query withholds the URL from an extension holding no host permission

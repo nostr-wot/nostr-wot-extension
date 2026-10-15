@@ -1931,3 +1931,45 @@ it('dangerous follow replacements can be rejected for local and remote accounts 
     await rejected;
   }
 });
+
+it('opens the remote decrypt unlock prompt when Chrome hides the active tab URL', async t => {
+  const { rememberTabOrigin, forgetTabOrigin } = await import('../src/services/browser/tabOrigins.ts');
+  resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale();
+  let opens = 0;
+  t.mock.method(browserMock.tabs, 'query', async () => [{id: 71}] as any);
+  t.mock.method(browserMock.action, 'openPopup', async () => { opens++; });
+  rememberTabOrigin(71, 'https://example.com');
+  const unlock = signerApprovalQueue.waitForVaultUnlock('https://example.com', 'nip44Decrypt', 'remote-account').catch(error => error.message);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(opens, 1, 'the verified content-script origin must be enough to open the unlock prompt');
+    assert.equal((await signerApprovalQueue.getPending())[0]?.waitingForUnlock, true);
+  } finally {
+    await signerApprovalQueue.cancelAllUnlockWaiters();
+    await unlock;
+    forgetTabOrigin(71);
+  }
+});
+
+it('popup origin fallback stays closed for other sites, disconnected tabs and known navigations', async t => {
+  const { openPopupForActiveTab } = await import('../src/services/browser/openPopupForActiveTab.ts');
+  const { rememberTabOrigin, forgetTabOrigin } = await import('../src/services/browser/tabOrigins.ts');
+  let tab: {id: number; url?: string} = {id: 72};
+  let opens = 0;
+  t.mock.method(browserMock.tabs, 'query', async () => [tab] as any);
+  t.mock.method(browserMock.action, 'openPopup', async () => { opens++; });
+  rememberTabOrigin(72, 'https://example.com');
+  try {
+    await openPopupForActiveTab('https://other.example');
+    assert.equal(opens, 0);
+    tab = {id: 72, url: 'https://other.example'};
+    await openPopupForActiveTab('https://example.com');
+    assert.equal(opens, 0, 'a readable navigated URL wins over the registry');
+    tab = {id: 72};
+    await openPopupForActiveTab('https://example.com', 73);
+    assert.equal(opens, 0, 'an explicit different requesting tab still fails closed');
+    forgetTabOrigin(72);
+    await openPopupForActiveTab('https://example.com');
+    assert.equal(opens, 0, 'a disconnected tab has no trusted origin');
+  } finally { forgetTabOrigin(72); }
+});
