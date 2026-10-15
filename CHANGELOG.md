@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Open approval and unlock prompts when Chrome hides the active site URL, including private-message requests using Nostr Connect.
+
 ### Store release notes
 
 - Open the popup faster: less code loads before it appears, and the splash ends as soon as your accounts are read.
