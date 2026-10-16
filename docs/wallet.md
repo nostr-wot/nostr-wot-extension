@@ -532,6 +532,8 @@ Client: user clicks "Zap 1000 sats"
 
 Only successful background reads update display snapshots. No cache notification initiates another network request. Explicit disconnect writes an empty disconnected snapshot; wallet replacement clears the old balance/history. Account removal and vault destruction erase the applicable cache. Serialized writes and revision checks prevent older in-flight responses from restoring removed data. Cached data is display-only; every operation still requires the live unlocked vault and provider.
 
+Below the balance card, a row of framed icon-only `IconButton`s opens Receive, Send and Settings, and a red logout icon disconnects after a `ConfirmDialog`. Each names itself in a hover/focus tooltip. Settings keeps its own Disconnect at the bottom.
+
 Deposit and Send use a 340px maximum width with labelled inputs and a consistently spaced body; footer actions stay pinned while content scrolls. Settings uses separate identity, approval-limit and address sections, with disconnect at the bottom. Approval-limit changes use a validated Save action and only update shared state after the RPC succeeds. Settings reads await startup unlock, and Lightning Address HTTP errors propagate instead of returning a false absence.
 
 Wallet settings scrolls within the available popup height. Header refresh reloads alias, connection details, approval limit and Lightning Address (not balance/history). “Release address” releases the username through the provider and retains its confirmation; “Disconnect” removes the extension’s saved connection without deleting the provider wallet or funds. Copy actions are icons beside their values/labels.

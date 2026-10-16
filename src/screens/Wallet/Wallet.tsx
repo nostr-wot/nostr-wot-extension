@@ -8,21 +8,22 @@ import Card from '@components/Card';
 import LinkButton from '@components/LinkButton';
 import Text from '@components/Text';
 import WalletBalance from '@components/WalletBalance';
-import Button, { ButtonSecondary } from '@components/Button';
+import { ButtonSecondary } from '@components/Button';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
 import WalletSettings from './WalletSettings';
 import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import IconSettings from '@assets/IconSettings.tsx';
+import IconArrowDownLeft from '@assets/IconArrowDownLeft.tsx';
+import IconArrowUpRight from '@assets/IconArrowUpRight.tsx';
+import IconLogout from '@assets/IconLogout.tsx';
+import ConfirmDialog from '@components/ConfirmDialog';
 import { type Transaction } from '@domain/wallet/types.ts';
 import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';
 import { useWallet } from '@context/WalletContext';
 
-import IconDownload from '@assets/IconDownload';
-import IconUpload from '@assets/IconUpload';
-import IconClose from '@assets/IconClose';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 
@@ -44,6 +45,9 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   const [showDeposit, setShowDeposit] = useState<boolean>(false);
 
   const [showSend, setShowSend] = useState<boolean>(false);
+
+  const [confirmDisconnect, setConfirmDisconnect] = useState<boolean>(false);
+
 
   // Transactions
   const [transactions, setTransactions] = useState<Transaction[]>(cachedTransactions);
@@ -133,15 +137,36 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
           <FormError>{balanceError || t('wallet.checkFailed')}</FormError>
           <ButtonSecondary small onClick={() => { void refreshConfig(); void refreshBalance(); }}>{t('common.retry')}</ButtonSecondary>
         </div>}
-      {/* Action buttons */}
-      <div className="grid grid-cols-4 gap-2">
-        <Button small variant="secondary" layout="stacked" onClick={() => { ensureSettings(); setShowDeposit(true); }}><IconDownload size={20} />{t('wallet.receive')}</Button>
-        <Button small variant="secondary" layout="stacked" onClick={() => setShowSend(true)}><IconUpload size={20} />{t('wallet.send')}</Button>
-        <Button small variant="secondary" layout="stacked" onClick={() => { setSettingsSection(undefined); setShowSettings(true); }}><IconSettings size={20} />{t('wallet.settings')}</Button>
-        <Button small variant="secondary" layout="stacked" disabled={disconnecting} onClick={disconnect}><IconClose size={20} />{t('common.disconnect')}</Button>
-      </div>
-      <FormError>{disconnectError}</FormError>
       </Card>
+
+      {/* Action buttons */}
+      <Container variant="row" gap={4} className="justify-center shrink-0">
+        <IconButton size="large" framed tone="brand" tooltip={t('wallet.receive')} onClick={() => { ensureSettings(); setShowDeposit(true); }}>
+          <IconArrowDownLeft />
+        </IconButton>
+        <IconButton size="large" framed tone="brand" tooltip={t('wallet.send')} onClick={() => setShowSend(true)}>
+          <IconArrowUpRight />
+        </IconButton>
+        <IconButton size="large" framed tone="brand" tooltip={t('wallet.settings')} onClick={() => { setSettingsSection(undefined); setShowSettings(true); }}>
+          <IconSettings />
+        </IconButton>
+        <IconButton size="large" framed tone="error" tooltip={t('common.disconnect')} disabled={disconnecting} onClick={() => setConfirmDisconnect(true)}>
+          <IconLogout />
+        </IconButton>
+      </Container>
+
+      {confirmDisconnect && (
+        <ConfirmDialog
+          title={t('common.disconnect')}
+          message={t('wallet.disconnectHint')}
+          confirmLabel={t('common.disconnect')}
+          danger
+          busy={disconnecting}
+          error={disconnectError}
+          onConfirm={() => { void disconnect(); }}
+          onCancel={() => setConfirmDisconnect(false)}
+        />
+      )}
 
       {showDeposit && (
         <DepositDialog

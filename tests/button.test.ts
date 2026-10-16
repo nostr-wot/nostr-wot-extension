@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
@@ -17,6 +18,31 @@ it('icon buttons use only the three standard hit areas and shared tones', () => 
     assert.match(html, /text-brand/);
     assert.match(html, /disabled=""/);
     assert.match(html, /aria-label="Action"/);
+  }
+});
+
+it('icon buttons can carry a hover tooltip that names them, a framed surface and an always-red tone', () => {
+  const html = renderToStaticMarkup(IconButton({ tooltip: 'Send', framed: true, tone: 'error', children: 'Icon' }));
+  assert.match(html, /aria-label="Send"/);
+  assert.match(html, /class="[^"]*relative group[^"]*"/);
+  assert.match(html, /border-card-border bg-card/);
+  assert.match(html, /text-error/);
+  assert.match(html, /<span aria-hidden="true" class="[^"]*group-hover:opacity-100[^"]*">Send<\/span>/);
+  assert.match(renderToStaticMarkup(IconButton({ tooltip: 'Send', 'aria-label': 'Send payment', children: 'Icon' })), /aria-label="Send payment"/);
+  assert.doesNotMatch(renderToStaticMarkup(IconButton({ children: 'Icon' })), /<span|relative group/);
+});
+
+it('the auto-lock card is shared, hides None for passkey vaults and keeps follow-up fields inside it', async () => {
+  const { default: AutoLockCard } = await import('../src/components/AutoLockCard');
+  const html = renderToStaticMarkup(createElement(AutoLockCard, { value: 0, onChange() {} }, createElement('p', null, 'inside')));
+  assert.match(html, /security.autoLock/);
+  assert.match(html, /security.never/);
+  assert.match(html, /<p>inside<\/p><\/div>$/);
+  assert.doesNotMatch(renderToStaticMarkup(createElement(AutoLockCard, { value: 900000, onChange() {}, allowNever: false })), /security.never/);
+  for (const screen of ['Settings/SecuritySection', 'Wizard/PasswordStep', 'Wizard/PasskeyStep']) {
+    const source = readFileSync(new URL(`../src/screens/${screen}.tsx`, import.meta.url), 'utf8');
+    assert.match(source, /<AutoLockCard\b/, screen);
+    assert.doesNotMatch(source, /AUTO_LOCK_OPTIONS/, screen);
   }
 });
 
