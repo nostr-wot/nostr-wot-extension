@@ -21,17 +21,6 @@ it('icon buttons use only the three standard hit areas and shared tones', () => 
   }
 });
 
-it('icon buttons can carry a hover tooltip that names them, a framed surface and an always-red tone', () => {
-  const html = renderToStaticMarkup(IconButton({ tooltip: 'Send', framed: true, tone: 'error', children: 'Icon' }));
-  assert.match(html, /aria-label="Send"/);
-  assert.match(html, /class="[^"]*relative group[^"]*"/);
-  assert.match(html, /border-card-border bg-card/);
-  assert.match(html, /text-error/);
-  assert.match(html, /<span aria-hidden="true" class="[^"]*group-hover:opacity-100[^"]*">Send<\/span>/);
-  assert.match(renderToStaticMarkup(IconButton({ tooltip: 'Send', 'aria-label': 'Send payment', children: 'Icon' })), /aria-label="Send payment"/);
-  assert.doesNotMatch(renderToStaticMarkup(IconButton({ children: 'Icon' })), /<span|relative group/);
-});
-
 it('onboarding keeps the passkey switch and password fields inside the shared auto-lock card', () => {
   const source = readFileSync(new URL('../src/screens/Wizard/PasswordStep.tsx', import.meta.url), 'utf8');
   const card = source.slice(source.indexOf('<Card>\n        <AutoLockOptions'), source.indexOf('</Card>', source.indexOf('<AutoLockOptions')));

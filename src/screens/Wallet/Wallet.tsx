@@ -8,18 +8,17 @@ import Card from '@components/Card';
 import LinkButton from '@components/LinkButton';
 import Text from '@components/Text';
 import WalletBalance from '@components/WalletBalance';
-import { ButtonSecondary } from '@components/Button';
+import { ButtonSecondary, ButtonDanger } from '@components/Button';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
 import WalletSettings from './WalletSettings';
 import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import IconSettings from '@assets/IconSettings.tsx';
-import IconArrowDownLeft from '@assets/IconArrowDownLeft.tsx';
-import IconArrowUpRight from '@assets/IconArrowUpRight.tsx';
+import IconDownload from '@assets/IconDownload.tsx';
+import IconUpload from '@assets/IconUpload.tsx';
 import IconLogout from '@assets/IconLogout.tsx';
 import ConfirmDialog from '@components/ConfirmDialog';
-import IconButton from '@components/IconButton';
 import { type Transaction } from '@domain/wallet/types.ts';
 import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';
@@ -141,20 +140,12 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       </Card>
 
       {/* Action buttons */}
-      <Container variant="row" gap={4} className="justify-center shrink-0">
-        <IconButton size="large" framed tone="brand" tooltip={t('wallet.receive')} onClick={() => { ensureSettings(); setShowDeposit(true); }}>
-          <IconArrowDownLeft />
-        </IconButton>
-        <IconButton size="large" framed tone="brand" tooltip={t('wallet.send')} onClick={() => setShowSend(true)}>
-          <IconArrowUpRight />
-        </IconButton>
-        <IconButton size="large" framed tone="brand" tooltip={t('wallet.settings')} onClick={() => { setSettingsSection(undefined); setShowSettings(true); }}>
-          <IconSettings />
-        </IconButton>
-        <IconButton size="large" framed tone="error" tooltip={t('common.disconnect')} disabled={disconnecting} onClick={() => setConfirmDisconnect(true)}>
-          <IconLogout />
-        </IconButton>
-      </Container>
+      <div className="grid grid-cols-4 gap-3 shrink-0">
+        <ButtonSecondary small layout="stacked" onClick={() => { ensureSettings(); setShowDeposit(true); }}><IconDownload size={20} />{t('wallet.receive')}</ButtonSecondary>
+        <ButtonSecondary small layout="stacked" onClick={() => setShowSend(true)}><IconUpload size={20} />{t('wallet.send')}</ButtonSecondary>
+        <ButtonSecondary small layout="stacked" onClick={() => { setSettingsSection(undefined); setShowSettings(true); }}><IconSettings size={20} />{t('wallet.settings')}</ButtonSecondary>
+        <ButtonDanger small layout="stacked" disabled={disconnecting} onClick={() => setConfirmDisconnect(true)}><IconLogout size={20} />{t('common.disconnect')}</ButtonDanger>
+      </div>
 
       {confirmDisconnect && (
         <ConfirmDialog

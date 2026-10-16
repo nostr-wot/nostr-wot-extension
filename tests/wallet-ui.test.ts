@@ -26,20 +26,19 @@ it('unpaid invoices do not appear as received payments and failed rows show stat
 });
 it('wallet uses the shared purple controls and has named history refresh',()=>{
  const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
- assert.doesNotMatch(html,/LNbits|wallet.balance|grid-cols-4/); for (const label of ['wallet.receive', 'wallet.send', 'wallet.settings', 'common.disconnect']) assert.ok(html.includes(label)); assert.match(html,/aria-label="common.refresh"/);
+ assert.doesNotMatch(html,/LNbits|wallet.balance/); assert.match(html,/grid-cols-4/); for (const label of ['wallet.receive', 'wallet.send', 'wallet.settings', 'common.disconnect']) assert.ok(html.includes(label)); assert.match(html,/aria-label="common.refresh"/);
 });
 
-it('wallet actions sit outside the balance card as icon-only buttons with hover labels',()=>{
+it('wallet actions are a full-width labelled row below the balance card, with a light-red disconnect',()=>{
  const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
- const row=html.slice(html.indexOf('justify-center shrink-0'));
- for(const label of ['wallet.receive','wallet.send','wallet.settings','common.disconnect']){
-  assert.ok(row.includes(`aria-label="${label}"`), `${label} is in the action row after the card`);
-  assert.match(html,new RegExp(`aria-label="${label}"[^>]*>(?:<svg[\\s\\S]*?</svg>)<span aria-hidden="true"[^>]*>${label}</span></button>`));
- }
- assert.doesNotMatch(html,/>wallet\.deposit</);
- assert.match(html,/text-error[^"]*"[^>]*aria-label="common.disconnect"/);
+ const row=html.slice(html.indexOf('grid grid-cols-4'));
+ assert.ok(html.indexOf('grid grid-cols-4')>0);
+ const buttons=row.match(/<button[^>]*>[\s\S]*?<\/button>/g)!.slice(0,4);
+ assert.deepEqual(buttons.map(b=>b.match(/<\/svg>([^<]+)<\/button>/)?.[1]),['wallet.receive','wallet.send','wallet.settings','common.disconnect']);
+ for(const b of buttons) assert.match(b,/flex-col/);
+ assert.match(buttons[3],/text-error/); assert.match(buttons[3],/bg-\[rgba\(220,38,38,0\.1\)\]/);
+ assert.doesNotMatch(row.slice(0,row.indexOf('</div>')),/aria-hidden/);
 });
-
 it('LNbits pending-response rows remain pending and are hidden from activity',async()=>{
  const {LnbitsProvider}=await import('../src/services/wallet/lnbits.ts');
  const provider=new LnbitsProvider({instanceUrl:'https://wallet.test',adminKey:'test'},async()=>new Response(JSON.stringify([

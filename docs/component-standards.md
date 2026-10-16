@@ -435,7 +435,6 @@ arrow/Home/End navigation, type-ahead, Escape dismissal and focus restoration.
 The chevron is an SVG; Select no longer has a CSS module or a data-URI icon.
 Buttons use color feedback rather than movement or raised shadows. Disabled actions
 have no hover treatment. `IconButton` and `RemoveButton` share keyboard focus styles.
-`IconButton` takes `tooltip` for a label shown below on hover and keyboard focus (it doubles as the accessible name), `framed` for a card surface in a row of standalone actions, and `tone="error"` for an exit that is red at rest.
 
 Keep an input's wrapper stable when its error appears: changing its element path
 remounts the field and loses focus while typing. Labels use `htmlFor`; error text is
@@ -848,7 +847,7 @@ Passkey onboarding reuses PasswordStep for auto-lock confirmation rather than ma
 
 Home connection and empty-site notices have a shared IconButton close control. Closing a connection notice persists the existing dismissal policy without closing the popup, and a declined site (read from storage by `isSiteDismissed`) shows a compact ListRow Connect instead of the full card. useAnimatedVisible keeps the notice mounted for its shared dropdown exit animation; account tools then enter with section-slide-in. Shared reduced-motion styles suppress movement. Wallet and account tools do not require a site connection; SiteControls, including site activity, requires a connected site.
 
-Wallet actions are framed icon-only IconButtons below the balance card with hover tooltips; disconnect is a red logout icon behind ConfirmDialog. Wallet and WalletSettings share useWalletDisconnect. Passkey labels use the shared Input and a portaled Modal; RelayRecoverySave supports an icon-only trigger using the same verification path as its detailed dialog. Sub-account creation retains the generated Account N name and reveals the custom derivation input inline, scrolling it into view with reduced-motion support.
+Wallet actions are a full-width row of four stacked Buttons (icon above label) below the balance card: Receive, Send and Settings use ButtonSecondary, Disconnect uses ButtonDanger with the logout icon and asks through ConfirmDialog. Wallet and WalletSettings share useWalletDisconnect. Passkey labels use the shared Input and a portaled Modal; RelayRecoverySave supports an icon-only trigger using the same verification path as its detailed dialog. Sub-account creation retains the generated Account N name and reveals the custom derivation input inline, scrolling it into view with reduced-motion support.
 
 Passkey rows use Card and LinkButton for selection, with sibling edit and recovery IconButtons inside the card (no nested buttons). RelayRecoverySave reuses its check/publish logic in an icon-triggered portaled Modal and in onboarding. IconButton owns success/warning tones; the row has no recovery count. Rename dialogs contain only the name field.
 
