@@ -11,6 +11,7 @@ import Button from '@components/Button';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 import { t } from '@services/i18n/i18n';
+import DoneStep from './DoneStep';
 
 interface WizardOverlayProps {
   visible: boolean;
@@ -53,9 +54,20 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
   const handleClose = () => { flow.reset(); onClose?.(); };
   const handleDone = () => { const acct = flow.account; flow.reset(); onComplete?.(acct); };
 
-  if (!shouldRender) return null;
+  // Finishing goes straight to the main screen; the confirmation floats over it.
+  const [finished, setFinished] = useState<{ account: any; derived: boolean } | null>(null);
+  useEffect(() => {
+    if (flow.step !== WizardStep.Done) return;
+    setFinished({ account: flow.account, derived: hasGeneratedAccount && flow.context?.method === 'create' && !flow.mnemonic });
+    handleDone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once per arrival at Done
+  }, [flow.step]);
+  const notice = finished && <DoneStep account={finished.account} derived={finished.derived} onDone={() => setFinished(null)} />;
+
+  if (!shouldRender || flow.step === WizardStep.Done) return notice || null;
 
   return (
+    <>
     <OverlayPanel showHeader={false} noPadding zIndex={500} animating={animating} className="[background:var(--bg-page)] backdrop-filter-none">
       <TopoBg className="flex flex-col flex-1 min-h-0">
         {canClose && !seedReady ? <Container gap={4} className="p-6"><FormError>{seedError}</FormError><Button disabled={!seedError} onClick={() => setSeedAttempt(value => value + 1)}>{t(seedError ? 'common.retry' : 'common.loading')}</Button><Button variant="secondary" onClick={handleClose}>{t('common.cancel')}</Button></Container> : flow.loading ? null : (
@@ -70,5 +82,7 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
         )}
       </TopoBg>
     </OverlayPanel>
+    {notice}
+    </>
   );
 }

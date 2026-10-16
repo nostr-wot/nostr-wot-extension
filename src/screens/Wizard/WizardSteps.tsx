@@ -107,7 +107,7 @@ function buildSteps(
       content: <VerifyStep mnemonic={flow.mnemonic} onVerified={() => flow.send('VERIFIED')} />,
     },
     [WizardStep.Password]: {
-      title: t('wizard.protectYourKeys'),
+      title: t('wizard.protectYourAccount'),
       content: (
         <PasswordStep
           configurePasskey={['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(flow.context?.method || '')}
@@ -118,7 +118,7 @@ function buildSteps(
       ),
     },
     [WizardStep.FollowSuggestions]: {
-      title: t('wizard.followSuggestions'),
+      title: t('wizard.followTitle'),
       content: <FollowSuggestionsStep onNext={() => flow.send('DONE')} />,
     },
     [WizardStep.PermissionCopy]: {
@@ -126,7 +126,7 @@ function buildSteps(
       content: <PermissionCopyStep account={flow.account as any} onNext={() => flow.send('DONE')} />,
     },
     [WizardStep.Done]: {
-      title: t('wizard.allSet'),
+      noHeader: true,
       content: <DoneStep account={flow.account as any} derived={hasGeneratedAccount && flow.context?.method === 'create' && !flow.mnemonic} onDone={onDone} />,
     },
   };
@@ -146,6 +146,8 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
   const STEPS = buildSteps(flow, onLangSelect, onDone, { hasAccounts, hasGeneratedAccount });
   const active = STEPS[flow.step];
   if (!active?.content) return null;
+  // The confirmation is a dialog of its own, not a page under the wizard header.
+  if (flow.step === WizardStep.Done) return <>{active.content}</>;
 
   // When user has accounts, back on the method step should close the wizard
   const passkeyFlow = ['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(flow.context?.method || '');
