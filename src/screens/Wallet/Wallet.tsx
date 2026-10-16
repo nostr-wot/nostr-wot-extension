@@ -8,7 +8,8 @@ import Card from '@components/Card';
 import LinkButton from '@components/LinkButton';
 import Text from '@components/Text';
 import WalletBalance from '@components/WalletBalance';
-import { ButtonSecondary, ButtonDanger } from '@components/Button';
+import { ButtonSecondary } from '@components/Button';
+import ActionTile from '@components/ActionTile';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
 import WalletSettings from './WalletSettings';
@@ -141,10 +142,10 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
 
       {/* Action buttons */}
       <div className="grid grid-cols-4 gap-3 shrink-0">
-        <ButtonSecondary small layout="stacked" onClick={() => { ensureSettings(); setShowDeposit(true); }}><IconDownload size={20} />{t('wallet.receive')}</ButtonSecondary>
-        <ButtonSecondary small layout="stacked" onClick={() => setShowSend(true)}><IconUpload size={20} />{t('wallet.send')}</ButtonSecondary>
-        <ButtonSecondary small layout="stacked" onClick={() => { setSettingsSection(undefined); setShowSettings(true); }}><IconSettings size={20} />{t('wallet.settings')}</ButtonSecondary>
-        <ButtonDanger small layout="stacked" disabled={disconnecting} onClick={() => setConfirmDisconnect(true)}><IconLogout size={20} />{t('common.disconnect')}</ButtonDanger>
+        <ActionTile compact raised icon={<IconDownload size={20} />} title={t('wallet.receive')} onClick={() => { ensureSettings(); setShowDeposit(true); }} />
+        <ActionTile compact raised icon={<IconUpload size={20} />} title={t('wallet.send')} onClick={() => setShowSend(true)} />
+        <ActionTile compact raised icon={<IconSettings size={20} />} title={t('wallet.settings')} onClick={() => { setSettingsSection(undefined); setShowSettings(true); }} />
+        <ActionTile compact raised tone="danger" icon={<IconLogout size={20} />} title={t('common.disconnect')} disabled={disconnecting} onClick={() => setConfirmDisconnect(true)} />
       </div>
 
       {confirmDisconnect && (

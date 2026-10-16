@@ -17,6 +17,8 @@ interface ActionTileProps {
   description?: React.ReactNode;
   compact?: boolean;
   raised?: boolean;
+  /** `danger` colours only the icon and title red, for an exit such as Disconnect. */
+  tone?: 'brand' | 'danger';
   onClick: () => void;
   disabled?: boolean;
 }
@@ -27,12 +29,13 @@ interface ActionTileProps {
  * wizard's backup-method tiles, split across BackupStep and CreateStep —
  * were hand-rolled with only the icon and copy differing.
  */
-export default function ActionTile({ icon, title, description, onClick, disabled, compact = false, raised = false }: ActionTileProps) {
-  const className = cn(TILE, compact && 'min-w-0 flex-col justify-center gap-3 px-3 py-4 text-center', raised && 'mb-0 bg-glass rounded-lg hover:bg-glass-heavy hover:translate-x-2 motion-reduce:transform-none hover:border-brand');
+export default function ActionTile({ icon, title, description, onClick, disabled, compact = false, raised = false, tone = 'brand' }: ActionTileProps) {
+  const danger = tone === 'danger';
+  const className = cn(TILE, compact && 'min-w-0 flex-col justify-center gap-3 px-3 py-6 text-center', raised && 'mb-0 bg-glass rounded-lg hover:bg-glass-heavy hover:translate-x-2 motion-reduce:transform-none hover:border-brand', danger && '[&_svg]:text-error', danger && raised && 'hover:border-error');
   const content = <>
       {icon}
       <Container gap={raised ? 2 : undefined}>
-        <strong className={cn('text-md font-semibold text-heading', compact && 'text-sm break-words')}>{title}</strong>
+        <strong className={cn('text-md font-semibold text-heading', compact && 'text-xs font-medium break-words', danger && 'text-error')}>{title}</strong>
         {description && <Text variant="muted" as="span" className="text-menu-subtitle">{description}</Text>}
       </Container>
   </>;
