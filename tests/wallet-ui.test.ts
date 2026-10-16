@@ -26,15 +26,14 @@ it('unpaid invoices do not appear as received payments and failed rows show stat
 });
 it('wallet uses the shared purple controls and has named history refresh',()=>{
  const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
- assert.doesNotMatch(html,/LNbits|wallet.balance/); assert.match(html,/grid-cols-4/); for (const label of ['wallet.receive', 'wallet.send', 'wallet.settings', 'common.disconnect']) assert.ok(html.includes(label)); assert.match(html,/aria-label="common.refresh"/);
+ assert.doesNotMatch(html,/LNbits|wallet.balance|grid-cols-4/); for (const label of ['wallet.receive', 'wallet.send', 'wallet.settings', 'common.disconnect']) assert.ok(html.includes(label)); assert.match(html,/aria-label="common.refresh"/);
 });
 
 it('wallet actions sit outside the balance card as icon-only buttons with hover labels',()=>{
  const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
- const card=html.indexOf('wallet.balance'), cardEnd=html.indexOf('</div>', html.indexOf('wallet.balance'));
+ const row=html.slice(html.indexOf('justify-center shrink-0'));
  for(const label of ['wallet.receive','wallet.send','wallet.settings','common.disconnect']){
-  const at=html.indexOf(`aria-label="${label}"`);
-  assert.ok(at>card && at>cardEnd, `${label} renders after the balance card`);
+  assert.ok(row.includes(`aria-label="${label}"`), `${label} is in the action row after the card`);
   assert.match(html,new RegExp(`aria-label="${label}"[^>]*>(?:<svg[\\s\\S]*?</svg>)<span aria-hidden="true"[^>]*>${label}</span></button>`));
  }
  assert.doesNotMatch(html,/>wallet\.deposit</);
