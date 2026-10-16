@@ -389,6 +389,32 @@ it('site state resolves from storage while the background never answers', async 
  }
 });
 
+it('a declined site resolves as dismissed from storage, so Home keeps its content', async () => {
+ resetMockStorage();
+ await browser.storage.local.set({ allowedDomains: [], identityDisabledSites: [], dismissedDomains: { 'example.com': { at: 1, until: 'never' } } });
+ const originalQuery = browser.tabs.query;
+ const originalSend = browser.runtime.sendMessage;
+ let sent = 0;
+ browser.tabs.query = () => Promise.resolve([{ id: 7, url: 'https://example.com/page' }]) as never;
+ browser.runtime.sendMessage = () => { sent++; return new Promise(() => {}); };
+ const view = await mount();
+ let seen: { siteState: string | null; siteDismissed: boolean } | null = null;
+ function Probe() { seen = useSiteState({ id: 'a1' } as never); return null; }
+ try {
+  await view.render(createElement(Probe));
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  assert.equal(seen!.siteState, 'notConnected');
+  assert.equal(seen!.siteDismissed, true);
+  await act(async () => { await browser.storage.local.set({ dismissedDomains: {} }); await new Promise(resolve => setTimeout(resolve, 0)); });
+  assert.equal(seen!.siteDismissed, false, 'undoing the dismissal brings the full Connect card back');
+  assert.equal(sent, 0);
+ } finally {
+  await view.close();
+  browser.tabs.query = originalQuery;
+  browser.runtime.sendMessage = originalSend;
+ }
+});
+
 it('latch stays true after its value goes back to false', async () => {
  const view = await mount();
  const seen: boolean[] = [];

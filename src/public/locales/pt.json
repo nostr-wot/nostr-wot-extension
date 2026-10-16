@@ -690,7 +690,6 @@
   "wallet.balance": "Saldo",
   "wallet.connected": "Conectado",
   "wallet.deposit": "Depositar",
-  "wallet.receive": "Receber",
   "wallet.amountSats": "Quantia (sats)",
   "wallet.createInvoice": "Criar fatura",
   "wallet.payInvoice": "Pagar fatura",

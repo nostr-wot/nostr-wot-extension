@@ -25,6 +25,7 @@ import IconGlobe from '@assets/IconGlobe.tsx';
 import IconZap from '@assets/IconZap.tsx';
 import IconChevronRight from '@assets/IconChevronRight.tsx';
 import LinkButton from '@components/LinkButton';
+import ListRow from '@components/ListRow';
 import Container from '@components/Container';
 import Text from '@components/Text';
 
@@ -38,7 +39,7 @@ export default function Home({ menuOpen }: HomeProps) {
   const navigate = useNavigate();
 
   const pendingCount = usePendingCount();
-  const { domain, siteState, identityEnabled, setIdentityEnabled, loadHomeState } = useSiteState(active);
+  const { domain, siteState, siteDismissed, identityEnabled, setIdentityEnabled, loadHomeState } = useSiteState(active);
 
   // Wallet is only available for unlocked signing accounts (generated/nsec)
   const canUseWallet = active && !isReadOnly && !isNip46 && !locked;
@@ -87,7 +88,8 @@ export default function Home({ menuOpen }: HomeProps) {
   };
 
   // "Not now": record the dismissal so the site's next request is rejected
-  // silently instead of re-opening the popup, then get out of the way.
+  // silently instead of re-opening the popup, then show the normal home with a
+  // compact Connect row in place of the full card.
   //
   // "Not now" lasts as long as the user chose in Settings (a week by default) rather than
   // forever, and "Never" is explicit. Both are listed in Settings with an undo — this used
@@ -100,10 +102,8 @@ export default function Home({ menuOpen }: HomeProps) {
       await rpc('addDismissedDomain', { domain, permanent });
       setDismissedNotice(noticeKey);
     } catch {
-      // Closing in a `finally` made a failed dismissal indistinguishable from a
-      // successful one — the popup vanished either way, and the site re-prompted
-      // a user who had said Never. Staying open is the only way they can tell,
-      // and the only way they can try again.
+      // A failed dismissal keeps the full card and says so: otherwise the site
+      // re-prompts a user who believes they said Never.
       setConnectFailed(true);
     }
   };
@@ -190,7 +190,7 @@ export default function Home({ menuOpen }: HomeProps) {
     );
   }
 
-  if (siteState === 'notConnected' && showNotice) {
+  if (siteState === 'notConnected' && showNotice && !siteDismissed) {
     siteNotice = (
       <Container className={closingNotice ? "flex-1 justify-center animate-dropdown-out pointer-events-none" : "flex-1 justify-center"}>
         <Card className="mb-0 relative">
@@ -236,6 +236,20 @@ export default function Home({ menuOpen }: HomeProps) {
             <Button small onClick={loadHomeState}>{t('home.retry')}</Button>
           </EmptyState>
         </Card>
+      ) : siteState === 'notConnected' ? (
+        <>
+          {connectFailed && (
+            <div className="py-3 px-6 text-sm text-error text-center" role="alert">{t('home.actionFailed')}</div>
+          )}
+          <ListRow
+            variant="standalone"
+            leading={<IconGlobe size={16} />}
+            title={domain}
+            subtitle={t('globe.notConnected')}
+            trailing={<span className="text-sm font-semibold text-brand">{t('common.connect')}</span>}
+            onClick={handleConnect}
+          />
+        </>
       ) : siteState === 'connected' ? (
         <>
           {connectFailed && (

@@ -19,6 +19,7 @@ import IconArrowDownLeft from '@assets/IconArrowDownLeft.tsx';
 import IconArrowUpRight from '@assets/IconArrowUpRight.tsx';
 import IconLogout from '@assets/IconLogout.tsx';
 import ConfirmDialog from '@components/ConfirmDialog';
+import IconButton from '@components/IconButton';
 import { type Transaction } from '@domain/wallet/types.ts';
 import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';

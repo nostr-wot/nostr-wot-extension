@@ -435,6 +435,7 @@ arrow/Home/End navigation, type-ahead, Escape dismissal and focus restoration.
 The chevron is an SVG; Select no longer has a CSS module or a data-URI icon.
 Buttons use color feedback rather than movement or raised shadows. Disabled actions
 have no hover treatment. `IconButton` and `RemoveButton` share keyboard focus styles.
+`IconButton` takes `tooltip` for a label shown below on hover and keyboard focus (it doubles as the accessible name), `framed` for a card surface in a row of standalone actions, and `tone="error"` for an exit that is red at rest.
 
 Keep an input's wrapper stable when its error appears: changing its element path
 remounts the field and loses focus while typing. Labels use `htmlFor`; error text is
@@ -845,9 +846,9 @@ Passkey settings is a dedicated MenuOverlay destination reached by a ListRow at 
 
 Passkey onboarding reuses PasswordStep for auto-lock confirmation rather than maintaining a separate protection form. It uses the existing timer chips, Toggle and PasswordPairFields. Passkey settings reuses Input for optional selected-credential names and PasskeySelector for named unlock choices. Relay recovery results stay in the existing RelayRecoverySave component with stale-response protection and a separate checking state.
 
-Home connection and empty-site notices have a shared IconButton close control. Closing a connection notice persists the existing dismissal policy without closing the popup. useAnimatedVisible keeps the notice mounted for its shared dropdown exit animation; account tools then enter with section-slide-in. Shared reduced-motion styles suppress movement. Wallet and account tools do not require a site connection; SiteControls, including site activity, requires a connected site.
+Home connection and empty-site notices have a shared IconButton close control. Closing a connection notice persists the existing dismissal policy without closing the popup, and a declined site (read from storage by `isSiteDismissed`) shows a compact ListRow Connect instead of the full card. useAnimatedVisible keeps the notice mounted for its shared dropdown exit animation; account tools then enter with section-slide-in. Shared reduced-motion styles suppress movement. Wallet and account tools do not require a site connection; SiteControls, including site activity, requires a connected site.
 
-Wallet actions reuse Button and the shared icons. Wallet and WalletSettings share useWalletDisconnect. Passkey labels use the shared Input and a portaled Modal; RelayRecoverySave supports an icon-only trigger using the same verification path as its detailed dialog. Sub-account creation retains the generated Account N name and reveals the custom derivation input inline, scrolling it into view with reduced-motion support.
+Wallet actions are framed icon-only IconButtons below the balance card with hover tooltips; disconnect is a red logout icon behind ConfirmDialog. Wallet and WalletSettings share useWalletDisconnect. Passkey labels use the shared Input and a portaled Modal; RelayRecoverySave supports an icon-only trigger using the same verification path as its detailed dialog. Sub-account creation retains the generated Account N name and reveals the custom derivation input inline, scrolling it into view with reduced-motion support.
 
 Passkey rows use Card and LinkButton for selection, with sibling edit and recovery IconButtons inside the card (no nested buttons). RelayRecoverySave reuses its check/publish logic in an icon-triggered portaled Modal and in onboarding. IconButton owns success/warning tones; the row has no recovery count. Rename dialogs contain only the name field.
 
@@ -856,3 +857,5 @@ AutoLockOptions owns the Security-style label, hint and timer chips, including N
 Passkey enrollment defaults to Nostr WoT Main for the first locally registered credential. Adding another reuses Modal and Input for an optional name with a numbered default before invoking WebAuthn. PasskeyRecoverySetup hides relay publishing during a pending provider write and after confirmed blob storage; unsupported or failed storage shows the explicit relay action alongside the required download and acknowledgement.
 
 Recovery setup advances automatically once the provider confirms blob storage, without an optional-download screen or Continue click. File download, acknowledgement and optional relay publication appear only if provider storage is unavailable or fails; they remain hidden during the initial write. Recovery files remain available separately in Passkey settings.
+
+Wizard step titles live only in the wizard header; step bodies do not repeat them. Password onboarding is titled Protect your account and keeps the passkey switch and password fields inside the AutoLockOptions card. Completion is a centered Modal (DoneStep) that closes itself after three seconds; in the popup the wizard finishes first, so the confirmation floats over Home.

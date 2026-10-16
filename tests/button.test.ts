@@ -32,18 +32,13 @@ it('icon buttons can carry a hover tooltip that names them, a framed surface and
   assert.doesNotMatch(renderToStaticMarkup(IconButton({ children: 'Icon' })), /<span|relative group/);
 });
 
-it('the auto-lock card is shared, hides None for passkey vaults and keeps follow-up fields inside it', async () => {
-  const { default: AutoLockCard } = await import('../src/components/AutoLockCard');
-  const html = renderToStaticMarkup(createElement(AutoLockCard, { value: 0, onChange() {} }, createElement('p', null, 'inside')));
-  assert.match(html, /security.autoLock/);
-  assert.match(html, /security.never/);
-  assert.match(html, /<p>inside<\/p><\/div>$/);
-  assert.doesNotMatch(renderToStaticMarkup(createElement(AutoLockCard, { value: 900000, onChange() {}, allowNever: false })), /security.never/);
-  for (const screen of ['Settings/SecuritySection', 'Wizard/PasswordStep', 'Wizard/PasskeyStep']) {
-    const source = readFileSync(new URL(`../src/screens/${screen}.tsx`, import.meta.url), 'utf8');
-    assert.match(source, /<AutoLockCard\b/, screen);
-    assert.doesNotMatch(source, /AUTO_LOCK_OPTIONS/, screen);
-  }
+it('onboarding keeps the passkey switch and password fields inside the shared auto-lock card', () => {
+  const source = readFileSync(new URL('../src/screens/Wizard/PasswordStep.tsx', import.meta.url), 'utf8');
+  const card = source.slice(source.indexOf('<Card>\n        <AutoLockOptions'), source.indexOf('</Card>', source.indexOf('<AutoLockOptions')));
+  assert.match(card, /<Toggle\b/);
+  assert.match(card, /<PasswordPairFields\b/);
+  assert.match(card, /wizard\.neverLockWarning/);
+  assert.doesNotMatch(source, /wizard\.protectYourKeys/);
 });
 
 it('remote approval details and cancellation are separate, named button actions', () => {

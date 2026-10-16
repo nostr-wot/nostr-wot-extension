@@ -1,4 +1,4 @@
-import { hasSiteScope } from './siteScope.ts';
+import { hasSiteScope, siteScopes } from './siteScope.ts';
 /**
  * Pure decision helper for a site's connection status.
  *
@@ -42,4 +42,30 @@ export function resolveSiteState(
   // would be worse.
   if (allowedDomains === null) return 'error';
   return hasSiteScope(allowedDomains, domain) ? 'connected' : 'notConnected';
+}
+
+/** A stored "Not now" / "Never" for one site scope, as `addDismissedDomain` writes it. */
+export interface StoredDismissal {
+  until?: number | 'session' | 'never';
+}
+
+/**
+ * Whether the user has declined this site, by the same rule as the background's
+ * `isDomainDismissed`, read from storage so the popup does not wait on the worker.
+ * Session dismissals live in `storage.session`; timed ones count until they expire.
+ */
+export function isSiteDismissed(
+  dismissals: Record<string, StoredDismissal> | string[] | null | undefined,
+  sessionDismissed: string[] | null | undefined,
+  domain: string,
+  now = Date.now(),
+): boolean {
+  if (hasSiteScope(sessionDismissed || [], domain)) return true;
+  if (!dismissals) return false;
+  // The legacy list carries no dates; the background migrates it to a fresh timed entry.
+  if (Array.isArray(dismissals)) return hasSiteScope(dismissals, domain);
+  return siteScopes(domain).some((scope) => {
+    const until = dismissals[scope]?.until;
+    return until === 'never' || (typeof until === 'number' && until > now);
+  });
 }

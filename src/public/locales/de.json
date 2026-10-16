@@ -690,7 +690,6 @@
   "wallet.balance": "Guthaben",
   "wallet.connected": "Verbunden",
   "wallet.deposit": "Einzahlen",
-  "wallet.receive": "Empfangen",
   "wallet.amountSats": "Betrag (Sats)",
   "wallet.createInvoice": "Rechnung erstellen",
   "wallet.payInvoice": "Rechnung bezahlen",
