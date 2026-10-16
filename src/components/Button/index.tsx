@@ -65,7 +65,7 @@ export function Button({
   const cls = cn(
     BASE,
     SIZE[small ? 'small' : 'default'],
-    layout === 'stacked' && 'flex-col gap-2 min-w-0 px-2 py-5',
+    layout === 'stacked' && 'flex-col gap-2 min-w-0 px-2 py-5 text-xs font-medium',
     outline ? OUTLINE[variant] : ['border-0', FILLED[variant]],
     segment === 'start' && 'rounded-r-none',
     segment === 'end' && 'rounded-l-none border-l border-l-current/20',
