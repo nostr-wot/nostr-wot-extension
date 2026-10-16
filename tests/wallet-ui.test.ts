@@ -26,7 +26,7 @@ it('unpaid invoices do not appear as received payments and failed rows show stat
 });
 it('wallet uses the shared purple controls and has named history refresh',()=>{
  const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
- assert.match(html,/LNbits/); assert.match(html,/text-menu-subtitle/); assert.match(html,/aria-label="common.refresh"/);
+ assert.doesNotMatch(html,/LNbits|wallet.balance/); assert.match(html,/grid-cols-4/); for (const label of ['wallet.receive', 'wallet.send', 'wallet.settings', 'common.disconnect']) assert.ok(html.includes(label)); assert.match(html,/aria-label="common.refresh"/);
 });
 
 it('LNbits pending-response rows remain pending and are hidden from activity',async()=>{
@@ -121,12 +121,12 @@ it('wallet copy controls use named SVG icons without rendering connection creden
  assert.match(html,/<svg/);assert.match(html,/aria-label="Copy connection"/);assert.doesNotMatch(html,/secret-connection|>Copy connection</);
 });
 
-it('Home only shows wallet balance after the current site is confirmed connected',async()=>{
+it('Home shows wallet and account tools once a site notice is dismissed',async()=>{
  const {HomeWalletLayout}=await import('../src/screens/Home/Home');
- for(const state of [null,'empty','notConnected','error','connected']) {
-  const notice=state==='connected'?null:'Site unavailable';
-  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice,siteConnected:state==='connected'},createElement('div',null,'Site controls')));
-  if(state==='connected') {
+ for(const state of [null,'empty','notConnected','error','connected','dismissed']) {
+  const notice=state==='connected'||state==='dismissed'?null:'Site unavailable';
+  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice},createElement('div',null,'Site controls')));
+  if(notice===null) {
    assert.match(html,/Private wallet balance/);assert.match(html,/Site controls/);
   } else {
    assert.doesNotMatch(html,/Private wallet balance/);assert.match(html,/Site unavailable/);
@@ -295,22 +295,14 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     await act(async()=>root.render(createElement(SubAccountStep,{onNext(){advanced++;}})));
     const findButton=(label:string)=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent===label)!;
     assert.equal(findButton('common.continue').disabled,false);
-    const nameInput=dom.window.document.querySelector<HTMLInputElement>('#subaccount-name')!;
-    assert.ok(nameInput,'name is editable outside Advanced');
-    assert.equal(nameInput.closest('details'),null);
-    await act(async()=>{
-      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value')!.set!.call(nameInput,'My work identity');
-      nameInput.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
-    });
-    const advancedDetails=dom.window.document.querySelector('details')!;
-    assert.equal(advancedDetails.open,false);
-    assert.ok(advancedDetails.querySelector('summary')!.classList.contains('text-brand'));
-    assert.equal(advancedDetails.parentElement!.lastElementChild,advancedDetails);
-    assert.doesNotMatch(dom.window.document.body.textContent || '',/My seed|wizard.sourceSeed/);
-    assert.equal(dom.window.document.querySelectorAll('button[aria-label^="common.copy"]').length,2);
-    assert.equal(advancedDetails.querySelector('summary')!.textContent,'common.advanced');
-    assert.doesNotMatch(dom.window.document.body.textContent || '',/wizard.subAccountType|wizard.typeLabel/);
-    await act(async()=>advancedDetails.querySelector('summary')!.click());
+    assert.equal(dom.window.document.querySelector('#subaccount-name'), null);
+    assert.equal(dom.window.document.querySelector('#subaccount-path'), null);
+    let scrolled = 0;
+    dom.window.HTMLElement.prototype.scrollIntoView = () => { scrolled++; };
+    Object.defineProperty(dom.window, 'matchMedia', { value: () => ({ matches: false }), configurable: true });
+    await act(async()=>findButton('wizard.customPath').click());
+    assert.equal(scrolled, 1);
+    assert.equal(findButton('wizard.customPath').getAttribute('aria-expanded'), 'true');
     const edit=async(value:string)=>act(async()=>{
       const input=dom.window.document.querySelector<HTMLInputElement>('#subaccount-path')!;
       Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value')!.set!.call(input,value);
@@ -327,10 +319,9 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     const {SUBACCOUNT_PREVIEW_DELAY_MS}=await import('../src/constants/accounts.ts');
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,SUBACCOUNT_PREVIEW_DELAY_MS+30));});
     assert.equal(paths.at(-1),"m/44'/60'/0'/0/0");
-    assert.equal(dom.window.document.querySelector('details')!.open,true,'preview does not close Advanced');
+    assert.ok(dom.window.document.querySelector('#subaccount-path'),'preview does not close Custom path');
     assert.match(dom.window.document.body.textContent || '',/npub1/);
     assert.ok(dom.window.document.querySelector(`[title="${child.pubkey}"]`));
-    assert.equal(dom.window.document.querySelector<HTMLInputElement>('#subaccount-name')!.value,'My work identity');
     assert.equal(findButton('common.continue').disabled,false);
     assert.equal(saved,0,'automatic previews never save an account');
     await edit("m/84'/0'/0'/0/0");
@@ -356,7 +347,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     await edit("m/44'/60'/0'/0/0");
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,SUBACCOUNT_PREVIEW_DELAY_MS+30));});
     await act(async()=>findButton('common.continue').click());
-    assert.equal(saved,1);assert.equal(advanced,1);assert.equal(savedName,'My work identity');
+    assert.equal(saved,1);assert.equal(advanced,1);assert.equal(savedName,child.name);
     const {default:RejectionNotice}=await import('../src/screens/Approval/RejectionNotice');
     const {SIGNER_REJECTIONS_KEY}=await import('../src/constants/signing.ts');
     const rejection={id:'old',timestamp:1,origin:'coracle.social',kind:1,requestedPubkey:child.pubkey,activePubkey:parent.pubkey,reason:'accountMismatch'};

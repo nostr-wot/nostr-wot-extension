@@ -1,12 +1,11 @@
 import PasskeySelector from '@components/PasskeySelector';
-import { useState, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Input from '@components/Input';
 import Button from '@components/Button';
-import DetailDisclosure from '@components/DetailDisclosure';
+import LinkButton from '@components/LinkButton';
 import useSubAccountPreview from '@hooks/useSubAccountPreview.ts';
-import { MAX_ACCOUNT_NAME_LENGTH } from '@constants/accounts.ts';
 import { npubEncode } from '@lib/crypto/bech32.ts';
 import { normalizeDerivationPath, identifyDerivationPath } from '@domain/accounts/derivation.ts';
 import type { SafeAccount } from '@domain/accounts/types.ts';
@@ -26,13 +25,16 @@ interface SubAccountStepProps {
 
 export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   const { account, path, setPath, loading, error: previewError, needsUnlock, retry } = useSubAccountPreview();
-  const [name, setName] = useState<string | null>(null);
+  const [customPath, setCustomPath] = useState(false);
+  const pathFields = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (customPath) pathFields.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }, [customPath]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
   const validPath = normalizeDerivationPath(path);
   const knownPath = identifyDerivationPath(path);
-  const displayName = name ?? account?.name ?? '';
   // Through the shared hook, which carries the escalating brute-force lockout.
   // This form called vault_unlock directly, so the add-account path was an
   // unthrottled password oracle while every other unlock in the product was
@@ -55,14 +57,13 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   });
 
   const handleContinue = async () => {
-    if (!account || loading || pending.current || displayName.trim().length > MAX_ACCOUNT_NAME_LENGTH) return;
+    if (!account || loading || pending.current) return;
     pending.current = true;
     setSaving(true);
     setError('');
     try {
-      const namedAccount = { ...account, name: displayName.trim() || account.name };
-      await rpc('onboarding_addToVault', { account: namedAccount, name: namedAccount.name, upgradeFromReadOnly: null });
-      onNext(namedAccount);
+      await rpc('onboarding_addToVault', { account, name: account.name, upgradeFromReadOnly: null });
+      onNext(account);
     } catch (e: any) {
       setError(e.message || t('wizard.failedCreateVault'));
       setSaving(false);
@@ -119,18 +120,13 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
       </Text>
 
       <Container gap={4} className="bg-surface border border-card-border rounded-panel py-6 px-7 mb-6">
-        <Container gap={3}>
-          <SectionLabel htmlFor="subaccount-name" inline>{t('wizard.accountName')}</SectionLabel>
-          <Input id="subaccount-name" value={displayName} maxLength={MAX_ACCOUNT_NAME_LENGTH}
-            placeholder={t('wizard.accountNamePlaceholder')} disabled={saving}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => setName(event.target.value)} />
-        </Container>
         {loading && <Text variant="hint" role="status">{t('wizard.updatingPreview')}</Text>}
         {account?.pubkey && [['npub', npubEncode(account.pubkey)], ['hex', account.pubkey]].map(([label, value]) => (
           <FieldDisplay key={label} label={label} className="flex-col items-start gap-2 py-0" valueClassName="text-left text-brand text-xs font-mono"
             value={<span className="inline-flex items-center gap-3"><span title={value}>{truncateMiddle(value, 16, 12)}</span><CopyButton iconOnly value={value} label={`${t('common.copy')} ${label}`} /></span>} />
         ))}
-        <DetailDisclosure variant="action" className="mt-4" label={t('common.advanced')}>
+        <LinkButton tone="brand" className="mt-4 self-start" aria-expanded={customPath} aria-controls="subaccount-custom-path" onClick={() => setCustomPath(!customPath)}>{t('wizard.customPath')}</LinkButton>
+        {customPath && <div ref={pathFields} id="subaccount-custom-path" className="flex flex-col gap-3">
           <SectionLabel htmlFor="subaccount-path" inline>{t('wizard.derivationPath')}</SectionLabel>
           <Input id="subaccount-path" value={path} disabled={saving}
             aria-describedby="subaccount-path-hint"
@@ -145,7 +141,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
               ? t(knownPath.network === 'Nostr' ? 'wizard.nostrPathHint' : 'wizard.networkPathHint', knownPath)
               : t('wizard.unknownPathHint'))}
           </Text>
-        </DetailDisclosure>
+        </div>}
       </Container>
 
       <FormError>{error || previewError}</FormError>
@@ -154,7 +150,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
       </Text>
 
       <Container variant="row" gap={4} stickyFooter>
-        <Button className="flex-1" onClick={handleContinue} disabled={saving || loading || !account || displayName.trim().length > MAX_ACCOUNT_NAME_LENGTH}>
+        <Button className="flex-1" onClick={handleContinue} disabled={saving || loading || !account}>
           {saving ? t('wizard.addingAccount') : t('common.continue')}
         </Button>
       </Container>

@@ -612,7 +612,11 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['onboarding_checkExistingSeed', async () => {
-        if (vault.isLocked()) return { hasSeed: false };
+        if (vault.isLocked()) {
+            // Public type is a routing hint only; derivation still requires unlock.
+            const { accounts: known = [] } = await browser.storage.local.get('accounts');
+            return { hasSeed: (known as LocalAccountEntry[]).some(a => a.type === 'generated' && !a.readOnly) };
+        }
         try {
             const payload = vault.getDecryptedPayload();
             const generated = payload.accounts.find(a => a.type === 'generated' && a.mnemonic);
@@ -635,7 +639,7 @@ export const handlers = new Map<string, HandlerFn>([
             .reduce((max, a) => Math.max(max, a.derivationIndex ?? 0), 0);
         const nextIndex = maxIndex + 1;
         const subAcct = params.derivationPath !== undefined
-            ? await accounts.createFromMnemonicAtPath(seedAccount.mnemonic, params.derivationPath as string, (params.name as string) || undefined)
+            ? await accounts.createFromMnemonicAtPath(seedAccount.mnemonic, params.derivationPath as string, (params.name as string) || `Account ${nextIndex + 1}`)
             : await accounts.createFromMnemonicAtIndex(seedAccount.mnemonic, nextIndex, (params.name as string) || undefined);
         if (payload.accounts.some(account => account.pubkey === subAcct.pubkey)) {
             throw new Error('An account with this derivation path already exists');

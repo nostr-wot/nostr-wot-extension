@@ -677,3 +677,8 @@ network request is made to infer old comments.
 
 Wallet Settings → App connections manages multiple named NWC grants, limits, expiry, copy/QR and revocation. Existing LNbits wallets use the same flow.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+
+The wallet balance card shows sats without a redundant Balance heading or provider subtitle. Its header uses the Lightning Address from the shared account settings cache. A confirmed empty LNbits address shows Set up an alias, opening settings scrolled to the Lightning Address field. Unknown or failed address reads remain loading/error states instead of offering a false setup action. NWC wallets do not offer LNbits alias registration. Opening the wallet requests the shared settings cache so the address can be shown; opening settings or deposit reuses it.
+
+The wallet shows the Lightning address above the amount, or a Set up an alias link that opens the address settings. Receive, Send, Settings and Disconnect use four compact icon-and-label buttons in one row. Both disconnect entry points share the same pending/error handling.

@@ -1,3 +1,5 @@
+import { passkeyDisplayName, passkeyRecoveryAccount } from '../src/domain/vault/passkey.ts';
+import type { SafeAccount } from '../src/domain/accounts/types.ts';
 import { beforeEach, afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
@@ -9,6 +11,10 @@ import { parsePasskeyBackup, validatePasskeyInput } from '../src/domain/vault/pa
 import { wrapVaultKey, unwrapVaultKey } from '../src/services/vault/passkeyEncryption.ts';
 import type { PasskeyInput } from '../src/domain/vault/passkey.ts';
 import type { VaultPayload } from '../src/domain/vault/types.ts';
+import { importNsec } from '../src/domain/accounts/creation.ts';
+import { derivePqKeys } from '../src/lib/crypto/pq.ts';
+import { PQ_PROFILE } from '../src/constants/crypto/pq.ts';
+import { PASSKEY_MAX_BLOB_BYTES } from '../src/constants/passkey.ts';
 
 const input = (n = 1): PasskeyInput => ({ credentialId: arrayToBase64(new Uint8Array(32).fill(n)), prfSalt: arrayToBase64(new Uint8Array(32).fill(n + 1)), prf: arrayToBase64(new Uint8Array(32).fill(n + 2)) });
 const payload = (): VaultPayload => ({ accounts: [{ id: 'test', name: 'Test', type: 'nsec', pubkey: 'a'.repeat(64), privkey: 'b'.repeat(64), mnemonic: null, nip46Config: null, readOnly: false, createdAt: 1 }], activeAccountId: 'test' });
@@ -17,6 +23,84 @@ const record = async () => (await browser.storage.local.get('keyVault')).keyVaul
 describe('passkey vault encryption and lifecycle', () => {
   beforeEach(() => { vault.lock(); resetMockStorage(); });
   afterEach(() => vault.lock());
+
+  for (const password of ['', 'original-password']) it(`preserves imported nsec and PQC keys in provider/file recovery after ${password ? 'password' : 'no-lock'} migration and adding a passkey`, async () => {
+    const account = await importNsec('09'.repeat(32), 'Imported signing identity');
+    const seed = new Uint8Array(64).fill(7);
+    const keys = derivePqKeys(seed, 0);
+    seed.fill(0);
+    try {
+      await vault.create(password, { accounts: [account], activeAccountId: account.id });
+      await vault.setImportedPqKeys(account.id, keys, PQ_PROFILE);
+      const originalPq = vault.getDecryptedPayload().accounts[0].pqKeys;
+      const cacheIv = crypto.getRandomValues(new Uint8Array(12));
+      const cached = await vault.withCacheKey(key => crypto.subtle.encrypt({ name: 'AES-GCM', iv: cacheIv }, key, new TextEncoder().encode('private cache')));
+      assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: password, currentPasskey: input(), newPasskey: input() }), true);
+      await vault.addPasskey(input(), input(5));
+      const backup = await vault.exportPasskeyBackup();
+      // The provider blob and file carry this same complete encrypted snapshot.
+      const blob = new TextEncoder().encode(backup);
+      assert.ok(blob.byteLength < PASSKEY_MAX_BLOB_BYTES, 'a real imported ML-KEM/ML-DSA pair fits the supported blob size');
+      for (const secret of [account.privkey!, originalPq!.kem.secret, originalPq!.dsa.secret, input().prf, input(5).prf]) {
+        assert.equal(backup.includes(secret), false, 'snapshot must not expose secret material');
+      }
+      assert.equal(JSON.stringify(vault.listAccounts()).includes('pqKeys'), false);
+      await vault.destroy();
+      // Restore using the added credential, without the original credential/password.
+      await vault.restorePasskeyBackup(new TextDecoder().decode(blob), input(5));
+      assert.deepEqual(vault.getDecryptedPayload().accounts[0].pqKeys, originalPq);
+      assert.equal(vault.getDecryptedPayload().accounts[0].privkey, account.privkey);
+      assert.equal(vault.getDecryptedPayload().accounts[0].mnemonic, null);
+      assert.equal(vault.hasImportedPqKeys(account.id), true);
+      let secretCopies: Uint8Array[] = [];
+      await vault.withImportedPqKeys(account.id, async restored => {
+        assert.deepEqual(restored.kemSecret, keys.kem.secretKey);
+        assert.deepEqual(restored.dsaSecret, keys.dsa.secretKey);
+        assert.equal(restored.kemPublic, arrayToBase64(keys.kem.publicKey));
+        assert.equal(restored.dsaPublic, arrayToBase64(keys.dsa.publicKey));
+        secretCopies = [restored.kemSecret, restored.dsaSecret];
+      });
+      assert.ok(secretCopies.every(bytes => bytes.every(value => value === 0)), 'temporary restored secrets are zeroed');
+      const plaintext = await vault.withCacheKey(key => crypto.subtle.decrypt({ name: 'AES-GCM', iv: cacheIv }, key, cached));
+      assert.equal(new TextDecoder().decode(plaintext), 'private cache');
+      vault.lock();
+      assert.equal(vault.hasImportedPqKeys(account.id), false);
+      assert.equal(await vault.unlockPasskey(input(5)), true);
+      assert.deepEqual(vault.getDecryptedPayload().accounts[0].pqKeys, originalPq);
+      const publicMetadata = (await browser.storage.local.get('accounts')).accounts;
+      assert.equal(JSON.stringify(publicMetadata).includes('pqKeys'), false);
+    } finally {
+      keys.kem.secretKey.fill(0);
+      keys.dsa.secretKey.fill(0);
+    }
+  });
+
+  it('keeps signing available through passkey → None → password and after unlocking again', async () => {
+    await vault.create('', payload(), input());
+    await browser.storage.local.set({ activeAccountId: 'test' });
+    assert.equal(await vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: '', autoLockMs: 0 }), true);
+    await handlers.get('vault_setAutoLock')!({ ms: 900000, password: 'replacement-password' });
+    assert.equal(vault.isLocked(), false);
+    assert.equal(vault.getActiveAccountId(), 'test');
+    await vault.withPrivkey('test', async key => assert.equal(Buffer.from(key).toString('hex'), 'b'.repeat(64)));
+    vault.lock();
+    assert.equal(await handlers.get('vault_unlock')!({ password: 'replacement-password' }), true);
+    assert.equal(vault.getActiveAccountId(), 'test');
+    await vault.withPrivkey('test', async key => assert.equal(Buffer.from(key).toString('hex'), 'b'.repeat(64)));
+  });
+
+  it('enrolls a first passkey only after proving the current password and preserves the vault', async () => {
+    await vault.create('original-password', payload());
+    const before = await record();
+    assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: 'wrong', newPasskey: input(), currentPasskey: input() }), false);
+    assert.deepEqual(await record(), before);
+    assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: 'original-password', newPasskey: input(), currentPasskey: input() }), true);
+    const backup = await vault.exportPasskeyBackup();
+    assert.ok(parsePasskeyBackup(backup).passkeys.length === 1);
+    vault.lock();
+    assert.equal(await vault.unlockPasskey(input()), true);
+    assert.equal(vault.listAccounts()[0].pubkey, payload().accounts[0].pubkey);
+  });
 
   it('toggles registered passkeys without losing accounts, cache keys or enrollment', async () => {
     await vault.create('', payload(), input());
@@ -265,7 +349,70 @@ describe('passkey vault encryption and lifecycle', () => {
     assert.equal(await vault.exists(), false);
     await onboarding.get('onboarding_createVault')!({ account: generated.account, passkey: input(), autoLockMinutes: 15 });
     assert.equal(vault.getActivePubkey(), generated.account.pubkey);
+    assert.deepEqual(await onboarding.get('onboarding_checkExistingSeed')!({}), { hasSeed: true });
     vault.lock();
+    assert.deepEqual(await onboarding.get('onboarding_checkExistingSeed')!({}), { hasSeed: true });
+    await assert.rejects(onboarding.get('onboarding_generateSubAccount')!({}), /locked/i);
     assert.equal(await handlers.get('vault_unlockPasskey')!({ ...input() }), true);
+    const sub = await onboarding.get('onboarding_generateSubAccount')!({}) as any;
+    assert.equal(sub.derivationIndex, 1);
+    assert.notEqual(sub.account.pubkey, generated.account.pubkey);
+    assert.equal(sub.account.mnemonic, undefined);
+    await onboarding.get('onboarding_addToVault')!({ account: sub.account });
+    assert.equal(vault.listAccounts().length, 2);
+  });
+});
+
+it('passkey recovery account selection prefers the active local signer and excludes remote/read-only identities', () => {
+  const account = (id: string, type: SafeAccount['type'], readOnly = false): SafeAccount => ({ id, pubkey: id, name: id, type, readOnly, createdAt: 0 });
+  const seed = account('seed', 'generated'); const imported = account('key', 'nsec');
+  const remote = account('remote', 'nip46'); const watch = account('watch', 'npub', true);
+  assert.equal(passkeyRecoveryAccount([remote, watch, seed, imported], 'key'), imported);
+  assert.equal(passkeyRecoveryAccount([remote, watch, seed, imported], 'remote'), seed);
+  assert.equal(passkeyRecoveryAccount([remote, watch, account('readonly', 'generated', true)], 'readonly'), undefined);
+  assert.equal(passkeyRecoveryAccount([], ''), undefined);
+});
+
+
+
+describe('passkey display names', () => {
+  beforeEach(() => { vault.lock(); resetMockStorage(); });
+  afterEach(() => vault.lock());
+  it('renames without changing encryption, persists across unlock, and clears to default', async () => {
+    await vault.create('', payload(), input());
+    const before = await record();
+    await handlers.get('vault_renamePasskey')!({ credentialId: input().credentialId, name: '  Hardware key  ' });
+    assert.equal((await vault.listPasskeys())[0].name, 'Hardware key');
+    assert.equal((await record()).passkeys[0].ciphertext, before.passkeys[0].ciphertext);
+    assert.equal(passkeyDisplayName((await vault.listPasskeys())[0], 0, 'Passkey'), 'Hardware key');
+    vault.lock();
+    await assert.rejects(vault.renamePasskey(input().credentialId, 'No'), /locked/);
+    assert.equal(await vault.unlockPasskey(input()), true);
+    assert.equal(parsePasskeyBackup(await vault.exportPasskeyBackup()).passkeys[0].name, 'Hardware key');
+    await assert.rejects(vault.renamePasskey('unknown', 'No'), /belong/);
+    await assert.rejects(vault.renamePasskey(input().credentialId, 'x'.repeat(81)), /Invalid/);
+    await vault.renamePasskey(input().credentialId, '');
+    assert.equal(passkeyDisplayName((await vault.listPasskeys())[0], 0, 'Passkey'), 'Passkey 1');
+  });
+  it('requires credential verification before explicitly disabling locking and preserves enrollment', async () => {
+    await vault.create('', payload(), input());
+    await assert.rejects(vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: '' }), /at least/);
+    assert.equal(await vault.changeProtection({ usePasskey: false, currentPasskey: input(9), password: '', autoLockMs: 0 }), false);
+    assert.equal(await vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: '', autoLockMs: 0 }), true);
+    assert.equal(await vault.getPasskey(), null);
+    assert.equal((await vault.listPasskeys()).length, 1);
+    assert.equal((await browser.storage.local.get('autoLockMs')).autoLockMs, 0);
+    vault.lock();
+    assert.equal(await vault.unlock(''), true);
+    assert.equal(vault.getActivePubkey(), payload().accounts[0].pubkey);
+  });
+  it('renames dormant credentials without changing password protection', async () => {
+    await vault.create('', payload(), input());
+    await vault.changeProtection({ usePasskey: false, currentPasskey: input(), password: 'test-password' });
+    await vault.renamePasskey(input().credentialId, 'Laptop');
+    assert.equal(await vault.getPasskey(), null);
+    assert.equal((await vault.listPasskeys())[0].name, 'Laptop');
+    vault.lock();
+    assert.equal(await vault.unlock('test-password'), true);
   });
 });

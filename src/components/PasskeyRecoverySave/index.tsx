@@ -5,12 +5,14 @@ import { parsePasskeyBackup } from '@domain/vault/passkey.ts';
 import { savePasskeyRecovery } from '@services/vault/passkeyRecovery.ts';
 import Button from '@components/Button';
 import Text from '@components/Text';
+import FormError from '@components/FormError';
 import Container from '@components/Container';
 
 /** Shared by onboarding and Security; success requires the provider to confirm the write. */
 export default function PasskeyRecoverySave({ credentialId, autoStart = false, disabled = false, compact = false, onSaved, onUnavailable }: {
-  credentialId?: string; compact?: boolean; autoStart?: boolean; disabled?: boolean; onSaved?: () => void; onUnavailable?: () => void;
+  credentialId?: string; compact?: boolean; autoStart?: boolean; disabled?: boolean; onSaved?: () => void; onUnavailable?: (message?: string) => void;
 }) {
+  const [error, setError] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   const active = useRef<AbortController | null>(null);
   const callbacks = useRef({ onSaved, onUnavailable });
@@ -18,15 +20,15 @@ export default function PasskeyRecoverySave({ credentialId, autoStart = false, d
   const save = useCallback(async () => {
     if (active.current) return;
     const controller = new AbortController(); active.current = controller;
-    setStatus('saving');
+    setStatus('saving'); setError('');
     try {
       const backup = await rpc<string>('vault_exportPasskeyBackup');
       if (controller.signal.aborted) return;
       const selected = credentialId || parsePasskeyBackup(backup).passkeys[0].credentialId;
       await savePasskeyRecovery(backup, selected, controller.signal);
       if (!controller.signal.aborted) { setStatus('saved'); callbacks.current.onSaved?.(); }
-    } catch {
-      if (!controller.signal.aborted) { setStatus('failed'); callbacks.current.onUnavailable?.(); }
+    } catch (error) {
+      if (!controller.signal.aborted) { setError((error as Error).message); setStatus('failed'); callbacks.current.onUnavailable?.((error as Error).message); }
     } finally { if (active.current === controller) active.current = null; }
   }, [credentialId]);
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function PasskeyRecoverySave({ credentialId, autoStart = false, d
   return <Container gap={3}>
     <Button small={compact} variant={compact ? "secondary" : "primary"} disabled={disabled || status === 'saving'} onClick={save}>{t(status === 'saving' ? 'passkey.savingRecovery' : 'passkey.saveRecovery')}</Button>
     {status === 'saved' && <Text variant="secondary" role="status">{t('passkey.recoverySaved')}</Text>}
+    <FormError>{error}</FormError>
     {status === 'failed' && <Text variant="secondary" role="status">{t('passkey.recoveryFallback')}</Text>}
   </Container>;
 }

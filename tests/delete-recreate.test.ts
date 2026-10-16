@@ -251,6 +251,7 @@ it('sub-account preview uses the active seed when multiple seeds are stored', as
   const preview=await onboarding.handlers.get('onboarding_generateSubAccount')!({derivationPath:path}) as any;
   const {createFromMnemonicAtPath}=await import('../src/domain/accounts/creation.ts');
   assert.equal(preview.account.pubkey,(await createFromMnemonicAtPath(second.mnemonic,path)).pubkey);
+  assert.equal(preview.account.name, 'Account 2', 'custom paths retain the automatic account name');
 });
 
 it('removing the final private account removes its verified empty vault, so reopening needs no unlock', async () => {

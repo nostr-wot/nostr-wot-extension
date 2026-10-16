@@ -1,6 +1,6 @@
 import { toSafeAccount } from '@domain/accounts/account.ts';
-import { PASSKEY_VAULT_VERSION, PASSKEY_RP_ID, PASSKEY_BACKUP_FORMAT, PASSKEY_MAX_CREDENTIALS, PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
-import { parsePasskeyBackup, validatePasskeyRecord, type PasskeyInput, type PasskeyProof, type PasskeyMetadata, type PasskeyVaultRecord } from '@domain/vault/passkey.ts';
+import { PASSKEY_VAULT_VERSION, LEGACY_PASSKEY_RP_ID, PASSKEY_BACKUP_FORMAT, PASSKEY_MAX_CREDENTIALS, PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
+import { parsePasskeyBackup, validPasskeyName, validatePasskeyRecord, type PasskeyInput, type PasskeyProof, type PasskeyMetadata, type PasskeyVaultRecord } from '@domain/vault/passkey.ts';
 import { wrapVaultKey, unwrapVaultKey, importVaultKey } from './passkeyEncryption.ts';
 import { AsyncLock } from '@utils/asyncLock.ts';
 import { iterationsFor, deriveKey, encrypt, decrypt } from './encryption.ts';
@@ -13,6 +13,7 @@ import {
   VAULT_PBKDF2_ITERATIONS as PBKDF2_ITERATIONS,
   LEGACY_VAULT_PBKDF2_ITERATIONS as PBKDF2_ITERATIONS_LEGACY,
   DEFAULT_AUTO_LOCK_MS as AUTO_LOCK_DEFAULT_MS,
+  AUTO_LOCK_OPTIONS,
   KEEPALIVE_ALARM,
   KEEPALIVE_PERIOD_MIN,
 } from '@constants/vault.ts';
@@ -194,7 +195,7 @@ export async function create(password: string, payload: VaultPayload, passkey?: 
     if (passkey) {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
       try {
-        protection = { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: PASSKEY_RP_ID, passkeys: [await wrapVaultKey(bytes, passkey)] };
+        protection = { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: passkey.rpId ?? LEGACY_PASSKEY_RP_ID, passkeys: [await wrapVaultKey(bytes, passkey)] };
         key = await importVaultKey(bytes);
       } finally { bytes.fill(0); }
     } else {
@@ -574,7 +575,30 @@ export async function listPasskeys(): Promise<PasskeyMetadata[]> {
   const enrolled = record.protection === 'passkey' ? record : record.registeredPasskeys ? { ...record, ...(record.registeredPasskeys as object), version: PASSKEY_VAULT_VERSION, protection: 'passkey' } : null;
   if (!enrolled) return [];
   validatePasskeyRecord(enrolled);
-  return enrolled.passkeys.map(({ credentialId, prfSalt }) => ({ credentialId, prfSalt }));
+  return enrolled.passkeys.map(({ iv: _iv, ciphertext: _ciphertext, ...metadata }) => ({ ...metadata, rpId: metadata.rpId ?? enrolled.rpId }));
+}
+
+/** Optional public display labels do not alter credential identity or wrapped keys. */
+export async function renamePasskey(credentialId: string, name: string): Promise<void> {
+  if (typeof credentialId !== 'string' || !validPasskeyName(name)) throw new Error('Invalid passkey name');
+  const revision = sessionRevision;
+  return mutations.run(async () => {
+    assertRevision(revision);
+    if (!_cryptoKey || !_decrypted) throw new Error('Vault is locked');
+    const stored = (await browser.storage.local.get(STORAGE_KEY))[STORAGE_KEY] as Record<string, any>;
+    const active = stored?.protection === 'passkey';
+    const enrollment = active ? stored : stored?.registeredPasskeys;
+    if (!enrollment || !Array.isArray(enrollment.passkeys)) throw new Error('No registered passkeys');
+    if (!enrollment.passkeys.some((item: PasskeyMetadata) => item.credentialId === credentialId)) throw new Error('Passkey does not belong to this vault');
+    const passkeys = enrollment.passkeys.map((item: PasskeyMetadata) => {
+      if (item.credentialId !== credentialId) return item;
+      const { name: _name, ...rest } = item;
+      return name.trim() ? { ...rest, name: name.trim() } : rest;
+    });
+    assertRevision(revision);
+    await browser.storage.local.set({ [STORAGE_KEY]: active ? { ...stored, passkeys } : { ...stored, registeredPasskeys: { ...enrollment, passkeys } } });
+    assertRevision(revision);
+  });
 }
 
 export async function getPasskey(): Promise<PasskeyMetadata | null> {
@@ -706,9 +730,12 @@ export async function withCacheKey<T>(operation: (key: CryptoKey) => Promise<T>)
   } finally { bytes.fill(0); }
 }
 
-/** Switch only between an existing passkey enrollment and password protection. */
-export async function changeProtection(options: { currentPassword?: string; currentPasskey?: PasskeyProof; password?: string; usePasskey: boolean }): Promise<boolean> {
+/** Verify current protection before enrolling or switching the vault unlock method. */
+export async function changeProtection(options: { currentPassword?: string; currentPasskey?: PasskeyProof; password?: string; newPasskey?: PasskeyInput; usePasskey: boolean; autoLockMs?: number }): Promise<boolean> {
   if (typeof options.usePasskey !== 'boolean') throw new Error('Invalid unlock method');
+  if (options.autoLockMs !== undefined && !AUTO_LOCK_OPTIONS.some(option => option.ms === options.autoLockMs)) throw new Error('Invalid auto-lock interval');
+  const noLock = options.autoLockMs === 0;
+  if (noLock && (options.usePasskey || options.password !== '')) throw new Error('No lock requires empty-password protection');
   const revision = sessionRevision;
   return mutations.run(async () => {
     assertRevision(revision);
@@ -717,8 +744,21 @@ export async function changeProtection(options: { currentPassword?: string; curr
     assertRevision(revision);
     const wasPasskey = stored?.protection === 'passkey';
     if (wasPasskey === options.usePasskey) throw new Error('Unlock method already selected');
-    if (!options.usePasskey && (typeof options.password !== 'string' || options.password.length < 8)) throw new Error('Password must be at least 8 characters');
-    const enrollment = wasPasskey ? stored : stored?.registeredPasskeys;
+    if (!options.usePasskey && !noLock && (typeof options.password !== 'string' || options.password.length < 8)) throw new Error('Password must be at least 8 characters');
+    let enrollment = wasPasskey ? stored : stored?.registeredPasskeys;
+    if (!enrollment && options.usePasskey && options.newPasskey) {
+      if (typeof options.currentPassword !== 'string') return false;
+      try {
+        const currentKey = await deriveKey(options.currentPassword, base64ToArray(stored.salt), stored.iterations ?? PBKDF2_ITERATIONS_LEGACY);
+        await decrypt(currentKey, base64ToArray(stored.iv), base64ToArray(stored.ciphertext));
+      } catch { return false; }
+      assertRevision(revision);
+      const freshKey = crypto.getRandomValues(new Uint8Array(32));
+      try {
+        enrollment = { rpId: options.newPasskey.rpId ?? LEGACY_PASSKEY_RP_ID, passkeys: [await wrapVaultKey(freshKey, options.newPasskey)] };
+      } finally { freshKey.fill(0); }
+      assertRevision(revision);
+    }
     if (!enrollment) throw new Error('No passkey registered');
     // Validate dormant enrollment using the same bounded wrapper contract.
     const enrolled = { ...stored, ...enrollment, version: PASSKEY_VAULT_VERSION, protection: 'passkey' };
@@ -742,16 +782,16 @@ export async function changeProtection(options: { currentPassword?: string; curr
       assertRevision(revision);
       let protection: Record<string, unknown>;
       if (options.usePasskey) {
-        protection = { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: PASSKEY_RP_ID, passkeys: enrolled.passkeys };
+        protection = { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: enrolled.rpId, passkeys: enrolled.passkeys };
       } else {
         const salt = crypto.getRandomValues(new Uint8Array(32));
         const iterations = iterationsFor(options.password!);
         key = await deriveKey(options.password!, salt, iterations);
-        protection = { version: VAULT_VERSION, salt: arrayToBase64(salt), iterations, registeredPasskeys: { rpId: PASSKEY_RP_ID, passkeys: enrolled.passkeys } };
+        protection = { version: VAULT_VERSION, salt: arrayToBase64(salt), iterations, registeredPasskeys: { rpId: enrolled.rpId, passkeys: enrolled.passkeys } };
       }
       assertRevision(revision);
       const encrypted = await encrypt(key, JSON.stringify(toStoragePayload(_decrypted!)));
-      const autoLockMs = _autoLockMs > 0 ? _autoLockMs : AUTO_LOCK_DEFAULT_MS;
+      const autoLockMs = options.autoLockMs ?? (_autoLockMs > 0 ? _autoLockMs : AUTO_LOCK_DEFAULT_MS);
       assertRevision(revision);
       await browser.storage.local.set({ [STORAGE_KEY]: { ...protection, iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext) }, autoLockMs });
       assertRevision(revision);

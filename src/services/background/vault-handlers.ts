@@ -1,3 +1,5 @@
+import { getRecoveryStatus, recordBlobSaved, recordBlobUnavailable, addRecoveryRelay } from '../vault/recoveryStatus.ts';
+import * as relayRecovery from '../vault/relayRecovery.ts';
 import { WIZARD_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
 import type { PasskeyInput, PasskeyProof } from '@domain/vault/passkey.ts';
 import { revokeAuthenticationGrants } from '../permissions/authentication.ts';
@@ -105,6 +107,23 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_getPasskey', async () => vault.getPasskey()],
     ['vault_listPasskeys', async params => params.forUnlock && !await vault.getPasskey() ? [] : vault.listPasskeys()],
     ['vault_exportPasskeyBackup', async () => vault.exportPasskeyBackup()],
+    ['vault_prepareRelayRecovery', async params => relayRecovery.prepareRelayRecovery(params as unknown as PasskeyProof)],
+    ['vault_publishRelayRecovery', async params => relayRecovery.publishRelayRecovery(params.event as import('@domain/nostr/types.ts').SignedEvent, params.context as import('../vault/recoveryCodec.ts').RecoveryContext)],
+    ['vault_getRecoveryStatus', async params => getRecoveryStatus(params.credentialId as string)],
+    ['vault_recordBlobUnavailable', async params => recordBlobUnavailable(params.credentialId as string)],
+    ['vault_recordBlobSaved', async params => recordBlobSaved(params.credentialId as string)],
+    ['vault_addRecoveryRelay', async params => addRecoveryRelay(params.credentialId as string, params.relay as string)],
+    ['vault_checkRelayRecovery', async params => relayRecovery.checkRelayRecovery(params.credentialId as string)],
+    ['vault_fetchRelayRecovery', async params => relayRecovery.fetchRelayRecovery(params as unknown as import('../vault/recoveryCodec.ts').RecoveryContext)],
+    ['vault_restoreRelayRecovery', async params => {
+        await relayRecovery.restoreRelayRecovery(params.event as import('@domain/nostr/types.ts').SignedEvent, params.proof as PasskeyProof, params.context as import('../vault/recoveryCodec.ts').RecoveryContext);
+        await syncActivePubkey();
+        return { account: vault.listAccounts().find(a => a.id === vault.getActiveAccountId()) };
+    }],
+    ['vault_renamePasskey', async params => {
+        await vault.renamePasskey(params.credentialId as string, params.name as string);
+        return { ok: true };
+    }],
     ['vault_addPasskey', async params => {
         await vault.addPasskey(params.existing as PasskeyProof, params.passkey as PasskeyInput);
         return { ok: true };

@@ -1,6 +1,6 @@
-import { PASSKEY_KDF_CONTEXT, PASSKEY_RP_ID } from '@constants/passkey.ts';
+import { PASSKEY_KDF_CONTEXT, LEGACY_PASSKEY_RP_ID } from '@constants/passkey.ts';
 import { base64ToArray, arrayToBase64 } from '@lib/crypto/utils.ts';
-import { validatePasskeyInput, type PasskeyInput, type PasskeyProof, type PasskeyWrapper } from '@domain/vault/passkey.ts';
+import { validatePasskeyInput, type PasskeyMetadata, type PasskeyInput, type PasskeyProof, type PasskeyWrapper } from '@domain/vault/passkey.ts';
 
 async function wrappingKey(input: PasskeyInput): Promise<CryptoKey> {
   validatePasskeyInput(input);
@@ -11,8 +11,8 @@ async function wrappingKey(input: PasskeyInput): Promise<CryptoKey> {
   } finally { bytes.fill(0); }
 }
 
-function binding(wrapper: { credentialId: string; prfSalt: string }): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(JSON.stringify([PASSKEY_KDF_CONTEXT, PASSKEY_RP_ID, wrapper.credentialId, wrapper.prfSalt]));
+function binding(wrapper: PasskeyMetadata): Uint8Array<ArrayBuffer> {
+  return new TextEncoder().encode(JSON.stringify([PASSKEY_KDF_CONTEXT, wrapper.rpId ?? LEGACY_PASSKEY_RP_ID, wrapper.credentialId, wrapper.prfSalt, ...(wrapper.recoveryPubkey ? [wrapper.recoveryPubkey, wrapper.recoveryScope] : [])]));
 }
 
 export async function wrapVaultKey(bytes: Uint8Array, input: PasskeyInput): Promise<PasskeyWrapper> {
@@ -20,7 +20,7 @@ export async function wrapVaultKey(bytes: Uint8Array, input: PasskeyInput): Prom
   const key = await wrappingKey(input);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: binding(input) }, key, bytes as BufferSource);
-  return { credentialId: input.credentialId, prfSalt: input.prfSalt, iv: arrayToBase64(iv), ciphertext: arrayToBase64(new Uint8Array(ciphertext)) };
+  return { ...(input.rpId ? { rpId: input.rpId } : {}), ...(input.recoveryPubkey ? { recoveryPubkey: input.recoveryPubkey, recoveryScope: input.recoveryScope } : {}), credentialId: input.credentialId, prfSalt: input.prfSalt, iv: arrayToBase64(iv), ciphertext: arrayToBase64(new Uint8Array(ciphertext)) };
 }
 
 export async function unwrapVaultKey(wrapper: PasskeyWrapper, proof: PasskeyProof): Promise<Uint8Array> {

@@ -57,7 +57,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.Method]: {
     SELECT: (_ctx, { method }, { hasGeneratedAccount }) => {
       const step = (method === 'create' && hasGeneratedAccount) ? WizardStep.Subaccount : method as WizardStep;
-      if (![WizardStep.Passkey, WizardStep.PasskeyRestore, WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
+      if (![WizardStep.MoreOptions, WizardStep.Passkey, WizardStep.PasskeyRestore, WizardStep.Create, WizardStep.Subaccount, WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect].includes(step)) return null;
       return { step, ctx: { method: method as string } };
     },
     BACK: (ctx, _payload, { initialStep }) =>
@@ -67,23 +67,27 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.MoreOptions]: {
     SELECT: (_ctx, { method }, { hasAccounts }) => {
       const step = method as WizardStep;
-      if (![WizardStep.WatchOnly, WizardStep.NostrConnect, WizardStep.PasskeyRestore].includes(step)) return null;
-      if (hasAccounts && step === WizardStep.PasskeyRestore) return null;
+      if (![WizardStep.Import, WizardStep.WatchOnly, WizardStep.NostrConnect, WizardStep.PasskeyAdvanced, WizardStep.PasskeyRestore].includes(step)) return null;
+      if (hasAccounts && [WizardStep.PasskeyAdvanced, WizardStep.PasskeyRestore].includes(step)) return null;
       return { step, ctx: { method: method as string } };
     },
     BACK: () => ({ step: WizardStep.Method }),
   },
 
+  [WizardStep.PasskeyAdvanced]: {
+    CREATED: (_ctx, { account, blobSupported }) => ({ step: WizardStep.PasskeyBackup, ctx: { account, passkeyBlobSupported: blobSupported === true, passkeyRecoverySaved: false } }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
+  },
   [WizardStep.Passkey]: {
     CREATED: (_ctx, { account, blobSupported }) => ({ step: WizardStep.PasskeyBackup, ctx: { account, passkeyBlobSupported: blobSupported === true, passkeyRecoverySaved: false } }),
     BACK: () => ({ step: WizardStep.Method }),
   },
   [WizardStep.PasskeyRestore]: {
-    DONE: (_ctx, { account }) => ({ step: WizardStep.Done, ctx: { account } }),
-    BACK: () => ({ step: WizardStep.Import }),
+    DONE: (_ctx, { account }) => ({ step: WizardStep.Password, ctx: { account } }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
   [WizardStep.PasskeyBackup]: {
-    DONE: (_ctx, { saved }) => ({ step: WizardStep.FollowSuggestions, ctx: { passkeyRecoverySaved: saved === true } }),
+    DONE: (_ctx, { saved }) => ({ step: WizardStep.Password, ctx: { passkeyRecoverySaved: saved === true } }),
   },
   [WizardStep.Create]: {
     CREATED: (_ctx, { account, mnemonic }) => ({
@@ -107,7 +111,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       step: WizardStep.Password,
       ctx: { account: account as unknown, upgradeId: upgradeId as string },
     }),
-    BACK: () => ({ step: WizardStep.Method }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
 
   [WizardStep.WatchOnly]: {
@@ -115,12 +119,12 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done,
       ctx: { account: account as unknown },
     }),
-    BACK: () => ({ step: WizardStep.Method }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
 
   [WizardStep.NostrConnect]: {
     DONE: (_ctx, { account }) => ({ step: WizardStep.Password, ctx: { account: account as unknown } }),
-    BACK: () => ({ step: WizardStep.Method }),
+    BACK: () => ({ step: WizardStep.MoreOptions }),
   },
 
   [WizardStep.Backup]: {
@@ -137,10 +141,11 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
     SET: (ctx, { upgraded }, { hasAccounts }) => {
       if (upgraded) return { step: WizardStep.Done };
       // Only show follow suggestions for new identity creation
-      if (ctx.method === 'create') return { step: WizardStep.FollowSuggestions };
+      if (['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.FollowSuggestions };
       return { step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done };
     },
     BACK: (ctx) => {
+      if (['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(ctx.method || '')) return null;
       if (ctx.method === 'create') return { step: WizardStep.Verify };
       if (ctx.method === 'import') return { step: WizardStep.Import };
       if (ctx.method === 'nip46') return { step: WizardStep.NostrConnect };
@@ -151,7 +156,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.FollowSuggestions]: {
     DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done }),
     BACK: (ctx, _payload, { hasGeneratedAccount }) => {
-      if (ctx.method === 'passkey') return { step: WizardStep.PasskeyBackup };
+      if (ctx.method === 'passkey' || ctx.method === 'passkeyAdvanced') return null;
       // Subaccounts skip password, go back to subaccount step
       if (ctx.method === 'create' && hasGeneratedAccount) return { step: WizardStep.Subaccount };
       return { step: WizardStep.Password };
@@ -161,7 +166,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.PermissionCopy]: {
     DONE: () => ({ step: WizardStep.Done }),
     BACK: (ctx) => {
-      if (ctx.method === 'create') return { step: WizardStep.FollowSuggestions };
+      if (['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.FollowSuggestions };
       return { step: WizardStep.Password };
     },
   },

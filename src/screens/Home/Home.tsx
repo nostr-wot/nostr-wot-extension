@@ -1,3 +1,4 @@
+import { useAnimatedVisible } from '@hooks/useAnimatedVisible';
 import { useState, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
@@ -18,6 +19,8 @@ import Card from '@components/Card';
 import Button, { ButtonSecondary } from '@components/Button';
 import EmptyState from '@components/EmptyState';
 import { SectionLabel } from '@components/SectionLabel';
+import IconButton from '@components/IconButton';
+import IconClose from '@assets/IconClose';
 import IconGlobe from '@assets/IconGlobe.tsx';
 import IconZap from '@assets/IconZap.tsx';
 import IconChevronRight from '@assets/IconChevronRight.tsx';
@@ -44,6 +47,10 @@ export default function Home({ menuOpen }: HomeProps) {
   // Set when a connect / dismiss / identity-toggle RPC fails, so the click is
   // not silently lost. All three used to fail without saying anything.
   const [connectFailed, setConnectFailed] = useState<boolean>(false);
+  const [dismissedNotice, setDismissedNotice] = useState<string | null>(null);
+  const noticeKey = `${active?.id || ''}:${domain || ''}`;
+  const noticeDismissed = dismissedNotice === noticeKey;
+  const { shouldRender: showNotice, animating: closingNotice } = useAnimatedVisible(!noticeDismissed);
 
   const handleIdentityToggle = async (checked: boolean) => {
     const previous = identityEnabled;
@@ -91,7 +98,7 @@ export default function Home({ menuOpen }: HomeProps) {
     setConnectFailed(false);
     try {
       await rpc('addDismissedDomain', { domain, permanent });
-      window.close();
+      setDismissedNotice(noticeKey);
     } catch {
       // Closing in a `finally` made a failed dismissal indistinguishable from a
       // successful one — the popup vanished either way, and the site re-prompted
@@ -151,10 +158,11 @@ export default function Home({ menuOpen }: HomeProps) {
   </>;
   let siteNotice: ReactNode = null;
 
-  if (siteState === 'empty') {
+  if (siteState === 'empty' && showNotice) {
     siteNotice = (
-      <Container className="flex-1 justify-center">
-        <Card className="mb-0">
+      <Container className={closingNotice ? "flex-1 justify-center animate-dropdown-out pointer-events-none" : "flex-1 justify-center"}>
+        <Card className="mb-0 relative">
+          <div className="absolute top-3 right-3"><IconButton aria-label={t('common.close')} onClick={() => { setDismissedNotice(noticeKey); }}><IconClose size={16} /></IconButton></div>
           <EmptyState
             icon={
               <IconGlobe size={32} strokeWidth="1.5" />
@@ -169,7 +177,7 @@ export default function Home({ menuOpen }: HomeProps) {
 
   if (siteState === null) {
     siteNotice = (
-      <Container className="flex-1 justify-center">
+      <Container className={closingNotice ? "flex-1 justify-center animate-dropdown-out pointer-events-none" : "flex-1 justify-center"}>
         <Card className="mb-0">
           <EmptyState
             icon={
@@ -182,10 +190,11 @@ export default function Home({ menuOpen }: HomeProps) {
     );
   }
 
-  if (siteState === 'notConnected') {
+  if (siteState === 'notConnected' && showNotice) {
     siteNotice = (
-      <Container className="flex-1 justify-center">
-        <Card className="mb-0">
+      <Container className={closingNotice ? "flex-1 justify-center animate-dropdown-out pointer-events-none" : "flex-1 justify-center"}>
+        <Card className="mb-0 relative">
+          <div className="absolute top-3 right-3"><IconButton aria-label={t('common.close')} onClick={() => { void handleDismiss(false); }}><IconClose size={16} /></IconButton></div>
           <EmptyState
             icon={
               <IconGlobe size={32} strokeWidth="1.5" />
@@ -198,7 +207,6 @@ export default function Home({ menuOpen }: HomeProps) {
             )}
             <Container variant="row" gap={4} className="justify-center">
               <Button small onClick={handleConnect}>{t('home.connectThisSite')}</Button>
-              <ButtonSecondary small onClick={() => handleDismiss(false)}>{t('home.notNow')}</ButtonSecondary>
               <ButtonSecondary small onClick={() => handleDismiss(true)}>{t('home.never')}</ButtonSecondary>
             </Container>
           </EmptyState>
@@ -208,7 +216,7 @@ export default function Home({ menuOpen }: HomeProps) {
   }
 
   return (
-    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice} siteConnected={siteState === 'connected'}>
+    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice} >
       {pendingCount > 0 && (
         <Card className="flex items-center py-5 px-7 bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)] cursor-default">
           <Container variant="row" gap={4}>
@@ -228,7 +236,7 @@ export default function Home({ menuOpen }: HomeProps) {
             <Button small onClick={loadHomeState}>{t('home.retry')}</Button>
           </EmptyState>
         </Card>
-      ) : (
+      ) : siteState === 'connected' ? (
         <>
           {connectFailed && (
             <div className="py-3 px-6 text-sm text-error text-center" role="alert">{t('home.actionFailed')}</div>
@@ -240,7 +248,7 @@ export default function Home({ menuOpen }: HomeProps) {
             domain={domain}
           />
         </>
-      )}
+      ) : null}
 
       {/* Account — profile, mutes, and relays that follow the identity, grouped
           into one card so they read as a single list. */}
@@ -261,7 +269,7 @@ export default function Home({ menuOpen }: HomeProps) {
   );
 }
 
-/** Hide the home balance until site consent is known; the wallet menu stays available. */
-export function HomeWalletLayout({wallet,siteNotice,siteConnected,children}: {wallet:ReactNode;siteNotice:ReactNode;siteConnected:boolean;children?:ReactNode}) {
-  return <>{siteConnected && wallet}{siteNotice ?? children}</>;
+/** Site notices can be dismissed without hiding account-level tools or closing the popup. */
+export function HomeWalletLayout({wallet,siteNotice,children}: {wallet:ReactNode;siteNotice:ReactNode;children?:ReactNode}) {
+  return <>{siteNotice ?? <Container className="animate-section-slide-in">{wallet}{children}</Container>}</>;
 }

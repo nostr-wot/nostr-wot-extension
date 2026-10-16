@@ -697,7 +697,7 @@ describe('NwcProvider', () => {
       }
     });
 
-    it('treats a relay refusal as a definite payment rejection, not an unknown outcome', async () => {
+    it('keeps a dispatched payment outcome unknown after an unsigned relay refusal', async () => {
       mock.timers.enable({ apis: ['setTimeout'] });
 
       try {
@@ -708,7 +708,7 @@ describe('NwcProvider', () => {
         ws.simulateMessage(JSON.stringify(['OK', sentEvent.id, false, 'rate-limited']));
         mock.timers.tick(60_001);
 
-        await assert.rejects(paymentPromise, /NWC relay rejected request: rate-limited/);
+        await assert.rejects(paymentPromise, /PAYMENT_OUTCOME_UNKNOWN/);
       } finally {
         mock.timers.reset();
       }

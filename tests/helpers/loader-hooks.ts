@@ -21,6 +21,10 @@ export async function resolve(
   context: ResolveContext,
   nextResolve: NextResolve
 ): Promise<ResolveResult> {
+  // CSS-module class names are presentation-only in DOM behavior tests.
+  if (specifier.endsWith('.module.css')) {
+    return { url: 'data:text/javascript,export default new Proxy({}, {get: (_, key) => key});', shortCircuit: true };
+  }
   // Stand in for the browser API however it is reached.
   //
   // This used to fire only when the importer was itself inside lib/, which was

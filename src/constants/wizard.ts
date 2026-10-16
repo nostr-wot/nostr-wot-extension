@@ -30,6 +30,7 @@ export enum WizardStep {
   MoreOptions = 'moreOptions',
   Create = 'create',
   Passkey = 'passkey',
+  PasskeyAdvanced = 'passkeyAdvanced',
   PasskeyRestore = 'passkeyRestore',
   PasskeyBackup = 'passkeyBackup',
   Subaccount = 'subaccount',

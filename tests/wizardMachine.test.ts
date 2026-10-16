@@ -135,7 +135,7 @@ test('unknown restored steps and unsupported methods cannot strand the wizard', 
   assert.equal(reducer(restored, { type: 'DONE' }).step, WizardStep.Done);
 });
 
-test('passkey creation requires encrypted recovery backup before following or archive, without mnemonic or password steps', () => {
+test('passkey creation confirms auto-lock after recovery before following suggestions', () => {
   const created = run(fresh(), [
     { type: 'SELECT', payload: { method: 'passkey' } },
     { type: 'CREATED', payload: { account: { id: 'passkey-account' } } },
@@ -143,33 +143,36 @@ test('passkey creation requires encrypted recovery backup before following or ar
   assert.equal(created.step, WizardStep.PasskeyBackup);
   assert.equal(created.ctx.mnemonic, null);
   assert.equal(reducer(created, { type: 'BACK' }).step, WizardStep.PasskeyBackup);
-  const following = reducer(created, { type: 'DONE' });
+  const protection = reducer(created, { type: 'DONE' });
+  assert.equal(protection.step, WizardStep.Password);
+  const following = reducer(protection, { type: 'SET' });
   assert.equal(following.step, WizardStep.FollowSuggestions);
-  assert.equal(reducer(following, { type: 'BACK' }).step, WizardStep.PasskeyBackup);
+  assert.equal(reducer(following, { type: 'BACK' }).step, WizardStep.FollowSuggestions);
   assert.equal(reducer(following, { type: 'DONE' }).step, WizardStep.Done);
 });
 
-test('restoring a passkey vault finishes without creating another account or password', () => {
+test('restoring a passkey vault confirms auto-lock without creating another account', () => {
   const restored = run(fresh(), [
     { type: 'SELECT', payload: { method: 'passkeyRestore' } },
     { type: 'DONE', payload: { account: { id: 'restored' } } },
   ], { hasAccounts: false });
-  assert.equal(restored.step, WizardStep.Done);
+  assert.equal(restored.step, WizardStep.Password);
+  assert.equal(reducer(restored, { type: 'SET' }).step, WizardStep.Done);
   assert.deepEqual(restored.ctx.account, { id: 'restored' });
   assert.equal(restored.ctx.mnemonic, null);
 });
 
-test('secondary methods are direct, passkey recovery belongs to Import, and old More options state migrates', () => {
+test('existing-account submenu routes all four methods and returns to its parent', () => {
   const start = fresh();
   for (const method of ['create', 'passkey', 'import', 'npub', 'nip46']) {
     const next = reducer(start, { type: 'SELECT', payload: { method } });
     assert.equal(next.step, method);
-    if (['npub', 'nip46'].includes(method)) assert.equal(reducer(next, { type: 'BACK' }).step, 'method');
+    if (['npub', 'nip46'].includes(method)) assert.equal(reducer(next, { type: 'BACK' }).step, 'moreOptions');
   }
   const importing = reducer(start, { type: 'SELECT', payload: { method: 'import' } });
   const restore = reducer(importing, { type: 'RESTORE_PASSKEY' });
   assert.equal(restore.step, 'passkeyRestore');
-  assert.equal(reducer(restore, { type: 'BACK' }).step, 'import');
+  assert.equal(reducer(restore, { type: 'BACK' }).step, 'moreOptions');
   assert.equal(reducer(importing, { type: 'RESTORE_PASSKEY' }, { hasAccounts: true }), importing);
   assert.equal(reducer(start, { type: 'RESTORE', payload: { step: 'moreOptions', ctx: start.ctx } }).step, 'method');
 });
@@ -182,8 +185,23 @@ test('verified passkey storage survives navigation without requiring a file', ()
   assert.equal(created.ctx.passkeyBlobSupported, true);
   assert.equal(created.ctx.passkeyRecoverySaved, false);
   const following = reducer(created, { type: 'DONE', payload: { saved: true } });
-  assert.equal(following.step, WizardStep.FollowSuggestions);
+  assert.equal(following.step, WizardStep.Password);
   const back = reducer(following, { type: 'BACK' });
-  assert.equal(back.step, WizardStep.PasskeyBackup);
+  assert.equal(back.step, WizardStep.Password);
   assert.equal(back.ctx.passkeyRecoverySaved, true);
+});
+
+
+test('advanced passkey creation is reached only through other methods', () => {
+  const start = fresh();
+  const others = reducer(start, { type: 'SELECT', payload: { method: 'moreOptions' } });
+  const options = others;
+  assert.equal(options.step, WizardStep.MoreOptions);
+  const advanced = reducer(options, { type: 'SELECT', payload: { method: 'passkeyAdvanced' } });
+  assert.equal(advanced.step, WizardStep.PasskeyAdvanced);
+  assert.equal(reducer(advanced, { type: 'BACK' }).step, WizardStep.MoreOptions);
+  const created = reducer(advanced, { type: 'CREATED', payload: { account: { id: 'advanced' } } });
+  assert.equal(created.step, WizardStep.PasskeyBackup);
+  assert.equal(reducer(reducer(created, { type: 'DONE' }), { type: 'BACK' }).step, WizardStep.Password);
+  assert.equal(reducer(options, { type: 'SELECT', payload: { method: 'passkeyAdvanced' } }, { hasAccounts: true }), options);
 });

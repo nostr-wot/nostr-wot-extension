@@ -402,3 +402,207 @@ it('latch stays true after its value goes back to false', async () => {
   assert.equal(seen.at(-1), true, 'closing keeps it mounted for its exit animation');
  } finally { await view.close(); }
 });
+
+it('wallet disconnect shares pending and error handling across entry points', async context => {
+ const view = await mount();
+ const { default: useWalletDisconnect } = await import('../src/hooks/useWalletDisconnect');
+ let completed = 0, fail = true;
+ context.mock.method(browser.runtime, 'sendMessage', async () => fail ? { error: 'Offline' } : { result: true });
+ function Probe() {
+  const state = useWalletDisconnect(() => completed++);
+  return createElement('button', { onClick: state.disconnect, disabled: state.disconnecting }, state.disconnectError || 'Disconnect');
+ }
+ try {
+  await view.render(createElement(Probe));
+  await act(async () => document.querySelector('button')!.click());
+  assert.equal(document.querySelector('button')!.textContent, 'Offline');
+  assert.equal(document.querySelector('button')!.disabled, false);
+  assert.equal(completed, 0);
+  fail = false;
+  await act(async () => document.querySelector('button')!.click());
+  assert.equal(completed, 1);
+ } finally { await view.close(); }
+});
+
+it('passkey names are edited in a portal dialog with relay availability', async context => {
+ const view = await mount();
+ const { default: PasskeySection } = await import('../src/screens/Settings/PasskeySection');
+ const pubkey = 'a'.repeat(64);
+ const credential = { credentialId: 'one', rpId: 'passkeys.nostrwot.com', recoveryPubkey: pubkey, name: 'Laptop' };
+ const writes: any[] = [];
+ context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+  if (message.method === 'vault_checkRelayRecovery') return { result: [{ relay: 'wss://nos.lol', status: 'found', checkedAt: Date.now() }] };
+  if (message.method === 'vault_renamePasskey') { writes.push(message.params); credential.name = message.params.name; return { result: true }; }
+  return { result: [credential] };
+ });
+ try {
+  await view.render(createElement(PasskeySection, { locked: false, account: { pubkey, type: 'generated', readOnly: false } }));
+  assert.equal(document.querySelector('input'), null);
+  assert.doesNotMatch(document.body.textContent!, /Recovery copies|1\/1/);
+  assert.ok(document.querySelector('button[aria-label="passkey.relayRecovery"]'));
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label^="passkey.name"]')!.click());
+  const dialog = document.querySelector('[role="dialog"]')!;
+  assert.ok(dialog);
+  assert.equal(document.querySelector('#root')!.contains(dialog), false);
+  const input = dialog.querySelector('input')!;
+  await act(async () => {
+   Object.getOwnPropertyDescriptor(view.dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, 'Hardware key');
+   input.dispatchEvent(new view.dom.window.Event('input', { bubbles: true }));
+  });
+  await act(async () => [...dialog.querySelectorAll('button')].find(b => b.textContent === 'common.save')!.click());
+  assert.deepEqual(writes, [{ credentialId: 'one', name: 'Hardware key' }]);
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+  assert.match(document.body.textContent!, /Hardware key/);
+ } finally { await view.close(); }
+});
+
+it('relay recovery icon reflects verified storage and opens relay controls without a row count', async context => {
+ const view = await mount();
+ const { default: RelayRecoverySave } = await import('../src/components/PasskeyRecoverySave/RelayRecoverySave');
+ let blobSaved: boolean | null = true, found = false;
+ const relays = ['wss://example.com/']; const additions: string[] = [];
+ context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+  if (message.method === 'vault_getRecoveryStatus') return { result: { blobSaved, relays, accepted: {} } };
+  if (message.method === 'vault_addRecoveryRelay') { additions.push(message.params.relay); relays.push(message.params.relay); return { result: true }; }
+  return { result: relays.map(relay => ({ relay, status: found ? 'found' : 'missing', checkedAt: Date.now() })) };
+ });
+ try {
+  await view.render(createElement(RelayRecoverySave, { credentialId: 'one', iconOnly: true }));
+  const icon = () => document.querySelector<HTMLButtonElement>('button[aria-label="passkey.relayRecovery"]')!;
+  assert.ok(icon().classList.contains('text-muted'));
+  assert.equal(document.body.textContent, '');
+  await act(async () => icon().click());
+  assert.ok(document.querySelector('[role="dialog"]'));
+  blobSaved = false;
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="common.refresh"]')!.click());
+  assert.ok(icon().classList.contains('text-warning'));
+  found = true;
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="common.refresh"]')!.click());
+  assert.ok(icon().classList.contains('text-success'));
+  await act(async () => document.querySelector<HTMLButtonElement>('button[aria-label="passkey.addRelay"]')!.click());
+  const input = document.querySelector('input')!;
+  await act(async () => {
+   Object.getOwnPropertyDescriptor(view.dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, 'wss://second.example.com/');
+   input.dispatchEvent(new view.dom.window.Event('input', { bubbles: true }));
+  });
+  await act(async () => [...document.querySelectorAll('button')].find(b => b.textContent === 'common.add')!.click());
+  assert.deepEqual(additions, ['wss://second.example.com/']);
+  assert.match(document.body.textContent!, /second.example.com/);
+ } finally { await view.close(); }
+});
+
+it('Security offers None for a passkey vault and verifies the credential before disabling protection', async context => {
+ const view = await mount();
+ const { default: SecuritySection } = await import('../src/screens/Settings/SecuritySection');
+ let passkey = true, ms = 900000;
+ const calls: any[] = [];
+ const original = Object.getOwnPropertyDescriptor(navigator, 'credentials');
+ const originalPublic = Object.getOwnPropertyDescriptor(globalThis, 'PublicKeyCredential');
+ Object.defineProperty(globalThis, 'PublicKeyCredential', { configurable: true, value: class {} });
+ Object.defineProperty(navigator, 'credentials', { configurable: true, value: { create() {}, get: async () => ({ rawId: new Uint8Array([1,2,3]).buffer, getClientExtensionResults: () => ({ prf: { results: { first: new Uint8Array(32).fill(7).buffer } } }) }) } });
+ const metadata = { credentialId: 'AQID', rpId: 'passkeys.nostrwot.com', prfSalt: Buffer.alloc(32).toString('base64') };
+ context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+  calls.push(message);
+  const results: Record<string, unknown> = { vault_exists: true, vault_isLocked: false, vault_getAutoLock: ms, vault_getPasskey: passkey ? metadata : null, vault_listPasskeys: [metadata], vault_getActiveAccountType: { type: 'generated' } };
+  if (message.method === 'vault_changeProtection') { ms = 0; passkey = false; return { result: true }; }
+  return { result: results[message.method] ?? null };
+ });
+ try {
+  await view.render(createElement(VaultProvider, null, createElement(SecuritySection, { onChangePassword() {} })));
+  const button = (label: string) => [...document.querySelectorAll('button')].find(b => b.textContent === label)!;
+  await act(async () => button('common.none').click());
+  assert.equal(document.querySelector('input[aria-label="security.usePasskey"]'), null);
+  assert.equal(document.querySelector('input[type="password"]'), null);
+  assert.equal(calls.some(c => c.method === 'vault_changeProtection'), false);
+  await act(async () => button('common.confirm').click());
+  const change = calls.find(c => c.method === 'vault_changeProtection');
+  assert.equal(change.params.autoLockMs, 0);
+  assert.equal(change.params.password, '');
+  assert.equal(change.params.usePasskey, false);
+ } finally {
+  await view.close();
+  if (original) Object.defineProperty(navigator, 'credentials', original); else Reflect.deleteProperty(navigator, 'credentials');
+  if (originalPublic) Object.defineProperty(globalThis, 'PublicKeyCredential', originalPublic); else Reflect.deleteProperty(globalThis, 'PublicKeyCredential');
+ }
+});
+
+it('every enrolled passkey has a recovery icon, including other-account and legacy credentials', async context => {
+ const view = await mount();
+ const { default: PasskeySection } = await import('../src/screens/Settings/PasskeySection');
+ const pubkey = 'a'.repeat(64);
+ context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+  if (message.method === 'vault_listPasskeys') return { result: [
+   { credentialId: 'one', rpId: 'passkeys.nostrwot.com', recoveryPubkey: pubkey },
+   { credentialId: 'two', rpId: 'passkeys.nostrwot.com', recoveryPubkey: 'b'.repeat(64) },
+   { credentialId: 'old', rpId: 'passkeys.nostr-wot.com' },
+  ] };
+  if (message.method === 'vault_getRecoveryStatus') return { result: { blobSaved: null, relays: [], accepted: {} } };
+  return { result: [] };
+ });
+ try {
+  await view.render(createElement(PasskeySection, { locked: false, account: { pubkey, type: 'generated', readOnly: false } }));
+  const icons = document.querySelectorAll<HTMLButtonElement>('button[aria-label="passkey.relayRecovery"]');
+  assert.equal(icons.length, 3);
+  await act(async () => icons[1].click());
+  assert.match(document.body.textContent!, /passkey.selectRecoveryAccount/);
+  assert.equal([...document.querySelectorAll('button')].find(b => b.textContent === 'passkey.saveToRelays')!.disabled, true);
+ } finally { await view.close(); }
+});
+
+it('a stale unlocked popup refreshes its unlock method after a signing failure without losing the profile draft', async t => {
+ resetMockStorage();
+ const { useVault } = await import('../src/context/VaultContext');
+ const { rpc } = await import('../src/services/rpc');
+ const { default: EditProfileOverlay } = await import('../src/screens/EditProfile/EditProfileOverlay');
+ const pubkey = '11'.repeat(32);
+ await browser.storage.local.set({ accounts: [{ id: 'a', pubkey, name: 'Account', type: 'imported' }], activeAccountId: 'a', profileCache: { [pubkey]: { name: 'Initial' } } });
+ let locked = false;
+ let autoLockMs = 0;
+ t.mock.method(browser.runtime, 'sendMessage', async ({ method }: { method: string }) => {
+  if (method === 'vault_exists') return { result: true };
+  if (method === 'vault_isLocked') return { result: locked };
+  if (method === 'vault_getAutoLock') return { result: autoLockMs };
+  if (method === 'signAndPublishEvent') return { error: 'Vault is locked' };
+  return { result: null };
+ });
+ function Probe() { const vault = useVault(); return createElement('output', null, `${vault.locked}:${vault.autoLockEnabled}`); }
+ const view = await mount();
+ try {
+  await view.render(createElement(VaultProvider, null, createElement(AccountProvider, null, createElement(Probe), createElement(EditProfileOverlay, { visible: true, onClose() {} }))));
+  const input = document.querySelector<HTMLInputElement>('input[placeholder="profileEdit.namePlaceholder"]')!;
+  const setValue = Object.getOwnPropertyDescriptor(view.dom.window.HTMLInputElement.prototype, 'value')!.set!;
+  await act(async () => { setValue.call(input, 'My draft'); input.dispatchEvent(new view.dom.window.Event('input', { bubbles: true })); });
+  assert.equal(document.querySelector('output')!.textContent, 'false:false');
+  autoLockMs = 900000;
+  await act(async () => { await browser.storage.local.set({ autoLockMs }); });
+  assert.equal(document.querySelector('output')!.textContent, 'false:true');
+  locked = true; // A restarted background worker has lost its in-memory session.
+  await act(async () => { await assert.rejects(() => rpc('signAndPublishEvent'), /Vault is locked/); });
+  assert.equal(document.querySelector('output')!.textContent, 'true:true');
+  assert.equal(input.value, 'My draft');
+ } finally { await view.close(); }
+});
+
+it('account switcher refreshes from the shared profile cache and ignores a late legacy read', async t => {
+ resetMockStorage();
+ const { default: AccountDropdown } = await import('../src/screens/TopBar/AccountDropdown');
+ const { maintainProfileCache } = await import('../src/services/profile/displayCache');
+ const pubkey = 'ab'.repeat(32);
+ const old = { name: 'Before edit', picture: 'https://example.com/old.png' };
+ const updated = { name: 'After edit', picture: 'https://example.com/new.png', nip05: 'new@example.com' };
+ const pending = deferred<unknown>();
+ await browser.storage.local.set({ accounts: [{ id: 'a', pubkey, name: 'Account 1', type: 'nsec' }], activeAccountId: 'a', profileCache: { [pubkey]: old } });
+ t.mock.method(browser.runtime, 'sendMessage', async ({ method }: { method: string }) => method === 'getProfileMetadata' ? pending.promise : { result: null });
+ const view = await mount();
+ try {
+  await view.render(createElement(AccountProvider, null, createElement(AccountDropdown, { onClose() {}, onAddAccount() {} })));
+  assert.ok(document.body.textContent?.includes(old.name));
+  await act(async () => { await maintainProfileCache(pubkey, { metadata: updated, fetchedAt: Date.now() }); });
+  assert.ok(document.body.textContent?.includes(updated.name));
+  assert.ok(document.body.textContent?.includes(updated.nip05));
+  assert.equal(document.querySelector('img')?.getAttribute('src'), updated.picture);
+  await act(async () => { pending.resolve({ result: old }); });
+  assert.ok(document.body.textContent?.includes(updated.name));
+  assert.equal(document.querySelector('img')?.getAttribute('src'), updated.picture);
+ } finally { await view.close(); }
+});

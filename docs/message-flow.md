@@ -459,3 +459,12 @@ After confirmed last-account removal, `vault_removeAccount` invokes the vault’
 ### Archive explorer
 
 Internal extension pages use `archive_explore` for bounded encrypted-record scans, `archive_event` for full stored event details, `archive_reveal` for explicit local message decryption, and `archive_deleteEvents` for confirmed local removal. Every handler validates the account; page scripts cannot call these methods. Event IDs are resolved only within that account. Deletion pauses archive jobs and serializes with other archive mutations; it does not publish anything.
+
+### Passkey recovery events
+
+`vault_prepareRelayRecovery` authenticates an enrolled PRF wrapper and prepares only signed ciphertext in the background. `vault_publishRelayRecovery` validates its signature, exact enrollment and scope before explicit pooled publication. `vault_fetchRelayRecovery` is a bounded read available before vault restore; it discovers only matching kind-31777 events and never writes a vault. `vault_restoreRelayRecovery` authenticates/decrypts the selected format, validates recovered identities and delegates persistence to the existing guarded passkey restore path. All four remain privileged extension-page RPCs. Ordinary unlock does not query relays. See [Passkey recovery](passkey-recovery.md) for data shapes, disclosure, fallback and legacy RP behavior.
+
+
+Passkey settings uses internal vault_renamePasskey to persist an optional credential display name while unlocked, and read-only vault_checkRelayRecovery to query each recovery relay for the enrolled credential. Neither RPC is exposed through the page provider. The existing vault_changeProtection operation accepts an explicit supported auto-lock interval so onboarding can persist protection and its timer atomically, including verified conversion to no-lock mode.
+
+Internal vault_getRecoveryStatus reads credential recovery metadata. vault_recordBlobSaved and vault_recordBlobUnavailable record provider outcomes; vault_addRecoveryRelay adds a validated destination for an enrolled credential. These operations never supply PRF bytes, change wrapping keys or authorize signing.

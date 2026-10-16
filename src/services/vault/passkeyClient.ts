@@ -1,7 +1,7 @@
 import { t } from '@services/i18n/i18n.ts';
-import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS } from '@constants/passkey.ts';
+import { PASSKEY_RP_ID, LEGACY_PASSKEY_RP_ID, PASSKEY_RECOVERY_PRF, PASSKEY_TIMEOUT_MS } from '@constants/passkey.ts';
 import { arrayToBase64, base64ToArray } from '@lib/crypto/utils.ts';
-import { parsePasskeyBackup, type PasskeyInput, type PasskeyMetadata, type PasskeyProof } from '@domain/vault/passkey.ts';
+import { parsePasskeyBackup, validRpId, validPasskeyName, defaultPasskeyName, type PasskeyInput, type RecoveryScope, type PasskeyMetadata, type PasskeyProof } from '@domain/vault/passkey.ts';
 
 type PrfExtensions = AuthenticationExtensionsClientInputs & { largeBlob?: { support: 'preferred' }; prf: { eval: { first: BufferSource } } };
 type PrfResult = AuthenticationExtensionsClientOutputs & { largeBlob?: { supported?: boolean }; prf?: { enabled?: boolean; results?: { first: ArrayBuffer } } };
@@ -17,16 +17,26 @@ function requireSupport(): void {
 /** No network service or website script participates in vault unlocking. */
 export async function authenticatePasskey(metadata: PasskeyMetadata): Promise<PasskeyProof> {
   requireSupport();
+  if (!metadata || !validRpId(metadata.rpId ?? LEGACY_PASSKEY_RP_ID)) throw new Error('Invalid passkey domain');
   const credential = await requestPasskey(() => navigator.credentials.get({ publicKey: {
-    rpId: PASSKEY_RP_ID,
+    rpId: metadata.rpId ?? LEGACY_PASSKEY_RP_ID,
     challenge: crypto.getRandomValues(new Uint8Array(32)),
     allowCredentials: [{ type: 'public-key', id: base64ToArray(metadata.credentialId) as BufferSource }],
     userVerification: 'required', timeout: PASSKEY_TIMEOUT_MS,
     extensions: { prf: { eval: { first: base64ToArray(metadata.prfSalt) as BufferSource } } } as PrfExtensions,
   } })) as PublicKeyCredential | null;
   if (!credential || arrayToBase64(new Uint8Array(credential.rawId)) !== metadata.credentialId) throw new Error('Passkey request cancelled or credential did not match');
+  return readPasskeyProof(credential, metadata.credentialId);
+}
+
+/** Consume transient PRF output only for the selected credential. */
+export function readPasskeyProof(credential: PublicKeyCredential, credentialId: string): PasskeyProof {
+  if (arrayToBase64(new Uint8Array(credential.rawId)) !== credentialId) throw new Error('Recovery credential mismatch');
+  return { credentialId, prf: encodePrf((credential.getClientExtensionResults() as PrfResult).prf?.results?.first) };
+}
+export function clearPasskeyPrf(credential: PublicKeyCredential): void {
   const output = (credential.getClientExtensionResults() as PrfResult).prf?.results?.first;
-  return { credentialId: metadata.credentialId, prf: encodePrf(output) };
+  if (output) new Uint8Array(output).fill(0);
 }
 
 function encodePrf(output: ArrayBuffer | undefined): string {
@@ -36,22 +46,27 @@ function encodePrf(output: ArrayBuffer | undefined): string {
   finally { bytes.fill(0); }
 }
 
-export async function createPasskey(name: string): Promise<PasskeyInput> {
+export async function createPasskey(name: string, options: { rpId?: string; pubkey?: string; scope?: RecoveryScope; excludeCredentials?: readonly PasskeyMetadata[] } = {}): Promise<PasskeyInput> {
   requireSupport();
-  const salt = crypto.getRandomValues(new Uint8Array(32));
+  const rpId = options.rpId ?? PASSKEY_RP_ID;
+  if (!validRpId(rpId) || (options.pubkey !== undefined && !/^[0-9a-f]{64}$/.test(options.pubkey))) throw new Error('Invalid passkey domain or account');
+  const label = name.trim() || defaultPasskeyName(options.excludeCredentials?.length ?? 0);
+  if (!validPasskeyName(label)) throw new Error('Invalid passkey name');
+  const salt = options.pubkey ? base64ToArray(PASSKEY_RECOVERY_PRF) : crypto.getRandomValues(new Uint8Array(32));
   const credential = await requestPasskey(() => navigator.credentials.create({ publicKey: {
-    rp: { id: PASSKEY_RP_ID, name: 'Nostr WoT Vault' },
-    user: { id: crypto.getRandomValues(new Uint8Array(32)), name: name.trim() || 'Nostr WoT', displayName: name.trim() || 'Nostr WoT' },
+    rp: { id: rpId, name: 'Nostr WoT Vault' },
+    user: { id: options.pubkey ? Uint8Array.from(options.pubkey.match(/../g)!, byte => parseInt(byte, 16)) : crypto.getRandomValues(new Uint8Array(32)), name: label, displayName: label },
     challenge: crypto.getRandomValues(new Uint8Array(32)),
+    excludeCredentials: options.excludeCredentials?.filter(item => (item.rpId ?? LEGACY_PASSKEY_RP_ID) === rpId).map(item => ({ type: 'public-key' as const, id: base64ToArray(item.credentialId) as BufferSource })),
     pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
     // Leave attachment and provider hints unset: the browser owns provider selection.
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     attestation: 'none', timeout: PASSKEY_TIMEOUT_MS,
-    extensions: { largeBlob: { support: 'preferred' }, prf: { eval: { first: salt } } } as PrfExtensions,
+    extensions: { largeBlob: { support: 'preferred' }, prf: { eval: { first: salt as BufferSource } } } as PrfExtensions,
   } })) as PublicKeyCredential | null;
   if (!credential) throw new Error('Passkey creation cancelled');
   const initial = (credential.getClientExtensionResults() as PrfResult).prf;
-  const metadata = { credentialId: arrayToBase64(new Uint8Array(credential.rawId)), prfSalt: arrayToBase64(salt) };
+  const metadata = { name: label, rpId, ...(options.pubkey ? { recoveryPubkey: options.pubkey, recoveryScope: options.scope ?? 'vault' } : {}), credentialId: arrayToBase64(new Uint8Array(credential.rawId)), prfSalt: arrayToBase64(salt) };
   // Registration already requires user verification; reuse its PRF when supplied.
   const proof = initial?.results?.first ? { credentialId: metadata.credentialId, prf: encodePrf(initial.results.first) } : await authenticatePasskey(metadata);
   return { ...metadata, ...proof, largeBlobSupported: (credential.getClientExtensionResults() as PrfResult).largeBlob?.supported === true };
@@ -59,8 +74,8 @@ export async function createPasskey(name: string): Promise<PasskeyInput> {
 
 export function parsePasskeyBackupMetadata(text: string): PasskeyMetadata {
   const record = parsePasskeyBackup(text);
-  const { credentialId, prfSalt } = record.passkeys[0];
-  return { credentialId, prfSalt };
+  const { iv: _iv, ciphertext: _ciphertext, ...metadata } = record.passkeys[0];
+  return { ...metadata, rpId: metadata.rpId ?? record.rpId };
 }
 
 /** Browsers deliberately use NotAllowedError for both cancellation and timeout. */
@@ -70,4 +85,12 @@ export async function requestPasskey<T>(request: () => Promise<T>): Promise<T> {
     if (error instanceof Error && (error.name === 'NotAllowedError' || error.name === 'AbortError')) throw new Error(t('passkey.cancelled'));
     throw error;
   }
+}
+
+/** Request only the selected HTTPS RP origin, from an explicit user gesture. */
+export async function authorizePasskeyDomain(rpId: string): Promise<void> {
+  if (!validRpId(rpId)) throw new Error('Enter a domain without a scheme or path');
+  if (rpId === PASSKEY_RP_ID || rpId === LEGACY_PASSKEY_RP_ID) return;
+  const { default: browser } = await import('@lib/browser.ts');
+  if (!browser.permissions || !await browser.permissions.request({ origins: [`https://${rpId}/*`] })) throw new Error('Access to this passkey domain was not granted');
 }

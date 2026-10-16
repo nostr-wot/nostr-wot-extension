@@ -134,6 +134,8 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
   };
 
   const handleConfirmPublish = async () => {
+    if (step !== STEPS.PREVIEW || !active || !previewMeta) return;
+    const current = ++operation.current;
     setStep(STEPS.PUBLISHING);
     setError('');
     try {
@@ -143,12 +145,15 @@ export default function EditProfileOverlay({ visible, onClose }: EditProfileOver
         tags: [] as string[][],
         content: JSON.stringify(previewMeta),
       };
-      await rpc('signAndPublishEvent', { event });
+      await rpc('signAndPublishEvent', { event, pubkey: active.pubkey });
+      if (operation.current !== current) return;
       await rpc('updateProfileCache', { pubkey: active!.pubkey, metadata: previewMeta });
+      if (operation.current !== current) return;
       reload();
       setStep(STEPS.DONE);
       closeTimerRef.current = setTimeout(() => onClose(), 1500);
     } catch (err: any) {
+      if (operation.current !== current) return;
       setError(err.message || t('profileEdit.publishFailed'));
       setStep(STEPS.PREVIEW);
     }
