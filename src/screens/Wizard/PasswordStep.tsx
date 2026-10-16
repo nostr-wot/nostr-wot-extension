@@ -181,34 +181,33 @@ export default function PasswordStep({ account, upgradeId, onNext, configurePass
   // No vault -- full password setup
   return (
     <Container className="flex-1">
-      <Heading className="mb-3">{t('wizard.protectYourKeys')}</Heading>
       <Text variant="secondary" className="mb-8">
-        {t('wizard.protectYourKeysDesc')}
+        {t('wizard.protectYourAccountDesc')}
       </Text>
 
-      <Card><AutoLockOptions value={autoLockMs} onChange={value => { setAutoLockMs(value); setError(''); }} disabled={loading} /></Card>
-
-      {isNever && (
-        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-6">
-          {t('wizard.neverLockWarning')}
-        </StatusNotice>
-      )}
-
-      {!isNever && configurePasskey && <Container variant="row" className="justify-between mb-6">
-        <Text>{t('security.usePasskey')}</Text>
-        <Toggle checked={usePasskey} aria-label={t('security.usePasskey')} disabled={loading} onChange={() => { setUsePasskey(!usePasskey); pair.reset(); setError(''); }} />
-      </Container>}
-      {!isNever && !usePasskey && (
-        <Container gap={5} className="mb-6">
-          <SectionLabel className="mb-0">{t('wizard.password')}</SectionLabel>
-          <PasswordPairFields
-            pair={pair}
-            passwordPlaceholder={t('wizard.minEightChars')}
-            confirmPlaceholder={t('wizard.reEnterPw')}
-            onSubmit={handleContinue}
-          />
+      <Card>
+        <AutoLockOptions value={autoLockMs} onChange={value => { setAutoLockMs(value); setError(''); }} disabled={loading} />
+        <Container gap={5} className="mt-6 pt-6 border-t border-brand-tint-active">
+          {isNever && (
+            <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>
+              {t('wizard.neverLockWarning')}
+            </StatusNotice>
+          )}
+          {!isNever && configurePasskey && <Container variant="row" className="justify-between">
+            <Text>{t('security.usePasskey')}</Text>
+            <Toggle checked={usePasskey} aria-label={t('security.usePasskey')} disabled={loading} onChange={() => { setUsePasskey(!usePasskey); pair.reset(); setError(''); }} />
+          </Container>}
+          {!isNever && !usePasskey && <>
+            <SectionLabel className="mb-0">{t('wizard.password')}</SectionLabel>
+            <PasswordPairFields
+              pair={pair}
+              passwordPlaceholder={t('wizard.minEightChars')}
+              confirmPlaceholder={t('wizard.reEnterPw')}
+              onSubmit={handleContinue}
+            />
+          </>}
         </Container>
-      )}
+      </Card>
 
       <FormError>{error}</FormError>
 
