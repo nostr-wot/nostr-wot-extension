@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
@@ -9,7 +9,6 @@ import Modal from '@components/Modal';
 import Button from '@components/Button';
 import Container from '@components/Container';
 import Text from '@components/Text';
-import FormError from '@components/FormError';
 
 export function PaymentReceipt({ notice }: { notice: PaymentNotice }) {
   return <Container gap={4} className="text-center" role="status">
@@ -21,7 +20,14 @@ export function PaymentReceipt({ notice }: { notice: PaymentNotice }) {
   </Container>;
 }
 
-/** Mounted only for the unlocked account; receipts survive a closed popup. */
+/** How long a payment receipt stays on screen. */
+export const PAYMENT_NOTICE_MS = 3000;
+
+/**
+ * Mounted only for the unlocked account. Receipts survive a closed popup until
+ * they have been shown once: each is acknowledged as it appears, so closing the
+ * popup clears it too, and it hides itself after three seconds.
+ */
 export default function PaymentSuccessNotice({ accountId }: { accountId: string }) {
   const { data, refresh } = useAsyncResource<{ items: PaymentNotice[] }>({ items: [] }, {
     load: async (patch, current) => {
@@ -30,24 +36,24 @@ export default function PaymentSuccessNotice({ accountId }: { accountId: string 
     },
   });
   useStorageWatch([{ area: 'local', keys: [paymentRecordsKey(accountId)] }], refresh);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const notice = data.items[0];
-  const acknowledge = async () => {
-    if (busy || !notice) return;
-    setBusy(true);
-    setError('');
-    try {
-      await rpc('wallet_acknowledgePaymentNotices', { accountId, ids: [notice.id] });
-      await refresh();
-    } catch { setError(t('common.error')); }
-    finally { setBusy(false); }
-  };
-  if (!notice) return null;
-  return <Modal title={t('wallet.paymentSent')} maxWidth={340}
-    onClose={() => { void acknowledge(); }} dismissOnBackdrop={false}
-    footer={<Button disabled={busy} onClick={acknowledge}>{t('common.close')}</Button>}>
-    <PaymentReceipt notice={notice} />
-    <FormError>{error}</FormError>
+  const [shown, setShown] = useState<PaymentNotice | null>(null);
+  const seen = useRef(new Set<string>());
+  const next = data.items.find(item => !seen.current.has(item.id));
+  useEffect(() => {
+    if (shown || !next) return;
+    seen.current.add(next.id);
+    setShown(next);
+    // A failed acknowledgement only means the receipt shows again next time.
+    void rpc('wallet_acknowledgePaymentNotices', { accountId, ids: [next.id] }).catch(() => {});
+  }, [shown, next, accountId]);
+  useEffect(() => {
+    if (!shown) return;
+    const timer = setTimeout(() => setShown(null), PAYMENT_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [shown]);
+  if (!shown) return null;
+  return <Modal title={t('wallet.paymentSent')} maxWidth={340} onClose={() => setShown(null)}
+    footer={<Button onClick={() => setShown(null)}>{t('common.close')}</Button>}>
+    <PaymentReceipt notice={shown} />
   </Modal>;
 }

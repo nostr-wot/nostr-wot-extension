@@ -1057,7 +1057,7 @@ it('confirmed WebLN receipt identifies the site and amount without inventing an 
   assert.match(txHtml,/Lunch with friends/);assert.match(txHtml,/whitespace-pre-wrap break-words/);
 });
 
-it('WebLN receipt acknowledgement keeps later arrivals and reopening restores unread receipts', async t => {
+it('WebLN receipts are acknowledged as shown, close after three seconds and keep unseen arrivals', async t => {
   const {JSDOM}=await import('jsdom');
   const {act}=await import('react');
   const {default:browser}=await import('./helpers/browser-mock');
@@ -1067,24 +1067,39 @@ it('WebLN receipt acknowledgement keeps later arrivals and reopening restores un
   Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
   const {createRoot}=await import('react-dom/client');
   const root=createRoot(dom.window.document.getElementById('root')!);
+  const {PAYMENT_NOTICE_MS}=await import('../src/screens/Wallet/PaymentSuccessNotice');
+  assert.equal(PAYMENT_NOTICE_MS,3000);
   let items=[{id:'one',origin:'first.example',amount:21,timestamp:1}];
+  const acknowledged:string[]=[];
   t.mock.method(browser.runtime,'sendMessage',async(message:{method:string;params:{accountId:string;ids?:string[]}})=>{
     assert.equal(message.params.accountId,'account');
     if(message.method==='wallet_acknowledgePaymentNotices'){
-      items.push({id:'two',origin:'second.example',amount:42,timestamp:2});
+      acknowledged.push(...(message.params.ids||[]));
       items=items.filter(item=>!message.params.ids?.includes(item.id));
     }
     return {result:message.method==='wallet_getPaymentNotices'?[...items]:true};
   });
   try {
+    t.mock.timers.enable({apis:['setTimeout']});
     await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
     assert.match(dom.window.document.body.textContent!,/first.example/);
-    await act(async()=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='common.close')!.click());
+    assert.deepEqual(acknowledged,['one'],'shown once is enough, so closing the popup clears it');
+    await act(async()=>t.mock.timers.tick(2999));
+    assert.match(dom.window.document.body.textContent!,/first.example/);
+    await act(async()=>t.mock.timers.tick(1));
     assert.doesNotMatch(dom.window.document.body.textContent!,/first.example/);
-    assert.match(dom.window.document.body.textContent!,/second.example/);
+    t.mock.timers.reset();
+    // A receipt that arrives while the popup is closed is shown on the next open.
+    items.push({id:'two',origin:'second.example',amount:42,timestamp:2});
     await act(async()=>root.render(null));
     await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
     assert.match(dom.window.document.body.textContent!,/second.example/);
+    await act(async()=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='common.close')!.click());
+    assert.doesNotMatch(dom.window.document.body.textContent!,/second.example/);
+    assert.deepEqual(acknowledged,['one','two']);
+    await act(async()=>root.render(null));
+    await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
+    assert.doesNotMatch(dom.window.document.body.textContent!,/example/,'seen receipts do not return');
   } finally {
     await act(async()=>root.unmount());dom.window.close();
     for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}

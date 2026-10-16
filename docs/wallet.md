@@ -642,8 +642,10 @@ note does not create a history row; the provider supplies transaction status.
 
 A WebLN success receipt is created only after `payInvoice` succeeds, for both
 interactive and automatic approvals. The unlocked popup shows the site, known
-amount and timestamp, and Close acknowledges that receipt only. Closing the popup
-does not lose unread receipts; they appear on reopening for the same account.
+amount and timestamp. A receipt is acknowledged as soon as it is shown, so
+closing the popup also clears it, and it hides itself after three seconds (or on
+Close). Receipts that arrive while the popup is closed appear on the next open for
+the same account.
 A receipt-storage failure cannot change a successful payment into a failed RPC.
 No success receipt is emitted for rejection, failure or uncertain settlement.
 The new privileged `wallet_getPaymentNotices` and
