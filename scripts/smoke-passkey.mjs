@@ -52,6 +52,17 @@ try {
     if (response?.error) throw new Error(response.error);
     return response.result;
   }, { method, params });
+  // Poll from Node: an async page.waitForFunction predicate returns a Promise,
+  // which counts as truthy at once, so it never waited for the background.
+  const waitForRpc = async (method, accept, params = {}, timeout = 15000) => {
+    const deadline = Date.now() + timeout;
+    for (;;) {
+      const value = await rpc(method, params);
+      if (accept(value)) return value;
+      if (Date.now() > deadline) throw new Error(`${method} did not settle: ${JSON.stringify(value)}`);
+      await page.waitForTimeout(100);
+    }
+  };
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Try other methods', exact: false }).waitFor();
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/onboarding.png` });
@@ -104,7 +115,7 @@ try {
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await rpc('vault_lock');
   await page.getByRole('button', { name: 'Unlock with passkey', exact: true }).click();
-  await page.waitForFunction(async () => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_isLocked', params: {} })).result === false);
+  await waitForRpc('vault_isLocked', locked => locked === false);
   assert.equal(await rpc('vault_getActivePubkey'), publicKey);
   if (blobRecovery || relayRecovery) {
     // Simulate a fresh install: retain the authenticator, remove all extension vault data.
@@ -126,7 +137,7 @@ try {
     await page.locator('#passkey-file').setInputFiles({ name: 'vault.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
   }
   if (!blobRecovery && !relayRecovery) await page.getByRole('button', { name: /Restore passkey vault|Retry/, exact: true }).click();
-  await page.waitForFunction(async expected => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_getActivePubkey', params: {} })).result === expected, publicKey);
+  await waitForRpc('vault_getActivePubkey', pubkey => pubkey === publicKey);
   await page.getByRole('button', { name: 'Confirm', exact: true }).waitFor();
   assert.equal(await page.getByRole('checkbox', { name: 'Use passkey', exact: true }).isChecked(), true);
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
@@ -177,12 +188,12 @@ try {
   console.log('Security switch passed: password and passkey round trip preserves identity and enrollment.');
   await page.getByRole('button', { name: 'None', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-  await page.waitForFunction(async () => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_getAutoLock' })).result === 0);
+  await waitForRpc('vault_getAutoLock', ms => ms === 0);
   await page.getByRole('button', { name: '15 min', exact: true }).click();
   await page.locator('input[type="password"]').nth(0).fill('synthetic-restored-password');
   await page.locator('input[type="password"]').nth(1).fill('synthetic-restored-password');
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-  await page.waitForFunction(async () => (await globalThis.chrome.runtime.sendMessage({ method: 'vault_getAutoLock' })).result === 900000);
+  await waitForRpc('vault_getAutoLock', ms => ms === 900000);
   await page.locator('input[type="password"]').first().waitFor({ state: 'hidden' });
   assert.equal(await rpc('vault_isLocked'), false);
   const profileEvent = { kind: 0, created_at: Math.floor(Date.now() / 1000), tags: [], content: JSON.stringify({ name: 'Synthetic profile' }) };
