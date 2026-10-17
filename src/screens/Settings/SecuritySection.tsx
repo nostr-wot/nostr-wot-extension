@@ -1,31 +1,31 @@
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
-import { rpc } from '@services/rpc.ts';
-import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
+import AutoLockOptions from '@components/AutoLockOptions';
+import { changePasskeyProtection } from '@services/vault/protectionClient';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import IconLock from '@assets/IconLock.tsx';
 import Card from '@components/Card';
 import Input from '@components/Input';
 import Button, { ButtonSecondary } from '@components/Button';
-import ChipGroup from '@components/ChipGroup';
 import ListRow from '@components/ListRow';
-import { SectionLabel, SectionHint } from '@components/SectionLabel';
 import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import { useVault } from '@context/VaultContext';
 
+import UnlockMethodSection from './UnlockMethodSection';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 import StatusNotice from '@components/StatusNotice';
 import Text from '@components/Text';
-import type {AutoLockOption} from "@domain/vault/autoLock.ts";
 
 interface SecuritySectionProps {
   onChangePassword: () => void;
 }
 
 export default function SecuritySection({ onChangePassword }: SecuritySectionProps) {
+  const [passkey, setPasskey] = useState<boolean | null>(null);
   const [autoLockMs, setAutoLockMs] = useState<number>(DEFAULT_AUTO_LOCK_MS);
   const [pendingMs, setPendingMs] = useState<number | null>(null);
   // The pair for "turning auto-lock on" (never → timed). Disabling it
@@ -37,22 +37,26 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
   const [loading, setLoading] = useState<boolean>(false);
   const vault = useVault();
 
-  useEffect(() => {
-    rpc<number>('vault_getAutoLock').then((ms) => {
+  const refresh = () => {
+    rpcRead('vault_getPasskey').then((metadata) => setPasskey(!!metadata)).catch(() => {});
+    rpcRead<number>('vault_getAutoLock').then((ms) => {
       if (typeof ms === 'number') setAutoLockMs(ms);
     }).catch(() => {});
-  }, []);
+  };
+  useEffect(refresh, []);
 
   const isNever = autoLockMs === 0;
 
   // Does this selection require password confirmation?
   const needsPassword = (ms: number): boolean => {
+    if (passkey) return ms === 0;
     const wasNever = autoLockMs === 0;
     const willBeNever = ms === 0;
     return wasNever !== willBeNever;
   };
 
-  const handleChipSelect = (ms: number) => {
+  const handleChipSelect = async (ms: number) => {
+    if (loading) return;
     setError('');
     pair.reset();
     setCurrentPassword('');
@@ -63,8 +67,10 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
     } else {
       // Same category (timed→timed), apply directly
       setPendingMs(null);
-      setAutoLockMs(ms);
-      void rpc('vault_setAutoLock', { ms });
+      setLoading(true);
+      try { await rpc('vault_setAutoLock', { ms }); setAutoLockMs(ms); }
+      catch (e) { setError((e as Error).message); }
+      finally { setLoading(false); }
     }
   };
 
@@ -74,7 +80,7 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
     const switchingToNever = autoLockMs !== 0 && pendingMs === 0;
 
     if (switchingToTimed && !pair.ready) return;
-    if (switchingToNever && !currentPassword) {
+    if (switchingToNever && !passkey && !currentPassword) {
       setError(t('security.enterCurrentPassword')); return;
     }
 
@@ -85,7 +91,9 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
       const params: Record<string, any> = { ms: pendingMs };
       if (switchingToTimed) params.password = pair.password;
       if (switchingToNever) params.currentPassword = currentPassword;
-      await rpc('vault_setAutoLock', params);
+      if (switchingToNever && passkey) await changePasskeyProtection('', 0);
+      else await rpc('vault_setAutoLock', params);
+      refresh();
       setAutoLockMs(pendingMs);
       setPendingMs(null);
       pair.reset();
@@ -115,14 +123,11 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
     <Container gap={4} className="flex-1 py-2">
       {vault.exists && (
         <Card>
-          <SectionLabel>{t('security.autoLock')}</SectionLabel>
-          <SectionHint>{t('security.autoLockDesc')}</SectionHint>
-          <ChipGroup
-            options={AUTO_LOCK_OPTIONS.map((opt: AutoLockOption) => ({ value: opt.ms, label: t(opt.labelKey) }))}
-            value={displayMs}
-            onChange={handleChipSelect}
-          />
+          <AutoLockOptions value={displayMs} onChange={handleChipSelect} disabled={loading || vault.locked || passkey === null} />
 
+          {vault.exists && displayMs !== 0 && passkey !== null && <UnlockMethodSection passkey={passkey} locked={vault.locked} neverLock={isNever} onChanged={() => { refresh(); void vault.checkState(); }} />}
+
+          {pendingMs === null && <FormError>{error}</FormError>}
           {showSetPassword && (
             <Container gap={5} className="mt-6 pt-6 border-t border-brand-tint-active">
               <Text variant="secondary" as="p" className="text-sm m-0">{t('security.setPasswordHint')}</Text>
@@ -148,15 +153,15 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
               <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>
                 {t('security.neverLockWarning')}
               </StatusNotice>
-              <Text variant="secondary" as="p" className="text-sm m-0">{t('security.confirmPasswordHint')}</Text>
-              <Input
+              <Text variant="secondary" as="p" className="text-sm m-0">{t(passkey ? 'passkey.unlockDescription' : 'security.confirmPasswordHint')}</Text>
+              {!passkey && <Input
                 type="password"
                 showToggle
                 placeholder={t('security.currentPassword')}
                 value={currentPassword}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => { setCurrentPassword(e.target.value); setError(''); }}
                 onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleConfirm()}
-              />
+              />}
               <FormError>{error}</FormError>
               <Container variant="row" gap={4} className="justify-end">
                 <ButtonSecondary small onClick={handleCancel}>{t('common.cancel')}</ButtonSecondary>
@@ -169,7 +174,8 @@ export default function SecuritySection({ onChangePassword }: SecuritySectionPro
         </Card>
       )}
 
-      {vault.exists && !vault.locked && !isNever && (
+
+      {vault.exists && !vault.locked && !isNever && passkey === false && (
         <ListRow
           variant="standalone"
           leadingChip={false}

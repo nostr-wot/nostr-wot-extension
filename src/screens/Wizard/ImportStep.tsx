@@ -17,9 +17,10 @@ import Text from '@components/Text';
 interface ImportStepProps {
   onNext: (account: any, upgradeId: string | null) => void;
   hasGeneratedAccount?: boolean;
+  onRestorePasskey?: () => void;
 }
 
-export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepProps) {
+export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePasskey }: ImportStepProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const scope = useAsyncScope();
   const [input, setInput] = useState<string>('');
@@ -119,6 +120,8 @@ export default function ImportStep({ onNext, hasGeneratedAccount }: ImportStepPr
       <Text variant="secondary" className="mb-8">
         {t('wizard.importDesc')}
       </Text>
+
+      {onRestorePasskey && <ButtonSecondary onClick={onRestorePasskey} disabled={loading} className="mb-6">{t('passkey.restore')}</ButtonSecondary>}
 
       <div className="mb-6">
         <SectionLabel htmlFor="account-import-key">{t('wizard.importLabel')}</SectionLabel>

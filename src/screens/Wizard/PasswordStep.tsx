@@ -1,14 +1,17 @@
+import Toggle from '@components/Toggle';
+import { changePasskeyProtection } from '@services/vault/protectionClient';
+import AutoLockOptions from '@components/AutoLockOptions';
+import Card from '@components/Card';
+import PasskeySelector from '@components/PasskeySelector';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
 import IconWarning from '@assets/IconWarning.tsx';
 import StatusNotice from '@components/StatusNotice';
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import browser from '@lib/browser.ts';
-import { rpc } from '@services/rpc.ts';
-import { AUTO_LOCK_OPTIONS } from '@constants/vault.ts';
+import { rpc, rpcRead } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Input from '@components/Input';
 import Button from '@components/Button';
-import ChipGroup from '@components/ChipGroup';
 import PasswordPairFields from '@components/PasswordPairFields';
 import usePasswordPair from '@hooks/usePasswordPair.ts';
 import useVaultUnlock from '@hooks/useVaultUnlock.ts';
@@ -20,13 +23,15 @@ import Container from '@components/Container';
 import Text from '@components/Text';
 
 interface PasswordStepProps {
+  configurePasskey?: boolean;
   account: any;
   upgradeId: string | null;
   onNext: (upgraded: boolean) => void;
 }
 
-export default function PasswordStep({ account, upgradeId, onNext }: PasswordStepProps) {
+export default function PasswordStep({ account, upgradeId, onNext, configurePasskey = false }: PasswordStepProps) {
   const pair = usePasswordPair();
+  const [usePasskey, setUsePasskey] = useState(configurePasskey);
   const onNextRef = useRef(onNext);
   onNextRef.current = onNext;
   const [autoLockMs, setAutoLockMs] = useState<number>(DEFAULT_AUTO_LOCK_MS); // 15 min default
@@ -64,12 +69,13 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   });
 
   useEffect(() => {
+    if (configurePasskey) { setVaultExists(false); return; }
     let current = true;
     setVaultExists(null);
     setNeedsUnlock(false);
     void (async () => {
       try {
-        const exists = await rpc<boolean>('vault_exists');
+        const exists = await rpcRead<boolean>('vault_exists');
         if (!current) return;
         if (!exists) { setVaultExists(false); return; }
         // Vault blob exists but may have no accounts (user removed all)
@@ -95,20 +101,25 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
       }
     })();
     return () => { current = false; };
-  }, [account, upgradeId]);
+  }, [account, upgradeId, configurePasskey]);
 
   const isNever = autoLockMs === 0;
 
   const handleContinue = async () => {
     // Only validate password when creating a new vault
-    if (!vaultExists && !isNever && !pair.ready) return;
+    if (!vaultExists && !isNever && !usePasskey && !pair.ready) return;
     if (!account) { setError(t('wizard.noAccountData')); return; }
 
     setLoading(true);
     setError('');
 
     try {
-      if (vaultExists) {
+      if (configurePasskey) {
+        if (!isNever && usePasskey) await rpc('vault_setAutoLock', { ms: autoLockMs });
+        else {
+          await changePasskeyProtection(isNever ? '' : pair.password, autoLockMs);
+        }
+      } else if (vaultExists) {
         // Add to existing vault -- does NOT overwrite
         await rpc('onboarding_addToVault', {
           account,
@@ -140,9 +151,10 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
     return (
       <Container className="flex-1">
         <Heading className="mb-3">{t('wizard.addToVault')}</Heading>
-        <Text variant="secondary" className="mb-8">{t('unlock.vaultLocked')}</Text>
+        <Text variant="secondary" className="mb-8">{t(unlockForm.passkey ? 'passkey.unlockDescription' : 'unlock.vaultLocked')}</Text>
 
-        <div className="mb-6">
+        <PasskeySelector {...unlockForm.passkeySelection} />
+        {!unlockForm.passkey && !unlockForm.checkingMethod && <div className="mb-6">
           <SectionLabel>{t('wizard.password')}</SectionLabel>
           <Input
             type="password"
@@ -153,13 +165,13 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
             onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && unlockForm.unlock()}
             autoFocus
           />
-        </div>
+        </div>}
 
         <FormError>{unlockForm.error}</FormError>
 
         <Container variant="row" gap={4} stickyFooter>
-          <Button className="flex-1" onClick={unlockForm.unlock} disabled={unlockForm.loading || !unlockForm.password}>
-            {unlockForm.loading ? t('common.loading') : t('common.unlock')}
+          <Button className="flex-1" onClick={unlockForm.unlock} disabled={unlockForm.loading || unlockForm.checkingMethod || (!unlockForm.passkey && !unlockForm.password)}>
+            {unlockForm.loading ? t('common.loading') : t(unlockForm.passkey ? 'passkey.unlock' : 'common.unlock')}
           </Button>
         </Container>
       </Container>
@@ -169,43 +181,39 @@ export default function PasswordStep({ account, upgradeId, onNext }: PasswordSte
   // No vault -- full password setup
   return (
     <Container className="flex-1">
-      <Heading className="mb-3">{t('wizard.protectYourKeys')}</Heading>
       <Text variant="secondary" className="mb-8">
-        {t('wizard.protectYourKeysDesc')}
+        {t('wizard.protectYourAccountDesc')}
       </Text>
 
-      <div className="mb-6">
-        <SectionLabel>{t('wizard.autoLockTimer')}</SectionLabel>
-        <ChipGroup
-          options={AUTO_LOCK_OPTIONS.map((opt: any) => ({ value: opt.ms, label: t(opt.labelKey) }))}
-          value={autoLockMs}
-          onChange={(v: number) => { setAutoLockMs(v); setError(''); }}
-        />
-      </div>
-
-      {isNever && (
-        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-6">
-          {t('wizard.neverLockWarning')}
-        </StatusNotice>
-      )}
-
-      {!isNever && (
-        <Container gap={5} className="mb-6">
-          <SectionLabel className="mb-0">{t('wizard.password')}</SectionLabel>
-          <PasswordPairFields
-            pair={pair}
-            passwordPlaceholder={t('wizard.minEightChars')}
-            confirmPlaceholder={t('wizard.reEnterPw')}
-            onSubmit={handleContinue}
-          />
+      <Card>
+        <AutoLockOptions value={autoLockMs} onChange={value => { setAutoLockMs(value); setError(''); }} disabled={loading} />
+        <Container gap={5} className="mt-6 pt-6 border-t border-brand-tint-active">
+          {isNever && (
+            <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>
+              {t('wizard.neverLockWarning')}
+            </StatusNotice>
+          )}
+          {!isNever && configurePasskey && <Container variant="row" className="justify-between">
+            <Text>{t('security.usePasskey')}</Text>
+            <Toggle checked={usePasskey} aria-label={t('security.usePasskey')} disabled={loading} onChange={() => { setUsePasskey(!usePasskey); pair.reset(); setError(''); }} />
+          </Container>}
+          {!isNever && !usePasskey && <>
+            <SectionLabel className="mb-0">{t('wizard.password')}</SectionLabel>
+            <PasswordPairFields
+              pair={pair}
+              passwordPlaceholder={t('wizard.minEightChars')}
+              confirmPlaceholder={t('wizard.reEnterPw')}
+              onSubmit={handleContinue}
+            />
+          </>}
         </Container>
-      )}
+      </Card>
 
       <FormError>{error}</FormError>
 
       <Container variant="row" gap={4} stickyFooter>
-        <Button className="flex-1" onClick={handleContinue} disabled={loading || (!isNever && !pair.ready)}>
-          {loading ? t('wizard.creatingVault') : t('common.continue')}
+        <Button className="flex-1" onClick={handleContinue} disabled={loading || (!isNever && !usePasskey && !pair.ready)}>
+          {loading ? t('common.loading') : t(configurePasskey ? 'common.confirm' : 'common.continue')}
         </Button>
       </Container>
     </Container>

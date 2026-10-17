@@ -103,3 +103,13 @@ it('plain imports reject forged and unrelated events before any merge', async ()
   const other = await beginArchiveImport('b', pubkey);
   await assert.rejects(importArchiveChunk('b', other.sessionId, JSON.stringify(unrelated)), /unrelated/);
 });
+
+it('imports refuse app data and authentication before staging or committing', async () => {
+  for (const kind of [30078, 22242, 27235]) {
+    const incoming = await beginArchiveImport('b', pubkey);
+    const event = await signEvent({ kind, created_at: 1, content: '', tags: [] }, key);
+    await assert.rejects(importArchiveChunk('b', incoming.sessionId, JSON.stringify(event)), /cannot be imported/);
+    assert.equal((await archiveSummary('b')).count, 0);
+    await cancelArchiveFiles('b');
+  }
+});

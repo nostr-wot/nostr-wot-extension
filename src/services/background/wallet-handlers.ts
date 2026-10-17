@@ -179,7 +179,9 @@ export const handlers = new Map<string, HandlerFn>([
           const { feeMsat } = await provider.quoteSend(paymentRequest);
           assertCurrent();
           if (feeMsat !== null) {
-            maxFeeMsat = maxFeeMsatFor(invoiceAmountMsats);
+            // A fresh quote at dispatch must fit both the fee policy and the fee
+            // actually reserved below, even if the deployment changes its reserve.
+            maxFeeMsat = Math.min(feeMsat, maxFeeMsatFor(invoiceAmountMsats));
             autoApproved = await reserveAutomaticPayment(acct.id, invoiceAmountMsats + feeMsat, threshold);
           }
         }

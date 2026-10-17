@@ -210,3 +210,41 @@ it('persists an unknown outcome across future reads without expiring and sending
   await assert.rejects(runPaymentOnce('unknown-payment', async () => { sends++; return {}; }), /PAYMENT_OUTCOME_UNKNOWN/);
   assert.equal(sends, 1);
 });
+
+
+it('retains the payment intent after a relay forwards then rejects a dispatched NWC request', async () => {
+  const { NwcProvider } = await import('../../src/services/wallet/nwc.ts');
+  const { makeNwcInvoice } = await import('../helpers/nwc-invoice.ts');
+  const originalWebSocket = globalThis.WebSocket;
+  let forwarded = 0;
+  class Relay {
+    static OPEN = 1;
+    readyState = 1;
+    onopen?: () => void;
+    onmessage?: (message: { data: string }) => void;
+    constructor() { queueMicrotask(() => this.onopen?.()); }
+    send(raw: string) {
+      const frame = JSON.parse(raw);
+      if (frame[0] !== 'EVENT') return;
+      forwarded++;
+      queueMicrotask(() => this.onmessage?.({ data: JSON.stringify(['OK', frame[1].id, false, 'error: persistence failed after forwarding']) }));
+    }
+    close() { this.readyState = 3; }
+  }
+  globalThis.WebSocket = Relay as unknown as typeof WebSocket;
+  const provider = new NwcProvider({ connectionString: `nostr+walletconnect://${'ab'.repeat(32)}?relay=wss%3A%2F%2Frelay.example.com&secret=${'cd'.repeat(32)}` }, new Uint8Array(32).fill(205), {
+    encrypt: async value => value,
+    decrypt: async value => value,
+    getPubkey: () => new Uint8Array(32).fill(239),
+    signEvent: async event => ({ ...event, pubkey: 'ef'.repeat(32), id: 'test-request', sig: 'test-signature' }),
+  });
+  try {
+    await provider.connect();
+    const pay = () => runPaymentOnce('relay-rejected-payment', () => provider.payInvoice(makeNwcInvoice()));
+    await assert.rejects(pay(), /PAYMENT_OUTCOME_UNKNOWN/);
+    await assert.rejects(pay(), /PAYMENT_OUTCOME_UNKNOWN/);
+    assert.equal(forwarded, 1, 'replaying the same intent must never dispatch a second payment');
+    const stored = await browserMock.storage.session.get('walletPaymentIntents');
+    assert.equal(stored.walletPaymentIntents['relay-rejected-payment'].status, 'unknown');
+  } finally { provider.disconnect(); globalThis.WebSocket = originalWebSocket; }
+});

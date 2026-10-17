@@ -1,6 +1,7 @@
 import type { MemoryVaultPayload } from '@domain/vault/types.ts';
 import type { VaultPayload } from '@domain/vault/types.ts';
-import type { Account, SafeAccount, SafeAccountWithWallet, BackgroundRemoteSignerAccount } from '@domain/accounts/types.ts';
+import { NIP06_PATH } from '@constants/crypto/bip32.ts';
+import type { AccountRemovalInfo, Account, SafeAccount, SafeAccountWithWallet, BackgroundRemoteSignerAccount } from '@domain/accounts/types.ts';
 import { toSafeAccount } from '@domain/accounts/account.ts';
 import { toMemoryAccount, toStoragePayload } from './serialization.ts';
 
@@ -160,10 +161,20 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
     await save();
   }
 
-  /**
-   * Remove an account from the vault
-   * @param accountId
-   */
+  /** Describe the seed relationship without exposing seed bytes to callers. */
+  function getAccountRemovalInfo(accountId: string): AccountRemovalInfo {
+    const payload = readPayload();
+    if (!payload) throw new Error('Vault is locked');
+    const account = payload.accounts.find(a => a.id === accountId);
+    if (!account) throw new Error('Account not found');
+    const seed = account.mnemonicBytes;
+    if (!seed?.length) return { warning: 'account.removeKeyWarning', relatedCount: 0 };
+    const related = payload.accounts.filter(a => a.id !== accountId && a.mnemonicBytes?.length === seed.length && a.mnemonicBytes.every((byte, i) => byte === seed[i]));
+    const main = (a: typeof account) => a.derivationIndex === 0 || a.derivationPath === NIP06_PATH || (a.derivationIndex === undefined && !a.derivationPath);
+    const warning = !related.length ? 'account.removeOnlySeed' : main(account) ? 'account.removeMainSeed' : related.some(main) ? 'account.removeDerivedSeed' : 'account.removeSiblingSeed';
+    return { warning, relatedCount: related.length };
+  }
+
   async function removeAccount(accountId: string): Promise<void> {
     const _decrypted = readPayload();
     if (!_decrypted) throw new Error('Vault is locked');
@@ -236,5 +247,5 @@ export function createAccountAccess(readPayload: () => MemoryVaultPayload | null
     }
     await save();
   }
-  return { getActivePubkey, getActiveAccountId, getActiveAccount, getActiveAccountWithWallet, getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, getAccountForRemoteSigning, listAccounts, addAccount, removeAccount, setActiveAccount, clearActiveAccount, updateAccountNip46Keys, updateAccountWalletConfig };
+  return { getActivePubkey, getActiveAccountId, getActiveAccount, getActiveAccountWithWallet, getDecryptedPayload, getPrivkey, withPrivkey, getAccountById, getAccountForRemoteSigning, listAccounts, addAccount, getAccountRemovalInfo, removeAccount, setActiveAccount, clearActiveAccount, updateAccountNip46Keys, updateAccountWalletConfig };
 }

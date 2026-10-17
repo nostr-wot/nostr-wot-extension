@@ -26,9 +26,19 @@ it('unpaid invoices do not appear as received payments and failed rows show stat
 });
 it('wallet uses the shared purple controls and has named history refresh',()=>{
  const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
- assert.match(html,/LNbits/); assert.match(html,/text-menu-subtitle/); assert.match(html,/aria-label="common.refresh"/);
+ assert.doesNotMatch(html,/LNbits|wallet.balance/); assert.match(html,/grid-cols-4/); for (const label of ['wallet.receive', 'wallet.send', 'wallet.settings', 'common.disconnect']) assert.ok(html.includes(label)); assert.match(html,/aria-label="common.refresh"/);
 });
 
+it('wallet actions are a full-width row of raised action tiles, with only the disconnect icon and label red',()=>{
+ const html=renderToStaticMarkup(createElement(AccountWalletProvider,{enabled:false},createElement(Wallet,{providerType:'lnbits',onDisconnected(){}})));
+ const row=html.slice(html.indexOf('grid grid-cols-4'));
+ assert.ok(html.indexOf('grid grid-cols-4')>0);
+ const buttons=row.match(/<button[^>]*>[\s\S]*?<\/button>/g)!.slice(0,4);
+ assert.deepEqual(buttons.map(b=>b.match(/<strong[^>]*>([^<]+)<\/strong>/)?.[1]),['wallet.receive','wallet.send','wallet.settings','common.disconnect']);
+ for(const b of buttons){ assert.match(b,/shadow-card/); assert.match(b,/hover:border-/); assert.match(b,/text-xs font-medium/); assert.doesNotMatch(b,/bg-\[rgba\(220/); }
+ assert.match(buttons[3],/\[&amp;_svg\]:text-error/); assert.match(buttons[3],/<strong class="[^"]*text-error/); assert.match(buttons[3],/hover:border-error/);
+ assert.doesNotMatch(buttons[0],/text-error/);
+});
 it('LNbits pending-response rows remain pending and are hidden from activity',async()=>{
  const {LnbitsProvider}=await import('../src/services/wallet/lnbits.ts');
  const provider=new LnbitsProvider({instanceUrl:'https://wallet.test',adminKey:'test'},async()=>new Response(JSON.stringify([
@@ -121,12 +131,12 @@ it('wallet copy controls use named SVG icons without rendering connection creden
  assert.match(html,/<svg/);assert.match(html,/aria-label="Copy connection"/);assert.doesNotMatch(html,/secret-connection|>Copy connection</);
 });
 
-it('Home only shows wallet balance after the current site is confirmed connected',async()=>{
+it('Home shows wallet and account tools once a site notice is dismissed',async()=>{
  const {HomeWalletLayout}=await import('../src/screens/Home/Home');
- for(const state of [null,'empty','notConnected','error','connected']) {
-  const notice=state==='connected'?null:'Site unavailable';
-  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice,siteConnected:state==='connected'},createElement('div',null,'Site controls')));
-  if(state==='connected') {
+ for(const state of [null,'empty','notConnected','error','connected','dismissed']) {
+  const notice=state==='connected'||state==='dismissed'?null:'Site unavailable';
+  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice},createElement('div',null,'Site controls')));
+  if(notice===null) {
    assert.match(html,/Private wallet balance/);assert.match(html,/Site controls/);
   } else {
    assert.doesNotMatch(html,/Private wallet balance/);assert.match(html,/Site unavailable/);
@@ -232,6 +242,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     const {default:AccountDropdown}=await import('../src/screens/TopBar/AccountDropdown');
     let closed=0, removedId='';
     const sendMock=t.mock.method(browser.runtime,'sendMessage',async(message: {method?:string;params?:{accountId?:string}})=>{
+      if(message.method === 'vault_getAccountRemovalInfo') return {result:{warning:'account.removeMainSeed',relatedCount:1}};
       if(message.method === 'vault_removeAccount') {
         removedId=message.params?.accountId || '';
         return {error:'Removal failed'};
@@ -243,7 +254,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     await act(async()=>remove.click());
     const dialogs=dom.window.document.querySelectorAll('[role="dialog"]');
     assert.equal(dialogs.length,2);
-    assert.match(dialogs[1].textContent || '',/account.removeSeedWarning/);
+    assert.match(dialogs[1].textContent || '',/account.removeMainSeed/);
     assert.doesNotMatch(dialogs[1].textContent || '',/account.removeKeyWarning/);
     assert.equal(dialogs[0].contains(dialogs[1]),false,'confirmation must not be inside the scrolling picker');
     const {readFileSync}=await import('node:fs');
@@ -294,22 +305,14 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     await act(async()=>root.render(createElement(SubAccountStep,{onNext(){advanced++;}})));
     const findButton=(label:string)=>Array.from(dom.window.document.querySelectorAll('button')).find(button=>button.textContent===label)!;
     assert.equal(findButton('common.continue').disabled,false);
-    const nameInput=dom.window.document.querySelector<HTMLInputElement>('#subaccount-name')!;
-    assert.ok(nameInput,'name is editable outside Advanced');
-    assert.equal(nameInput.closest('details'),null);
-    await act(async()=>{
-      Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value')!.set!.call(nameInput,'My work identity');
-      nameInput.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
-    });
-    const advancedDetails=dom.window.document.querySelector('details')!;
-    assert.equal(advancedDetails.open,false);
-    assert.ok(advancedDetails.querySelector('summary')!.classList.contains('text-brand'));
-    assert.equal(advancedDetails.parentElement!.lastElementChild,advancedDetails);
-    assert.doesNotMatch(dom.window.document.body.textContent || '',/My seed|wizard.sourceSeed/);
-    assert.equal(dom.window.document.querySelectorAll('button[aria-label^="common.copy"]').length,2);
-    assert.equal(advancedDetails.querySelector('summary')!.textContent,'common.advanced');
-    assert.doesNotMatch(dom.window.document.body.textContent || '',/wizard.subAccountType|wizard.typeLabel/);
-    await act(async()=>advancedDetails.querySelector('summary')!.click());
+    assert.equal(dom.window.document.querySelector('#subaccount-name'), null);
+    assert.equal(dom.window.document.querySelector('#subaccount-path'), null);
+    let scrolled = 0;
+    dom.window.HTMLElement.prototype.scrollIntoView = () => { scrolled++; };
+    Object.defineProperty(dom.window, 'matchMedia', { value: () => ({ matches: false }), configurable: true });
+    await act(async()=>findButton('wizard.customPath').click());
+    assert.equal(scrolled, 1);
+    assert.equal(findButton('wizard.customPath').getAttribute('aria-expanded'), 'true');
     const edit=async(value:string)=>act(async()=>{
       const input=dom.window.document.querySelector<HTMLInputElement>('#subaccount-path')!;
       Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype,'value')!.set!.call(input,value);
@@ -326,10 +329,9 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     const {SUBACCOUNT_PREVIEW_DELAY_MS}=await import('../src/constants/accounts.ts');
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,SUBACCOUNT_PREVIEW_DELAY_MS+30));});
     assert.equal(paths.at(-1),"m/44'/60'/0'/0/0");
-    assert.equal(dom.window.document.querySelector('details')!.open,true,'preview does not close Advanced');
+    assert.ok(dom.window.document.querySelector('#subaccount-path'),'preview does not close Custom path');
     assert.match(dom.window.document.body.textContent || '',/npub1/);
     assert.ok(dom.window.document.querySelector(`[title="${child.pubkey}"]`));
-    assert.equal(dom.window.document.querySelector<HTMLInputElement>('#subaccount-name')!.value,'My work identity');
     assert.equal(findButton('common.continue').disabled,false);
     assert.equal(saved,0,'automatic previews never save an account');
     await edit("m/84'/0'/0'/0/0");
@@ -355,7 +357,7 @@ it('switching the wallet account preserves the in-progress popup wizard', async 
     await edit("m/44'/60'/0'/0/0");
     await act(async()=>{await new Promise(resolve=>setTimeout(resolve,SUBACCOUNT_PREVIEW_DELAY_MS+30));});
     await act(async()=>findButton('common.continue').click());
-    assert.equal(saved,1);assert.equal(advanced,1);assert.equal(savedName,'My work identity');
+    assert.equal(saved,1);assert.equal(advanced,1);assert.equal(savedName,child.name);
     const {default:RejectionNotice}=await import('../src/screens/Approval/RejectionNotice');
     const {SIGNER_REJECTIONS_KEY}=await import('../src/constants/signing.ts');
     const rejection={id:'old',timestamp:1,origin:'coracle.social',kind:1,requestedPubkey:child.pubkey,activePubkey:parent.pubkey,reason:'accountMismatch'};
@@ -1055,7 +1057,7 @@ it('confirmed WebLN receipt identifies the site and amount without inventing an 
   assert.match(txHtml,/Lunch with friends/);assert.match(txHtml,/whitespace-pre-wrap break-words/);
 });
 
-it('WebLN receipt acknowledgement keeps later arrivals and reopening restores unread receipts', async t => {
+it('WebLN receipts are acknowledged as shown, close after three seconds and keep unseen arrivals', async t => {
   const {JSDOM}=await import('jsdom');
   const {act}=await import('react');
   const {default:browser}=await import('./helpers/browser-mock');
@@ -1065,24 +1067,39 @@ it('WebLN receipt acknowledgement keeps later arrivals and reopening restores un
   Object.defineProperties(globalThis,{window:{value:dom.window,configurable:true},document:{value:dom.window.document,configurable:true},IS_REACT_ACT_ENVIRONMENT:{value:true,configurable:true}});
   const {createRoot}=await import('react-dom/client');
   const root=createRoot(dom.window.document.getElementById('root')!);
+  const {PAYMENT_NOTICE_MS}=await import('../src/screens/Wallet/PaymentSuccessNotice');
+  assert.equal(PAYMENT_NOTICE_MS,3000);
   let items=[{id:'one',origin:'first.example',amount:21,timestamp:1}];
+  const acknowledged:string[]=[];
   t.mock.method(browser.runtime,'sendMessage',async(message:{method:string;params:{accountId:string;ids?:string[]}})=>{
     assert.equal(message.params.accountId,'account');
     if(message.method==='wallet_acknowledgePaymentNotices'){
-      items.push({id:'two',origin:'second.example',amount:42,timestamp:2});
+      acknowledged.push(...(message.params.ids||[]));
       items=items.filter(item=>!message.params.ids?.includes(item.id));
     }
     return {result:message.method==='wallet_getPaymentNotices'?[...items]:true};
   });
   try {
+    t.mock.timers.enable({apis:['setTimeout']});
     await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
     assert.match(dom.window.document.body.textContent!,/first.example/);
-    await act(async()=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='common.close')!.click());
+    assert.deepEqual(acknowledged,['one'],'shown once is enough, so closing the popup clears it');
+    await act(async()=>t.mock.timers.tick(2999));
+    assert.match(dom.window.document.body.textContent!,/first.example/);
+    await act(async()=>t.mock.timers.tick(1));
     assert.doesNotMatch(dom.window.document.body.textContent!,/first.example/);
-    assert.match(dom.window.document.body.textContent!,/second.example/);
+    t.mock.timers.reset();
+    // A receipt that arrives while the popup is closed is shown on the next open.
+    items.push({id:'two',origin:'second.example',amount:42,timestamp:2});
     await act(async()=>root.render(null));
     await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
     assert.match(dom.window.document.body.textContent!,/second.example/);
+    await act(async()=>[...dom.window.document.querySelectorAll('button')].find(button=>button.textContent==='common.close')!.click());
+    assert.doesNotMatch(dom.window.document.body.textContent!,/second.example/);
+    assert.deepEqual(acknowledged,['one','two']);
+    await act(async()=>root.render(null));
+    await act(async()=>root.render(createElement(Notice,{accountId:'account'})));
+    assert.doesNotMatch(dom.window.document.body.textContent!,/example/,'seen receipts do not return');
   } finally {
     await act(async()=>root.unmount());dom.window.close();
     for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else Reflect.deleteProperty(globalThis,key);}

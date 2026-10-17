@@ -14,6 +14,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
    */
   outline?: boolean;
   small?: boolean;
+  /** Compact icon above its label, for equal-width action rows. */
+  layout?: 'inline' | 'stacked';
   /** Joined halves of a split action; appearance stays owned by Button. */
   segment?: 'start' | 'end';
   className?: string;
@@ -54,6 +56,7 @@ export function Button({
   variant = 'primary',
   outline = false,
   small = false,
+  layout = 'inline',
   segment,
   className = '',
   children,
@@ -62,6 +65,7 @@ export function Button({
   const cls = cn(
     BASE,
     SIZE[small ? 'small' : 'default'],
+    layout === 'stacked' && 'flex-col min-w-0 px-1',
     outline ? OUTLINE[variant] : ['border-0', FILLED[variant]],
     segment === 'start' && 'rounded-r-none',
     segment === 'end' && 'rounded-l-none border-l border-l-current/20',

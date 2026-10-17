@@ -532,6 +532,8 @@ Client: user clicks "Zap 1000 sats"
 
 Only successful background reads update display snapshots. No cache notification initiates another network request. Explicit disconnect writes an empty disconnected snapshot; wallet replacement clears the old balance/history. Account removal and vault destruction erase the applicable cache. Serialized writes and revision checks prevent older in-flight responses from restoring removed data. Cached data is display-only; every operation still requires the live unlocked vault and provider.
 
+Below the balance card, a full-width row of four raised action tiles (icon above label, the onboarding card style) opens Receive, Send and Settings; Disconnect has a red logout icon and label and asks through `ConfirmDialog` first. Settings keeps its own Disconnect at the bottom.
+
 Deposit and Send use a 340px maximum width with labelled inputs and a consistently spaced body; footer actions stay pinned while content scrolls. Settings uses separate identity, approval-limit and address sections, with disconnect at the bottom. Approval-limit changes use a validated Save action and only update shared state after the RPC succeeds. Settings reads await startup unlock, and Lightning Address HTTP errors propagate instead of returning a false absence.
 
 Wallet settings scrolls within the available popup height. Header refresh reloads alias, connection details, approval limit and Lightning Address (not balance/history). “Release address” releases the username through the provider and retains its confirmation; “Disconnect” removes the extension’s saved connection without deleting the provider wallet or funds. Copy actions are icons beside their values/labels.
@@ -640,8 +642,10 @@ note does not create a history row; the provider supplies transaction status.
 
 A WebLN success receipt is created only after `payInvoice` succeeds, for both
 interactive and automatic approvals. The unlocked popup shows the site, known
-amount and timestamp, and Close acknowledges that receipt only. Closing the popup
-does not lose unread receipts; they appear on reopening for the same account.
+amount and timestamp. A receipt is acknowledged as soon as it is shown, so
+closing the popup also clears it, and it hides itself after three seconds (or on
+Close). Receipts that arrive while the popup is closed appear on the next open for
+the same account.
 A receipt-storage failure cannot change a successful payment into a failed RPC.
 No success receipt is emitted for rejection, failure or uncertain settlement.
 The new privileged `wallet_getPaymentNotices` and
@@ -677,3 +681,8 @@ network request is made to infer old comments.
 
 Wallet Settings → App connections manages multiple named NWC grants, limits, expiry, copy/QR and revocation. Existing LNbits wallets use the same flow.
 See [wallet-app-connections.md](wallet-app-connections.md) for the shared contract and lifecycle.
+
+
+The wallet balance card shows sats without a redundant Balance heading or provider subtitle. Its header uses the Lightning Address from the shared account settings cache. A confirmed empty LNbits address shows Set up an alias, opening settings scrolled to the Lightning Address field. Unknown or failed address reads remain loading/error states instead of offering a false setup action. NWC wallets do not offer LNbits alias registration. Opening the wallet requests the shared settings cache so the address can be shown; opening settings or deposit reuses it.
+
+The wallet shows the Lightning address above the amount, or a Set up an alias link that opens the address settings. Receive, Send, Settings and Disconnect use four compact icon-and-label buttons in one row. Both disconnect entry points share the same pending/error handling.

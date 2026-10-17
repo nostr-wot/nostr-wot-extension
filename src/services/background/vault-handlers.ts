@@ -1,3 +1,7 @@
+import { getRecoveryStatus, recordBlobSaved, recordBlobUnavailable, addRecoveryRelay } from '../vault/recoveryStatus.ts';
+import * as relayRecovery from '../vault/relayRecovery.ts';
+import { WIZARD_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
+import type { PasskeyInput, PasskeyProof } from '@domain/vault/passkey.ts';
 import { revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { countWords } from '@utils/text.ts';
 import { DEFAULT_AUTO_LOCK_MS } from '@constants/vault.ts';
@@ -56,35 +60,79 @@ async function recordUnlockFailure(): Promise<void> {
     await browser.storage.local.set({ [UNLOCK_GUARD_KEY]: guard });
 }
 
+async function unlockVault(password?: string, proof?: PasskeyProof): Promise<boolean> {
+    const guard = await readUnlockGuard();
+    if (guard.lockedUntil > Date.now()) {
+        const secondsLeft = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
+        throw new Error(`Too many failed attempts. Try again in ${secondsLeft}s`);
+    }
+    const unlockResult = proof ? await vault.unlockPasskey(proof) : await vault.unlock(password!);
+    if (!unlockResult) {
+        await recordUnlockFailure();
+    }
+    if (unlockResult) {
+        await browser.storage.local.remove(UNLOCK_GUARD_KEY);
+        // Re-arm the persisted auto-lock interval (not the 15-min default that
+        // _autoLockMs resets to on every service-worker cold start). See bug #10.
+        await vault.restoreAutoLockSetting();
+        const unlockData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
+        if (unlockData.activeAccountId) {
+            try {
+                await vault.setActiveAccount(unlockData.activeAccountId);
+            } catch {
+                vault.clearActiveAccount();
+            }
+        }
+        await signerApprovalQueue.onVaultUnlocked();
+    }
+    return unlockResult;
+}
+
 // ── Handler Map ──
 
 export const handlers = new Map<string, HandlerFn>([
-    ['vault_unlock', async (params) => {
+    ['vault_unlock', async params => unlockVault(params.password as string)],
+    ['vault_unlockPasskey', async params => unlockVault(undefined, params as unknown as PasskeyProof)],
+    ['vault_changeProtection', async params => {
         const guard = await readUnlockGuard();
-        if (guard.lockedUntil > Date.now()) {
-            const secondsLeft = Math.ceil((guard.lockedUntil - Date.now()) / 1000);
-            throw new Error(`Too many failed attempts. Try again in ${secondsLeft}s`);
-        }
-        const unlockResult = await vault.unlock(params.password as string);
-        if (!unlockResult) {
+        if (guard.lockedUntil > Date.now()) throw new Error('Too many failed attempts. Try again later.');
+        const changed = await vault.changeProtection(params as Parameters<typeof vault.changeProtection>[0]);
+        if (!changed) {
             await recordUnlockFailure();
+            throw new Error('Current credential is incorrect');
         }
-        if (unlockResult) {
-            await browser.storage.local.remove(UNLOCK_GUARD_KEY);
-            // Re-arm the persisted auto-lock interval (not the 15-min default that
-            // _autoLockMs resets to on every service-worker cold start). See bug #10.
-            await vault.restoreAutoLockSetting();
-            const unlockData = await browser.storage.local.get(['activeAccountId']) as Record<string, string>;
-            if (unlockData.activeAccountId) {
-                try {
-                    await vault.setActiveAccount(unlockData.activeAccountId);
-                } catch {
-                    vault.clearActiveAccount();
-                }
-            }
-            await signerApprovalQueue.onVaultUnlocked();
-        }
-        return unlockResult;
+        await browser.storage.local.remove(UNLOCK_GUARD_KEY);
+        return { ok: true };
+    }],
+    ['vault_getPasskey', async () => vault.getPasskey()],
+    ['vault_listPasskeys', async params => params.forUnlock && !await vault.getPasskey() ? [] : vault.listPasskeys()],
+    ['vault_exportPasskeyBackup', async () => vault.exportPasskeyBackup()],
+    ['vault_prepareRelayRecovery', async params => relayRecovery.prepareRelayRecovery(params as unknown as PasskeyProof)],
+    ['vault_publishRelayRecovery', async params => relayRecovery.publishRelayRecovery(params.event as import('@domain/nostr/types.ts').SignedEvent, params.context as import('../vault/recoveryCodec.ts').RecoveryContext)],
+    ['vault_getRecoveryStatus', async params => getRecoveryStatus(params.credentialId as string)],
+    ['vault_recordBlobUnavailable', async params => recordBlobUnavailable(params.credentialId as string)],
+    ['vault_recordBlobSaved', async params => recordBlobSaved(params.credentialId as string)],
+    ['vault_addRecoveryRelay', async params => addRecoveryRelay(params.credentialId as string, params.relay as string)],
+    ['vault_checkRelayRecovery', async params => relayRecovery.checkRelayRecovery(params.credentialId as string)],
+    ['vault_fetchRelayRecovery', async params => relayRecovery.fetchRelayRecovery(params as unknown as import('../vault/recoveryCodec.ts').RecoveryContext)],
+    ['vault_restoreRelayRecovery', async params => {
+        await relayRecovery.restoreRelayRecovery(params.event as import('@domain/nostr/types.ts').SignedEvent, params.proof as PasskeyProof, params.context as import('../vault/recoveryCodec.ts').RecoveryContext);
+        await syncActivePubkey();
+        return { account: vault.listAccounts().find(a => a.id === vault.getActiveAccountId()) };
+    }],
+    ['vault_renamePasskey', async params => {
+        await vault.renamePasskey(params.credentialId as string, params.name as string);
+        return { ok: true };
+    }],
+    ['vault_addPasskey', async params => {
+        await vault.addPasskey(params.existing as PasskeyProof, params.passkey as PasskeyInput);
+        return { ok: true };
+    }],
+    ['vault_restorePasskeyBackup', async params => {
+        await vault.restorePasskeyBackup(params.backup as string, params as unknown as PasskeyProof);
+        const restored = vault.listAccounts();
+        await syncActivePubkey();
+        return { accounts: restored, account: restored.find(a => a.id === vault.getActiveAccountId()) };
     }],
 
     ['vault_lock', async () => {
@@ -113,24 +161,29 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_exists', async () => vault.exists()],
 
     ['vault_setAutoLock', async (params) => {
+        if (await vault.getPasskey()) {
+            if (typeof params.ms !== 'number' || !Number.isFinite(params.ms) || params.ms <= 0) throw new Error('Passkey vaults require automatic locking');
+            vault.setAutoLockTimeout(params.ms);
+            await browser.storage.local.set({ autoLockMs: params.ms });
+            return { result: true };
+        }
         const prevMs = ((await browser.storage.local.get(['autoLockMs'])) as Record<string, number>).autoLockMs ?? DEFAULT_AUTO_LOCK_MS;
         const wasNever = prevMs === 0;
         const willBeNever = params.ms === 0;
 
         if (wasNever !== willBeNever) {
-            const payload = vault.getDecryptedPayload();
             if (wasNever) {
                 if (!params.password || (params.password as string).length < 8) {
                     throw new Error('Password required (min 8 characters)');
                 }
-                await vault.create(params.password as string, payload!);
+                await vault.reEncrypt(params.password as string);
             } else {
                 if (!params.currentPassword) {
                     throw new Error('Current password required');
                 }
                 const ok = await vault.unlock(params.currentPassword as string);
                 if (!ok) throw new Error('Current password is incorrect');
-                await vault.create('', payload!);
+                await vault.reEncrypt('');
             }
         }
 
@@ -151,6 +204,7 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['vault_listAccounts', async () => vault.listAccounts()],
+    ['vault_getAccountRemovalInfo', async (params) => vault.getAccountRemovalInfo(params.accountId as string)],
 
     ['vault_addAccount', async (params) => {
         await vault.addAccount(params.account as Account);
@@ -194,6 +248,10 @@ export const handlers = new Map<string, HandlerFn>([
         if (nextPubkey) await browser.storage.sync.set({ myPubkey: nextPubkey });
         else await browser.storage.sync.remove('myPubkey');
         await browser.storage.local.set(updates);
+        if (!rmAccts.length) {
+            await vault.destroyIfEmpty();
+            await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
+        }
         if (rmLocalData.activeAccountId === removedId) {
             // Removing the active account changes the active identity — same
             // invalidation as an explicit switch.
@@ -311,6 +369,7 @@ export const handlers = new Map<string, HandlerFn>([
         await revokeAuthenticationGrants();
         await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
+        await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';
         return { ok: true };

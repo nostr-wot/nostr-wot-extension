@@ -25,6 +25,7 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 | Document | Description |
 |----------|-------------|
 | [Security](security.md) | Vault encryption, key handling, MemoryVaultPayload, zeroing, error normalization |
+| [Passkey recovery](passkey-recovery.md) | Provider storage, recovery scopes, relay fallback, RP compatibility and wire format |
 | [Backend authentication](https://nostr-wot.com/en/guides/backend-authentication) | Website/API boundaries, consent scopes and native wallet protections |
 | [Relay authentication](https://nostr-wot.com/en/guides/relay-authentication) | Relay consent, all-sites grants and revocation |
 | [Accounts](accounts.md) | Account types, registry, switching |
@@ -85,4 +86,3 @@ The Nostr WoT Extension is a Manifest V3 browser extension that provides an **NI
 - `@lib` -> `src/lib` — cryptographic primitives and the browser compatibility shim, never React
 - `@assets` -> `src/assets`
 - Browser document shells live in `src/entrypoints/`; the shared wizard lives at `src/screens/Wizard/` — `@models` and `@shared` no longer exist; `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/`
-

@@ -7,7 +7,6 @@ import Button, { ButtonSecondary } from '@components/Button';
 import ProfileSummary from '@components/ProfileSummary';
 import usePublicProfile from '@hooks/usePublicProfile';
 import { truncateNpub } from '@domain/nostr/display.ts';
-import Heading from '@components/Heading';
 import Container from '@components/Container';
 import Text from '@components/Text';
 
@@ -98,7 +97,6 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
 
   return (
     <Container className="flex-1">
-      <Heading className="mb-3">{t('wizard.followTitle')}</Heading>
       <Text variant="secondary" className="mb-8">{t('wizard.followDesc')}</Text>
 
       <Container gap={3} className="max-h-[340px] overflow-y-auto pr-1">

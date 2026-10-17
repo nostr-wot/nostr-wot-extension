@@ -54,6 +54,8 @@ interface EventPreviewProps {
   compact?: boolean;
   /** Approval summaries already identify the action; keep technical metadata in raw view. */
   approval?: boolean;
+  /** Read-only views can place technical data in a separate Advanced tab. */
+  technical?: boolean;
 }
 
 /**
@@ -61,7 +63,7 @@ interface EventPreviewProps {
  * Dispatches to kind-specific components for signEvent, handles
  * encrypt/decrypt and getPublicKey inline.
  */
-export default function EventPreview({ type, event, theirPubkey, className = '', compact = false, approval = false }: EventPreviewProps) {
+export default function EventPreview({ type, event, theirPubkey, className = '', compact = false, approval = false, technical = true }: EventPreviewProps) {
 
   // Encryption / decryption
   if (ENCRYPT_TYPES.has(type!)) {
@@ -116,7 +118,7 @@ export default function EventPreview({ type, event, theirPubkey, className = '',
 
   return (
     <Container variant="box" className={cn('min-w-0', className)}>
-      <FieldDisplay label={t('event.kind')} value={`${kind} — ${kindLabel}`} />
+      {technical && <FieldDisplay label={t('event.kind')} value={`${kind} — ${kindLabel}`} />}
 
       {/* Both branches are gated on `kind` matching a known renderer or label,
           which a snapshot without a kind never does — so by here the event is
@@ -133,14 +135,14 @@ export default function EventPreview({ type, event, theirPubkey, className = '',
 
       {/* Always list every tag, for every kind — the user must be able to see
           the FULL payload being signed, not just the kind-specific summary. */}
-      {event.tags && event.tags.length > 0 && (
+      {technical && event.tags && event.tags.length > 0 && (
         <DetailDisclosure open={compact ? undefined : true}
           label={t('event.tags', { count: event.tags.length })}
           content={event.tags.map(tag => JSON.stringify(tag)).join('\n')}
           maxHeight={140} className="mt-5" />
       )}
 
-      <RawEventButton event={event}/>
+      {technical && <RawEventButton event={event}/>}
     </Container>
   );
 }

@@ -1,6 +1,14 @@
 import { READ_ATTEMPT_TIMEOUT_MS, WAKEUP_ERROR_PATTERNS } from '@constants/rpc.ts';
 import browser from '@lib/browser.ts';
 
+const vaultLockListeners = new Set<() => void>();
+
+/** Refresh the shared unlock surface when a worker reports a stale UI session. */
+export function onVaultLockedResponse(listener: () => void): () => void {
+  vaultLockListeners.add(listener);
+  return () => { vaultLockListeners.delete(listener); };
+}
+
 class RpcError extends Error {
   method: string;
 
@@ -77,7 +85,14 @@ async function sendWithWakeupRetry(
 // Sends { method, params } to background, unwraps { result } / { error }
 export async function rpc<T = unknown>(method: string, params: unknown = {}, options: RpcOptions = {}): Promise<T> {
   const resp = (await sendWithWakeupRetry({ method, params }, options)) as { result?: unknown; error?: string } | undefined;
-  if (resp?.error) throw new RpcError(resp.error, method);
+  if (resp?.error) {
+    if (resp.error === 'Vault is locked' || resp.error === 'Vault is locked or no private key') {
+      for (const listener of vaultLockListeners) {
+        try { listener(); } catch { /* UI observers must not change the RPC result. */ }
+      }
+    }
+    throw new RpcError(resp.error, method);
+  }
   return resp?.result as T;
 }
 

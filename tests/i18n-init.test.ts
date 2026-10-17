@@ -8,7 +8,7 @@ import { strict as assert } from 'node:assert';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
 
 (globalThis as Record<string, unknown>).document ??= { documentElement: { lang: '' } };
-const { initI18n, t } = await import('../src/services/i18n/i18n.ts');
+const { initI18n, setLanguage, t } = await import('../src/services/i18n/i18n.ts');
 
 describe('initI18n', () => {
   const originalSyncGet = browser.storage.sync.get;
@@ -55,4 +55,16 @@ describe('initI18n', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal((await browser.storage.local.get('language')).language, 'es');
   });
+
+  it('does not overwrite a new language choice with a delayed startup sync read', async () => {
+    await browser.storage.local.set({ language: 'en' });
+    let resolveSync!: (value: { language: string }) => void;
+    browser.storage.sync.get = (() => new Promise(resolve => { resolveSync = resolve; })) as typeof browser.storage.sync.get;
+    await initI18n();
+    await setLanguage('fr');
+    resolveSync({ language: 'es' });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal((await browser.storage.local.get('language')).language, 'fr');
+  });
+
 });

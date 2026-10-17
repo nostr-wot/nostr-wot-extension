@@ -3,7 +3,7 @@ import { cn } from '@utils/cn.ts';
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Resting colour. `brand` for primary affordances, `danger` for removals. */
-  tone?: 'muted' | 'brand' | 'danger';
+  tone?: 'muted' | 'brand' | 'danger' | 'success' | 'warning';
   /** Standard square hit areas: 24, 28 and 36 pixels. */
   size?: 'small' | 'default' | 'large';
   children: React.ReactNode;
@@ -29,6 +29,8 @@ const BASE =
 const TONE: Record<NonNullable<IconButtonProps['tone']>, string> = {
   muted: 'text-muted enabled:hover:bg-hover enabled:hover:text-heading',
   brand: 'text-brand enabled:hover:bg-hover enabled:hover:text-brand-hover',
+  success: 'text-success enabled:hover:bg-hover',
+  warning: 'text-warning enabled:hover:bg-hover',
   danger: 'text-muted enabled:hover:bg-error-tint enabled:hover:text-error',
 };
 

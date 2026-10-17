@@ -6,6 +6,7 @@ export interface NostrFilter {
   ids?: string[];
   authors?: string[];
   kinds?: number[];
+  '#d'?: string[];
   '#e'?: string[];
   '#p'?: string[];
   since?: number;

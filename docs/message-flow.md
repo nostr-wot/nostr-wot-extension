@@ -442,3 +442,29 @@ invoke this native wallet authentication path or supply trusted origin metadata.
 ## Archive requests
 
 Internal `archive_*` RPCs resolve a selected vault account and route to archive services. Settings and job transitions are serialized; network work runs in bounded, resumable slices. Websites cannot invoke these methods. Signed relay events are verified before encrypted storage, and copying preserves the signed event unchanged. See [Archive](archive.md).
+
+### Passkey vault messages
+
+Passkey enrollment and assertions run in the trusted extension UI with user verification. The UI sends only the credential ID, PRF salt and transient PRF output to `onboarding_createVault`; the background obtains the generated seed from the existing pending-onboarding store. `onboarding_generateAccount({ hideMnemonic: true })` keeps that seed out of the wizard response. All vault RPCs remain internal-page-only, including `vault_getPasskey`, `vault_listPasskeys`, `vault_unlockPasskey`, `vault_addPasskey`, `vault_exportPasskeyBackup` and `vault_restorePasskeyBackup`. They are not exposed through NIP-07, WebLN or the website bridge. PRF responses are never logged or persisted. Unlocking uses the existing failure guard, session checks and approval-queue notification. Recovery metadata is validated before WebAuthn and the encrypted payload is authenticated before any restore write.
+
+
+`vault_getAccountRemovalInfo` is an extension-only vault RPC. It compares seed bytes inside the unlocked vault and returns only a warning identifier and the number of related accounts. Removal dialogs distinguish the last account for a seed, a main account with derived accounts, and derived accounts with a main account or siblings. Removing the final local account clears stale onboarding state; it does not erase the existing vault protection.
+
+Passkey-attached recovery uses WebAuthn in the trusted extension UI. The shared save component gets an encrypted snapshot from `vault_exportPasskeyBackup`, writes it to one selected credential, and verifies a separate read. Fresh-install discovery reads a blob without local credential IDs, validates its bounded format and credential binding, obtains the matching PRF proof, then uses `vault_restorePasskeyBackup` with its existing no-overwrite and authenticated-decryption safeguards. No new website-facing RPC or server upload is involved. Only support/result flags enter persisted wizard context; PRF material does not.
+
+After confirmed last-account removal, `vault_removeAccount` invokes the vault’s serialized `destroyIfEmpty` check. Only authenticated, decrypted emptiness permits removal of the encrypted record and its private-cache lifecycle cleanup. Public metadata or a locked vault never authorizes this cleanup.
+
+`vault_changeProtection` is an internal extension-page RPC for the Auto-lock Use passkey switch. It verifies the existing credential, applies the shared failure lockout, and calls the serialized vault conversion. `vault_listPasskeys` with `forUnlock: true` returns no credentials while password protection is selected; ordinary listing includes dormant registrations for Security.
+
+### Archive explorer
+
+Internal extension pages use `archive_explore` for bounded encrypted-record scans, `archive_event` for full stored event details, `archive_reveal` for explicit local message decryption, and `archive_deleteEvents` for confirmed local removal. Every handler validates the account; page scripts cannot call these methods. Event IDs are resolved only within that account. Deletion pauses archive jobs and serializes with other archive mutations; it does not publish anything.
+
+### Passkey recovery events
+
+`vault_prepareRelayRecovery` authenticates an enrolled PRF wrapper and prepares only signed ciphertext in the background. `vault_publishRelayRecovery` validates its signature, exact enrollment and scope before explicit pooled publication. `vault_fetchRelayRecovery` is a bounded read available before vault restore; it discovers only matching kind-31777 events and never writes a vault. `vault_restoreRelayRecovery` authenticates/decrypts the selected format, validates recovered identities and delegates persistence to the existing guarded passkey restore path. All four remain privileged extension-page RPCs. Ordinary unlock does not query relays. See [Passkey recovery](passkey-recovery.md) for data shapes, disclosure, fallback and legacy RP behavior.
+
+
+Passkey settings uses internal vault_renamePasskey to persist an optional credential display name while unlocked, and read-only vault_checkRelayRecovery to query each recovery relay for the enrolled credential. Neither RPC is exposed through the page provider. The existing vault_changeProtection operation accepts an explicit supported auto-lock interval so onboarding can persist protection and its timer atomically, including verified conversion to no-lock mode.
+
+Internal vault_getRecoveryStatus reads credential recovery metadata. vault_recordBlobSaved and vault_recordBlobUnavailable record provider outcomes; vault_addRecoveryRelay adds a validated destination for an enrolled credential. These operations never supply PRF bytes, change wrapping keys or authorize signing.

@@ -1,5 +1,5 @@
-import { useCallback, type ReactNode } from 'react';
-import { rpc, rpcRead } from '@services/rpc.ts';
+import { useCallback, useEffect, type ReactNode } from 'react';
+import { rpc, rpcRead, onVaultLockedResponse } from '@services/rpc.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
@@ -55,9 +55,11 @@ export function VaultProvider({ children }: VaultProviderProps) {
   // does so when it believes the vault is locked. The request timed out with
   // no UI ever shown. `lock()` now writes LOCK_STATE_KEY for this listener.
   useStorageWatch(
-    [{ area: 'local', keys: ['activeAccountId', LOCK_STATE_KEY] }],
+    [{ area: 'local', keys: ['activeAccountId', 'autoLockMs', LOCK_STATE_KEY] }],
     checkState,
   );
+
+  useEffect(() => onVaultLockedResponse(() => { void checkState(); }), [checkState]);
 
   const value: VaultContextValue = { ...data, unlock, lock, checkState };
 

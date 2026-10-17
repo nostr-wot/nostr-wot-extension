@@ -1,10 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { t } from '@services/i18n/i18n.ts';
-import Button from '@components/Button';
-import CopyButton from '@components/CopyButton';
-import { truncateMiddle } from '@utils/format/text';
-import Heading from '@components/Heading';
-import Container from '@components/Container';
+import Modal from '@components/Modal';
 import Text from '@components/Text';
+import { truncateMiddle } from '@utils/format/text';
 
 interface DoneAccount {
   name?: string;
@@ -18,23 +16,25 @@ interface DoneStepProps {
   derived?: boolean;
 }
 
+/** How long the "all set" confirmation stays up before closing on its own. */
+export const DONE_NOTICE_MS = 3000;
+
+/** A centered confirmation that the account is ready, closing itself after three seconds. */
 export default function DoneStep({ account, onDone, derived = false }: DoneStepProps) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  useEffect(() => {
+    const timer = setTimeout(() => onDoneRef.current(), DONE_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <Container className="flex-1 justify-end">
-      <Heading className="mb-3">{t('wizard.yourAllSet')}</Heading>
-      <Text variant="secondary" className="mb-8">
-        {t('wizard.identityReady')}
-      </Text>
-
-      {account && <Text className="text-brand mb-6">
+    <Modal title={t('wizard.yourAllSet')} onClose={onDone} maxWidth={340} zIndex={800}>
+      <Text variant="secondary" className="mb-6">{t('wizard.identityReady')}</Text>
+      {account && <Text className="text-brand m-0">
         {t(derived ? 'wizard.doneDerivedSummary' : 'wizard.doneAccountSummary', { name: account.name || t(`wizard.type.${account.type}`) })}{' '}
-        {account.pubkey && <span className="inline-flex items-center gap-3 text-xs font-mono">
-          <span title={account.pubkey}>{truncateMiddle(account.pubkey, 12, 12)}</span>
-          <CopyButton iconOnly value={account.pubkey} label={`${t('common.copy')} ${t('wizard.publicKeyLabel')}`} />
-        </span>}
+        {account.pubkey && <span className="text-xs font-mono" title={account.pubkey}>{truncateMiddle(account.pubkey, 12, 12)}</span>}
       </Text>}
-      <Button className="w-full" onClick={onDone}>{t('wizard.getStarted')}</Button>
-
-    </Container>
+    </Modal>
   );
 }

@@ -21,6 +21,7 @@ export function ensureDefaultLocale(): void {
   if (!Object.keys(currentStrings).length) currentStrings = english;
 }
 let langWasChosen: boolean = false;
+let languageRevision = 0;
 
 async function loadLocale(lang: string): Promise<Record<string, string>> {
   if (localeCache[lang]) return localeCache[lang];
@@ -61,6 +62,7 @@ export function t(key: string, params?: Record<string, string | number>): string
  * @returns The language code that was loaded
  */
 export async function initI18n(): Promise<string> {
+  const revision = ++languageRevision;
   try {
     // Local answers first and decides. storage.sync can take seconds on its
     // first access after the browser starts, and it used to be awaited before
@@ -78,18 +80,23 @@ export async function initI18n(): Promise<string> {
     if (lang) {
       const localLang = lang;
       void syncRead.then((synced) => {
-        if (synced && synced !== localLang) browser.storage.local.set({ language: synced }).catch(() => {});
+        if (revision === languageRevision && synced && synced !== localLang) browser.storage.local.set({ language: synced }).catch(() => {});
       });
     } else {
       lang = await syncRead;
+      if (revision !== languageRevision) return currentLang;
       if (lang) browser.storage.local.set({ language: lang }).catch(() => {});
     }
+    if (revision !== languageRevision) return currentLang;
     currentLang = lang || DEFAULT_LANG;
     langWasChosen = !!lang;
   } catch {
+    if (revision !== languageRevision) return currentLang;
     currentLang = DEFAULT_LANG;
   }
-  currentStrings = await loadLocale(currentLang);
+  const strings = await loadLocale(currentLang);
+  if (revision !== languageRevision) return currentLang;
+  currentStrings = strings;
   document.documentElement.lang = currentLang;
   return currentLang;
 }
@@ -99,6 +106,7 @@ export async function initI18n(): Promise<string> {
  * @param lang - Language code, e.g. "es"
  */
 export async function setLanguage(lang: string): Promise<void> {
+  const revision = ++languageRevision;
   currentLang = lang;
   langWasChosen = true;
   // Save to both sync and local for reliability
@@ -107,7 +115,9 @@ export async function setLanguage(lang: string): Promise<void> {
     browser.storage.sync.set(saveData),
     browser.storage.local.set(saveData),
   ]);
-  currentStrings = await loadLocale(lang);
+  const strings = await loadLocale(lang);
+  if (revision !== languageRevision) return;
+  currentStrings = strings;
   document.documentElement.lang = lang;
 }
 

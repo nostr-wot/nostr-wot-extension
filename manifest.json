@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Nostr WoT Extension",
-  "version": "0.8.12",
+  "version": "0.8.13",
   "browser_specific_settings": {
     "gecko": {
       "id": "nostr-wot-extension@nostr-wot.com",
@@ -79,6 +79,11 @@
     }
   ],
   "host_permissions": [
-    "https://nostr-wot.com/*"
+    "https://nostr-wot.com/*",
+    "https://passkeys.nostr-wot.com/*",
+    "https://passkeys.nostrwot.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
   ]
 }

@@ -3,42 +3,55 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
-
-- Open approval and unlock prompts when Chrome hides the active site URL, including private-message requests using Nostr Connect.
-
-- License project-owned code and documentation under GNU GPLv3 only, preserve existing notices, include license files in browser packages, and derive Firefox license metadata from each release source.
-
-Rename this heading to the next version when it is released; the release
-scripts only read a section whose heading is that exact version.
+## 0.8.13 — 2026-10-16
 
 ### Store release notes
 
-- Open the popup faster: less code loads before it appears, and the splash ends as soon as your accounts are read.
-- Fix the popup sometimes staying on "Loading…" after the browser had been idle.
-- Automatic payments now count the routing fee against your spending allowance, and ask you first when the fee cannot be checked in advance.
+- Create and unlock a vault with a compatible passkey, with provider, encrypted-file and explicit relay recovery options. Keep password and seed setup available.
+- Manage named passkeys and check recovery availability from Security. Restore from a provider snapshot or relay copy, or select an encrypted recovery file.
+- Explore archived events in a full browser tab, reveal private messages on demand and delete selected local records.
+- Open the popup faster and recover from unanswered background reads. Refresh edited profiles immediately and preserve profile drafts when unlocking is needed.
+- Count quoted routing fees against automatic-payment allowances and prevent retries after an uncertain NWC payment outcome.
 
-### Wallet fees
+### Passkeys and recovery
 
-- A silent WebLN payment reserves the quoted routing fee along with the invoice amount against the rolling 24-hour allowance. Fees used to escape it entirely, so an allowance could be overspent by exactly the fees.
-- Where the wallet cannot establish the fee before sending, the payment stops being silent and is queued for approval instead. An unbounded fee on a payment nobody is watching is the case this guards.
-- An unattended payment carries a fee ceiling: `WALLET_MAX_FEE_PERCENT` of the amount, floored at `WALLET_MAX_FEE_FLOOR_MSATS` so a percentage of a small invoice cannot refuse an ordinary payment. The provider refuses before dispatch if the quote exceeds it. A payment the user was shown and approved is not subject to the ceiling.
-- `WalletProvider.payInvoice` takes an optional `{ maxFeeMsat }`, and an optional `quoteSend()` reports the fee beforehand. The *absence* of `quoteSend` is the capability signal: NWC has no pre-flight quote in NIP-47 and omits it, and refuses a requested ceiling rather than sending unbounded. Wallets without a quote keep paying silently as before, so NWC users lose nothing.
-- LNbits quotes through `GET /api/v1/payments/fee-reserve`, asking once per deployment and not again where it answers 404 — the endpoint is new to `zaps.nostr-wot.com` and absent from older proxies and other instances.
-- An invoice whose amount cannot be decoded is never approved silently, fee or no fee.
+- Keep seed-derived sub-account creation available for passkey vaults while locked; wait for the seed check before routing Add Account and offer Retry on lookup errors.
 
-### Popup startup
+- Name the first locally registered passkey Nostr WoT Main; offer an optional name with numbered defaults when adding another, and use it in the browser picker and credential list.
 
-- The home card reads the connected-site lists from local storage instead of asking the background service worker, so a stalled worker start can no longer leave it on "Loading…".
-- Startup reads that still need the background (vault state, permissions, wallet display cache, post-quantum status, activity log, pending requests) use `rpcRead()`: an attempt unanswered after 4 seconds is sent again, and after the third the read fails visibly instead of waiting forever. Writes are never re-sent.
-- Language loading reads `storage.local` without waiting on `storage.sync`; a language changed on another synced device applies on the next open. Bundled English is no longer fetched again.
-- Menu, filters, activity, wizard, edit profile and rules screens load the first time they open.
-- The splash shows for 200–600 ms depending on when the account list is read, instead of a fixed 600 ms, and fades in 200 ms instead of 400 ms. The tab screenshot behind the popup is taken after the fade.
-- The popup wakes the background as it starts, so a cold worker starts while the popup renders.
+- Use passkeys.nostrwot.com for new credentials while retaining existing RP bindings. Advanced setup supports a user-authorized custom domain, checks for an existing credential and confirms recovery before proceeding; cancellation never creates a replacement account.
+- Require discoverable credentials, user verification and provider PRF support. Reuse compatible registration/recovery PRF output to reduce prompts; unsupported providers fail without weakening protection.
+- Save full encrypted vault snapshots to supported provider storage and recovery files, preserving imported nsec accounts, imported post-quantum keys and other stored vault secrets. Require file download and acknowledgement unless the provider confirms storage; relay acceptance alone does not remove that requirement.
+- Advance setup automatically after confirmed provider blob storage, without a recovery-file screen or extra Continue click. Offer relay publishing during setup only when provider blob storage is unavailable or fails, alongside the required file download; after successful blob storage, keep relay publishing in Passkey settings. Publish recovery to relays only through an explicit action. New relay snapshots contain the selected account’s seed or private key, not a full vault or imported post-quantum keys. Preserve legacy snapshot restoration and verify that a seed’s recorded or legacy numeric derivation reproduces the account before exporting it.
+- Offer recovery files after failed discovery, unusable provider data or unavailable relay recovery; advanced recovery can select a newer file instead of an older provider snapshot. Refuse restoration over a populated vault.
+- Add first-passkey setup for existing local-key vaults, additional credentials, optional names and compact credential selection in Security. Show per-credential recovery status, snapshot dates, publication acknowledgements, refresh and custom relay controls without treating availability as proof of decryption or freshness.
+- Default passkey onboarding to 15-minute auto-lock. Explicit password and None choices verify the current credential before changing protection, preserve enrollment and complete recovery setup first. Explain account removal from actual seed relationships and permit replacement only of authenticated empty vaults.
 
-### Build
+### Wallet and payment safety
 
-- JavaScript is minified. Code loaded before the popup appears drops from 1.57 MB to 475 KB, and the background script from 889 KB to 437 KB. CSS stays unminified. Mozilla reviewers use the attached source, which still rebuilds the packages exactly; `SOURCE_BUILD.md` and the reviewer notes say so.
+- For providers offering a fee quote, reserve the invoice amount plus the quoted fee against the rolling 24-hour silent-payment allowance. Bound the dispatch-time fee by both the reserved quote and the configured fee policy, so a later higher quote cannot exceed the reservation.
+- Queue approval when a quote-capable provider cannot determine its fee. NWC has no NIP-47 quote or enforceable fee-limit capability and retains invoice-only silent budgeting; it refuses an explicit fee ceiling rather than pretending to enforce it. Undecodable invoice amounts never qualify for silent approval.
+- Probe LNbits fee-reserve support and avoid repeating unsupported endpoint requests. Reject a fee above the supplied ceiling before payment dispatch.
+- Treat relay rejection after NWC payment dispatch as an unknown payment outcome, preserving replay protection instead of allowing an unsafe automatic retry. A relay acknowledgement cannot establish whether the wallet paid. Verify returned preimages against the invoice payment hash and retain unknown-outcome protection when the proof is invalid.
+- Show Receive, Send, Settings and Disconnect as a row of tiles below the balance, with the Lightning Address above it and a direct alias-setup link when absent. Disconnect asks for confirmation. Payment receipts close after three seconds and clear once seen.
+
+### Archive
+
+- Open the event explorer in a separate extension tab with account selection, accurate totals, bounded search and paginated results. Show kind tabs only for types present in the archive.
+- Group public chats and encrypted messages under Messages. Reveal supported encrypted content individually or for the current page using local keys, with verified gift-wrap senders and recipient details; clear the view on lock or account selection changes.
+- Show the latest profile, contacts and relay list in dedicated views with update dates. Bound contact rendering and reuse cached profile names; avatar and banner URLs can still load external images.
+- Add original signed-event details, compact encrypted relay-source tracking and confirmed local event deletion that retains migration safety indexes and publishes no relay deletion.
+- Exclude app data and ephemeral authentication events from new archive storage, imports and migration, rejecting excluded imports before committing records.
+
+### Popup, accounts and connections
+
+- Read connected-site lists and language preferences locally, retry unanswered background reads within a bounded deadline and lazy-load secondary screens. Minify JavaScript, shorten the splash according to account readiness and defer the backdrop screenshot until the fade completes.
+- Refresh account names, pictures and addresses from the shared profile cache after edits. Wait for startup unlock before signing, bind publication to the reviewed account and refresh a stale unlock screen while preserving the profile draft.
+- Keep Import, Watch-only, Nostr Connect, advanced passkey setup and restoration in Try other methods. Use automatic sub-account names with an optional custom derivation path.
+- Dismiss site notices with a close control and transition to wallet/account tools; hide disconnected-site settings and activity. A declined site keeps the home view with a compact Connect row, also after reopening.
+- Keep the auto-lock choice, passkey switch and password fields in one card during onboarding, title the step Protect your account, and show completion as a dialog that closes itself after three seconds.
+- License project-owned code and documentation under GNU GPLv3 only, preserve existing notices, include license files in browser packages, and derive Firefox license metadata from each release source.
+- Open approval and unlock prompts when Chrome hides the active tab URL. Close NIP-46 transports after onboarding, failure, cancellation or disconnect, including pending connections.
 
 ## 0.8.12 — 2026-10-07
 
