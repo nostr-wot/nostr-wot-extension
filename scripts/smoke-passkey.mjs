@@ -133,7 +133,9 @@ try {
   await page.getByText("You're all set!", { exact: true }).waitFor();
   const restoredKey = await rpc('vault_getActivePubkey');
   assert.equal(restoredKey, publicKey);
-  await page.getByRole('button', { name: 'Get Started', exact: true }).click();
+  // Completion is a self-closing dialog over Home; close it rather than wait three seconds.
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByText("You're all set!", { exact: true }).waitFor({ state: 'hidden' });
   const siteNotice = page.getByText('Navigate to a website to connect', { exact: true });
   if (await siteNotice.isVisible()) {
     await siteNotice.locator('..').locator('..').getByRole('button', { name: 'Close', exact: true }).click();
