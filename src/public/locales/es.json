@@ -1039,7 +1039,7 @@
   "theme.lacrypta": "La Crypta",
   "appearance.title": "Apariencia e idioma",
   "wallet.appsTitle": "Conexiones de apps",
-  "wallet.appsHint": "Conecta apps como Primal a esta cartera. Cada conexión tiene su propio límite de gasto. Siguen activas al cerrar o desconectar la extensión.",
+  "wallet.appsHint": "Conecta apps a esta cartera. Cada conexión tiene su propio límite de gasto. Siguen activas al cerrar o desconectar la extensión.",
   "wallet.appsUnavailable": "No se pudieron cargar las conexiones. Este servidor LNbits necesita habilitar la gestión de conexiones de Nostr WoT. Actualiza para reintentar.",
   "wallet.appsCreateFailed": "No se confirmó la creación. Actualiza la lista antes de crear otra conexión.",
   "wallet.appsReadFailed": "No se pudo leer esta conexión. Actualiza la lista y vuelve a intentarlo.",

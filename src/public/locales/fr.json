@@ -1039,7 +1039,7 @@
   "theme.lacrypta": "La Crypta",
   "appearance.title": "Apparence et langue",
   "wallet.appsTitle": "Connexions aux apps",
-  "wallet.appsHint": "Connectez des apps comme Primal à ce portefeuille. Chaque connexion possède sa propre limite de dépenses. Elles restent actives après la fermeture ou la déconnexion de l’extension.",
+  "wallet.appsHint": "Connectez des apps à ce portefeuille. Chaque connexion possède sa propre limite de dépenses. Elles restent actives après la fermeture ou la déconnexion de l’extension.",
   "wallet.appsUnavailable": "Impossible de charger les connexions. Ce serveur LNbits doit activer la gestion des connexions Nostr WoT. Actualisez pour réessayer.",
   "wallet.appsCreateFailed": "La création n’a pas été confirmée. Actualisez la liste avant de créer une autre connexion.",
   "wallet.appsReadFailed": "Impossible de lire cette connexion. Actualisez la liste et réessayez.",
