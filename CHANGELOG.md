@@ -3,7 +3,7 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## 0.8.13 — Unreleased
+## 0.8.13 — 2026-10-16
 
 ### Store release notes
 
@@ -33,7 +33,7 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 - Queue approval when a quote-capable provider cannot determine its fee. NWC has no NIP-47 quote or enforceable fee-limit capability and retains invoice-only silent budgeting; it refuses an explicit fee ceiling rather than pretending to enforce it. Undecodable invoice amounts never qualify for silent approval.
 - Probe LNbits fee-reserve support and avoid repeating unsupported endpoint requests. Reject a fee above the supplied ceiling before payment dispatch.
 - Treat relay rejection after NWC payment dispatch as an unknown payment outcome, preserving replay protection instead of allowing an unsafe automatic retry. A relay acknowledgement cannot establish whether the wallet paid. Verify returned preimages against the invoice payment hash and retain unknown-outcome protection when the proof is invalid.
-- Simplify wallet actions and display the Lightning Address above the balance, with a direct alias-setup link when absent.
+- Show Receive, Send, Settings and Disconnect as a row of tiles below the balance, with the Lightning Address above it and a direct alias-setup link when absent. Disconnect asks for confirmation. Payment receipts close after three seconds and clear once seen.
 
 ### Archive
 
@@ -48,7 +48,9 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 - Read connected-site lists and language preferences locally, retry unanswered background reads within a bounded deadline and lazy-load secondary screens. Minify JavaScript, shorten the splash according to account readiness and defer the backdrop screenshot until the fade completes.
 - Refresh account names, pictures and addresses from the shared profile cache after edits. Wait for startup unlock before signing, bind publication to the reviewed account and refresh a stale unlock screen while preserving the profile draft.
 - Keep Import, Watch-only, Nostr Connect, advanced passkey setup and restoration in Try other methods. Use automatic sub-account names with an optional custom derivation path.
-- Dismiss site notices with a close control and transition to wallet/account tools; hide disconnected-site settings and activity.
+- Dismiss site notices with a close control and transition to wallet/account tools; hide disconnected-site settings and activity. A declined site keeps the home view with a compact Connect row, also after reopening.
+- Keep the auto-lock choice, passkey switch and password fields in one card during onboarding, title the step Protect your account, and show completion as a dialog that closes itself after three seconds.
+- License project-owned code and documentation under GNU GPLv3 only, preserve existing notices, include license files in browser packages, and derive Firefox license metadata from each release source.
 - Open approval and unlock prompts when Chrome hides the active tab URL. Close NIP-46 transports after onboarding, failure, cancellation or disconnect, including pending connections.
 
 ## 0.8.12 — 2026-10-07

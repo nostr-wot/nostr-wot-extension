@@ -92,4 +92,4 @@ Maintained by the [Nostr WoT project](https://github.com/nostr-wot).
 
 ## License
 
-[MIT](LICENSE)
+[GNU General Public License v3.0 only (GPL-3.0-only)](LICENSE). Project-owned code and documentation use this license; third-party notices and earlier releases retain their original terms. See [NOTICE](NOTICE).

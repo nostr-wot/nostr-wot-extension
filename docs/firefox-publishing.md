@@ -75,3 +75,7 @@ reads version/status fields without mutations; `submit` uses current main toolin
 with the original verified release source and packages. It shares the normal
 Mozilla concurrency group and retains the exact-release CI and reproducibility gates.
 Ordinary new releases submit automatically without this recovery step.
+
+## License metadata
+
+New project source uses GNU GPLv3 only (`GPL-3.0-only`). Builds include `LICENSE` and `NOTICE`. The publisher reads the license from the verified source archive, so recovering an older MIT release preserves its original license rather than relabeling historical binaries. Mozilla accepts the SPDX slug `GPL-3.0-only`; the public version license must describe the actual uploaded release.
