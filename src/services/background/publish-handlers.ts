@@ -163,9 +163,10 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['signEvent', async (params) => {
+        await vault.whenStartupUnlockSettled();
         if (!params.event || typeof (params.event as Record<string, unknown>).kind !== 'number') throw new Error('Invalid event');
         const accountId = vault.getActiveAccountId();
-        if (!accountId) throw new Error('Vault is locked');
+        if (!accountId) throw new Error(vault.isLocked() ? 'Vault is locked' : 'No active account');
         const session = captureAccountSession(accountId);
         await assertLocalSigningAllowed(accountId);
         assertAccountSession(session);
@@ -175,9 +176,12 @@ export const handlers = new Map<string, HandlerFn>([
     }],
 
     ['signAndPublishEvent', async (params) => {
+        await vault.whenStartupUnlockSettled();
+        if (vault.isLocked()) throw new Error('Vault is locked');
+        if (params.pubkey && params.pubkey !== vault.getActivePubkey()) throw new Error('Active account changed');
         if (!params.event || typeof (params.event as Record<string, unknown>).kind !== 'number') throw new Error('Invalid event');
         const accountId = vault.getActiveAccountId();
-        if (!accountId) throw new Error('Vault is locked');
+        if (!accountId) throw new Error(vault.isLocked() ? 'Vault is locked' : 'No active account');
         const session = captureAccountSession(accountId);
         // Sign inside, broadcast outside: the whole point of the split. The old shape held the
         // key live across the broadcast, so it stayed in memory for the length of a relay

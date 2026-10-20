@@ -1,3 +1,5 @@
+import browser from '@lib/browser';
+import IconSearch from '@assets/IconSearch';
 import { ARCHIVE_INTERVAL_OPTIONS } from '@constants/archive.ts';
 import { formatBytes } from '@utils/format/bytes.ts';
 import { useState, useRef, useId } from 'react';
@@ -154,7 +156,6 @@ export function AccountArchive({ accountId }: { accountId: string }) {
         ) : (
           <FormError>{!migration && state.progress.error}</FormError>
         )}
-        {running && state.progress.phase === 'syncing' && <Text variant="muted" aria-live="polite">{state.progress.fetched.toLocaleString()} {t('archive.fetched')}</Text>}
         <ArchiveFiles
           accountId={accountId}
           disabled={disabled}
@@ -173,6 +174,7 @@ export function AccountArchive({ accountId }: { accountId: string }) {
             >
               {syncing ? <IconPause aria-hidden="true" /> : <IconSync aria-hidden="true" />}
             </IconButton>
+            {state.count > 0 && <IconButton size="large" tone="brand" title={t('archive.explorer.title')} aria-label={t('archive.explorer.title')} onClick={() => void action(() => browser.tabs.create({ url: browser.runtime.getURL(`src/entrypoints/archive/index.html?accountId=${encodeURIComponent(accountId)}`) }))}><IconSearch aria-hidden="true" /></IconButton>}
             <IconButton size="large" tone="brand" title={t('archive.settings')} aria-label={t('archive.settings')} onClick={() => setShowSettings(true)}>
               <IconSettings aria-hidden="true" />
             </IconButton>

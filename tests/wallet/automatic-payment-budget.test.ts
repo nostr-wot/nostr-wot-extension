@@ -77,7 +77,7 @@ it('actual WebLN handler persists encrypted budget across lock/unlock and prompt
  * The invoice is lnbc10n — 1 sat, 1000 msat — and the threshold is 1 sat, so the
  * amount alone exactly fills the allowance. Any fee at all must push it over.
  */
-async function budgetFixture(provider: Record<string, unknown>) {
+async function budgetFixture(provider: Record<string, unknown>, threshold = 1) {
   const vault = await import('../../src/services/vault/vault.ts');
   const { resetMockStorage } = await import('../helpers/browser-mock.ts');
   const { handlers } = await import('../../src/services/background/wallet-handlers.ts');
@@ -93,7 +93,7 @@ async function budgetFixture(provider: Record<string, unknown>) {
     walletConfig: { type: 'lnbits', instanceUrl: 'https://example.com', adminKey: 'synthetic' },
   }] });
   setWalletProvider('fee', provider as never);
-  await handlers.get('wallet_setAutoApproveThreshold')!({ threshold: 1 });
+  await handlers.get('wallet_setAutoApproveThreshold')!({ threshold });
   return {
     pay: (hrp = 'lnbc10n') => handlers.get('webln_sendPayment')!({ origin: 'fee.example', paymentRequest: makeLnurlInvoice('[]', hrp) }),
     /** Resolves to the queued request, or null once it is clear nothing will be queued. */
@@ -183,5 +183,24 @@ it('never approves an invoice of unknown amount silently, even when the fee is t
     await f.queue.resolveRequest(request.id, { allow: false });
     await assert.rejects(result, /denied/);
     assert.equal(calls.paid, 0);
+  } finally { await f.cleanup(); }
+});
+
+
+it('refuses a second fee quote above the reserved fee even below the configured ceiling', async () => {
+  const { LnbitsProvider } = await import('../../src/services/wallet/lnbits.ts');
+  let quotes = 0;
+  let dispatched = 0;
+  const provider = new LnbitsProvider({ instanceUrl: 'https://example.com', adminKey: 'synthetic' }, async (url, options) => {
+    if (String(url).includes('/fee-reserve?')) return new Response(JSON.stringify({ fee_reserve: ++quotes === 1 ? 1000 : 5000 }));
+    if (options?.method === 'POST') { dispatched++; return new Response(JSON.stringify({ status: 'success', preimage: 'synthetic' })); }
+    return new Response(JSON.stringify({ name: 'test', balance: 100000 }));
+  });
+  await provider.connect();
+  const f = await budgetFixture(provider as unknown as Record<string, unknown>, 2);
+  try {
+    await assert.rejects(f.pay(), /PAYMENT_FEE_TOO_HIGH/);
+    assert.equal(quotes, 2);
+    assert.equal(dispatched, 0, 'the larger second quote must not spend outside the reservation');
   } finally { await f.cleanup(); }
 });

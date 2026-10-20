@@ -32,5 +32,4 @@ export const ARCHIVE_COPY_KINDS: ReadonlySet<number> = new Set([
   kinds.Curationsets,
   kinds.LongFormArticle,
   kinds.DraftLong,
-  kinds.Application,
 ]);

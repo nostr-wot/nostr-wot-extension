@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createElement } from 'react';
@@ -18,6 +19,15 @@ it('icon buttons use only the three standard hit areas and shared tones', () => 
     assert.match(html, /disabled=""/);
     assert.match(html, /aria-label="Action"/);
   }
+});
+
+it('onboarding keeps the passkey switch and password fields inside the shared auto-lock card', () => {
+  const source = readFileSync(new URL('../src/screens/Wizard/PasswordStep.tsx', import.meta.url), 'utf8');
+  const card = source.slice(source.indexOf('<Card>\n        <AutoLockOptions'), source.indexOf('</Card>', source.indexOf('<AutoLockOptions')));
+  assert.match(card, /<Toggle\b/);
+  assert.match(card, /<PasswordPairFields\b/);
+  assert.match(card, /wizard\.neverLockWarning/);
+  assert.doesNotMatch(source, /wizard\.protectYourKeys/);
 });
 
 it('remote approval details and cancellation are separate, named button actions', () => {

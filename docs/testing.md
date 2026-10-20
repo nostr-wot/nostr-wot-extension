@@ -163,7 +163,7 @@ Wallet UI tests cover independent settings reads, partial failure, stale-respons
 
 Wallet UI regressions assert the bounded settings scroll region, explanatory action labels and SVG copy controls that do not render connection credentials.
 
-HomeWalletLayout regression coverage keeps the wallet visible through loading/restricted/unconnected site notices and normal site controls.
+HomeWalletLayout regression coverage hides the wallet behind an active site notice and reveals it after dismissal, independently of site connection.
 
 Approval tests cover cross-origin account filtering, foreign authors, account-separated grouping, and snapshot batch decisions that exclude later arrivals and await partial failures. Signer tests cover foreign-author rejection under an existing allow rule and foreign-account single/batch rejection. Signer fixtures persist public account metadata like real onboarding so locked-vault requests retain a verifiable identity. ApprovalCard rendering is covered in wallet-ui.test.ts.
 
@@ -590,11 +590,34 @@ Archive service coverage:
 - `tests/archive-sync.test.ts` covers relay-group validation, overlap ranges, inclusive timestamp pagination and checkpoint failure behavior.
 - `tests/archive-transport.test.ts` covers shared subscriptions, cancellation, signed-event validation and same-connection authentication and publication acknowledgements.
 
+### Passkey vaults
+
+`tests/passkey-vault.test.ts` covers encrypted storage, wrong credentials, corrupted ciphertext, independent credentials, file recovery, no-overwrite behavior, automatic-lock mode safety, legacy password compatibility, lifecycle cancellation and seed-free onboarding responses. `tests/passkey-client.test.ts` checks dedicated RP selection, required user verification, PRF failure, registration PRF reuse and assertion fallback and transient buffer clearing. `tests/passkey-ui.test.ts` and wizard tests cover recovery acknowledgement and settings behavior. `node scripts/smoke-passkey.mjs` runs against the built extension in a disposable Chromium profile with a virtual PRF authenticator. It exercises the actual creation UI, recovery-file fallback, lock/unlock and restoration after removal of the final account, verifying that the public key is unchanged. `PASSKEY_SMOKE_BLOB=1 node scripts/smoke-passkey.mjs` enables virtual largeBlob support, checks provider-confirmed storage when the virtual authenticator accepts the snapshot; its small storage quota may instead reject a larger snapshot, in which case the test verifies explicit file fallback rather than claiming success. Client tests separately cover confirmed writes and credential discovery. Client and UI tests cover refused writes, missing write confirmation, credential binding, size bounds and file fallback. CI runs it after installing Chromium. Browser-provider support must also be checked with a real credential provider; a virtual Chromium authenticator validates the WebAuthn flow but does not certify Apple or Google synchronization or recovery.
+
 The Chrome package smoke test also opens a popup with its language preference read deliberately stalled. It must render readable bundled fallback text within five seconds. Theme-handoff unit tests cover initialization rejection, indefinite waits and late recovery without recreating the React root.
+
+Passkey tests cover protection round trips, wrong current credentials, storage failure, preserved encrypted cache data and enrollment through password changes and None mode. UI coverage checks the disabled switch without enrollment and password verification before WebAuthn. Browser smoke also exercises the real Security switch in both directions.
 
 ### NIP-46 transport lifetime
 
 `tests/nip46-lifecycle.test.ts` uses the installed `BunkerSigner` and `SimplePool` with fake WebSockets; it opens no network connections. It counts live sockets across repeated successful and failed pairing attempts, concurrent initialization, remote-client reuse, vault locking, cancellation, expiry without popup polling, and a CONNECTING socket that refuses closure and opens later. It also checks that disposing an attempt does not destroy a caller-owned shared pool. The loopback integration suite verifies genuine encrypted request/response signing and observes socket closure before reconnecting.
+
+`tests/passkey-relay-recovery.test.ts` verifies the single-key/seed/vault codecs against independent WebCrypto derivation, strict format and signature validation, authenticated legacy RP binding, exact scope restoration, overwrite refusal, concurrent relay attempts, partial/total publication failure and read-only lookup. `PASSKEY_SMOKE_RELAY=1 node scripts/smoke-passkey.mjs` exercises the fallback and fresh-install discovery against synthetic in-memory relays in a disposable Chromium profile, without publishing test events to public relays.
+
+
+Passkey flow coverage includes once-only direct startup, explicit recovery confirmation before relay lookup, reuse of the selected credential without another discovery prompt, cancellation without account creation, hidden file import before a failed recovery attempt, optional file download after a confirmed provider write and mandatory file acknowledgement when provider storage fails or is unsupported, and first enrollment from existing password protection. Browser smoke mocks relay sockets in every mode so synthetic identities never reach public relays.
+
+
+Passkey settings tests cover hidden scope controls, foreign-domain-only migration, no redundant provider save, automatic selected-account seed/key export, rejection after account switches and legacy full-vault snapshot restoration. The browser smoke navigates Security → Passkey settings → Back and verifies the controls are on the separate screen.
+
+
+Passkey follow-up coverage verifies optional display-name persistence without re-encryption, dormant enrollment naming, explicit verified no-lock conversion, per-relay availability classification and signature validation, and onboarding defaults with conditional password fields. Browser smoke confirms the shared auto-lock step after restore and the dismissal transition to account tools.
+
+Wallet UI coverage checks four actions and custom-path disclosure without a name input. Lifecycle coverage checks disconnect errors and passkey rename dialogs with relay availability.
+
+Recovery-status tests cover confirmed/unavailable blob states, custom-relay URL validation and deduplication, accepted publication receipts, per-row icon colors, popup refresh and adding destinations.
+
+Passkey coverage includes single-assertion blob/relay recovery, legacy two-assertion fallback, transient PRF clearing, visible recovery controls for all credentials, account-bound publication, and Security’s verified None transition.
 
 ### Experimental phone signer broker
 

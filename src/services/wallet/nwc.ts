@@ -463,7 +463,9 @@ export class NwcProvider implements WalletProvider {
     this.cancellations.add(cancel);
     try { return await Promise.race([this.performRequest(method, params, () => { dispatched = true; }), canceled]); }
     catch (error) {
-      if (method === 'pay_invoice' && dispatched && !(error instanceof NwcRequestError) && !(error instanceof NwcRelayRejectionError)) {
+      // A relay can forward before rejecting; its unsigned acknowledgement cannot
+      // establish that the wallet did not pay. Only authenticated wallet errors can.
+      if (method === 'pay_invoice' && dispatched && !(error instanceof NwcRequestError)) {
         throw new PaymentOutcomeUnknownError(error instanceof Error ? error.message : String(error));
       }
       throw error;

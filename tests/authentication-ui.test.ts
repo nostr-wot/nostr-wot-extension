@@ -691,10 +691,25 @@ it('account completion shows a compact summary and distinguishes seed-derived ac
  const {default:Done}=await import('../src/screens/Wizard/DoneStep');const {t:label}=await import('../src/services/i18n/i18n');
  const account={name:'Account 2',type:'generated',pubkey:'ab'.repeat(32)};
  const derived=renderToStaticMarkup(createElement(Done,{account,derived:true,onDone(){}}));
- assert.ok(derived.includes('justify-end'));assert.ok(derived.includes(label('wizard.doneDerivedSummary',{name:account.name})));
+ assert.ok(derived.includes('role="dialog"'));assert.ok(derived.includes(label('wizard.doneDerivedSummary',{name:account.name})));
  assert.ok(derived.includes(`title="${account.pubkey}"`));assert.ok(!derived.includes(label('wizard.typeLabel')));
  const remote=renderToStaticMarkup(createElement(Done,{account:{...account,type:'nip46'},onDone(){}}));
  assert.ok(remote.includes(label('wizard.doneAccountSummary',{name:account.name})));assert.ok(!remote.includes(label('wizard.doneDerivedSummary',{name:account.name})));
+});
+
+it('account completion closes itself after three seconds or on dismissal',async(t)=>{
+ const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
+ const {default:Done,DONE_NOTICE_MS}=await import('../src/screens/Wizard/DoneStep');
+ assert.equal(DONE_NOTICE_MS,3000);
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ t.mock.timers.enable({apis:['setTimeout']});
+ const root=createRoot(document.getElementById('root')!);let done=0;
+ try{
+  await act(async()=>root.render(createElement(Done,{account:null,onDone(){done++;}})));
+  assert.ok(document.querySelector('[role="dialog"]'));
+  await act(async()=>t.mock.timers.tick(2999));assert.equal(done,0);
+  await act(async()=>t.mock.timers.tick(1));assert.equal(done,1);
+ }finally{await act(async()=>root.unmount());t.mock.timers.reset();dom.window.close();}
 });
 
 it('legacy login displays a danger notice and only one-time approval or denial', async () => {

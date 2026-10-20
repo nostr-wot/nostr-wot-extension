@@ -23,7 +23,7 @@ let sendImpl: (payload: { method: string; params: unknown }) => Promise<unknown>
   },
 };
 
-const { rpc } = await import('../src/services/rpc.ts');
+const { rpc, onVaultLockedResponse } = await import('../src/services/rpc.ts');
 
 describe('rpc: response envelope handling', () => {
   beforeEach(() => {
@@ -141,4 +141,19 @@ describe('rpc: per-attempt timeout for reads', () => {
     assert.strictEqual(await rpc('vault_unlock', { password: 'x' }), 'late');
     assert.strictEqual(calls, 1, 'a write must not be sent twice');
   });
+});
+
+
+it('notifies unlock observers once without replaying a rejected write', async () => {
+  let notifications = 0;
+  let calls = 0;
+  const stop = onVaultLockedResponse(() => { notifications++; });
+  sendImpl = async () => { calls++; return { error: 'Vault is locked' }; };
+  try {
+    await assert.rejects(() => rpc('signAndPublishEvent'), /Vault is locked/);
+    assert.equal(notifications, 1);
+    assert.equal(calls, 1);
+  } finally { stop(); }
+  await assert.rejects(() => rpc('signAndPublishEvent'), /Vault is locked/);
+  assert.equal(notifications, 1);
 });

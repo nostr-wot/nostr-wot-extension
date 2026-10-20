@@ -311,3 +311,26 @@ it('does not send when the account session is revoked while the relay connects',
     globalThis.WebSocket = original;
   }
 });
+
+
+it('profile signing waits for cold-start unlock and binds publication to the selected account', async () => {
+  const vault = await import('../src/services/vault/vault.ts');
+  resetMockStorage();
+  await vault.create('', { accounts: [{ id: 'profile', name: 'Profile', type: 'nsec', pubkey: 'a'.repeat(64), privkey: 'b'.repeat(64), mnemonic: null, nip46Config: null, readOnly: false, createdAt: 1 }], activeAccountId: 'profile' });
+  vault.lock();
+  let resume!: () => void;
+  const gate = new Promise<void>(resolve => { resume = resolve; });
+  const startup = vault.beginStartupUnlock(async () => { await gate; await vault.unlock(''); });
+  const event = { kind: 0, created_at: 1, tags: [], content: '{}' };
+  let settled = false;
+  const pending = handlers.get('signEvent')!({ event }).finally(() => { settled = true; });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(settled, false);
+  resume();
+  try {
+    await startup;
+    const signed = await pending as { sig: string };
+    assert.ok(signed.sig);
+    await assert.rejects(() => handlers.get('signAndPublishEvent')!({ event, pubkey: 'c'.repeat(64) }), /Active account changed/);
+  } finally { vault.lock(); }
+});

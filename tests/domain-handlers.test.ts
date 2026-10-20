@@ -1,8 +1,9 @@
+import { rememberTabOrigin, forgetTabOrigin } from '../src/services/browser/tabOrigins.ts';
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import { strict as assert } from 'node:assert';
 import browserMock, { resetMockStorage } from './helpers/browser-mock.ts';
 import * as signerPermissions from '../src/services/permissions/permissions.ts';
-import { getAllowedDomains, isDomainAllowed, addAllowedDomain, removeAllowedDomain, getDismissedDomains, isDomainDismissed, addDismissedDomain, getWeblnAllowedDomains, isWeblnAllowed, addWeblnAllowedDomain, removeWeblnAllowedDomain, broadcastAccountChanged, waitForDomainAllowed, waitForConnectDecision, rememberTabOrigin, forgetTabOrigin, __getTabOrigins, releaseLegacyHostGrants, removeDismissedDomain, getDismissDuration, setDismissDuration, connectDomain, handlers } from '../src/services/background/domain-handlers.ts';
+import { getAllowedDomains, isDomainAllowed, addAllowedDomain, removeAllowedDomain, getDismissedDomains, isDomainDismissed, addDismissedDomain, getWeblnAllowedDomains, isWeblnAllowed, addWeblnAllowedDomain, removeWeblnAllowedDomain, broadcastAccountChanged, waitForDomainAllowed, waitForConnectDecision, __getTabOrigins, releaseLegacyHostGrants, removeDismissedDomain, getDismissDuration, setDismissDuration, connectDomain, handlers } from '../src/services/background/domain-handlers.ts';
 
 it('account-switch recovery makes one delayed native attempt on the same focused tab', async t => {
   const recover = handlers.get('scheduleAccountSwitchPopupRecovery');

@@ -57,3 +57,9 @@ export type SafeAccountWithWallet = SafeAccount & Pick<Account, 'walletConfig'>;
 
 /** Background-only remote signer capability; includes connection secrets. */
 export type BackgroundRemoteSignerAccount = SafeAccount & { nip46Config: Nip46Config };
+
+/** Public explanation of removing an account; never includes seed material. */
+export interface AccountRemovalInfo {
+  warning: string;
+  relatedCount: number;
+}

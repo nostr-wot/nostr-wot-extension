@@ -17,8 +17,7 @@ locally managed identity keys stay in the extension's signing flow.
 
 ## Get started
 
-1. Open the extension and create an account, import an existing identity, or connect
-   a remote signer. Back up a newly generated seed phrase and choose a vault password.
+1. Open the extension and create an account with a compatible passkey or seed phrase, import an existing identity, or connect a remote signer. Follow the recovery steps and choose your auto-lock settings.
 2. Visit a compatible Nostr client and choose its browser-extension sign-in option.
    Review the site's connection and signing requests in the extension.
 3. Open the extension to switch accounts, manage permissions, or edit your profile,
@@ -26,7 +25,9 @@ locally managed identity keys stay in the extension's signing flow.
 
 ## Features
 
-- **Account Archive:** Save an encrypted local copy of your events, sync selected relays manually or automatically, export/import encrypted files, and migrate eligible events to another relay. See [Archive](docs/archive.md).
+- **Passkeys:** Create a vault or protect existing local keys with a compatible passkey. Manage named credentials and vault-wide auto-lock, and recover from encrypted provider storage or a recovery file. Optional relay recovery is a separate, explicit action. See [Passkey recovery](docs/passkey-recovery.md).
+
+- **Account Archive:** Save an encrypted local copy of your events, sync selected relays manually or automatically, explore and search them in a full browser tab, export/import signed-event NDJSON, and migrate eligible events to another relay. See [Archive](docs/archive.md).
 - **Identity and signing:** Create a 24-word seed, import an existing key or seed,
   connect a NIP-46 remote signer, or add a watch-only account. Use NIP-07 signing
   and encrypted-message operations with compatible clients.
@@ -91,4 +92,4 @@ Maintained by the [Nostr WoT project](https://github.com/nostr-wot).
 
 ## License
 
-[MIT](LICENSE)
+[GNU General Public License v3.0 only (GPL-3.0-only)](LICENSE). Project-owned code and documentation use this license; third-party notices and earlier releases retain their original terms. See [NOTICE](NOTICE).

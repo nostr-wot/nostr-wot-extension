@@ -68,3 +68,18 @@ it('legacy connection scope remains visible while new connections are origin iso
     'https://legacy.test': { A: {signEvent:'allow', webln_getBalance:'allow'} },
   }, 'https://legacy.test', 'A'), {getPublicKey:'allow', signEvent:'allow', webln_getBalance:'allow'});
 });
+
+describe('isSiteDismissed', () => {
+  it('matches the background rule for timed, permanent, session and legacy dismissals', async () => {
+    const { isSiteDismissed } = await import('../src/domain/site/siteState.ts');
+    const now = 1_000_000;
+    assert.equal(isSiteDismissed({ 'site.test': { until: now + 1 } }, [], 'site.test', now), true);
+    assert.equal(isSiteDismissed({ 'site.test': { until: now } }, [], 'site.test', now), false, 'expired');
+    assert.equal(isSiteDismissed({ 'site.test': { until: 'never' } }, [], 'site.test', now), true);
+    assert.equal(isSiteDismissed({ 'site.test': { until: 'session' } }, [], 'site.test', now), false, 'session entries live in storage.session');
+    assert.equal(isSiteDismissed({}, ['site.test'], 'site.test', now), true);
+    assert.equal(isSiteDismissed(['site.test'], [], 'site.test', now), true, 'legacy list');
+    assert.equal(isSiteDismissed(undefined, undefined, 'site.test', now), false);
+    assert.equal(isSiteDismissed({ 'other.test': { until: 'never' } }, [], 'site.test', now), false);
+  });
+});

@@ -1,23 +1,30 @@
+import useWalletDisconnect from '@hooks/useWalletDisconnect';
 import useStorageWatch from '@hooks/useStorageWatch';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Card from '@components/Card';
+import LinkButton from '@components/LinkButton';
+import Text from '@components/Text';
 import WalletBalance from '@components/WalletBalance';
-import Button, { ButtonSecondary } from '@components/Button';
+import { ButtonSecondary } from '@components/Button';
+import ActionTile from '@components/ActionTile';
 import TxFilterDialog from './TxFilterDialog';
 import TransactionList from './TransactionList';
 import WalletSettings from './WalletSettings';
 import DepositDialog from './DepositDialog';
 import SendDialog from './SendDialog';
 import IconSettings from '@assets/IconSettings.tsx';
+import IconDownload from '@assets/IconDownload.tsx';
+import IconUpload from '@assets/IconUpload.tsx';
+import IconLogout from '@assets/IconLogout.tsx';
+import ConfirmDialog from '@components/ConfirmDialog';
 import { type Transaction } from '@domain/wallet/types.ts';
 import { filterTransactions, type TxFilters } from '@domain/wallet/txFilter.ts';
 import { accumulateTransactions } from '@domain/wallet/txPager.ts';
 import { useWallet } from '@context/WalletContext';
 
-import IconButton from '@components/IconButton';
 import FormError from '@components/FormError';
 import Container from '@components/Container';
 
@@ -31,11 +38,17 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
   // again on its own mount, on top of the config check WalletSection already
   // did.
   const { settings, settingsLoading, settingsError, ensureSettings, refreshSettings, balance, balanceLoading, balanceError, refreshBalance, cachedTransactions, configLoading, configReadFailed, refreshConfig } = useWallet();
+  const [settingsSection, setSettingsSection] = useState<'address' | undefined>();
+  useEffect(() => { ensureSettings(); }, [ensureSettings]);
+  const { disconnect, disconnecting, disconnectError } = useWalletDisconnect(onDisconnected);
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
   const [showDeposit, setShowDeposit] = useState<boolean>(false);
 
   const [showSend, setShowSend] = useState<boolean>(false);
+
+  const [confirmDisconnect, setConfirmDisconnect] = useState<boolean>(false);
+
 
   // Transactions
   const [transactions, setTransactions] = useState<Transaction[]>(cachedTransactions);
@@ -79,8 +92,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
     setTxLoading(false);
   }, []);
 
-  // The threshold, NWC URI and Lightning Address moved into WalletSettings —
-  // three RPCs on every wallet open for a panel most sessions never touch.
+  // Address and settings share the account cache; opening settings reuses these reads.
   // Balance is not fetched here: WalletContext already fetches it the moment
   // `configType` becomes a provider string, which happens before this
   // component ever mounts.
@@ -115,22 +127,39 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       {/* Balance */}
       <Card className="m-0 p-6 shrink-0 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <div><span className="text-sm font-semibold text-heading">{t('wallet.balance')}</span><p className="text-xs text-menu-subtitle mt-1">{providerType === 'lnbits' ? 'LNbits · Lightning' : 'NWC · Lightning'}</p></div>
-        <IconButton tone="brand" onClick={() => setShowSettings(true)} title={t('wallet.settings')} aria-label={t('wallet.settings')}>
-          <IconSettings size={16} />
-        </IconButton>
+          <div className="min-w-0">
+            {settings.address ? <Text variant="secondary" className="break-all">{settings.address}</Text>
+              : providerType === 'lnbits' && settings.address === null ? <LinkButton tone="brand" onClick={() => { setSettingsSection('address'); setShowSettings(true); }}>{t('wallet.setupAlias')}</LinkButton>
+              : providerType === 'lnbits' ? <Text variant="muted">{t(settingsLoading ? 'common.loading' : 'wallet.checkFailed')}</Text> : null}
+          </div>
         </div>
         <WalletBalance balance={balance} loading={balanceLoading || configLoading} error={!!balanceError || configReadFailed} />
         {(balanceError || configReadFailed) && <div className="text-xs">
           <FormError>{balanceError || t('wallet.checkFailed')}</FormError>
           <ButtonSecondary small onClick={() => { void refreshConfig(); void refreshBalance(); }}>{t('common.retry')}</ButtonSecondary>
         </div>}
-      {/* Action buttons */}
-      <Container variant="row" gap={4}>
-        <Button className="flex-1" onClick={() => { ensureSettings(); setShowDeposit(true); }}>{t('wallet.deposit')}</Button>
-        <ButtonSecondary className="flex-1" onClick={() => setShowSend(true)}>{t('wallet.send')}</ButtonSecondary>
-      </Container>
       </Card>
+
+      {/* Action buttons */}
+      <div className="grid grid-cols-4 gap-3 shrink-0">
+        <ActionTile compact raised icon={<IconDownload size={20} />} title={t('wallet.receive')} onClick={() => { ensureSettings(); setShowDeposit(true); }} />
+        <ActionTile compact raised icon={<IconUpload size={20} />} title={t('wallet.send')} onClick={() => setShowSend(true)} />
+        <ActionTile compact raised icon={<IconSettings size={20} />} title={t('wallet.settings')} onClick={() => { setSettingsSection(undefined); setShowSettings(true); }} />
+        <ActionTile compact raised tone="danger" icon={<IconLogout size={20} />} title={t('common.disconnect')} disabled={disconnecting} onClick={() => setConfirmDisconnect(true)} />
+      </div>
+
+      {confirmDisconnect && (
+        <ConfirmDialog
+          title={t('common.disconnect')}
+          message={t('wallet.disconnectHint')}
+          confirmLabel={t('common.disconnect')}
+          danger
+          busy={disconnecting}
+          error={disconnectError}
+          onConfirm={() => { void disconnect(); }}
+          onCancel={() => setConfirmDisconnect(false)}
+        />
+      )}
 
       {showDeposit && (
         <DepositDialog
@@ -177,6 +206,7 @@ export default function Wallet({ providerType, onDisconnected }: WalletProps) {
       {showSettings && (
         <WalletSettings
           providerType={providerType}
+          initialSection={settingsSection}
           onClose={() => { setShowSettings(false); void refreshBalance(); }}
           onDisconnected={onDisconnected}
         />

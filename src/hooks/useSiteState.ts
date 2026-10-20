@@ -2,7 +2,8 @@ import { hasSiteScope } from '@domain/site/siteScope.ts';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { resolveActiveTabDomain } from '@services/browser/activeTabDomain.ts';
-import { resolveSiteState } from '@domain/site/siteState.ts';
+import { resolveSiteState, isSiteDismissed } from '@domain/site/siteState.ts';
+import { SESSION_DISMISSED_KEY } from '@constants/permissions.ts';
 import type { Account } from '@domain/accounts/account.ts';
 
 /**
@@ -14,6 +15,8 @@ import type { Account } from '@domain/accounts/account.ts';
 export default function useSiteState(active: Account | null) {
   const [domain, setDomain] = useState<string | null>(null);
   const [siteState, setSiteState] = useState<string | null>(null); // null = loading, 'empty' | 'notConnected' | 'connected' | 'error'
+  // The user said Not now / Never here: Home shows its normal content with a small Connect instead of the full card.
+  const [siteDismissed, setSiteDismissed] = useState<boolean>(false);
   const [identityEnabled, setIdentityEnabled] = useState<boolean>(true);
 
   // Which run of loadHomeState is the current one. Without this the slower of
@@ -61,6 +64,19 @@ export default function useSiteState(active: Account | null) {
         return;
       }
 
+      let dismissed = false;
+      if (state === 'notConnected') {
+        try {
+          const [local, session] = await Promise.all([
+            browser.storage.local.get('dismissedDomains'),
+            browser.storage.session.get(SESSION_DISMISSED_KEY),
+          ]);
+          dismissed = isSiteDismissed(local.dismissedDomains as never, session[SESSION_DISMISSED_KEY] as string[] | undefined, d);
+        } catch { /* unreadable: offer the full Connect card, as before */ }
+        if (!current()) return;
+      }
+      setSiteDismissed(dismissed);
+
       const identityDisabledSet = new Set<string>(identityDisabled || []);
 
       setIdentityEnabled(!hasSiteScope([...identityDisabledSet], d));
@@ -98,11 +114,11 @@ export default function useSiteState(active: Account | null) {
   useEffect(() => {
     const onChanged = (changes: Record<string, unknown>, area: string) => {
       if (area !== 'local') return;
-      if (changes.allowedDomains || changes.identityDisabledSites) void loadHomeState();
+      if (changes.allowedDomains || changes.identityDisabledSites || changes.dismissedDomains) void loadHomeState();
     };
     browser.storage.onChanged.addListener(onChanged);
     return () => browser.storage.onChanged.removeListener(onChanged);
   }, [loadHomeState]);
 
-  return { domain, siteState, identityEnabled, setIdentityEnabled, loadHomeState };
+  return { domain, siteState, siteDismissed, identityEnabled, setIdentityEnabled, loadHomeState };
 }

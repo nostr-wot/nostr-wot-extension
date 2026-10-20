@@ -10,6 +10,8 @@ import MethodStep from './MethodStep';
 import ImportStep from './ImportStep';
 import NpubStep from './NpubStep';
 import Nip46Step from './Nip46Step';
+import PasskeyStep from './PasskeyStep';
+import PasskeyBackupStep from '@components/PasskeyRecoverySetup';
 import CreateStep from './CreateStep';
 import SubAccountStep from './SubAccountStep';
 import VerifyStep from './VerifyStep';
@@ -21,7 +23,7 @@ import DoneStep from './DoneStep';
 
 interface WizardFlow {
   step: WizardStep;
-  context?: { method: string | null };
+  context?: { method: string | null; passkeyBlobSupported?: boolean; passkeyRecoverySaved?: boolean };
   account: unknown;
   mnemonic: string | null;
   upgradeId: string | null;
@@ -54,11 +56,15 @@ function buildSteps(
     },
     [WizardStep.Method]: {
       title: hasAccounts ? t('wizard.addAccount') : t('wizard.getStarted'),
-      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} />,
+      content: <MethodStep onSelect={(m: string) => flow.send('SELECT', { method: m })} hasGeneratedAccount={hasGeneratedAccount} hasAccounts={hasAccounts} />,
+    },
+    [WizardStep.MoreOptions]: {
+      title: t('wizard.otherMethods'),
+      content: <MethodStep otherMethods onSelect={(method) => flow.send('SELECT', { method })} hasAccounts={hasAccounts} />,
     },
     [WizardStep.Import]: {
       title: t('wizard.importKey'),
-      content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} />,
+      content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} onRestorePasskey={hasAccounts ? undefined : () => flow.send('RESTORE_PASSKEY')} />,
     },
     [WizardStep.WatchOnly]: {
       title: t('wizard.watchOnly'),
@@ -67,6 +73,22 @@ function buildSteps(
     [WizardStep.NostrConnect]: {
       title: t('wizard.nostrConnect'),
       content: <Nip46Step onNext={(acct: any) => flow.send('DONE', { account: acct })} />,
+    },
+    [WizardStep.Passkey]: {
+      title: t('passkey.create'),
+      content: <PasskeyStep autoStart onNext={(account, blobSupported) => flow.send('CREATED', { account, blobSupported })} />,
+    },
+    [WizardStep.PasskeyAdvanced]: {
+      title: t('passkey.advancedCreate'),
+      content: <PasskeyStep advanced onNext={(account, blobSupported) => flow.send('CREATED', { account, blobSupported })} />,
+    },
+    [WizardStep.PasskeyRestore]: {
+      title: t('passkey.restore'),
+      content: <PasskeyStep restore autoStart onNext={(account) => flow.send('DONE', { account })} />,
+    },
+    [WizardStep.PasskeyBackup]: {
+      title: t('passkey.recoveryTitle'),
+      content: <PasskeyBackupStep blobSupported={flow.context?.passkeyBlobSupported} saved={flow.context?.passkeyRecoverySaved} onNext={(saved) => flow.send('DONE', { saved })} />,
     },
     [WizardStep.Create]: {
       title: t('wizard.createIdentity'),
@@ -85,9 +107,10 @@ function buildSteps(
       content: <VerifyStep mnemonic={flow.mnemonic} onVerified={() => flow.send('VERIFIED')} />,
     },
     [WizardStep.Password]: {
-      title: t('wizard.setPassword'),
+      title: t('wizard.protectYourAccount'),
       content: (
         <PasswordStep
+          configurePasskey={['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(flow.context?.method || '')}
           account={flow.account}
           upgradeId={flow.upgradeId}
           onNext={(upgraded: boolean) => flow.send('SET', { upgraded })}
@@ -95,7 +118,7 @@ function buildSteps(
       ),
     },
     [WizardStep.FollowSuggestions]: {
-      title: t('wizard.followSuggestions'),
+      title: t('wizard.followTitle'),
       content: <FollowSuggestionsStep onNext={() => flow.send('DONE')} />,
     },
     [WizardStep.PermissionCopy]: {
@@ -103,7 +126,7 @@ function buildSteps(
       content: <PermissionCopyStep account={flow.account as any} onNext={() => flow.send('DONE')} />,
     },
     [WizardStep.Done]: {
-      title: t('wizard.allSet'),
+      noHeader: true,
       content: <DoneStep account={flow.account as any} derived={hasGeneratedAccount && flow.context?.method === 'create' && !flow.mnemonic} onDone={onDone} />,
     },
   };
@@ -123,9 +146,12 @@ export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyC
   const STEPS = buildSteps(flow, onLangSelect, onDone, { hasAccounts, hasGeneratedAccount });
   const active = STEPS[flow.step];
   if (!active?.content) return null;
+  // The confirmation is a dialog of its own, not a page under the wizard header.
+  if (flow.step === WizardStep.Done) return <>{active.content}</>;
 
   // When user has accounts, back on the method step should close the wizard
-  const showBack = (flow.showBack || (flow.step === WizardStep.Method && !!hasAccounts));
+  const passkeyFlow = ['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(flow.context?.method || '');
+  const showBack = flow.step !== WizardStep.PasskeyBackup && !(passkeyFlow && [WizardStep.Password, WizardStep.FollowSuggestions].includes(flow.step)) && (flow.showBack || (flow.step === WizardStep.Method && !!hasAccounts));
   const handleBack = (flow.step === WizardStep.Method && hasAccounts) ? onClose : flow.goBack;
 
   return (

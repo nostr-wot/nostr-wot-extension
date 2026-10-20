@@ -47,3 +47,11 @@ it('shared public-profile hook rejects future cache and ignores an obsolete dire
   assert.ok(!document.body.textContent?.includes('Obsolete sender'));assert.equal(calls.length,1);
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
+
+it('read-only cached profile display can reuse stale and account metadata safely', async () => {
+  const { cachedPublicProfile } = await import('../src/domain/profile/publicProfile.ts');
+  const key = 'a'.repeat(64);
+  assert.deepEqual(cachedPublicProfile({ [`profile_${key}`]: { metadata: { name: 'Alice', picture: 42 }, fetchedAt: 0 } }, key), { name: 'Alice' });
+  assert.deepEqual(cachedPublicProfile({ profileCache: { [key]: { name: 'Alice' } } }, key), { name: 'Alice' });
+  assert.equal(cachedPublicProfile({ profileCache: false, [`profile_${key}`]: null }, key), null);
+});

@@ -7,7 +7,7 @@ import {
 } from '@domain/wizard/wizardMachine.ts';
 import type { WizardState, WizardAction, WizardOptions, WizardContext } from '@domain/wizard/wizardMachine.ts';
 
-const NON_PERSIST_STEPS: WizardStep[] = [WizardStep.Language, WizardStep.Welcome, WizardStep.Method, WizardStep.Done];
+const NON_PERSIST_STEPS: WizardStep[] = [WizardStep.Language, WizardStep.Welcome, WizardStep.Method, WizardStep.MoreOptions, WizardStep.Done];
 
 interface UseWizardFlowOptions {
   initialStep?: WizardStep;

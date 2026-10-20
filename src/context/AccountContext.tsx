@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
 import { t } from '@services/i18n/i18n.ts';
+import { cachedPublicProfile } from '@domain/profile/publicProfile';
 import { accountDisplay } from '@domain/accounts/display.ts';
 import { rpc } from '@services/rpc.ts';
 import useAsyncResource from '@hooks/useAsyncResource.ts';
@@ -45,14 +46,21 @@ export function AccountProvider({ children }: AccountProviderProps) {
   const { data, refresh, patch: patchAccount } = useAsyncResource<AccountData>(
     { accounts: null, activeId: null, profileCache: {} },
     {
-      load: async (patch) => {
+      load: async (patch, isCurrent) => {
         const stored = await browser.storage.local.get(['accounts', 'activeAccountId', 'profileCache']) as Record<string, unknown>;
         const accounts: Account[] = (stored.accounts as Account[] | undefined) || [];
         const activeId: string = (stored.activeAccountId as string | undefined) || '';
+        const profiles = await browser.storage.local.get(accounts.map(account => `profile_${account.pubkey}`));
+        const profileCache: ProfileCache = {};
+        for (const account of accounts) {
+          const profile = cachedPublicProfile({ ...stored, ...profiles }, account.pubkey);
+          if (profile) profileCache[account.pubkey] = profile;
+        }
+        if (!isCurrent()) return;
         patch({
           accounts,
           activeId: activeId || accounts[0]?.id || null,
-          profileCache: (stored.profileCache as ProfileCache | undefined) || {},
+          profileCache,
         });
       },
     },
@@ -63,15 +71,12 @@ export function AccountProvider({ children }: AccountProviderProps) {
   const active = accounts?.find((a) => a.id === activeId) || accounts?.[0] || null;
 
   useStorageWatch(
-    [{ area: 'local', keys: ['accounts', 'activeAccountId', 'profileCache'] }],
+    [{ area: 'local', keys: ['accounts', 'activeAccountId', 'profileCache', ...(accounts || []).map(account => `profile_${account.pubkey}`)] }],
     refresh,
   );
 
-  // Fetch kind:0 metadata for all accounts in the background.
-  // Shows cached data immediately; refreshes from relays each popup open.
-  // Bespoke to Account: it writes back to storage itself rather than through
-  // `patch`, so the update is visible to every context via the storage watch
-  // above, not just this one.
+  // The background owns the shared profile cache. Read it after relay fetches;
+  // never copy a delayed response over a freshly published profile in the UI.
   useEffect(() => {
     if (!accounts || accounts.length === 0) return;
 
@@ -84,17 +89,10 @@ export function AccountProvider({ children }: AccountProviderProps) {
     // Fire all fetches concurrently, update cache as each resolves
     for (const pk of toFetch) {
       rpc<ProfileMetadata | null>('getProfileMetadata', { pubkey: pk })
-        .then(async (metadata) => {
-          if (!metadata) return;
-          const stored = await browser.storage.local.get('profileCache') as Record<string, unknown>;
-          const pc: ProfileCache = (stored.profileCache as ProfileCache | undefined) || {};
-          pc[pk] = metadata;
-          await browser.storage.local.set({ profileCache: pc });
-          // State update will happen via the storage watch above.
-        })
+        .then(() => refresh())
         .catch(() => {}); // Relay failures are fine — we keep cached data
     }
-  }, [accounts]);
+  }, [accounts, refresh]);
 
   const switchAccount = useCallback(async (accountId: string) => {
     if (!accounts?.find((a) => a.id === accountId)) return;

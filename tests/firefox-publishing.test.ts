@@ -11,13 +11,14 @@ import { prepareRelease } from '../scripts/prepare-store-release.mjs';
 const env = { AMO_JWT_ISSUER: 'test-issuer', AMO_JWT_SECRET: 'synthetic-test-secret' };
 // AMO serializes upload UUIDs as compact hexadecimal strings.
 const uuid = '10000000000000000000000000000001';
-function fixture(t: { after: (fn: () => void) => void }) {
+function fixture(t: { after: (fn: () => void) => void }, license = 'GPL-3.0-only') {
   const dir = mkdtempSync(join(tmpdir(), 'firefox-publishing-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify({ manifest_version: 3, version: '0.8.7', browser_specific_settings: { gecko: { id: ADDON_ID } }, background: { scripts: ['worker.js'] }, action: { default_popup: 'popup.html' } }));
   writeFileSync(join(dir, 'worker.js'), ''); writeFileSync(join(dir, 'popup.html'), '');
   const archive = join(dir, 'firefox.zip'), source = join(dir, 'source.zip');
-  execFileSync('zip', ['-q', archive, 'manifest.json', 'worker.js', 'popup.html'], { cwd: dir });
+  writeFileSync(join(dir, 'LICENSE'), license === 'MIT' ? 'MIT License\n' : license === 'GPL-3.0-only' ? 'GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007\n' : license);
+  execFileSync('zip', ['-q', archive, 'manifest.json', 'worker.js', 'popup.html', 'LICENSE'], { cwd: dir });
   writeFileSync(source, readFileSync(archive));
   return { archive, source, version: '0.8.7', archiveHash: digest(readFileSync(archive)), sourceHash: digest(readFileSync(source)), approvalNotes: 'Build with npm ci. Synthetic review notes.', releaseNotes: 'Tested changes.' };
 }
@@ -51,6 +52,7 @@ test('submits listed ZIP with source, then saves and verifies reviewer and relea
  assert.equal(await publishFirefox(o, env, mock.fetcher, async () => {}), 'SUBMITTED');
  assert.deepEqual(mock.calls.map(c => c.options.method || 'GET'), ['GET', 'GET', 'POST', 'GET', 'POST', 'PATCH', 'GET']);
  const upload = mock.calls[2].options.body as FormData, submission = mock.calls[4].options.body as FormData;
+ assert.equal(submission.get('license'), 'GPL-3.0-only');
  assert.equal(upload.get('channel'), 'listed'); assert.equal(submission.get('upload'), uuid);
  assert.equal(digest(Buffer.from(await (submission.get('source') as Blob).arrayBuffer())), o.sourceHash);
  assert.equal(submission.get('approval_notes'), saved.approval_notes);
@@ -319,4 +321,17 @@ test('current reviewer instructions fit with commit, CRLF and both archive hashe
   assert.equal(sent, saved.approval_notes);
   assert.ok(String(sent).includes(body));
  }
+});
+
+test('recovery preserves the MIT license of earlier release sources', async t => {
+ const o = fixture(t, 'MIT'), saved = detail(o);
+ const mock = api([addon, empty, validated, saved, saved, saved]);
+ assert.equal(await publishFirefox(o, env, mock.fetcher), 'SUBMITTED');
+ assert.equal((mock.calls[3].options.body as FormData).get('license'), 'MIT');
+});
+
+test('unknown release licenses are rejected before any Mozilla request', async t => {
+ const mock = api([]);
+ await assert.rejects(publishFirefox(fixture(t, 'Unknown license'), env, mock.fetcher), /Unsupported source license/);
+ assert.equal(mock.calls.length, 0);
 });

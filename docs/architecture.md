@@ -182,7 +182,7 @@ From `manifest.json` (MV3):
 }
 ```
 
-There is no `optional_permissions` key. `host_permissions` contains only `https://nostr-wot.com/*`, used for the project-site bridge/tab discovery. Connecting another website does not request a host grant. `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
+There is no `optional_permissions` key. `host_permissions` contains `https://nostr-wot.com/*` for the project-site bridge/tab discovery and both `https://passkeys.nostrwot.com/*` and the legacy `https://passkeys.nostr-wot.com/*` for WebAuthn. `optional_host_permissions` permits requesting only a specifically selected custom HTTPS RP origin during Advanced enrollment; it does not grant all origins automatically. Connecting another website does not request a host grant. `web_accessible_resources` names each locale file individually rather than a `locales/*.json` glob.
 
 Firefox-specific settings (`browser_specific_settings`):
 ```json
@@ -291,13 +291,28 @@ Account-scoped archiving composes the vault private-cache encryption, the shared
 
 Archive configuration and limits are defined in `constants/archive.ts`, its explicit copy allowlist in `constants/archive-policy.ts`, and versioned encryption parameters in `constants/crypto/archive.ts`. UI and background consumers import these directly. Pure relay filtering and NIP-01 replacement ordering live in `domain/relays/filter.ts` and `domain/nostr/eventOrdering.ts`; Archive, live relay reads and follow-list protection reuse them. `services/archive/fileTransfer.ts` owns popup-side file/RPC orchestration, while `screens/Archive/ArchiveFiles.tsx` owns the dialog. Archive is configured from Settings rather than onboarding; `WizardStep` in `constants/wizard.ts` names every transition and screen, retaining the existing persisted string values.
 
+### Passkey vault ownership
+
+`domain/vault/passkey.ts` owns credential/record contracts and bounded recovery-file validation; `constants/passkey.ts` owns the RP, encryption context and limits. `services/vault/passkeyClient.ts` handles browser WebAuthn only, while `passkeyEncryption.ts` wraps random vault keys. `passkeyRecovery.ts` handles bounded encrypted WebAuthn largeBlob write confirmation and fresh-install credential discovery, reusing the same recovery parser and PRF authentication. `recoveryCodec.ts` owns the versioned single-key/seed/vault wire format; background-only `relayRecovery.ts` reuses pooled relay transport for explicit publication and bounded lookup. `RelayRecoverySave` shares automatic selected-account seed/key recovery between onboarding and Security. `PasskeyRecoverySave` shares provider save/fallback behavior between onboarding and Security settings. The existing vault service owns the unlocked session and serializes create, save, additional-credential and restore writes. Onboarding and vault handlers reuse the existing internal-page privilege boundary. The shared unlock hook and credential selector serve popup, prompt, key export and account-addition flows. Security settings reuse the same recovery download component as onboarding.
+
 Popup preference initialization is bounded to 1.5 seconds before mounting with bundled English defaults. Delayed initialization refreshes the existing React root without remounting it. Theme and language failures cannot prevent first render. The language is read from `storage.local` without waiting for `storage.sync`, which can be slow on its first access after the browser starts; a different synced value is copied into `storage.local` and applies on the next open. English is bundled and never fetched. The popup also sends a `vault_exists` notification as its entry module runs, so a cold service worker starts while the popup is still rendering.
+
+Language initialization and explicit changes use a revision guard so delayed startup reads or locale loads cannot replace a newer user choice.
+
+Passkey discovery in the shared unlock hook uses the same bounded background-read retries as popup status providers. Unlock and vault creation continue to use ordinary RPC calls without read timeouts.
+
+`vault.changeProtection` serializes verified switching between existing passkey enrollment and password protection. Dormant encrypted wrappers survive password rotation and None mode; private-cache keys and all accounts remain unchanged. Unlock metadata reads exclude dormant credentials, while Security reads the full enrollment for its Use passkey switch.
 
 ### NIP-46 transport lifetime
 
 `services/signing/nip46Connection.ts` owns a dedicated relay pool and its WebSockets for each onboarding attempt or cached remote signer. Closing a `BunkerSigner` only closes its subscriptions, so the owner also destroys the pool, closes connecting sockets, and rejects new connections after disposal. A delayed socket opening after cancellation is closed before the relay can accept the open event. Caller-owned shared pools remain outside this ownership boundary.
 
 QR onboarding initialization and status mutations are serialized to keep one live attempt. The attempt is disposed on completion, failure, cancellation, or its five-minute expiry, including when the popup stops polling. Remote signing shares one cached connection per account and disposes it on initialization failure, disconnect, account change, or vault lock.
+
+The account method screen keeps creation choices above an or-divider and a matching other-methods card. That card opens the MoreOptions state with Import, Watch-only and Nostr Connect, followed by an OR divider and direct advanced passkey creation and restoration cards; default creation has no Advanced controls. Child back actions return to this submenu. Raised ActionTile cards use the shared glass surface and shadow, a title/description gap and an accent border on hover.
+
+
+Passkey recovery account selection is a pure rule in `domain/vault/passkey.ts`, shared by Security enrollment and additional-credential setup. Browser WebAuthn stays in `services/vault/passkeyClient.ts`; provider and relay recovery orchestration stays in vault services, using the existing relay transport. `components/PasskeyRecoverySetup` owns the shared recovery-file acknowledgement flow. Security mount reads use `rpcRead`, while protection changes use non-retried `rpc`.
 
 ## Experimental local bridge
 

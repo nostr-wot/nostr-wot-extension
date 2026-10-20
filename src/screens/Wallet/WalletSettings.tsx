@@ -1,6 +1,7 @@
+import useWalletDisconnect from '@hooks/useWalletDisconnect';
 import AppConnections from './AppConnections';
 import { PROVIDER_LABELS } from '@constants/wallet.ts';
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import Card from '@components/Card';
@@ -23,24 +24,33 @@ import ProfileAddressButton from './ProfileAddressButton';
 import WalletConnectionHelp from './WalletConnectionHelp';
 
 interface WalletSettingsProps {
+  initialSection?: 'address';
   providerType: string;
   onClose: () => void;
   onDisconnected: () => void;
 }
 
 /** Settings read through the shared account context; only editable drafts stay local. */
-export default function WalletSettings({ providerType, onClose, onDisconnected }: WalletSettingsProps) {
+export default function WalletSettings({ providerType, onClose, onDisconnected, initialSection }: WalletSettingsProps) {
   const { active, cachedProfile } = useAccount();
   const [appsOpen, setAppsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const {settings,settingsLoading,settingsError,ensureSettings,refreshSettings,patchSettings} = useWallet();
   const {threshold,nwcUri,address:lnAddress} = settings;
+  const addressSection = useRef<HTMLDivElement>(null);
+  const positioned = useRef(false);
+  useEffect(() => {
+    if (initialSection !== 'address' || lnAddress === undefined || positioned.current) return;
+    positioned.current = true;
+    addressSection.current?.scrollIntoView({ block: 'start' });
+    addressSection.current?.querySelector('input')?.focus({ preventScroll: true });
+  }, [initialSection, lnAddress]);
   const [thresholdDraft, setThresholdDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState('');
   useEffect(() => { ensureSettings(); }, [ensureSettings]);
   useEffect(() => { if (threshold !== undefined) setThresholdDraft(String(threshold)); }, [threshold]);
-  const [disconnecting, setDisconnecting] = useState<boolean>(false);
+  const { disconnect: handleDisconnect, disconnecting, disconnectError } = useWalletDisconnect(onDisconnected);
 
   const [usernameDraft, setUsernameDraft] = useState<string>('');
   const [claimLoading, setClaimLoading] = useState<boolean>(false);
@@ -50,17 +60,6 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [releaseLoading, setReleaseLoading] = useState<boolean>(false);
   const [confirmRelease, setConfirmRelease] = useState<boolean>(false);
-
-  const handleDisconnect = async () => {
-    setDisconnecting(true);
-    try {
-      await rpc('wallet_disconnect');
-      onDisconnected();
-    } catch (error) {
-      setSettingsSaveError((error as Error).message);
-      setDisconnecting(false);
-    }
-  };
 
   const thresholdValue = Number(thresholdDraft);
   const thresholdValid = thresholdDraft.trim() !== '' && Number.isSafeInteger(thresholdValue) && thresholdValue >= 0;
@@ -170,7 +169,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
         <div className="flex-1 min-h-0 overflow-y-auto">
         <Container gap={7} className="py-2">
         {settingsError && <FormError>{t('wallet.checkFailed')}</FormError>}
-        <FormError>{settingsSaveError}</FormError>
+        <FormError>{settingsSaveError || disconnectError}</FormError>
         <Card className="m-0 p-8 flex flex-col gap-6">
           <Text as="p" className="text-md font-semibold text-heading">
             {t('wallet.connectedTo', { provider: providerType === 'lnbits' ? 'Nostr WoT LNBits' : providerLabel })}
@@ -209,7 +208,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
         </Card>
 
         {providerType === 'lnbits' && (
-          <Card className="m-0 p-8 flex flex-col gap-6">
+          <div ref={addressSection}><Card className="m-0 p-8 flex flex-col gap-6">
             <Container gap={3}><SectionLabel className="m-0 text-heading">{t('wallet.lightningAddress')}</SectionLabel>
             <SectionHint className="m-0 text-menu-subtitle">{t('wallet.lightningAddressHint')}</SectionHint></Container>
             {lnAddress === undefined ? (<div className="text-sm text-menu-subtitle">{settingsLoading ? t('common.loading') : t('wallet.checkFailed')}</div>) : lnAddress ? (
@@ -243,7 +242,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected }
               </Container>
             )}
             <FormError>{claimError}</FormError>
-          </Card>
+          </Card></div>
         )}
 
         </Container>
