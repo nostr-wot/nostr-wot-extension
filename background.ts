@@ -1,3 +1,4 @@
+import { acceptLocalBridgePort, isLocalBridgeSelected, localBridgeStatus, disableLocalBridge } from './src/services/signing/localBridgeSession.ts';
 import { registerUninstallFeedback } from './src/services/background/uninstall-feedback.ts';
 import { getPageRequestOrigin } from './src/domain/signing/requestOrigin.ts';
 import { openInstalledWelcome } from './src/services/appearance/install.ts';
@@ -69,6 +70,10 @@ const privilegedHandlerGroups = [miscHandlers, domainHandlers, vaultHandlers, wa
 setPrivilegedMethods(buildPrivilegedMethods(...privilegedHandlerGroups));
 // Also add configUpdated and other locally-defined handlers
 PRIVILEGED_METHODS.add('configUpdated');
+allHandlers.set('localBridgeStatus', localBridgeStatus);
+allHandlers.set('localBridgeDisable', disableLocalBridge);
+PRIVILEGED_METHODS.add('localBridgeStatus');
+PRIVILEGED_METHODS.add('localBridgeDisable');
 
 // ── Config loading ──
 
@@ -180,7 +185,7 @@ async function handleRequest(
     }
 
     // Read-only account guard
-    if (NIP07_SIGNING_METHODS.has(method) && await isActiveAccountReadOnly()) {
+    if (NIP07_SIGNING_METHODS.has(method) && await isActiveAccountReadOnly() && !(await isLocalBridgeSelected())) {
         void logActivity({ domain: params?.origin as string, method: method.replace('nip07_', ''), decision: 'blocked' });
         throw new Error('Signing not available for read-only accounts');
     }
@@ -262,6 +267,7 @@ browser.runtime.onMessage.addListener((request: Record<string, unknown>, sender:
 
 // Port-based handler for NIP-07 and WebLN requests from content scripts
 browser.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
+    if (port.name === 'local-bridge') { acceptLocalBridgePort(port); return; }
     if (port.name !== 'nip07' && port.name !== 'webln' && port.name !== 'wot') return;
 
     port.onDisconnect.addListener(() => forgetTabOrigin(port.sender?.tab?.id));

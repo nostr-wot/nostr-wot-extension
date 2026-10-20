@@ -1,3 +1,4 @@
+import { assertLocalSigningAllowed } from '../signing/localBridgeSession.ts';
 import { archiveRelayUrl } from '@domain/archive/settings.ts';
 import { MAX_RELAY_AUTH_CHALLENGE_LENGTH } from '@constants/relays.ts';
 import * as kinds from 'nostr-tools/kinds';
@@ -33,6 +34,8 @@ export async function archiveTransportOptions(
     assertSession,
   };
   options.authenticate = async (challenge, relay) => {
+    assertSession();
+    await assertLocalSigningAllowed(accountId);
     assertSession();
     if (account.readOnly || account.type === 'npub' || account.type === 'external')
       throw new Error('Read-only accounts cannot authenticate to relays');

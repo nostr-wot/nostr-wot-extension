@@ -1,3 +1,4 @@
+import { assertLocalSigningAllowed } from '../signing/localBridgeSession.ts';
 import { listAppConnections, createAppConnection, copyAppConnection, revokeAppConnection } from '../wallet/app-connections.ts';
 import type { ConnectionDraft } from '@domain/wallet/app-connections.ts';
 /**
@@ -58,6 +59,8 @@ export function createNip98SignFn(acctId: string, endpointUrl: string): WalletAu
         // kept its own `getPrivkey()` copy alive across the whole signing block and relied on
         // the `finally` to zero it, which is a promise each call site has to keep separately.
         // Here the scope keeps it, and the key is not live while the caller is on the network.
+        await assertLocalSigningAllowed(acctId);
+        assertAccountSession(session);
         const signed = await vault.withPrivkey(acctId, async privkey => signEvent({
             kind: 27235,
             created_at: Math.floor(Date.now() / 1000),

@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Add an experimental local network bridge menu with Wi-Fi and Bluetooth choices, phone-side signing, authenticated pairing and explicit disconnect behavior.
+
 Rename this heading to the next version when it is released; the release
 scripts only read a section whose heading is that exact version.
 

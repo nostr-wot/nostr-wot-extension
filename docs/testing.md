@@ -595,3 +595,13 @@ The Chrome package smoke test also opens a popup with its language preference re
 ### NIP-46 transport lifetime
 
 `tests/nip46-lifecycle.test.ts` uses the installed `BunkerSigner` and `SimplePool` with fake WebSockets; it opens no network connections. It counts live sockets across repeated successful and failed pairing attempts, concurrent initialization, remote-client reuse, vault locking, cancellation, expiry without popup polling, and a CONNECTING socket that refuses closure and opens later. It also checks that disposing an attempt does not destroy a caller-owned shared pool. The loopback integration suite verifies genuine encrypted request/response signing and observes socket closure before reconnecting.
+
+### Experimental phone signer broker
+
+`tests/local-bridge-session.test.ts` verifies exact document trust, identity matching, local permission denial, real remote event signatures and payload preservation, classic encryption dispatch, PQ refusal, disconnect/lock cancellation, sticky selection without local fallback, explicit disable and malformed result rejection. The tests use isolated runtime Ports and synthetic keys; they do not certify physical Bluetooth or LAN interoperability.
+
+- `tests/local-bridge-transport.test.ts` pins authenticated pairing, encrypted response correlation, replay rejection, Wi-Fi destination restrictions, BLE framing and cancellation.
+- `tests/local-bridge-tab.test.ts` pins account registration, bounded dispatch and immediate runtime/radio disconnect cleanup.
+- `tests/local-bridge-wallet-interop.test.mjs` is an optional cross-repository check against the wallet's actual signer; see `docs/local-bridge.md` for its environment and command.
+
+Broker race coverage additionally holds a selection write across explicit disabling and verifies that the disable wins, and resolves a crypto response immediately before disconnect to verify that the retired session cannot deliver it. Phone account-index changes close the wallet transport before it can deliver any in-flight result; the wallet's LAN integration suite covers that boundary with real encrypted RPCs.

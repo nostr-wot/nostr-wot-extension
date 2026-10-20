@@ -1,3 +1,4 @@
+import browser from '@lib/browser.ts';
 import ArchiveSection from '@screens/Archive';
 import AppearanceSection from '@screens/Settings/AppearanceSection';
 import PulseLogo from '@components/PulseLogo';
@@ -93,6 +94,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       desc: t('menu.relaysDesc'),
       icon: <IconGlobe />,
     },
+    { id: 'local-bridge', label: t('localBridge.title'), desc: t('localBridge.menuHint'), icon: <IconGlobe /> },
     { id: 'experimental-wot', label: t('wot.title'), desc: t('wot.menuDesc'), icon: <IconGlobe /> },
     { id: 'appearance', label: t('appearance.title'), desc: t('appearance.menuDesc'), icon: <IconSettings /> },
   ];
@@ -127,6 +129,10 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   const handleClose = () => { setNavStack([]); onClose(); };
 
   const handleMenuItem = (id: string) => {
+    if (id === 'local-bridge') {
+      void browser.tabs.create({ url: browser.runtime.getURL('src/entrypoints/local-bridge/index.html') });
+      return;
+    }
     pushSection(id);
   };
 

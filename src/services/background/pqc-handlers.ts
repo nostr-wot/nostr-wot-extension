@@ -1,3 +1,4 @@
+import { assertLocalSigningAllowed } from '../signing/localBridgeSession.ts';
 import type { PqcBlockReason, PqcPanelStatus as PqcStatus } from '@domain/pqc/pqcState.ts';
 
 import { PQC_SEED_WORD_COUNT } from '@constants/accounts.ts';
@@ -328,6 +329,8 @@ export const handlers: Map<string, HandlerFn> = new Map<string, HandlerFn>([
     const accountId = vault.getActiveAccountId();
     if (!accountId) throw new Error('This account cannot publish post-quantum keys');
     if (vault.getActivePubkey() !== status.pubkey) throw new Error('Active account changed');
+    assertAccountSession(session);
+    await assertLocalSigningAllowed(accountId);
     assertAccountSession(session);
     const signed = await vault.withPrivkey(accountId, (privkey) =>
       signEvent(status.attestation as UnsignedEvent, privkey));

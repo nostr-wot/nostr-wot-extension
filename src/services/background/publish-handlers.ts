@@ -1,3 +1,4 @@
+import { assertLocalSigningAllowed } from '../signing/localBridgeSession.ts';
 /**
  * Event broadcasting, relay publishing, event signing, NIP-46 session management,
  * and health check handlers.
@@ -80,6 +81,8 @@ export const handlers = new Map<string, HandlerFn>([
         // scope that is voided cannot unsend. A callback that published would already have put
         // the event on the wire, so every side effect stays downstream of the returned value.
         assertAccountSession(session);
+        await assertLocalSigningAllowed(accountId);
+        assertAccountSession(session);
         const signed = await vault.withPrivkey(accountId, async privkey => signEvent(event, privkey));
 
         const broadcastUrls = [...new Set([...relayUrls, ...config.relays])];
@@ -142,6 +145,8 @@ export const handlers = new Map<string, HandlerFn>([
 
         // Sign inside the scope; see the note in publishRelayList.
         assertAccountSession(session);
+        await assertLocalSigningAllowed(accountId);
+        assertAccountSession(session);
         const signed = await vault.withPrivkey(accountId, async privkey => signEvent(event, privkey));
 
         // Mirror publishRelayList: publish to the user's WRITE relays.
@@ -162,6 +167,8 @@ export const handlers = new Map<string, HandlerFn>([
         const accountId = vault.getActiveAccountId();
         if (!accountId) throw new Error('Vault is locked');
         const session = captureAccountSession(accountId);
+        await assertLocalSigningAllowed(accountId);
+        assertAccountSession(session);
         const signed = await vault.withPrivkey(accountId, async privkey => signEvent(params.event as UnsignedEvent, privkey));
         assertAccountSession(session);
         return signed;
@@ -175,6 +182,8 @@ export const handlers = new Map<string, HandlerFn>([
         // Sign inside, broadcast outside: the whole point of the split. The old shape held the
         // key live across the broadcast, so it stayed in memory for the length of a relay
         // round trip that has no use for it.
+        assertAccountSession(session);
+        await assertLocalSigningAllowed(accountId);
         assertAccountSession(session);
         const signed = await vault.withPrivkey(accountId, async privkey => signEvent(params.event as UnsignedEvent, privkey));
         assertAccountSession(session);

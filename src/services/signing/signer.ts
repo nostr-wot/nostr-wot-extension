@@ -1,3 +1,4 @@
+import { isLocalBridgeSelected, signWithLocalBridge, cryptoWithLocalBridge } from './localBridgeSession.ts';
 import { parseAuthentication, assertPageAuthenticationPolicy, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
 import { getAuthenticationDecision, saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { rememberSignedZapNote } from '../wallet/payment-records.ts';
@@ -159,7 +160,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   const needsAuthApproval = !!authentication && !destinationGranted;
   let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
-  if (replacementCount || needsAuthApproval || (!authentication && accountType !== 'nip46' && decision === 'ask')) {
+  if (replacementCount || needsAuthApproval || (!authentication && (accountType !== 'nip46' || await isLocalBridgeSelected(session.accountId)) && decision === 'ask')) {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'signEvent',
@@ -209,6 +210,17 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     if (authenticationScope) await saveAuthenticationGrant(session.accountId, origin, authentication, authenticationScope, () => assertAccountSession(session));
     assertAccountSession(session);
   };
+
+  // Explicit phone selection never falls back to a local key or NIP-46.
+  if (await isLocalBridgeSelected(session.accountId)) {
+    assertAccountSession(session);
+    await assertAuthentication();
+    const result = await signWithLocalBridge(event, session, origin);
+    await rememberSignedFollowList(result);
+    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
+    assertAccountSession(session);
+    return result;
+  }
 
   // Route by account type
   if (accountType === 'nip46') {
@@ -294,7 +306,7 @@ async function handleCryptoRequest(
   if (decision === 'deny') throw new Error('Permission denied');
 
   // NIP-46 accounts skip the local 'ask' prompt — the bunker runs its own approval.
-  if (accountType !== 'nip46' && decision === 'ask') {
+  if ((accountType !== 'nip46' || await isLocalBridgeSelected(session.accountId)) && decision === 'ask') {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: method,
@@ -308,6 +320,7 @@ async function handleCryptoRequest(
       assertAccountSession(session);
       let plaintext: string | undefined;
       if (reveal) {
+        if (method.endsWith('Decrypt') && await isLocalBridgeSelected(session.accountId)) throw new Error('Message previews are unavailable while the phone signer is selected');
         plaintext = method.endsWith('Encrypt') ? payload : await withActiveKey(session.accountId, async privkey =>
           cryptoFn(payload, privkey, hexToBytes(theirPubkey), session.accountId));
       }
@@ -317,6 +330,11 @@ async function handleCryptoRequest(
       return {request:{method,origin,params:{...nip46Data,...(previewOptions ? {opts:{...previewOptions}} : {})}}, ...(plaintext !== undefined ? message : {})};
     });
     if (!approved.allow) throw new Error(denyMessage);
+  }
+
+  if (await isLocalBridgeSelected(session.accountId)) {
+    if (remoteSignerUnsupported) throw new Error(remoteSignerUnsupported);
+    return cryptoWithLocalBridge(method, theirPubkey, payload, session, origin);
   }
 
   if (accountType === 'nip46') {

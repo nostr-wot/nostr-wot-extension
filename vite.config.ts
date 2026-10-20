@@ -97,6 +97,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
+        localBridge: resolve(__dirname, 'src/entrypoints/local-bridge/index.html'),
         onboarding: resolve(__dirname, 'src/entrypoints/onboarding/index.html'),
         prompt: resolve(__dirname, 'src/entrypoints/prompt/index.html'),
       },
