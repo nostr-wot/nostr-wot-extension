@@ -1404,7 +1404,7 @@
   "passkey.relayAccepted": "Pubblicazione accettata",
   "passkey.selectRecoveryAccount": "Seleziona l’account di questa passkey per pubblicare il recupero.",
   "common.none": "Nessuno",
-  "localBridge.title": "Bridge di rete locale sperimentale",
+  "localBridge.title": "Bridge di rete locale (Sperimentale)",
   "localBridge.menuHint": "Collega il firmatario del telefono tramite Bluetooth o Wi-Fi.",
   "localBridge.intro": "Scegli come collegare questo computer a Nostr WoT sul telefono.",
   "localBridge.wifi": "Wi-Fi",
@@ -1438,5 +1438,7 @@
   "localBridge.microphoneDenied": "Consenti il microfono oppure usa il QR o incolla il codice.",
   "localBridge.soundFailed": "Impossibile avviare l’ascolto. Controlla il microfono o usa il QR.",
   "localBridge.invalidSound": "Il suono non conteneva un codice valido. Riprova.",
-  "localBridge.confirmHint": "Sul telefono seleziona questo codice per confermare il computer. Se i codici non corrispondono, rifiuta la richiesta."
+  "localBridge.confirmHint": "Sul telefono seleziona questo codice per confermare il computer. Se i codici non corrispondono, rifiuta la richiesta.",
+  "localBridge.choosePhone": "Scegli il telefono",
+  "localBridge.bleInstructions": "Sul telefono, apri Rete locale → Bluetooth e avvia l’abbinamento. Poi scegli il telefono qui sotto e conferma il codice sul telefono."
 }

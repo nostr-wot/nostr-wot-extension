@@ -10,6 +10,8 @@ interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, '
   small?: boolean;
   center?: boolean;
   showToggle?: boolean;
+  /** Icon buttons, each at most 36px wide, inside the trailing edge. */
+  actions?: React.ReactElement[];
   label?: string;
   hint?: string;
   error?: string;
@@ -30,6 +32,7 @@ export default function Input({
   small = false,
   center = false,
   showToggle = false,
+  actions = [],
   label,
   hint,
   error,
@@ -53,7 +56,7 @@ export default function Input({
 
   const input = (
     <div className="relative w-full min-w-0">
-      <input type={effectiveType} className={cls} {...rest} id={inputId}
+      <input type={effectiveType} className={cls} {...rest} style={{ ...rest.style, ...(actions.length ? { paddingRight: actions.length * 36 + 12 + (showToggle ? 48 : 0) } : {}) }} id={inputId}
         aria-invalid={error ? true : rest['aria-invalid']}
         aria-describedby={[rest['aria-describedby'], error ? errorId : null].filter(Boolean).join(' ') || undefined} />
       {type === 'password' && showToggle && (
@@ -62,11 +65,13 @@ export default function Input({
           disabled={rest.disabled}
           aria-pressed={visible}
           className="absolute right-4 top-1/2 -translate-y-1/2 bg-transparent border-none text-brand text-xs font-semibold font-[inherit] cursor-pointer py-1 px-3"
+          style={actions.length ? { right: actions.length * 36 + 8 } : undefined}
           onClick={() => setVisible((v) => !v)}
         >
           {visible ? t('common.hide') : t('common.show')}
         </button>
       )}
+      {actions.length > 0 && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">{actions}</div>}
     </div>
   );
 

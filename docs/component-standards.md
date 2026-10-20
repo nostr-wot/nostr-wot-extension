@@ -858,3 +858,5 @@ Passkey enrollment defaults to Nostr WoT Main for the first locally registered c
 Recovery setup advances automatically once the provider confirms blob storage, without an optional-download screen or Continue click. File download, acknowledgement and optional relay publication appear only if provider storage is unavailable or fails; they remain hidden during the initial write. Recovery files remain available separately in Passkey settings.
 
 Wizard step titles live only in the wizard header; step bodies do not repeat them. Password onboarding is titled Protect your account and keeps the passkey switch and password fields inside the AutoLockOptions card. Completion is a centered Modal (DoneStep) that closes itself after three seconds; in the popup the wizard finishes first, so the confirmation floats over Home.
+
+`Input.actions` accepts trailing icon buttons (up to 36px each) inside the field, reserving text padding and preserving optional password visibility controls. Each action must have an accessible label.

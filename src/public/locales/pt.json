@@ -1404,7 +1404,7 @@
   "passkey.relayAccepted": "Publicação aceite",
   "passkey.selectRecoveryAccount": "Seleciona a conta desta passkey para publicar a recuperação.",
   "common.none": "Nenhum",
-  "localBridge.title": "Ponte de rede local experimental",
+  "localBridge.title": "Ponte de rede local (Experimental)",
   "localBridge.menuHint": "Conecte o assinador do telefone por Bluetooth ou Wi-Fi.",
   "localBridge.intro": "Escolha como conectar este computador ao Nostr WoT no telefone.",
   "localBridge.wifi": "Wi-Fi",
@@ -1438,5 +1438,7 @@
   "localBridge.microphoneDenied": "Permita o microfone ou use o QR ou cole o código.",
   "localBridge.soundFailed": "Não foi possível iniciar a escuta. Confira o microfone ou use o QR.",
   "localBridge.invalidSound": "O som não continha um código válido. Tente novamente.",
-  "localBridge.confirmHint": "No celular, selecione este código para confirmar este computador. Se os códigos não coincidirem, recuse a solicitação."
+  "localBridge.confirmHint": "No celular, selecione este código para confirmar este computador. Se os códigos não coincidirem, recuse a solicitação.",
+  "localBridge.choosePhone": "Escolha seu telefone",
+  "localBridge.bleInstructions": "No telefone, abra Rede local → Bluetooth e inicie o pareamento. Depois escolha seu telefone abaixo e confirme o código no telefone."
 }

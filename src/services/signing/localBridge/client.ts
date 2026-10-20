@@ -28,8 +28,45 @@ export class LocalBridgeClient {
     private transport: BridgeTransport,
     private timeoutMs: number,
   ) {}
+  /** Commit the peer key and hidden nonce before learning the phone's challenge.
+   * This prevents either side adapting its key/nonce to force a matching short code. */
+  static async connectBluetooth(options: {
+    secretKey: Uint8Array; transport: BridgeTransport; timeoutMs?: number;
+    onConfirmation?: (code: string) => void;
+  }): Promise<LocalBridgeClient> {
+    const { transport, secretKey } = options;
+    const peer = getPublicKey(secretKey), nonce = encode64(randomBytes(16));
+    const commitment = Array.from(sha256(utf8.encode(transcript('discover', peer, nonce))), b => b.toString(16).padStart(2, '0')).join('');
+    let removeMessage = () => {}, removeClose = () => {};
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const discovery = new Promise<{ host: string; challenge: string }>((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('Bluetooth pairing timed out')), options.timeoutMs ?? 60000);
+      removeMessage = transport.onMessage(text => {
+        try {
+          if (utf8.encode(text).length > MAX_FRAME_BYTES) throw new Error('Invalid Bluetooth offer');
+          const frame = JSON.parse(text);
+          if (frame.v !== 2 || frame.t !== 'offer' || !/^[0-9a-f]{64}$/.test(frame.host)) throw new Error('Update the phone app to pair directly over Bluetooth');
+          decode64(frame.challenge, 16);
+          removeMessage(); removeClose(); clearTimeout(timer);
+          resolve(frame);
+        } catch (error) { reject(error); }
+      });
+      removeClose = transport.onClose(error => reject(error ?? new Error('Bluetooth disconnected')));
+      // Call open synchronously here to retain the browser's click activation.
+      void transport.open().then(() => transport.send(JSON.stringify({ v: 2, t: 'discover', commitment }))).catch(reject);
+    });
+    try {
+      const offer = await discovery;
+      return await LocalBridgeClient.connect({ ...options, transport: { open: async () => {}, send: frame => transport.send(frame), close: () => transport.close(), onMessage: handler => transport.onMessage(handler), onClose: handler => transport.onClose(handler) },
+        offer: { hostPubkey: offer.host, addresses: [], transport: 'ble' },
+        discovery: { nonce, challenge: offer.challenge },
+      });
+    } catch (error) { transport.close(); throw error; }
+    finally { clearTimeout(timer); removeMessage(); removeClose(); }
+  }
   static async connect(options: {
     offer: PairingOffer;
+    discovery?: { nonce: string; challenge: string };
     secretKey: Uint8Array;
     transport: BridgeTransport;
     timeoutMs?: number;
@@ -38,7 +75,7 @@ export class LocalBridgeClient {
     const { offer, secretKey, transport } = options;
     const client = new LocalBridgeClient(transport, options.timeoutMs ?? 60000);
     const peer = getPublicKey(secretKey),
-      nonce = encode64(randomBytes(16));
+      nonce = options.discovery?.nonce ?? encode64(randomBytes(16));
     const ids = [offer.hostPubkey, peer, nonce];
     client.cleanup.push(
       transport.onMessage((text) => client.receive(text)),
@@ -50,7 +87,7 @@ export class LocalBridgeClient {
       client.handshakeReject = reject;
       timer = setTimeout(() => client.fail(new Error('Local signer connection timed out')), client.timeoutMs);
       client.confirmation = (frame) => {
-        if (confirmed || frame.host !== offer.hostPubkey) throw new Error('Invalid pairing confirmation');
+        if (confirmed || frame.host !== offer.hostPubkey || (options.discovery && frame.challenge !== options.discovery.challenge)) throw new Error('Invalid pairing confirmation');
         decode64(frame.challenge, 16);
         const proof = transcript('confirm', ...ids, frame.challenge as string);
         const hash = sha256(utf8.encode(proof));
@@ -59,7 +96,7 @@ export class LocalBridgeClient {
         options.onConfirmation?.((new DataView(hash.buffer, hash.byteOffset).getUint32(0) % 1_000_000).toString().padStart(6, '0'));
       };
       client.welcome = (frame) => {
-        if (offer.psk && !confirmed) throw new Error('Update the phone app: pairing code confirmation is required');
+        if ((offer.psk || options.discovery) && !confirmed) throw new Error('Update the phone app: pairing code confirmation is required');
         if (frame.host !== offer.hostPubkey || typeof frame.session !== 'string') throw new Error('Wrong local signer host');
         decode64(frame.session, 16);
         if (

@@ -1404,7 +1404,7 @@
   "passkey.relayAccepted": "Veröffentlichung akzeptiert",
   "passkey.selectRecoveryAccount": "Wähle das Konto dieses Passkeys, um die Wiederherstellung zu veröffentlichen.",
   "common.none": "Keine",
-  "localBridge.title": "Experimentelle lokale Netzwerkbrücke",
+  "localBridge.title": "Lokale Netzwerkbrücke (Experimentell)",
   "localBridge.menuHint": "Verbinde den Handy-Signer per Bluetooth oder WLAN.",
   "localBridge.intro": "Wähle, wie dieser Computer Nostr WoT auf deinem Handy verbindet.",
   "localBridge.wifi": "WLAN",
@@ -1438,5 +1438,7 @@
   "localBridge.microphoneDenied": "Erlaube den Mikrofonzugriff oder nutze den QR-Code oder füge den Code ein.",
   "localBridge.soundFailed": "Zuhören konnte nicht gestartet werden. Prüfe das Mikrofon oder nutze den QR-Code.",
   "localBridge.invalidSound": "Der Ton enthielt keinen gültigen Kopplungscode. Versuche es erneut.",
-  "localBridge.confirmHint": "Wähle auf deinem Telefon diesen Code, um diesen Computer zu bestätigen. Stimmen die Codes nicht überein, lehne die Anfrage ab."
+  "localBridge.confirmHint": "Wähle auf deinem Telefon diesen Code, um diesen Computer zu bestätigen. Stimmen die Codes nicht überein, lehne die Anfrage ab.",
+  "localBridge.choosePhone": "Telefon auswählen",
+  "localBridge.bleInstructions": "Öffne auf dem Telefon Lokales Netzwerk → Bluetooth und starte die Kopplung. Wähle unten dein Telefon und bestätige den Code auf dem Telefon."
 }

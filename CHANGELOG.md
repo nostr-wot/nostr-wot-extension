@@ -5,6 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Pair Bluetooth phones directly through device selection and phone code confirmation, without scanning or pasting a pairing code.
+
+- Simplify local bridge pairing with inline camera/sound actions, automatic advancement after reading a code, and Back above the setup card.
+
 - Require a matching six-digit phone choice before pairing any new local computer, including QR and sound pairing; reject mismatches and concurrent pairing attempts.
 
 - Add opt-in local pairing by sound, with a bounded microphone session and compact Wi-Fi or Bluetooth bootstrap packets.

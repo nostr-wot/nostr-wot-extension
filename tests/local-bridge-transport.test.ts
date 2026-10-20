@@ -57,6 +57,8 @@ class Device implements BridgeTransport {
   received: number[] = [];
   closed = false;
   mode = 'normal';
+  commitment?: string;
+  challenge?: string;
   held: Record<string, unknown>[] = [];
   async open() {}
   onMessage(cb: (text: string) => void) {
@@ -79,10 +81,20 @@ class Device implements BridgeTransport {
   }
   async send(text: string) {
     const f = JSON.parse(text);
+    if (f.t === 'discover') {
+      assert.equal(this.commitment, undefined);
+      this.commitment = f.commitment;
+      this.challenge = encode64(new Uint8Array(16).fill(9));
+      this.emit({v:2, t:'offer', host, challenge:this.challenge});
+      return;
+    }
     if (f.t === 'hello') {
       const t = ['nwlan/2/hello', host, f.peer, f.nonce, f.ts].join('\x1f');
       assert(schnorr.verify(base64urlnopad.decode(f.sig), sha256(enc.encode(t)), Buffer.from(f.peer, 'hex')));
-      assert.equal(f.mac, base64urlnopad.encode(hmac(sha256, new Uint8Array(32).fill(7), enc.encode(t))));
+      if (this.commitment) {
+        assert.equal(this.commitment, Buffer.from(sha256(enc.encode(['nwlan/2/discover',f.peer,f.nonce].join('\x1f')))).toString('hex'));
+        assert.equal(f.mac, undefined);
+      } else assert.equal(f.mac, base64urlnopad.encode(hmac(sha256, new Uint8Array(32).fill(7), enc.encode(t))));
       const session = base64urlnopad.encode(crypto.getRandomValues(new Uint8Array(16)));
       const salt = enc.encode(['nwlan/2/session', host, f.peer, f.nonce, session].join('\x1f'));
       const prk = extract(sha256, nip44.utils.getConversationKey(new Uint8Array(32).fill(0x11), f.peer), salt);
@@ -97,7 +109,7 @@ class Device implements BridgeTransport {
         ),
       );
       if (this.mode !== 'no-confirmation') {
-        const challenge = base64urlnopad.encode(crypto.getRandomValues(new Uint8Array(16)));
+        const challenge = this.challenge && this.mode !== 'changed-challenge' ? this.challenge : base64urlnopad.encode(crypto.getRandomValues(new Uint8Array(16)));
         const digest = sha256(enc.encode(['nwlan/2/confirm', host, f.peer, f.nonce, challenge].join('\x1f')));
         this.emit({ v: 2, t: 'confirm', host, challenge, sig: base64urlnopad.encode(schnorr.sign(digest, new Uint8Array(32).fill(this.mode === 'bad-confirmation' ? 0x33 : 0x11))) });
       }
@@ -383,4 +395,15 @@ test('a signed phone challenge produces a six-digit comparison code', async () =
   const d = new Device(); let code = '';
   const c = await LocalBridgeClient.connect({ offer, secretKey: new Uint8Array(32).fill(0x22), transport: d, onConfirmation: value => { code = value; } });
   assert.match(code, /^\d{6}$/); c.close();
+});
+
+test('direct Bluetooth commits before revealing and requires the offered signed comparison', async () => {
+  const device = new Device(); let code = '';
+  const client = await LocalBridgeClient.connectBluetooth({ transport: device, secretKey: new Uint8Array(32).fill(0x22), onConfirmation: value => { code = value; } });
+  assert.match(code, /^\d{6}$/); assert.ok(device.commitment); client.close();
+  for (const mode of ['no-confirmation', 'bad-confirmation', 'changed-challenge']) {
+    const bad = new Device(); bad.mode = mode;
+    await assert.rejects(LocalBridgeClient.connectBluetooth({ transport: bad, secretKey: new Uint8Array(32).fill(0x22) }), /confirmation/);
+    assert.equal(bad.closed, true);
+  }
 });
