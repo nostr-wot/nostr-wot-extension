@@ -1,4 +1,8 @@
 {
+  "localBridge.disableHint": "Remove a conta temporária do telefone e volta à conta anterior. Contas existentes são mantidas.",
+  "localBridge.disconnectHint": "Fecha a conexão. A conta do telefone continua selecionada para reconectar.",
+  "localBridge.keepOpenHint": "Fechar esta página desconecta o assinador do telefone. Mantenha também a ponte local do telefone aberta.",
+  "localBridge.keepOpenTitle": "Mantenha esta página aberta",
   "wallet.setupAlias": "Configurar um alias",
   "passkey.relayCopies": "Cópias de recuperação",
   "passkey.checkRelays": "Verificar",
@@ -1421,7 +1425,7 @@
   "localBridge.connected": "Assinador conectado",
   "localBridge.disconnect": "Desconectar",
   "localBridge.disable": "Parar de usar o assinador do telefone",
-  "localBridge.sessionHint": "Mantenha esta aba e a ponte do telefone abertas. Pareie novamente após fechar a aba. Desconectar não restaura a assinatura local; use “Parar de usar o assinador do telefone”. Experimental: apenas assinatura e criptografia NIP-07; carteira e publicações internas ficam indisponíveis enquanto selecionado.",
+  "localBridge.sessionHint": "Experimental: apenas assinatura e criptografia NIP-07. Carteira e publicação interna ficam indisponíveis enquanto o assinador do telefone estiver selecionado.",
   "localBridge.wrongTransport": "Escolha o transporte correspondente ao código do telefone.",
   "localBridge.failed": "Não foi possível conectar ao assinador.",
   "approval.invalidExternalEvent": "Um evento externo falhou na verificação de assinatura ou integridade e foi rejeitado.",

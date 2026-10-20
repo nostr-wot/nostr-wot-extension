@@ -1,4 +1,8 @@
 {
+  "localBridge.disableHint": "Supprime le compte temporaire du téléphone et revient au compte précédent. Les comptes existants sont conservés.",
+  "localBridge.disconnectHint": "Ferme la connexion. Le compte du téléphone reste sélectionné pour se reconnecter.",
+  "localBridge.keepOpenHint": "Fermer cette page déconnecte le signataire du téléphone. Gardez aussi le pont local du téléphone ouvert.",
+  "localBridge.keepOpenTitle": "Gardez cette page ouverte",
   "wallet.setupAlias": "Configurer un alias",
   "passkey.relayCopies": "Copies de récupération",
   "passkey.checkRelays": "Vérifier",
@@ -1421,7 +1425,7 @@
   "localBridge.connected": "Téléphone connecté",
   "localBridge.disconnect": "Déconnecter",
   "localBridge.disable": "Ne plus utiliser le téléphone pour signer",
-  "localBridge.sessionHint": "Gardez cet onglet et la passerelle du téléphone ouverts. Recommencez le jumelage après fermeture. Déconnecter ne rétablit pas la signature locale ; choisissez « Ne plus utiliser le téléphone pour signer ». Expérimental : signature et chiffrement NIP-07 uniquement ; portefeuille et publications internes indisponibles pendant la sélection.",
+  "localBridge.sessionHint": "Expérimental : signature et chiffrement NIP-07 uniquement. Le portefeuille et la publication interne sont indisponibles lorsque le signataire du téléphone est sélectionné.",
   "localBridge.wrongTransport": "Choisissez le transport correspondant au code du téléphone.",
   "localBridge.failed": "Impossible de connecter le téléphone.",
   "approval.invalidExternalEvent": "Un événement externe a échoué à la vérification de signature ou d’intégrité et a été rejeté.",

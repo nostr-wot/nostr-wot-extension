@@ -557,8 +557,7 @@ in inline styles; pointer, keyboard and snapping logic are unchanged.
 
 ### Button standards
 
-`Button` has two sizes (default and `small`), three intents (primary, secondary,
-danger), and an outline treatment. `IconButton` owns icon-only controls with three
+`Button` has two sizes (default and `small`), four intents (primary, secondary, neutral, danger), and an outline treatment. `IconButton` owns icon-only controls with three
 hit-area sizes: small (24px), default (28px), large (36px), and muted/brand/danger
 tones. Use it for add, cancel, copy and close icons. Caller classes may arrange
 controls (width, flex, margins and alignment), but must not override their padding,

@@ -1,3 +1,5 @@
+import StatusNotice from '@components/StatusNotice';
+import IconInfo from '@assets/IconInfo';
 import TopoBg from '@components/TopoBg';
 import Card from '@components/Card';
 import AnimatedWotLogo from '@components/AnimatedWotLogo';
@@ -11,7 +13,7 @@ import { attachBridgeTab } from '@services/browser/localBridgeTab.ts';
 import { LocalBridgeClient } from '@services/signing/localBridge/client';
 import { parsePairingUri } from '@services/signing/localBridge/protocol';
 import { createWifiTransport, createBleTransport } from '@services/signing/localBridge/transports';
-import Button, { ButtonSecondary } from '@components/Button';
+import Button, { ButtonSecondary, ButtonDanger } from '@components/Button';
 import ActionTile from '@components/ActionTile';
 import Container from '@components/Container';
 import Heading from '@components/Heading';
@@ -123,9 +125,9 @@ export default function LocalBridgeApp() {
     </header>
     <main className="flex-1 flex items-center justify-center px-6 py-8 sm:px-12">
     <div className="w-full max-w-[540px]">
-    {mode && <ButtonSecondary className="mb-4" onClick={() => { disconnect(); setMode(null); setUri(''); setError(''); }}><IconChevronLeft />{t('common.back')}</ButtonSecondary>}
-    <Card className="w-full mb-0 p-8 sm:p-12">
+    <Card data-testid="bridge-card" className="w-full mb-0 p-8 sm:p-12">
     <Container gap={6}>
+      {mode && <Button variant="neutral" small className="self-start" onClick={() => { disconnect(); setMode(null); setUri(''); setError(''); }}><IconChevronLeft />{t('common.back')}</Button>}
       <Heading>{t('localBridge.title')}</Heading>
       <Text variant="secondary">{t('localBridge.intro')}</Text>
       {!mode ? <>
@@ -142,13 +144,15 @@ export default function LocalBridgeApp() {
         {state === 'connected' ? <>
           <Text className="text-success" role="status">{t('localBridge.connected')}</Text>
           <Text mono className="break-all">{pubkey}</Text>
-          <ButtonSecondary onClick={disconnect}>{t('localBridge.disconnect')}</ButtonSecondary>
+          <StatusNotice tone="warn" icon={<IconInfo />} label={t('localBridge.keepOpenTitle')} variant="callout">{t('localBridge.keepOpenHint')}</StatusNotice>
+          <ButtonDanger onClick={disconnect}>{t('localBridge.disconnect')}</ButtonDanger>
+          <Text variant="hint">{t('localBridge.disconnectHint')}</Text>
         </> : (state === 'choose-device' || (mode === 'ble' && state === 'idle')) ? <Button onClick={() => void connect(uri)}>{t('localBridge.choosePhone')}</Button> : state === 'connecting' ? <Text role="status">{t('localBridge.connecting')}</Text> : null}
         {state === 'connecting' && confirmation && <Card><Text variant="secondary">{t('localBridge.confirmHint')}</Text><Text mono className="text-3xl text-center font-bold tracking-widest">{confirmation.slice(0, 3)} {confirmation.slice(3)}</Text></Card>}
         {state === 'connecting' && <ButtonSecondary onClick={disconnect}>{t('common.cancel')}</ButtonSecondary>}
       </>}
       <Text variant="hint">{t('localBridge.sessionHint')}</Text>
-      {selected && <ButtonSecondary onClick={() => void disable()}>{t('localBridge.disable')}</ButtonSecondary>}
+      {selected && <Container gap={2}><ButtonSecondary outline onClick={() => void disable()}>{t('localBridge.disable')}</ButtonSecondary><Text variant="hint">{t('localBridge.disableHint')}</Text></Container>}
       {error && <Text className="text-error" role="alert">{error}</Text>}
     </Container>
     </Card>

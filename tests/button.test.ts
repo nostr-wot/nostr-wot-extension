@@ -380,3 +380,10 @@ it('overlay headers omit inert close controls while retaining custom actions', (
     if (headerRight) assert.match(html, /Custom action/);
   }
 });
+
+it('neutral buttons provide a gray navigation surface without caller overrides', () => {
+  const html = renderToStaticMarkup(createElement(Button, { variant: 'neutral' }, 'Back'));
+  assert.match(html, /bg-hover/);
+  assert.match(html, /text-secondary/);
+  assert.doesNotMatch(html, /bg-brand|text-brand/);
+});

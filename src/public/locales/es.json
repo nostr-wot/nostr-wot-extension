@@ -1,4 +1,8 @@
 {
+  "localBridge.disableHint": "Elimina la cuenta temporal del teléfono y vuelve a tu cuenta anterior. Las cuentas existentes se conservan.",
+  "localBridge.disconnectHint": "Cierra la conexión. La cuenta del teléfono queda seleccionada para reconectarte.",
+  "localBridge.keepOpenHint": "Cerrar esta página desconecta el firmante del teléfono. Mantén abierto también el puente local del teléfono.",
+  "localBridge.keepOpenTitle": "Mantén esta página abierta",
   "wallet.setupAlias": "Configurar un alias",
   "passkey.relayCopies": "Copias de recuperación",
   "passkey.checkRelays": "Comprobar",
@@ -1421,7 +1425,7 @@
   "localBridge.connected": "Firmador conectado",
   "localBridge.disconnect": "Desconectar",
   "localBridge.disable": "Dejar de usar el firmador del teléfono",
-  "localBridge.sessionHint": "Mantén esta pestaña y el puente del teléfono abiertos. Vuelve a vincular después de cerrar esta pestaña. Desconectar no restaura la firma local; usa «Dejar de usar el firmador del teléfono». Experimental: solo firma y cifrado NIP-07; la billetera y las publicaciones internas no están disponibles mientras esté seleccionado.",
+  "localBridge.sessionHint": "Experimental: solo firma y cifrado NIP-07. La billetera y la publicación interna no están disponibles mientras el firmante del teléfono esté seleccionado.",
   "localBridge.wrongTransport": "Elige el transporte que coincida con el código del teléfono.",
   "localBridge.failed": "No se pudo conectar al firmador.",
   "approval.invalidExternalEvent": "Un evento externo no pasó la verificación de firma o integridad y fue rechazado. No se aceptó nada.",

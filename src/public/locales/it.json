@@ -1,4 +1,8 @@
 {
+  "localBridge.disableHint": "Rimuove l’account temporaneo del telefono e torna all’account precedente. Gli account esistenti vengono conservati.",
+  "localBridge.disconnectHint": "Chiude la connessione. L’account del telefono resta selezionato per riconnettersi.",
+  "localBridge.keepOpenHint": "Chiudendo questa pagina disconnetti il firmatario del telefono. Tieni aperto anche il bridge locale sul telefono.",
+  "localBridge.keepOpenTitle": "Tieni aperta questa pagina",
   "wallet.setupAlias": "Configura un alias",
   "passkey.relayCopies": "Copie di recupero",
   "passkey.checkRelays": "Verifica",
@@ -1421,7 +1425,7 @@
   "localBridge.connected": "Firmatario collegato",
   "localBridge.disconnect": "Disconnetti",
   "localBridge.disable": "Smetti di usare il firmatario del telefono",
-  "localBridge.sessionHint": "Mantieni aperti questa scheda e il bridge del telefono. Abbina nuovamente dopo aver chiuso la scheda. Disconnettere non ripristina la firma locale; scegli “Smetti di usare il firmatario del telefono”. Sperimentale: solo firma e crittografia NIP-07; portafoglio e pubblicazioni interne non disponibili mentre è selezionato.",
+  "localBridge.sessionHint": "Sperimentale: solo firma e crittografia NIP-07. Portafoglio e pubblicazione interna non sono disponibili mentre è selezionato il firmatario del telefono.",
   "localBridge.wrongTransport": "Scegli il trasporto corrispondente al codice del telefono.",
   "localBridge.failed": "Impossibile collegare il firmatario.",
   "approval.invalidExternalEvent": "Un evento esterno non ha superato la verifica della firma o integrità ed è stato rifiutato.",

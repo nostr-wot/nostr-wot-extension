@@ -1,4 +1,8 @@
 {
+  "localBridge.disableHint": "Entfernt das temporäre Telefonkonto und kehrt zum vorherigen Konto zurück. Bestehende Konten bleiben erhalten.",
+  "localBridge.disconnectHint": "Trennt die Verbindung. Das Telefonkonto bleibt für eine erneute Verbindung ausgewählt.",
+  "localBridge.keepOpenHint": "Wenn du diese Seite schließt, wird die Verbindung zum Telefon getrennt. Lass auch die lokale Bridge auf dem Telefon geöffnet.",
+  "localBridge.keepOpenTitle": "Lass diese Seite geöffnet",
   "wallet.setupAlias": "Alias einrichten",
   "passkey.relayCopies": "Wiederherstellungskopien",
   "passkey.checkRelays": "Prüfen",
@@ -1421,7 +1425,7 @@
   "localBridge.connected": "Handy-Signer verbunden",
   "localBridge.disconnect": "Trennen",
   "localBridge.disable": "Handy-Signer nicht mehr verwenden",
-  "localBridge.sessionHint": "Lass diesen Tab und die Handy-Verbindung geöffnet. Nach dem Schließen erneut koppeln. Trennen aktiviert lokales Signieren nicht wieder; wähle „Handy-Signer nicht mehr verwenden“. Experimentell: nur NIP-07-Signieren und Verschlüsselung; Wallet und interne Veröffentlichungen sind während der Auswahl nicht verfügbar.",
+  "localBridge.sessionHint": "Experimentell: nur NIP-07-Signierung und Verschlüsselung. Wallet und interne Veröffentlichung sind nicht verfügbar, solange der Telefon-Signer ausgewählt ist.",
   "localBridge.wrongTransport": "Wähle den zum Handy-Code passenden Transport.",
   "localBridge.failed": "Handy-Signer konnte nicht verbunden werden.",
   "approval.invalidExternalEvent": "Ein externes Ereignis hat die Signatur- oder Integritätsprüfung nicht bestanden und wurde abgelehnt.",

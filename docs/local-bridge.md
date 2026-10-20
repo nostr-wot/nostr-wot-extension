@@ -37,10 +37,12 @@ The phone offers that number among three shuffled choices and “None match.” 
 
 QR, pasted links and sound only transfer bootstrap information. Anyone nearby may copy it, but possession alone does not authorize pairing. Users must reject an unsolicited prompt or a number that is absent from their intended computer.
 
-Valid pasted, scanned or sound-decoded pairing codes immediately advance to connection. Wi-Fi connects automatically; Bluetooth advances to the native device-selection step, opened by an explicit click to preserve browser user activation. Camera and sound actions are embedded in the code field. Back sits above the setup card and cancels any pending connection.
+Valid pasted, scanned or sound-decoded pairing codes immediately advance to connection. Wi-Fi connects automatically; Bluetooth advances to the native device-selection step, opened by an explicit click to preserve browser user activation. Camera and sound actions are embedded in the code field. Back sits inside the setup card as a neutral gray control and cancels any pending connection.
 
 Bluetooth uses direct discovery: choose the phone in the browser chooser, then choose the displayed six-digit code on the phone. The phone must have Local network → Bluetooth → Pair a computer open. QR, paste and sound are Wi-Fi setup options. Direct discovery commits the peer key and hidden nonce before the phone reveals its challenge; the signed hello reveals the commitment and the signed confirmation must use that exact challenge. No signing session is established without phone confirmation. Older phone builds need updating.
 
 On the phone, Bluetooth’s **Pair a computer** action starts the listener and opens pairing together. A listener running without an open pairing offer refuses discovery; the extension explains how to reopen pairing instead of incorrectly asking for an app update.
 
 A detached network account has an in-memory signing capability tied to the live, authenticated bridge port. Closing the connection, switching accounts, locking/unlocking the vault or restarting the worker invalidates that capability. Public metadata can remain for reconnecting, but cannot authorize signing. Stop using phone signer removes the temporary metadata and permissions and restores the previous account without unlocking it.
+
+The connected state highlights that the page and phone bridge must stay open. Disconnect uses the shared red danger treatment and closes the live connection while retaining the selected phone account. Stop using phone signer explains that it removes pairing-owned temporary accounts and restores the previous account; existing accounts are retained.
