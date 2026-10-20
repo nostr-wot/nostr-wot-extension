@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Scan the phone’s local bridge pairing QR with the computer camera, with local decoding and a paste fallback.
+
 - Restyle the experimental local bridge page with the animated background, branded header, setup card, and version footer.
 
 - Surface invalid external event signatures and integrity failures in rejection notices and activity; verify signed website inputs before approval.

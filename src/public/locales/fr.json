@@ -1423,5 +1423,11 @@
   "localBridge.sessionHint": "Gardez cet onglet et la passerelle du téléphone ouverts. Recommencez le jumelage après fermeture. Déconnecter ne rétablit pas la signature locale ; choisissez « Ne plus utiliser le téléphone pour signer ». Expérimental : signature et chiffrement NIP-07 uniquement ; portefeuille et publications internes indisponibles pendant la sélection.",
   "localBridge.wrongTransport": "Choisissez le transport correspondant au code du téléphone.",
   "localBridge.failed": "Impossible de connecter le téléphone.",
-  "approval.invalidExternalEvent": "Un événement externe a échoué à la vérification de signature ou d’intégrité et a été rejeté."
+  "approval.invalidExternalEvent": "Un événement externe a échoué à la vérification de signature ou d’intégrité et a été rejeté.",
+  "localBridge.scan": "Scanner le code QR",
+  "localBridge.scanHint": "Dirigez la caméra de l’ordinateur vers le QR de jumelage du téléphone. Les images restent sur cet ordinateur.",
+  "localBridge.cameraDenied": "Autorisez la caméra ou collez le code de jumelage.",
+  "localBridge.cameraMissing": "Aucune caméra détectée. Branchez une caméra ou collez le code.",
+  "localBridge.cameraFailed": "Impossible de démarrer la caméra. Fermez les autres applications qui l’utilisent et réessayez, ou collez le code.",
+  "localBridge.invalidQr": "Ce QR ne correspond pas à la connexion choisie. Vérifiez Wi-Fi ou Bluetooth sur les deux appareils."
 }

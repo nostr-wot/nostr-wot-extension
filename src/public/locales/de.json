@@ -1423,5 +1423,11 @@
   "localBridge.sessionHint": "Lass diesen Tab und die Handy-Verbindung geöffnet. Nach dem Schließen erneut koppeln. Trennen aktiviert lokales Signieren nicht wieder; wähle „Handy-Signer nicht mehr verwenden“. Experimentell: nur NIP-07-Signieren und Verschlüsselung; Wallet und interne Veröffentlichungen sind während der Auswahl nicht verfügbar.",
   "localBridge.wrongTransport": "Wähle den zum Handy-Code passenden Transport.",
   "localBridge.failed": "Handy-Signer konnte nicht verbunden werden.",
-  "approval.invalidExternalEvent": "Ein externes Ereignis hat die Signatur- oder Integritätsprüfung nicht bestanden und wurde abgelehnt."
+  "approval.invalidExternalEvent": "Ein externes Ereignis hat die Signatur- oder Integritätsprüfung nicht bestanden und wurde abgelehnt.",
+  "localBridge.scan": "QR-Code scannen",
+  "localBridge.scanHint": "Richte die Computerkamera auf den Kopplungs-QR-Code auf deinem Telefon. Die Bilder bleiben auf diesem Computer.",
+  "localBridge.cameraDenied": "Erlaube den Kamerazugriff oder füge den Kopplungscode ein.",
+  "localBridge.cameraMissing": "Keine Kamera gefunden. Schließe eine Kamera an oder füge den Code ein.",
+  "localBridge.cameraFailed": "Die Kamera konnte nicht gestartet werden. Schließe andere Kamera-Apps und versuche es erneut oder füge den Code ein.",
+  "localBridge.invalidQr": "Dieser QR-Code passt nicht zur gewählten Verbindung. Prüfe WLAN oder Bluetooth auf beiden Geräten."
 }

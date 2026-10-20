@@ -1423,5 +1423,11 @@
   "localBridge.sessionHint": "Mantenha esta aba e a ponte do telefone abertas. Pareie novamente após fechar a aba. Desconectar não restaura a assinatura local; use “Parar de usar o assinador do telefone”. Experimental: apenas assinatura e criptografia NIP-07; carteira e publicações internas ficam indisponíveis enquanto selecionado.",
   "localBridge.wrongTransport": "Escolha o transporte correspondente ao código do telefone.",
   "localBridge.failed": "Não foi possível conectar ao assinador.",
-  "approval.invalidExternalEvent": "Um evento externo falhou na verificação de assinatura ou integridade e foi rejeitado."
+  "approval.invalidExternalEvent": "Um evento externo falhou na verificação de assinatura ou integridade e foi rejeitado.",
+  "localBridge.scan": "Ler código QR",
+  "localBridge.scanHint": "Aponte a câmera do computador para o QR de pareamento no celular. As imagens ficam neste computador.",
+  "localBridge.cameraDenied": "Permita o acesso à câmera ou cole o código de pareamento.",
+  "localBridge.cameraMissing": "Nenhuma câmera encontrada. Conecte uma câmera ou cole o código.",
+  "localBridge.cameraFailed": "Não foi possível iniciar a câmera. Feche outros apps que a utilizam e tente novamente, ou cole o código.",
+  "localBridge.invalidQr": "Este QR não é válido para a conexão selecionada. Confira Wi-Fi ou Bluetooth nos dois dispositivos."
 }

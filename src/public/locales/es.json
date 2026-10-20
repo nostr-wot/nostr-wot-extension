@@ -1423,5 +1423,11 @@
   "localBridge.sessionHint": "Mantén esta pestaña y el puente del teléfono abiertos. Vuelve a vincular después de cerrar esta pestaña. Desconectar no restaura la firma local; usa «Dejar de usar el firmador del teléfono». Experimental: solo firma y cifrado NIP-07; la billetera y las publicaciones internas no están disponibles mientras esté seleccionado.",
   "localBridge.wrongTransport": "Elige el transporte que coincida con el código del teléfono.",
   "localBridge.failed": "No se pudo conectar al firmador.",
-  "approval.invalidExternalEvent": "Un evento externo no pasó la verificación de firma o integridad y fue rechazado. No se aceptó nada."
+  "approval.invalidExternalEvent": "Un evento externo no pasó la verificación de firma o integridad y fue rechazado. No se aceptó nada.",
+  "localBridge.scan": "Escanear código QR",
+  "localBridge.scanHint": "Apunta la cámara del ordenador al QR de vinculación del teléfono. Las imágenes no salen de este ordenador.",
+  "localBridge.cameraDenied": "Permite el acceso a la cámara o pega el código de vinculación.",
+  "localBridge.cameraMissing": "No se encontró ninguna cámara. Conecta una o pega el código.",
+  "localBridge.cameraFailed": "No se pudo iniciar la cámara. Cierra otras apps que la usen e inténtalo de nuevo, o pega el código.",
+  "localBridge.invalidQr": "Este QR no es válido para la conexión seleccionada. Comprueba Wi-Fi o Bluetooth en ambos dispositivos."
 }

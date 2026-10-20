@@ -2,7 +2,7 @@ import TopoBg from '@components/TopoBg';
 import Card from '@components/Card';
 import AnimatedWotLogo from '@components/AnimatedWotLogo';
 import { version } from '../../../package.json';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import browser from '@lib/browser.ts';
 import { randomBytes } from '@lib/crypto/utils.ts';
 import { rpc, rpcRead } from '@services/rpc.ts';
@@ -19,11 +19,25 @@ import Text from '@components/Text';
 import Input from '@components/Input';
 import IconGlobe from '@assets/IconGlobe';
 import IconLink from '@assets/IconLink';
+import IconCamera from '@assets/IconCamera';
+
+const QrCameraDialog = lazy(() => import('./QrCameraDialog'));
 
 type Mode = 'wifi' | 'ble';
 export default function LocalBridgeApp() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [uri, setUri] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const closeScanner = useCallback(() => setScanning(false), []);
+  const scanError = useCallback((key: string) => { setScanning(false); setError(t(key)); }, []);
+  const scanned = useCallback((value: string) => {
+    setScanning(false);
+    try {
+      const offer = parsePairingUri(value);
+      if (offer.transport !== mode) throw new Error(t('localBridge.wrongTransport'));
+      setUri(value.trim()); setError('');
+    } catch { setError(t('localBridge.invalidQr')); }
+  }, [mode]);
   const [state, setState] = useState<'idle' | 'connecting' | 'connected'>('idle');
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(false);
@@ -108,6 +122,7 @@ export default function LocalBridgeApp() {
         <Text>{t('localBridge.instructions')}</Text>
         <Text variant="hint">{t('localBridge.accountHint')}</Text>
         {state !== 'connected' && <Input type="password" showToggle label={t('localBridge.code')} value={uri} onChange={(event) => setUri(event.target.value)} disabled={state === 'connecting'} autoComplete="off" spellCheck={false} />}
+        {state === 'idle' && <ButtonSecondary onClick={() => { setError(''); setScanning(true); }}><IconCamera />{t('localBridge.scan')}</ButtonSecondary>}
         {state === 'connected' ? <>
           <Text className="text-success" role="status">{t('localBridge.connected')}</Text>
           <Text mono className="break-all">{pubkey}</Text>
@@ -122,6 +137,7 @@ export default function LocalBridgeApp() {
     </Container>
     </Card>
     </main>
+    {scanning && <Suspense fallback={null}><QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} /></Suspense>}
     <footer className="px-8 py-7 text-center">
       <Text variant="hint">Nostr WoT · v{version}</Text>
     </footer>
