@@ -10,7 +10,7 @@ import { LocalBridgeClient } from '../src/services/signing/localBridge/client';
 import browser from './helpers/browser-mock';
 
 test('input actions remain labeled and reserve space beside password visibility', () => {
- const html=renderToStaticMarkup(createElement(Input,{type:'password',showToggle:true,label:'Pairing code',actions:[<IconButton aria-label="Camera" key="camera">C</IconButton>,<IconButton aria-label="Sound" key="sound">S</IconButton>]}));
+ const html=renderToStaticMarkup(React.createElement(Input,{type:'password',showToggle:true,label:'Pairing code',actions:[<IconButton aria-label="Camera" key="camera">C</IconButton>,<IconButton aria-label="Sound" key="sound">S</IconButton>]}));
  const dom=new JSDOM(html);const input=dom.window.document.querySelector('input')!;
  assert.equal(input.style.paddingRight,'132px');assert.equal(dom.window.document.querySelectorAll('button').length,3);
  assert.ok(dom.window.document.querySelector('[aria-label="Camera"]'));assert.ok(dom.window.document.querySelector('[aria-label="Sound"]'));dom.window.close();
