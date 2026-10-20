@@ -45,7 +45,13 @@ export class LocalBridgeClient {
         try {
           if (utf8.encode(text).length > MAX_FRAME_BYTES) throw new Error('Invalid Bluetooth offer');
           const frame = JSON.parse(text);
-          if (frame.v !== 2 || frame.t !== 'offer' || !/^[0-9a-f]{64}$/.test(frame.host)) throw new Error('Update the phone app to pair directly over Bluetooth');
+          if (frame.v !== 2 || (frame.t === 'bye' && frame.reason === 'version')) throw new Error('Update the phone app to pair directly over Bluetooth');
+          if (frame.t === 'bye') {
+            if (frame.reason === 'unauthorized') throw new Error('On your phone, open Local network → Bluetooth → Pair a computer, then try again');
+            if (frame.reason === 'busy') throw new Error('The phone is busy with another connection. Finish it, then try again');
+            throw new Error('Bluetooth pairing was closed by the phone. Open Pair a computer on the phone and try again');
+          }
+          if (frame.t !== 'offer' || typeof frame.host !== 'string' || !/^[0-9a-f]{64}$/.test(frame.host)) throw new Error('Invalid Bluetooth offer');
           decode64(frame.challenge, 16);
           removeMessage(); removeClose(); clearTimeout(timer);
           resolve(frame);

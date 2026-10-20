@@ -407,3 +407,22 @@ test('direct Bluetooth commits before revealing and requires the offered signed 
     assert.equal(bad.closed, true);
   }
 });
+
+
+test('Bluetooth discovery distinguishes closed pairing from outdated phone software', async () => {
+  for (const [frame, message] of [
+    [{ v: 2, t: 'bye', reason: 'unauthorized' }, /Pair a computer/],
+    [{ v: 2, t: 'bye', reason: 'busy' }, /busy/],
+    [{ v: 2, t: 'bye', reason: 'stopped' }, /closed by the phone/],
+    [{ v: 2, t: 'bye', reason: 'version' }, /Update the phone/],
+    [{ v: 1, t: 'offer' }, /Update the phone/],
+    [{ v: 2, t: 'offer', host: 'bad' }, /Invalid Bluetooth offer/],
+  ] as const) {
+    const device = new Device();
+    device.send = async () => { for (const receive of device.messages) receive(JSON.stringify(frame)); };
+    await assert.rejects(LocalBridgeClient.connectBluetooth({ transport: device, secretKey: new Uint8Array(32).fill(0x22) }), message);
+    assert.equal(device.closed, true);
+    assert.equal(device.messages.size, 0);
+    assert.equal(device.closes.size, 0);
+  }
+});
