@@ -32,7 +32,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
           />
         </div>
         <Container className="flex-1 min-w-0">
-          <AccountLabel name={displayName} remote={isNip46} readOnly={isReadOnly} />
+          <AccountLabel key={active?.id} accountId={active?.id} name={displayName} remote={isNip46} readOnly={isReadOnly} />
           <span className="text-xs text-muted font-mono whitespace-nowrap overflow-hidden text-ellipsis">{displaySub}</span>
         </Container>
         <IconChevronDown className={`text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />

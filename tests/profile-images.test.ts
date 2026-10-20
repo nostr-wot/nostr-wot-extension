@@ -474,3 +474,28 @@ it('published relay configuration opens in a dismissible popup while the local e
     assert.equal(document.querySelector('[role="dialog"]'),null);assert.equal(document.activeElement,trigger);
   } finally {await act(async()=>root.unmount());dom.window.close();}
 });
+
+it('phone account badges update to Network without relabelling other watch-only accounts', async () => {
+  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');const {act}=await import('react');
+  const {default:browser,resetMockStorage}=await import('./helpers/browser-mock');resetMockStorage();
+  const dom=new JSDOM('<div id="root"></div>');
+  const names=['window','document','IS_REACT_ACT_ENVIRONMENT'];const originals=names.map(name=>Object.getOwnPropertyDescriptor(globalThis,name));
+  Object.defineProperties(globalThis,{window:{configurable:true,value:dom.window},document:{configurable:true,value:dom.window.document},IS_REACT_ACT_ENVIRONMENT:{configurable:true,value:true}});
+  const root=createRoot(dom.window.document.getElementById('root')!);
+  try {
+    await act(async()=>root.render(createElement('div',{},
+      createElement(AccountLabel,{name:'Phone',accountId:'phone',readOnly:true}),
+      createElement(AccountPickerRow,{name:'Watch',accountId:'watch',subtitle:'',selected:false,readOnly:true,onSelect(){},onRemove(){}}))));
+    assert.equal(dom.window.document.querySelectorAll('span').length>0,true);
+    assert.equal(dom.window.document.body.textContent?.includes('account.network'),false);
+    await act(async()=>{await browser.storage.local.set({'localBridgeAccount:phone':true});});
+    assert.match(dom.window.document.body.textContent!,/Phoneaccount.network/);
+    assert.match(dom.window.document.body.textContent!,/Watchaccount.readOnly/);
+    await act(async()=>{await browser.storage.local.set({'localBridgeAccount:watch':true});});
+    assert.match(dom.window.document.body.textContent!,/Watchaccount.network/);
+    await act(async()=>{await browser.storage.local.remove('localBridgeAccount:phone');});
+    assert.match(dom.window.document.body.textContent!,/Phoneaccount.readOnly/);
+  } finally {
+    await act(async()=>root.unmount());dom.window.close();names.forEach((name,i)=>{if(originals[i])Object.defineProperty(globalThis,name,originals[i]!);else Reflect.deleteProperty(globalThis,name);});resetMockStorage();
+  }
+});

@@ -860,3 +860,5 @@ Recovery setup advances automatically once the provider confirms blob storage, w
 Wizard step titles live only in the wizard header; step bodies do not repeat them. Password onboarding is titled Protect your account and keeps the passkey switch and password fields inside the AutoLockOptions card. Completion is a centered Modal (DoneStep) that closes itself after three seconds; in the popup the wizard finishes first, so the confirmation floats over Home.
 
 `Input.actions` accepts trailing icon buttons (up to 36px each) inside the field, reserving text padding and preserving optional password visibility controls. Each action must have an accessible label.
+
+Phone-bridge account labels show the localized Network badge (Red in Spanish) while that account has phone signing selected, including when disconnected. Both the active account header and account picker observe the existing per-account bridge selection in storage. This badge takes precedence over Remote and Read-only; ordinary watch-only accounts retain Read-only. The label does not change account key material or signing permissions.

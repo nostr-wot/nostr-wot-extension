@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Label accounts using the local phone signer as Network (Red in Spanish), instead of Read-only, in the header and account picker.
+
 - Pair a phone without first importing its public key: select a matching account automatically or create a temporary public-only account, with cleanup and previous-account restoration when phone signing is stopped.
 
 - Show microphone preparation before listening for sound pairing, and start the listening timeout only after capture is ready.
