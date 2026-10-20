@@ -217,6 +217,7 @@ export default function EventDetailModal({
         <div className={CLS.scrollArea}>
           <div className="flex flex-col gap-5">
           <FormError>{actionError}</FormError>
+          {entries.some(entry => entry.reason === 'invalidExternalEvent') && <StatusNotice tone="error" variant="callout" icon={<IconWarning/>}>{t('approval.invalidExternalEvent')}</StatusNotice>}
           {/* Origin / domain */}
           {origin && (
             <div className="flex items-center gap-4 min-w-0"><SiteIcon domain={origin} /><span className="text-lg font-semibold text-heading truncate">{origin}</span></div>

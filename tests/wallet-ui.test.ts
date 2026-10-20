@@ -1148,3 +1148,13 @@ it('pending requests share one site heading while keeping permission groups sepa
  assert.equal(sections[0].textContent!.split('https://a.test').length-1,1);
  dom.window.close();
 });
+
+it('external verification notices explain the failure instead of suggesting an account switch', async () => {
+  const { RejectionList } = await import('../src/screens/Approval/RejectionNotice');
+  const html=renderToStaticMarkup(createElement(RejectionList,{items:[{
+    id:'invalid',timestamp:1,origin:'Nostr Connect',kind:24133,
+    requestedPubkey:'11'.repeat(32),activePubkey:null,reason:'invalidExternalEvent'
+  }]}));
+  assert.match(html,/approval.invalidExternalEvent/);
+  assert.doesNotMatch(html,/approval.accountMismatchReason/);
+});

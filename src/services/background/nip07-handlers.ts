@@ -1,3 +1,4 @@
+import { ExternalEventVerificationError } from '../signing/remoteEventVerifier.ts';
 import { GLOBAL_RULES_SCOPE } from '@constants/permissions';
 import { setRelayAuthenticationSites, getDefaultBackendAuth, setDefaultBackendAuth, listAuthenticationGrants, revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { MAX_EVENT_BYTES, MAX_EVENT_TAGS, MAX_TAG_VALUES, MAX_CRYPTO_PLAINTEXT_BYTES, MAX_CRYPTO_CIPHERTEXT_LENGTH } from '@constants/signing.ts';
@@ -148,7 +149,7 @@ export const handlers = new Map<string, HandlerFn>([
             return result;
         } catch (e) {
             console.error('[nip07] signEvent FAILED, kind:', (params.event as Record<string, unknown>)?.kind, 'error:', (e as Error).message);
-            void logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'rejected', event: params.event as Record<string, unknown> });
+            if (!(e instanceof ExternalEventVerificationError)) void logActivity({ domain: params.origin as string, method: 'signEvent', kind: (params.event as Record<string, unknown>)?.kind as number, decision: 'rejected', event: params.event as Record<string, unknown> });
             throw e;
         }
     }],

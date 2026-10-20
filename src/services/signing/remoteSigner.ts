@@ -1,3 +1,4 @@
+import { recordExternalEventRejection } from './rejections.ts';
 import { Nip46Connection } from './nip46Connection.ts';
 import { signVerifiedRemoteEvent } from './remoteEventVerifier.ts';
 import * as vault from '../vault/vault.ts';
@@ -112,7 +113,7 @@ export async function handleNip46Request(acct: SafeAccount, method: string, data
       const client = await getNip46Client(acct, session, options.connectedOnly);
       assertAccountSession(session);
       return duringSession(client, () => client.signer!.signEvent(approved));
-    });
+    }, () => recordExternalEventRejection(_origin, (data as UnsignedEvent).kind, acct.pubkey, acct.pubkey));
     assertAccountSession(session);
     return result;
   }

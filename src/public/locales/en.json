@@ -1422,5 +1422,6 @@
   "localBridge.disable": "Stop using phone signer",
   "localBridge.sessionHint": "Keep this tab and the phone bridge open. Pair again after closing this tab. Disconnecting does not restore local signing; use “Stop using phone signer” explicitly. Experimental: NIP-07 signing and encryption only; wallet and internal publishing are unavailable while selected.",
   "localBridge.wrongTransport": "Choose the transport matching the phone’s pairing code.",
-  "localBridge.failed": "Could not connect to the phone signer."
+  "localBridge.failed": "Could not connect to the phone signer.",
+  "approval.invalidExternalEvent": "An external event failed signature or integrity verification and was rejected. Nothing was accepted."
 }

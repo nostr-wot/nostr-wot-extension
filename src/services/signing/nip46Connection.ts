@@ -1,3 +1,5 @@
+import { verifyEvent, type VerifiedEvent } from 'nostr-tools/pure';
+import { recordExternalEventRejection } from './rejections.ts';
 import { SimplePool } from 'nostr-tools/pool';
 import type { BunkerSigner } from 'nostr-tools/nip46';
 
@@ -57,6 +59,16 @@ export class Nip46Connection {
     }
     const options = { websocketImplementation: OwnedSocket, enableReconnect: false };
     this.pool = new OwnedPool(options);
+    let lastNotice = -Infinity;
+    this.pool.verifyEvent = (event): event is VerifiedEvent => {
+      let valid = false;
+      try { valid = verifyEvent(structuredClone(event)); } catch { /* Malformed input is invalid. */ }
+      if (!valid && Date.now() - lastNotice >= 5000) {
+        lastNotice = Date.now();
+        void recordExternalEventRejection('Nostr Connect', Number.isInteger(event?.kind) ? event.kind : 24133, typeof event?.pubkey === 'string' ? event.pubkey : '', null).catch(() => {});
+      }
+      return valid;
+    };
   }
 
   attach(signer: BunkerSigner): BunkerSigner {

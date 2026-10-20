@@ -1973,3 +1973,30 @@ it('popup origin fallback stays closed for other sites, disconnected tabs and kn
     assert.equal(opens, 0, 'a disconnected tab has no trusted origin');
   } finally { forgetTabOrigin(72); }
 });
+
+it('rejects invalid signed page events before approval and records a metadata-only security activity', async()=>{
+  resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale(); await setupVault();
+  const {getSigningRejections}=await import('../src/services/signing/rejections.ts');
+  const {readPrivateCache}=await import('../src/services/storage/private-cache.ts');
+  const {handlers:pageHandlers}=await import('../src/services/background/nip07-handlers.ts');
+  await assert.rejects(pageHandlers.get('nip07_signEvent')!({event:{pubkey:TEST_PUBKEY_HEX,kind:1,content:'secret invalid payload',tags:[],created_at:1,id:'0'.repeat(64),sig:'0'.repeat(128)},origin:'invalid.test'}),/Invalid external event signature/);
+  const notices=await getSigningRejections();
+  assert.equal(notices[0].reason,'invalidExternalEvent');
+  const activity=await readPrivateCache<any[]>('activityLog');
+  assert.equal(activity?.[0].decision,'rejected');
+  assert.equal(activity?.[0].reason,'invalidExternalEvent');
+  assert.equal(activity?.[0].method,'verifyEvent');
+  assert.doesNotMatch(JSON.stringify([notices,activity]),/secret invalid payload/);
+});
+
+it('retains external verification activity while locked and drains it after unlock',async()=>{
+  resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale(); await setupVault();
+  vault.lock();
+  const {logActivity,handlers}=await import('../src/services/background/activity-handlers.ts');
+  await logActivity({domain:'locked.test',method:'verifyEvent',kind:24133,decision:'rejected',reason:'invalidExternalEvent'});
+  assert.equal((await browserMock.storage.local.get('pendingSecurityActivity')).pendingSecurityActivity.length,1);
+  await vault.unlock(TEST_PASSWORD);
+  const entries=await handlers.get('getActivityLog')!({}) as Array<{domain?:string;reason?:string}>;
+  assert.ok(entries.some((entry:any)=>entry.domain==='locked.test' && entry.reason==='invalidExternalEvent'));
+  assert.equal((await browserMock.storage.local.get('pendingSecurityActivity')).pendingSecurityActivity,undefined);
+});

@@ -628,3 +628,5 @@ Passkey coverage includes single-assertion blob/relay recovery, legacy two-asser
 - `tests/local-bridge-wallet-interop.test.mjs` is an optional cross-repository check against the wallet's actual signer; see `docs/local-bridge.md` for its environment and command.
 
 Broker race coverage additionally holds a selection write across explicit disabling and verifies that the disable wins, and resolves a crypto response immediately before disconnect to verify that the retired session cannot deliver it. Phone account-index changes close the wallet transport before it can deliver any in-flight result; the wallet's LAN integration suite covers that boundary with real encrypted RPCs.
+
+External verification coverage lives in `remote-signer-integrity.test.ts`, `signer.test.ts`, and `nip46-lifecycle.test.ts`: signature/ID tampering, unsigned templates, metadata-only rejection records, reporting failure, and cached-verification bypass attempts.

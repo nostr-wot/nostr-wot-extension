@@ -1422,5 +1422,6 @@
   "localBridge.disable": "Parar de usar o assinador do telefone",
   "localBridge.sessionHint": "Mantenha esta aba e a ponte do telefone abertas. Pareie novamente após fechar a aba. Desconectar não restaura a assinatura local; use “Parar de usar o assinador do telefone”. Experimental: apenas assinatura e criptografia NIP-07; carteira e publicações internas ficam indisponíveis enquanto selecionado.",
   "localBridge.wrongTransport": "Escolha o transporte correspondente ao código do telefone.",
-  "localBridge.failed": "Não foi possível conectar ao assinador."
+  "localBridge.failed": "Não foi possível conectar ao assinador.",
+  "approval.invalidExternalEvent": "Um evento externo falhou na verificação de assinatura ou integridade e foi rejeitado."
 }

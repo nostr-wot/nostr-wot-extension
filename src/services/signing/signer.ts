@@ -1,3 +1,5 @@
+import { verifyIncomingSigningEvent, ExternalEventVerificationError } from './remoteEventVerifier.ts';
+import { recordExternalEventRejection } from './rejections.ts';
 import { isLocalBridgeSelected, signWithLocalBridge, cryptoWithLocalBridge } from './localBridgeSession.ts';
 import { parseAuthentication, assertPageAuthenticationPolicy, authenticationKey, validAuthenticationScope, type AuthenticationScope } from '@domain/signing/authentication.ts';
 import { getAuthenticationDecision, saveAuthenticationGrant } from '../permissions/authentication.ts';
@@ -128,6 +130,10 @@ export async function handleGetPublicKey(origin: string): Promise<string | null>
 export async function handleSignEvent(event: UnsignedEvent, origin: string): Promise<SignedEvent> {
   // Snapshot before any await: approval and signing must use exactly the same event.
   event = structuredClone(event);
+  if (!(await verifyIncomingSigningEvent(event))) {
+    await recordExternalEventRejection(origin, event.kind, event.pubkey || '', await getActivePublicKey()).catch(() => {});
+    throw new ExternalEventVerificationError('Invalid external event signature');
+  }
   event.tags ??= [];
   event.created_at ??= Math.floor(Date.now()/1000);
   const authentication = parseAuthentication(event, origin);

@@ -45,3 +45,29 @@ it('normalizes omitted tags and timestamp before remote signing',async()=>{
   });
   assert.deepEqual(result.tags,[]);
 });
+it('reports integrity failures once and rejects even when reporting fails', async()=>{
+  let reports=0;
+  await assert.rejects(signVerifiedRemoteEvent(event(),pubkey,async e=>({...await signEvent(e,key),sig:'0'.repeat(128)}),async()=>{reports++;throw Error('storage failed');}),/signature/);
+  assert.equal(reports,1);
+  await signVerifiedRemoteEvent(event(),pubkey,e=>signEvent(e,key),async()=>{reports++;});
+  assert.equal(reports,1);
+});
+it('verifies claimed incoming signatures without rejecting unsigned templates',async()=>{
+  const {verifyIncomingSigningEvent}=await import('../src/services/signing/remoteEventVerifier.ts');
+  assert.equal(await verifyIncomingSigningEvent(event()),true);
+  const signed=await signEvent(event(),key);
+  assert.equal(await verifyIncomingSigningEvent(signed),true);
+  assert.equal(await verifyIncomingSigningEvent({...signed,content:'changed'}),false);
+  assert.equal(await verifyIncomingSigningEvent({...event(),id:signed.id} as any),false);
+});
+
+it('surfaces upstream bunker validation and malformed responses without leaking payloads',async()=>{
+  for(const error of [new Error('event returned from bunker is improperly signed: secret payload'),new SyntaxError('secret payload')]) {
+    let reports=0;
+    await assert.rejects(signVerifiedRemoteEvent(event(),pubkey,async()=>{throw error;},async()=>{reports++;}),e=>e instanceof Error && /Invalid remote event/.test(e.message) && !e.message.includes('secret payload'));
+    assert.equal(reports,1);
+  }
+  let reports=0;
+  await assert.rejects(signVerifiedRemoteEvent(event(),pubkey,async()=>{throw Error('User denied');},async()=>{reports++;}),/User denied/);
+  assert.equal(reports,0);
+});

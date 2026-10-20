@@ -1,3 +1,4 @@
+import { recordExternalEventRejection } from './rejections.ts';
 import browser from '@lib/browser.ts';
 import * as vault from '../vault/vault.ts';
 import { captureAccountSession, assertAccountSession, type AccountSession } from './accountSession.ts';
@@ -152,7 +153,7 @@ export async function signWithLocalBridge(event: UnsignedEvent, session: Account
   const pubkey = vault.getAccountById(session.accountId)?.pubkey;
   if (!pubkey) throw new Error('No active account');
   const revision = generation;
-  const result = await signVerifiedRemoteEvent(event,pubkey,async approved => JSON.parse(await request(session,'sign_event',[JSON.stringify(approved)],origin)) as SignedEvent);
+  const result = await signVerifiedRemoteEvent(event,pubkey,async approved => JSON.parse(await request(session,'sign_event',[JSON.stringify(approved)],origin)) as SignedEvent, () => recordExternalEventRejection(origin, event.kind, pubkey, pubkey));
   assertAccountSession(session);
   if (generation !== revision) throw new Error('Phone signer session changed');
   return result;

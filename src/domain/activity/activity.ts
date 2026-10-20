@@ -14,6 +14,7 @@ import { truncateNpub } from '@domain/nostr/display.ts';
  * that involve no event.
  */
 export interface ActivityEntry {
+  reason?: 'invalidExternalEvent';
   method: string;
   kind?: number | null;
   decision: string;

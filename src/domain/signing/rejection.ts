@@ -6,5 +6,5 @@ export interface SigningRejection {
   kind: number;
   requestedPubkey: string;
   activePubkey: string | null;
-  reason: 'accountMismatch';
+  reason: 'accountMismatch' | 'invalidExternalEvent';
 }

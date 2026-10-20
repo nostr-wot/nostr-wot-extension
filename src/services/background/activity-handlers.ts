@@ -1,3 +1,4 @@
+import browser from '@lib/browser.ts';
 import { ACTIVITY_ENTRY_MAX_BYTES, ACTIVITY_LOG_MAX_BYTES, ACTIVITY_LOG_GLOBAL_MAX, ACTIVITY_MAX_CIPHERTEXT_LENGTH } from '@constants/activity.ts';
 /**
  * Activity log handlers: log, retrieve, and clear the activity log.
@@ -19,7 +20,15 @@ import { ACTIVITY_LOG_MAX_PER_DOMAIN } from '@constants/activity.ts';
 
 export async function logActivity(entry: ActivityLogInput): Promise<void> {
     try {
-        if (vault.isLocked()) return;
+        if (vault.isLocked()) {
+            // Only public security metadata may be queued outside the encrypted cache.
+            if (entry.reason === 'invalidExternalEvent') await activityWrites.run(async () => {
+                const stored = await browser.storage.local.get('pendingSecurityActivity');
+                const pending = Array.isArray(stored.pendingSecurityActivity) ? stored.pendingSecurityActivity : [];
+                await browser.storage.local.set({ pendingSecurityActivity: [{timestamp:Date.now(),domain:entry.domain,method:'verifyEvent',kind:entry.kind,decision:'rejected',pubkey:entry.pubkey ?? config.myPubkey ?? null,reason:entry.reason},...pending].slice(0,50) });
+            });
+            return;
+        }
         await activityWrites.run(async () => {
         const log = await readPrivateCache<ActivityEntry[]>('activityLog') || [];
         const record: ActivityEntry = {
@@ -28,6 +37,7 @@ export async function logActivity(entry: ActivityLogInput): Promise<void> {
             method: entry.method,
             kind: entry.kind ?? null,
             decision: entry.decision,
+            ...(entry.reason && { reason: entry.reason }),
             pubkey: entry.pubkey !== undefined ? entry.pubkey : config.myPubkey || null,
             ...(entry.event && { event: entry.event }),
             ...(entry.theirPubkey && { theirPubkey: entry.theirPubkey }),
@@ -55,6 +65,25 @@ export async function logActivity(entry: ActivityLogInput): Promise<void> {
         await writePrivateCache('activityLog', trimmed);
         });
     } catch { /* ignored */ }
+}
+
+/** Drain bounded metadata recorded while the encrypted activity cache was locked. */
+async function flushSecurityActivity(): Promise<void> {
+    if (vault.isLocked()) return;
+    await activityWrites.run(async () => {
+        if (vault.isLocked()) return;
+        const stored = await browser.storage.local.get('pendingSecurityActivity');
+        const pending = stored.pendingSecurityActivity as ActivityEntry[] | undefined;
+        if (!Array.isArray(pending) || !pending.length) return;
+        const log = await readPrivateCache<ActivityEntry[]>('activityLog') || [];
+        let bytes = 2;
+        const combined = [...pending, ...log].sort((a,b) => b.timestamp-a.timestamp).slice(0,ACTIVITY_LOG_GLOBAL_MAX).filter(entry => {
+            bytes += new TextEncoder().encode(JSON.stringify(entry)).length + 1;
+            return bytes <= ACTIVITY_LOG_MAX_BYTES;
+        });
+        await writePrivateCache('activityLog', combined);
+        await browser.storage.local.remove('pendingSecurityActivity');
+    });
 }
 
 // ── Handler Map ──
@@ -87,10 +116,12 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['getActivityLog', async () => {
         await vault.whenStartupUnlockSettled();
+        await flushSecurityActivity();
         return await readPrivateCache<ActivityEntry[]>('activityLog') || [];
     }],
 
     ['clearActivityLog', async (params) => {
+        await flushSecurityActivity();
         return activityWrites.run(async () => {
         const hasFilter = params.domain || params.accountPubkey || params.typeFilter || params.pubkeyFilter;
         if (!hasFilter) {
@@ -112,5 +143,5 @@ export const handlers = new Map<string, HandlerFn>([
 ]);
 
 vault.onUnlock(async () => {
-  try { await readPrivateCache('activityLog'); } catch { /* Leave damaged ciphertext untouched. */ }
+  try { await flushSecurityActivity(); await readPrivateCache('activityLog'); } catch { /* Leave damaged ciphertext untouched. */ }
 });

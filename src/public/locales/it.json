@@ -1422,5 +1422,6 @@
   "localBridge.disable": "Smetti di usare il firmatario del telefono",
   "localBridge.sessionHint": "Mantieni aperti questa scheda e il bridge del telefono. Abbina nuovamente dopo aver chiuso la scheda. Disconnettere non ripristina la firma locale; scegli “Smetti di usare il firmatario del telefono”. Sperimentale: solo firma e crittografia NIP-07; portafoglio e pubblicazioni interne non disponibili mentre è selezionato.",
   "localBridge.wrongTransport": "Scegli il trasporto corrispondente al codice del telefono.",
-  "localBridge.failed": "Impossibile collegare il firmatario."
+  "localBridge.failed": "Impossibile collegare il firmatario.",
+  "approval.invalidExternalEvent": "Un evento esterno non ha superato la verifica della firma o integrità ed è stato rifiutato."
 }

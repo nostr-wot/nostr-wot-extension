@@ -210,3 +210,21 @@ test('failed status persistence still closes a rejected pairing transport', asyn
     assert.equal(active(), 0);
   } finally { browser.storage.session.set = originalSet; }
 });
+
+test('Nostr Connect verifies envelopes without trusting cached verification flags',async()=>{
+  const {Nip46Connection}=await import('../src/services/signing/nip46Connection.ts');
+  const {finalizeEvent,verifiedSymbol}=await import('nostr-tools/pure');
+  const {getSigningRejections}=await import('../src/services/signing/rejections.ts');
+  const connection=new Nip46Connection();
+  try {
+    const event=finalizeEvent({kind:24133,created_at:1,tags:[],content:'ciphertext'},new Uint8Array(32).fill(1));
+    assert.equal(connection.pool.verifyEvent(event),true);
+    event.content='tampered'; Object.defineProperty(event, verifiedSymbol, {value:true, configurable:true});
+    assert.equal(connection.pool.verifyEvent(event),false);
+    assert.equal(connection.pool.verifyEvent(event),false);
+    for(let i=0;i<10 && !(await getSigningRejections()).length;i++) await tick();
+    const notices=await getSigningRejections();
+    assert.equal(notices.length,1);
+    assert.equal(notices[0].reason,'invalidExternalEvent');
+  } finally {connection.dispose();}
+});

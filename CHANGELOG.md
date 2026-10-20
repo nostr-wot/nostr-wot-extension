@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Surface invalid external event signatures and integrity failures in rejection notices and activity; verify signed website inputs before approval.
+
 - Add an experimental local network bridge menu with Wi-Fi and Bluetooth choices, phone-side signing, authenticated pairing and explicit disconnect behavior.
 
 ## 0.8.13 — 2026-10-16

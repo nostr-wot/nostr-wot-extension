@@ -1422,5 +1422,6 @@
   "localBridge.disable": "Dejar de usar el firmador del teléfono",
   "localBridge.sessionHint": "Mantén esta pestaña y el puente del teléfono abiertos. Vuelve a vincular después de cerrar esta pestaña. Desconectar no restaura la firma local; usa «Dejar de usar el firmador del teléfono». Experimental: solo firma y cifrado NIP-07; la billetera y las publicaciones internas no están disponibles mientras esté seleccionado.",
   "localBridge.wrongTransport": "Elige el transporte que coincida con el código del teléfono.",
-  "localBridge.failed": "No se pudo conectar al firmador."
+  "localBridge.failed": "No se pudo conectar al firmador.",
+  "approval.invalidExternalEvent": "Un evento externo no pasó la verificación de firma o integridad y fue rechazado. No se aceptó nada."
 }

@@ -234,7 +234,7 @@ function ActivityOverlayInner({ visible, initialDomain, initialPubkey, onClose }
                     {/* Same reason as the domain span above: inherits `text-sm`, and `body`'s
                         own size is `text-md`. */}
                     <span className="text-body flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                      {formatPermissionLabel(item.entry.methodKey, item.entry.entries?.[0]?.event ?? undefined)}
+                      {item.entry.entries?.[0]?.reason === 'invalidExternalEvent' ? t('approval.invalidExternalEvent') : formatPermissionLabel(item.entry.methodKey, item.entry.entries?.[0]?.event ?? undefined)}
                     </span>
                   </Container>
                 }

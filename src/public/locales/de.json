@@ -1422,5 +1422,6 @@
   "localBridge.disable": "Handy-Signer nicht mehr verwenden",
   "localBridge.sessionHint": "Lass diesen Tab und die Handy-Verbindung geöffnet. Nach dem Schließen erneut koppeln. Trennen aktiviert lokales Signieren nicht wieder; wähle „Handy-Signer nicht mehr verwenden“. Experimentell: nur NIP-07-Signieren und Verschlüsselung; Wallet und interne Veröffentlichungen sind während der Auswahl nicht verfügbar.",
   "localBridge.wrongTransport": "Wähle den zum Handy-Code passenden Transport.",
-  "localBridge.failed": "Handy-Signer konnte nicht verbunden werden."
+  "localBridge.failed": "Handy-Signer konnte nicht verbunden werden.",
+  "approval.invalidExternalEvent": "Ein externes Ereignis hat die Signatur- oder Integritätsprüfung nicht bestanden und wurde abgelehnt."
 }

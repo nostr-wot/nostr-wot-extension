@@ -26,10 +26,10 @@ export async function updateSignerBadge(): Promise<void> {
   });
 }
 
-export async function recordSigningRejection(input: Omit<SigningRejection, 'id' | 'timestamp' | 'reason'>): Promise<void> {
+export async function recordSigningRejection(input: Omit<SigningRejection, 'id' | 'timestamp' | 'reason'> & { reason?: SigningRejection['reason'] }): Promise<void> {
   await writes.run(async () => {
     const previous = await getSigningRejections();
-    const item: SigningRejection = { ...input, id: crypto.randomUUID(), timestamp: Date.now(), reason: 'accountMismatch' };
+    const item: SigningRejection = { ...input, id: crypto.randomUUID(), timestamp: Date.now(), reason: input.reason ?? 'accountMismatch' };
     await browser.storage.local.set({ [SIGNER_REJECTIONS_KEY]: [item, ...previous].slice(0, MAX_SIGNER_REJECTIONS) });
   });
   await updateSignerBadge();
@@ -43,4 +43,12 @@ export async function acknowledgeSigningRejections(ids: string[]): Promise<void>
     await browser.storage.local.set({ [SIGNER_REJECTIONS_KEY]: previous.filter(item => !acknowledged.has(item.id)) });
   });
   await updateSignerBadge();
+}
+
+/** Public metadata only: never persist an untrusted payload in a security notice. */
+export async function recordExternalEventRejection(origin: string, kind: number, pubkey: string, expectedPubkey: string | null): Promise<void> {
+  await recordSigningRejection({ origin: origin.slice(0, 256), kind, requestedPubkey: /^[0-9a-f]{64}$/.test(pubkey) ? pubkey : '', activePubkey: expectedPubkey, reason: 'invalidExternalEvent' }).catch(() => {});
+  // Lazy import avoids the activity/decryption/signing initialization cycle.
+  const { logActivity } = await import('../background/activity-handlers.ts');
+  await logActivity({ domain: origin.slice(0, 256), method: 'verifyEvent', kind, decision: 'rejected', pubkey: expectedPubkey ?? undefined, reason: 'invalidExternalEvent' });
 }

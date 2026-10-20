@@ -17,8 +17,8 @@ import FormError from '@components/FormError';
 
 export function RejectionList({ items }: { items: SigningRejection[] }) {
   return <Container gap={4}>
-    <Text>{t('approval.accountMismatchReason')}</Text>
     {items.map(item => <Card key={item.id}>
+      <Text>{t(item.reason === 'invalidExternalEvent' ? 'approval.invalidExternalEvent' : 'approval.accountMismatchReason')}</Text>
       <FieldDisplay label={item.origin} value={formatPermissionLabel('signEvent:' + item.kind)} />
       <FieldDisplay label={t('approval.requestedAccount')} value={truncateNpub(item.requestedPubkey)} mono />
       {item.activePubkey && <FieldDisplay label={t('approval.extensionAccount')} value={truncateNpub(item.activePubkey)} mono />}
