@@ -5,6 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Require a matching six-digit phone choice before pairing any new local computer, including QR and sound pairing; reject mismatches and concurrent pairing attempts.
+
+- Add opt-in local pairing by sound, with a bounded microphone session and compact Wi-Fi or Bluetooth bootstrap packets.
+
 - Scan the phone’s local bridge pairing QR with the computer camera, with local decoding and a paste fallback.
 
 - Restyle the experimental local bridge page with the animated background, branded header, setup card, and version footer.

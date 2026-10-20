@@ -19,3 +19,20 @@ Run `node --import tsx --test tests/local-bridge-transport.test.ts tests/local-b
 Physical-device acceptance: connect using each transport; approve and reject signing; test both encryption schemes; revoke on the phone; turn Bluetooth off; close the tab; switch extension accounts; lock the vault; confirm failures are visible and local signing does not take over. Native Android compilation and radio tests remain separate release gates. This feature is not enabled or connected automatically.
 
 The bridge tab uses the shared animated topographic background, a raised card for setup and connection controls, the Nostr WoT logo at the top left, and the package version in the footer. The page scrolls naturally on smaller screens.
+
+
+## Experimental sound pairing
+
+Choose **Pair with sound → Start listening**, grant microphone access, then tap **Play pairing sound** on the phone’s pairing screen. The browser decodes audio locally using the bundled ggwave modem; samples are never uploaded or saved. Listening stops after 30 seconds, on a decoded packet, cancellation, tab hiding or navigation. The decoded code fills the same pairing field; click Connect and approve on the phone as usual. Sound only bootstraps pairing and never carries signing requests. Nearby people can hear or record it, so the existing phone approval and pairing-code lifetime remain mandatory. Use the QR or paste fallback in noisy rooms.
+
+The NW/1 binary packet is `4e 57 01 flags`, 32 bytes of host transport public key, 32 bytes of pairing secret, then an optional address and big-endian port. Flags 0 = IPv4 (4 address bytes + 2 port bytes, 74 total), 1 = IPv6 (16 + 2, 86 total), 2 = BLE (no address, 68 total). There are no names, identity keys, or extra addresses. Only the current local address is transmitted; identity is obtained after the authenticated nwlan/2 handshake. The exact length is checked before parsing and the regular pairing validator still rejects public addresses. ggwave’s audible-fast modulation supplies framing and error correction; the authenticated handshake supplies security.
+
+The browser uses the published ggwave 0.4.0 WASM binding and a local AudioWorklet; the wallet uses the native ggwave encoder. Native-to-browser waveform round-trip checks pass for the compact packet. Acoustic reliability through actual speakers and microphones remains a physical-device acceptance check.
+
+### Mandatory phone comparison for new pairings
+
+New peers send `confirmation: 1` in the signed hello envelope. After verifying the hello, the phone generates a fresh 16-byte random challenge and sends `{v:2,t:"confirm",host,challenge,sig}`. The challenge uses unpadded base64url. The BIP340 signature signs SHA-256 of `nwlan/2/confirm` followed by host key, peer key, hello nonce and challenge, separated by U+001F. The computer verifies against the pinned host key before displaying the comparison code: the first four digest bytes interpreted as unsigned big-endian, modulo 1,000,000, padded to six digits.
+
+The phone offers that number among three shuffled choices and “None match.” The user must choose the number visible on the intended computer. Comparison expires after 45 seconds; cancellation, a wrong choice or disconnect rejects pairing. Only one new peer can be compared at once, with at most five attempts per offer. Remembered signing permissions cannot bypass comparison. Existing paired peers reconnect using their saved public key proof. Old clients without this capability cannot create new pairings; updated clients reject a pairing welcome that skipped comparison. Both applications must be updated together.
+
+QR, pasted links and sound only transfer bootstrap information. Anyone nearby may copy it, but possession alone does not authorize pairing. Users must reject an unsolicited prompt or a number that is absent from their intended computer.

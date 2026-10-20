@@ -96,6 +96,11 @@ class Device implements BridgeTransport {
           new Uint8Array(32).fill(this.mode === 'bad-host' ? 0x33 : 0x11),
         ),
       );
+      if (this.mode !== 'no-confirmation') {
+        const challenge = base64urlnopad.encode(crypto.getRandomValues(new Uint8Array(16)));
+        const digest = sha256(enc.encode(['nwlan/2/confirm', host, f.peer, f.nonce, challenge].join('\x1f')));
+        this.emit({ v: 2, t: 'confirm', host, challenge, sig: base64urlnopad.encode(schnorr.sign(digest, new Uint8Array(32).fill(this.mode === 'bad-confirmation' ? 0x33 : 0x11))) });
+      }
       this.emit({ v: 2, t: 'welcome', host, session, sig });
       return;
     }
@@ -363,4 +368,19 @@ test('closing transport cancels an unanswered connection immediately', async () 
   await new Promise((resolve) => setTimeout(resolve, 5));
   assert(settled, 'manual close must not wait for the connection deadline');
   await rejected;
+});
+
+
+test('pairing refuses a missing or forged phone confirmation challenge', async () => {
+  for (const mode of ['no-confirmation', 'bad-confirmation']) {
+    const d = new Device(); d.mode = mode;
+    await assert.rejects(connect(d), /confirmation/);
+    assert(d.closed);
+  }
+});
+
+test('a signed phone challenge produces a six-digit comparison code', async () => {
+  const d = new Device(); let code = '';
+  const c = await LocalBridgeClient.connect({ offer, secretKey: new Uint8Array(32).fill(0x22), transport: d, onConfirmation: value => { code = value; } });
+  assert.match(code, /^\d{6}$/); c.close();
 });

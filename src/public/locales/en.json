@@ -1429,5 +1429,14 @@
   "localBridge.cameraDenied": "Allow camera access, or paste the pairing code instead.",
   "localBridge.cameraMissing": "No camera found. Connect a camera or paste the pairing code.",
   "localBridge.cameraFailed": "Could not start the camera. Close other camera apps and try again, or paste the code.",
-  "localBridge.invalidQr": "This is not a valid pairing QR for the selected connection. Check Wi-Fi or Bluetooth on both devices."
+  "localBridge.invalidQr": "This is not a valid pairing QR for the selected connection. Check Wi-Fi or Bluetooth on both devices.",
+  "localBridge.sound": "Pair with sound",
+  "localBridge.soundStart": "Start listening",
+  "localBridge.soundListening": "Listening… Play the pairing sound on your phone.",
+  "localBridge.soundHint": "Listen with this computer’s microphone, then play the pairing sound on your phone. Audio is decoded locally and listening stops after 30 seconds.",
+  "localBridge.soundTimeout": "No pairing sound received. Move the phone closer, raise its media volume and try again.",
+  "localBridge.microphoneDenied": "Allow microphone access, or use the QR code or paste instead.",
+  "localBridge.soundFailed": "Could not start listening. Check the microphone or use the QR code.",
+  "localBridge.invalidSound": "The sound did not contain a valid pairing code. Please try again.",
+  "localBridge.confirmHint": "On your phone, select this code to confirm this computer. If the codes do not match, reject the request."
 }

@@ -1429,5 +1429,14 @@
   "localBridge.cameraDenied": "Permite el acceso a la cámara o pega el código de vinculación.",
   "localBridge.cameraMissing": "No se encontró ninguna cámara. Conecta una o pega el código.",
   "localBridge.cameraFailed": "No se pudo iniciar la cámara. Cierra otras apps que la usen e inténtalo de nuevo, o pega el código.",
-  "localBridge.invalidQr": "Este QR no es válido para la conexión seleccionada. Comprueba Wi-Fi o Bluetooth en ambos dispositivos."
+  "localBridge.invalidQr": "Este QR no es válido para la conexión seleccionada. Comprueba Wi-Fi o Bluetooth en ambos dispositivos.",
+  "localBridge.sound": "Vincular con sonido",
+  "localBridge.soundStart": "Empezar a escuchar",
+  "localBridge.soundListening": "Escuchando… Reproduce el sonido de vinculación en el teléfono.",
+  "localBridge.soundHint": "Escucha con el micrófono del ordenador y reproduce el sonido en el teléfono. El audio se decodifica localmente y la escucha termina a los 30 segundos.",
+  "localBridge.soundTimeout": "No se recibió el sonido. Acerca el teléfono, sube su volumen multimedia e inténtalo de nuevo.",
+  "localBridge.microphoneDenied": "Permite el micrófono o usa el QR o pega el código.",
+  "localBridge.soundFailed": "No se pudo iniciar la escucha. Comprueba el micrófono o usa el QR.",
+  "localBridge.invalidSound": "El sonido no contenía un código válido. Inténtalo de nuevo.",
+  "localBridge.confirmHint": "En el teléfono, selecciona este código para confirmar este ordenador. Si no coincide, rechaza la solicitud."
 }

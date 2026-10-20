@@ -22,16 +22,20 @@ import IconLink from '@assets/IconLink';
 import IconCamera from '@assets/IconCamera';
 
 const QrCameraDialog = lazy(() => import('./QrCameraDialog'));
+const SoundPairingDialog = lazy(() => import('./SoundPairingDialog'));
 
 type Mode = 'wifi' | 'ble';
 export default function LocalBridgeApp() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [uri, setUri] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [hearing, setHearing] = useState(false);
+  const closeSound = useCallback(() => setHearing(false), []);
+  const soundError = useCallback((key: string) => { setHearing(false); setError(t(key)); }, []);
   const closeScanner = useCallback(() => setScanning(false), []);
   const scanError = useCallback((key: string) => { setScanning(false); setError(t(key)); }, []);
   const scanned = useCallback((value: string) => {
-    setScanning(false);
+    setScanning(false); setHearing(false);
     try {
       const offer = parsePairingUri(value);
       if (offer.transport !== mode) throw new Error(t('localBridge.wrongTransport'));
@@ -42,6 +46,7 @@ export default function LocalBridgeApp() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState(false);
   const [pubkey, setPubkey] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const cleanup = useRef<(() => void) | null>(null);
   const generation = useRef(0);
   useEffect(() => {
@@ -52,10 +57,10 @@ export default function LocalBridgeApp() {
     return () => { live = false; window.removeEventListener('pagehide', close); close(); };
   }, []);
 
-  const disconnect = () => { generation.current++; cleanup.current?.(); cleanup.current = null; setState('idle'); };
+  const disconnect = () => { generation.current++; cleanup.current?.(); cleanup.current = null; setState('idle'); setConfirmation(''); };
   const connect = async () => {
     const attempt = ++generation.current;
-    setError('');
+    setError(''); setConfirmation('');
     let key: Uint8Array | undefined;
     try {
       const offer = parsePairingUri(uri);
@@ -69,7 +74,7 @@ export default function LocalBridgeApp() {
         cleanup.current = () => transport.close();
         try {
           // BLE device selection must start directly from this click's user activation.
-          client = await LocalBridgeClient.connect({ offer, secretKey: key, transport });
+          client = await LocalBridgeClient.connect({ offer, secretKey: key, transport, onConfirmation: code => { if (attempt === generation.current) setConfirmation(code); } });
           break;
         } catch (e) {
           transport.close();
@@ -89,11 +94,11 @@ export default function LocalBridgeApp() {
       cleanup.current = connection.close;
       await connection.ready;
       if (attempt !== generation.current) { connection.close(); return; }
-      setPubkey(identity); setUri(''); setSelected(true); setState('connected');
+      setConfirmation(''); setPubkey(identity); setUri(''); setSelected(true); setState('connected');
     } catch (e) {
       if (attempt !== generation.current) return;
       cleanup.current?.(); cleanup.current = null;
-      setState('idle'); setError(e instanceof Error ? e.message : t('localBridge.failed'));
+      setConfirmation(''); setState('idle'); setError(e instanceof Error ? e.message : t('localBridge.failed'));
     } finally { key?.fill(0); }
   };
   const disable = async () => {
@@ -123,11 +128,13 @@ export default function LocalBridgeApp() {
         <Text variant="hint">{t('localBridge.accountHint')}</Text>
         {state !== 'connected' && <Input type="password" showToggle label={t('localBridge.code')} value={uri} onChange={(event) => setUri(event.target.value)} disabled={state === 'connecting'} autoComplete="off" spellCheck={false} />}
         {state === 'idle' && <ButtonSecondary onClick={() => { setError(''); setScanning(true); }}><IconCamera />{t('localBridge.scan')}</ButtonSecondary>}
+        {state === 'idle' && <ButtonSecondary onClick={() => { setError(''); setHearing(true); }}>{t('localBridge.sound')}</ButtonSecondary>}
         {state === 'connected' ? <>
           <Text className="text-success" role="status">{t('localBridge.connected')}</Text>
           <Text mono className="break-all">{pubkey}</Text>
           <ButtonSecondary onClick={disconnect}>{t('localBridge.disconnect')}</ButtonSecondary>
         </> : <Button disabled={state === 'connecting' || !uri.trim()} onClick={() => void connect()}>{t(state === 'connecting' ? 'localBridge.connecting' : 'localBridge.connect')}</Button>}
+        {state === 'connecting' && confirmation && <Card><Text variant="secondary">{t('localBridge.confirmHint')}</Text><Text mono className="text-3xl text-center font-bold tracking-widest">{confirmation.slice(0, 3)} {confirmation.slice(3)}</Text></Card>}
         {state === 'connecting' && <ButtonSecondary onClick={disconnect}>{t('common.cancel')}</ButtonSecondary>}
         {state === 'idle' && <ButtonSecondary onClick={() => { setMode(null); setError(''); }}>{t('common.back')}</ButtonSecondary>}
       </>}
@@ -138,6 +145,7 @@ export default function LocalBridgeApp() {
     </Card>
     </main>
     {scanning && <Suspense fallback={null}><QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} /></Suspense>}
+    {hearing && <Suspense fallback={null}><SoundPairingDialog onCode={scanned} onError={soundError} onClose={closeSound} /></Suspense>}
     <footer className="px-8 py-7 text-center">
       <Text variant="hint">Nostr WoT · v{version}</Text>
     </footer>

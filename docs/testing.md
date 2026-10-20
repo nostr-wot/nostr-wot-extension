@@ -33,6 +33,7 @@ the last group running for about two minutes even after most tests finish.
 
 | File | What it covers |
 |------|----------------|
+| `tests/local-bridge-sound.test.ts` | Compact audio bootstrap validation, local address restrictions and packet bounds |
 | `tests/local-bridge-camera.test.ts` | Local QR decoding, camera permission failure, cancellation during permission prompts and track cleanup |
 | `tests/firefox-publishing.test.ts` | Shared release gate, source checks, Mozilla JWT, upload validation, reviewer/release notes, safe reruns and credential boundaries |
 | `tests/chrome-publishing.test.ts` | Verified upload bytes, OAuth refresh, asynchronous processing, failure/timeout gates, and no mutation retries |

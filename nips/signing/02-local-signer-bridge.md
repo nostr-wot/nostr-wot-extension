@@ -136,3 +136,11 @@ Before recommending wider adoption: validate on physical iOS and Android devices
 ### Known implementation gap: replay-cache retention
 
 The current wallet `HandshakeReplayGuard.claim` stores acceptance time and expires entries after 90 seconds. A hello timestamp up to 90 seconds ahead can still pass `withinSkew` after that entry expires. The normative retention rule above is stricter: retain until `hello.ts + 90` inclusive, or conservatively for 180 seconds after acceptance. A fresh-session welcome still protects session ciphertexts; the gap concerns replay of admission hellos. Fix and test the boundary before claiming full conformance or recommending external adoption.
+
+### Mandatory phone comparison for new pairings
+
+New peers send `confirmation: 1` in the signed hello envelope. After verifying the hello, the phone generates a fresh 16-byte random challenge and sends `{v:2,t:"confirm",host,challenge,sig}`. The challenge uses unpadded base64url. The BIP340 signature signs SHA-256 of `nwlan/2/confirm` followed by host key, peer key, hello nonce and challenge, separated by U+001F. The computer verifies against the pinned host key before displaying the comparison code: the first four digest bytes interpreted as unsigned big-endian, modulo 1,000,000, padded to six digits.
+
+The phone offers that number among three shuffled choices and “None match.” The user must choose the number visible on the intended computer. Comparison expires after 45 seconds; cancellation, a wrong choice or disconnect rejects pairing. Only one new peer can be compared at once, with at most five attempts per offer. Remembered signing permissions cannot bypass comparison. Existing paired peers reconnect using their saved public key proof. Old clients without this capability cannot create new pairings; updated clients reject a pairing welcome that skipped comparison. Both applications must be updated together.
+
+QR, pasted links and sound only transfer bootstrap information. Anyone nearby may copy it, but possession alone does not authorize pairing. Users must reject an unsolicited prompt or a number that is absent from their intended computer.

@@ -1429,5 +1429,14 @@
   "localBridge.cameraDenied": "Permita o acesso à câmera ou cole o código de pareamento.",
   "localBridge.cameraMissing": "Nenhuma câmera encontrada. Conecte uma câmera ou cole o código.",
   "localBridge.cameraFailed": "Não foi possível iniciar a câmera. Feche outros apps que a utilizam e tente novamente, ou cole o código.",
-  "localBridge.invalidQr": "Este QR não é válido para a conexão selecionada. Confira Wi-Fi ou Bluetooth nos dois dispositivos."
+  "localBridge.invalidQr": "Este QR não é válido para a conexão selecionada. Confira Wi-Fi ou Bluetooth nos dois dispositivos.",
+  "localBridge.sound": "Parear por som",
+  "localBridge.soundStart": "Começar a ouvir",
+  "localBridge.soundListening": "Ouvindo… Reproduza o som de pareamento no celular.",
+  "localBridge.soundHint": "Ouça com o microfone do computador e reproduza o som no celular. O áudio é decodificado localmente e a escuta termina após 30 segundos.",
+  "localBridge.soundTimeout": "Nenhum som recebido. Aproxime o celular, aumente o volume de mídia e tente novamente.",
+  "localBridge.microphoneDenied": "Permita o microfone ou use o QR ou cole o código.",
+  "localBridge.soundFailed": "Não foi possível iniciar a escuta. Confira o microfone ou use o QR.",
+  "localBridge.invalidSound": "O som não continha um código válido. Tente novamente.",
+  "localBridge.confirmHint": "No celular, selecione este código para confirmar este computador. Se os códigos não coincidirem, recuse a solicitação."
 }

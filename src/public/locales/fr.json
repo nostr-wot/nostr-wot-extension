@@ -1429,5 +1429,14 @@
   "localBridge.cameraDenied": "Autorisez la caméra ou collez le code de jumelage.",
   "localBridge.cameraMissing": "Aucune caméra détectée. Branchez une caméra ou collez le code.",
   "localBridge.cameraFailed": "Impossible de démarrer la caméra. Fermez les autres applications qui l’utilisent et réessayez, ou collez le code.",
-  "localBridge.invalidQr": "Ce QR ne correspond pas à la connexion choisie. Vérifiez Wi-Fi ou Bluetooth sur les deux appareils."
+  "localBridge.invalidQr": "Ce QR ne correspond pas à la connexion choisie. Vérifiez Wi-Fi ou Bluetooth sur les deux appareils.",
+  "localBridge.sound": "Jumeler par le son",
+  "localBridge.soundStart": "Lancer l’écoute",
+  "localBridge.soundListening": "Écoute… Jouez le son de jumelage sur votre téléphone.",
+  "localBridge.soundHint": "Écoutez avec le microphone de l’ordinateur, puis jouez le son sur le téléphone. Le décodage est local et l’écoute s’arrête après 30 secondes.",
+  "localBridge.soundTimeout": "Aucun son reçu. Rapprochez le téléphone, augmentez son volume multimédia et réessayez.",
+  "localBridge.microphoneDenied": "Autorisez le microphone ou utilisez le QR ou collez le code.",
+  "localBridge.soundFailed": "Impossible de lancer l’écoute. Vérifiez le microphone ou utilisez le QR.",
+  "localBridge.invalidSound": "Le son ne contenait pas de code valide. Réessayez.",
+  "localBridge.confirmHint": "Sur votre téléphone, sélectionnez ce code pour confirmer cet ordinateur. Si les codes diffèrent, refusez la demande."
 }

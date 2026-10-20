@@ -95,7 +95,7 @@ test('extension interoperates with real wallet pairing, signing, encryption and 
   try {
     const offer = parsePairingUri(session.offerUri(session.offer()));
     const key = new Uint8Array(32).fill(0x22);
-    client = await LocalBridgeClient.connect({ offer, secretKey: key, transport, timeoutMs: 3000 });
+    client = await LocalBridgeClient.connect({ offer, secretKey: key, transport, timeoutMs: 3000, onConfirmation: code => { const state = session.offerState(); assert.equal(state.phase, 'confirming'); assert(state.choices.includes(code)); session.confirmPairing(state.peerPubkey, code); } });
     key.fill(0); // Connection owns session keys; no caller secret is retained.
     assert.equal(await client.request('get_public_key', []), account.pubkey);
     const event = JSON.parse(

@@ -22,6 +22,7 @@ export class LocalBridgeClient {
   private closeListeners = new Set<(error: Error) => void>();
   private cleanup: (() => void)[] = [];
   private welcome?: (frame: Record<string, unknown>) => void;
+  private confirmation?: (frame: Record<string, unknown>) => void;
   private handshakeReject?: (error: Error) => void;
   private constructor(
     private transport: BridgeTransport,
@@ -32,6 +33,7 @@ export class LocalBridgeClient {
     secretKey: Uint8Array;
     transport: BridgeTransport;
     timeoutMs?: number;
+    onConfirmation?: (code: string) => void;
   }): Promise<LocalBridgeClient> {
     const { offer, secretKey, transport } = options;
     const client = new LocalBridgeClient(transport, options.timeoutMs ?? 60000);
@@ -42,11 +44,22 @@ export class LocalBridgeClient {
       transport.onMessage((text) => client.receive(text)),
       transport.onClose((error) => client.fail(error ?? new Error('Local signer disconnected'))),
     );
+    let confirmed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const handshake = new Promise<void>((resolve, reject) => {
       client.handshakeReject = reject;
       timer = setTimeout(() => client.fail(new Error('Local signer connection timed out')), client.timeoutMs);
+      client.confirmation = (frame) => {
+        if (confirmed || frame.host !== offer.hostPubkey) throw new Error('Invalid pairing confirmation');
+        decode64(frame.challenge, 16);
+        const proof = transcript('confirm', ...ids, frame.challenge as string);
+        const hash = sha256(utf8.encode(proof));
+        if (!schnorr.verify(decode64(frame.sig, 64), hash, hexToBytes(offer.hostPubkey))) throw new Error('Invalid pairing confirmation signature');
+        confirmed = true;
+        options.onConfirmation?.((new DataView(hash.buffer, hash.byteOffset).getUint32(0) % 1_000_000).toString().padStart(6, '0'));
+      };
       client.welcome = (frame) => {
+        if (offer.psk && !confirmed) throw new Error('Update the phone app: pairing code confirmation is required');
         if (frame.host !== offer.hostPubkey || typeof frame.session !== 'string') throw new Error('Wrong local signer host');
         decode64(frame.session, 16);
         if (
@@ -61,6 +74,7 @@ export class LocalBridgeClient {
         client.keys = deriveKeys(conv, transcript('session', ...ids, frame.session));
         conv.fill(0);
         client.welcome = undefined;
+        client.confirmation = undefined;
         client.handshakeReject = undefined;
         resolve();
       };
@@ -78,6 +92,7 @@ export class LocalBridgeClient {
         JSON.stringify({
           v: 2,
           t: 'hello',
+          confirmation: 1,
           peer,
           nonce,
           ts,
@@ -131,6 +146,7 @@ export class LocalBridgeClient {
       if (!frame || frame.v !== 2) throw new Error('Unsupported local signer protocol version');
       if (frame.t === 'bye') throw new Error('Local signer closed the connection');
       if (this.welcome) {
+        if (frame.t === 'confirm' && this.confirmation) { this.confirmation(frame); return; }
         if (frame.t !== 'welcome') throw new Error('Expected local signer welcome');
         this.welcome(frame);
         return;
@@ -170,6 +186,7 @@ export class LocalBridgeClient {
     this.handshakeReject?.(error);
     this.handshakeReject = undefined;
     this.welcome = undefined;
+    this.confirmation = undefined;
     for (const p of this.pending.values()) {
       clearTimeout(p.timer);
       p.reject(error);
