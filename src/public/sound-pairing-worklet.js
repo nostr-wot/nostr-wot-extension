@@ -1,3 +1,4 @@
+/* global AudioWorkletProcessor, registerProcessor */
 class PairingCapture extends AudioWorkletProcessor {
   constructor() { super(); this.buffer = new Float32Array(1024); this.offset = 0; }
   process(inputs, outputs) {

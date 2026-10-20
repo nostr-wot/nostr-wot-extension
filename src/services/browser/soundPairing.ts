@@ -11,7 +11,6 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
   let node: AudioWorkletNode | undefined;
   let modem: Awaited<ReturnType<typeof factory>> | undefined;
   let instance: number | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   const stop = () => {
     if (stopped) return;
     stopped = true;
@@ -22,7 +21,7 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
     if (modem && instance !== undefined) { modem.free(instance); instance = undefined; }
   };
   const fail = (key: string) => { if (!stopped) { stop(); onError(key); } };
-  timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
+  const timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
   void (async () => {
     context = new AudioContext();
     // Start both requests while handling the user's click. No remote scripts or services.

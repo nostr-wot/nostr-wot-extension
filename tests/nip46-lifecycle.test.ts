@@ -218,10 +218,10 @@ test('Nostr Connect verifies envelopes without trusting cached verification flag
   const connection=new Nip46Connection();
   try {
     const event=finalizeEvent({kind:24133,created_at:1,tags:[],content:'ciphertext'},new Uint8Array(32).fill(1));
-    assert.equal(connection.pool.verifyEvent(event),true);
+    assert.equal(Reflect.apply(connection.pool.verifyEvent, connection.pool, [event, 'wss://relay.example']),true);
     event.content='tampered'; Object.defineProperty(event, verifiedSymbol, {value:true, configurable:true});
-    assert.equal(connection.pool.verifyEvent(event),false);
-    assert.equal(connection.pool.verifyEvent(event),false);
+    assert.equal(Reflect.apply(connection.pool.verifyEvent, connection.pool, [event, 'wss://relay.example']),false);
+    assert.equal(Reflect.apply(connection.pool.verifyEvent, connection.pool, [event, 'wss://relay.example']),false);
     for(let i=0;i<10 && !(await getSigningRejections()).length;i++) await tick();
     const notices=await getSigningRejections();
     assert.equal(notices.length,1);

@@ -31,7 +31,7 @@ function testFiles(dir: string, out: string[] = []): string[] {
     if (e === 'helpers' || e === 'node_modules') continue;
     const f = join(dir, e);
     if (statSync(f).isDirectory()) testFiles(f, out);
-    else if (e.endsWith('.test.ts')) out.push(relative(ROOT, f));
+    else if (/\.test\.tsx?$/.test(e)) out.push(relative(ROOT, f));
   }
   return out;
 }
@@ -42,7 +42,7 @@ function testFiles(dir: string, out: string[] = []): string[] {
  */
 function isRegistered(runner: string, file: string): boolean {
   if (runner.includes(file)) return true;
-  const glob = `${dirname(file)}/*.test.ts`;
+  const glob = `${dirname(file)}/*.test.${file.endsWith('.tsx') ? 'tsx' : 'ts'}`;
   return runner.includes(glob);
 }
 

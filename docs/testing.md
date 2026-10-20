@@ -633,4 +633,4 @@ Broker race coverage additionally holds a selection write across explicit disabl
 
 External verification coverage lives in `remote-signer-integrity.test.ts`, `signer.test.ts`, and `nip46-lifecycle.test.ts`: signature/ID tampering, unsigned templates, metadata-only rejection records, reporting failure, and cached-verification bypass attempts.
 
-- `tests/local-bridge-flow.test.ts`: embedded field actions, automatic Wi-Fi pairing from pasted codes and explicit Bluetooth device chooser activation.
+- `tests/local-bridge-flow.test.tsx`: embedded field actions, automatic Wi-Fi pairing from pasted codes and explicit Bluetooth device chooser activation.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { act, createElement } from 'react';
+import React, { act, createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import Input from '../src/components/Input';
 import IconButton from '../src/components/IconButton';
@@ -10,12 +10,12 @@ import { LocalBridgeClient } from '../src/services/signing/localBridge/client';
 import browser from './helpers/browser-mock';
 
 test('input actions remain labeled and reserve space beside password visibility', () => {
- const html=renderToStaticMarkup(createElement(Input,{type:'password',showToggle:true,label:'Pairing code',actions:[createElement(IconButton,{'aria-label':'Camera',key:'camera',children:'C'}),createElement(IconButton,{'aria-label':'Sound',key:'sound',children:'S'})]}));
+ const html=renderToStaticMarkup(createElement(Input,{type:'password',showToggle:true,label:'Pairing code',actions:[<IconButton aria-label="Camera" key="camera">C</IconButton>,<IconButton aria-label="Sound" key="sound">S</IconButton>]}));
  const dom=new JSDOM(html);const input=dom.window.document.querySelector('input')!;
  assert.equal(input.style.paddingRight,'132px');assert.equal(dom.window.document.querySelectorAll('button').length,3);
  assert.ok(dom.window.document.querySelector('[aria-label="Camera"]'));assert.ok(dom.window.document.querySelector('[aria-label="Sound"]'));dom.window.close();
 });
-for (const mode of ['wifi','ble'] as const) test(`${mode} paste advances without a connect button`, async t => {
+for (const mode of ['wifi','ble'] as const) test(`${mode} setup uses the appropriate direct connection flow`, async t => {
  const dom=new JSDOM('<div id="root"></div>',{url:'https://extension.test'});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const previous=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{configurable:true,value:{bluetooth:{},userAgent:"test"}});
