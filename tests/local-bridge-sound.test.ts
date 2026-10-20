@@ -58,3 +58,37 @@ test('signed modem bytes retain high-bit key, secret and address bytes', () => {
   assert.equal(decoded.psk, Buffer.alloc(32, 0xdf).toString('base64url'));
   assert.deepEqual(decoded.addresses, ['192.168.1.24:54211']);
 });
+
+test('microphone float frames decode a real pairing waveform and release capture', async () => {
+  const {default:factory}=await import('ggwave');
+  const modem=await factory({print:()=>{},printErr:()=>{}});
+  const params=modem.getDefaultParameters();params.sampleFormatOut=modem.SampleFormat.GGWAVE_SAMPLE_FORMAT_F32;
+  const tx=modem.init(params);
+  const waveform=(modem as any).encode(tx,packet,(modem as any).ProtocolId.GGWAVE_PROTOCOL_AUDIBLE_FAST,20);
+  const samples=new Float32Array(waveform.buffer.slice(waveform.byteOffset,waveform.byteOffset+waveform.byteLength));modem.free(tx);
+  const {startSoundPairing}=await import('../src/services/browser/soundPairing.ts');
+  const names=['navigator','AudioContext','AudioWorkletNode'] as const;
+  const originals=names.map(name=>Object.getOwnPropertyDescriptor(globalThis,name));
+  let capture:any;let stops=0;let closes=0;let ready=false;let notified=false;const codes:string[]=[];const errors:string[]=[];
+  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop:()=>stops++}]})}}});
+  Object.defineProperty(globalThis,'AudioContext',{configurable:true,value:class {
+    sampleRate=48000;destination={};audioWorklet={addModule:async()=>{}};
+    createMediaStreamSource(){return {connect(){},disconnect(){}};}
+    resume(){ready=true;return Promise.resolve();} close(){closes++;return Promise.resolve();}
+  }});
+  Object.defineProperty(globalThis,'AudioWorkletNode',{configurable:true,value:class {
+    port={onmessage:null as any,close(){}};constructor(){capture={port:this.port};}connect(){}disconnect(){}
+  }});
+  let stop: (()=>void)|undefined;
+  try {
+    stop=startSoundPairing(uri=>codes.push(uri),key=>errors.push(key),()=>{assert.equal(ready,true);notified=true;});
+    assert.equal(notified,false);
+    for(let i=0;i<200&&!ready&&!errors.length;i++)await new Promise(resolve=>setTimeout(resolve,5));
+    assert.equal(ready,true,errors.join(','));assert.equal(notified,true);
+    for(let offset=0;offset<samples.length&&capture.port.onmessage;offset+=1024)capture.port.onmessage({data:samples.slice(offset,offset+1024)});
+    for(let i=0;i<10&&capture.port.onmessage;i++)capture.port.onmessage({data:new Float32Array(1024)});
+    assert.deepEqual(errors,[]);assert.deepEqual(codes,[decodeSoundOffer(packet)]);assert.equal(stops,1);assert.equal(closes,1);
+  } finally {
+    stop?.();names.forEach((name,i)=>{if(originals[i])Object.defineProperty(globalThis,name,originals[i]!);else Reflect.deleteProperty(globalThis,name);});
+  }
+});

@@ -7,7 +7,7 @@ import { t } from '@services/i18n/i18n';
 import { startSoundPairing } from '@services/browser/soundPairing';
 export default function SoundPairingDialog({ onCode, onError, onClose }: { onCode: (code: string) => void; onError: (key: string) => void; onClose: () => void }) {
   const stop = useRef<(() => void) | null>(null);
-  const [listening, setListening] = useState(false);
+  const [state, setState] = useState<'idle' | 'starting' | 'listening'>('idle');
   useEffect(() => {
     const leave = () => { stop.current?.(); onClose(); };
     const hide = () => { if (document.hidden) leave(); };
@@ -17,7 +17,7 @@ export default function SoundPairingDialog({ onCode, onError, onClose }: { onCod
   return <Modal title={t('localBridge.sound')} onClose={onClose} maxWidth={480}>
     <Container gap={4}>
       <Text variant="secondary">{t('localBridge.soundHint')}</Text>
-      {listening ? <Text role="status">{t('localBridge.soundListening')}</Text> : <Button onClick={() => { setListening(true); stop.current = startSoundPairing(onCode, onError); }}>{t('localBridge.soundStart')}</Button>}
+      {state !== 'idle' ? <Text role="status">{t(state === 'starting' ? 'localBridge.soundPreparing' : 'localBridge.soundListening')}</Text> : <Button onClick={() => { setState('starting'); stop.current = startSoundPairing(onCode, onError, () => setState('listening')); }}>{t('localBridge.soundStart')}</Button>}
     </Container>
   </Modal>;
 }

@@ -3,8 +3,9 @@ import browser from '@lib/browser';
 import { decodeSoundOffer } from '@services/signing/localBridge/sound';
 
 /** Explicit, short-lived microphone capture. Samples never leave this document. */
-export function startSoundPairing(onCode: (uri: string) => void, onError: (key: string) => void): () => void {
+export function startSoundPairing(onCode: (uri: string) => void, onError: (key: string) => void, onReady: () => void = () => {}): () => void {
   let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   let stream: MediaStream | undefined;
   let context: AudioContext | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
@@ -21,7 +22,7 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
     if (modem && instance !== undefined) { modem.free(instance); instance = undefined; }
   };
   const fail = (key: string) => { if (!stopped) { stop(); onError(key); } };
-  const timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
+
   void (async () => {
     context = new AudioContext();
     // Start both requests while handling the user's click. No remote scripts or services.
@@ -54,6 +55,9 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
     source = context.createMediaStreamSource(acquired);
     source.connect(node); node.connect(context.destination);
     await context.resume();
+    if (stopped) return;
+    timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
+    onReady();
   })().catch(error => fail(error instanceof Error && error.name === 'NotAllowedError' ? 'localBridge.microphoneDenied' : 'localBridge.soundFailed'));
   return stop;
 }

@@ -5,6 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Pair a phone without first importing its public key: select a matching account automatically or create a temporary public-only account, with cleanup and previous-account restoration when phone signing is stopped.
+
+- Show microphone preparation before listening for sound pairing, and start the listening timeout only after capture is ready.
+
 - Pair Bluetooth phones directly through device selection and phone code confirmation, without scanning or pasting a pairing code.
 
 - Simplify local bridge pairing with inline camera/sound actions, automatic advancement after reading a code, and Back above the setup card.

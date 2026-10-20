@@ -35,8 +35,31 @@ it('accepts only exact dedicated extension document and rejects query/hash impos
  const p=await connect();p.send({type:'ping'});assert.equal(p.messages.at(-1).type,'pong');
  assert.equal((await bridge.localBridgeStatus()).connected,true);
 });
-it('refuses mismatched identities without selecting signer',async()=>{
- const p=port();p.send({type:'ready',pubkey:'a'.repeat(64)});await tick();assert.equal(p.messages.at(-1).type,'error');assert.equal(await bridge.isLocalBridgeSelected(),false);
+it('automatically creates a temporary phone account and restores the previous selection on stop',async()=>{
+ const phone='a'.repeat(64);const p=port();p.send({type:'ready',pubkey:phone});
+ for(let i=0;i<100 && !p.messages.some(m=>m.type==='ready'||m.type==='error');i++) await tick();
+ assert.equal(p.messages.at(-1).type,'ready');
+ const id=vault.getActiveAccountId()!;assert.notEqual(id,'a');
+ const account=vault.getDecryptedPayload().accounts.find(a=>a.id===id)!;
+ assert.equal(account.pubkey,phone);assert.equal(account.privkey,null);assert.equal(account.mnemonic,null);assert.equal(account.readOnly,true);
+ assert.equal((await browser.storage.sync.get('myPubkey')).myPubkey,phone);
+ p.close();assert.equal(await bridge.isLocalBridgeSelected(),true);
+ await bridge.disableLocalBridge();
+ assert.equal(vault.getActiveAccountId(),'a');assert.equal(vault.getAccountById(id),null);
+ assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
+ assert.equal((await browser.storage.sync.get('myPubkey')).myPubkey,pubkey);
+ assert.equal((await browser.storage.local.get('accounts')).accounts.length,1);
+});
+it('rejects malformed phone identities before creating accounts',async()=>{
+ const p=port();p.send({type:'ready',pubkey:'bad'});await tick();assert.equal(p.messages.at(-1).type,'error');assert.equal(vault.listAccounts().length,1);
+});
+it('selects an existing matching account without duplicating or deleting it',async()=>{
+ const phone='a'.repeat(64);const a={id:'phone',name:'Saved phone',pubkey:phone,type:'npub' as const,readOnly:true,createdAt:1};
+ await vault.addAccount({...a,privkey:null,mnemonic:null,nip46Config:null});
+ const {accounts}=await browser.storage.local.get('accounts');await browser.storage.local.set({accounts:[...accounts,a]});
+ const p=port();p.send({type:'ready',pubkey:phone});for(let i=0;i<100&&!p.messages.some(m=>m.type==='ready'||m.type==='error');i++)await tick();
+ assert.equal(p.messages.at(-1).type,'ready');assert.equal(vault.getActiveAccountId(),'phone');
+ await bridge.disableLocalBridge();assert.equal(vault.getActiveAccountId(),'a');assert.equal(vault.getAccountById('phone')?.name,'Saved phone');
 });
 it('verifies exact event and signature while preserving normal local permission denial',async()=>{
  const p=await connect();await permissions.save('example.com','signEvent',1,'deny','a');
@@ -87,7 +110,7 @@ it('promotes matching public-only account without importing any identity secret'
  await assert.rejects(handleSignEvent({kind:1,content:'no key',tags:[],created_at:1},'example.com'),/No private key/);
 });
 it('refuses no-vault pairing with setup guidance',async()=>{
- await vault.destroy();const p=port();p.send({type:'ready',pubkey});await tick();assert.match(p.messages.at(-1).error,/Set up an extension vault/);
+ await vault.destroy();const p=port();p.send({type:'ready',pubkey});await tick();assert.match(p.messages.at(-1).error,/Set up and unlock the extension vault/);
 });
 
 it('internal publishing and wallet authentication cannot silently use a local key',async()=>{
@@ -119,4 +142,48 @@ it('disconnect after a response resolves still rejects its undelivered result',a
  const pending=bridge.cryptoWithLocalBridge('nip44Decrypt',pubkey,'ciphertext',captureAccountSession(),'example.com');
  const req=p.messages.at(-1);p.send({type:'response',id:req.id,result:'plaintext'});p.close();
  await assert.rejects(pending,/session changed/);
+});
+
+it('reconnecting a temporary account preserves its ownership and original previous account',async()=>{
+ const phone='a'.repeat(64);const first=port();first.send({type:'ready',pubkey:phone});
+ for(let i=0;i<100&&!first.messages.some(m=>m.type==='ready'||m.type==='error');i++)await tick();
+ const id=vault.getActiveAccountId()!;
+ await vault.setActiveAccount('a');await browser.storage.local.set({activeAccountId:'a'});
+ const second=port();second.send({type:'ready',pubkey:phone});
+ for(let i=0;i<100&&!second.messages.some(m=>m.type==='ready'||m.type==='error');i++)await tick();
+ assert.equal(second.messages.at(-1).type,'ready');assert.equal(vault.getActiveAccountId(),id);
+ await bridge.disableLocalBridge();assert.equal(vault.getAccountById(id),null);assert.equal(vault.getActiveAccountId(),'a');
+});
+
+it('cancellation during temporary account persistence rolls back the new account',async()=>{
+ const original=browser.storage.local.set;let release!:()=>void;let writing!:()=>void;
+ const started=new Promise<void>(resolve=>{writing=resolve;});const held=new Promise<void>(resolve=>{release=resolve;});let intercepted=false;
+ browser.storage.local.set=async values=>{
+  if ('keyVault' in values&&!intercepted) {intercepted=true;writing();await held;}
+  return original(values);
+ };
+ try {
+  const p=port();p.send({type:'ready',pubkey:'a'.repeat(64)});await started;p.close();release();
+  for(let i=0;i<100&&!p.messages.some(m=>m.type==='error');i++)await tick();
+  assert.equal(p.messages.at(-1).type,'error');assert.equal(vault.listAccounts().length,1);
+  assert.equal(vault.getActiveAccountId(),'a');assert.equal((await browser.storage.local.get('localBridgePendingAccount')).localBridgePendingAccount,undefined);
+ } finally {release();browser.storage.local.set=original;}
+});
+
+it('lock during account creation defers cleanup until unlock without deadlocking it',async()=>{
+ const original=browser.storage.local.set;let release!:()=>void;let writing!:()=>void;
+ const started=new Promise<void>(resolve=>{writing=resolve;});const held=new Promise<void>(resolve=>{release=resolve;});let intercepted=false;
+ browser.storage.local.set=async values=>{
+  if ('keyVault' in values&&!intercepted) {intercepted=true;writing();await held;}
+  return original(values);
+ };
+ try {
+  const p=port();p.send({type:'ready',pubkey:'a'.repeat(64)});await started;vault.lock();release();
+  for(let i=0;i<100&&!p.messages.some(m=>m.type==='error');i++)await tick();
+  assert.equal(p.messages.at(-1).type,'error');
+  assert.equal(await vault.unlock('testpassword123'),true);
+  for(let i=0;i<100&&(await browser.storage.local.get('localBridgePendingAccount')).localBridgePendingAccount;i++)await tick();
+  assert.equal(vault.listAccounts().length,1);assert.equal(vault.getActiveAccountId(),'a');
+  assert.equal((await browser.storage.local.get('localBridgePendingAccount')).localBridgePendingAccount,undefined);
+ } finally {release();browser.storage.local.set=original;}
 });
