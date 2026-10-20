@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Restyle the experimental local bridge page with the animated background, branded header, setup card, and version footer.
+
 - Surface invalid external event signatures and integrity failures in rejection notices and activity; verify signed website inputs before approval.
 
 - Add an experimental local network bridge menu with Wi-Fi and Bluetooth choices, phone-side signing, authenticated pairing and explicit disconnect behavior.

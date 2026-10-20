@@ -1,3 +1,7 @@
+import TopoBg from '@components/TopoBg';
+import Card from '@components/Card';
+import AnimatedWotLogo from '@components/AnimatedWotLogo';
+import { version } from '../../../package.json';
 import { useEffect, useRef, useState } from 'react';
 import browser from '@lib/browser.ts';
 import { randomBytes } from '@lib/crypto/utils.ts';
@@ -84,8 +88,16 @@ export default function LocalBridgeApp() {
     catch (e) { setError(e instanceof Error ? e.message : t('localBridge.failed')); }
   };
   const bluetoothAvailable = 'bluetooth' in navigator;
-  return <main className="min-h-screen bg-surface text-heading py-12 px-8">
-    <Container gap={6} className="max-w-[540px] mx-auto">
+  return <TopoBg className="min-h-screen flex flex-col text-heading">
+    <header className="w-full max-w-[1120px] mx-auto px-8 py-7 sm:px-12">
+      <Container variant="row" gap={4} className="items-center">
+        <span aria-hidden="true" className="text-brand"><AnimatedWotLogo size={40} /></span>
+        <Text className="font-semibold text-lg">Nostr WoT</Text>
+      </Container>
+    </header>
+    <main className="flex-1 flex items-center justify-center px-6 py-8 sm:px-12">
+    <Card className="w-full max-w-[540px] mb-0 p-8 sm:p-12">
+    <Container gap={6}>
       <Heading>{t('localBridge.title')}</Heading>
       <Text variant="secondary">{t('localBridge.intro')}</Text>
       {!mode ? <>
@@ -108,5 +120,10 @@ export default function LocalBridgeApp() {
       {selected && <ButtonSecondary onClick={() => void disable()}>{t('localBridge.disable')}</ButtonSecondary>}
       {error && <Text className="text-error" role="alert">{error}</Text>}
     </Container>
-  </main>;
+    </Card>
+    </main>
+    <footer className="px-8 py-7 text-center">
+      <Text variant="hint">Nostr WoT · v{version}</Text>
+    </footer>
+  </TopoBg>;
 }
