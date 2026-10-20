@@ -2,7 +2,7 @@ import type { SafeAccount } from './types.ts';
 
 /** Minimal public account projection for UI surfaces; never includes secret fields. */
 export type Account = Pick<SafeAccount, 'id' | 'pubkey'>
-  & Partial<Pick<SafeAccount, 'name' | 'readOnly' | 'type' | 'derivationPath' | 'derivationIndex'>>;
+  & Partial<Pick<SafeAccount, 'name' | 'readOnly' | 'type' | 'derivationPath' | 'derivationIndex' | 'networkSession'>>;
 
 /** Copy only documented public fields; nested credentials and future fields stay private. */
 export function toSafeAccount(account: SafeAccount): SafeAccount {

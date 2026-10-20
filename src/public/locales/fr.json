@@ -1414,7 +1414,7 @@
   "localBridge.bleHint": "Connectez un téléphone à proximité sans Wi-Fi partagé.",
   "localBridge.unsupported": "Ce navigateur ne prend pas en charge Web Bluetooth. Utilisez le Wi-Fi ou un navigateur Chromium compatible.",
   "localBridge.instructions": "Sur le téléphone, ouvrez Connexions → Réseau local, choisissez le même transport, démarrez la passerelle et affichez un code. Collez-le ici et approuvez sur le téléphone.",
-  "localBridge.accountHint": "Déverrouillez l’extension. L’association sélectionne le compte du téléphone ou crée un compte temporaire avec sa clé publique uniquement. Votre clé privée reste sur le téléphone.",
+  "localBridge.accountHint": "L’association crée ou sélectionne automatiquement le compte du téléphone. Aucun déverrouillage du coffre n’est nécessaire ; votre clé privée reste sur le téléphone.",
   "localBridge.code": "Code de jumelage",
   "localBridge.connect": "Connecter le téléphone",
   "localBridge.connecting": "Connexion — vérifiez le téléphone",

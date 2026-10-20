@@ -1414,7 +1414,7 @@
   "localBridge.bleHint": "Conecta un teléfono cercano sin compartir Wi-Fi.",
   "localBridge.unsupported": "Este navegador no admite Web Bluetooth. Usa Wi-Fi o un navegador Chromium compatible.",
   "localBridge.instructions": "En el teléfono, abre Conexiones → Red local, elige el mismo transporte, inicia el puente y muestra un código. Pégalo aquí y aprueba en el teléfono.",
-  "localBridge.accountHint": "Desbloquea la extensión. El emparejamiento selecciona la cuenta de tu teléfono o crea una cuenta temporal solo con su clave pública. Tu clave privada permanece en el teléfono.",
+  "localBridge.accountHint": "El emparejamiento crea o selecciona la cuenta del teléfono automáticamente. No necesitas desbloquear la bóveda; tu clave privada permanece en el teléfono.",
   "localBridge.code": "Código de vinculación",
   "localBridge.connect": "Conectar firmador",
   "localBridge.connecting": "Conectando — revisa tu teléfono",

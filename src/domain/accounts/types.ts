@@ -40,6 +40,8 @@ export interface Account {
   nip46Config: Nip46Config | null;
   readOnly: boolean;
   createdAt: number;
+  /** Public-only phone session, never stored in the encrypted vault. */
+  networkSession?: boolean;
   derivationIndex?: number;
   /** Canonical BIP-32 path required to restore this identity from its seed. */
   derivationPath?: string;
@@ -50,7 +52,7 @@ export interface Account {
 
 /** Explicit public metadata allowlist. New Account fields are private by default. */
 export type SafeAccount = Pick<Account,
-  'id' | 'name' | 'type' | 'pubkey' | 'readOnly' | 'createdAt' | 'derivationIndex' | 'derivationPath'>;
+  'id' | 'name' | 'type' | 'pubkey' | 'readOnly' | 'createdAt' | 'derivationIndex' | 'derivationPath' | 'networkSession'>;
 
 /** Background-only wallet capability. Never return this through a UI/page RPC. */
 export type SafeAccountWithWallet = SafeAccount & Pick<Account, 'walletConfig'>;

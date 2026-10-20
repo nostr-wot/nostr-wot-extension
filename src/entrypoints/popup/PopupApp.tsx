@@ -104,7 +104,7 @@ function PopupInner() {
   }, []);
 
   // Empty-account setup does not require unlocking; background operations still verify the vault.
-  const vaultLockScreen = account.accounts?.length !== 0 && vault.exists && vault.locked && vault.autoLockEnabled;
+  const vaultLockScreen = !account.active?.networkSession && account.accounts?.length !== 0 && vault.exists && vault.locked && vault.autoLockEnabled;
 
   useEffect(() => {
     if (vaultLockScreen && (activeOverlay === 'activity' || activeOverlay === 'menu')) setActiveOverlay(null);

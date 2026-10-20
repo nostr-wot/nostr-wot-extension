@@ -1414,7 +1414,7 @@
   "localBridge.bleHint": "Verbinde ein nahes Handy ohne gemeinsames WLAN.",
   "localBridge.unsupported": "Dieser Browser unterstützt Web Bluetooth nicht. Nutze WLAN oder einen unterstützten Chromium-Browser.",
   "localBridge.instructions": "Öffne am Handy Verbindungen → Lokales Netzwerk, wähle denselben Transport, starte die Verbindung und zeige einen Kopplungscode. Füge ihn hier ein und bestätige am Handy.",
-  "localBridge.accountHint": "Entsperre die Erweiterung. Beim Koppeln wird dein Telefonkonto ausgewählt oder ein temporäres Konto nur mit dem öffentlichen Schlüssel erstellt. Dein privater Schlüssel bleibt auf dem Telefon.",
+  "localBridge.accountHint": "Beim Koppeln wird das Telefonkonto automatisch erstellt oder ausgewählt. Der Tresor muss nicht entsperrt werden; dein privater Schlüssel bleibt auf dem Telefon.",
   "localBridge.code": "Kopplungscode",
   "localBridge.connect": "Handy-Signer verbinden",
   "localBridge.connecting": "Verbindung wird hergestellt — Handy prüfen",

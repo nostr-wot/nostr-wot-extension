@@ -13,7 +13,7 @@ import { SIGNER_REQUEST_TIMEOUT_MS, MAX_PENDING_PER_ORIGIN, MAX_IN_FLIGHT_PER_OR
 import { VAULT_POLL_INTERVAL_MS } from '@constants/vault.ts';
 import { getActiveAccountInfo, getActivePublicKey, clearGetPubkeyCooldown } from './identity.ts';
 import { handleNip46Request } from './remoteSigner.ts';
-import { assertAccountSession, type AccountSession } from './accountSession.ts';
+import { assertAccountSession, captureAccountSession, type AccountSession } from './accountSession.ts';
 
 // In-memory resolvers for pending requests (keyed by request ID)
 const _pendingResolvers: Map<string, (decision: RequestDecision) => void> = new Map();
@@ -257,7 +257,7 @@ export async function resolveRequest(id: string, decision: RequestDecision): Pro
     const revision = vault.getSessionRevision();
     const request = (await getPending()).find(request => request.id === id);
     if (!request?.authentication || !request.accountId || !_pendingResolvers.has(id)) throw new Error('Authentication request no longer pending');
-    const session = {accountId:request.accountId,revision};
+    const session = captureAccountSession(request.accountId, revision);
     const pubkey = await getActivePublicKey();
     if (!requestMatchesAccount(request, pubkey ? {id:session.accountId,pubkey} : null)) throw new Error('Account switched');
     await saveAuthenticationGrant(session.accountId, request.origin, request.authentication, 'site', () => {

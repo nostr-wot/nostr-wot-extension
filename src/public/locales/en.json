@@ -1414,7 +1414,7 @@
   "localBridge.bleHint": "Connect to a nearby phone without shared Wi-Fi.",
   "localBridge.unsupported": "This browser does not support Web Bluetooth. Use Wi-Fi or a supported Chromium browser.",
   "localBridge.instructions": "On your phone, open Connections → Local network, choose the same transport, start the bridge and show a pairing code. Paste that code here, then approve on your phone.",
-  "localBridge.accountHint": "Unlock the extension. Pairing automatically selects your phone account or creates a temporary public-only account. Your private key stays on the phone.",
+  "localBridge.accountHint": "Pairing creates or selects a phone account automatically. No vault unlock is needed; your private key stays on the phone.",
   "localBridge.code": "Pairing code",
   "localBridge.connect": "Connect phone signer",
   "localBridge.connecting": "Connecting — check your phone",

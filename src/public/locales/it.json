@@ -1414,7 +1414,7 @@
   "localBridge.bleHint": "Collega un telefono vicino senza Wi-Fi condiviso.",
   "localBridge.unsupported": "Questo browser non supporta Web Bluetooth. Usa Wi-Fi o un browser Chromium compatibile.",
   "localBridge.instructions": "Sul telefono, apri Connessioni → Rete locale, scegli lo stesso trasporto, avvia il bridge e mostra un codice. Incollalo qui e approva sul telefono.",
-  "localBridge.accountHint": "Sblocca l’estensione. L’abbinamento seleziona l’account del telefono o crea un account temporaneo con la sola chiave pubblica. La chiave privata resta sul telefono.",
+  "localBridge.accountHint": "L’abbinamento crea o seleziona automaticamente l’account del telefono. Non serve sbloccare il vault; la chiave privata resta sul telefono.",
   "localBridge.code": "Codice di abbinamento",
   "localBridge.connect": "Collega firmatario",
   "localBridge.connecting": "Connessione — controlla il telefono",

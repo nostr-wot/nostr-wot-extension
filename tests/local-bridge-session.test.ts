@@ -1,3 +1,4 @@
+import {handlers as vaultHandlers} from '../src/services/background/vault-handlers.ts';
 import {handlers as publishing} from '../src/services/background/publish-handlers.ts';
 import {createNip98SignFn} from '../src/services/background/wallet-handlers.ts';
 import {beforeEach,after,it} from 'node:test';
@@ -5,7 +6,7 @@ import assert from 'node:assert/strict';
 import browser, {resetMockStorage} from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
 import * as bridge from '../src/services/signing/localBridgeSession.ts';
-import {captureAccountSession} from '../src/services/signing/accountSession.ts';
+import {captureAccountSession,assertAccountSession} from '../src/services/signing/accountSession.ts';
 import {signEvent} from '../src/lib/crypto/nip01.ts';
 import {hexToBytes} from '../src/lib/crypto/utils.ts';
 import {handleSignEvent,handleNip44Encrypt} from '../src/services/signing/signer.ts';
@@ -109,8 +110,55 @@ it('promotes matching public-only account without importing any identity secret'
  await bridge.disableLocalBridge();
  await assert.rejects(handleSignEvent({kind:1,content:'no key',tags:[],created_at:1},'example.com'),/No private key/);
 });
-it('refuses no-vault pairing with setup guidance',async()=>{
- await vault.destroy();const p=port();p.send({type:'ready',pubkey});await tick();assert.match(p.messages.at(-1).error,/Set up and unlock the extension vault/);
+it('pairs and signs without creating or unlocking a vault',async()=>{
+ await vault.destroy();await browser.storage.local.set({accounts:[],activeAccountId:null});
+ const p=await connect();
+ const {activeAccountId:id,accounts}=await browser.storage.local.get(['activeAccountId','accounts']);
+ assert.equal(accounts.length,1);assert.equal(accounts[0].networkSession,true);
+ assert.equal(await vault.exists(),false);assert.equal(vault.isLocked(),true);
+ await permissions.save('example.com','signEvent',1,'allow',id);
+ const signing=handleSignEvent({kind:1,content:'phone only',tags:[],created_at:1},'example.com');await tick();
+ const req=p.messages.at(-1);assert.equal(req.type,'request');
+ const signed=await signEvent(JSON.parse(req.params[0]),hexToBytes(key));p.send({type:'response',id:req.id,result:JSON.stringify(signed)});
+ assert.deepEqual(await signing,signed);
+ const session=captureAccountSession(id);assertAccountSession(session);
+ assert.throws(()=>assertAccountSession({...session,revision:session.revision+1}),/Phone signer session changed/);
+ assert.throws(()=>assertAccountSession({accountId:id,revision:session.revision}),/Vault is locked/);
+ p.close();assert.throws(()=>assertAccountSession(session),/Phone signer session changed/);
+ await bridge.disableLocalBridge();
+ assert.deepEqual((await browser.storage.local.get('accounts')).accounts,[]);
+ assert.equal(await vault.exists(),false);
+});
+it('locked-vault pairing leaves ciphertext untouched and restores the saved account on stop',async()=>{
+ const before=(await browser.storage.local.get('keyVault')).keyVault;
+ vault.lock();const p=await connect();
+ const {activeAccountId:id}=await browser.storage.local.get('activeAccountId');
+ assert.notEqual(id,'a');assert.equal(vault.isLocked(),true);
+ assert.equal((await bridge.localBridgeStatus()).connected,true);
+ assert.deepEqual((await browser.storage.local.get('keyVault')).keyVault,before);
+ await permissions.save('example.com','signEvent',1,'deny',id);
+ await assert.rejects(handleSignEvent({kind:1,content:'deny',tags:[],created_at:1},'example.com'),/Permission denied/);
+ assert.equal(p.messages.some(m=>m.type==='request'),false);
+ const session=captureAccountSession(id);
+ await browser.storage.local.set({activeAccountId:'a'});
+ assert.throws(()=>assertAccountSession(session),/Phone signer session changed/);
+ await browser.storage.local.set({activeAccountId:id});
+ await bridge.disableLocalBridge();
+ assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
+ assert.equal(vault.isLocked(),true);
+ assert.deepEqual((await browser.storage.local.get('keyVault')).keyVault,before);
+});
+it('locked-vault network signing verifies signatures and invalidates requests on lock',async()=>{
+ vault.lock();const p=await connect();const {activeAccountId:id}=await browser.storage.local.get('activeAccountId');
+ await permissions.save('example.com','signEvent',1,'allow',id);
+ const signing=handleSignEvent({kind:1,content:'bad signature',tags:[],created_at:1},'example.com');
+ const rejected=assert.rejects(signing,/signature|Invalid|match/i);await tick();
+ const req=p.messages.at(-1);const signed=await signEvent(JSON.parse(req.params[0]),hexToBytes(key));
+ p.send({type:'response',id:req.id,result:JSON.stringify({...signed,sig:'0'.repeat(128)})});await rejected;
+ await permissions.save('example.com','nip44Encrypt',null,'allow',id);
+ const encrypt=handleNip44Encrypt(pubkey,'hello','example.com');
+ const closed=assert.rejects(encrypt,/session changed|vault session/i);await tick();vault.lock();await closed;
+ await bridge.disableLocalBridge();
 });
 
 it('internal publishing and wallet authentication cannot silently use a local key',async()=>{
@@ -185,5 +233,43 @@ it('lock during account creation defers cleanup until unlock without deadlocking
   for(let i=0;i<100&&(await browser.storage.local.get('localBridgePendingAccount')).localBridgePendingAccount;i++)await tick();
   assert.equal(vault.listAccounts().length,1);assert.equal(vault.getActiveAccountId(),'a');
   assert.equal((await browser.storage.local.get('localBridgePendingAccount')).localBridgePendingAccount,undefined);
+ } finally {release();browser.storage.local.set=original;}
+});
+
+
+it('a detached account stays outside the vault after unlock and reconnect, then restores local signing',async()=>{
+ vault.lock();const first=await connect();const {activeAccountId:id}=await browser.storage.local.get('activeAccountId');
+ assert.equal(await vaultHandlers.get('vault_unlock')!({password:'testpassword123'}),true);
+ assert.equal((await bridge.localBridgeStatus()).connected,false);
+ const second=await connect();
+ assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,id);
+ assert.equal(vault.getAccountById(id),null);
+ assert.equal(vault.listAccounts().length,1);
+ first.close();assert.equal((await bridge.localBridgeStatus()).connected,true);
+ await bridge.disableLocalBridge();
+ assert.equal(vault.getActiveAccountId(),'a');assert.equal(vault.getAccountById(id),null);
+ await permissions.save('example.com','signEvent',1,'allow','a');
+ const signed=await handleSignEvent({kind:1,content:'local restored',tags:[],created_at:1},'example.com');
+ assert.equal(signed.pubkey,pubkey);assert.equal(second.messages.some(m=>m.type==='request'),false);
+});
+it('detached network encryption returns only the live phone response and stop removes grants',async()=>{
+ await permissions.setUseGlobalDefaults(false);
+ vault.lock();const p=await connect();const {activeAccountId:id}=await browser.storage.local.get('activeAccountId');
+ await permissions.save('example.com','nip44Encrypt',null,'allow',id);
+ const encrypted=handleNip44Encrypt(pubkey,'hello','example.com');await tick();
+ const req=p.messages.at(-1);assert.equal(req.method,'nip44_encrypt');
+ p.send({type:'response',id:req.id,result:'phone ciphertext'});assert.equal(await encrypted,'phone ciphertext');
+ await bridge.disableLocalBridge();
+ assert.notEqual(await permissions.check('example.com','nip44Encrypt',undefined,id),'allow');
+});
+it('disconnect during detached metadata persistence removes the partial account',async()=>{
+ vault.lock();const original=browser.storage.local.set;let release!:()=>void;let writing!:()=>void;
+ const started=new Promise<void>(resolve=>{writing=resolve;});const held=new Promise<void>(resolve=>{release=resolve;});let intercepted=false;
+ browser.storage.local.set=async values=>{if ('accounts' in values&&!intercepted) {intercepted=true;writing();await held;}return original(values);};
+ try {
+  const p=port();p.send({type:'ready',pubkey});await started;p.close();release();
+  for(let i=0;i<100&&!p.messages.some(m=>m.type==='error');i++)await tick();
+  assert.equal(p.messages.at(-1).type,'error');assert.equal((await browser.storage.local.get('accounts')).accounts.length,1);
+  assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');assert.equal(vault.isLocked(),true);
  } finally {release();browser.storage.local.set=original;}
 });

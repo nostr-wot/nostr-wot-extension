@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Pair a phone over Bluetooth or Wi-Fi without unlocking or creating an extension vault, using a temporary public-only network account.
+
 - Explain when Bluetooth pairing is closed or busy instead of incorrectly asking users to update the phone app.
 
 - Label accounts using the local phone signer as Network (Red in Spanish), instead of Read-only, in the header and account picker.

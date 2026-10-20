@@ -148,7 +148,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     throw new Error('Event author does not match active account');
   }
 
-  if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
+  if (!(await vault.exists()) && accountType !== 'nip46' && !(accountId && await isLocalBridgeSelected(accountId))) throw new Error('No signing key available');
   const session = captureAccountSession(accountId ?? vault.getActiveAccountId(), revision);
 
   // Local permissions apply to ALL account types: an explicit per-origin 'deny'
@@ -303,7 +303,7 @@ async function handleCryptoRequest(
   const revision = vault.getSessionRevision();
   const { accountId, accountType } = await getActiveAccountInfo();
 
-  if (!(await vault.exists()) && accountType !== 'nip46') throw new Error('No signing key available');
+  if (!(await vault.exists()) && accountType !== 'nip46' && !(accountId && await isLocalBridgeSelected(accountId))) throw new Error('No signing key available');
   const session = captureAccountSession(accountId ?? vault.getActiveAccountId(), revision);
 
   // Local permissions apply to ALL account types: an explicit per-origin 'deny'
