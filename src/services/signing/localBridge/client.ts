@@ -158,7 +158,7 @@ export class LocalBridgeClient {
       clearTimeout(timer);
     }
   }
-  request(method: string, params: string[]): Promise<string> {
+  request(method: string, params: string[], site?: string): Promise<string> {
     if (this.closed || !this.keys) return Promise.reject(new Error('Local signer is not connected'));
     if (this.pending.size >= 32) return Promise.reject(new Error('Too many pending local signer requests'));
     const seq = ++this.seq,
@@ -169,7 +169,7 @@ export class LocalBridgeClient {
     }
     let frame: string;
     try {
-      const payload = nip44.encrypt(JSON.stringify({ id, method, params }), this.keys.payload);
+      const payload = nip44.encrypt(JSON.stringify({ id, method, params, ...(site ? { site } : {}) }), this.keys.payload);
       frame = JSON.stringify({ v: 2, t: 'req', seq, payload, mac: mac(this.keys.mac, transcript('req', seq, payload)) });
       if (utf8.encode(frame).length > MAX_FRAME_BYTES) throw new Error('Local signer request too large');
     } catch (error) {

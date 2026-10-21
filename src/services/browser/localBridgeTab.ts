@@ -5,7 +5,7 @@ export interface BridgeTabPort {
   onMessage: { addListener(fn: (message: unknown) => void): void; removeListener(fn: (message: unknown) => void): void };
   onDisconnect: { addListener(fn: () => void): void; removeListener(fn: () => void): void };
 }
-export interface BridgeTabClient { request(method: string, params: string[]): Promise<string>; close(): void; onClose?(handler: (error: Error) => void): () => void }
+export interface BridgeTabClient { request(method: string, params: string[], site?: string): Promise<string>; close(): void; onClose?(handler: (error: Error) => void): () => void }
 const METHODS = new Set(['sign_event', 'nip04_encrypt', 'nip04_decrypt', 'nip44_encrypt', 'nip44_decrypt']);
 
 export function attachBridgeTab(client: BridgeTabClient, port: BridgeTabPort, pubkey: string, onClosed: (reason: string) => void): { ready: Promise<void>; close: () => void } {
@@ -48,7 +48,7 @@ export function attachBridgeTab(client: BridgeTabClient, port: BridgeTabPort, pu
       reply({ error: 'Invalid or busy bridge request' }); return;
     }
     pending.add(id);
-    void client.request(data.method, data.params as string[])
+    void client.request(data.method, data.params as string[], typeof data.origin === 'string' ? data.origin : undefined)
       .then((result) => reply({ result }), (error: unknown) => reply({ error: error instanceof Error ? error.message : 'Phone refused the request' }))
       .finally(() => pending.delete(id));
   }

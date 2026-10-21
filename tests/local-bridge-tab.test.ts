@@ -14,7 +14,7 @@ function fixture() {
     onMessage: { addListener: (fn) => { messages.add(fn); }, removeListener: (fn) => { messages.delete(fn); } },
     onDisconnect: { addListener: (fn) => { disconnects.add(fn); }, removeListener: (fn) => { disconnects.delete(fn); } },
   };
-  const client = { request: async (method: string, params: string[]) => { calls.push([method, params]); return 'signed'; }, close: () => { clientClosed = true; }, onClose: (fn: (error: Error) => void) => { deviceClosed = fn; return () => { deviceClosed = undefined; }; } };
+  const client = { request: async (method: string, params: string[], site?: string) => { calls.push(site ? [method, params, site] : [method, params]); return 'signed'; }, close: () => { clientClosed = true; }, onClose: (fn: (error: Error) => void) => { deviceClosed = fn; return () => { deviceClosed = undefined; }; } };
   const link = attachBridgeTab(client, port, 'a'.repeat(64), (reason) => { closes.push(reason); });
   return { link, sent, calls, closes, emit: (msg: unknown) => { for (const handler of messages) handler(msg); }, drop: () => { for (const handler of disconnects) handler(); }, radioDrop: () => deviceClosed?.(new Error('Radio lost')), closed: () => clientClosed };
 }
@@ -57,4 +57,13 @@ test('radio loss updates the document and disconnects the extension broker immed
   assert.ok(f.closed());
   f.link.close();
   assert.equal(f.closes.length, 1);
+});
+
+test('browser-derived site accompanies requests to the phone',async()=>{
+ const f=fixture();try {
+  f.emit({type:'ready',pubkey:'a'.repeat(64)});await f.link.ready;
+  f.emit({type:'request',id:'site',method:'sign_event',params:['{}'],origin:'https://site.test'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(f.calls,[['sign_event',['{}'],'https://site.test']]);
+ }finally{f.link.close();}
 });

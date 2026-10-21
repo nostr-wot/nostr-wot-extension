@@ -5,6 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Use the phone’s advertised Bluetooth packet size to reduce request round trips, with a safe fallback for older builds and no replay after a failed write.
+
+- Forward the requesting site inside encrypted bridge requests so the phone can offer reuse of site-specific decisions across connections.
+
 - Forward all local-bridge signing and encryption approvals to the phone, including authentication and following-list events, before extension request-permission rules.
 
 - Combine closing the local bridge and stopping phone signing into one Disconnect action.

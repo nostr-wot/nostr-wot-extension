@@ -3,6 +3,7 @@ import { MAX_FRAME_BYTES, utf8, validateAddress } from './protocol';
 export const BLE_SERVICE_UUID = '8f93b5a0-6d7c-4d9f-8b01-9d7a6b0e1200';
 export const BLE_RX_UUID = '8f93b5a0-6d7c-4d9f-8b01-9d7a6b0e1201';
 export const BLE_TX_UUID = '8f93b5a0-6d7c-4d9f-8b01-9d7a6b0e1202';
+export const BLE_CAPABILITIES_UUID = '8f93b5a0-6d7c-4d9f-8b01-9d7a6b0e1203';
 class Listeners {
   messages = new Set<(text: string) => void>();
   closes = new Set<(error?: Error) => void>();
@@ -110,6 +111,7 @@ export class BleFrameDecoder {
 export interface BleCharacteristic {
   value?: DataView;
   startNotifications(): Promise<unknown>;
+  readValue?(): Promise<DataView>;
   writeValueWithResponse(value: Uint8Array): Promise<unknown>;
   addEventListener(type: string, handler: () => void): void;
   removeEventListener(type: string, handler: () => void): void;
@@ -134,7 +136,11 @@ export function createBleTransport(port?: BluetoothPort): BridgeTransport {
     tx: BleCharacteristic | undefined,
     stopped = false;
   let queue = Promise.resolve();
-  const disconnected = () => events.emitClose(new Error('Bluetooth signer disconnected'));
+  let writeSize = 20;
+  const disconnected = () => {
+    stopped = true;
+    events.emitClose(new Error('Bluetooth signer disconnected'));
+  };
   const notification = () => {
     try {
       const value = tx?.value;
@@ -174,6 +180,18 @@ export function createBleTransport(port?: BluetoothPort): BridgeTransport {
         if (stopped) throw new Error('Bluetooth connection cancelled');
         tx.addEventListener('characteristicvaluechanged', notification);
         await tx.startNotifications();
+        // Web Bluetooth does not expose the negotiated ATT MTU. New phones
+        // advertise their safe write size; older phones retain 20-byte writes.
+        try {
+          const capability = await service.getCharacteristic(BLE_CAPABILITIES_UUID);
+          const value = await capability.readValue?.();
+          if (value?.byteLength === 3 && value.getUint8(0) === 1) {
+            const size = value.getUint16(1, false);
+            if (size >= 20 && size <= 512) writeSize = size;
+          }
+        } catch {
+          // Optional capability: absent on previously installed phone builds.
+        }
         if (stopped) throw new Error('Bluetooth connection cancelled');
       } catch (error) {
         close();
@@ -188,13 +206,19 @@ export function createBleTransport(port?: BluetoothPort): BridgeTransport {
         const packet = new Uint8Array(body.length + 4);
         new DataView(packet.buffer).setUint32(0, body.length, false);
         packet.set(body, 4);
-        for (let offset = 0; offset < packet.length; offset += 20) {
+        for (let offset = 0; offset < packet.length; offset += writeSize) {
           if (stopped) throw new Error('Bluetooth disconnected');
-          await rx.writeValueWithResponse(packet.slice(offset, offset + 20));
+          await rx.writeValueWithResponse(packet.slice(offset, offset + writeSize));
         }
       });
-      queue = operation.catch(() => {});
-      return operation;
+      const guarded = operation.catch((error: unknown) => {
+        // A failed write may already have reached the phone. Never resend it or
+        // append another frame to a potentially incomplete byte stream.
+        close();
+        throw error;
+      });
+      queue = guarded.catch(() => {});
+      return guarded;
     },
   };
 }

@@ -426,3 +426,65 @@ test('Bluetooth discovery distinguishes closed pairing from outdated phone softw
     assert.equal(device.closes.size, 0);
   }
 });
+
+function sizedBluetooth(capability?: number[], failWrite = false) {
+  const writes: Uint8Array[] = [];
+  let active = 0, maxActive = 0, disconnected = false;
+  const rx: BleCharacteristic = {
+    async startNotifications() {},
+    async writeValueWithResponse(value) {
+      active++; maxActive = Math.max(active, maxActive);
+      await Promise.resolve();
+      writes.push(value); active--;
+      if (failWrite) throw new Error('Write failed');
+    },
+    addEventListener() {}, removeEventListener() {},
+  };
+  const transport = createBleTransport({ async requestDevice() { return {
+    gatt: {
+      async connect() { return { async getPrimaryService() { return {
+        async getCharacteristic(uuid: string) {
+          if (uuid.endsWith('1203')) {
+            if (!capability) throw new Error('Characteristic not found');
+            return { ...rx, async readValue() { return new DataView(Uint8Array.from(capability).buffer); } };
+          }
+          return rx;
+        },
+      }; } }; },
+      disconnect() { disconnected = true; },
+    }, addEventListener() {}, removeEventListener() {},
+  }; } });
+  return { transport, writes, maxActive: () => maxActive, disconnected: () => disconnected };
+}
+
+test('BLE uses the phone packet size and preserves serialized, complete frames', async () => {
+  const f = sizedBluetooth([1, 0, 244]);
+  await f.transport.open();
+  const frames = ['x'.repeat(2048), 'second'];
+  await Promise.all(frames.map(frame => f.transport.send(frame)));
+  assert.equal(f.writes.length, 10, '2 KiB uses nine writes instead of 103');
+  assert.equal(f.writes[0].length, 244);
+  assert.equal(f.maxActive(), 1);
+  const decoder = new BleFrameDecoder();
+  assert.deepEqual(f.writes.flatMap(bytes => decoder.push(bytes)), frames);
+  f.transport.close();
+});
+
+test('BLE falls back safely for old phones and malformed capabilities', async () => {
+  for (const value of [undefined, [], [1, 0], [2, 0, 244], [1, 0, 19], [1, 2, 1], [1, 255, 255]]) {
+    const f = sizedBluetooth(value);
+    await f.transport.open(); await f.transport.send('x'.repeat(41));
+    assert.deepEqual(f.writes.map(bytes => bytes.length), [20, 20, 5]);
+    f.transport.close();
+  }
+});
+
+test('BLE failed write closes stream and never retries or sends queued frames', async () => {
+  const f = sizedBluetooth([1, 0, 244], true);
+  await f.transport.open();
+  const first = assert.rejects(f.transport.send('x'.repeat(500)), /Write failed/);
+  const second = assert.rejects(f.transport.send('must not send'), /not connected/);
+  await Promise.all([first, second]);
+  assert.equal(f.writes.length, 1);
+  assert.equal(f.disconnected(), true);
+});

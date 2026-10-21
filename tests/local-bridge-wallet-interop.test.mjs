@@ -31,12 +31,17 @@ test('extension interoperates with real wallet pairing, signing, encryption and 
       },
     },
   });
+  const { LanSitePermissions } = await load('src/services/transports/lan/sitePermissions.ts');
   const { account } = generateAccount();
   await signer.accounts.createVault('interop password', account, 0);
   // Explicitly approve fixture requests through the real wallet approval port.
+  let sitePrompts = 0;
   const stopApproval = signer.approval.subscribe(() => {
-    for (const prompt of signer.approval.pending())
-      signer.approval.decide(prompt.request.origin, prompt.request.id, { allow: true, remember: false });
+    for (const prompt of signer.approval.pending()) {
+      const site = prompt.request.origin.identifier.startsWith('site:');
+      if(site)sitePrompts++;
+      signer.approval.decide(prompt.request.origin, prompt.request.id, { allow: true, remember: site });
+    }
   });
   let accept;
   let onText;
@@ -78,6 +83,7 @@ test('extension interoperates with real wallet pairing, signing, encryption and 
   };
   const session = new LanSession({
     core: signer.core,
+    sites: new LanSitePermissions({activeAccount:()=>signer.index.identityPort.getActiveAccount(),permissions:signer.permissions,approval:signer.approval}),
     permissions: signer.permissions,
     peers: new PeerStore(new MemoryStore()),
     hostSecretKey: async () => '11'.repeat(32),
@@ -105,6 +111,11 @@ test('extension interoperates with real wallet pairing, signing, encryption and 
     );
     assert(verifyEvent(event));
     assert.equal(event.pubkey, account.pubkey);
+    for(let i=0;i<2;i++){
+      const scoped=JSON.parse(await client.request('sign_event',[JSON.stringify({kind:30078,created_at:Math.floor(Date.now()/1000),tags:[['d','settings']],content:'site data'})],'https://site.test'));
+      assert(verifyEvent(scoped));
+    }
+    assert.equal(sitePrompts,1,'remembered site approval is reused within the connection');
     const recipient = getPublicKey(new Uint8Array(32).fill(0x33));
     for (const scheme of ['nip04', 'nip44']) {
       const cipher = await client.request(`${scheme}_encrypt`, [recipient, 'local bridge secret']);
