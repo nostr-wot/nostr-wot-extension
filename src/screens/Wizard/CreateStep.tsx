@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
@@ -9,6 +9,7 @@ import IconEye from '@assets/IconEye.tsx';
 import IconCopy from '@assets/IconCopy.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
 import IconLock from '@assets/IconLock.tsx';
+import IconDice from '@assets/IconDice.tsx';
 import Button from '@components/Button';
 import ActionTile from '@components/ActionTile';
 import Card from '@components/Card';
@@ -19,6 +20,8 @@ import Heading from '@components/Heading';
 import Container from '@components/Container';
 import StatusNotice from '@components/StatusNotice';
 import Text from '@components/Text';
+import EntropyGame, { clearEntropyProgress } from './EntropyGame';
+import type { PhysicalEntropyKind } from '@domain/accounts/physicalEntropy.ts';
 
 const CREATE_STORAGE_KEY = 'wizardCreateData';
 const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -36,6 +39,9 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const seedCopy = useCopy();
   const [encModalOpen, setEncModalOpen] = useState<boolean>(false);
   const [backedUp, setBackedUp] = useState<boolean>(false);
+  const [gameOpen, setGameOpen] = useState<boolean>(false);
+  const [physicalSource, setPhysicalSource] = useState<PhysicalEntropyKind | null>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void (async () => {
@@ -46,6 +52,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         if (data?.account && data?.mnemonic && data?.ts && Date.now() - data.ts < CREATE_TTL_MS) {
           setAccount(data.account);
           setMnemonic(data.mnemonic);
+          setPhysicalSource(data.physical ?? null);
           setRevealed(true);
           setBackedUp(true);
           setLoading(false);
@@ -71,7 +78,29 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const handleNext = () => {
     // Clear persisted create data — wizard context takes over from here
     browser.storage.session.remove(CREATE_STORAGE_KEY).catch(() => {});
+    clearEntropyProgress();
     onNext(account, mnemonic!);
+  };
+
+  // Replace the generated phrase with one built from the person's own rolls.
+  // The new phrase starts hidden and un-backed-up, exactly like a fresh one.
+  const handleEntropy = async (kind: PhysicalEntropyKind, results: number[]) => {
+    setError('');
+    try {
+      const result = await rpc<{ account: any; mnemonic: string }>('onboarding_generateAccount', { physical: { kind, results } });
+      setAccount(result.account);
+      setMnemonic(result.mnemonic);
+      setPhysicalSource(kind);
+      setRevealed(false);
+      setBackedUp(false);
+      setGameOpen(false);
+      await browser.storage.session.set({
+        [CREATE_STORAGE_KEY]: { account: result.account, mnemonic: result.mnemonic, physical: kind, ts: Date.now() },
+      });
+      topRef.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    } catch (e: any) {
+      setError(e.message || t('wizard.failedGenerate'));
+    }
   };
 
   if (loading) {
@@ -83,7 +112,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     );
   }
 
-  if (error) {
+  if (error && !mnemonic) {
     return (
       <Container className="flex-1">
         <Heading className="mb-3">{t('common.error')}</Heading>
@@ -106,6 +135,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   return (
     <Container className="flex-1">
+      <div ref={topRef} />
       <Heading className="mb-3">{t('wizard.recoveryTitle')}</Heading>
       <Text variant="secondary" className="mb-8">
         {t('wizard.recoveryDesc', { count: words.length })}
@@ -114,6 +144,12 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-6">
         {t('wizard.recoveryWarning')}
       </StatusNotice>
+
+      {physicalSource && (
+        <StatusNotice tone="ok" icon={<IconDice />} className="mb-6">
+          {t(physicalSource === 'coin' ? 'entropyGame.usedCoin' : 'entropyGame.usedDice')}
+        </StatusNotice>
+      )}
 
       <div className="relative mb-6">
         <Card
@@ -162,6 +198,15 @@ export default function CreateStep({ onNext }: CreateStepProps) {
           onClick={() => setEncModalOpen(true)}
           disabled={!revealed}
         />
+      </Container>
+
+      <Container gap={3} className="mt-8">
+        <Text as="div" className="text-md font-semibold text-heading">{t('entropyGame.title')}</Text>
+        <Text variant="secondary" as="div" className="text-sm">{t('entropyGame.intro')}</Text>
+        {gameOpen
+          ? <EntropyGame onComplete={handleEntropy} />
+          : <ActionTile icon={<IconDice />} title={t('entropyGame.open')} description={t('entropyGame.openDesc')} onClick={() => setGameOpen(true)} />}
+        <FormError>{error}</FormError>
       </Container>
 
       <Container variant="row" gap={4} stickyFooter>

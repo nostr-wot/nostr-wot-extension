@@ -15,6 +15,8 @@ export interface WizardContext {
   visitedPreMethod: boolean;
   passkeyBlobSupported?: boolean;
   passkeyRecoverySaved?: boolean;
+  /** Follow suggestions were skipped because no relay answered; BACK must not return there. */
+  followUnavailable?: boolean;
 }
 
 export interface WizardState {
@@ -155,6 +157,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
 
   [WizardStep.FollowSuggestions]: {
     DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done }),
+    UNAVAILABLE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done, ctx: { followUnavailable: true } }),
     BACK: (ctx, _payload, { hasGeneratedAccount }) => {
       if (ctx.method === 'passkey' || ctx.method === 'passkeyAdvanced') return null;
       // Subaccounts skip password, go back to subaccount step
@@ -165,8 +168,9 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
 
   [WizardStep.PermissionCopy]: {
     DONE: () => ({ step: WizardStep.Done }),
-    BACK: (ctx) => {
-      if (['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.FollowSuggestions };
+    BACK: (ctx, _payload, { hasGeneratedAccount }) => {
+      if (!ctx.followUnavailable && ['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.FollowSuggestions };
+      if (ctx.method === 'create' && hasGeneratedAccount) return { step: WizardStep.Subaccount };
       return { step: WizardStep.Password };
     },
   },

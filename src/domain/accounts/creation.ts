@@ -24,7 +24,8 @@ import type { Account } from './types.ts';
 import { getPublicKey } from '../../lib/crypto/secp256k1.ts';
 import { bytesToHex, hexToBytes } from '../../lib/crypto/utils.ts';
 import { nsecDecode, npubDecode } from '../../lib/crypto/bech32.ts';
-import { generateMnemonic, mnemonicToSeed, validateMnemonic } from '../../lib/crypto/bip39.ts';
+import { entropyToMnemonic, generateMnemonic, mnemonicToSeed, validateMnemonic } from '../../lib/crypto/bip39.ts';
+import { physicalEntropyBytes, type PhysicalEntropyKind } from './physicalEntropy.ts';
 import { derivePath } from '../../lib/crypto/bip32.ts';
 import { normalizeDerivationPath, standardDerivationIndex } from './derivation.ts';
 import { MAX_BIP32_INDEX, NIP06_ACCOUNT_PREFIX, NIP06_PATH } from '@constants/crypto/bip32.ts';
@@ -101,6 +102,16 @@ export async function generateNewAccount(name: string = 'Main'): Promise<{ accou
   // seed — the seed, not the algorithm, would be the weakest link. Existing
   // 12-word accounts keep working; this affects newly generated identities only.
   const mnemonic = await generateMnemonic(GENERATED_MNEMONIC_STRENGTH_BITS); // 24 words
+  const account = await createFromMnemonic(mnemonic, name);
+  return { account, mnemonic };
+}
+
+/**
+ * Create the main account from coin flips or dice rolls the person recorded.
+ * See physicalEntropy.ts for how results become the 256-bit seed.
+ */
+export async function generateAccountFromPhysicalEntropy(kind: PhysicalEntropyKind, results: readonly unknown[], name: string = 'Main'): Promise<{ account: Account; mnemonic: string }> {
+  const mnemonic = await entropyToMnemonic(physicalEntropyBytes(kind, results));
   const account = await createFromMnemonic(mnemonic, name);
   return { account, mnemonic };
 }

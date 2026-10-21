@@ -29,9 +29,12 @@
   --animate-modal-fade-out: modal-fade-out var(--transition-slow) ease-in forwards;
   --animate-overlay-slide-in: overlay-slide-in var(--transition-slow) ease-out;
   --animate-overlay-slide-out: overlay-slide-out var(--transition-slow) ease-in forwards;
+  --animate-coin-flip: coin-flip 0.7s cubic-bezier(0.3, 0.7, 0.4, 1);
+  --animate-die-roll: die-roll 0.65s cubic-bezier(0.25, 0.8, 0.35, 1);
   --animate-dot-pulse: dot-pulse 1.5s ease-in-out infinite;
   --animate-scrim-fade-in: scrim-fade-in var(--transition-slow) ease-out;
   --animate-section-slide-in: section-slide-in var(--transition-slow) ease-out backwards;
+  --animate-result-pop: result-pop 0.3s ease-out;
   --animate-shake: shake 0.3s;
   --animate-sheet-slide-in: sheet-slide-in 0.25s ease-out;
   --animate-topo-float: topo-float 18s ease-in-out infinite;
@@ -132,6 +135,27 @@
     25% { transform: translate(-25px, 15px) rotate(-1.5deg) scale(1.03); }
     50% { transform: translate(18px, -22px) rotate(1.2deg) scale(0.97); }
     75% { transform: translate(-12px, 20px) rotate(-0.8deg) scale(1.01); }
+  }
+
+  /* Physical entropy game: a toss and landing each time a result is recorded. */
+  @keyframes coin-flip {
+    0% { transform: translateY(0) rotateX(0deg); }
+    45% { transform: translateY(-26px) rotateX(540deg); }
+    85% { transform: translateY(0) rotateX(1060deg); }
+    100% { transform: translateY(0) rotateX(1080deg); }
+  }
+
+  @keyframes die-roll {
+    0% { transform: translate(-18px, -22px) rotate(-220deg) scale(0.7); opacity: 0.4; }
+    55% { transform: translate(2px, 0) rotate(12deg) scale(1.06); opacity: 1; }
+    75% { transform: translate(0, -4px) rotate(-5deg) scale(0.98); }
+    100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  }
+
+  @keyframes result-pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    70% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); }
   }
 
 }

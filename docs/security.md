@@ -155,6 +155,7 @@ It contains all sensitive operations (representative list):
 - **Pending requests**: `signer_getPending`, `signer_resolve`, `signer_resolveBatch`
 - **Account switching**: `switchAccount`
 - **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
+  - `onboarding_generateAccount` optionally takes `physical: { kind: 'coin' | 'dice', results }`. The background rejects any count other than 256 flips or 100 rolls and any impossible face before deriving, so a short list never becomes a weak key.
 - **Config**: `configUpdated`
 - **Domain management & identity injection**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`, `setIdentityDisabled`, `getIdentityDisabledSites`
 - **Activity log**: `getActivityLog`, `clearActivityLog`
