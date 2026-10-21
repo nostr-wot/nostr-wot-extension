@@ -154,8 +154,7 @@ It contains all sensitive operations (representative list):
 - **Signer permissions**: `signer_getPermissions`, `signer_getPermissionsForDomain`, `signer_clearPermissions`, `signer_savePermission`, `signer_getPermissionsRaw`, `signer_getPermissionsForDomainRaw`, `signer_copyPermissions`, `signer_getUseGlobalDefaults`, `signer_setUseGlobalDefaults`, `signer_setupNewAccountPermissions`
 - **Pending requests**: `signer_getPending`, `signer_resolve`, `signer_resolveBatch`
 - **Account switching**: `switchAccount`
-- **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
-  - `onboarding_generateAccount` optionally takes `physical: { kind: 'coin' | 'dice', results }`. The background rejects any count other than 256 flips or 100 rolls and any impossible face before deriving, so a short list never becomes a weak key.
+- **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_getPendingPhrase`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
 - **Config**: `configUpdated`
 - **Domain management & identity injection**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`, `setIdentityDisabled`, `getIdentityDisabledSites`
 - **Activity log**: `getActivityLog`, `clearActivityLog`
@@ -233,6 +232,10 @@ independently generated key instead.
 ### 9c. Pending Onboarding TTL
 
 The redacted pending-onboarding account is persisted to `browser.storage.session` together with a `_pendingOnboardingCreatedAt` timestamp. The 5-minute TTL is enforced **on read** in `getPendingOnboardingAccount()` — not only via the in-memory `setTimeout`, which dies with the MV3 service worker. Expired (or timestamp-less pre-upgrade) entries are wiped from session storage and never returned.
+
+### 9d. Recovery phrase from dice or a coin
+
+The rolls or flips are the seed itself (coin flips are its bits verbatim), so the game tab keeps them in memory only and never writes them to storage. `onboarding_generateAccount` takes them as `physical: { kind, results }` and rejects any count other than 256 flips or 100 rolls, and any impossible face, before deriving, so a short or tampered list never becomes a weak key. The tab passes `hideMnemonic` and never receives the words. The Create step's session marker holds only the public key; the words come from `onboarding_getPendingPhrase`, which reads the split pending record (9c) and answers only for the pending account with that public key. See [accounts](accounts.md#recovery-phrase-from-dice-or-a-coin).
 
 ## Connecting a site
 

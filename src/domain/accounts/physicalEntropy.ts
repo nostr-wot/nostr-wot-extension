@@ -75,21 +75,3 @@ export function physicalEntropyBytes(kind: PhysicalEntropyKind, results: readonl
   values.forEach((bit, i) => { bytes[i >> 3] |= bit << (7 - (i & 7)); });
   return bytes;
 }
-
-/** How long recorded results stay restorable after the popup closes. */
-export const ENTROPY_PROGRESS_TTL_MS = 30 * 60 * 1000;
-
-export interface PhysicalEntropyProgress {
-  kind: PhysicalEntropyKind;
-  results: number[];
-}
-
-/** Restore saved progress, rejecting anything stale or malformed. */
-export function restoreEntropyProgress(saved: unknown, now = Date.now()): PhysicalEntropyProgress | null {
-  const data = saved as { kind?: unknown; results?: unknown; ts?: unknown } | undefined;
-  if (!data || !isPhysicalEntropyKind(data.kind) || !Array.isArray(data.results)) return null;
-  if (typeof data.ts !== 'number' || now - data.ts >= ENTROPY_PROGRESS_TTL_MS) return null;
-  const kind = data.kind;
-  if (data.results.length > PHYSICAL_ENTROPY_REQUIRED[kind] || !data.results.every((r) => isPhysicalResult(kind, r))) return null;
-  return { kind, results: data.results as number[] };
-}

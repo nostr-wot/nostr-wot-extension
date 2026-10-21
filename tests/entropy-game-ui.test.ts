@@ -89,17 +89,26 @@ it('follow suggestions skip themselves when no relay returns a profile', async (
   } finally { await act(async () => root.unmount()); dom.window.close(); resetFollowSuggestionsPreload(); }
 });
 
-it('the dice tab hands a phrase back hidden, and keeps a waiting wizard on Create', async () => {
-  const { persistCreated, readCreated, keepWizardOnCreate, CREATE_TTL_MS } = await import('../src/screens/Wizard/createdPhrase');
+it('the dice tab hands a phrase back without any words reaching session storage', async (t) => {
+  const { persistCreated, restoreCreated, keepWizardOnCreate, CREATE_TTL_MS } = await import('../src/screens/Wizard/createdPhrase');
   const { WIZARD_STORAGE_KEY, WizardStep } = await import('../src/constants/wizard');
+  const onboarding = await import('../src/services/background/onboarding-handlers');
   const { default: browser, resetMockStorage } = await import('./helpers/browser-mock');
   resetMockStorage();
-  assert.equal(await readCreated(), null);
-  await persistCreated({ id: 'a' }, 'words', 'dice', true);
-  assert.deepEqual(await readCreated(), { account: { id: 'a' }, mnemonic: 'words', physical: 'dice', pendingBackup: true });
-  assert.equal(await readCreated(Date.now() + CREATE_TTL_MS), null);
-  await persistCreated({ id: 'b' }, 'other');
-  assert.deepEqual(await readCreated(), { account: { id: 'b' }, mnemonic: 'other', physical: null, pendingBackup: false });
+  // Route the UI's RPCs to the real background handlers.
+  t.mock.method(browser.runtime, 'sendMessage', async ({ method, params }: any) => ({ result: await onboarding.handlers.get(method)!(params) }));
+
+  // The tab asks for the account without its words.
+  const created: any = await onboarding.handlers.get('onboarding_generateAccount')!({ physical: { kind: 'coin', results: new Array(256).fill(0) }, hideMnemonic: true });
+  assert.equal(created.mnemonic, undefined);
+  await persistCreated(created.account.pubkey, 'coin', true);
+  assert.ok(!JSON.stringify(await browser.storage.session.get(null)).includes('abandon'), 'no word of the phrase in session storage');
+
+  // The Create step gets the words from the background, for that account only.
+  assert.deepEqual(await restoreCreated(), { account: created.account, mnemonic: `${'abandon '.repeat(23)}art`, physical: 'coin', pendingBackup: true });
+  assert.equal(await restoreCreated(Date.now() + CREATE_TTL_MS), null);
+  await persistCreated('f'.repeat(64));
+  assert.equal(await restoreCreated(), null, 'a marker for another account reveals nothing');
 
   await browser.storage.session.set({ [WIZARD_STORAGE_KEY]: { step: WizardStep.Create, ctx: {}, ts: 1 } });
   await keepWizardOnCreate();

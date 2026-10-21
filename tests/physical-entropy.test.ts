@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
-  ENTROPY_PROGRESS_TTL_MS, PHYSICAL_ENTROPY_REQUIRED, isPhysicalResult, physicalEntropyBits, physicalEntropyBytes, restoreEntropyProgress,
+  PHYSICAL_ENTROPY_REQUIRED, isPhysicalResult, physicalEntropyBits, physicalEntropyBytes,
 } from '../src/domain/accounts/physicalEntropy.ts';
 import { entropyToMnemonic } from '../src/lib/crypto/bip39.ts';
 import { adjacentFaces } from '../src/screens/Wizard/EntropyGame/EntropyArt.tsx';
@@ -62,21 +62,6 @@ describe('validation', () => {
     assert.equal(physicalEntropyBits('dice', 10), 25);
     assert.equal(physicalEntropyBits('dice', 100), 256);
     assert.equal(physicalEntropyBits('coin', 300), 256);
-  });
-});
-
-describe('restoreEntropyProgress', () => {
-  const now = 1_000_000;
-  it('restores fresh, well-formed progress', () => {
-    assert.deepEqual(restoreEntropyProgress({ kind: 'dice', results: [1, 6, 3], ts: now - 1000 }, now), { kind: 'dice', results: [1, 6, 3] });
-  });
-
-  it('drops stale, malformed or overfull progress', () => {
-    assert.equal(restoreEntropyProgress({ kind: 'dice', results: [1], ts: now - ENTROPY_PROGRESS_TTL_MS }, now), null);
-    assert.equal(restoreEntropyProgress({ kind: 'coin', results: [0, 2], ts: now }, now), null);
-    assert.equal(restoreEntropyProgress({ kind: 'coin', results: new Array(257).fill(1), ts: now }, now), null);
-    assert.equal(restoreEntropyProgress({ kind: 'd20', results: [], ts: now }, now), null);
-    assert.equal(restoreEntropyProgress(undefined, now), null);
   });
 });
 

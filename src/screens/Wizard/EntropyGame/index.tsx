@@ -14,44 +14,38 @@ import Tabs from '@components/Tabs';
 import Text from '@components/Text';
 import { cn } from '@utils/cn.ts';
 import { Coin, Die, DieFace } from './EntropyArt';
-import { clearEntropyProgress, loadEntropyProgress, saveEntropyProgress } from './progress';
 
 interface EntropyGameProps {
   /** Called with the complete list of results; resolve false to keep them for a retry. */
   onComplete: (kind: PhysicalEntropyKind, results: number[]) => Promise<boolean>;
-  disabled?: boolean;
 }
 
 /**
  * Record real coin flips or dice rolls, one at a time, until they cover a
  * 256-bit seed. Every new result tosses the coin or rolls the die on screen.
+ *
+ * Results live in memory only. They are the seed itself (coin flips verbatim),
+ * so they are never written to storage; closing the tab with results recorded
+ * asks first instead.
  */
-export default function EntropyGame({ onComplete, disabled = false }: EntropyGameProps) {
+export default function EntropyGame({ onComplete }: EntropyGameProps) {
   const [kind, setKind] = useState<PhysicalEntropyKind>('dice');
   const [results, setResults] = useState<number[]>([]);
-  const [restored, setRestored] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const unsaved = results.length > 0;
   useEffect(() => {
-    loadEntropyProgress()
-      .then((progress) => {
-        if (progress) { setKind(progress.kind); setResults(progress.results); }
-      })
-      .catch(() => {})
-      .finally(() => setRestored(true));
-  }, []);
-
-  useEffect(() => {
-    if (!restored) return;
-    if (results.length === 0) { clearEntropyProgress(); return; }
-    saveEntropyProgress(kind, results);
-  }, [restored, kind, results]);
+    if (!unsaved) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [unsaved]);
 
   const required = PHYSICAL_ENTROPY_REQUIRED[kind];
   const complete = results.length >= required;
   const last = results.length ? results[results.length - 1] : null;
   const bits = physicalEntropyBits(kind, results.length);
-  const locked = disabled || busy;
+  const locked = busy;
 
   const record = (value: number) => {
     if (locked || !isPhysicalResult(kind, value)) return;
@@ -66,9 +60,9 @@ export default function EntropyGame({ onComplete, disabled = false }: EntropyGam
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      // Typing elsewhere (the encrypted-backup dialog, a field) is not a roll.
+      // Typing into a field is not a roll.
       const target = event.target as Partial<Element> | null;
-      if (typeof target?.closest === 'function' && target.closest('input, textarea, [contenteditable="true"], [role="dialog"]')) return;
+      if (typeof target?.closest === 'function' && target.closest('input, textarea, [contenteditable="true"]')) return;
       if (event.key === 'Backspace') keys.current.undo();
       else if (/^\d$/.test(event.key)) keys.current.record(Number(event.key));
     };
@@ -80,10 +74,7 @@ export default function EntropyGame({ onComplete, disabled = false }: EntropyGam
     if (!complete || locked) return;
     setBusy(true);
     try {
-      if (await onComplete(kind, results)) {
-        clearEntropyProgress();
-        setResults([]);
-      }
+      if (await onComplete(kind, results)) setResults([]);
     } finally {
       setBusy(false);
     }

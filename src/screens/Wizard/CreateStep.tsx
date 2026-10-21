@@ -22,8 +22,7 @@ import Container from '@components/Container';
 import StatusNotice from '@components/StatusNotice';
 import Text from '@components/Text';
 import useStorageWatch from '@hooks/useStorageWatch.ts';
-import { clearEntropyProgress } from './EntropyGame/progress';
-import { CREATE_STORAGE_KEY, persistCreated, readCreated, type CreatedPhrase } from './createdPhrase';
+import { CREATE_STORAGE_KEY, persistCreated, restoreCreated, type CreatedPhrase } from './createdPhrase';
 import type { PhysicalEntropyKind } from '@domain/accounts/physicalEntropy.ts';
 
 interface CreateStepProps {
@@ -55,7 +54,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   useEffect(() => {
     void (async () => {
       try {
-        const saved = await readCreated();
+        const saved = await restoreCreated();
         if (saved) {
           apply(saved);
           setLoading(false);
@@ -67,7 +66,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         setAccount(result.account);
         setMnemonic(result.mnemonic);
 
-        await persistCreated(result.account, result.mnemonic);
+        await persistCreated(result.account.pubkey);
       } catch (e: any) {
         setError(e.message || t('wizard.failedGenerate'));
       }
@@ -80,7 +79,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const mnemonicRef = useRef(mnemonic);
   mnemonicRef.current = mnemonic;
   useStorageWatch([{ area: 'session', keys: [CREATE_STORAGE_KEY] }], () => {
-    void readCreated().then((saved) => {
+    void restoreCreated().then((saved) => {
       if (!saved?.pendingBackup || saved.mnemonic === mnemonicRef.current) return;
       apply(saved);
       scrollIntoViewGently(topRef.current, 'start');
@@ -89,7 +88,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   // Once the new phrase is backed up, a reopened popup must not hide it again.
   useEffect(() => {
-    if (backedUp && physicalSource && account && mnemonic) void persistCreated(account, mnemonic, physicalSource);
+    if (backedUp && physicalSource && account) void persistCreated(account.pubkey, physicalSource);
   }, [backedUp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openEntropyGame = () => {
@@ -99,7 +98,6 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const handleNext = () => {
     // Clear persisted create data — wizard context takes over from here
     browser.storage.session.remove(CREATE_STORAGE_KEY).catch(() => {});
-    clearEntropyProgress();
     onNext(account, mnemonic!);
   };
 

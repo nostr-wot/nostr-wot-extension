@@ -25,8 +25,9 @@ export default function EntropyApp() {
   const complete = async (kind: PhysicalEntropyKind, results: number[]): Promise<boolean> => {
     setError('');
     try {
-      const result = await rpc<{ account: any; mnemonic: string }>('onboarding_generateAccount', { physical: { kind, results } });
-      await persistCreated(result.account, result.mnemonic, kind, true);
+      // hideMnemonic: this page never holds the words; the Create step fetches them.
+      const result = await rpc<{ account: { pubkey: string } }>('onboarding_generateAccount', { physical: { kind, results }, hideMnemonic: true });
+      await persistCreated(result.account.pubkey, kind, true);
       await keepWizardOnCreate();
       setDone(kind);
       return true;

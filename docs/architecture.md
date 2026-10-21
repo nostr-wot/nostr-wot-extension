@@ -15,7 +15,7 @@ The popup also lets the user edit their kind:0 profile, manage their own NIP-51 
 
 The extension targets Chrome and Firefox, using a service worker on Chrome and a background script on Firefox (declared side by side in `manifest.json`).
 
-**Build system**: Vite + `@crxjs/vite-plugin`. All source is TypeScript (`.ts`/`.tsx`), compiled to JavaScript at build time. React JSX is used for popup, onboarding, and prompt UIs.
+**Build system**: Vite + `@crxjs/vite-plugin`. All source is TypeScript (`.ts`/`.tsx`), compiled to JavaScript at build time. React JSX is used for popup, onboarding, prompt and full-tab UIs.
 
 **TypeScript configuration**: `strict` mode, ES2022 target, `moduleResolution: bundler`, `jsx: react-jsx`. Path aliases: `@assets`, `@components`, `@screens`, `@domain`, `@services`, `@context`, `@hooks`, `@utils`, `@styles`, `@lib`. `@models` and `@shared` no longer exist — `models/` was merged into `domain/` and `shared/` was split into `domain/`, `services/` and `utils/` by what a thing is (see [Component Standards §2](component-standards.md)).
 
@@ -137,9 +137,23 @@ Signing request approval popup. The signer queues pending requests in `browser.s
 | `src/screens/Prompt/PromptScreen.tsx` | Pending-request loading, approval content and decision handling |
 | `src/screens/Prompt/DecisionRow.tsx`, `src/screens/Prompt/UnlockSection.tsx` | The row and the vault-locked sub-view `PromptScreen` composes |
 
+### 2.7 Seed game -- `src/entrypoints/entropy/`
+
+Builds a recovery phrase from real dice rolls or coin flips, opened in a tab from the wizard's Create step. A tab rather than the popup because a hundred rolls do not survive a popup that closes on the first outside click. The page never receives or shows the words: the background keeps the pending account, and the page tells the Create step which one through `storage.session`. See [accounts](accounts.md#recovery-phrase-from-dice-or-a-coin).
+
+| File | Purpose |
+|------|---------|
+| `src/entrypoints/entropy/index.html` | Entry point |
+| `src/entrypoints/entropy/main.tsx` | React app mount |
+| `src/entrypoints/entropy/EntropyApp.tsx` | Page shell: runs `EntropyGame`, asks the background for the account and marks it for the Create step |
+| `src/screens/Wizard/EntropyGame/` | The game and its SVG die and coin |
+| `src/screens/Wizard/createdPhrase.ts` | The Create step's session marker (public key only), shared by the step and this page |
+
+Full-tab pages (this one and `local-bridge`) share the `ExtensionPage` frame: logo header, one centred card, version footer.
+
 ---
 
-### 2.7 Wallet Provider Layer -- `src/services/wallet/`
+### 2.8 Wallet Provider Layer -- `src/services/wallet/`
 
 Abstracts Lightning wallet backends behind a common `WalletProvider` interface. Each provider implements `getInfo()`, `getBalance()`, `payInvoice(bolt11)`, `makeInvoice(amount, memo)`, `connect()`, `disconnect()`, and `isConnected()`.
 
@@ -316,7 +330,7 @@ Passkey recovery account selection is a pure rule in `domain/vault/passkey.ts`, 
 
 ## Experimental local bridge
 
-`src/entrypoints/entropy/` hosts the onboarding dice/coin game in a tab and hands its phrase back through session storage; see [accounts](accounts.md#recovery-phrase-from-dice-or-a-coin). Full-tab pages share the `ExtensionPage` frame (logo header, centred card, version footer). The dedicated `src/entrypoints/local-bridge/` document owns Wi-Fi/Web Bluetooth connections and ephemeral peer keys. `services/signing/localBridge/` implements the wallet's authenticated `nwlan/2` protocol. `localBridgeTab` forwards only allowed requests over an internal runtime Port. `localBridgeSession` accepts that Port only from the exact extension bridge document, binds it to the selected vault session, and routes approved NIP-07 requests through it. The menu loads none of the Bluetooth client into the popup shell. See [local-bridge.md](local-bridge.md) for setup, supported operations, limitations and physical-device checks.
+The dedicated `src/entrypoints/local-bridge/` document owns Wi-Fi/Web Bluetooth connections and ephemeral peer keys. `services/signing/localBridge/` implements the wallet's authenticated `nwlan/2` protocol. `localBridgeTab` forwards only allowed requests over an internal runtime Port. `localBridgeSession` accepts that Port only from the exact extension bridge document, binds it to the selected vault session, and routes approved NIP-07 requests through it. The menu loads none of the Bluetooth client into the popup shell. See [local-bridge.md](local-bridge.md) for setup, supported operations, limitations and physical-device checks.
 
 ## External event verification
 

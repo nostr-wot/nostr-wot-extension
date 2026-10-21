@@ -616,6 +616,16 @@ export const handlers = new Map<string, HandlerFn>([
         return params.hideMnemonic ? { account: safeAcct } : { account: safeAcct, mnemonic };
     }],
 
+    // The Create step shows the pending phrase again after the popup reopens, or
+    // after the dice/coin tab built it. The UI keeps only the public key; the
+    // words stay here, XOR-split in session storage, and are returned only for
+    // the account the caller already knows.
+    ['onboarding_getPendingPhrase', async (params) => {
+        const pending = await getPendingOnboardingAccount();
+        if (!pending?.mnemonic || pending.pubkey !== params.pubkey) return null;
+        return { account: toSafeAccount(pending), mnemonic: pending.mnemonic };
+    }],
+
     ['onboarding_checkExistingSeed', async () => {
         if (vault.isLocked()) {
             // Public type is a routing hint only; derivation still requires unlock.
