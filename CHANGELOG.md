@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Remove pairing-created temporary accounts and permissions when their bridge tab closes; preserve existing accounts and the previous selection.
+
 - Delegate ordinary local-bridge signing and encryption approval to the phone without repeating the prompt in the extension.
 
 - Clarify local bridge controls with gray Back inside the card, red Disconnect, and a prominent keep-this-page-open notice.

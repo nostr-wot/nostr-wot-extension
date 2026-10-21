@@ -1,6 +1,6 @@
 {
   "localBridge.disableHint": "Removes the temporary phone account and returns to your previous account. Existing accounts are kept.",
-  "localBridge.disconnectHint": "Closes the connection. Your phone account stays selected for reconnecting.",
+  "localBridge.disconnectHint": "Closes the connection and removes its temporary phone account. Existing accounts are kept.",
   "localBridge.keepOpenHint": "Closing this page disconnects your phone signer. Keep the phone’s local bridge open too.",
   "localBridge.keepOpenTitle": "Keep this page open",
   "wallet.setupAlias": "Set up an alias",

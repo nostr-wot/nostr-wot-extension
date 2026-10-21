@@ -1,4 +1,4 @@
-import { acceptLocalBridgePort, isLocalBridgeSelected, localBridgeStatus, disableLocalBridge } from './src/services/signing/localBridgeSession.ts';
+import { cleanupAbandonedLocalBridgeAccounts, acceptLocalBridgePort, isLocalBridgeSelected, localBridgeStatus, disableLocalBridge } from './src/services/signing/localBridgeSession.ts';
 import { rememberTabOrigin, forgetTabOrigin } from './src/services/browser/tabOrigins.ts';
 import { registerUninstallFeedback } from './src/services/background/uninstall-feedback.ts';
 import { getPageRequestOrigin } from './src/domain/signing/requestOrigin.ts';
@@ -331,7 +331,7 @@ if (browser.alarms?.onAlarm) {
 // ── Startup (runs AFTER listeners are registered, so messages during async
 // init don't race against listener registration) ──
 
-void loadConfig();
+void cleanupAbandonedLocalBridgeAccounts().catch(() => {}).then(loadConfig);
 
 void signerApprovalQueue.cleanupStale();
 

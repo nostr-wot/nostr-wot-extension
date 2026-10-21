@@ -110,6 +110,52 @@ async function releasePairingAccount(accountId: string): Promise<void> {
   await browser.storage.local.remove([selectionKey(accountId), pairingKey(accountId)]);
 }
 
+// Removal markers are separate from the in-progress pairing rollback marker.
+async function cleanupClosedAccounts(): Promise<void> {
+  if (connection) return; // Vault mutations invalidate even an unrelated live session.
+  const data = await browser.storage.local.get(null);
+  for (const key of Object.keys(data).filter(key => key.startsWith('localBridgeRemoval:'))) {
+    const accountId = key.slice('localBridgeRemoval:'.length);
+    const record = (await browser.storage.local.get(pairingKey(accountId)))[pairingKey(accountId)] as PairingAccount | undefined;
+    if (!record?.temporary) { await browser.storage.local.remove(key); continue; }
+    if (!record.detached && vault.isLocked()) {
+      // Hide the public identity immediately; encrypted removal waits for unlock.
+      await browser.storage.local.set({[`localBridgeRemoval:${accountId}`]:true});
+      const {accounts = [], activeAccountId} = await browser.storage.local.get(['accounts','activeAccountId']) as {accounts?:SafeAccount[];activeAccountId?:string};
+      const remaining = accounts.filter(a => a.id !== accountId);
+      const next = remaining.find(a => a.id === record.previousAccountId) ?? remaining[0];
+      await browser.storage.local.set({accounts:remaining,...(activeAccountId === accountId ? {activeAccountId:next?.id ?? null} : {})});
+      await clearForAccount(accountId);
+      await browser.storage.local.remove(selectionKey(accountId));
+      if (activeAccountId === accountId) {
+        config.myPubkey = next?.pubkey ?? '';
+        if (next) await browser.storage.sync.set({myPubkey:next.pubkey});
+        else await browser.storage.sync.remove('myPubkey');
+        await onActiveAccountChanged(accountId,next?.id ?? null);
+        if (next) void broadcastAccountChanged(next.pubkey);
+      }
+      continue;
+    }
+    await releasePairingAccount(accountId);
+    await browser.storage.local.remove(`localBridgeRemoval:${accountId}`);
+
+  }
+}
+
+/** A restarted worker has no surviving authenticated transport capability. */
+export function cleanupAbandonedLocalBridgeAccounts(): Promise<void> {
+  return writeSelection(async () => {
+    if (connection) return;
+    const data = await browser.storage.local.get(null);
+    for (const [key, value] of Object.entries(data)) {
+      if (key.startsWith('localBridgePairing:') && (value as PairingAccount | undefined)?.temporary) {
+        await browser.storage.local.set({[`localBridgeRemoval:${key.slice('localBridgePairing:'.length)}`]:true});
+      }
+    }
+    await cleanupClosedAccounts();
+  });
+}
+
 async function recoverPendingAccount(): Promise<void> {
   const data = await browser.storage.local.get(pendingAccountKey);
   if (typeof data[pendingAccountKey] !== 'string') return;
@@ -119,7 +165,7 @@ async function recoverPendingAccount(): Promise<void> {
 vault.onUnlock(async () => {
   // Unlock holds the vault mutation lane. Queue cleanup without awaiting a save
   // from inside that lane; the durable marker allows a later retry on failure.
-  setTimeout(() => { void writeSelection(recoverPendingAccount).catch(() => {}); }, 0);
+  setTimeout(() => { void writeSelection(async () => { await recoverPendingAccount(); await cleanupClosedAccounts(); }).catch(() => {}); }, 0);
 });
 
 export async function disableLocalBridge(): Promise<{ok:true}> {
@@ -141,9 +187,16 @@ export function acceptLocalBridgePort(port: chrome.runtime.Port): void {
   }
   let disconnected = false;
   let registering = false;
+  let pairedAccountId: string | undefined;
   port.onDisconnect.addListener(() => {
     disconnected = true;
-    if (connection?.port === port) closeConnection('Phone signer disconnected; reconnect or explicitly disable it');
+    if (connection?.port === port) closeConnection('Phone signer disconnected');
+    const accountId = pairedAccountId;
+    if (accountId) void writeSelection(async () => {
+      if (connection?.session.accountId === accountId) return;
+      await browser.storage.local.set({[`localBridgeRemoval:${accountId}`]:true});
+      await cleanupClosedAccounts();
+    }).catch(() => {});
   });
   port.onMessage.addListener((message: unknown) => {
     if (!message || typeof message !== 'object') return;
@@ -180,6 +233,7 @@ export function acceptLocalBridgePort(port: chrome.runtime.Port): void {
             assertOpen();
             closeConnection('Phone signer connection replaced');
             const session = beginNetworkSession(selected.id, selected.pubkey);
+            pairedAccountId = selected.id;
             connection = {port,session,pubkey:selected.pubkey,pending:new Map()};
             port.postMessage({type:'ready',accountId:selected.id,pubkey:selected.pubkey});
             if (activeAccountId !== selected.id) void broadcastAccountChanged(selected.pubkey);
@@ -234,6 +288,7 @@ export function acceptLocalBridgePort(port: chrome.runtime.Port): void {
           if (disconnected || generation !== revision) throw new Error('Phone connection expired');
           assertPairing();
           closeConnection('Phone signer connection replaced');
+          pairedAccountId = selected.id;
           connection = {port,session,pubkey:account.pubkey,pending:new Map()};
           port.postMessage({type:'ready',accountId:session.accountId,pubkey:account.pubkey});
           if (activeAccountId !== selected.id) void broadcastAccountChanged(account.pubkey);

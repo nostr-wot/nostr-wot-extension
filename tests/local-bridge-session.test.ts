@@ -37,7 +37,7 @@ it('accepts only exact dedicated extension document and rejects query/hash impos
  const p=await connect();p.send({type:'ping'});assert.equal(p.messages.at(-1).type,'pong');
  assert.equal((await bridge.localBridgeStatus()).connected,true);
 });
-it('automatically creates a temporary phone account and restores the previous selection on stop',async()=>{
+it('automatically creates a temporary phone account and restores the previous selection on tab close',async()=>{
  const phone='a'.repeat(64);const p=port();p.send({type:'ready',pubkey:phone});
  for(let i=0;i<100 && !p.messages.some(m=>m.type==='ready'||m.type==='error');i++) await tick();
  assert.equal(p.messages.at(-1).type,'ready');
@@ -45,8 +45,8 @@ it('automatically creates a temporary phone account and restores the previous se
  const account=vault.getDecryptedPayload().accounts.find(a=>a.id===id)!;
  assert.equal(account.pubkey,phone);assert.equal(account.privkey,null);assert.equal(account.mnemonic,null);assert.equal(account.readOnly,true);
  assert.equal((await browser.storage.sync.get('myPubkey')).myPubkey,phone);
- p.close();assert.equal(await bridge.isLocalBridgeSelected(),true);
- await bridge.disableLocalBridge();
+ p.close();
+ for(let i=0;i<100 && vault.getAccountById(id);i++) await tick();
  assert.equal(vault.getActiveAccountId(),'a');assert.equal(vault.getAccountById(id),null);
  assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
  assert.equal((await browser.storage.sync.get('myPubkey')).myPubkey,pubkey);
@@ -306,4 +306,52 @@ for (const action of ['sign','encrypt'] as const) it(`disabling the phone during
   await assert.rejects(work,/disconnected|session|changed/i);
   assert.equal(armed,false);assert.equal((await getPending()).length,0);
  } finally {browser.storage.local.get=original;}
+});
+
+it('closing a locked-vault phone tab removes only its temporary public account and grants',async()=>{
+ vault.lock();const p=await connect();const {activeAccountId:id}=await browser.storage.local.get('activeAccountId');
+ await permissions.setUseGlobalDefaults(false);await permissions.save('example.com','signEvent',1,'allow',id);
+ p.close();for(let i=0;i<100 && (await browser.storage.local.get('accounts')).accounts.some((a:any)=>a.id===id);i++)await tick();
+ assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
+ assert.equal((await browser.storage.local.get('accounts')).accounts.length,1);
+ assert.equal(vault.isLocked(),true);
+ assert.notEqual(await permissions.check('example.com','signEvent',1,id),'allow');
+});
+it('tab close after locking hides the temporary identity and removes its vault row on unlock',async()=>{
+ const p=port();p.send({type:'ready',pubkey:'a'.repeat(64)});
+ for(let i=0;i<100&&!p.messages.some(m=>m.type==='ready');i++)await tick();
+ const id=vault.getActiveAccountId()!;vault.lock();p.close();
+ for(let i=0;i<100&&(await browser.storage.local.get('activeAccountId')).activeAccountId===id;i++)await tick();
+ assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
+ assert.equal(await vault.unlock('testpassword123'),true);
+ for(let i=0;i<100&&vault.getAccountById(id);i++)await tick();
+ assert.equal(vault.getAccountById(id),null);assert.equal(vault.getActiveAccountId(),'a');
+});
+it('a second locked pairing cannot erase deferred encrypted-account cleanup',async()=>{
+ const first=port();first.send({type:'ready',pubkey:'a'.repeat(64)});
+ for(let i=0;i<100&&!first.messages.some(m=>m.type==='ready');i++)await tick();
+ const id=vault.getActiveAccountId()!;vault.lock();first.close();await tick();
+ const second=await connect();second.close();await tick();
+ await vault.unlock('testpassword123');
+ for(let i=0;i<100&&vault.getAccountById(id);i++)await tick();
+ assert.equal(vault.getAccountById(id),null);
+});
+it('closing an older tab does not interrupt a different newer phone session',async()=>{
+ const first=port();first.send({type:'ready',pubkey:'a'.repeat(64)});
+ for(let i=0;i<100&&!first.messages.some(m=>m.type==='ready');i++)await tick();
+ const oldId=vault.getActiveAccountId()!;
+ const second=port();second.send({type:'ready',pubkey:'c'.repeat(64)});
+ for(let i=0;i<100&&!second.messages.some(m=>m.type==='ready');i++)await tick();
+ assert.equal(second.messages.at(-1).type,'ready');first.close();await tick();
+ assert.equal((await bridge.localBridgeStatus()).connected,true);
+ second.close();for(let i=0;i<100&&vault.getAccountById(oldId);i++)await tick();
+ assert.equal(vault.getAccountById(oldId),null);
+});
+
+it('worker startup removes abandoned temporary metadata without deleting saved accounts',async()=>{
+ vault.lock();await connect();const {activeAccountId:id}=await browser.storage.local.get('activeAccountId');
+ vault.lock();await bridge.cleanupAbandonedLocalBridgeAccounts();
+ assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
+ assert.equal((await browser.storage.local.get('accounts')).accounts.some((a:any)=>a.id===id),false);
+ assert.equal((await browser.storage.local.get('accounts')).accounts.length,1);
 });

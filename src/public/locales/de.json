@@ -1,6 +1,6 @@
 {
   "localBridge.disableHint": "Entfernt das temporäre Telefonkonto und kehrt zum vorherigen Konto zurück. Bestehende Konten bleiben erhalten.",
-  "localBridge.disconnectHint": "Trennt die Verbindung. Das Telefonkonto bleibt für eine erneute Verbindung ausgewählt.",
+  "localBridge.disconnectHint": "Schließt die Verbindung und entfernt das temporäre Telefonkonto. Bestehende Konten bleiben erhalten.",
   "localBridge.keepOpenHint": "Wenn du diese Seite schließt, wird die Verbindung zum Telefon getrennt. Lass auch die lokale Bridge auf dem Telefon geöffnet.",
   "localBridge.keepOpenTitle": "Lass diese Seite geöffnet",
   "wallet.setupAlias": "Alias einrichten",
