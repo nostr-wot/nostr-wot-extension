@@ -30,7 +30,7 @@ export const PHYSICAL_ENTROPY_REQUIRED: Record<PhysicalEntropyKind, number> = {
 };
 
 /** Bits of entropy one fair result carries. */
-export const PHYSICAL_ENTROPY_BITS_PER_RESULT: Record<PhysicalEntropyKind, number> = {
+const PHYSICAL_ENTROPY_BITS_PER_RESULT: Record<PhysicalEntropyKind, number> = {
   coin: 1,
   dice: Math.log2(6),
 };

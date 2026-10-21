@@ -21,7 +21,7 @@ const button = (label: string) => document.querySelector<HTMLButtonElement>(`but
   ?? [...document.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === label)!;
 
 it('records dice rolls, replays the roll each time, and hands over exactly 100 results', async () => {
-  const { default: EntropyGame } = await import('../src/screens/Wizard/EntropyGame');
+  const { default: EntropyGame } = await import('../src/screens/EntropyGame');
   const { resetMockStorage } = await import('./helpers/browser-mock');
   resetMockStorage();
   const { dom, root } = await mount();
@@ -56,7 +56,7 @@ it('records dice rolls, replays the roll each time, and hands over exactly 100 r
 });
 
 it('coin mode flips the coin and records heads as 1 and tails as 0', async () => {
-  const { default: EntropyGame } = await import('../src/screens/Wizard/EntropyGame');
+  const { default: EntropyGame } = await import('../src/screens/EntropyGame');
   const { resetMockStorage } = await import('./helpers/browser-mock');
   resetMockStorage();
   const { dom, root } = await mount();
@@ -105,10 +105,11 @@ it('the dice tab hands a phrase back without any words reaching session storage'
   assert.ok(!JSON.stringify(await browser.storage.session.get(null)).includes('abandon'), 'no word of the phrase in session storage');
 
   // The Create step gets the words from the background, for that account only.
-  assert.deepEqual(await restoreCreated(), { account: created.account, mnemonic: `${'abandon '.repeat(23)}art`, physical: 'coin', pendingBackup: true });
-  assert.equal(await restoreCreated(Date.now() + CREATE_TTL_MS), null);
+  assert.deepEqual(await restoreCreated(), { status: 'restored', phrase: { account: created.account, mnemonic: `${'abandon '.repeat(23)}art`, physical: 'coin', pendingBackup: true } });
+  // Expired before anyone saw it: reported as lost, not silently replaced.
+  assert.deepEqual(await restoreCreated(Date.now() + CREATE_TTL_MS), { status: 'lost', physical: 'coin' });
   await persistCreated('f'.repeat(64));
-  assert.equal(await restoreCreated(), null, 'a marker for another account reveals nothing');
+  assert.deepEqual(await restoreCreated(), { status: 'none' }, 'a marker for another account reveals nothing');
 
   await browser.storage.session.set({ [WIZARD_STORAGE_KEY]: { step: WizardStep.Create, ctx: {}, ts: 1 } });
   await keepWizardOnCreate();
@@ -128,4 +129,35 @@ it('gentle scrolling honours reduced motion', async () => {
   }
   scrollIntoViewGently(null);
   assert.deepEqual(calls, [{ block: 'start', behavior: 'smooth' }, { block: 'start', behavior: 'instant' }]);
+});
+
+it('the follow check keeps a success but re-checks after a failure, reading fresh cache first', async (t) => {
+  const { preloadFollowSuggestions, followSuggestions, resetFollowSuggestionsPreload } = await import('../src/screens/Wizard/followSuggestionsPreload');
+  const { readFreshProfile } = await import('../src/services/profile/freshProfile');
+  const { default: browser, resetMockStorage } = await import('./helpers/browser-mock');
+  resetMockStorage();
+  resetFollowSuggestionsPreload();
+  let online = false;
+  let lookups = 0;
+  t.mock.method(browser.runtime, 'sendMessage', async () => { lookups++; return { result: online ? { name: 'Someone' } : null }; });
+
+  assert.equal(await preloadFollowSuggestions(), false);
+  await new Promise((r) => setTimeout(r, 0));
+  online = true;
+  assert.equal(await preloadFollowSuggestions(), true, 'a failure is not remembered');
+  const afterSuccess = lookups;
+  assert.equal(await preloadFollowSuggestions(), true);
+  assert.equal(lookups, afterSuccess, 'a success is reused without asking again');
+
+  // A fresh cached profile counts without any RPC.
+  resetFollowSuggestionsPreload();
+  const [first] = followSuggestions();
+  await browser.storage.local.set({ [`profile_${first.hex}`]: { fetchedAt: Date.now(), metadata: { name: 'Cached' } } });
+  assert.deepEqual(await readFreshProfile(first.hex), { name: 'Cached' });
+  assert.equal(await readFreshProfile('ab'.repeat(32)), null);
+  online = false;
+  const before = lookups;
+  assert.equal(await preloadFollowSuggestions(), true);
+  assert.ok(lookups - before < followSuggestions().length, 'the cached profile answered without its own RPC');
+  resetFollowSuggestionsPreload();
 });

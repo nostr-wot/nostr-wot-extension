@@ -146,7 +146,7 @@ Builds a recovery phrase from real dice rolls or coin flips, opened in a tab fro
 | `src/entrypoints/entropy/index.html` | Entry point |
 | `src/entrypoints/entropy/main.tsx` | React app mount |
 | `src/entrypoints/entropy/EntropyApp.tsx` | Page shell: runs `EntropyGame`, asks the background for the account and marks it for the Create step |
-| `src/screens/Wizard/EntropyGame/` | The game and its SVG die and coin |
+| `src/screens/EntropyGame/` | The game and its SVG die and coin |
 | `src/screens/Wizard/createdPhrase.ts` | The Create step's session marker (public key only), shared by the step and this page |
 
 Full-tab pages (this one and `local-bridge`) share the `ExtensionPage` frame: logo header, one centred card, version footer.

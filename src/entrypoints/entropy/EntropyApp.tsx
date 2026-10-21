@@ -10,7 +10,7 @@ import Heading from '@components/Heading';
 import StatusNotice from '@components/StatusNotice';
 import Text from '@components/Text';
 import IconDice from '@assets/IconDice.tsx';
-import EntropyGame from '@screens/Wizard/EntropyGame';
+import EntropyGame from '@screens/EntropyGame';
 import { keepWizardOnCreate, persistCreated } from '@screens/Wizard/createdPhrase.ts';
 
 /**

@@ -235,3 +235,15 @@ test('a skipped follow step sends a sub-account back to its own step', () => {
   assert.equal(sub.step, WizardStep.PermissionCopy);
   assert.equal(reducer(sub, { type: 'BACK' }, { hasAccounts: true, hasGeneratedAccount: true }).step, WizardStep.Subaccount);
 });
+
+test('a skipped follow step leaves passkey flows without a Back into created vault setup', () => {
+  const skipped = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'passkey' } },
+    { type: 'CREATED', payload: { account: { id: 'p' } } },
+    { type: 'DONE' },
+    { type: 'SET' },
+    { type: 'UNAVAILABLE' },
+  ], { hasAccounts: true });
+  assert.equal(skipped.step, WizardStep.PermissionCopy);
+  assert.equal(reducer(skipped, { type: 'BACK' }, { hasAccounts: true }).step, WizardStep.PermissionCopy);
+});

@@ -1,6 +1,6 @@
 import browser from '@lib/browser.ts';
 import { rpcRead } from '@services/rpc.ts';
-import { WizardStep, WIZARD_STORAGE_KEY } from '@constants/wizard.ts';
+import { WizardStep, WIZARD_CREATE_STORAGE_KEY, WIZARD_STORAGE_KEY } from '@constants/wizard.ts';
 import { isPhysicalEntropyKind, type PhysicalEntropyKind } from '@domain/accounts/physicalEntropy.ts';
 
 /**
@@ -10,7 +10,7 @@ import { isPhysicalEntropyKind, type PhysicalEntropyKind } from '@domain/account
  * disk, so the words stay in the background's split pending-onboarding record
  * and are fetched with `onboarding_getPendingPhrase`.
  */
-export const CREATE_STORAGE_KEY = 'wizardCreateData';
+export const CREATE_STORAGE_KEY = WIZARD_CREATE_STORAGE_KEY;
 export const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface CreatedPhrase {
@@ -26,17 +26,21 @@ export function persistCreated(pubkey: string, physical: PhysicalEntropyKind | n
   return browser.storage.session.set({ [CREATE_STORAGE_KEY]: { pubkey, physical, pendingBackup, ts: Date.now() } });
 }
 
-/** The pending phrase the Create step was showing, or null when absent, stale or replaced. */
-export async function restoreCreated(now = Date.now()): Promise<CreatedPhrase | null> {
+export type RestoredPhrase =
+  | { status: 'restored'; phrase: CreatedPhrase }
+  /** The dice tab built a phrase that expired before anyone saw it. */
+  | { status: 'lost'; physical: PhysicalEntropyKind }
+  | { status: 'none' };
+
+/** The pending phrase the Create step was showing, if it is still there. */
+export async function restoreCreated(now = Date.now()): Promise<RestoredPhrase> {
   const data = (await browser.storage.session.get(CREATE_STORAGE_KEY) as Record<string, any>)[CREATE_STORAGE_KEY];
-  if (typeof data?.pubkey !== 'string' || typeof data.ts !== 'number' || now - data.ts >= CREATE_TTL_MS) return null;
-  const pending = await rpcRead<{ account: any; mnemonic: string } | null>('onboarding_getPendingPhrase', { pubkey: data.pubkey });
-  if (!pending) return null;
-  return {
-    ...pending,
-    physical: isPhysicalEntropyKind(data.physical) ? data.physical : null,
-    pendingBackup: data.pendingBackup === true,
-  };
+  if (typeof data?.pubkey !== 'string') return { status: 'none' };
+  const physical = isPhysicalEntropyKind(data.physical) ? data.physical : null;
+  const fresh = typeof data.ts === 'number' && now - data.ts < CREATE_TTL_MS;
+  const pending = fresh ? await rpcRead<{ account: any; mnemonic: string } | null>('onboarding_getPendingPhrase', { pubkey: data.pubkey }) : null;
+  if (pending) return { status: 'restored', phrase: { ...pending, physical, pendingBackup: data.pendingBackup === true } };
+  return physical && data.pendingBackup === true ? { status: 'lost', physical } : { status: 'none' };
 }
 
 /**

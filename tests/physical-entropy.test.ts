@@ -11,7 +11,7 @@ import {
   PHYSICAL_ENTROPY_REQUIRED, isPhysicalResult, physicalEntropyBits, physicalEntropyBytes,
 } from '../src/domain/accounts/physicalEntropy.ts';
 import { entropyToMnemonic } from '../src/lib/crypto/bip39.ts';
-import { adjacentFaces } from '../src/screens/Wizard/EntropyGame/EntropyArt.tsx';
+import { adjacentFaces } from '../src/screens/EntropyGame/EntropyArt.tsx';
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex');
 

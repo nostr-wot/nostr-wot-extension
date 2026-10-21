@@ -1472,5 +1472,6 @@
   "menu.experimentalDesc": "Post-quantum keys, Web of Trust and phone signing",
   "menu.wot": "Web of Trust",
   "menu.localBridge": "Local network bridge",
-  "pqc.accountBadge": "Post-quantum keys are on: apps that support them can send this account messages that stay private even against future quantum computers"
+  "pqc.accountBadge": "Post-quantum keys are on: apps that support them can send this account messages that stay private even against future quantum computers",
+  "entropyGame.expired": "Your dice or coin phrase expired before it was backed up, so a new phrase was generated. Roll again to use your own."
 }

@@ -283,6 +283,10 @@ Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain 
 | `src/constants/vault.ts` | Auto-lock, password and lockout policies |
 | `blossom.ts` | Blossom media upload utilities |
 | `wizardMachine.ts` | Onboarding wizard state machine |
+| `followSuggestions.ts` | `selectFollowSuggestions`, `anyProfileReachable`: which accounts to suggest, and whether any relay can show them |
+| `physicalEntropy.ts` | `physicalEntropyBytes`, `physicalEntropyBits`, `isPhysicalResult`: dice rolls and coin flips to BIP-39 entropy |
+| `services/profile/freshProfile.ts` | `readFreshProfile`: the cached public profile while fresh, shared by `usePublicProfile` and the follow-suggestion preload |
+| `utils/scroll.ts` | `scrollIntoViewGently`: `scrollIntoView` that honours reduced motion |
 
 ---
 

@@ -1,6 +1,6 @@
 import { getRecoveryStatus, recordBlobSaved, recordBlobUnavailable, addRecoveryRelay } from '../vault/recoveryStatus.ts';
 import * as relayRecovery from '../vault/relayRecovery.ts';
-import { WIZARD_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
+import { WIZARD_STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
 import type { PasskeyInput, PasskeyProof } from '@domain/vault/passkey.ts';
 import { revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { countWords } from '@utils/text.ts';
@@ -250,7 +250,7 @@ export const handlers = new Map<string, HandlerFn>([
         await browser.storage.local.set(updates);
         if (!rmAccts.length) {
             await vault.destroyIfEmpty();
-            await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
+            await browser.storage.session.remove([WIZARD_STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY, ...PENDING_KEYS]);
         }
         if (rmLocalData.activeAccountId === removedId) {
             // Removing the active account changes the active identity — same
@@ -369,7 +369,7 @@ export const handlers = new Map<string, HandlerFn>([
         await revokeAuthenticationGrants();
         await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
-        await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
+        await browser.storage.session.remove([WIZARD_STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY, ...PENDING_KEYS]);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';
         return { ok: true };

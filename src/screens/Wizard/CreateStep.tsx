@@ -39,6 +39,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const [encModalOpen, setEncModalOpen] = useState<boolean>(false);
   const [backedUp, setBackedUp] = useState<boolean>(false);
   const [physicalSource, setPhysicalSource] = useState<PhysicalEntropyKind | null>(null);
+  const [physicalLost, setPhysicalLost] = useState<boolean>(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   // A restored phrase was already shown (popup closed and reopened); one handed
@@ -55,11 +56,13 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     void (async () => {
       try {
         const saved = await restoreCreated();
-        if (saved) {
-          apply(saved);
+        if (saved.status === 'restored') {
+          apply(saved.phrase);
           setLoading(false);
           return;
         }
+        // Say so rather than quietly swap a fresh phrase for the person's rolls.
+        setPhysicalLost(saved.status === 'lost');
 
         // Generate new account
         const result = await rpc<{ account: any; mnemonic: string }>('onboarding_generateAccount');
@@ -80,16 +83,18 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   mnemonicRef.current = mnemonic;
   useStorageWatch([{ area: 'session', keys: [CREATE_STORAGE_KEY] }], () => {
     void restoreCreated().then((saved) => {
-      if (!saved?.pendingBackup || saved.mnemonic === mnemonicRef.current) return;
-      apply(saved);
+      if (saved.status !== 'restored' || !saved.phrase.pendingBackup || saved.phrase.mnemonic === mnemonicRef.current) return;
+      setPhysicalLost(false);
+      apply(saved.phrase);
       scrollIntoViewGently(topRef.current, 'start');
     });
   });
 
-  // Once the new phrase is backed up, a reopened popup must not hide it again.
-  useEffect(() => {
-    if (backedUp && physicalSource && account) void persistCreated(account.pubkey, physicalSource);
-  }, [backedUp]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Once a dice/coin phrase is backed up, a reopened popup must not hide it again.
+  const markBackedUp = () => {
+    setBackedUp(true);
+    if (physicalSource && account) void persistCreated(account.pubkey, physicalSource);
+  };
 
   const openEntropyGame = () => {
     void browser.tabs.create({ url: browser.runtime.getURL('src/entrypoints/entropy/index.html') });
@@ -123,16 +128,17 @@ export default function CreateStep({ onNext }: CreateStepProps) {
 
   const handleCopy = async () => {
     // Only counts as backed up if the clipboard actually took it.
-    if (await seedCopy.copy(mnemonic!)) setBackedUp(true);
+    if (await seedCopy.copy(mnemonic!)) markBackedUp();
   };
 
   const handleDownloadPlain = () => {
     downloadFile(mnemonic!, `nostr-seed-${Date.now()}.txt`);
-    setBackedUp(true);
+    markBackedUp();
   };
 
   return (
     <Container className="flex-1">
+      {/* Scroll target when a phrase arrives from the dice tab; Heading takes no ref. */}
       <div ref={topRef} />
       <Heading className="mb-3">{t('wizard.recoveryTitle')}</Heading>
       <Text variant="secondary" className="mb-8">
@@ -142,6 +148,12 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-6">
         {t('wizard.recoveryWarning')}
       </StatusNotice>
+
+      {physicalLost && (
+        <StatusNotice variant="callout" tone="warn" icon={<IconWarning />} className="mb-6">
+          {t('entropyGame.expired')}
+        </StatusNotice>
+      )}
 
       {physicalSource && (
         <StatusNotice tone="ok" icon={<IconDice />} className="mb-6">
@@ -216,7 +228,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
           onClose={() => setEncModalOpen(false)}
           // See BackupStep: marking the backup taken must not close the
           // dialog, or downloading makes copying unreachable.
-          onSuccess={() => setBackedUp(true)}
+          onSuccess={markBackedUp}
         />
       )}
     </Container>

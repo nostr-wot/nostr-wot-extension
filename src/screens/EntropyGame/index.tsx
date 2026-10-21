@@ -36,7 +36,8 @@ export default function EntropyGame({ onComplete }: EntropyGameProps) {
   const unsaved = results.length > 0;
   useEffect(() => {
     if (!unsaved) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    // returnValue as well: Safari and older Chrome ignore preventDefault alone.
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [unsaved]);
