@@ -1,6 +1,5 @@
 {
-  "localBridge.disableHint": "Remove a conta temporária do telefone e volta à conta anterior. Contas existentes são mantidas.",
-  "localBridge.disconnectHint": "Fecha a conexão e remove a conta temporária do telefone. As contas existentes são mantidas.",
+  "localBridge.disconnectHint": "Remove a conta temporária do telefone e volta à conta anterior. Contas existentes são mantidas.",
   "localBridge.keepOpenHint": "Fechar esta página desconecta o assinador do telefone. Mantenha também a ponte local do telefone aberta.",
   "localBridge.keepOpenTitle": "Mantenha esta página aberta",
   "wallet.setupAlias": "Configurar um alias",
@@ -1424,7 +1423,6 @@
   "localBridge.connecting": "Conectando — confira o telefone",
   "localBridge.connected": "Assinador conectado",
   "localBridge.disconnect": "Desconectar",
-  "localBridge.disable": "Parar de usar o assinador do telefone",
   "localBridge.sessionHint": "Experimental: apenas assinatura e criptografia NIP-07. Carteira e publicação interna ficam indisponíveis enquanto o assinador do telefone estiver selecionado.",
   "localBridge.wrongTransport": "Escolha o transporte correspondente ao código do telefone.",
   "localBridge.failed": "Não foi possível conectar ao assinador.",

@@ -169,10 +169,10 @@ vault.onUnlock(async () => {
 });
 
 export async function disableLocalBridge(): Promise<{ok:true}> {
+  const {activeAccountId} = await browser.storage.local.get('activeAccountId');
   closeConnection('Phone signer disabled');
   await writeSelection(async () => {
     await recoverPendingAccount();
-    const {activeAccountId} = await browser.storage.local.get('activeAccountId');
     if (typeof activeAccountId === 'string') await releasePairingAccount(activeAccountId);
   });
   return {ok:true};

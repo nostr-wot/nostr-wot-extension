@@ -145,14 +145,12 @@ export default function LocalBridgeApp() {
           <Text className="text-success" role="status">{t('localBridge.connected')}</Text>
           <Text mono className="break-all">{pubkey}</Text>
           <StatusNotice tone="warn" icon={<IconInfo />} label={t('localBridge.keepOpenTitle')} variant="callout">{t('localBridge.keepOpenHint')}</StatusNotice>
-          <ButtonDanger onClick={disconnect}>{t('localBridge.disconnect')}</ButtonDanger>
-          <Text variant="hint">{t('localBridge.disconnectHint')}</Text>
         </> : (state === 'choose-device' || (mode === 'ble' && state === 'idle')) ? <Button onClick={() => void connect(uri)}>{t('localBridge.choosePhone')}</Button> : state === 'connecting' ? <Text role="status">{t('localBridge.connecting')}</Text> : null}
         {state === 'connecting' && confirmation && <Card><Text variant="secondary">{t('localBridge.confirmHint')}</Text><Text mono className="text-3xl text-center font-bold tracking-widest">{confirmation.slice(0, 3)} {confirmation.slice(3)}</Text></Card>}
         {state === 'connecting' && <ButtonSecondary onClick={disconnect}>{t('common.cancel')}</ButtonSecondary>}
       </>}
       <Text variant="hint">{t('localBridge.sessionHint')}</Text>
-      {selected && <Container gap={2}><ButtonSecondary outline onClick={() => void disable()}>{t('localBridge.disable')}</ButtonSecondary><Text variant="hint">{t('localBridge.disableHint')}</Text></Container>}
+      {selected && <Container gap={2}><ButtonDanger onClick={() => void disable()}>{t('localBridge.disconnect')}</ButtonDanger><Text variant="hint">{t('localBridge.disconnectHint')}</Text></Container>}
       {error && <Text className="text-error" role="alert">{error}</Text>}
     </Container>
     </Card>

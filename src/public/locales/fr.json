@@ -1,6 +1,5 @@
 {
-  "localBridge.disableHint": "Supprime le compte temporaire du téléphone et revient au compte précédent. Les comptes existants sont conservés.",
-  "localBridge.disconnectHint": "Ferme la connexion et supprime son compte temporaire du téléphone. Les comptes existants sont conservés.",
+  "localBridge.disconnectHint": "Supprime le compte temporaire du téléphone et revient au compte précédent. Les comptes existants sont conservés.",
   "localBridge.keepOpenHint": "Fermer cette page déconnecte le signataire du téléphone. Gardez aussi le pont local du téléphone ouvert.",
   "localBridge.keepOpenTitle": "Gardez cette page ouverte",
   "wallet.setupAlias": "Configurer un alias",
@@ -1424,7 +1423,6 @@
   "localBridge.connecting": "Connexion — vérifiez le téléphone",
   "localBridge.connected": "Téléphone connecté",
   "localBridge.disconnect": "Déconnecter",
-  "localBridge.disable": "Ne plus utiliser le téléphone pour signer",
   "localBridge.sessionHint": "Expérimental : signature et chiffrement NIP-07 uniquement. Le portefeuille et la publication interne sont indisponibles lorsque le signataire du téléphone est sélectionné.",
   "localBridge.wrongTransport": "Choisissez le transport correspondant au code du téléphone.",
   "localBridge.failed": "Impossible de connecter le téléphone.",

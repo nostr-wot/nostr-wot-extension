@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Combine closing the local bridge and stopping phone signing into one Disconnect action.
+
 - Remove pairing-created temporary accounts and permissions when their bridge tab closes; preserve existing accounts and the previous selection.
 
 - Delegate ordinary local-bridge signing and encryption approval to the phone without repeating the prompt in the extension.

@@ -1,6 +1,5 @@
 {
-  "localBridge.disableHint": "Rimuove l’account temporaneo del telefono e torna all’account precedente. Gli account esistenti vengono conservati.",
-  "localBridge.disconnectHint": "Chiude la connessione e rimuove l’account temporaneo del telefono. Gli account esistenti vengono mantenuti.",
+  "localBridge.disconnectHint": "Rimuove l’account temporaneo del telefono e torna all’account precedente. Gli account esistenti vengono conservati.",
   "localBridge.keepOpenHint": "Chiudendo questa pagina disconnetti il firmatario del telefono. Tieni aperto anche il bridge locale sul telefono.",
   "localBridge.keepOpenTitle": "Tieni aperta questa pagina",
   "wallet.setupAlias": "Configura un alias",
@@ -1424,7 +1423,6 @@
   "localBridge.connecting": "Connessione — controlla il telefono",
   "localBridge.connected": "Firmatario collegato",
   "localBridge.disconnect": "Disconnetti",
-  "localBridge.disable": "Smetti di usare il firmatario del telefono",
   "localBridge.sessionHint": "Sperimentale: solo firma e crittografia NIP-07. Portafoglio e pubblicazione interna non sono disponibili mentre è selezionato il firmatario del telefono.",
   "localBridge.wrongTransport": "Scegli il trasporto corrispondente al codice del telefono.",
   "localBridge.failed": "Impossibile collegare il firmatario.",

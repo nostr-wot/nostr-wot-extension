@@ -1,6 +1,5 @@
 {
-  "localBridge.disableHint": "Removes the temporary phone account and returns to your previous account. Existing accounts are kept.",
-  "localBridge.disconnectHint": "Closes the connection and removes its temporary phone account. Existing accounts are kept.",
+  "localBridge.disconnectHint": "Removes the temporary phone account and returns to your previous account. Existing accounts are kept.",
   "localBridge.keepOpenHint": "Closing this page disconnects your phone signer. Keep the phone’s local bridge open too.",
   "localBridge.keepOpenTitle": "Keep this page open",
   "wallet.setupAlias": "Set up an alias",
@@ -1424,7 +1423,6 @@
   "localBridge.connecting": "Connecting — check your phone",
   "localBridge.connected": "Phone signer connected",
   "localBridge.disconnect": "Disconnect",
-  "localBridge.disable": "Stop using phone signer",
   "localBridge.sessionHint": "Experimental: NIP-07 signing and encryption only. Wallet and internal publishing are unavailable while the phone signer is selected.",
   "localBridge.wrongTransport": "Choose the transport matching the phone’s pairing code.",
   "localBridge.failed": "Could not connect to the phone signer.",

@@ -44,7 +44,7 @@ for (const mode of ['wifi','ble'] as const) test(`${mode} setup uses the appropr
  } finally {await act(async()=>root.unmount());dom.window.close();if(previous)Object.defineProperty(globalThis,'navigator',previous);else Reflect.deleteProperty(globalThis,'navigator');}
 });
 
-test('connected bridge explains page lifetime and separates disconnect from stopping the signer', async t => {
+test('connected bridge explains page lifetime and uses one disconnect action to stop the signer', async t => {
  const dom=new JSDOM('<div id="root"></div>',{url:'https://extension.test'});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const previous=Object.getOwnPropertyDescriptor(globalThis,'navigator');Object.defineProperty(globalThis,'navigator',{configurable:true,value:{bluetooth:{},userAgent:'test'}});
@@ -66,10 +66,11 @@ test('connected bridge explains page lifetime and separates disconnect from stop
   assert.match(button('localBridge.disconnect').className,/text-error/);
   assert.match(button('localBridge.disconnect').className,/bg-\[rgba\(220,38,38,0.1\)\]/);
   assert.ok(document.body.textContent?.includes('localBridge.disconnectHint'));
-  assert.ok(document.body.textContent?.includes('localBridge.disableHint'));
+  assert.equal(button('localBridge.disable'),undefined);
+  assert.equal([...document.querySelectorAll('button')].filter(b=>b.textContent==='localBridge.disconnect').length,1);
   await act(async()=>button('localBridge.disconnect').click());
-  assert.equal(closed,1);assert.equal(disabled,0);assert.ok(button('localBridge.disable'));
-  await act(async()=>button('localBridge.disable').click());
-  assert.equal(disabled,1);assert.equal(button('localBridge.disable'),undefined);
+  assert.equal(closed,1);assert.equal(disabled,1);
+  assert.equal(button('localBridge.disconnect'),undefined);
+  assert.equal(button('localBridge.disable'),undefined);
  } finally {(browser.runtime as any).connect=previousConnect;await act(async()=>root.unmount());dom.window.close();if(previous)Object.defineProperty(globalThis,'navigator',previous);else Reflect.deleteProperty(globalThis,'navigator');}
 });
