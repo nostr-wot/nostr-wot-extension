@@ -3,6 +3,13 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## 0.8.15 — 2026-10-21
+
+### Store release notes
+
+- Roll your own recovery phrase with real dice or a coin. Create offers a game in its own tab: record each throw and watch the die roll or the coin flip, until you reach 256 bits. The phrase is checkable offline (coin flips are the raw bits; dice use SHA-256 like Coldcard) and is never shown in that tab.
+- Onboarding no longer stops at follow suggestions when relays are unreachable. Profiles load in advance; if none answers within 8 seconds the step is skipped, and publishing the follow list never waits more than 10 seconds.
+
 ## 0.8.14 — 2026-10-21
 
 ### Store release notes
