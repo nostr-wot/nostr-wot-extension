@@ -153,7 +153,7 @@ It contains all sensitive operations (representative list):
 - **Vault lifecycle**: `vault_unlock`, `vault_lock`, `vault_create`, `vault_isLocked`, `vault_exists`, `vault_listAccounts`, `vault_addAccount`, `vault_removeAccount`, `vault_setActiveAccount`, `vault_getActivePubkey`, `vault_setAutoLock`, `vault_getAutoLock`, `vault_exportNsec`, `vault_exportNcryptsec`, `vault_importNcryptsec`, `vault_changePassword`, `vault_getActiveAccountType`
 - **Signer permissions**: `signer_getPermissions`, `signer_getPermissionsForDomain`, `signer_clearPermissions`, `signer_savePermission`, `signer_getPermissionsRaw`, `signer_getPermissionsForDomainRaw`, `signer_copyPermissions`, `signer_getUseGlobalDefaults`, `signer_setUseGlobalDefaults`, `signer_setupNewAccountPermissions`
 - **Pending requests**: `signer_getPending`, `signer_resolve`, `signer_resolveBatch`
-- **Account switching**: `switchAccount`
+- **Account switching**: `switchAccount`, `setAccountLabel` (display label only, stored outside the vault)
 - **Onboarding**: `onboarding_validateNsec`, `onboarding_validateNcryptsec`, `onboarding_validateNpub`, `onboarding_connectNip46`, `onboarding_generateAccount`, `onboarding_getPendingPhrase`, `onboarding_exportNcryptsec`, `onboarding_saveReadOnly`, `onboarding_createVault`, `onboarding_addToVault`, `onboarding_initNostrConnect`, `onboarding_pollNostrConnect`, `onboarding_cancelNostrConnect`
 - **Config**: `configUpdated`
 - **Domain management & identity injection**: `requestHostPermission`, `enableForCurrentDomain`, `addAllowedDomain`, `removeAllowedDomain`, `getAllowedDomains`, `isDomainAllowed`, `isDomainDismissed`, `hasHostPermission`, `setIdentityDisabled`, `getIdentityDisabledSites`

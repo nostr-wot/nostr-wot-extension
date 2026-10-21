@@ -1473,5 +1473,7 @@
   "menu.wot": "Web of Trust",
   "menu.localBridge": "Bridge di rete locale",
   "pqc.accountBadge": "Chiavi post-quantistiche attive: le app compatibili possono inviare a questo account messaggi che restano privati anche contro i futuri computer quantistici",
-  "entropyGame.expired": "La tua frase da dadi o moneta è scaduta prima del salvataggio, quindi ne è stata generata una nuova. Lancia di nuovo per usare la tua."
+  "entropyGame.expired": "La tua frase da dadi o moneta è scaduta prima del salvataggio, quindi ne è stata generata una nuova. Lancia di nuovo per usare la tua.",
+  "account.label": "Etichetta questo account",
+  "account.labelPlaceholder": "Etichetta"
 }

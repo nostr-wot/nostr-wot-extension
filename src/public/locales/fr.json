@@ -1473,5 +1473,7 @@
   "menu.wot": "Web of Trust",
   "menu.localBridge": "Passerelle réseau local",
   "pqc.accountBadge": "Clés post-quantiques actives : les apps compatibles peuvent envoyer à ce compte des messages qui restent privés même face aux futurs ordinateurs quantiques",
-  "entropyGame.expired": "Votre phrase de dés ou de pièce a expiré avant d'être sauvegardée ; une nouvelle phrase a donc été générée. Relancez pour utiliser la vôtre."
+  "entropyGame.expired": "Votre phrase de dés ou de pièce a expiré avant d'être sauvegardée ; une nouvelle phrase a donc été générée. Relancez pour utiliser la vôtre.",
+  "account.label": "Étiqueter ce compte",
+  "account.labelPlaceholder": "Étiquette"
 }

@@ -1473,5 +1473,7 @@
   "menu.wot": "Web of Trust",
   "menu.localBridge": "Ponte de rede local",
   "pqc.accountBadge": "Chaves pós-quânticas ativas: apps compatíveis podem enviar a esta conta mensagens que continuam privadas mesmo diante de futuros computadores quânticos",
-  "entropyGame.expired": "Sua frase de dados ou moeda expirou antes do backup, então uma nova foi gerada. Jogue de novo para usar a sua."
+  "entropyGame.expired": "Sua frase de dados ou moeda expirou antes do backup, então uma nova foi gerada. Jogue de novo para usar a sua.",
+  "account.label": "Rotular esta conta",
+  "account.labelPlaceholder": "Rótulo"
 }

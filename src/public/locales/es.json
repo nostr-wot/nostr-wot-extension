@@ -1473,5 +1473,7 @@
   "menu.wot": "Web of Trust",
   "menu.localBridge": "Puente de red local",
   "pqc.accountBadge": "Claves poscuánticas activas: las apps compatibles pueden enviar a esta cuenta mensajes que siguen siendo privados incluso ante futuros ordenadores cuánticos",
-  "entropyGame.expired": "Tu frase de dados o moneda caducó antes de respaldarla, así que se generó una nueva. Vuelve a tirar para usar la tuya."
+  "entropyGame.expired": "Tu frase de dados o moneda caducó antes de respaldarla, así que se generó una nueva. Vuelve a tirar para usar la tuya.",
+  "account.label": "Etiquetar esta cuenta",
+  "account.labelPlaceholder": "Etiqueta"
 }

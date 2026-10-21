@@ -1473,5 +1473,7 @@
   "menu.wot": "Web of Trust",
   "menu.localBridge": "Lokale Netzwerkbrücke",
   "pqc.accountBadge": "Post-Quanten-Schlüssel sind aktiv: Unterstützende Apps können diesem Konto Nachrichten senden, die auch gegenüber künftigen Quantencomputern privat bleiben",
-  "entropyGame.expired": "Ihre Würfel- oder Münzphrase ist abgelaufen, bevor sie gesichert wurde, daher wurde eine neue erzeugt. Würfeln Sie erneut, um Ihre eigene zu verwenden."
+  "entropyGame.expired": "Ihre Würfel- oder Münzphrase ist abgelaufen, bevor sie gesichert wurde, daher wurde eine neue erzeugt. Würfeln Sie erneut, um Ihre eigene zu verwenden.",
+  "account.label": "Dieses Konto beschriften",
+  "account.labelPlaceholder": "Bezeichnung"
 }

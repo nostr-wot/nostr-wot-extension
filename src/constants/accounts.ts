@@ -9,4 +9,6 @@ export const PQC_SEED_WORD_COUNT = 24;
 export const GENERATED_MNEMONIC_STRENGTH_BITS = 256;
 
 export const MAX_ACCOUNT_NAME_LENGTH = 100;
+/** storage.local map of account id to the person's own label, for accounts without a profile name. */
+export const ACCOUNT_LABELS_KEY = 'accountLabels';
 export const SUBACCOUNT_PREVIEW_DELAY_MS = 350;

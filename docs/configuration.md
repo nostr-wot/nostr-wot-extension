@@ -65,6 +65,6 @@ storage scan is reserved for migration when the index is absent. Future timestam
 and expired entries are rejected. Message sender lookups can explicitly use the public
 `wss://purplepag.es` directory; this is distinct from configured-relay profile editing.
 
-The account switcher and active-account header read the shared `profile_<pubkey>` entries and refresh when those entries change, including after profile publication. Existing `profileCache` display data is a fallback for older installations; the popup no longer writes a separate copy after relay fetches.
+Account labels for accounts without a profile name are kept in `storage.local.accountLabels` (account id to label, at most 100 characters), outside the vault so they work for watch-only accounts and while locked. The account switcher and active-account header read the shared `profile_<pubkey>` entries and refresh when those entries change, including after profile publication. Existing `profileCache` display data is a fallback for older installations; the popup no longer writes a separate copy after relay fetches.
 
 Follow suggestions and approval sender profiles share the public display-profile cache and directory lookup. Onboarding lookup is asynchronous and never disables Skip or selection. See [account setup](accounts.md#account-setup-and-public-previews).

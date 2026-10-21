@@ -607,6 +607,8 @@ Approval review uses one-time decisions for the displayed request IDs. Grouped c
 
 Wallet account changes reset only a keyed, nonvisual resource controller. The context provider and popup children stay mounted so a saved sub-account can advance the wizard. Account snapshots are scoped by ID to prevent displaying the previous account’s wallet.
 
+Accounts with no profile name show a tag button (`IconTag`) in the picker. It swaps the row's text for an inline `Input` that replaces the select button rather than nesting inside it: Enter or leaving the field saves, Escape cancels without closing the picker, and an empty label clears it. A profile name always wins over a label; the label wins over the stored account name, and the top bar uses the same `accountDisplay` rule. Labels live in `storage.local.accountLabels`, written only by the `setAccountLabel` RPC and removed with the account.
+
 Account removal uses a later sibling ConfirmDialog at the shared modal layer, above the scrollable picker. Do not override it with a sheet-level z-index: that places confirmation behind the picker. Escape closes only the confirmation. The background owns removal and storage cleanup; failed removal keeps the dialog open with an error and never deletes the UI account optimistically.
 
 Shared Modal bodies separate top-level sections with gap-6 inside the scroll area. Footers use gap-4 in both stacked and equal-width row layouts. ConfirmDialog uses the row layout and separates rich message blocks with gap-6. Keep related fields inside their own Container; avoid adding outer margins to compensate for missing dialog spacing.
