@@ -150,6 +150,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
 
   if (!(await vault.exists()) && accountType !== 'nip46' && !(accountId && await isLocalBridgeSelected(accountId))) throw new Error('No signing key available');
   const session = captureAccountSession(accountId ?? vault.getActiveAccountId(), revision);
+  const phoneSelected = await isLocalBridgeSelected(session.accountId);
 
   // Local permissions apply to ALL account types: an explicit per-origin 'deny'
   // must block even for NIP-46 accounts, BEFORE anything is routed to the
@@ -166,7 +167,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   const needsAuthApproval = !!authentication && !destinationGranted;
   let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
-  if (replacementCount || needsAuthApproval || (!authentication && (accountType !== 'nip46' || await isLocalBridgeSelected(session.accountId)) && decision === 'ask')) {
+  if (replacementCount || needsAuthApproval || (!authentication && (accountType !== 'nip46' && !phoneSelected) && decision === 'ask')) {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'signEvent',
@@ -218,7 +219,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   };
 
   // Explicit phone selection never falls back to a local key or NIP-46.
-  if (await isLocalBridgeSelected(session.accountId)) {
+  if (phoneSelected || await isLocalBridgeSelected(session.accountId)) {
     assertAccountSession(session);
     await assertAuthentication();
     const result = await signWithLocalBridge(event, session, origin);
@@ -305,14 +306,16 @@ async function handleCryptoRequest(
 
   if (!(await vault.exists()) && accountType !== 'nip46' && !(accountId && await isLocalBridgeSelected(accountId))) throw new Error('No signing key available');
   const session = captureAccountSession(accountId ?? vault.getActiveAccountId(), revision);
+  const phoneSelected = await isLocalBridgeSelected(session.accountId);
 
   // Local permissions apply to ALL account types: an explicit per-origin 'deny'
   // blocks even NIP-46 accounts before anything reaches the remote signer.
   const decision = await permissions.check(origin, method, undefined, accountId ?? undefined);
   if (decision === 'deny') throw new Error('Permission denied');
 
-  // NIP-46 accounts skip the local 'ask' prompt — the bunker runs its own approval.
-  if ((accountType !== 'nip46' || await isLocalBridgeSelected(session.accountId)) && decision === 'ask') {
+  // Remote signers, including the local bridge, own ordinary request approval.
+  // Explicit extension denials still win before delegation.
+  if ((accountType !== 'nip46' && !phoneSelected) && decision === 'ask') {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: method,
@@ -338,7 +341,7 @@ async function handleCryptoRequest(
     if (!approved.allow) throw new Error(denyMessage);
   }
 
-  if (await isLocalBridgeSelected(session.accountId)) {
+  if (phoneSelected || await isLocalBridgeSelected(session.accountId)) {
     if (remoteSignerUnsupported) throw new Error(remoteSignerUnsupported);
     return cryptoWithLocalBridge(method, theirPubkey, payload, session, origin);
   }

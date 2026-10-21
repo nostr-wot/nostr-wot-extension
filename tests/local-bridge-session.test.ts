@@ -9,7 +9,8 @@ import * as bridge from '../src/services/signing/localBridgeSession.ts';
 import {captureAccountSession,assertAccountSession} from '../src/services/signing/accountSession.ts';
 import {signEvent} from '../src/lib/crypto/nip01.ts';
 import {hexToBytes} from '../src/lib/crypto/utils.ts';
-import {handleSignEvent,handleNip44Encrypt} from '../src/services/signing/signer.ts';
+import {getPending} from '../src/services/signing/approvalQueue.ts';
+import {handleSignEvent,handleNip44Encrypt,handleNip44Decrypt,handleNip04Encrypt,handleNip04Decrypt} from '../src/services/signing/signer.ts';
 import * as permissions from '../src/services/permissions/permissions.ts';
 
 const key='b7e151628aed2a6abf7158809cf4f3c762e7160f38b4da56a784d9045190cfef';
@@ -272,4 +273,37 @@ it('disconnect during detached metadata persistence removes the partial account'
   assert.equal(p.messages.at(-1).type,'error');assert.equal((await browser.storage.local.get('accounts')).accounts.length,1);
   assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');assert.equal(vault.isLocked(),true);
  } finally {release();browser.storage.local.set=original;}
+});
+
+it('delegates ordinary ask requests to the phone without a second extension prompt',async()=>{
+ const p=await connect();
+ await permissions.setUseGlobalDefaults(false);
+ assert.equal(await permissions.check('example.com','signEvent',1,'a'),'ask');
+ const signing=handleSignEvent({kind:1,content:'phone approves',tags:[],created_at:1},'example.com');
+ await tick(); const req=p.messages.at(-1); assert.equal(req.method,'sign_event');
+ assert.equal((await getPending()).length,0);
+ const signed=await signEvent(JSON.parse(req.params[0]),hexToBytes(key));
+ p.send({type:'response',id:req.id,result:JSON.stringify(signed)});assert.deepEqual(await signing,signed);
+ for(const [fn,method] of [[handleNip04Encrypt,'nip04_encrypt'],[handleNip04Decrypt,'nip04_decrypt'],[handleNip44Encrypt,'nip44_encrypt'],[handleNip44Decrypt,'nip44_decrypt']] as const){
+  const result=fn(pubkey,'payload','example.com');await tick();const request=p.messages.at(-1);
+  assert.equal(request.method,method);assert.equal((await getPending()).length,0);
+  p.send({type:'response',id:request.id,result:'phone result'});assert.equal(await result,'phone result');
+ }
+ const refused=handleNip44Encrypt(pubkey,'payload','example.com');const rejection=assert.rejects(refused,/Phone denied/);await tick();
+ p.send({type:'response',id:p.messages.at(-1).id,error:'Phone denied'});await rejection;
+});
+
+for (const action of ['sign','encrypt'] as const) it(`disabling the phone during ${action} approval routing never falls back to a local key`,async()=>{
+ await connect();await permissions.setUseGlobalDefaults(false);
+ const original=browser.storage.local.get;let armed=true;
+ browser.storage.local.get=async(keys:any)=>{
+  const result=await original(keys);
+  if(armed && keys==='localBridgeAccount:a') {armed=false;await bridge.disableLocalBridge();}
+  return result;
+ };
+ try {
+  const work=action==='sign' ? handleSignEvent({kind:1,content:'must not sign locally',tags:[],created_at:1},'example.com') : handleNip44Encrypt(pubkey,'must not encrypt locally','example.com');
+  await assert.rejects(work,/disconnected|session|changed/i);
+  assert.equal(armed,false);assert.equal((await getPending()).length,0);
+ } finally {browser.storage.local.get=original;}
 });

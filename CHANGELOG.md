@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Delegate ordinary local-bridge signing and encryption approval to the phone without repeating the prompt in the extension.
+
 - Clarify local bridge controls with gray Back inside the card, red Disconnect, and a prominent keep-this-page-open notice.
 
 - Pair a phone over Bluetooth or Wi-Fi without unlocking or creating an extension vault, using a temporary public-only network account.
