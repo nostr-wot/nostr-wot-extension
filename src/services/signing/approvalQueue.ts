@@ -1,4 +1,4 @@
-import { saveAuthenticationGrant } from '../permissions/authentication.ts';
+import { getAuthenticationDecision, saveAuthenticationGrant } from '../permissions/authentication.ts';
 import { validAuthenticationScope } from '@domain/signing/authentication.ts';
 import { updateSignerBadge } from './rejections.ts';
 import * as vault from '../vault/vault.ts';
@@ -267,7 +267,7 @@ export async function resolveRequest(id: string, decision: RequestDecision): Pro
   }
   if (decision.allow) {
     const request = (await getPending()).find(request => request.id === id);
-    if (request?.authentication && !validAuthenticationScope(request.authentication, decision.authenticationScope)) throw new Error('Explicit authentication approval required');
+    if (request?.authentication && !decision.authenticationGranted && !validAuthenticationScope(request.authentication, decision.authenticationScope)) throw new Error('Explicit authentication approval required');
     if (request?.followReplacementCount && !decision.confirmFollowReplacement) throw new Error('Follow-list replacement requires explicit confirmation');
     const {accountId} = await getActiveAccountInfo();
     const idNow = accountId ?? vault.getActiveAccountId();
@@ -322,6 +322,20 @@ export async function resolveBatch(origin: string, permKey: string, decision: Re
     await updateSignerBadge();
   });
   browser.runtime.sendMessage({ type: 'signerPendingUpdated' }).catch(() => {});
+}
+
+/**
+ * Approve pending relay authentication prompts that a just-saved remembered grant now
+ * answers, so choosing "all relays" or "all sites" does not leave a queue of
+ * prompts the user has already decided. The signer rechecks the grant itself
+ * before signing, so a revocation in between still fails closed.
+ */
+export async function resolveCoveredAuthentication(accountId: string): Promise<void> {
+  for (const request of await getPending()) {
+    if (request.authentication?.protocol !== 'nip42' || request.accountId !== accountId || !_pendingResolvers.has(request.id)) continue;
+    if (await getAuthenticationDecision(accountId, request.origin, request.authentication) !== 'allow') continue;
+    await resolveRequest(request.id, { allow: true, remember: false, authenticationGranted: true });
+  }
 }
 
 /**

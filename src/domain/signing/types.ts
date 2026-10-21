@@ -33,6 +33,8 @@ export interface RequestDecision {
   allow: boolean;
   rememberAuthenticationDeny?: boolean;
   authenticationScope?: AuthenticationScope;
+  /** Set only by the queue when a saved grant already covers the request; the signer rechecks the grant. */
+  authenticationGranted?: boolean;
   confirmFollowReplacement?: boolean;
   remember?: boolean;
   rememberKind?: boolean;

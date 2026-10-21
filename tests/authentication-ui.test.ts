@@ -11,7 +11,7 @@ it('HTTP authentication review shows one exact URL and method without duplicate 
  assert.ok(!html.includes('https://client.test')); assert.ok(!html.includes('a'.repeat(64)));
  assert.equal(html.split(authentication.url).length-1,1);
 });
-it('mounted HTTP actions offer only once and site scopes; relay adds explicit connected-sites consent',async()=>{
+it('mounted HTTP actions offer only once and site scopes; relay adds the four remembered relay scopes',async()=>{
  const {JSDOM}=await import('jsdom'); const dom=new JSDOM('<div id="root"></div>',{url:'https://extension.test'});
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const {createRoot}=await import('react-dom/client'); const root=createRoot(document.getElementById('root')!); const scopes:string[]=[];
@@ -22,8 +22,17 @@ it('mounted HTTP actions offer only once and site scopes; relay adds explicit co
   await act(async()=>root.render(createElement(AuthenticationActions,{authentication:{...authentication,protocol:'nip42'},onApprove:scope=>scopes.push(scope),onDeny(){}})));
   assert.ok(!document.body.textContent!.includes('auth.connectedWarning'));
   await act(async()=>{(document.querySelector('[aria-label="approval.approveOptions"]') as HTMLButtonElement).click();});
-  const button=[...document.querySelectorAll('button')].find(b=>b.textContent==='auth.approveAllSites')!;
-  await act(async()=>button.click()); assert.deepEqual(scopes,['once','connected-sites']);
+  const labels=['auth.relayApproveSite','auth.relayApproveSiteAllRelays','auth.relayApproveAllSites','auth.relayApproveEverywhere'];
+  assert.deepEqual([...document.querySelectorAll('[role="menuitem"]')].map(item=>item.textContent),labels,'relay choices run from narrowest to broadest');
+  const button=[...document.querySelectorAll('button')].find(b=>b.textContent==='auth.relayApproveEverywhere')!;
+  await act(async()=>button.click()); assert.deepEqual(scopes,['once','connected-sites-all-relays']);
+  for (const [index,label] of labels.entries()) {
+   await act(async()=>{(document.querySelector('[aria-label="approval.approveOptions"]') as HTMLButtonElement).click();});
+   await act(async()=>[...document.querySelectorAll('button')].find(b=>b.textContent===label)!.click());
+   assert.equal(scopes.at(-1),['site','site-all-relays','connected-sites','connected-sites-all-relays'][index]);
+  }
+  await act(async()=>{(document.querySelector('[aria-label="approval.rejectOptions"]') as HTMLButtonElement).click();});
+  assert.ok(!document.body.textContent!.includes('auth.relayApproveEverywhere'),'denials are never broadened');
  } finally {await act(async()=>root.unmount());dom.window.close();}
 });
 it('collapsed card shows the site once and authentication destination without a public key',async()=>{
@@ -249,6 +258,30 @@ it('relay screen includes site and all-sites grants while backend permissions co
   assert.ok(document.body.textContent!.includes('POST https://api.test'));
  }finally{await act(async()=>root.unmount());dom.window.close();}
 });
+it('relay screen lists every-relay grants first as All relays and opens their site editor',async t=>{
+ const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
+ const {default:Relays}=await import('../src/screens/Settings/RelayAuthentication');
+ const {default:browser}=await import('./helpers/browser-mock');
+ const {t:tr}=await import('../src/services/i18n/i18n');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const grants=[
+  {id:'relay',accountId:'a',origin:'https://site.test',protocol:'nip42',destination:'wss://relay.test/'},
+  {id:'every-relay',accountId:'a',origin:'https://site.test',protocol:'nip42',destination:'*'},
+  {id:'everywhere',accountId:'a',origin:'*',protocol:'nip42',destination:'*'},
+ ];
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>({result:message.method==='getAllowedDomains' ? ['https://site.test'] : grants}));
+ const root=createRoot(document.getElementById('root')!);
+ try{
+  await act(async()=>root.render(createElement(Relays,{accountId:'a',onBack(){}})));
+  const rows=[...document.querySelectorAll('button')].filter(button=>button.textContent!.includes(tr('auth.allRelays'))||button.textContent!.includes('relay.test'));
+  assert.ok(rows[0].textContent!.includes(tr('auth.allRelays')),'the every-relay group is listed first');
+  assert.ok(rows[0].textContent!.includes(tr('auth.allSitesApproved')));
+  assert.ok(!document.body.textContent!.includes('*'),'the stored wildcard is never shown raw');
+  await act(async()=>rows[0].click());
+  assert.ok(document.body.textContent!.includes(tr('auth.allRelays')));assert.ok(document.body.textContent!.includes('https://site.test'));
+  assert.equal(document.querySelector<HTMLInputElement>(`[aria-label="${tr('auth.allConnectedSites')}"]`)!.checked,true);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
 it('Permissions separates rules from backend and relay authentication',async t=>{
  const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');
  const {default:Permissions}=await import('../src/screens/Settings/PermissionsSection');
@@ -326,7 +359,7 @@ it('approval options escape clipped sheets, preserve focus and dismiss without a
   await act(async()=>trigger.click());
   const menu=document.querySelector<HTMLElement>('[role="menu"]')!;
   assert.equal(menu.getAttribute('popover'),'manual');assert.equal(menu.dataset.topLayer,'true');
-  assert.equal(menu.querySelectorAll('[role="menuitem"]').length,2);
+  assert.equal(menu.querySelectorAll('[role="menuitem"]').length,4);
   assert.equal(document.activeElement,menu.querySelector('[role="menuitem"]'));
   await act(async()=>document.activeElement!.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
   assert.equal(document.querySelector('[role="menu"]'),null);assert.equal(document.activeElement,trigger);assert.deepEqual(scopes,[]);
@@ -719,7 +752,7 @@ it('legacy login displays a danger notice and only one-time approval or denial',
  const {t:label}=await import('../src/services/i18n/i18n');
  for(const text of ['auth.legacyTitle','auth.legacyWarning','auth.legacyContact','auth.legacyApprove']) assert.ok(html.includes(label(text)),text);
  assert.ok(html.includes('text-error'));
- for(const text of ['auth.approveAlways','auth.approveAllSites','approval.approveOptions','approval.rejectOptions','perm.relayAuth']) assert.ok(!html.includes(text),text);
+ for(const text of ['auth.approveAlways','auth.relayApproveSite','auth.relayApproveEverywhere','approval.approveOptions','approval.rejectOptions','perm.relayAuth']) assert.ok(!html.includes(text),text);
  const {JSDOM}=await import('jsdom');const dom=new JSDOM('<div id="root"></div>');
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const {createRoot}=await import('react-dom/client');const root=createRoot(document.getElementById('root')!);const decisions:string[]=[];

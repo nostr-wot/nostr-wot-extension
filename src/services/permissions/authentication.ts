@@ -3,7 +3,7 @@ import { AsyncLock } from '@utils/asyncLock.ts';
 import { siteScopes, hasSiteScope } from '@domain/site/siteScope.ts';
 import type { AuthenticationRequest, AuthenticationScope, AuthenticationGrant } from '@domain/signing/authentication.ts';
 import { connectedSiteOrigins, relayPermissionRevision } from '@domain/signing/relayPermissions';
-import { findKnownAuthenticationBackend, validAuthenticationScope } from '@domain/signing/authentication.ts';
+import { ANY_AUTHENTICATION_TARGET, findKnownAuthenticationBackend, validAuthenticationScope } from '@domain/signing/authentication.ts';
 
 export const AUTHENTICATION_GRANTS_KEY = 'authenticationGrants';
 
@@ -29,11 +29,16 @@ export async function listAuthenticationGrants(): Promise<AuthenticationGrant[]>
   const data = await browser.storage.local.get(AUTHENTICATION_GRANTS_KEY);
   return (data[AUTHENTICATION_GRANTS_KEY] as AuthenticationGrant[] | undefined) || [];
 }
-/** Legacy HTTP denies remain broad; legacy allows never acquire endpoint authority. */
+/**
+ * Legacy HTTP denies remain broad; legacy allows never acquire endpoint authority.
+ * Only relay grants may use the `*` origin (every connected site) or `*`
+ * destination (every relay); HTTP grants always bind one exact endpoint.
+ */
 function matchesGrant(grant: AuthenticationGrant, accountId: string, origin: string, auth: AuthenticationRequest): boolean {
-  if (grant.accountId !== accountId || grant.protocol !== auth.protocol
-    || grant.destination !== auth.destination || grant.method !== auth.method
-    || !(grant.origin === origin || (auth.protocol === 'nip42' && grant.origin === '*'))) return false;
+  const relay = auth.protocol === 'nip42';
+  if (grant.accountId !== accountId || grant.protocol !== auth.protocol || grant.method !== auth.method
+    || !(grant.destination === auth.destination || (relay && grant.destination === ANY_AUTHENTICATION_TARGET))
+    || !(grant.origin === origin || (relay && grant.origin === ANY_AUTHENTICATION_TARGET))) return false;
   if (auth.protocol === 'nip42') return true;
   if (grant.version === 2 && typeof grant.resource === 'string') return grant.resource === auth.url;
   return grant.decision === 'deny';
@@ -63,9 +68,11 @@ export async function saveAuthenticationGrant(accountId: string, origin: string,
       throw new Error('Authentication permission denied');
     }
     if (scope === 'once') return;
-    const grant: AuthenticationGrant = {decision,accountId, origin:scope==='connected-sites'?'*':origin,protocol:auth.protocol,destination:auth.destination,
+    const grantOrigin = scope === 'connected-sites' || scope === 'connected-sites-all-relays' ? ANY_AUTHENTICATION_TARGET : origin;
+    const destination = scope === 'site-all-relays' || scope === 'connected-sites-all-relays' ? ANY_AUTHENTICATION_TARGET : auth.destination;
+    const grant: AuthenticationGrant = {decision,accountId, origin:grantOrigin,protocol:auth.protocol,destination,
       ...(auth.protocol === 'nip98' ? {version:2 as const,resource:auth.url} : {}),
-      ...(auth.method ? {method:auth.method} : {}),id:JSON.stringify([accountId,scope==='connected-sites'?'*':origin,auth.protocol,auth.protocol==='nip98'?auth.url:auth.destination,auth.method??''])};
+      ...(auth.method ? {method:auth.method} : {}),id:JSON.stringify([accountId,grantOrigin,auth.protocol,auth.protocol==='nip98'?auth.url:destination,auth.method??''])};
     await browser.storage.local.set({[AUTHENTICATION_GRANTS_KEY]:[...grants.filter(item=>item.id!==grant.id),grant]});
   });
 }

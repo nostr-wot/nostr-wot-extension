@@ -4,7 +4,15 @@ import type { UnsignedEvent } from '../nostr/types.ts';
 // Exact production origin eligible for the narrowly scoped compatibility exception.
 export const LEGACY_LOGIN_ORIGIN = 'https://aqstr.com';
 
-export type AuthenticationScope = 'once' | 'site' | 'connected-sites';
+/**
+ * Remembered NIP-42 choices, narrowest first: this relay on this site (`site`),
+ * every relay on this site, this relay on every connected site, and every relay
+ * on every connected site. HTTP authentication only ever offers `once`/`site`.
+ */
+export type AuthenticationScope = 'once' | 'site' | 'site-all-relays' | 'connected-sites' | 'connected-sites-all-relays';
+const RELAY_ONLY_SCOPES: readonly unknown[] = ['site-all-relays', 'connected-sites', 'connected-sites-all-relays'];
+/** Stored in a grant's origin or destination to cover every site or every relay. NIP-42 only. */
+export const ANY_AUTHENTICATION_TARGET = '*';
 export interface AuthenticationRequest {
   protocol: 'nip98' | 'nip42' | 'legacy-login';
   /** Exact signed URL for review and HTTP permission lookup, including query bytes. */
@@ -79,7 +87,7 @@ export function authenticationKey(auth: AuthenticationRequest): string {
 
 export function validAuthenticationScope(auth: AuthenticationRequest, scope: unknown): scope is AuthenticationScope {
   if (auth.protocol === 'legacy-login') return scope === 'once';
-  return scope === 'once' || scope === 'site' || (scope === 'connected-sites' && auth.protocol === 'nip42');
+  return scope === 'once' || scope === 'site' || (auth.protocol === 'nip42' && RELAY_ONLY_SCOPES.includes(scope));
 }
 
 export interface AuthenticationGrant {
