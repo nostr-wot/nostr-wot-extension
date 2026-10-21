@@ -32,7 +32,7 @@ export interface FilterableTx {
  */
 export function dateRangeToTs(filters: TxFilters): { fromTs: number; toTs: number } {
   return {
-    fromTs: filters.dateFrom ? new Date(filters.dateFrom).getTime() / 1000 : 0,
+    fromTs: filters.dateFrom ? new Date(`${filters.dateFrom}T00:00:00`).getTime() / 1000 : 0,
     toTs: filters.dateTo ? new Date(`${filters.dateTo}T23:59:59`).getTime() / 1000 : Infinity,
   };
 }
