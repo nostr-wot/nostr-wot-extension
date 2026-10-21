@@ -695,3 +695,5 @@ Website signing inputs that include an ID or signature are verified before appro
 ### Public-only phone sessions
 
 Local bridge pairing can create a detached public-only account while the vault is locked or absent. This does not create, unlock or write the encrypted vault. A separate network-scoped capability authorizes only the live phone connection; it is never accepted as a local vault capability. Site permissions and returned-event validation still apply. Connection loss, account selection changes and vault session changes revoke it. Persisted public metadata alone cannot restore signing after worker restart, and explicit stop removes the temporary account and its permissions.
+
+Signing capabilities also capture an in-memory transport revision. Enabling phone signing, including for the already-active account, invalidates earlier capabilities before persisting the selection; replacing, disconnecting or disabling the phone invalidates them again. In-flight local or remote requests cannot return results using a capability from the previous transport. This does not lock the vault or change its keys.

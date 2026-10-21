@@ -27,16 +27,12 @@ import IconChevronLeft from '@assets/IconChevronLeft';
 import IconButton from '@components/IconButton';
 
 const QrCameraDialog = lazy(() => import('./QrCameraDialog'));
-const SoundPairingDialog = lazy(() => import('./SoundPairingDialog'));
 
 type Mode = 'wifi' | 'ble';
 export default function LocalBridgeApp() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [uri, setUri] = useState('');
   const [scanning, setScanning] = useState(false);
-  const [hearing, setHearing] = useState(false);
-  const closeSound = useCallback(() => setHearing(false), []);
-  const soundError = useCallback((key: string) => { setHearing(false); setError(t(key)); }, []);
   const closeScanner = useCallback(() => setScanning(false), []);
   const scanError = useCallback((key: string) => { setScanning(false); setError(t(key)); }, []);
   const [state, setState] = useState<'idle' | 'choose-device' | 'connecting' | 'connected'>('idle');
@@ -101,7 +97,7 @@ export default function LocalBridgeApp() {
     } finally { key?.fill(0); }
   }, [mode]);
   const scanned = useCallback((value: string) => {
-    setScanning(false); setHearing(false);
+    setScanning(false);
     try {
       const offer = parsePairingUri(value);
       if (offer.transport !== mode) throw new Error(t('localBridge.wrongTransport'));
@@ -139,8 +135,9 @@ export default function LocalBridgeApp() {
         <Text variant="hint">{t('localBridge.accountHint')}</Text>
         {state === 'idle' && mode === 'wifi' && <Input type="password" label={t('localBridge.code')} value={uri} onChange={(event) => setUri(event.target.value)} onPaste={(event) => { event.preventDefault(); scanned(event.clipboardData.getData('text')); }} onKeyDown={(event) => { if (event.key === 'Enter' && uri.trim()) { event.preventDefault(); scanned(uri); } }} autoComplete="off" spellCheck={false} actions={[
           <IconButton key="camera" size="large" title={t('localBridge.scan')} aria-label={t('localBridge.scan')} onClick={() => { setError(''); setScanning(true); }}><IconCamera /></IconButton>,
-          <IconButton key="sound" size="large" title={t('localBridge.sound')} aria-label={t('localBridge.sound')} onClick={() => { setError(''); setHearing(true); }}><IconMicrophone /></IconButton>,
+          <IconButton key="sound" size="large" title={t('localBridge.soundUnavailable')} aria-label={t('localBridge.sound')} aria-describedby="sound-unavailable" disabled><IconMicrophone /></IconButton>,
         ]} />}
+        {state === 'idle' && mode === 'wifi' && <Text id="sound-unavailable" variant="hint">{t('localBridge.soundUnavailable')}</Text>}
         {state === 'connected' ? <>
           <Text className="text-success" role="status">{t('localBridge.connected')}</Text>
           <Text mono className="break-all">{pubkey}</Text>
@@ -157,7 +154,6 @@ export default function LocalBridgeApp() {
     </div>
     </main>
     {scanning && <Suspense fallback={null}><QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} /></Suspense>}
-    {hearing && <Suspense fallback={null}><SoundPairingDialog onCode={scanned} onError={soundError} onClose={closeSound} /></Suspense>}
     <footer className="px-8 py-7 text-center">
       <Text variant="hint">Nostr WoT · v{version}</Text>
     </footer>

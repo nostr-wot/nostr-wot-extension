@@ -1,7 +1,7 @@
 import { recordExternalEventRejection } from './rejections.ts';
 import browser from '@lib/browser.ts';
 import * as vault from '../vault/vault.ts';
-import { captureAccountSession, assertAccountSession, beginNetworkSession, endNetworkSession, networkSessionPubkey, type AccountSession } from './accountSession.ts';
+import { captureAccountSession, assertAccountSession, invalidateSigningTransport, beginNetworkSession, endNetworkSession, networkSessionPubkey, type AccountSession } from './accountSession.ts';
 import { signVerifiedRemoteEvent } from './remoteEventVerifier.ts';
 import { config } from '../background/state.ts';
 import { broadcastAccountChanged } from '../background/domain-handlers.ts';
@@ -37,6 +37,7 @@ export async function isLocalBridgeSelected(accountId?: string | null): Promise<
 
 function closeConnection(reason: string): void {
   generation++;
+  invalidateSigningTransport();
   endNetworkSession();
   const current = connection;
   connection = undefined;
@@ -224,6 +225,7 @@ export function acceptLocalBridgePort(port: chrome.runtime.Port): void {
               beganAccount = selected.id;
               assertOpen();
             }
+            invalidateSigningTransport();
             await browser.storage.local.set({accounts:existing ? accounts : [...accounts,selected],activeAccountId:selected.id,[selectionKey(selected.id)]:true});
             assertOpen();
             config.myPubkey = selected.pubkey;
@@ -276,6 +278,7 @@ export function acceptLocalBridgePort(port: chrome.runtime.Port): void {
             revision = expectedGeneration;
             assertPairing();
           }
+          invalidateSigningTransport();
           await browser.storage.local.set({accounts:temporary ? [...accounts,selected] : accounts,activeAccountId:selected.id,[selectionKey(selected.id)]:true});
           assertPairing();
           config.myPubkey = account.pubkey;
@@ -283,11 +286,11 @@ export function acceptLocalBridgePort(port: chrome.runtime.Port): void {
           assertPairing();
           if (activeAccountId !== selected.id) await onActiveAccountChanged(activeAccountId ?? null, selected.id);
           assertPairing();
-          const session = captureAccountSession(selected.id);
-          assertAccountSession(session);
           if (disconnected || generation !== revision) throw new Error('Phone connection expired');
           assertPairing();
           closeConnection('Phone signer connection replaced');
+          const session = captureAccountSession(selected.id);
+          assertAccountSession(session);
           pairedAccountId = selected.id;
           connection = {port,session,pubkey:account.pubkey,pending:new Map()};
           port.postMessage({type:'ready',accountId:session.accountId,pubkey:account.pubkey});

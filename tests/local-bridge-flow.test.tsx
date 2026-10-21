@@ -34,7 +34,11 @@ for (const mode of ['wifi','ble'] as const) test(`${mode} setup uses the appropr
   }
   assert.equal(document.querySelectorAll('input').length,1);
   assert.ok(document.querySelector('[aria-label="localBridge.scan"]'));
-  assert.ok(document.querySelector('[aria-label="localBridge.sound"]'));
+  const sound = document.querySelector<HTMLButtonElement>('[aria-label="localBridge.sound"]')!;
+  assert.ok(sound); assert.equal(sound.disabled, true);
+  assert.equal(document.getElementById(sound.getAttribute('aria-describedby')!)?.textContent, 'localBridge.soundUnavailable');
+  await act(async () => sound.click());
+  assert.equal(document.querySelector('[role="dialog"]'), null);
   const back=[...document.querySelectorAll('button')].find(b=>b.textContent==='common.back')!;
   assert.ok(back.closest('[data-testid="bridge-card"]'));assert.match(back.className,/text-secondary/);assert.match(back.className,/bg-hover/);
   const uri=`nwlan://${'11'.repeat(32)}?v=2&psk=${Buffer.alloc(32,2).toString('base64url')}&addr=192.168.1.2:54211`;

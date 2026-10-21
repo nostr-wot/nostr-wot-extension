@@ -87,7 +87,7 @@ async function getNip46Client(acct: SafeAccount, session: AccountSession, connec
     lockCleanupRegistered = true;
   }
   let client = _nip46Clients.get(acct.id);
-  if (client && client.session.revision !== session.revision) {
+  if (client && (client.session.revision !== session.revision || client.session.transportRevision !== session.transportRevision)) {
     disconnectNip46(acct.id); client = undefined;
   }
   if (connectedOnly && (!client?.connected || client.disposed)) throw new Error('Remote signer is not connected');

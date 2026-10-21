@@ -47,6 +47,15 @@ export async function smokeChrome(archive, version) {
     await recovery.waitForFunction(() => globalThis.document.querySelector('#root')?.childElementCount > 0, undefined, { timeout: 5000 });
     await recovery.getByText('No accounts', { exact: true }).waitFor({ timeout: 5000 });
     await recovery.close();
+    // Verify the shipped bridge UI cannot enter the CSP-incompatible audio decoder.
+    const bridge = await context.newPage();
+    await bridge.goto(`chrome-extension://${id}/src/entrypoints/local-bridge/index.html`);
+    await bridge.getByText('Wi-Fi', { exact: true }).click();
+    const sound = bridge.getByRole('button', { name: 'Pair with sound', exact: true });
+    assert.equal(await sound.isDisabled(), true, 'Unverified sound decoder must remain unavailable');
+    await bridge.getByText('Sound pairing is unavailable in this version. Scan the QR code or paste the pairing code.', { exact: true }).waitFor();
+    assert.equal(await bridge.getByRole('button', { name: 'Scan QR code', exact: true }).isEnabled(), true);
+    await bridge.close();
     console.log(`Chrome ZIP smoke passed: worker started, popup rendered, connection-status RPC answered. SHA256 ${sha256}`);
     return sha256;
   } finally {

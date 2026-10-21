@@ -1438,6 +1438,7 @@
   "localBridge.soundStart": "Empezar a escuchar",
   "localBridge.soundListening": "Escuchando… Reproduce el sonido de vinculación en el teléfono.",
   "localBridge.soundHint": "Escucha con el micrófono del ordenador y reproduce el sonido en el teléfono. El audio se decodifica localmente y la escucha termina a los 30 segundos.",
+  "localBridge.soundUnavailable": "La vinculación por sonido no está disponible en esta versión. Escanea el código QR o pega el código de vinculación.",
   "localBridge.soundTimeout": "No se recibió el sonido. Acerca el teléfono, sube su volumen multimedia e inténtalo de nuevo.",
   "localBridge.microphoneDenied": "Permite el micrófono o usa el QR o pega el código.",
   "localBridge.soundFailed": "No se pudo iniciar la escucha. Comprueba el micrófono o usa el QR.",

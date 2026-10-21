@@ -228,3 +228,25 @@ test('Nostr Connect verifies envelopes without trusting cached verification flag
     assert.equal(notices[0].reason,'invalidExternalEvent');
   } finally {connection.dispose();}
 });
+
+test('remote signing reconnects after transport capability invalidation without relocking the vault', async t => {
+  const {invalidateSigningTransport}=await import('../src/services/signing/accountSession.ts');
+  const account=await remoteAccount();
+  let connects=0;
+  BunkerSigner.fromBunker=(key,bp,opts={})=>{
+    const instance=originalFromBunker(key,bp,{...opts,pool:poolFrom(opts)});
+    instance.connect=async()=>{connects++;await tick();};
+    instance.nip44Encrypt=async()=>'ciphertext';
+    return instance;
+  };
+  t.after(()=>{BunkerSigner.fromBunker=originalFromBunker;vault.lock();});
+  const encrypt=()=>remote.handleNip46Request(account,'nip44Encrypt',{pubkey,plaintext:'hello'},'https://offline.invalid');
+  assert.equal(await encrypt(),'ciphertext');
+  const revision=vault.getSessionRevision();
+  invalidateSigningTransport();
+  assert.equal(await encrypt(),'ciphertext');
+  assert.equal(connects,2);
+  assert.equal(active(),1);
+  assert.equal(vault.isLocked(),false);
+  assert.equal(vault.getSessionRevision(),revision);
+});

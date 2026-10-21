@@ -121,7 +121,7 @@ it('pairs and signs without creating or unlocking a vault',async()=>{
  assert.deepEqual(await signing,signed);
  const session=captureAccountSession(id);assertAccountSession(session);
  assert.throws(()=>assertAccountSession({...session,revision:session.revision+1}),/Phone signer session changed/);
- assert.throws(()=>assertAccountSession({accountId:id,revision:session.revision}),/Vault is locked/);
+ assert.throws(()=>assertAccountSession({accountId:id,revision:session.revision,transportRevision:session.transportRevision}),/Vault is locked/);
  p.close();assert.throws(()=>assertAccountSession(session),/Phone signer session changed/);
  await bridge.disableLocalBridge();
  assert.deepEqual((await browser.storage.local.get('accounts')).accounts,[]);
@@ -379,4 +379,49 @@ for(const locked of [false,true]) it(`all event kinds delegate approval to the p
   const signed=await signEvent(JSON.parse(req.params[0]),hexToBytes(key));p.send({type:'response',id:req.id,result:JSON.stringify(signed)});
   assert.deepEqual(await work,signed);p.messages.splice(0);
  }
+});
+
+it('same-account phone pairing rejects an in-flight request that observed the old local route',async()=>{
+ await permissions.save('https://example.com','signEvent',1,'allow','a');
+ const get=browser.storage.local.get;
+ let reads=0;
+ let reached!:()=>void, resume!:()=>void;
+ const paused=new Promise<void>(resolve=>{reached=resolve;});
+ const gate=new Promise<void>(resolve=>{resume=resolve;});
+ browser.storage.local.get=async (...args:Parameters<typeof get>)=>{
+  const result=await get(...args);
+  if(args[0]==='localBridgeAccount:a' && ++reads===2){reached();await gate;}
+  return result;
+ };
+ try {
+  const signing=handleSignEvent({kind:1,content:'must reach phone',tags:[],created_at:1},'https://example.com');
+  const outcome=signing.then(value=>({value,error:undefined}),error=>({value:undefined,error}));
+  await paused;
+  const before=vault.getSessionRevision();
+  const p=await connect();
+  resume();
+  const result=await outcome;
+  assert.match(result.error?.message ?? '',/session changed/);
+  assert.equal(result.value,undefined);
+  assert.equal(p.messages.some(m=>m.type==='request'),false);
+  assert.equal(vault.isLocked(),false);
+  assert.equal(vault.getSessionRevision(),before);
+ } finally {resume();browser.storage.local.get=get;}
+});
+it('pairing, replacing and disabling a phone retire earlier same-account capabilities',async()=>{
+ const local=captureAccountSession();
+ await connect();
+ assert.throws(()=>assertAccountSession(local),/session changed/);
+ const first=captureAccountSession();
+ const replacement=await connect();
+ assert.throws(()=>assertAccountSession(first),/session changed/);
+ const second=captureAccountSession();
+ replacement.close();
+ assert.throws(()=>assertAccountSession(second),/session changed/);
+ await connect();
+ const reconnected=captureAccountSession();
+ await bridge.disableLocalBridge();
+ assert.throws(()=>assertAccountSession(reconnected),/session changed/);
+ assertAccountSession(captureAccountSession());
+ assert.equal(vault.isLocked(),false);
 });

@@ -1438,6 +1438,7 @@
   "localBridge.soundStart": "Avvia ascolto",
   "localBridge.soundListening": "In ascolto… Riproduci il suono di abbinamento sul telefono.",
   "localBridge.soundHint": "Ascolta con il microfono del computer e riproduci il suono sul telefono. La decodifica è locale e l’ascolto termina dopo 30 secondi.",
+  "localBridge.soundUnavailable": "L’abbinamento tramite audio non è disponibile in questa versione. Scansiona il codice QR o incolla il codice di abbinamento.",
   "localBridge.soundTimeout": "Nessun suono ricevuto. Avvicina il telefono, alza il volume multimediale e riprova.",
   "localBridge.microphoneDenied": "Consenti il microfono oppure usa il QR o incolla il codice.",
   "localBridge.soundFailed": "Impossibile avviare l’ascolto. Controlla il microfono o usa il QR.",

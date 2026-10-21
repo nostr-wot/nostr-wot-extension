@@ -3,47 +3,23 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
+## 0.8.14 — 2026-10-21
 
-- Use the phone’s advertised Bluetooth packet size to reduce request round trips, with a safe fallback for older builds and no replay after a failed write.
+### Store release notes
 
-- Forward the requesting site inside encrypted bridge requests so the phone can offer reuse of site-specific decisions across connections.
+- Pair Nostr WoT on your phone as an experimental local signer over Wi-Fi or supported Bluetooth browsers. Confirm the matching pairing code on the phone; scan a Wi-Fi QR or paste its link on the computer.
+- Send signing and encryption approval requests directly to the phone, including relay sign-ins, app data and following-list events. The phone can remember site-specific decisions.
+- Pair without unlocking an extension vault or importing the phone's public key. Temporary Network accounts are removed when the bridge tab closes, preserving existing accounts.
+- Use one Disconnect action, clearer setup instructions and a visible reminder to keep the bridge page open.
+- Transfer Bluetooth requests in larger safe packets when supported, with fallback for older phone builds.
+- Reject invalid external signatures and show an activity record and error notice. Correct wallet date filtering to start at local midnight.
 
-- Forward all local-bridge signing and encryption approvals to the phone, including authentication and following-list events, before extension request-permission rules.
+- Sound pairing is unavailable in this release because its decoder is incompatible with extension security policy. Use QR or paste for Wi-Fi pairing.
+- Invalidate in-flight local signing capabilities when switching to phone signing, including pairing the already-active account.
 
-- Combine closing the local bridge and stopping phone signing into one Disconnect action.
+### Compatibility
 
-- Remove pairing-created temporary accounts and permissions when their bridge tab closes; preserve existing accounts and the previous selection.
-
-- Delegate ordinary local-bridge signing and encryption approval to the phone without repeating the prompt in the extension.
-
-- Clarify local bridge controls with gray Back inside the card, red Disconnect, and a prominent keep-this-page-open notice.
-
-- Pair a phone over Bluetooth or Wi-Fi without unlocking or creating an extension vault, using a temporary public-only network account.
-
-- Explain when Bluetooth pairing is closed or busy instead of incorrectly asking users to update the phone app.
-
-- Label accounts using the local phone signer as Network (Red in Spanish), instead of Read-only, in the header and account picker.
-
-- Pair a phone without first importing its public key: select a matching account automatically or create a temporary public-only account, with cleanup and previous-account restoration when phone signing is stopped.
-
-- Show microphone preparation before listening for sound pairing, and start the listening timeout only after capture is ready.
-
-- Pair Bluetooth phones directly through device selection and phone code confirmation, without scanning or pasting a pairing code.
-
-- Simplify local bridge pairing with inline camera/sound actions, automatic advancement after reading a code, and Back above the setup card.
-
-- Require a matching six-digit phone choice before pairing any new local computer, including QR and sound pairing; reject mismatches and concurrent pairing attempts.
-
-- Add opt-in local pairing by sound, with a bounded microphone session and compact Wi-Fi or Bluetooth bootstrap packets.
-
-- Scan the phone’s local bridge pairing QR with the computer camera, with local decoding and a paste fallback.
-
-- Restyle the experimental local bridge page with the animated background, branded header, setup card, and version footer.
-
-- Surface invalid external event signatures and integrity failures in rejection notices and activity; verify signed website inputs before approval.
-
-- Add an experimental local network bridge menu with Wi-Fi and Bluetooth choices, phone-side signing, authenticated pairing and explicit disconnect behavior.
+The local bridge remains experimental and requires a compatible Nostr WoT phone build. Bluetooth depends on browser Web Bluetooth support; Wi-Fi remains available independently. Phone mode supports NIP-07 signing and classic NIP-04/NIP-44 encryption. Wallet identity operations, internal publishing and post-quantum operations remain unavailable while the phone signer is selected. A disconnected phone never falls back to local keys.
 
 ## 0.8.13 — 2026-10-16
 
