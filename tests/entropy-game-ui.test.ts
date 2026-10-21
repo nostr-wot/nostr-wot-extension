@@ -27,7 +27,7 @@ it('records dice rolls, replays the roll each time, and hands over exactly 100 r
   const { dom, root } = await mount();
   const completed: Array<[string, number[]]> = [];
   try {
-    await act(async () => root.render(createElement(EntropyGame, { onComplete: (kind: string, results: number[]) => { completed.push([kind, results]); } })));
+    await act(async () => root.render(createElement(EntropyGame, { onComplete: async (kind: string, results: number[]) => { completed.push([kind, results]); return completed.length > 1; } })));
     assert.equal(document.querySelector('.animate-die-roll'), null);
     await act(async () => button('entropyGame.record').click());
     const firstRoll = document.querySelector('.animate-die-roll');
@@ -43,8 +43,12 @@ it('records dice rolls, replays the roll each time, and hands over exactly 100 r
     // The tab switch is locked while results exist, so kinds cannot mix.
     assert.equal(document.querySelector<HTMLButtonElement>('[role="tab"]')!.disabled, true);
     await act(async () => { window.dispatchEvent(new window.KeyboardEvent('keydown', { key: '3' })); });
+    // A failed build keeps every roll for a retry; success clears them.
     await act(async () => button('entropyGame.useSeed').click());
-    assert.equal(completed.length, 1);
+    assert.equal(document.querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow'), '256');
+    await act(async () => button('entropyGame.useSeed').click());
+    assert.equal(document.querySelector('[role="progressbar"]')!.getAttribute('aria-valuenow'), '0');
+    assert.equal(completed.length, 2);
     assert.equal(completed[0][0], 'dice');
     assert.equal(completed[0][1].length, 100);
     assert.deepEqual(completed[0][1].slice(0, 2), [1, 1]);
@@ -57,7 +61,7 @@ it('coin mode flips the coin and records heads as 1 and tails as 0', async () =>
   resetMockStorage();
   const { dom, root } = await mount();
   try {
-    await act(async () => root.render(createElement(EntropyGame, { onComplete() {} })));
+    await act(async () => root.render(createElement(EntropyGame, { onComplete: async () => true })));
     const coinTab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent === 'entropyGame.coin')!;
     await act(async () => coinTab.click());
     const [heads, tails] = [...document.querySelectorAll<HTMLButtonElement>('button[aria-label="entropyGame.record"]')];
@@ -83,4 +87,36 @@ it('follow suggestions skip themselves when no relay returns a profile', async (
     await act(async () => { await new Promise((r) => setTimeout(r, 10)); });
     assert.equal(unavailable, 1);
   } finally { await act(async () => root.unmount()); dom.window.close(); resetFollowSuggestionsPreload(); }
+});
+
+it('the dice tab hands a phrase back hidden, and keeps a waiting wizard on Create', async () => {
+  const { persistCreated, readCreated, keepWizardOnCreate, CREATE_TTL_MS } = await import('../src/screens/Wizard/createdPhrase');
+  const { WIZARD_STORAGE_KEY, WizardStep } = await import('../src/constants/wizard');
+  const { default: browser, resetMockStorage } = await import('./helpers/browser-mock');
+  resetMockStorage();
+  assert.equal(await readCreated(), null);
+  await persistCreated({ id: 'a' }, 'words', 'dice', true);
+  assert.deepEqual(await readCreated(), { account: { id: 'a' }, mnemonic: 'words', physical: 'dice', pendingBackup: true });
+  assert.equal(await readCreated(Date.now() + CREATE_TTL_MS), null);
+  await persistCreated({ id: 'b' }, 'other');
+  assert.deepEqual(await readCreated(), { account: { id: 'b' }, mnemonic: 'other', physical: null, pendingBackup: false });
+
+  await browser.storage.session.set({ [WIZARD_STORAGE_KEY]: { step: WizardStep.Create, ctx: {}, ts: 1 } });
+  await keepWizardOnCreate();
+  assert.ok((await browser.storage.session.get(WIZARD_STORAGE_KEY) as any)[WIZARD_STORAGE_KEY].ts > 1);
+  await browser.storage.session.set({ [WIZARD_STORAGE_KEY]: { step: WizardStep.Password, ctx: {}, ts: 1 } });
+  await keepWizardOnCreate();
+  assert.equal((await browser.storage.session.get(WIZARD_STORAGE_KEY) as any)[WIZARD_STORAGE_KEY].ts, 1);
+});
+
+it('gentle scrolling honours reduced motion', async () => {
+  const { scrollIntoViewGently } = await import('../src/utils/scroll');
+  const calls: unknown[] = [];
+  const element = { scrollIntoView: (options: unknown) => calls.push(options) } as unknown as Element;
+  for (const reduce of [false, true]) {
+    Object.assign(globalThis, { window: { matchMedia: () => ({ matches: reduce }) } });
+    scrollIntoViewGently(element, 'start');
+  }
+  scrollIntoViewGently(null);
+  assert.deepEqual(calls, [{ block: 'start', behavior: 'smooth' }, { block: 'start', behavior: 'instant' }]);
 });

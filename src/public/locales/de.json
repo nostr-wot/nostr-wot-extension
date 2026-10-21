@@ -1449,7 +1449,7 @@
   "entropyGame.title": "Eigenen Seed würfeln",
   "entropyGame.intro": "Sie möchten dem Zufall dieses Computers nicht vertrauen? Erzeugen Sie die Phrase mit einem echten Würfel oder einer Münze. Sie ersetzt die Phrase oben.",
   "entropyGame.open": "Würfel oder Münze verwenden",
-  "entropyGame.openDesc": "Jeden Wurf erfassen, bis 256 Bit erreicht sind",
+  "entropyGame.openDesc": "Öffnet sich in einem neuen Tab, ohne Zeitdruck",
   "entropyGame.sourceLabel": "Entropiequelle",
   "entropyGame.dice": "Würfel",
   "entropyGame.coin": "Münze",
@@ -1470,5 +1470,10 @@
   "entropyGame.building": "Phrase wird erstellt…",
   "entropyGame.recorded": "{value} erfasst, {count} von {total}",
   "entropyGame.usedDice": "Diese Phrase stammt aus Ihren Würfelwürfen. Sichern Sie sie unten, bevor Sie fortfahren.",
-  "entropyGame.usedCoin": "Diese Phrase stammt aus Ihren Münzwürfen. Sichern Sie sie unten, bevor Sie fortfahren."
+  "entropyGame.usedCoin": "Diese Phrase stammt aus Ihren Münzwürfen. Sichern Sie sie unten, bevor Sie fortfahren.",
+  "entropyGame.pageIntro": "Wählen Sie Würfel oder Münze und erfassen Sie jeden echten Wurf. Bei 256 Bit geht Ihre neue Wiederherstellungsphrase zurück an die Einrichtung.",
+  "entropyGame.readyDice": "Ihre Wiederherstellungsphrase stammt aus Ihren Würfelwürfen.",
+  "entropyGame.readyCoin": "Ihre Wiederherstellungsphrase stammt aus Ihren Münzwürfen.",
+  "entropyGame.returnToSetup": "Kehren Sie zur Nostr-WoT-Einrichtung zurück, um sie anzuzeigen und zu sichern. Auf dieser Seite wird sie nicht angezeigt.",
+  "entropyGame.closeTab": "Diesen Tab schließen"
 }

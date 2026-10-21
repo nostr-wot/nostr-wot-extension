@@ -316,7 +316,7 @@ Passkey recovery account selection is a pure rule in `domain/vault/passkey.ts`, 
 
 ## Experimental local bridge
 
-The dedicated `src/entrypoints/local-bridge/` document owns Wi-Fi/Web Bluetooth connections and ephemeral peer keys. `services/signing/localBridge/` implements the wallet's authenticated `nwlan/2` protocol. `localBridgeTab` forwards only allowed requests over an internal runtime Port. `localBridgeSession` accepts that Port only from the exact extension bridge document, binds it to the selected vault session, and routes approved NIP-07 requests through it. The menu loads none of the Bluetooth client into the popup shell. See [local-bridge.md](local-bridge.md) for setup, supported operations, limitations and physical-device checks.
+`src/entrypoints/entropy/` hosts the onboarding dice/coin game in a tab and hands its phrase back through session storage; see [accounts](accounts.md#recovery-phrase-from-dice-or-a-coin). Full-tab pages share the `ExtensionPage` frame (logo header, centred card, version footer). The dedicated `src/entrypoints/local-bridge/` document owns Wi-Fi/Web Bluetooth connections and ephemeral peer keys. `services/signing/localBridge/` implements the wallet's authenticated `nwlan/2` protocol. `localBridgeTab` forwards only allowed requests over an internal runtime Port. `localBridgeSession` accepts that Port only from the exact extension bridge document, binds it to the selected vault session, and routes approved NIP-07 requests through it. The menu loads none of the Bluetooth client into the popup shell. See [local-bridge.md](local-bridge.md) for setup, supported operations, limitations and physical-device checks.
 
 ## External event verification
 

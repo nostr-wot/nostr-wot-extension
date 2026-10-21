@@ -64,7 +64,7 @@ the last group running for about two minutes even after most tests finish.
 | `tests/communication.test.ts` | Full communication test suite (see below) |
 | `tests/wizardMachine.test.ts` | Onboarding wizard state machine transitions |
 | `tests/physical-entropy.test.ts` | Coin flips and dice rolls map to the 256-bit BIP-39 entropy offline tools derive (coin bits verbatim, dice SHA-256 of the digit string); short or tampered lists are refused; saved progress restores only when fresh and well-formed |
-| `tests/entropy-game-ui.test.ts` | Mounted dice/coin game: each recorded result replays the roll or flip, keys 1 to 6 or 0/1 record and Backspace undoes, kinds cannot mix, exactly the required results are handed over; the follow step skips itself when no relay returns a profile |
+| `tests/entropy-game-ui.test.ts` | Mounted dice/coin game: each recorded result replays the roll or flip, keys 1 to 6 or 0/1 record and Backspace undoes, kinds cannot mix, exactly the required results are handed over and a failed build keeps them; the tab's phrase handoff (`pendingBackup`, TTL, wizard renewal); reduced-motion scrolling; the follow step skips itself when no relay returns a profile |
 | `tests/follow-suggestions.test.ts` | Follow-suggestion selection, and the relay check that skips the step when no suggested profile answers before the deadline |
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |

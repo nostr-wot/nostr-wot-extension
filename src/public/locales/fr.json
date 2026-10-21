@@ -1449,7 +1449,7 @@
   "entropyGame.title": "Créez votre propre graine",
   "entropyGame.intro": "Vous préférez ne pas vous fier au hasard de cet ordinateur ? Créez la phrase avec un vrai dé ou une vraie pièce. Elle remplace la phrase ci-dessus.",
   "entropyGame.open": "Utiliser des dés ou une pièce",
-  "entropyGame.openDesc": "Notez chaque lancer jusqu'à atteindre 256 bits",
+  "entropyGame.openDesc": "S'ouvre dans un nouvel onglet, prenez votre temps",
   "entropyGame.sourceLabel": "Source d'entropie",
   "entropyGame.dice": "Dés",
   "entropyGame.coin": "Pièce",
@@ -1470,5 +1470,10 @@
   "entropyGame.building": "Création de votre phrase…",
   "entropyGame.recorded": "{value} noté, {count} sur {total}",
   "entropyGame.usedDice": "Cette phrase provient de vos lancers de dé. Sauvegardez-la ci-dessous avant de continuer.",
-  "entropyGame.usedCoin": "Cette phrase provient de vos tirages à pile ou face. Sauvegardez-la ci-dessous avant de continuer."
+  "entropyGame.usedCoin": "Cette phrase provient de vos tirages à pile ou face. Sauvegardez-la ci-dessous avant de continuer.",
+  "entropyGame.pageIntro": "Choisissez des dés ou une pièce, puis notez chaque vrai lancer. À 256 bits, votre nouvelle phrase de récupération retourne à la configuration.",
+  "entropyGame.readyDice": "Votre phrase de récupération provient de vos lancers de dé.",
+  "entropyGame.readyCoin": "Votre phrase de récupération provient de vos tirages à pile ou face.",
+  "entropyGame.returnToSetup": "Revenez à la configuration de Nostr WoT pour l'afficher et la sauvegarder. Elle n'est pas affichée sur cette page.",
+  "entropyGame.closeTab": "Fermer cet onglet"
 }

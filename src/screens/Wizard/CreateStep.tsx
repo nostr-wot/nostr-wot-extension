@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import browser from '@lib/browser.ts';
 import { rpc } from '@services/rpc.ts';
 import { downloadFile } from '@utils/downloadFile.ts';
+import { scrollIntoViewGently } from '@utils/scroll.ts';
 import useCopy from '@hooks/useCopy.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
@@ -20,11 +21,10 @@ import Heading from '@components/Heading';
 import Container from '@components/Container';
 import StatusNotice from '@components/StatusNotice';
 import Text from '@components/Text';
-import EntropyGame, { clearEntropyProgress } from './EntropyGame';
+import useStorageWatch from '@hooks/useStorageWatch.ts';
+import { clearEntropyProgress } from './EntropyGame/progress';
+import { CREATE_STORAGE_KEY, persistCreated, readCreated, type CreatedPhrase } from './createdPhrase';
 import type { PhysicalEntropyKind } from '@domain/accounts/physicalEntropy.ts';
-
-const CREATE_STORAGE_KEY = 'wizardCreateData';
-const CREATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 interface CreateStepProps {
   onNext: (account: any, mnemonic: string) => void;
@@ -39,22 +39,25 @@ export default function CreateStep({ onNext }: CreateStepProps) {
   const seedCopy = useCopy();
   const [encModalOpen, setEncModalOpen] = useState<boolean>(false);
   const [backedUp, setBackedUp] = useState<boolean>(false);
-  const [gameOpen, setGameOpen] = useState<boolean>(false);
   const [physicalSource, setPhysicalSource] = useState<PhysicalEntropyKind | null>(null);
   const topRef = useRef<HTMLDivElement>(null);
+
+  // A restored phrase was already shown (popup closed and reopened); one handed
+  // over by the dice tab has not been, so it starts hidden and un-backed-up.
+  const apply = (saved: CreatedPhrase) => {
+    setAccount(saved.account);
+    setMnemonic(saved.mnemonic);
+    setPhysicalSource(saved.physical);
+    setRevealed(!saved.pendingBackup);
+    setBackedUp(!saved.pendingBackup);
+  };
 
   useEffect(() => {
     void (async () => {
       try {
-        // Try restoring from session storage (popup was closed and reopened)
-        const saved = await browser.storage.session.get(CREATE_STORAGE_KEY);
-        const data = (saved as Record<string, any>)[CREATE_STORAGE_KEY];
-        if (data?.account && data?.mnemonic && data?.ts && Date.now() - data.ts < CREATE_TTL_MS) {
-          setAccount(data.account);
-          setMnemonic(data.mnemonic);
-          setPhysicalSource(data.physical ?? null);
-          setRevealed(true);
-          setBackedUp(true);
+        const saved = await readCreated();
+        if (saved) {
+          apply(saved);
           setLoading(false);
           return;
         }
@@ -64,10 +67,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
         setAccount(result.account);
         setMnemonic(result.mnemonic);
 
-        // Persist so it survives popup close (with timestamp)
-        await browser.storage.session.set({
-          [CREATE_STORAGE_KEY]: { account: result.account, mnemonic: result.mnemonic, ts: Date.now() },
-        });
+        await persistCreated(result.account, result.mnemonic);
       } catch (e: any) {
         setError(e.message || t('wizard.failedGenerate'));
       }
@@ -75,32 +75,32 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     })();
   }, []);
 
+  // The dice tab finished while this step is open (the wizard runs in a tab, or
+  // the popup was reopened first).
+  const mnemonicRef = useRef(mnemonic);
+  mnemonicRef.current = mnemonic;
+  useStorageWatch([{ area: 'session', keys: [CREATE_STORAGE_KEY] }], () => {
+    void readCreated().then((saved) => {
+      if (!saved?.pendingBackup || saved.mnemonic === mnemonicRef.current) return;
+      apply(saved);
+      scrollIntoViewGently(topRef.current, 'start');
+    });
+  });
+
+  // Once the new phrase is backed up, a reopened popup must not hide it again.
+  useEffect(() => {
+    if (backedUp && physicalSource && account && mnemonic) void persistCreated(account, mnemonic, physicalSource);
+  }, [backedUp]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openEntropyGame = () => {
+    void browser.tabs.create({ url: browser.runtime.getURL('src/entrypoints/entropy/index.html') });
+  };
+
   const handleNext = () => {
     // Clear persisted create data — wizard context takes over from here
     browser.storage.session.remove(CREATE_STORAGE_KEY).catch(() => {});
     clearEntropyProgress();
     onNext(account, mnemonic!);
-  };
-
-  // Replace the generated phrase with one built from the person's own rolls.
-  // The new phrase starts hidden and un-backed-up, exactly like a fresh one.
-  const handleEntropy = async (kind: PhysicalEntropyKind, results: number[]) => {
-    setError('');
-    try {
-      const result = await rpc<{ account: any; mnemonic: string }>('onboarding_generateAccount', { physical: { kind, results } });
-      setAccount(result.account);
-      setMnemonic(result.mnemonic);
-      setPhysicalSource(kind);
-      setRevealed(false);
-      setBackedUp(false);
-      setGameOpen(false);
-      await browser.storage.session.set({
-        [CREATE_STORAGE_KEY]: { account: result.account, mnemonic: result.mnemonic, physical: kind, ts: Date.now() },
-      });
-      topRef.current?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-    } catch (e: any) {
-      setError(e.message || t('wizard.failedGenerate'));
-    }
   };
 
   if (loading) {
@@ -112,7 +112,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
     );
   }
 
-  if (error && !mnemonic) {
+  if (error) {
     return (
       <Container className="flex-1">
         <Heading className="mb-3">{t('common.error')}</Heading>
@@ -203,10 +203,7 @@ export default function CreateStep({ onNext }: CreateStepProps) {
       <Container gap={3} className="mt-8">
         <Text as="div" className="text-md font-semibold text-heading">{t('entropyGame.title')}</Text>
         <Text variant="secondary" as="div" className="text-sm">{t('entropyGame.intro')}</Text>
-        {gameOpen
-          ? <EntropyGame onComplete={handleEntropy} />
-          : <ActionTile icon={<IconDice />} title={t('entropyGame.open')} description={t('entropyGame.openDesc')} onClick={() => setGameOpen(true)} />}
-        <FormError>{error}</FormError>
+        <ActionTile icon={<IconDice />} title={t('entropyGame.open')} description={t('entropyGame.openDesc')} onClick={openEntropyGame} />
       </Container>
 
       <Container variant="row" gap={4} stickyFooter>

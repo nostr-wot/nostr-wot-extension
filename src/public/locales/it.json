@@ -1449,7 +1449,7 @@
   "entropyGame.title": "Crea il tuo seed",
   "entropyGame.intro": "Preferisci non fidarti della casualità di questo computer? Crea la frase con un dado o una moneta veri. Sostituisce la frase qui sopra.",
   "entropyGame.open": "Usa dadi o una moneta",
-  "entropyGame.openDesc": "Registra ogni lancio fino a raggiungere 256 bit",
+  "entropyGame.openDesc": "Si apre in una nuova scheda, con calma",
   "entropyGame.sourceLabel": "Fonte di entropia",
   "entropyGame.dice": "Dadi",
   "entropyGame.coin": "Moneta",
@@ -1470,5 +1470,10 @@
   "entropyGame.building": "Creazione della frase…",
   "entropyGame.recorded": "Registrato {value}, {count} di {total}",
   "entropyGame.usedDice": "Questa frase deriva dai tuoi lanci di dado. Salvala qui sotto prima di continuare.",
-  "entropyGame.usedCoin": "Questa frase deriva dai tuoi lanci di moneta. Salvala qui sotto prima di continuare."
+  "entropyGame.usedCoin": "Questa frase deriva dai tuoi lanci di moneta. Salvala qui sotto prima di continuare.",
+  "entropyGame.pageIntro": "Scegli dadi o moneta e registra ogni lancio reale. A 256 bit, la nuova frase di recupero torna alla configurazione.",
+  "entropyGame.readyDice": "La tua frase di recupero deriva dai tuoi lanci di dado.",
+  "entropyGame.readyCoin": "La tua frase di recupero deriva dai tuoi lanci di moneta.",
+  "entropyGame.returnToSetup": "Torna alla configurazione di Nostr WoT per mostrarla e salvarla. Non viene mostrata in questa pagina.",
+  "entropyGame.closeTab": "Chiudi questa scheda"
 }

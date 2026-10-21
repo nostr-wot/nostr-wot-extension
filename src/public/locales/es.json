@@ -1449,7 +1449,7 @@
   "entropyGame.title": "Crea tu propia semilla",
   "entropyGame.intro": "¿Prefieres no confiar en la aleatoriedad de este equipo? Crea la frase con un dado o una moneda reales. Reemplaza la frase de arriba.",
   "entropyGame.open": "Usar dados o una moneda",
-  "entropyGame.openDesc": "Registra cada tirada hasta llegar a 256 bits",
+  "entropyGame.openDesc": "Se abre en una pestaña nueva, sin prisas",
   "entropyGame.sourceLabel": "Fuente de entropía",
   "entropyGame.dice": "Dados",
   "entropyGame.coin": "Moneda",
@@ -1470,5 +1470,10 @@
   "entropyGame.building": "Creando tu frase…",
   "entropyGame.recorded": "Registrado {value}, {count} de {total}",
   "entropyGame.usedDice": "Esta frase viene de tus tiradas de dado. Respáldala abajo antes de continuar.",
-  "entropyGame.usedCoin": "Esta frase viene de tus lanzamientos de moneda. Respáldala abajo antes de continuar."
+  "entropyGame.usedCoin": "Esta frase viene de tus lanzamientos de moneda. Respáldala abajo antes de continuar.",
+  "entropyGame.pageIntro": "Elige dados o una moneda y registra cada tirada real. Al llegar a 256 bits, tu nueva frase de recuperación vuelve a la configuración.",
+  "entropyGame.readyDice": "Tu frase de recuperación se creó con tus tiradas de dado.",
+  "entropyGame.readyCoin": "Tu frase de recuperación se creó con tus lanzamientos de moneda.",
+  "entropyGame.returnToSetup": "Vuelve a la configuración de Nostr WoT para revelarla y respaldarla. No se muestra en esta página.",
+  "entropyGame.closeTab": "Cerrar esta pestaña"
 }

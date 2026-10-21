@@ -60,10 +60,11 @@ export default function FollowSuggestionsStep({ onNext, onUnavailable }: FollowS
         created_at: Math.floor(Date.now() / 1000),
       };
       // A relay that accepts the socket but never answers must not hold the step.
+      let timer: ReturnType<typeof setTimeout> | undefined;
       await Promise.race([
         rpc('signAndPublishEvent', { event }),
-        new Promise((resolve) => setTimeout(resolve, FOLLOW_PUBLISH_TIMEOUT_MS)),
-      ]);
+        new Promise((resolve) => { timer = setTimeout(resolve, FOLLOW_PUBLISH_TIMEOUT_MS); }),
+      ]).finally(() => clearTimeout(timer));
     } catch { /* publish failed (e.g. relays unreachable) — proceed anyway so onboarding is never trapped */ }
     onNext();
   };

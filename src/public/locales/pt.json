@@ -1449,7 +1449,7 @@
   "entropyGame.title": "Crie sua própria semente",
   "entropyGame.intro": "Prefere não confiar na aleatoriedade deste computador? Crie a frase com um dado ou uma moeda reais. Ela substitui a frase acima.",
   "entropyGame.open": "Usar dados ou uma moeda",
-  "entropyGame.openDesc": "Registre cada jogada até chegar a 256 bits",
+  "entropyGame.openDesc": "Abre em uma nova aba, sem pressa",
   "entropyGame.sourceLabel": "Fonte de entropia",
   "entropyGame.dice": "Dados",
   "entropyGame.coin": "Moeda",
@@ -1470,5 +1470,10 @@
   "entropyGame.building": "Criando sua frase…",
   "entropyGame.recorded": "Registrado {value}, {count} de {total}",
   "entropyGame.usedDice": "Esta frase vem das suas jogadas de dado. Faça o backup abaixo antes de continuar.",
-  "entropyGame.usedCoin": "Esta frase vem dos seus lançamentos de moeda. Faça o backup abaixo antes de continuar."
+  "entropyGame.usedCoin": "Esta frase vem dos seus lançamentos de moeda. Faça o backup abaixo antes de continuar.",
+  "entropyGame.pageIntro": "Escolha dados ou uma moeda e registre cada jogada real. Ao chegar a 256 bits, sua nova frase de recuperação volta para a configuração.",
+  "entropyGame.readyDice": "Sua frase de recuperação foi criada com suas jogadas de dado.",
+  "entropyGame.readyCoin": "Sua frase de recuperação foi criada com seus lançamentos de moeda.",
+  "entropyGame.returnToSetup": "Volte à configuração do Nostr WoT para revelá-la e fazer o backup. Ela não é exibida nesta página.",
+  "entropyGame.closeTab": "Fechar esta aba"
 }

@@ -100,6 +100,7 @@ export default defineConfig({
       input: {
         localBridge: resolve(__dirname, 'src/entrypoints/local-bridge/index.html'),
         archive: resolve(__dirname, 'src/entrypoints/archive/index.html'),
+        entropy: resolve(__dirname, 'src/entrypoints/entropy/index.html'),
         onboarding: resolve(__dirname, 'src/entrypoints/onboarding/index.html'),
         prompt: resolve(__dirname, 'src/entrypoints/prompt/index.html'),
       },

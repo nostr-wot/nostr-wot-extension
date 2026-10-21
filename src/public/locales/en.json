@@ -1449,7 +1449,7 @@
   "entropyGame.title": "Roll your own seed",
   "entropyGame.intro": "Prefer not to trust this computer's randomness? Build the phrase from a real die or coin. It replaces the phrase above.",
   "entropyGame.open": "Use dice or a coin",
-  "entropyGame.openDesc": "Record each roll or flip until you reach 256 bits",
+  "entropyGame.openDesc": "Opens in a new tab, so you can take your time",
   "entropyGame.sourceLabel": "Entropy source",
   "entropyGame.dice": "Dice",
   "entropyGame.coin": "Coin",
@@ -1470,5 +1470,10 @@
   "entropyGame.building": "Building your phrase…",
   "entropyGame.recorded": "Recorded {value}, {count} of {total}",
   "entropyGame.usedDice": "This phrase comes from your dice rolls. Back it up below before continuing.",
-  "entropyGame.usedCoin": "This phrase comes from your coin flips. Back it up below before continuing."
+  "entropyGame.usedCoin": "This phrase comes from your coin flips. Back it up below before continuing.",
+  "entropyGame.pageIntro": "Pick dice or a coin, then record every real throw. When you reach 256 bits, your new recovery phrase goes back to the setup.",
+  "entropyGame.readyDice": "Your recovery phrase is built from your dice rolls.",
+  "entropyGame.readyCoin": "Your recovery phrase is built from your coin flips.",
+  "entropyGame.returnToSetup": "Go back to the Nostr WoT setup to reveal it and back it up. It is not shown on this page.",
+  "entropyGame.closeTab": "Close this tab"
 }

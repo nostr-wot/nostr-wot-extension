@@ -1,9 +1,7 @@
+import ExtensionPage from '@components/ExtensionPage';
+import Card from '@components/Card';
 import StatusNotice from '@components/StatusNotice';
 import IconInfo from '@assets/IconInfo';
-import TopoBg from '@components/TopoBg';
-import Card from '@components/Card';
-import AnimatedWotLogo from '@components/AnimatedWotLogo';
-import { version } from '../../../package.json';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import browser from '@lib/browser.ts';
 import { randomBytes } from '@lib/crypto/utils.ts';
@@ -112,16 +110,7 @@ export default function LocalBridgeApp() {
     catch (e) { setError(e instanceof Error ? e.message : t('localBridge.failed')); }
   };
   const bluetoothAvailable = 'bluetooth' in navigator;
-  return <TopoBg className="min-h-screen flex flex-col text-heading">
-    <header className="w-full max-w-[1120px] mx-auto px-8 py-7 sm:px-12">
-      <Container variant="row" gap={4} className="items-center">
-        <span aria-hidden="true" className="text-brand"><AnimatedWotLogo size={40} /></span>
-        <Text className="font-semibold text-lg">Nostr WoT</Text>
-      </Container>
-    </header>
-    <main className="flex-1 flex items-center justify-center px-6 py-8 sm:px-12">
-    <div className="w-full max-w-[540px]">
-    <Card data-testid="bridge-card" className="w-full mb-0 p-8 sm:p-12">
+  return <ExtensionPage cardTestId="bridge-card" after={scanning && <Suspense fallback={null}><QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} /></Suspense>}>
     <Container gap={6}>
       {mode && <Button variant="neutral" small className="self-start" onClick={() => { disconnect(); setMode(null); setUri(''); setError(''); }}><IconChevronLeft />{t('common.back')}</Button>}
       <Heading>{t('localBridge.title')}</Heading>
@@ -150,12 +139,5 @@ export default function LocalBridgeApp() {
       {selected && <Container gap={2}><ButtonDanger onClick={() => void disable()}>{t('localBridge.disconnect')}</ButtonDanger><Text variant="hint">{t('localBridge.disconnectHint')}</Text></Container>}
       {error && <Text className="text-error" role="alert">{error}</Text>}
     </Container>
-    </Card>
-    </div>
-    </main>
-    {scanning && <Suspense fallback={null}><QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} /></Suspense>}
-    <footer className="px-8 py-7 text-center">
-      <Text variant="hint">Nostr WoT · v{version}</Text>
-    </footer>
-  </TopoBg>;
+  </ExtensionPage>;
 }
