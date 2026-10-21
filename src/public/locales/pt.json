@@ -828,8 +828,6 @@
   "pqc.copyAttestation": "Copiar atestação",
   "pqc.publishDesc": "Publique este evento nos seus relays para que outros possam lhe enviar mensagens cifradas pós-quânticas. Até lá, os remetentes usam cifragem clássica.",
   "pqc.limits": "Isto protege permanentemente a confidencialidade das mensagens enviadas a partir de agora. Não impede que um atacante quântico forje eventos em seu nome — isso exige migrar as assinaturas, o que não faz parte disto.",
-  "pqc.cardTitle": "Configurar chaves pós-quânticas",
-  "pqc.cardDesc": "Publique uma chave para que as mensagens que lhe enviarem continuem privadas mesmo depois de a criptografia atual ser quebrada",
   "pqc.publish": "Publicar nos meus relays",
   "pqc.publishing": "Publicando…",
   "pqc.published": "Publicado em {sent} de {relays} relays. Já podem lhe enviar mensagens pós-quânticas.",
@@ -863,12 +861,6 @@
   "perm.duration.day": "1 dia",
   "perm.duration.week": "1 semana",
   "perm.duration.month": "1 mês",
-  "pqc.cardEnabledTitle": "As chaves pós-quânticas estão ativas",
-  "pqc.cardEnabledDesc": "Outros podem enviar-lhe mensagens que continuam privadas mesmo depois de a criptografia atual ser quebrada",
-  "pqc.cardStaleTitle": "É preciso republicar as chaves pós-quânticas",
-  "pqc.cardStaleDesc": "O que publicou já não corresponde às chaves desta conta, por isso quem lhe escrever usaria a errada",
-  "pqc.cardImportTitle": "Adicionar uma chave pós-quântica",
-  "pqc.cardImportDesc": "Esta conta não a consegue derivar da frase semente, mas pode gerá-la e importá-la",
   "pqc.howTitle": "Como funciona",
   "pqc.howStep1": "As suas chaves pós-quânticas são calculadas a partir da frase semente que já tem — nada de novo para anotar.",
   "pqc.howStep2": "Publica um pequeno evento nos seus relays a anunciar a parte pública. Esse evento é a única forma de alguém descobrir a sua chave.",
@@ -1475,5 +1467,10 @@
   "entropyGame.readyDice": "Sua frase de recuperação foi criada com suas jogadas de dado.",
   "entropyGame.readyCoin": "Sua frase de recuperação foi criada com seus lançamentos de moeda.",
   "entropyGame.returnToSetup": "Volte à configuração do Nostr WoT para revelá-la e fazer o backup. Ela não é exibida nesta página.",
-  "entropyGame.closeTab": "Fechar esta aba"
+  "entropyGame.closeTab": "Fechar esta aba",
+  "menu.experimental": "Experimental",
+  "menu.experimentalDesc": "Chaves pós-quânticas, Web of Trust e assinatura pelo celular",
+  "menu.wot": "Web of Trust",
+  "menu.localBridge": "Ponte de rede local",
+  "pqc.accountBadge": "Chaves pós-quânticas ativas: apps compatíveis podem enviar a esta conta mensagens que continuam privadas mesmo diante de futuros computadores quânticos"
 }

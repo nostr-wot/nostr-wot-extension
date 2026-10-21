@@ -9,6 +9,10 @@ import { t } from '@services/i18n/i18n.ts';
 import IconLock from '@assets/IconLock.tsx';
 import IconShield from '@assets/IconShield.tsx';
 import IconGlobe from '@assets/IconGlobe.tsx';
+import IconLink from '@assets/IconLink.tsx';
+import IconUsers from '@assets/IconUsers.tsx';
+import IconFlask from '@assets/IconFlask.tsx';
+import IconQuantum from '@assets/IconQuantum.tsx';
 import IconKey from '@assets/IconKey.tsx';
 import IconDownload from '@assets/IconDownload.tsx';
 import IconZap from '@assets/IconZap.tsx';
@@ -65,7 +69,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
   }, [visible, initialSection]);
 
   const menuItems: MenuItem[] = [
-    { id: 'archive', label: t('archive.title'), desc: t('archive.menuDesc'), icon: <IconDownload /> },
     {
       id: 'security',
       label: t('settings.security'),
@@ -95,9 +98,16 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
       desc: t('menu.relaysDesc'),
       icon: <IconGlobe />,
     },
-    { id: 'local-bridge', label: t('localBridge.title'), desc: t('localBridge.menuHint'), icon: <IconGlobe /> },
-    { id: 'experimental-wot', label: t('wot.title'), desc: t('wot.menuDesc'), icon: <IconGlobe /> },
     { id: 'appearance', label: t('appearance.title'), desc: t('appearance.menuDesc'), icon: <IconSettings /> },
+    { id: 'archive', label: t('archive.title'), desc: t('archive.menuDesc'), icon: <IconDownload /> },
+    // Last: features still being proven, grouped so the everyday rows come first.
+    { id: 'experimental', label: t('menu.experimental'), desc: t('menu.experimentalDesc'), icon: <IconFlask /> },
+  ];
+
+  const experimentalItems: MenuItem[] = [
+    { id: 'pqc', label: t('pqc.menuLabel'), desc: t('pqc.menuDesc'), icon: <IconQuantum /> },
+    { id: 'experimental-wot', label: t('menu.wot'), desc: t('wot.menuDesc'), icon: <IconUsers /> },
+    { id: 'local-bridge', label: t('menu.localBridge'), desc: t('localBridge.menuHint'), icon: <IconLink /> },
   ];
 
   const sectionTitles: Record<string, string> = {
@@ -110,6 +120,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     wallet: t('wallet.title'),
     'site-permissions': t('security.permissions'),
     pqc: t('pqc.menuLabel'),
+    experimental: t('menu.experimental'),
   };
 
   if (!shouldRender) return null;
@@ -138,8 +149,22 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     pushSection(id);
   };
 
+  const renderItems = (items: MenuItem[]) => items.map((item) => (
+    <ListRow
+      variant="standalone"
+      leadingChip={false}
+      key={item.id}
+      leading={item.icon}
+      title={item.label}
+      subtitle={item.desc}
+      onClick={() => handleMenuItem(item.id)}
+    />
+  ));
+
   const renderSection = (): ReactNode => {
     switch (currentSection) {
+      case 'experimental':
+        return <MenuSection>{renderItems(experimentalItems)}</MenuSection>;
       case 'archive': return <ArchiveSection key={active?.id} />;
       case 'appearance':
         return <AppearanceSection />;
@@ -179,14 +204,6 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
                 )}
               </>
             )}
-            <ListRow
-              variant="standalone"
-              leadingChip={false}
-              leading={<IconKey />}
-              title={t('pqc.menuLabel')}
-              subtitle={t('pqc.menuDesc')}
-              onClick={() => pushSection('pqc')}
-            />
             {vault.exists && <ListRow variant="standalone" leadingChip={false} leading={<IconKey />} title={t('passkey.settings')} subtitle={t('passkey.settingsDesc')} onClick={() => pushSection('passkeys')} />}
           </MenuSection>
         );
@@ -240,7 +257,7 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
         <div key={currentSection || '_root'} className="animate-section-slide-in overflow-y-auto px-2 -mx-2">
           {!currentSection ? (
             <Container gap={2} className="flex-1 py-2 px-1">
-              {menuItems.map((item) => {
+              {renderItems(menuItems.filter((item) => {
                 // NOTE: there is no 'nip46' item to filter. The row was removed
                 // without being re-homed, and this line outlived it — it cost one
                 // audit a false lead before anyone noticed. The capability it
@@ -250,19 +267,8 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
                 // remote signer has no way to revoke their bunker session. That
                 // needs a section, which is more than a label change; tracked in
                 // docs/ui-ux-audit.md §3 move 4.
-                if (item.id === 'wallet' && (isReadOnly || isNip46 || vault.locked)) return null;
-                return (
-                  <ListRow
-                    variant="standalone"
-                    leadingChip={false}
-                    key={item.id}
-                    leading={item.icon}
-                    title={item.label}
-                    subtitle={item.desc}
-                    onClick={() => handleMenuItem(item.id)}
-                  />
-                );
-              })}
+                return !(item.id === 'wallet' && (isReadOnly || isNip46 || vault.locked));
+              }))}
             </Container>
           ) : (
             renderSection()

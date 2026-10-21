@@ -828,8 +828,6 @@
   "pqc.copyAttestation": "Attestierung kopieren",
   "pqc.publishDesc": "Veröffentlichen Sie dieses Event auf Ihren Relays, damit andere Ihnen post-quantensicher verschlüsselte Nachrichten senden können. Bis dahin fallen Absender auf klassische Verschlüsselung zurück.",
   "pqc.limits": "Dies schützt dauerhaft die Vertraulichkeit ab jetzt gesendeter Nachrichten. Es hindert einen Quantenangreifer nicht daran, Events in Ihrem Namen zu fälschen — dafür wäre eine Signatur-Migration nötig, die hier nicht enthalten ist.",
-  "pqc.cardTitle": "Post-Quanten-Schlüssel einrichten",
-  "pqc.cardDesc": "Veröffentliche einen Schlüssel, damit Nachrichten an dich privat bleiben, auch wenn die heutige Kryptografie gebrochen ist",
   "pqc.publish": "Auf meinen Relays veröffentlichen",
   "pqc.publishing": "Wird veröffentlicht…",
   "pqc.published": "Auf {sent} von {relays} Relays veröffentlicht. Sie können jetzt post-quantensichere Nachrichten empfangen.",
@@ -863,12 +861,6 @@
   "perm.duration.day": "1 Tag",
   "perm.duration.week": "1 Woche",
   "perm.duration.month": "1 Monat",
-  "pqc.cardEnabledTitle": "Post-Quanten-Schlüssel sind aktiv",
-  "pqc.cardEnabledDesc": "Andere können dir Nachrichten senden, die privat bleiben, auch wenn die heutige Kryptografie gebrochen ist",
-  "pqc.cardStaleTitle": "Post-Quanten-Schlüssel müssen neu veröffentlicht werden",
-  "pqc.cardStaleDesc": "Das Veröffentlichte passt nicht mehr zu den Schlüsseln dieses Kontos — Absender würden den falschen verwenden",
-  "pqc.cardImportTitle": "Post-Quanten-Schlüssel hinzufügen",
-  "pqc.cardImportDesc": "Dieses Konto kann ihn nicht aus seiner Seed-Phrase ableiten, aber du kannst einen erzeugen und importieren",
   "pqc.howTitle": "So funktioniert es",
   "pqc.howStep1": "Deine Post-Quanten-Schlüssel werden aus der Seed-Phrase berechnet, die du bereits hast — nichts Neues zum Aufschreiben.",
   "pqc.howStep2": "Du veröffentlichst ein kleines Event auf deinen Relays, das den öffentlichen Teil bekannt gibt. Nur darüber kann ihn überhaupt jemand finden.",
@@ -1475,5 +1467,10 @@
   "entropyGame.readyDice": "Ihre Wiederherstellungsphrase stammt aus Ihren Würfelwürfen.",
   "entropyGame.readyCoin": "Ihre Wiederherstellungsphrase stammt aus Ihren Münzwürfen.",
   "entropyGame.returnToSetup": "Kehren Sie zur Nostr-WoT-Einrichtung zurück, um sie anzuzeigen und zu sichern. Auf dieser Seite wird sie nicht angezeigt.",
-  "entropyGame.closeTab": "Diesen Tab schließen"
+  "entropyGame.closeTab": "Diesen Tab schließen",
+  "menu.experimental": "Experimentell",
+  "menu.experimentalDesc": "Post-Quanten-Schlüssel, Web of Trust und Signieren per Telefon",
+  "menu.wot": "Web of Trust",
+  "menu.localBridge": "Lokale Netzwerkbrücke",
+  "pqc.accountBadge": "Post-Quanten-Schlüssel sind aktiv: Unterstützende Apps können diesem Konto Nachrichten senden, die auch gegenüber künftigen Quantencomputern privat bleiben"
 }

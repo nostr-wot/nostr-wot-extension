@@ -828,8 +828,6 @@
   "pqc.copyAttestation": "Copiar atestación",
   "pqc.publishDesc": "Publica este evento en tus relés para que otros puedan enviarte mensajes cifrados post-cuánticos. Hasta que lo hagas, los remitentes usarán cifrado clásico.",
   "pqc.limits": "Esto protege de forma permanente la confidencialidad de los mensajes enviados a partir de ahora. No impide que un atacante cuántico falsifique eventos en tu nombre: eso exige migrar las firmas, algo que no forma parte de esto.",
-  "pqc.cardTitle": "Configura las claves post-cuánticas",
-  "pqc.cardDesc": "Publica una clave para que los mensajes que te envíen sigan siendo privados incluso cuando se rompa la criptografía actual",
   "pqc.publish": "Publicar en mis relés",
   "pqc.publishing": "Publicando…",
   "pqc.published": "Publicado en {sent} de {relays} relés. Ya pueden enviarte mensajes post-cuánticos.",
@@ -863,12 +861,6 @@
   "perm.duration.day": "1 día",
   "perm.duration.week": "1 semana",
   "perm.duration.month": "1 mes",
-  "pqc.cardEnabledTitle": "Las claves post-cuánticas están activas",
-  "pqc.cardEnabledDesc": "Otros pueden enviarte mensajes que seguirán siendo privados incluso cuando se rompa la criptografía actual",
-  "pqc.cardStaleTitle": "Hay que volver a publicar las claves post-cuánticas",
-  "pqc.cardStaleDesc": "Lo que publicaste ya no coincide con las claves de esta cuenta, así que quien te escriba usaría la equivocada",
-  "pqc.cardImportTitle": "Añade una clave post-cuántica",
-  "pqc.cardImportDesc": "Esta cuenta no puede derivarla de su frase semilla, pero puedes generarla e importarla",
   "pqc.howTitle": "Cómo funciona",
   "pqc.howStep1": "Tus claves post-cuánticas se calculan a partir de la frase semilla que ya tienes: no hay nada nuevo que apuntar.",
   "pqc.howStep2": "Publicas un pequeño evento en tus relays anunciando la parte pública. Ese evento es la única forma de que alguien descubra tu clave.",
@@ -1475,5 +1467,10 @@
   "entropyGame.readyDice": "Tu frase de recuperación se creó con tus tiradas de dado.",
   "entropyGame.readyCoin": "Tu frase de recuperación se creó con tus lanzamientos de moneda.",
   "entropyGame.returnToSetup": "Vuelve a la configuración de Nostr WoT para revelarla y respaldarla. No se muestra en esta página.",
-  "entropyGame.closeTab": "Cerrar esta pestaña"
+  "entropyGame.closeTab": "Cerrar esta pestaña",
+  "menu.experimental": "Experimental",
+  "menu.experimentalDesc": "Claves poscuánticas, Web of Trust y firma desde el teléfono",
+  "menu.wot": "Web of Trust",
+  "menu.localBridge": "Puente de red local",
+  "pqc.accountBadge": "Claves poscuánticas activas: las apps compatibles pueden enviar a esta cuenta mensajes que siguen siendo privados incluso ante futuros ordenadores cuánticos"
 }

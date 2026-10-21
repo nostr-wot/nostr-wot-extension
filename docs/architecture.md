@@ -30,7 +30,7 @@ Firefox natively supports the `browser.*` API; Chrome uses the `chrome.*` API. A
 
 ---
 
-The PQ home card reads stored publication evidence through `pqc_checkPublished`
+The account selector's post-quantum badge reads stored publication evidence through `pqc_checkPublished`
 with `cachedOnly: true`; it never starts a relay lookup. An absent answer remains
 unknown. Opening the PQ settings panel requests the normal cached-first relay read,
 which refreshes stale evidence in the background. The shared account-keyed cache

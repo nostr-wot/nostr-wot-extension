@@ -828,8 +828,6 @@
   "pqc.copyAttestation": "Copy attestation",
   "pqc.publishDesc": "Publish this event to your relays so others can send you post-quantum encrypted messages. Until you do, senders fall back to classic encryption.",
   "pqc.limits": "This protects the confidentiality of messages sent from now on, permanently. It does not stop a quantum attacker from forging events in your name — that needs a signature migration, which is not part of this.",
-  "pqc.cardTitle": "Set up post-quantum keys",
-  "pqc.cardDesc": "Publish a key so messages sent to you stay private even after today's cryptography is broken",
   "pqc.publish": "Publish to my relays",
   "pqc.publishing": "Publishing…",
   "pqc.published": "Published to {sent} of {relays} relays. People can now send you post-quantum messages.",
@@ -863,12 +861,6 @@
   "perm.duration.day": "1 day",
   "perm.duration.week": "1 week",
   "perm.duration.month": "1 month",
-  "pqc.cardEnabledTitle": "Post-quantum keys are on",
-  "pqc.cardEnabledDesc": "Others can send you messages that stay private even after today's cryptography is broken",
-  "pqc.cardStaleTitle": "Post-quantum keys need republishing",
-  "pqc.cardStaleDesc": "What you published no longer matches this account's keys, so senders would use the wrong one",
-  "pqc.cardImportTitle": "Add a post-quantum key",
-  "pqc.cardImportDesc": "This account can't derive one from its seed phrase, but you can generate one and import it",
   "pqc.howTitle": "How it works",
   "pqc.howStep1": "Your post-quantum keys are worked out from the seed phrase you already have — nothing new to write down.",
   "pqc.howStep2": "You publish one small event to your relays announcing the public half. That event is the only way anyone can discover your key.",
@@ -1475,5 +1467,10 @@
   "entropyGame.readyDice": "Your recovery phrase is built from your dice rolls.",
   "entropyGame.readyCoin": "Your recovery phrase is built from your coin flips.",
   "entropyGame.returnToSetup": "Go back to the Nostr WoT setup to reveal it and back it up. It is not shown on this page.",
-  "entropyGame.closeTab": "Close this tab"
+  "entropyGame.closeTab": "Close this tab",
+  "menu.experimental": "Experimental",
+  "menu.experimentalDesc": "Post-quantum keys, Web of Trust and phone signing",
+  "menu.wot": "Web of Trust",
+  "menu.localBridge": "Local network bridge",
+  "pqc.accountBadge": "Post-quantum keys are on: apps that support them can send this account messages that stay private even against future quantum computers"
 }

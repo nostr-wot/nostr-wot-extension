@@ -134,7 +134,6 @@ function PopupInner() {
     manageFilters: () => setActiveOverlay('filters'),
     editProfile: () => setActiveOverlay('editProfile'),
     openRelays: () => { setMenuSection('network'); setActiveOverlay('menu'); },
-    openPqc: () => { setMenuSection('pqc'); setActiveOverlay('menu'); },
     openWallet: () => { setMenuSection('wallet'); setActiveOverlay('menu'); },
   }), []);
 

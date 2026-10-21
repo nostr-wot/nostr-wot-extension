@@ -158,7 +158,7 @@ it('account rows show the selected account and omit edit/copy actions', () => {
   assert.match(renderToStaticMarkup(createElement(AccountPickerRow,{...props,selected:false,readOnly:true})),/aria-pressed="false"/);
 });
 it('copy remains available beside the account switcher and offers both public key formats', () => {
-  const bar=renderToStaticMarkup(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(AccountBar,{dropdownOpen:false,onToggleDropdown(){}}))));
+  const bar=renderToStaticMarkup(createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(PqcProvider,null,createElement(AccountBar,{dropdownOpen:false,onToggleDropdown(){}})))));
   assert.match(bar,/aria-haspopup="dialog"/);
   assert.ok(bar.indexOf('aria-haspopup="dialog"') < bar.indexOf('aria-label="common.copy"'));
   const html=renderToStaticMarkup(createElement(AccountCopyMenu,{pubkey:'11'.repeat(32)}));
@@ -167,16 +167,15 @@ it('copy remains available beside the account switcher and offers both public ke
 });
 
 import { commitAccountSwitch } from '../src/context/AccountContext';
-import { PqcCardView } from '../src/screens/Home/PqcCard';
 import ListRow from '../src/components/ListRow';
 import ActionTile from '../src/components/ActionTile';
-it('menu subtitles and the PQ shield reuse the existing wizard brand colors', () => {
-  for (const state of ['enabled','stale','setup','import'] as const) {
-    const html=renderToStaticMarkup(createElement(PqcCardView,{state,onClick(){}}));
-    assert.match(html,/text-menu-subtitle/);
-    assert.match(html,/bg-brand-light text-brand/);
-    assert.doesNotMatch(html,/text-success|text-warning/);
-  }
+it('menu subtitles and the quantum badge reuse the existing brand colors', () => {
+  const badge=renderToStaticMarkup(createElement(AccountLabel,{name:'Main',quantum:true}));
+  assert.match(badge,/text-brand/);
+  assert.match(badge,/title="pqc.accountBadge"/);
+  assert.match(badge,/sr-only">pqc.accountBadge/);
+  assert.doesNotMatch(badge,/role="button"|tabindex/i,'no control nested in the selector button');
+  assert.doesNotMatch(renderToStaticMarkup(createElement(AccountLabel,{name:'Main'})),/pqc.accountBadge/);
   assert.match(renderToStaticMarkup(createElement(ListRow,{title:'Title',subtitle:'Description'})),/text-menu-subtitle/);
   assert.match(renderToStaticMarkup(createElement(ActionTile,{title:'Title',description:'Description',icon:null,onClick(){}})),/text-menu-subtitle/);
 });
@@ -498,4 +497,14 @@ it('phone account badges update to Network without relabelling other watch-only 
   } finally {
     await act(async()=>root.unmount());dom.window.close();names.forEach((name,i)=>{if(originals[i])Object.defineProperty(globalThis,name,originals[i]!);else Reflect.deleteProperty(globalThis,name);});resetMockStorage();
   }
+});
+it('the menu ends with Archive then Experimental, which alone holds post-quantum, WoT and the bridge', async () => {
+  const { readFileSync } = await import('node:fs');
+  const menu = readFileSync(new URL('../src/screens/Menu/MenuOverlay.tsx', import.meta.url), 'utf8');
+  const ids = (list: string) => [...menu.slice(menu.indexOf(`const ${list}: MenuItem[] = [`)).split('];')[0].matchAll(/id: '([\w-]+)'/g)].map(m => m[1]);
+  assert.deepEqual(ids('menuItems'), ['security', 'site-permissions', 'wallet', 'network', 'appearance', 'archive', 'experimental']);
+  assert.deepEqual(ids('experimentalItems'), ['pqc', 'experimental-wot', 'local-bridge']);
+  assert.equal(menu.match(/pushSection\('pqc'\)/g), null, 'Security no longer links post-quantum');
+  const home = readFileSync(new URL('../src/screens/Home/Home.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(home, /Pqc/);
 });
