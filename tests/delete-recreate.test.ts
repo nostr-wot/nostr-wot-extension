@@ -264,3 +264,18 @@ it('removing the final private account removes its verified empty vault, so reop
   await createVault({ password: TEST_PASSWORD, account: next.account });
   assert.equal(vault.listAccounts().length, 1);
 });
+
+it('refuses a duplicate key added after the vault was locked during validation', async () => {
+  resetMockStorage(); vault.lock();
+  const key = '0000000000000000000000000000000000000000000000000000000000000007';
+  const validate = onboarding.handlers.get('onboarding_validateNsec')!;
+  const first = await validate({ input: key }) as any;
+  await createVault({ password: TEST_PASSWORD, account: first.account, upgradeFromReadOnly: null });
+  await assert.rejects(validate({ input: key }), /already added/);
+  vault.lock();
+  const again = await validate({ input: key }) as any;
+  assert.equal(await vault.unlock(TEST_PASSWORD), true);
+  await assert.rejects(onboarding.handlers.get('onboarding_addToVault')!({ account: again.account }), /already added/);
+  assert.equal(vault.listAccounts().filter(account => account.pubkey === first.pubkey).length, 1);
+  vault.lock();
+});

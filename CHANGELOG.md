@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Refuse adding an account the vault already signs for when the vault was locked during import.
+
 - Restore optional Wi-Fi pairing by sound. Listening starts only on request, stops after one attempt or 30 seconds, and still requires phone confirmation. The decoder now works with the extension’s existing security policy.
 
 ## 0.8.17 — 2026-10-22
