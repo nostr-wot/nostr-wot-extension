@@ -27,3 +27,26 @@ export const PASSKEY_MAX_NAME_LENGTH = 80;
 
 export const PASSKEY_RECOVERY_STATUS_PREFIX = 'passkeyRecoveryStatus:';
 export const PASSKEY_RECOVERY_MAX_RELAYS = 16;
+
+/**
+ * Derived-mode parameter sets from the passkey key-modes proposal (nips/passkey).
+ * Frozen once published: changing a label changes every key derived with it.
+ */
+export const DERIVED_PARAMETER_SETS = {
+  1: { saltLabel: 'nostr-passkey:derive:v1', infoLabel: 'nostr-passkey:nsec:v1' },
+  2: { saltLabel: 'lawallet-nsec-prf-v1', infoLabel: 'lawallet-nsec-v1' },
+} as const;
+export type DerivedParameterSet = keyof typeof DERIVED_PARAMETER_SETS;
+
+/**
+ * Hosts known to create derived passkeys with untagged handles (the registry in
+ * nips/passkey/02-passkey-registry.md). An untagged handle on one of these hosts is
+ * treated as derived with its parameter set; anywhere else it stays ambiguous.
+ */
+export const DERIVED_PASSKEY_APPS: readonly { id: string; name: string; rpId: string; parameterSet: DerivedParameterSet }[] = [
+  { id: 'lawallet', name: 'LaWallet', rpId: 'beta.lawallet.io', parameterSet: 2 },
+];
+
+/** Tagged handle prefix: "NPK" followed by version 0x01. */
+export const NPK_HANDLE_MAGIC = [0x4e, 0x50, 0x4b] as const;
+export const NPK_HANDLE_VERSION = 0x01;

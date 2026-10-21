@@ -65,7 +65,7 @@ npm run smoke:chrome -- /absolute/path/to/upload.zip
 
 Upload exactly those verified bytes. Packaging invalidates its old generic output before building so a failed invocation cannot leave its stale ZIP masquerading as success.
 
-Required API permissions are `storage`, `activeTab` and `alarms`. Required host permissions are `https://nostr-wot.com/*` for the project-site bridge/tab discovery, `https://passkeys.nostrwot.com/*` for new passkeys and `https://passkeys.nostr-wot.com/*` for existing credentials. Optional host permissions declare `https://*/*`; advanced passkey setup requests only the selected HTTPS RP origin after an explicit user action. Connecting an ordinary website does not request an optional host grant. These permissions are separate from `<all_urls>` content-script matching. See [architecture](architecture.md#3-manifest-and-permissions).
+Required API permissions are `storage`, `activeTab` and `alarms`. Required host permissions are `https://nostr-wot.com/*` for the project-site bridge/tab discovery, `https://passkeys.nostrwot.com/*` for new passkeys and `https://passkeys.nostr-wot.com/*` for existing credentials. Optional host permissions declare `https://*/*`; advanced passkey setup and importing another app's passkey request only the selected HTTPS RP origin after an explicit user action. Connecting an ordinary website does not request an optional host grant. These permissions are separate from `<all_urls>` content-script matching. See [architecture](architecture.md#3-manifest-and-permissions).
 
 ## Passkeys, recovery and archive acceptance
 

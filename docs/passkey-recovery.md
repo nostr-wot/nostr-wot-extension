@@ -18,6 +18,19 @@ A recovery file is optional after the provider explicitly confirms a successful 
 
 For an existing vault, **Settings → Security → Set up passkey unlock** verifies the current password when configured before enrolling the first passkey. This setup is available to existing local-key accounts, including imported nsec accounts. Enrollment preserves existing accounts, imported post-quantum keys and private-cache data; it does not convert remote or watch-only accounts into local signing keys. Complete a confirmed provider write or the recovery-file download before finishing setup. A Passkey settings row at the bottom of Security opens a separate screen. It lists enrolled credentials as compact selectable rows, with their domain below the label and recovery actions below the selected entry. Add another passkey verifies the selected existing credential, then registers a new credential on passkeys.nostrwot.com for the current local account, including when another credential already uses that domain. Existing credentials remain available. The browser excludes enrolled credentials in that domain to prevent replacing one on the same authenticator; users can choose another device or provider. Finish the new credential’s recovery setup with confirmed provider storage or a recovery-file download. There is no Advanced disclosure, payload selector or redundant provider-save action.
 
+## Importing a passkey from another app
+
+Some apps derive the Nostr key from their passkey's PRF output instead of storing it (derived mode, see `nips/passkey/01-passkey-key-modes.md`). **Try other methods → Import Key → Import an account from another app's passkey** imports such a key once, as an imported-key account. It is not a sign-in option: afterwards the vault unlocks with its own password or Nostr WoT passkey.
+
+- **Source.** An app from the registry list (`DERIVED_PASSKEY_APPS`, currently `beta.lawallet.io` with parameter set `0x02`), or another HTTPS host with set `0x01` or `0x02`. Ports, paths, other schemes and Nostr WoT's own passkey domains are refused.
+- **Request.** Continue requests the optional host permission for exactly `https://<host>/*`, then one discoverable assertion with that RP ID, required user verification and PRF `eval.first` = `SHA-256(salt_label)`. If no PRF output comes back, one assertion targeted at the selected credential follows; then the PRF-unavailable error.
+- **Classification.** A tagged derived handle with the chosen set, or an untagged handle on a registry host for that set, is derived. An untagged handle elsewhere is ambiguous and shown with a warning. Stored, legacy stored (any 32-byte or 33-byte `0x03` handle), unsupported and other-set handles are refused before derivation.
+- **Key.** `HKDF-SHA256(PRF output, salt = prf_input, info = info_label, 32)`; a zero or out-of-range scalar fails without retry.
+- **Confirmation.** The npub is shown and must be acknowledged. Import then uses `onboarding_validateNsec` and the Password step, like a pasted key.
+- **Afterwards.** The user is told the original passkey still produces this key and works in that app until removed from the provider. The primary action, **Protect with a Nostr WoT passkey**, opens Passkey settings for the existing enrollment; Later skips it. No passkey or recovery format changes.
+
+PRF output and key bytes are zeroed after derivation, cancel, import and unmount. The hex key sent to the background is a JavaScript string and cannot be erased.
+
 ## Recovery payloads
 
 | Format | Restored material | Excluded material |

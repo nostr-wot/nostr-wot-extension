@@ -18,9 +18,10 @@ interface ImportStepProps {
   onNext: (account: any, upgradeId: string | null) => void;
   hasGeneratedAccount?: boolean;
   onRestorePasskey?: () => void;
+  onImportPasskey?: () => void;
 }
 
-export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePasskey }: ImportStepProps) {
+export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePasskey, onImportPasskey }: ImportStepProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const scope = useAsyncScope();
   const [input, setInput] = useState<string>('');
@@ -122,6 +123,7 @@ export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePassk
       </Text>
 
       {onRestorePasskey && <ButtonSecondary onClick={onRestorePasskey} disabled={loading} className="mb-6">{t('passkey.restore')}</ButtonSecondary>}
+      {onImportPasskey && <ButtonSecondary onClick={onImportPasskey} disabled={loading} className="mb-6">{t('passkeyImport.entry')}</ButtonSecondary>}
 
       <div className="mb-6">
         <SectionLabel htmlFor="account-import-key">{t('wizard.importLabel')}</SectionLabel>

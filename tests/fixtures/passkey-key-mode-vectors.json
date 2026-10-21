@@ -1,0 +1,160 @@
+{
+  "handles": [
+    {
+      "description": "tagged derived, parameter set 0x01",
+      "handle": "4e504b01010100112233445566778899aabbccddeeff",
+      "expect": {
+        "mode": "derived",
+        "parameter_set": 1
+      }
+    },
+    {
+      "description": "tagged derived, parameter set 0x02",
+      "handle": "4e504b010102ffeeddccbbaa99887766554433221100",
+      "expect": {
+        "mode": "derived",
+        "parameter_set": 2
+      }
+    },
+    {
+      "description": "tagged stored",
+      "handle": "4e504b010279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "expect": {
+        "mode": "stored",
+        "author": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+      }
+    },
+    {
+      "description": "legacy stored handle (raw public key)",
+      "handle": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+      "expect": {
+        "mode": "stored",
+        "author": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "legacy": "raw-pubkey",
+        "confirm_record": true
+      }
+    },
+    {
+      "description": "legacy key-in-handle (read-only)",
+      "handle": "03abababababababababababababababababababababababababababababababab",
+      "expect": {
+        "mode": "stored",
+        "legacy": "key-in-handle"
+      }
+    },
+    {
+      "description": "untagged UUID text handle",
+      "handle": "33663262386331652d396434612d346537622d623563322d316136663065386437633934",
+      "expect": {
+        "mode": "unknown"
+      }
+    },
+    {
+      "description": "tagged, unknown version",
+      "handle": "4e504b02010000000000000000000000000000000000",
+      "expect": {
+        "mode": "unsupported"
+      }
+    },
+    {
+      "description": "tagged derived, wrong length",
+      "handle": "4e504b010101000000000000000000000000000000",
+      "expect": {
+        "mode": "unsupported"
+      }
+    },
+    {
+      "description": "tagged stored, wrong length",
+      "handle": "4e504b010279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817",
+      "expect": {
+        "mode": "unsupported"
+      }
+    },
+    {
+      "description": "tagged derived, parameter set not in registry",
+      "handle": "4e504b01010500000000000000000000000000000000",
+      "expect": {
+        "mode": "derived",
+        "parameter_set": 5
+      }
+    },
+    {
+      "description": "no handle returned",
+      "handle": null,
+      "expect": {
+        "mode": "unknown"
+      }
+    },
+    {
+      "description": "NPK prefix with other version byte",
+      "handle": "4e504b02000000000000000000000000000000000000",
+      "expect": {
+        "mode": "unsupported"
+      }
+    },
+    {
+      "description": "32-byte public key that starts with the NPK prefix",
+      "handle": "4e504b1111111111111111111111111111111111111111111111111111111111",
+      "expect": {
+        "mode": "stored",
+        "author": "4e504b1111111111111111111111111111111111111111111111111111111111",
+        "legacy": "raw-pubkey",
+        "confirm_record": true
+      }
+    }
+  ],
+  "derived_parameter_sets": [
+    {
+      "salt_label": "nostr-passkey:derive:v1",
+      "info_label": "nostr-passkey:nsec:v1",
+      "prf_output": "0707070707070707070707070707070707070707070707070707070707070707",
+      "prf_input": "6cae07a92d7fcc20f7eed6ed78f6ab8848a7c921dd31679f6019551c0cc9fbbc",
+      "secret_key": "bf6b11c40255021de2a25e38fe24b6ccb1e3b07a96175b25538b5453605c36d9",
+      "public_key": "1e36ce5101376f65a8ad05538100265305046cca1541cffb78ee31cfecbdff1f",
+      "parameter_set": 1,
+      "source": "specification default"
+    },
+    {
+      "salt_label": "lawallet-nsec-prf-v1",
+      "info_label": "lawallet-nsec-v1",
+      "prf_output": "0707070707070707070707070707070707070707070707070707070707070707",
+      "prf_input": "8ee22949c1045c627e14236f1d06cf730b46b4cf309cbf4ede25a446cf33ad8d",
+      "secret_key": "a1e1ac8dd866cabdf743a4cdedbf53c680444094a25c0ffc4e558ec5a78831c1",
+      "public_key": "5146ad1f0bec6b37a9f1937c5c80d452a2d952ac1a8f4bee690dd34dbd4ef3c8",
+      "parameter_set": 2,
+      "source": "registry"
+    }
+  ],
+  "stored": {
+    "prf_label": "nostr-passkey:store:v1",
+    "prf_input": "8b309d7051d41bda75ece773d6d35c49fb2ed7901f1e0261a476ac2646036e8e",
+    "payload_types": {
+      "key": 1,
+      "seed": 2,
+      "vault": 3
+    },
+    "records": [
+      {
+        "description": "type key",
+        "prf_input": "8b309d7051d41bda75ece773d6d35c49fb2ed7901f1e0261a476ac2646036e8e",
+        "prf_output": "0707070707070707070707070707070707070707070707070707070707070707",
+        "hkdf_salt": "1111111111111111111111111111111111111111111111111111111111111111",
+        "iv": "222222222222222222222222",
+        "aes_key": "5259bdcd6d732f534cbd6a5dde47aed5fbf7798a31926076b616e4fccb97414f",
+        "rp_id": "example.com",
+        "credential_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "author": "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+        "payload_type": 1,
+        "plaintext": "0000000000000000000000000000000000000000000000000000000000000001",
+        "aad": "4e504b01010b6578616d706c652e636f6d79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f817980010aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "record": "4e504b01012222222222222222222222221111111111111111111111111111111111111111111111111111111111111111f2866d2730536dd59e0324da5649256a4d259463cc54540b26985e88c770edea81c8b1bca68522ae526bf85653c7f3e7",
+        "record_base64": "TlBLAQEiIiIiIiIiIiIiIiIREREREREREREREREREREREREREREREREREREREREREfKGbScwU23VngMk2lZJJWpNJZRjzFRUCyaYXojHcO3qgcixvKaFIq5Sa/hWU8fz5w==",
+        "record_length": 97
+      }
+    ]
+  },
+  "legacy_stored": {
+    "prf_input_utf8": "keytr-v1",
+    "prf_input": "6b657974722d7631"
+  }
+}

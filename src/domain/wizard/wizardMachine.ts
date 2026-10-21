@@ -17,6 +17,8 @@ export interface WizardContext {
   passkeyRecoverySaved?: boolean;
   /** Follow suggestions were skipped because no relay answered; BACK must not return there. */
   followUnavailable?: boolean;
+  /** Public RP host of an imported derived passkey; never key material. */
+  passkeyImportHost?: string;
 }
 
 export interface WizardState {
@@ -116,12 +118,25 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
 
   [WizardStep.Import]: {
+    IMPORT_PASSKEY: () => ({ step: WizardStep.PasskeyImport, ctx: { method: 'passkeyImport' } }),
     RESTORE_PASSKEY: (_ctx, _payload, { hasAccounts }) => hasAccounts ? null : ({ step: WizardStep.PasskeyRestore, ctx: { method: 'passkeyRestore' } }),
     IMPORTED: (_ctx, { account, upgradeId }) => ({
       step: WizardStep.Password,
       ctx: { account: account as unknown, upgradeId: upgradeId as string },
     }),
     BACK: () => ({ step: WizardStep.MoreOptions }),
+  },
+
+  [WizardStep.PasskeyImport]: {
+    IMPORTED: (_ctx, { account, upgradeId, host }) => ({
+      step: WizardStep.Password,
+      ctx: { account: account as unknown, upgradeId: (upgradeId as string) || null, passkeyImportHost: typeof host === 'string' ? host : undefined },
+    }),
+    BACK: () => ({ step: WizardStep.Import, ctx: { method: 'import' } }),
+  },
+
+  [WizardStep.PasskeyImported]: {
+    DONE: () => ({ step: WizardStep.Done }),
   },
 
   [WizardStep.WatchOnly]: {
@@ -149,6 +164,8 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
 
   [WizardStep.Password]: {
     SET: (ctx, { upgraded }, { hasAccounts }) => {
+      // An imported derived passkey always ends on its explanation and protection offer.
+      if (ctx.method === 'passkeyImport') return { step: hasAccounts && !upgraded ? WizardStep.PermissionCopy : WizardStep.PasskeyImported };
       if (upgraded) return { step: WizardStep.Done };
       // Only show follow suggestions for new identity creation
       if (['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.FollowSuggestions };
@@ -158,6 +175,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
       if (['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(ctx.method || '')) return null;
       if (ctx.method === 'create') return { step: WizardStep.Verify };
       if (ctx.method === 'import') return { step: WizardStep.Import };
+      if (ctx.method === 'passkeyImport') return { step: WizardStep.PasskeyImport };
       if (ctx.method === 'nip46') return { step: WizardStep.NostrConnect };
       return { step: WizardStep.Method };
     },
@@ -170,7 +188,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
 
   [WizardStep.PermissionCopy]: {
-    DONE: () => ({ step: WizardStep.Done }),
+    DONE: (ctx) => ({ step: ctx.method === 'passkeyImport' ? WizardStep.PasskeyImported : WizardStep.Done }),
     BACK: (ctx, payload, options) => {
       if (!['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.Password };
       // A skipped follow step is not returned to: go where its own Back would.

@@ -204,6 +204,7 @@ function PopupInner() {
               accountsLoaded={account.accounts !== null}
               onClose={() => setActiveOverlay(null)}
               onComplete={handleWizardComplete}
+              onOpenPasskeySettings={() => { setMenuSection('passkeys'); setActiveOverlay('menu'); }}
             />
           </Suspense>
         )}

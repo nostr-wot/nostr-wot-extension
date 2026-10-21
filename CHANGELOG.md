@@ -5,6 +5,7 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Import an account from another app's passkey, once, when that app derives the Nostr key from it. Pick the app or enter its domain, confirm the npub, then optionally protect the account with a Nostr WoT passkey. Passkeys that store their key or use another key format are refused.
 - Refuse adding an account the vault already signs for when the vault was locked during import.
 
 - Restore optional Wi-Fi pairing by sound. Listening starts only on request, stops after one attempt or 30 seconds, and still requires phone confirmation. The decoder now works with the extension’s existing security policy.

@@ -20,9 +20,11 @@ interface WizardOverlayProps {
   accountsLoaded?: boolean;
   onClose?: () => void;
   onComplete?: (account: unknown) => void;
+  /** Called after onComplete when the user accepts passkey protection for an imported key. */
+  onOpenPasskeySettings?: () => void;
 }
 
-export default function WizardOverlay({ visible, canClose, accountsLoaded = true, onClose, onComplete }: WizardOverlayProps) {
+export default function WizardOverlay({ visible, canClose, accountsLoaded = true, onClose, onComplete, onOpenPasskeySettings }: WizardOverlayProps) {
   // Whether accounts existed when this wizard session began. Creating or restoring
   // the first account updates `canClose` mid-session; following it would swap the
   // steps for the seed check and remount them, aborting and repeating the passkey
@@ -68,6 +70,7 @@ export default function WizardOverlay({ visible, canClose, accountsLoaded = true
 
   const handleClose = () => { flow.reset(); onClose?.(); };
   const handleDone = () => { const acct = flow.account; flow.reset(); onComplete?.(acct); };
+  const handleProtectPasskey = onOpenPasskeySettings ? () => { handleDone(); onOpenPasskeySettings(); } : undefined;
 
   // Finishing goes straight to the main screen; the confirmation floats over it.
   const [finished, setFinished] = useState<{ account: any; derived: boolean } | null>(null);
@@ -93,6 +96,7 @@ export default function WizardOverlay({ visible, canClose, accountsLoaded = true
             onLangSelect={() => flow.send('NEXT')}
             hasAccounts={hasAccounts}
             hasGeneratedAccount={hasGeneratedAccount}
+            onProtectPasskey={handleProtectPasskey}
           />
         )}
       </TopoBg>
