@@ -1,4 +1,4 @@
-import { WizardStep, WIZARD_STORAGE_KEY as STORAGE_KEY, WIZARD_PERSIST_TTL_MS as PERSIST_TTL_MS } from '@constants/wizard.ts';
+import { WizardStep, WIZARD_CREATE_STORAGE_KEY, WIZARD_STORAGE_KEY as STORAGE_KEY, WIZARD_PERSIST_TTL_MS as PERSIST_TTL_MS } from '@constants/wizard.ts';
 import { useReducer, useCallback, useRef, useState, useEffect } from 'react';
 import browser from '@lib/browser.ts';
 import {
@@ -73,7 +73,7 @@ export default function useWizardFlow({
           restoredRef.current = true;
         } else if (saved) {
           // Expired — clean up
-          browser.storage.session.remove([STORAGE_KEY, 'wizardCreateData']).catch(() => {});
+          browser.storage.session.remove([STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY]).catch(() => {});
         }
       })
       .catch(() => {})
@@ -85,7 +85,7 @@ export default function useWizardFlow({
   useEffect(() => {
     if (!persist || loading) return;
     if (NON_PERSIST_STEPS.includes(state.step)) {
-      browser.storage.session.remove([STORAGE_KEY, 'wizardCreateData']).catch(() => {});
+      browser.storage.session.remove([STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY]).catch(() => {});
     } else {
       browser.storage.session.set({ [STORAGE_KEY]: { step: state.step, ctx: state.ctx, ts: Date.now() } }).catch(() => {});
     }
@@ -101,7 +101,7 @@ export default function useWizardFlow({
 
   const reset = useCallback((): void => {
     if (persist) {
-      browser.storage.session.remove([STORAGE_KEY, 'wizardCreateData']).catch(() => {});
+      browser.storage.session.remove([STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY]).catch(() => {});
     }
     dispatch({ type: 'RESET' });
   }, [persist]);

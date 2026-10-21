@@ -6,9 +6,9 @@ Guidelines for shared components, hooks, and utilities in the Nostr WoT Extensio
 
 ## 1. Shared Component Inventory
 
-All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **67**; the inventory below is checked against the component folders by the test suite.
+All shared components live in `src/components/`, each implemented in its own `Name/index.tsx` and imported from `@components/Name`. These entrypoints contain the implementation, not forwarding exports. There are **68**; the inventory below is checked against the component folders by the test suite.
 
-**Layout and overlays** — `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (full-screen navigation by default; `placement="bottom"` fits content up to popup height over a scrim), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
+**Layout and overlays** — `ExtensionPage` (frame of a full extension tab such as the local bridge or the dice/coin game: logo header, one centred card, version footer, `after` slot for a full-screen dialog), `Modal` (centered dialog: Escape, focus-on-open, drag-safe backdrop), `OverlayPanel` (full-screen navigation by default; `placement="bottom"` fits content up to popup height over a scrim), `ConfirmDialog` (are-you-sure, built on Modal), `EventDetailModal`, `Dropdown`, `InfoTooltip`, `Splash`, `Container` (a bare `flex` box — `column`, `row` or the padded card-like `box` — owning only its variant and `gap`).
 
 **Content** — `ApprovalAmount`, `WalletRequestPreview`, `AuthenticationNotice` (concise relay/backend destination sentence, optional methods and informational backend match; the containing view owns the site header), `FollowReplacementNotice` (shared danger notice for pending cards and event details), `ProfileSummary`, `TextBlock`, `DetailDisclosure`, `Card`, `Heading`, `Text` (body copy at one of four roles — `body` / `secondary` / `muted` / `hint` — plus a `mono` flag), `SectionLabel`, `EmptyState`, `StatusNotice`, `StatusDot`, `FieldDisplay`, `FormError`, `EventPreview` (+ `kinds/`), `PublishRow`, `QrCode`, `Avatar`, `SiteIcon`, `WalletBalance`.
 
@@ -283,6 +283,10 @@ Split by what a thing is (see §3 for the boundary): `src/utils/` has no domain 
 | `src/constants/vault.ts` | Auto-lock, password and lockout policies |
 | `blossom.ts` | Blossom media upload utilities |
 | `wizardMachine.ts` | Onboarding wizard state machine |
+| `followSuggestions.ts` | `selectFollowSuggestions`, `anyProfileReachable`: which accounts to suggest, and whether any relay can show them |
+| `physicalEntropy.ts` | `physicalEntropyBytes`, `physicalEntropyBits`, `isPhysicalResult`: dice rolls and coin flips to BIP-39 entropy |
+| `services/profile/freshProfile.ts` | `readFreshProfile`: the cached public profile while fresh, shared by `usePublicProfile` and the follow-suggestion preload |
+| `utils/scroll.ts` | `scrollIntoViewGently`: `scrollIntoView` that honours reduced motion |
 
 ---
 
@@ -465,6 +469,8 @@ Profile editing supports file selection or an HTTP(S) URL for both avatar and co
 
 All text inputs, selects, date controls and the key-import textarea use the opaque cool-gray `--input-bg` surface, distinct from cards. Focus retains the existing purple border and ring. The encrypted-backup recovery warning follows `PasswordPairFields` (including its validation checklist) and precedes the action buttons.
 
+The menu lists Security, Site permissions, Wallet, Relays, Appearance, Archive and, last, Experimental. Experimental groups Post-quantum key, Web of Trust and Local network bridge as shared `ListRow`s rendered by the same helper as the root list. Post-quantum is reached only from there; the home screen and Security do not link it. The top account selector marks the active account with an atom (`IconQuantum`) when `derivePqcCardState` reports published, current keys. The badge sits inside the selector button, so it explains itself with a native `title` and screen-reader text rather than an interactive tooltip.
+
 The post-quantum settings page leads with `PqcOverview`: account key source followed by three navigation rows: key viewing, export, and public key announcement. The announcement row has a green dot when confirmed current and red otherwise; its modal retains the publication/retry actions and explains an unreachable check. The imported-key backup warning sits immediately above the separate, confirmed removal action. Key cards use shared buttons with algorithm-specific accessible copy labels. Import retains both file selection and paste, with the generator instructions in a native disclosure.
 
 Relay-cache notifications are passive reads: the background reuses answers younger than one minute so a storage-triggered popup refresh cannot restart its own network query. A stale answer is served immediately and refreshed once; opening a popup or receiving a notification never starts a polling timer.
@@ -600,6 +606,8 @@ newer state, including on a failed read; current failures remain fail-closed.
 Approval review uses one-time decisions for the displayed request IDs. Grouped cards expose selection checkboxes; the footer approves selected requests or denies the displayed group. Arrow menus reuse the shared top-layer `ActionMenu` for remembered choices. Menus use compact, viewport-constrained sizing and short labels. Ordinary rules are account/site overrides over global defaults; authentication uses its separate destination scopes. Remote in-flight groups offer cancellation rather than local signing approval.
 
 Wallet account changes reset only a keyed, nonvisual resource controller. The context provider and popup children stay mounted so a saved sub-account can advance the wizard. Account snapshots are scoped by ID to prevent displaying the previous account’s wallet.
+
+Accounts with no profile name show a tag button (`IconTag`) in the picker. It swaps the row's text for an inline `Input` that replaces the select button rather than nesting inside it: Enter or leaving the field saves, Escape cancels without closing the picker, and an empty label clears it. A profile name always wins over a label; the label wins over the stored account name, and the top bar uses the same `accountDisplay` rule. Labels live in `storage.local.accountLabels`, written only by the `setAccountLabel` RPC and removed with the account.
 
 Account removal uses a later sibling ConfirmDialog at the shared modal layer, above the scrollable picker. Do not override it with a sheet-level z-index: that places confirmation behind the picker. Escape closes only the confirmation. The background owns removal and storage cleanup; failed removal keeps the dialog open with an error and never deletes the UI account optimistically.
 

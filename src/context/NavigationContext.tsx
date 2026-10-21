@@ -7,7 +7,7 @@ import { createContext, useContext, type ReactNode } from 'react';
  * being handed it as a prop.
  *
  * Before this, seven callbacks were threaded through `Home` untouched just to
- * reach `ProfileRow`, `MutesRow`, `RelaysRow`, `PqcCard`, and `SiteControls` —
+ * reach `ProfileRow`, `MutesRow`, `RelaysRow` and `SiteControls` —
  * a router API simulated with props, where every new destination meant
  * touching three files instead of two.
  */
@@ -17,7 +17,6 @@ export interface HomeNavigation {
   manageFilters: () => void;
   editProfile: () => void;
   openRelays: () => void;
-  openPqc: () => void;
   openWallet: () => void;
 }
 

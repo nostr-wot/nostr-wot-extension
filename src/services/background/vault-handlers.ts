@@ -1,6 +1,8 @@
 import { getRecoveryStatus, recordBlobSaved, recordBlobUnavailable, addRecoveryRelay } from '../vault/recoveryStatus.ts';
+import { ACCOUNT_LABELS_KEY } from '@constants/accounts.ts';
+import { normalizeAccountLabel } from '../../domain/accounts/display.ts';
 import * as relayRecovery from '../vault/relayRecovery.ts';
-import { WIZARD_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
+import { WIZARD_STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY, PENDING_KEYS } from '@constants/wizard.ts';
 import type { PasskeyInput, PasskeyProof } from '@domain/vault/passkey.ts';
 import { revokeAuthenticationGrants } from '../permissions/authentication.ts';
 import { countWords } from '@utils/text.ts';
@@ -225,7 +227,7 @@ export const handlers = new Map<string, HandlerFn>([
 
     ['vault_removeAccount', async (params) => {
         const removedId = params.accountId as string;
-        const rmLocalData = await browser.storage.local.get(['accounts', 'activeAccountId']) as Record<string, unknown>;
+        const rmLocalData = await browser.storage.local.get(['accounts', 'activeAccountId', ACCOUNT_LABELS_KEY]) as Record<string, unknown>;
         const localAccounts = (rmLocalData.accounts || []) as Array<{ id: string; pubkey: string; readOnly?: boolean; type?: string }>;
         const removed = localAccounts.find(account => account.id === removedId);
         // Watch-only identities can exist without an unlocked vault.
@@ -239,6 +241,11 @@ export const handlers = new Map<string, HandlerFn>([
         await signerPermissions.clearForAccount(removedId);
         const rmAccts = localAccounts.filter(a => a.id !== removedId);
         const updates: Record<string, unknown> = { accounts: rmAccts };
+        const labels = rmLocalData[ACCOUNT_LABELS_KEY] as Record<string, string> | undefined;
+        if (labels && removedId in labels) {
+            const { [removedId]: _removed, ...kept } = labels;
+            updates[ACCOUNT_LABELS_KEY] = kept;
+        }
         if (rmLocalData.activeAccountId === removedId) {
             updates.activeAccountId = vault.getActiveAccountId() || (rmAccts[0] as { id: string })?.id || null;
         }
@@ -250,7 +257,7 @@ export const handlers = new Map<string, HandlerFn>([
         await browser.storage.local.set(updates);
         if (!rmAccts.length) {
             await vault.destroyIfEmpty();
-            await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
+            await browser.storage.session.remove([WIZARD_STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY, ...PENDING_KEYS]);
         }
         if (rmLocalData.activeAccountId === removedId) {
             // Removing the active account changes the active identity — same
@@ -258,6 +265,19 @@ export const handlers = new Map<string, HandlerFn>([
             await signerApprovalQueue.onActiveAccountChanged(removedId, updates.activeAccountId as string | null);
         }
         return { ok: true };
+    }],
+
+    // The only writer of ACCOUNT_LABELS_KEY. Labels are display-only and stored
+    // outside the vault, so they work for watch-only accounts and a locked vault.
+    ['setAccountLabel', async (params) => {
+        const accountId = params.accountId as string;
+        const { accounts: known = [], [ACCOUNT_LABELS_KEY]: labels = {} } = await browser.storage.local.get(['accounts', ACCOUNT_LABELS_KEY]) as Record<string, any>;
+        if (!(known as Array<{ id: string }>).some(account => account.id === accountId)) throw new Error('Unknown account');
+        const label = normalizeAccountLabel(String(params.label ?? ''));
+        const next = { ...labels };
+        if (label) next[accountId] = label; else delete next[accountId];
+        await browser.storage.local.set({ [ACCOUNT_LABELS_KEY]: next });
+        return { label };
     }],
 
     ['switchAccount', async (params) => {
@@ -369,7 +389,7 @@ export const handlers = new Map<string, HandlerFn>([
         await revokeAuthenticationGrants();
         await clearWalletDisplayCaches();
         await browser.storage.local.remove(['accounts', 'activeAccountId', 'autoLockMs', UNLOCK_GUARD_KEY]);
-        await browser.storage.session.remove([WIZARD_STORAGE_KEY, 'wizardCreateData', ...PENDING_KEYS]);
+        await browser.storage.session.remove([WIZARD_STORAGE_KEY, WIZARD_CREATE_STORAGE_KEY, ...PENDING_KEYS]);
         await browser.storage.sync.remove('myPubkey');
         config.myPubkey = '';
         return { ok: true };

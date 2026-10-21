@@ -1,4 +1,5 @@
 import PasskeySelector from '@components/PasskeySelector';
+import { scrollIntoViewGently } from '@utils/scroll.ts';
 import { useState, useEffect, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -28,7 +29,7 @@ export default function SubAccountStep({ onNext }: SubAccountStepProps) {
   const [customPath, setCustomPath] = useState(false);
   const pathFields = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (customPath) pathFields.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    if (customPath) scrollIntoViewGently(pathFields.current);
   }, [customPath]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

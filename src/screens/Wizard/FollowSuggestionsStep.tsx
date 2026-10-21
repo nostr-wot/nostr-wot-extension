@@ -1,48 +1,14 @@
-import { TIER_1, TIER_2 } from '@constants/followSuggestions.ts';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { npubDecode } from '@lib/crypto/bech32.ts';
+import { FOLLOW_PUBLISH_TIMEOUT_MS } from '@domain/wizard/followSuggestions.ts';
+import { followSuggestions, preloadFollowSuggestions } from './followSuggestionsPreload';
 import Button, { ButtonSecondary } from '@components/Button';
 import ProfileSummary from '@components/ProfileSummary';
 import usePublicProfile from '@hooks/usePublicProfile';
 import { truncateNpub } from '@domain/nostr/display.ts';
 import Container from '@components/Container';
 import Text from '@components/Text';
-
-/* ------------------------------------------------------------------ */
-/*  Selection algorithm                                                */
-/* ------------------------------------------------------------------ */
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function selectAccounts(): string[] {
-  const shuffledT1 = shuffle(TIER_1);
-  const shuffledT2 = shuffle(TIER_2);
-  const used = new Set<string>();
-
-  // First half: 1 TIER_1 + 4 TIER_2, shuffled
-  const t1a = shuffledT1[0];
-  used.add(t1a);
-  const t2a = shuffledT2.filter((n) => !used.has(n)).slice(0, 4);
-  t2a.forEach((n) => used.add(n));
-  const firstHalf = shuffle([t1a, ...t2a]);
-
-  // Second half: 1 more TIER_1 + 6 TIER_2, shuffled (no repeats)
-  const t1b = shuffledT1.find((n) => !used.has(n))!;
-  used.add(t1b);
-  const t2b = shuffledT2.filter((n) => !used.has(n)).slice(0, 6);
-  const secondHalf = shuffle([t1b, ...t2b]);
-
-  return [...firstHalf, ...secondHalf];
-}
 
 function SuggestedProfile({ pubkey }: { pubkey: string }) {
   const { profile } = usePublicProfile(pubkey);
@@ -51,19 +17,22 @@ function SuggestedProfile({ pubkey }: { pubkey: string }) {
 
 interface FollowSuggestionsStepProps {
   onNext: () => void;
+  /** No relay returned a single suggested profile: skip the step entirely. */
+  onUnavailable?: () => void;
 }
 
-export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepProps) {
-  const npubs = useMemo(() => selectAccounts(), []);
-  const hexKeys = useMemo(
-    () => npubs.reduce<Array<{ npub: string; hex: string }>>((acc, npub) => {
-      try {
-        acc.push({ npub, hex: npubDecode(npub) });
-      } catch { /* skip invalid npub */ }
-      return acc;
-    }, []),
-    [npubs],
-  );
+export default function FollowSuggestionsStep({ onNext, onUnavailable }: FollowSuggestionsStepProps) {
+  const hexKeys = useMemo(() => followSuggestions(), []);
+
+  const unavailable = useRef(onUnavailable);
+  unavailable.current = onUnavailable;
+
+  // Usually already settled: the wizard starts this lookup steps earlier.
+  useEffect(() => {
+    let active = true;
+    void preloadFollowSuggestions().then((reachable) => { if (active && !reachable) unavailable.current?.(); });
+    return () => { active = false; };
+  }, []);
 
   const hexList = useMemo(() => hexKeys.map((a) => a.hex), [hexKeys]);
 
@@ -90,7 +59,12 @@ export default function FollowSuggestionsStep({ onNext }: FollowSuggestionsStepP
         tags,
         created_at: Math.floor(Date.now() / 1000),
       };
-      await rpc('signAndPublishEvent', { event });
+      // A relay that accepts the socket but never answers must not hold the step.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        rpc('signAndPublishEvent', { event }),
+        new Promise((resolve) => { timer = setTimeout(resolve, FOLLOW_PUBLISH_TIMEOUT_MS); }),
+      ]).finally(() => clearTimeout(timer));
     } catch { /* publish failed (e.g. relays unreachable) — proceed anyway so onboarding is never trapped */ }
     onNext();
   };

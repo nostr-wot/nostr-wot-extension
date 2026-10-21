@@ -205,3 +205,45 @@ test('advanced passkey creation is reached only through other methods', () => {
   assert.equal(reducer(reducer(created, { type: 'DONE' }), { type: 'BACK' }).step, WizardStep.Password);
   assert.equal(reducer(options, { type: 'SELECT', payload: { method: 'passkeyAdvanced' } }, { hasAccounts: true }), options);
 });
+
+test('unreachable relays skip follow suggestions, and BACK does not return to them', () => {
+  const password = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'create' } },
+    { type: 'CREATED', payload: { account: { id: 'a' }, mnemonic: 'seed words' } },
+    { type: 'VERIFIED' },
+    { type: 'SET', payload: { upgraded: false } },
+  ], { hasAccounts: true });
+  assert.equal(password.step, WizardStep.FollowSuggestions);
+  const skipped = reducer(password, { type: 'UNAVAILABLE' }, { hasAccounts: true });
+  assert.equal(skipped.step, WizardStep.PermissionCopy);
+  assert.equal(skipped.ctx.followUnavailable, true);
+  assert.equal(reducer(skipped, { type: 'BACK' }, { hasAccounts: true }).step, WizardStep.Password);
+  // Reached normally, BACK still returns to the suggestions.
+  const followed = reducer(password, { type: 'DONE' }, { hasAccounts: true });
+  assert.equal(reducer(followed, { type: 'BACK' }, { hasAccounts: true }).step, WizardStep.FollowSuggestions);
+
+  const firstRun = reducer(password, { type: 'UNAVAILABLE' }, { hasAccounts: false });
+  assert.equal(firstRun.step, WizardStep.Done);
+});
+
+test('a skipped follow step sends a sub-account back to its own step', () => {
+  const sub = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'create' } },
+    { type: 'CREATED', payload: { account: { id: 'sub' } } },
+    { type: 'UNAVAILABLE' },
+  ], { hasAccounts: true, hasGeneratedAccount: true });
+  assert.equal(sub.step, WizardStep.PermissionCopy);
+  assert.equal(reducer(sub, { type: 'BACK' }, { hasAccounts: true, hasGeneratedAccount: true }).step, WizardStep.Subaccount);
+});
+
+test('a skipped follow step leaves passkey flows without a Back into created vault setup', () => {
+  const skipped = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'passkey' } },
+    { type: 'CREATED', payload: { account: { id: 'p' } } },
+    { type: 'DONE' },
+    { type: 'SET' },
+    { type: 'UNAVAILABLE' },
+  ], { hasAccounts: true });
+  assert.equal(skipped.step, WizardStep.PermissionCopy);
+  assert.equal(reducer(skipped, { type: 'BACK' }, { hasAccounts: true }).step, WizardStep.PermissionCopy);
+});

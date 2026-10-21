@@ -13,7 +13,6 @@ import { useNavigate } from '@context/NavigationContext';
 import SiteControls from './SiteControls';
 import ProfileRow from './ProfileRow';
 import MutesRow from './MutesRow';
-import PqcCard from './PqcCard';
 import RelaysRow from './RelaysRow';
 import Card from '@components/Card';
 import Button, { ButtonSecondary } from '@components/Button';
@@ -273,9 +272,6 @@ export default function Home({ menuOpen }: HomeProps) {
             {canEditProfile && <ProfileRow />}
             <MutesRow />
             <RelaysRow />
-            {/* Last in the list: the everyday rows people came for come first, and
-                post-quantum setup is a once-per-identity errand. */}
-            <PqcCard />
           </Card>
         </div>
       )}

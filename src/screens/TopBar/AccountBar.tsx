@@ -8,6 +8,8 @@ import Avatar from '@components/Avatar';
 import IconButton from '@components/IconButton';
 import Container from '@components/Container';
 import AccountLabel from './AccountLabel';
+import { usePqc } from '@context/PqcContext';
+import { derivePqcCardState } from '@domain/pqc/pqcState.ts';
 
 interface AccountBarProps {
   dropdownOpen: boolean;
@@ -17,6 +19,8 @@ interface AccountBarProps {
 export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBarProps) {
   const { displayName, displaySub, avatarUrl, initial, isReadOnly, isNip46, active } = useAccount();
   const vault = useVault();
+  const { status, published } = usePqc();
+  const quantum = derivePqcCardState(status, published) === 'enabled';
 
   const fallbackText = !active ? '+' : isReadOnly ? '\u{1F441}' : initial;
 
@@ -32,7 +36,7 @@ export default function AccountBar({ dropdownOpen, onToggleDropdown }: AccountBa
           />
         </div>
         <Container className="flex-1 min-w-0">
-          <AccountLabel key={active?.id} accountId={active?.id} name={displayName} remote={isNip46} readOnly={isReadOnly} />
+          <AccountLabel key={active?.id} accountId={active?.id} name={displayName} remote={isNip46} readOnly={isReadOnly} quantum={quantum} />
           <span className="text-xs text-muted font-mono whitespace-nowrap overflow-hidden text-ellipsis">{displaySub}</span>
         </Container>
         <IconChevronDown className={`text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />

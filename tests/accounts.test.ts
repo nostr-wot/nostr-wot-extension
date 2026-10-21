@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
-  createFromMnemonic, createFromMnemonicAtIndex, generateNewAccount, importNsec, importNpub, connectNip46, importFromMnemonicDerived
+  createFromMnemonic, createFromMnemonicAtIndex, generateNewAccount, generateAccountFromPhysicalEntropy, importNsec, importNpub, connectNip46, importFromMnemonicDerived
 } from '../src/domain/accounts/creation.ts';
 import { nsecEncode, npubEncode } from '../src/lib/crypto/bech32.ts';
 import { bytesToHex, hexToBytes } from '../src/lib/crypto/utils.ts';
@@ -365,4 +365,18 @@ it('recognizes registered network prefixes without calling unknown paths invalid
   assert.equal(identifyDerivationPath("m/84'/60'/0'/0/0"),null,'Bitcoin purpose must not imply Ethereum');
   assert.equal(identifyDerivationPath("m/44'/999999'/0'/0/0"),null);
   assert.equal(identifyDerivationPath('invalid'),null);
+});
+
+describe('generateAccountFromPhysicalEntropy', () => {
+  it('derives the main account from coin flips exactly as the phrase would', async () => {
+    const { account, mnemonic }: any = await generateAccountFromPhysicalEntropy('coin', new Array(256).fill(0));
+    assert.strictEqual(mnemonic, `${'abandon '.repeat(23)}art`);
+    const reimported: any = await createFromMnemonic(mnemonic, 'Main');
+    assert.strictEqual(account.pubkey, reimported.pubkey);
+    assert.strictEqual(account.name, 'Main');
+  });
+
+  it('refuses an incomplete set of rolls', async () => {
+    await assert.rejects(() => generateAccountFromPhysicalEntropy('dice', [1, 2, 3]), /Expected 100/);
+  });
 });

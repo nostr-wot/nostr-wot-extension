@@ -1,5 +1,5 @@
 import { WizardStep } from '@constants/wizard.ts';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { t } from '@services/i18n/i18n.ts';
 import IconChevronLeft from '@assets/IconChevronLeft.tsx';
 import IconClose from '@assets/IconClose.tsx';
@@ -18,6 +18,7 @@ import VerifyStep from './VerifyStep';
 import PasswordStep from './PasswordStep';
 import BackupStep from './BackupStep';
 import FollowSuggestionsStep from './FollowSuggestionsStep';
+import { preloadFollowSuggestions } from './followSuggestionsPreload';
 import PermissionCopyStep from './PermissionCopyStep';
 import DoneStep from './DoneStep';
 
@@ -32,6 +33,12 @@ interface WizardFlow {
   showBack: boolean;
   reset: () => void;
 }
+
+/** Steps that lead to the follow suggestions; entering one starts their lookup. */
+const PRELOAD_FOLLOW_STEPS: readonly WizardStep[] = [
+  WizardStep.Create, WizardStep.Subaccount, WizardStep.Passkey, WizardStep.PasskeyAdvanced,
+  WizardStep.PasskeyBackup, WizardStep.Backup, WizardStep.Verify, WizardStep.Password,
+];
 
 interface StepConfig {
   noHeader?: boolean;
@@ -119,7 +126,7 @@ function buildSteps(
     },
     [WizardStep.FollowSuggestions]: {
       title: t('wizard.followTitle'),
-      content: <FollowSuggestionsStep onNext={() => flow.send('DONE')} />,
+      content: <FollowSuggestionsStep onNext={() => flow.send('DONE')} onUnavailable={() => flow.send('UNAVAILABLE')} />,
     },
     [WizardStep.PermissionCopy]: {
       title: t('wizard.copyPermissions'),
@@ -144,6 +151,10 @@ interface WizardStepsProps {
 
 export default function WizardSteps({ flow, onClose, onDone, onLangSelect, bodyClassName, hasAccounts, hasGeneratedAccount }: WizardStepsProps) {
   const STEPS = buildSteps(flow, onLangSelect, onDone, { hasAccounts, hasGeneratedAccount });
+  // Look the suggested profiles up while the person is still busy with keys and
+  // passwords, so the follow step has its answer (or is skipped) on arrival.
+  const preloadFollows = PRELOAD_FOLLOW_STEPS.includes(flow.step);
+  useEffect(() => { if (preloadFollows) void preloadFollowSuggestions(); }, [preloadFollows]);
   const active = STEPS[flow.step];
   if (!active?.content) return null;
   // The confirmation is a dialog of its own, not a page under the wizard header.

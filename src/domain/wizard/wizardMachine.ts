@@ -15,6 +15,8 @@ export interface WizardContext {
   visitedPreMethod: boolean;
   passkeyBlobSupported?: boolean;
   passkeyRecoverySaved?: boolean;
+  /** Follow suggestions were skipped because no relay answered; BACK must not return there. */
+  followUnavailable?: boolean;
 }
 
 export interface WizardState {
@@ -44,6 +46,14 @@ type TransitionHandler = (
   payload: Record<string, unknown>,
   options: WizardOptions
 ) => TransitionResult | null;
+
+/** Leaving the follow suggestions backwards, or the step after them when they were skipped. */
+const backFromFollowSuggestions: TransitionHandler = (ctx, _payload, { hasGeneratedAccount }) => {
+  if (ctx.method === 'passkey' || ctx.method === 'passkeyAdvanced') return null;
+  // Subaccounts skip password, go back to subaccount step
+  if (ctx.method === 'create' && hasGeneratedAccount) return { step: WizardStep.Subaccount };
+  return { step: WizardStep.Password };
+};
 
 const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   [WizardStep.Language]: {
@@ -155,19 +165,16 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
 
   [WizardStep.FollowSuggestions]: {
     DONE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done }),
-    BACK: (ctx, _payload, { hasGeneratedAccount }) => {
-      if (ctx.method === 'passkey' || ctx.method === 'passkeyAdvanced') return null;
-      // Subaccounts skip password, go back to subaccount step
-      if (ctx.method === 'create' && hasGeneratedAccount) return { step: WizardStep.Subaccount };
-      return { step: WizardStep.Password };
-    },
+    UNAVAILABLE: (_ctx, _payload, { hasAccounts }) => ({ step: hasAccounts ? WizardStep.PermissionCopy : WizardStep.Done, ctx: { followUnavailable: true } }),
+    BACK: backFromFollowSuggestions,
   },
 
   [WizardStep.PermissionCopy]: {
     DONE: () => ({ step: WizardStep.Done }),
-    BACK: (ctx) => {
-      if (['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.FollowSuggestions };
-      return { step: WizardStep.Password };
+    BACK: (ctx, payload, options) => {
+      if (!['create', 'passkey', 'passkeyAdvanced'].includes(ctx.method || '')) return { step: WizardStep.Password };
+      // A skipped follow step is not returned to: go where its own Back would.
+      return ctx.followUnavailable ? backFromFollowSuggestions(ctx, payload, options) : { step: WizardStep.FollowSuggestions };
     },
   },
 

@@ -27,6 +27,7 @@ import { broadcastAccountChanged } from './domain-handlers.ts';
 import * as signerApprovalQueue from '../signing/approvalQueue.ts';
 import { toSafeAccount } from '../../domain/accounts/account.ts';
 import type { Account } from '../../domain/accounts/types.ts';
+import type { PhysicalEntropyKind } from '../../domain/accounts/physicalEntropy.ts';
 import { resolveRemoteAccount } from '../signing/remoteAccount.ts';
 import { Nip46Connection } from '../signing/nip46Connection.ts';
 import { AsyncLock } from '../../utils/asyncLock.ts';
@@ -605,10 +606,24 @@ export const handlers = new Map<string, HandlerFn>([
     })],
 
     ['onboarding_generateAccount', async (params) => {
-        const { account: acct, mnemonic } = await accounts.generateNewAccount();
+        // `physical` carries coin flips or dice rolls from the entropy game.
+        const physical = params.physical as { kind?: unknown; results?: unknown } | undefined;
+        const { account: acct, mnemonic } = physical
+            ? await accounts.generateAccountFromPhysicalEntropy(physical.kind as PhysicalEntropyKind, physical.results as unknown[])
+            : await accounts.generateNewAccount();
         const safeAcct = toSafeAccount(acct);
         await setPendingOnboardingAccount(acct);
         return params.hideMnemonic ? { account: safeAcct } : { account: safeAcct, mnemonic };
+    }],
+
+    // The Create step shows the pending phrase again after the popup reopens, or
+    // after the dice/coin tab built it. The UI keeps only the public key; the
+    // words stay here, XOR-split in session storage, and are returned only for
+    // the account the caller already knows.
+    ['onboarding_getPendingPhrase', async (params) => {
+        const pending = await getPendingOnboardingAccount();
+        if (!pending?.mnemonic || pending.pubkey !== params.pubkey) return null;
+        return { account: toSafeAccount(pending), mnemonic: pending.mnemonic };
     }],
 
     ['onboarding_checkExistingSeed', async () => {

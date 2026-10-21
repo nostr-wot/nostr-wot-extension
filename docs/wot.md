@@ -1,6 +1,6 @@
 # Experimental Web of Trust (0.8.0)
 
-Enable **Menu → Web of Trust (experimental)** to expose `window.nostr.wot`.
+Enable **Menu → Experimental → Web of Trust** to expose `window.nostr.wot`.
 It is disabled on installation and upgrade, including for users of the retired
 WoT implementation. There is no wizard step or trust-badge injection. Automatic refresh is separately opt-in. Disabling removes our page API and rejects retained references.
 On entry, a notice explains that scores describe follow/mute relationships, not safety or endorsement. **Don’t show again** persists the dismissal on this device; the same notice remains at the bottom of the screen. The sync card shows one status dot and one set of graph counts. **Sync settings**

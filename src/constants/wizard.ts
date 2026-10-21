@@ -21,6 +21,8 @@ export const PENDING_KEYS = [
 ];
 
 export const WIZARD_STORAGE_KEY = 'wizardState';
+/** The Create step's session marker: which pending account it shows (public key only). */
+export const WIZARD_CREATE_STORAGE_KEY = 'wizardCreateData';
 export const WIZARD_PERSIST_TTL_MS = ONBOARDING_PENDING_TTL_MS;
 
 export enum WizardStep {
