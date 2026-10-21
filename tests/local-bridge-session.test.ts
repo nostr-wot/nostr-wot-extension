@@ -63,11 +63,8 @@ it('selects an existing matching account without duplicating or deleting it',asy
  assert.equal(p.messages.at(-1).type,'ready');assert.equal(vault.getActiveAccountId(),'phone');
  await bridge.disableLocalBridge();assert.equal(vault.getActiveAccountId(),'a');assert.equal(vault.getAccountById('phone')?.name,'Saved phone');
 });
-it('verifies exact event and signature while preserving normal local permission denial',async()=>{
+it('verifies phone signatures while the phone owns permission decisions',async()=>{
  const p=await connect();await permissions.save('example.com','signEvent',1,'deny','a');
- await assert.rejects(handleSignEvent({kind:1,content:'hello',tags:[],created_at:1},'example.com'),/Permission denied/);
- assert.equal(p.messages.filter(m=>m.type==='request').length,0);
- await permissions.save('example.com','signEvent',1,'allow','a');
  const result=handleSignEvent({kind:1,content:'hello',tags:[],created_at:1},'example.com');await tick();
  const request=p.messages.find(m=>m.type==='request');assert.equal(request.method,'sign_event');
  const signed=await signEvent(JSON.parse(request.params[0]),hexToBytes(key));p.send({type:'response',id:request.id,result:JSON.stringify(signed)});
@@ -138,8 +135,10 @@ it('locked-vault pairing leaves ciphertext untouched and restores the saved acco
  assert.equal((await bridge.localBridgeStatus()).connected,true);
  assert.deepEqual((await browser.storage.local.get('keyVault')).keyVault,before);
  await permissions.save('example.com','signEvent',1,'deny',id);
- await assert.rejects(handleSignEvent({kind:1,content:'deny',tags:[],created_at:1},'example.com'),/Permission denied/);
- assert.equal(p.messages.some(m=>m.type==='request'),false);
+ const denied=handleSignEvent({kind:1,content:'phone decides',tags:[],created_at:1},'example.com');
+ const rejected=assert.rejects(denied,/Phone denied/);await tick();
+ const req=p.messages.find(m=>m.type==='request');assert.ok(req);
+ p.send({type:'response',id:req.id,error:'Phone denied'});await rejected;
  const session=captureAccountSession(id);
  await browser.storage.local.set({activeAccountId:'a'});
  assert.throws(()=>assertAccountSession(session),/Phone signer session changed/);
@@ -285,6 +284,7 @@ it('delegates ordinary ask requests to the phone without a second extension prom
  const signed=await signEvent(JSON.parse(req.params[0]),hexToBytes(key));
  p.send({type:'response',id:req.id,result:JSON.stringify(signed)});assert.deepEqual(await signing,signed);
  for(const [fn,method] of [[handleNip04Encrypt,'nip04_encrypt'],[handleNip04Decrypt,'nip04_decrypt'],[handleNip44Encrypt,'nip44_encrypt'],[handleNip44Decrypt,'nip44_decrypt']] as const){
+  await permissions.save('example.com',method==='nip04_encrypt'?'nip04Encrypt':method==='nip04_decrypt'?'nip04Decrypt':method==='nip44_encrypt'?'nip44Encrypt':'nip44Decrypt',null,'deny','a');
   const result=fn(pubkey,'payload','example.com');await tick();const request=p.messages.at(-1);
   assert.equal(request.method,method);assert.equal((await getPending()).length,0);
   p.send({type:'response',id:request.id,result:'phone result'});assert.equal(await result,'phone result');
@@ -354,4 +354,29 @@ it('worker startup removes abandoned temporary metadata without deleting saved a
  assert.equal((await browser.storage.local.get('activeAccountId')).activeAccountId,'a');
  assert.equal((await browser.storage.local.get('accounts')).accounts.some((a:any)=>a.id===id),false);
  assert.equal((await browser.storage.local.get('accounts')).accounts.length,1);
+});
+
+for(const locked of [false,true]) it(`all event kinds delegate approval to the phone (locked=${locked})`,async()=>{
+ const {addAllowedDomain}=await import('../src/services/background/domain-handlers.ts');
+ const {rememberSignedFollowList}=await import('../src/services/signing/followListGuard.ts');
+ const origin='https://client.test';await addAllowedDomain(origin);await permissions.setUseGlobalDefaults(false);
+ if(locked)vault.lock();const p=await connect();
+ const now=Math.floor(Date.now()/1000);
+ await rememberSignedFollowList(await signEvent({kind:3,content:'',created_at:now-1,tags:[['p','a'.repeat(64)],['p','b'.repeat(64)]]},hexToBytes(key)));
+ const events=[
+  {kind:30078,content:'encrypted app settings',tags:[['d','app-settings']]},
+  {kind:22242,content:'',tags:[['relay','wss://relay.test/'],['challenge','test-challenge']]},
+  {kind:27235,content:'',tags:[['u','https://api.test/login'],['method','POST']]},
+  {kind:27235,content:'',tags:[['u','https://zaps.nostr-wot.com/api/provision'],['method','POST']]},
+  {kind:3,content:'',tags:[]},
+ ];
+ for(const event of events){
+  const work=handleSignEvent({...event,created_at:now},origin);void work.catch(()=>{});
+  for(let i=0;i<50&&!p.messages.some(m=>m.type==='request')&&!(await getPending()).length;i++)await tick();
+  const pending=await getPending();
+  if(pending.length){vault.lock();await assert.rejects(work);assert.fail(`kind ${event.kind} opened an extension approval`);}
+  const req=p.messages.find(m=>m.type==='request');assert.ok(req,`kind ${event.kind} must reach phone`);
+  const signed=await signEvent(JSON.parse(req.params[0]),hexToBytes(key));p.send({type:'response',id:req.id,result:JSON.stringify(signed)});
+  assert.deepEqual(await work,signed);p.messages.splice(0);
+ }
 });

@@ -623,7 +623,7 @@ Passkey coverage includes single-assertion blob/relay recovery, legacy two-asser
 
 ### Experimental phone signer broker
 
-`tests/local-bridge-session.test.ts` verifies exact document trust, identity matching, local permission denial, real remote event signatures and payload preservation, classic encryption dispatch, PQ refusal, disconnect/lock cancellation, sticky selection without local fallback, explicit disable and malformed result rejection. The tests use isolated runtime Ports and synthetic keys; they do not certify physical Bluetooth or LAN interoperability.
+`tests/local-bridge-session.test.ts` verifies exact document trust, identity matching, phone-owned approval for every event kind regardless of extension request rules, real remote event signatures and payload preservation, classic encryption dispatch, PQ refusal, disconnect/lock cancellation, sticky selection without local fallback, explicit disable and malformed result rejection. The tests use isolated runtime Ports and synthetic keys; they do not certify physical Bluetooth or LAN interoperability.
 
 - `tests/local-bridge-transport.test.ts` pins authenticated pairing, encrypted response correlation, replay rejection, Wi-Fi destination restrictions, BLE framing and cancellation.
 - `tests/local-bridge-tab.test.ts` pins account registration, bounded dispatch and immediate runtime/radio disconnect cleanup.

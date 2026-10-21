@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Forward all local-bridge signing and encryption approvals to the phone, including authentication and following-list events, before extension request-permission rules.
+
 - Combine closing the local bridge and stopping phone signing into one Disconnect action.
 
 - Remove pairing-created temporary accounts and permissions when their bridge tab closes; preserve existing accounts and the previous selection.
