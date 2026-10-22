@@ -3,10 +3,15 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
+## 0.8.17 — 2026-10-22
+
+### Store release notes
+
+- Avoid repeated fingerprint prompts during passkey account creation and recovery. Setup stays open while the account is saved, and confirming the initial auto-lock choice reuses the verification you just completed.
 
 ### Fixed
 
+- Keep the setup wizard mounted when the first account appears, preventing repeated recovery writes or passkey registration.
 - Confirm the initial auto-lock choice after passkey creation or restoration without asking for another fingerprint. The one-use setup authorization expires after five minutes and is revoked by locking, account switching or reauthentication; later Security changes still require verification.
 
 ## 0.8.16 — 2026-10-21
