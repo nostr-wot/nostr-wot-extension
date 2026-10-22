@@ -51,6 +51,8 @@ import { LOCK_STATE_KEY } from '@constants/vault.ts';
 // All writes share one lane; synchronous invalidation always wins over queued work.
 const mutations = new AsyncLock();
 let sessionRevision = 0;
+const ONBOARDING_PROTECTION_TTL_MS = 5 * 60 * 1000;
+let onboardingProtection: { revision: number; key: CryptoKey; accountId: string; expiresAt: number } | null = null;
 const destroyListeners = new Set<() => Promise<void>>();
 export function onDestroy(listener: () => Promise<void>): () => void {
   destroyListeners.add(listener);
@@ -79,6 +81,7 @@ export function onSessionInvalidated(listener: () => void): () => void {
   return () => { sessionListeners.delete(listener); };
 }
 function invalidateSession(): void {
+  onboardingProtection = null;
   sessionRevision++;
   for (const listener of sessionListeners) {
     try { listener(); } catch { /* Revocation must continue for other holders. */ }
@@ -177,6 +180,15 @@ function clearKeepAlive(): void {
  * @param payload - { accounts: [...], activeAccountId: string }
  */
 export async function create(password: string, payload: VaultPayload, passkey?: PasskeyInput): Promise<void> {
+  return createVault(password, payload, passkey);
+}
+
+/** Internal onboarding entry point; ordinary creation/unlock never grants setup authorization. */
+export async function createPasskeyForOnboarding(payload: VaultPayload, passkey: PasskeyInput): Promise<void> {
+  return createVault('', payload, passkey, true);
+}
+
+async function createVault(password: string, payload: VaultPayload, passkey?: PasskeyInput, onboarding = false): Promise<void> {
   invalidateSession();
   const revision = sessionRevision;
   return mutations.run(async () => {
@@ -233,6 +245,8 @@ export async function create(password: string, payload: VaultPayload, passkey?: 
     resetAutoLock();
     armKeepAlive();
     await notifyUnlocked();
+    assertRevision(revision);
+    if (onboarding && passkey) authorizeOnboardingProtection();
   });
 }
 
@@ -250,6 +264,7 @@ export async function unlockPasskey(proof: PasskeyProof): Promise<boolean> {
 }
 
 async function unlockWithCredential(password: string, proof?: PasskeyProof): Promise<boolean> {
+  onboardingProtection = null;
   const revision = sessionRevision;
   return mutations.run(async () => {
     if (revision !== sessionRevision) return false;
@@ -694,6 +709,7 @@ export async function restorePasskeyBackup(text: string, proof: PasskeyProof): P
       await notifyUnlocked();
       assertRevision(revision);
       noteLockStateChanged();
+      authorizeOnboardingProtection();
     } finally {
       bytes.fill(0);
       if (memory && memory !== _decrypted) zeroPayload(memory);
@@ -732,6 +748,7 @@ export async function withCacheKey<T>(operation: (key: CryptoKey) => Promise<T>)
 
 /** Verify current protection before enrolling or switching the vault unlock method. */
 export async function changeProtection(options: { currentPassword?: string; currentPasskey?: PasskeyProof; password?: string; newPasskey?: PasskeyInput; usePasskey: boolean; autoLockMs?: number }): Promise<boolean> {
+  onboardingProtection = null;
   if (typeof options.usePasskey !== 'boolean') throw new Error('Invalid unlock method');
   if (options.autoLockMs !== undefined && !AUTO_LOCK_OPTIONS.some(option => option.ms === options.autoLockMs)) throw new Error('Invalid auto-lock interval');
   const noLock = options.autoLockMs === 0;
@@ -789,17 +806,54 @@ export async function changeProtection(options: { currentPassword?: string; curr
         key = await deriveKey(options.password!, salt, iterations);
         protection = { version: VAULT_VERSION, salt: arrayToBase64(salt), iterations, registeredPasskeys: { rpId: enrolled.rpId, passkeys: enrolled.passkeys } };
       }
-      assertRevision(revision);
-      const encrypted = await encrypt(key, JSON.stringify(toStoragePayload(_decrypted!)));
       const autoLockMs = options.autoLockMs ?? (_autoLockMs > 0 ? _autoLockMs : AUTO_LOCK_DEFAULT_MS);
-      assertRevision(revision);
-      await browser.storage.local.set({ [STORAGE_KEY]: { ...protection, iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext) }, autoLockMs });
-      assertRevision(revision);
-      _cryptoKey = key;
-      _kdfIterations = options.usePasskey ? PBKDF2_ITERATIONS : iterationsFor(options.password!);
-      _autoLockMs = autoLockMs;
-      resetAutoLock(); armKeepAlive(); noteLockStateChanged();
+      await persistProtection(key, protection, options.usePasskey ? PBKDF2_ITERATIONS : iterationsFor(options.password!), autoLockMs, revision);
       return true;
     } finally { bytes?.fill(0); }
   });
+}
+
+function authorizeOnboardingProtection(): void {
+  if (_cryptoKey && _decrypted?.activeAccountId) onboardingProtection = { revision: sessionRevision, key: _cryptoKey, accountId: _decrypted.activeAccountId, expiresAt: Date.now() + ONBOARDING_PROTECTION_TTL_MS };
+}
+
+/** Consume fresh setup verification once; no PRF, password or raw wrapping key is retained. */
+export async function configurePasskeyOnboarding(options: { usePasskey: boolean; password?: string; autoLockMs: number }): Promise<void> {
+  if (typeof options.usePasskey !== 'boolean' || !AUTO_LOCK_OPTIONS.some(option => option.ms === options.autoLockMs)) throw new Error('Invalid unlock method or auto-lock interval');
+  if (options.autoLockMs === 0 ? options.usePasskey || options.password !== '' : !options.usePasskey && (typeof options.password !== 'string' || options.password.length < 8)) throw new Error('Choose a password of at least 8 characters, or explicitly select None');
+  await mutations.run(async () => {
+    const grant = onboardingProtection;
+    onboardingProtection = null;
+    const assertGrant = () => {
+      if (!grant || Date.now() >= grant.expiresAt || grant.revision !== sessionRevision || grant.key !== _cryptoKey || grant.accountId !== _decrypted?.activeAccountId) throw new Error('Setup verification expired. Finish setup in Security after unlocking your vault.');
+    };
+    assertGrant();
+    const stored = (await browser.storage.local.get(STORAGE_KEY))[STORAGE_KEY];
+    validatePasskeyRecord(stored);
+    assertGrant();
+    let key = _cryptoKey!;
+    let protection: Record<string, unknown> = { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: stored.rpId, passkeys: stored.passkeys };
+    let iterations = PBKDF2_ITERATIONS;
+    if (!options.usePasskey) {
+      const salt = crypto.getRandomValues(new Uint8Array(32));
+      iterations = iterationsFor(options.password!);
+      key = await deriveKey(options.password!, salt, iterations);
+      protection = { version: VAULT_VERSION, salt: arrayToBase64(salt), iterations, registeredPasskeys: { rpId: stored.rpId, passkeys: stored.passkeys } };
+    }
+    assertGrant();
+    await persistProtection(key, protection, iterations, options.autoLockMs, grant!.revision, assertGrant);
+  });
+}
+
+/** Shared serialized commit for verified settings transitions and fresh onboarding choices. */
+async function persistProtection(key: CryptoKey, protection: Record<string, unknown>, iterations: number, autoLockMs: number, revision: number, assertAuthorization: () => void = () => assertRevision(revision)): Promise<void> {
+  assertAuthorization();
+  const encrypted = await encrypt(key, JSON.stringify(toStoragePayload(_decrypted!)));
+  assertAuthorization();
+  await browser.storage.local.set({ [STORAGE_KEY]: { ...protection, iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext) }, autoLockMs });
+  assertRevision(revision);
+  _cryptoKey = key;
+  _kdfIterations = iterations;
+  _autoLockMs = autoLockMs;
+  resetAutoLock(); armKeepAlive(); noteLockStateChanged();
 }

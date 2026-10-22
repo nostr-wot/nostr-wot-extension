@@ -24,6 +24,105 @@ describe('passkey vault encryption and lifecycle', () => {
   beforeEach(() => { vault.lock(); resetMockStorage(); });
   afterEach(() => vault.lock());
 
+  async function createOnboarding() {
+    await onboarding.get('onboarding_createVault')!({ account: payload().accounts[0], passkey: input(), autoLockMinutes: 15 });
+  }
+  const configureOnboarding = (options: Record<string, unknown>) => onboarding.get('onboarding_configurePasskeyProtection')!(options);
+  for (const mode of ['passkey', 'password', 'none']) it(`authorizes the fresh onboarding ${mode} choice only once without retaining PRF`, async () => {
+    await createOnboarding();
+    const before = vault.getDecryptedPayload();
+    await configureOnboarding({ usePasskey: mode === 'passkey', password: mode === 'none' ? '' : 'chosen-password', autoLockMs: mode === 'none' ? 0 : 900000 });
+    assert.deepEqual(vault.getDecryptedPayload(), before);
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+    assert.equal(JSON.stringify(await browser.storage.local.get(null)).includes(input().prf), false);
+    vault.lock();
+    assert.equal(mode === 'passkey' ? await vault.unlockPasskey(input()) : await vault.unlock(mode === 'none' ? '' : 'chosen-password'), true);
+  });
+  it('allows the final protection choice after authenticated backup restore', async () => {
+    await vault.create('', payload(), input());
+    const backup = await vault.exportPasskeyBackup();
+    await vault.destroy();
+    await handlers.get('vault_restorePasskeyBackup')!({ backup, ...input() });
+    await configureOnboarding({ usePasskey: false, password: 'restored-password', autoLockMs: 900000 });
+    vault.lock();
+    assert.equal(await vault.unlock('restored-password'), true);
+  });
+  it('does not authorize setup conversion for ordinary creation or unlock', async () => {
+    await vault.create('', payload(), input());
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+    vault.lock(); await vault.unlockPasskey(input());
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+  });
+  for (const revoke of ['lock', 'switch', 'reauthenticate']) it(`revokes onboarding authorization on ${revoke}`, async () => {
+    await createOnboarding();
+    if (revoke === 'lock') { vault.lock(); await vault.unlockPasskey(input()); }
+    else if (revoke === 'reauthenticate') await vault.unlockPasskey(input());
+    else {
+      await vault.addAccount({ ...payload().accounts[0], id: 'other' });
+      await vault.setActiveAccount('other'); await vault.setActiveAccount('test');
+    }
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+    assert.ok(await vault.getPasskey());
+  });
+  it('expires onboarding authorization after five minutes', async context => {
+    await createOnboarding();
+    const later = Date.now() + 300001;
+    context.mock.method(Date, 'now', () => later);
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+    assert.ok(await vault.getPasskey());
+  });
+  it('consumes onboarding authorization on a failed write without changing protection', async context => {
+    await createOnboarding();
+    const before = await record();
+    context.mock.method(browser.storage.local, 'set', async () => { throw new Error('storage failed'); });
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /storage failed/);
+    context.mock.restoreAll();
+    assert.deepEqual(await record(), before);
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+  });
+  for (const revoke of ['lock', 'switch']) it(`cancels a pending onboarding None conversion on ${revoke}`, async context => {
+    await createOnboarding();
+    await vault.addAccount({ ...payload().accounts[0], id: 'other' });
+    const before = await record();
+    const get = browser.storage.local.get.bind(browser.storage.local);
+    let release!: () => void;
+    let reached!: () => void;
+    const waiting = new Promise<void>(resolve => { reached = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    context.mock.method(browser.storage.local, 'get', async (...args: Parameters<typeof get>) => {
+      if (args[0] === 'keyVault') { reached(); await gate; }
+      return get(...args);
+    });
+    const pending = configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 });
+    await waiting;
+    let switched: Promise<void> | undefined;
+    if (revoke === 'lock') vault.lock();
+    else switched = vault.setActiveAccount('other');
+    release();
+    await assert.rejects(pending, /verification expired/i);
+    await switched;
+    context.mock.restoreAll();
+    const after = await record();
+    assert.equal(after.protection, 'passkey');
+    assert.deepEqual(after.passkeys, before.passkeys);
+    assert.equal((await browser.storage.local.get('autoLockMs')).autoLockMs, 900000);
+  });
+  it('serializes concurrent confirmations so only one consumes the setup grant', async () => {
+    await createOnboarding();
+    const options = { usePasskey: false, password: '', autoLockMs: 0 };
+    const results = await Promise.allSettled([configureOnboarding(options), configureOnboarding(options)]);
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+    assert.equal(results.filter(result => result.status === 'rejected').length, 1);
+  });
+  it('requires valid protection options and keeps ordinary settings verification intact', async () => {
+    await createOnboarding();
+    await assert.rejects(configureOnboarding({ usePasskey: true, autoLockMs: 0 }), /explicitly select None/i);
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 900000 }), /8 characters/i);
+    assert.equal(await vault.changeProtection({ usePasskey: false, password: '', autoLockMs: 0 }), false);
+    await assert.rejects(configureOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+    assert.ok(await vault.getPasskey());
+  });
+
   for (const password of ['', 'original-password']) it(`preserves imported nsec and PQC keys in provider/file recovery after ${password ? 'password' : 'no-lock'} migration and adding a passkey`, async () => {
     const account = await importNsec('09'.repeat(32), 'Imported signing identity');
     const seed = new Uint8Array(64).fill(7);

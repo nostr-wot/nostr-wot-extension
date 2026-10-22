@@ -523,8 +523,8 @@ test('passkey onboarding defaults to 15 minutes, hides passkey for None and reve
     assert.equal(button('common.confirm').disabled, false);
     await act(async () => button('common.confirm').click());
     assert.equal(completed, 1);
-    assert.deepEqual(calls.filter(item => item.method !== 'vault_listPasskeys').map(item => item.method), ['vault_setAutoLock']);
-    assert.equal(calls.find(item => item.method === 'vault_setAutoLock').params.ms, 900000);
+    assert.deepEqual(calls.filter(item => item.method !== 'vault_listPasskeys').map(item => item.method), ['onboarding_configurePasskeyProtection']);
+    assert.equal(calls.find(item => item.method === 'onboarding_configurePasskeyProtection').params.autoLockMs, 900000);
     await act(async () => toggle.click());
     assert.equal(document.querySelectorAll('input[type=password]').length, 2);
     assert.equal(button('common.confirm').disabled, true);
@@ -532,6 +532,9 @@ test('passkey onboarding defaults to 15 minutes, hides passkey for None and reve
     assert.equal(document.querySelector('input[aria-label="security.usePasskey"]'), null);
     assert.equal(document.querySelectorAll('input[type=password]').length, 0);
     assert.equal(button('common.confirm').disabled, false);
+    await act(async () => button('common.confirm').click());
+    assert.deepEqual(calls.at(-1).params, { usePasskey: false, password: '', autoLockMs: 0 });
+    assert.equal(calls.some(call => call.method === 'vault_getPasskey' || call.method === 'vault_changeProtection'), false);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
 
@@ -678,4 +681,32 @@ test('a wizard resumed before accounts load still learns that accounts exist', a
     await act(async () => root.render(createElement(WizardOverlay, { visible: true, canClose: true, accountsLoaded: true })));
     assert.equal(calls.includes('onboarding_checkExistingSeed'), true, 'existing accounts must be recognised once known');
   } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('confirming None after passkey creation completes without another credential request', async context => {
+  const { dom, root } = mount();
+  let completed = 0;
+  let requests = 0;
+  const oldCredentials = Object.getOwnPropertyDescriptor(navigator, 'credentials');
+  const oldPublicKey = Object.getOwnPropertyDescriptor(globalThis, 'PublicKeyCredential');
+  Object.defineProperty(globalThis, 'PublicKeyCredential', { configurable: true, value: class {} });
+  Object.defineProperty(navigator, 'credentials', { configurable: true, value: {
+    create: async () => null,
+    get: async () => { requests++; throw new DOMException('Unexpected extra prompt', 'NotAllowedError'); },
+  } });
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    if (message.method === 'vault_getPasskey') return { result: { rpId: 'passkeys.nostrwot.com', credentialId: 'AQID', prfSalt: 'AA==' } };
+    return { result: null };
+  });
+  try {
+    await act(async () => root.render(createElement(PasswordStep, { configurePasskey: true, account: { id: 'created' }, upgradeId: null, onNext: () => completed++ })));
+    await act(async () => button('common.none').click());
+    await act(async () => button('common.confirm').click());
+    assert.equal(requests, 0, 'the final onboarding choice must reuse fresh verification');
+    assert.equal(completed, 1);
+  } finally {
+    await act(async () => root.unmount()); dom.window.close();
+    if (oldCredentials) Object.defineProperty(navigator, 'credentials', oldCredentials); else Reflect.deleteProperty(navigator, 'credentials');
+    if (oldPublicKey) Object.defineProperty(globalThis, 'PublicKeyCredential', oldPublicKey); else Reflect.deleteProperty(globalThis, 'PublicKeyCredential');
+  }
 });

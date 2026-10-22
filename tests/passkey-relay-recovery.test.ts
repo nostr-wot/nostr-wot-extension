@@ -66,6 +66,17 @@ describe('recovery encryption and identity checks', () => {
 });
 
 describe('background relay recovery', () => {
+  it('authorizes one final protection choice after authenticated relay restoration', async () => {
+    const original = await setup('seed');
+    const event = await prepareRelayRecovery(metadata);
+    await vault.destroy();
+    await restoreRelayRecovery(event, metadata, context('seed'));
+    await vault.configurePasskeyOnboarding({ usePasskey: false, password: '', autoLockMs: 0 });
+    await assert.rejects(vault.configurePasskeyOnboarding({ usePasskey: false, password: '', autoLockMs: 0 }), /verification expired/i);
+    vault.lock();
+    assert.equal(await vault.unlock(''), true);
+    assert.equal(vault.getActivePubkey(), original.main.pubkey);
+  });
   for (const index of [undefined, 3]) it(`round-trips a legacy seed account without a path (index ${index ?? 'absent'})`, async () => {
     const account = await createFromMnemonicAtIndex(mnemonic, index ?? 0);
     const expectedPath = account.derivationPath;

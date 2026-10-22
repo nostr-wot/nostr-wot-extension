@@ -1,5 +1,4 @@
 import Toggle from '@components/Toggle';
-import { changePasskeyProtection } from '@services/vault/protectionClient';
 import AutoLockOptions from '@components/AutoLockOptions';
 import Card from '@components/Card';
 import PasskeySelector from '@components/PasskeySelector';
@@ -115,10 +114,11 @@ export default function PasswordStep({ account, upgradeId, onNext, configurePass
 
     try {
       if (configurePasskey) {
-        if (!isNever && usePasskey) await rpc('vault_setAutoLock', { ms: autoLockMs });
-        else {
-          await changePasskeyProtection(isNever ? '' : pair.password, autoLockMs);
-        }
+        await rpc('onboarding_configurePasskeyProtection', {
+          usePasskey: !isNever && usePasskey,
+          password: isNever || usePasskey ? '' : pair.password,
+          autoLockMs,
+        });
       } else if (vaultExists) {
         // Add to existing vault -- does NOT overwrite
         await rpc('onboarding_addToVault', {
