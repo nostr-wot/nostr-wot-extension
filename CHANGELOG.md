@@ -3,6 +3,12 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Unreleased
+
+### Fixed
+
+- Confirm the initial auto-lock choice after passkey creation or restoration without asking for another fingerprint. The one-use setup authorization expires after five minutes and is revoked by locking, account switching or reauthentication; later Security changes still require verification.
+
 ## 0.8.16 — 2026-10-21
 
 ### Store release notes

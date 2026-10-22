@@ -749,7 +749,8 @@ export const handlers = new Map<string, HandlerFn>([
         };
         const passkey = params.passkey as PasskeyInput | undefined;
         if (passkey && params.autoLockMinutes !== undefined && (typeof params.autoLockMinutes !== 'number' || !Number.isFinite(params.autoLockMinutes) || params.autoLockMinutes <= 0)) throw new Error('Passkey vaults require automatic locking');
-        await vault.create(passkey ? '' : params.password as string, payload, passkey);
+        if (passkey) await vault.createPasskeyForOnboarding(payload, passkey);
+        else await vault.create(params.password as string, payload);
         await setPendingOnboardingAccount(null);
         if (params.autoLockMinutes !== undefined) {
             vault.setAutoLockTimeout((params.autoLockMinutes as number) * 60 * 1000);
@@ -779,6 +780,11 @@ export const handlers = new Map<string, HandlerFn>([
         await browser.storage.local.set({ accounts: accts, activeAccountId: vaultAcctId });
         // Active-account change: same invalidation as switchAccount.
         await signerApprovalQueue.onActiveAccountChanged(prevActiveCreate, vaultAcctId);
+        return { ok: true };
+    }],
+
+    ['onboarding_configurePasskeyProtection', async params => {
+        await vault.configurePasskeyOnboarding(params as Parameters<typeof vault.configurePasskeyOnboarding>[0]);
         return { ok: true };
     }],
 
