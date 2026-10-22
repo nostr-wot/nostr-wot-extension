@@ -3,6 +3,12 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## 0.8.16 — 2026-10-21
+
+### Store release notes
+
+- Stop the flood of relay sign-in prompts. When a client such as Coracle asks to sign in to many relays at once, choose Always for ALL relays (on this site or on ALL sites) and the other waiting prompts clear on their own. Every grant is listed in Permissions → Relay authentication, where you can revoke it.
+
 ## 0.8.15 — 2026-10-21
 
 ### Store release notes
