@@ -641,3 +641,41 @@ test('add-account waits for seed discovery and exposes retry instead of assuming
     assert.equal(button('wizard.createAnother'), undefined);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
+
+test('first-account wizard stays mounted when creating the account adds it', async context => {
+  // Creating a passkey account writes `accounts` while the wizard is still on
+  // its recovery step. Unmounting then aborts and repeats the recovery write
+  // (or re-runs Passkey's autoStart), which is the extra biometric prompt.
+  const { default: WizardOverlay } = await import('../src/screens/Wizard/WizardOverlay');
+  const { dom, root } = mount();
+  const calls: string[] = [];
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    calls.push(message.method);
+    return { result: null };
+  });
+  try {
+    await act(async () => root.render(createElement(WizardOverlay, { visible: true, canClose: false })));
+    const steps = document.querySelector('[class*="overflow-y-auto"]') ?? document.body.firstElementChild;
+    const content = document.body.textContent;
+    await act(async () => root.render(createElement(WizardOverlay, { visible: true, canClose: true })));
+    assert.equal(calls.includes('onboarding_checkExistingSeed'), false, 'adding the first account must not restart seed discovery');
+    assert.equal(document.body.textContent, content);
+    assert.equal(steps?.isConnected, true, 'the wizard must not be unmounted and remounted');
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('a wizard resumed before accounts load still learns that accounts exist', async context => {
+  const { default: WizardOverlay } = await import('../src/screens/Wizard/WizardOverlay');
+  const { dom, root } = mount();
+  const calls: string[] = [];
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    calls.push(message.method);
+    return message.method === 'onboarding_checkExistingSeed' ? { result: { hasSeed: true } } : { result: null };
+  });
+  try {
+    await act(async () => root.render(createElement(WizardOverlay, { visible: true, canClose: false, accountsLoaded: false })));
+    assert.equal(calls.includes('onboarding_checkExistingSeed'), false);
+    await act(async () => root.render(createElement(WizardOverlay, { visible: true, canClose: true, accountsLoaded: true })));
+    assert.equal(calls.includes('onboarding_checkExistingSeed'), true, 'existing accounts must be recognised once known');
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});

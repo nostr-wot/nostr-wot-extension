@@ -201,6 +201,7 @@ function PopupInner() {
             <WizardOverlay
               visible={activeOverlay === 'wizard'}
               canClose={(account.accounts?.length ?? 0) > 0}
+              accountsLoaded={account.accounts !== null}
               onClose={() => setActiveOverlay(null)}
               onComplete={handleWizardComplete}
             />

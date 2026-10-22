@@ -1,5 +1,5 @@
 import { WizardStep } from '@constants/wizard.ts';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { isLanguageChosen } from '@services/i18n/i18n.ts';
 import { rpcRead } from '@services/rpc.ts';
 import OverlayPanel from '@components/OverlayPanel';
@@ -16,11 +16,26 @@ import DoneStep from './DoneStep';
 interface WizardOverlayProps {
   visible: boolean;
   canClose: boolean;
+  /** False while the parent is still loading accounts, so `canClose` is not yet an answer. */
+  accountsLoaded?: boolean;
   onClose?: () => void;
   onComplete?: (account: unknown) => void;
 }
 
-export default function WizardOverlay({ visible, canClose, onClose, onComplete }: WizardOverlayProps) {
+export default function WizardOverlay({ visible, canClose, accountsLoaded = true, onClose, onComplete }: WizardOverlayProps) {
+  // Whether accounts existed when this wizard session began. Creating or restoring
+  // the first account updates `canClose` mid-session; following it would swap the
+  // steps for the seed check and remount them, aborting and repeating the passkey
+  // recovery write or re-running Passkey's autoStart (an extra biometric prompt).
+  // Fixed once the answer is known while visible; released when the wizard closes.
+  const [hasAccounts, setHasAccounts] = useState(canClose);
+  const fixed = useRef(false);
+  useEffect(() => {
+    if (!visible) { fixed.current = false; setHasAccounts(canClose); return; }
+    if (fixed.current) return;
+    setHasAccounts(canClose);
+    if (accountsLoaded) fixed.current = true;
+  }, [visible, canClose, accountsLoaded]);
   const [hasGeneratedAccount, setHasGeneratedAccount] = useState(false);
   const [seedReady, setSeedReady] = useState(false);
   const [seedError, setSeedError] = useState('');
@@ -30,7 +45,7 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
     let active = true;
     setSeedReady(false);
     setSeedError('');
-    if (visible && canClose) {
+    if (visible && hasAccounts) {
       rpcRead<{ hasSeed: boolean }>('onboarding_checkExistingSeed')
         .then(r => {
           if (typeof r?.hasSeed !== 'boolean') throw new Error(t('common.error'));
@@ -39,12 +54,12 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
         .catch(error => { if (active) setSeedError((error as Error).message); });
     }
     return () => { active = false; };
-  }, [visible, canClose, seedAttempt]);
+  }, [visible, hasAccounts, seedAttempt]);
 
   const flow = useWizardFlow({
     initialStep: WizardStep.Language,
     skipLang: isLanguageChosen(),
-    hasAccounts: canClose,
+    hasAccounts,
     hasGeneratedAccount,
     persist: true,
   });
@@ -70,13 +85,13 @@ export default function WizardOverlay({ visible, canClose, onClose, onComplete }
     <>
     <OverlayPanel showHeader={false} noPadding zIndex={500} animating={animating} className="[background:var(--bg-page)] backdrop-filter-none">
       <TopoBg className="flex flex-col flex-1 min-h-0">
-        {canClose && !seedReady ? <Container gap={4} className="p-6"><FormError>{seedError}</FormError><Button disabled={!seedError} onClick={() => setSeedAttempt(value => value + 1)}>{t(seedError ? 'common.retry' : 'common.loading')}</Button><Button variant="secondary" onClick={handleClose}>{t('common.cancel')}</Button></Container> : flow.loading ? null : (
+        {hasAccounts && !seedReady ? <Container gap={4} className="p-6"><FormError>{seedError}</FormError><Button disabled={!seedError} onClick={() => setSeedAttempt(value => value + 1)}>{t(seedError ? 'common.retry' : 'common.loading')}</Button><Button variant="secondary" onClick={handleClose}>{t('common.cancel')}</Button></Container> : flow.loading ? null : (
           <WizardSteps
             flow={flow}
             onClose={canClose ? handleClose : null}
             onDone={handleDone}
             onLangSelect={() => flow.send('NEXT')}
-            hasAccounts={canClose}
+            hasAccounts={hasAccounts}
             hasGeneratedAccount={hasGeneratedAccount}
           />
         )}
