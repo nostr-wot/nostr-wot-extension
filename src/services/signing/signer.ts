@@ -12,7 +12,7 @@ import * as vault from '../vault/vault.ts';
 import * as permissions from '../permissions/permissions.ts';
 import { isDomainAllowed, isIdentityDisabled } from '../background/domain-handlers.ts';
 import { getActiveAccountInfo, getActivePublicKey, isGetPubkeyCooldownActive, startGetPubkeyCooldown } from './identity.ts';
-import { queueRequest, resolveBatch, waitForVaultUnlock, runNip46Request } from './approvalQueue.ts';
+import { queueRequest, resolveBatch, resolveCoveredAuthentication, waitForVaultUnlock, runNip46Request } from './approvalQueue.ts';
 import { activePqKeys, decryptNip44Content, reviewDecryptedMessage } from './localDecryption.ts';
 import { signEvent as cryptoSignEvent } from '@lib/crypto/nip01.ts';
 import { hexToBytes, base64ToArray } from '@lib/crypto/utils.ts';
@@ -198,7 +198,9 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
       accountId,
     });
     if (!approved.allow) throw new Error(approved.reason || 'User denied signing');
-    if (authentication) {
+    // A request settled by a grant saved while it waited carries no scope of its
+    // own; assertAuthentication then requires that grant to still be in force.
+    if (authentication && !approved.authenticationGranted) {
       if (!validAuthenticationScope(authentication, approved.authenticationScope)) throw new Error('Explicit authentication approval required');
       authenticationScope = approved.authenticationScope;
     }
@@ -228,6 +230,8 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     assertAccountSession(session);
     if (authenticationScope) await saveAuthenticationGrant(session.accountId, origin, authentication, authenticationScope, () => assertAccountSession(session));
     assertAccountSession(session);
+    // Settling other prompts is a convenience; it must never fail this signature.
+    if (authenticationScope && authenticationScope !== 'once') await resolveCoveredAuthentication(session.accountId).catch(() => {});
   };
 
   // Explicit phone selection never falls back to a local key or NIP-46.

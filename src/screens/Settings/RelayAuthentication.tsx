@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { AuthenticationGrant } from '@domain/signing/authentication';
+import { ANY_AUTHENTICATION_TARGET, type AuthenticationGrant } from '@domain/signing/authentication';
 import { connectedSiteOrigins, groupRelayPermissions, type RelayPermissionGroup } from '@domain/signing/relayPermissions';
 import { rpc } from '@services/rpc';
 import { t } from '@services/i18n/i18n';
@@ -20,6 +20,10 @@ import FormError from '@components/FormError';
 import Checkbox from '@components/Checkbox';
 import Toggle from '@components/Toggle';
 import SiteIcon from '@components/SiteIcon';
+
+/** Grants for every relay are stored with a `*` destination and listed first. */
+const relayTitle = (destination: string) => destination === ANY_AUTHENTICATION_TARGET
+  ? t('auth.allRelays') : destination.replace(/^wss?:\/\//, '').replace(/\/$/, '');
 
 export interface RelayAuthenticationHandle { goBack: () => boolean }
 export default forwardRef<RelayAuthenticationHandle, { accountId: string; onBack: () => void }>(function RelayAuthentication({ accountId, onBack }, ref) {
@@ -46,7 +50,7 @@ export default forwardRef<RelayAuthenticationHandle, { accountId: string; onBack
       <Container className="flex-1 min-h-0 overflow-y-auto">
         {!loading && !error && !groups.length && <Text variant="hint">{t('auth.relayNoGrants')}</Text>}
         {!!groups.length && <Card className="p-0 overflow-hidden mb-0 shrink-0">
-          {groups.map(group => <ListRow key={group.destination} leading={<IconShield />} title={group.destination.replace(/^wss?:\/\//, '').replace(/\/$/, '')}
+          {groups.map(group => <ListRow key={group.destination} leading={<IconShield />} title={relayTitle(group.destination)}
             subtitle={`${group.allSites ? t('auth.allSitesApproved') : t(group.allowedOrigins.length === 1 ? 'auth.oneSiteApproved' : 'auth.sitesApproved', { count: group.allowedOrigins.length })}${group.deniedOrigins.length ? ` · ${t(group.deniedOrigins.length === 1 ? 'auth.oneSiteBlocked' : 'auth.sitesBlocked', { count: group.deniedOrigins.length })}` : ''}`}
             onClick={() => setDestination(group.destination)} />)}
         </Card>}
@@ -77,7 +81,7 @@ function RelaySites({ group, sites, accountId, onSave }: { group: RelayPermissio
     finally { setBusy(false); }
   };
   return <Container className="flex-1 min-h-0">
-    <Text className="font-semibold break-all">{group.destination}</Text>
+    <Text className="font-semibold break-all">{group.destination === ANY_AUTHENTICATION_TARGET ? t('auth.allRelays') : group.destination}</Text>
     <Container variant="row" className="justify-between py-5 border-b border-card-border">
       <Text>{t('auth.allConnectedSites')}</Text>
       <Toggle aria-label={t('auth.allConnectedSites')} checked={allSites} disabled={busy} onChange={setAllSites} />

@@ -484,3 +484,111 @@ it('legacy login cannot inherit grants and denial does not sign', async () => {
   const signing=handleSignEvent(legacyLogin(),legacySite);void signing.catch(()=>{});
   const [item]=await pending();await resolveRequest(item.id,{allow:false});await assert.rejects(signing,/denied/i);
 });
+
+// A client such as Coracle asks for AUTH on every relay it opens at once.
+const relays=['wss://one.test/','wss://two.test/','wss://three.test/','wss://four.test/','wss://five.test/'];
+async function pendingCount(count:number) {
+  for (let i=0;i<200;i++) { const items=await getPending(); if(items.length>=count) return items; await new Promise(r=>setTimeout(r,5)); }
+  return getPending();
+}
+it('choosing all relays on this site settles the queued relay prompts and future relays on that site only',async()=>{
+  const other='https://other.test'; await addAllowedDomain(other);
+  const flood=relays.map(url=>handleSignEvent(relay(url),site)); flood.forEach(p=>void p.catch(()=>{}));
+  const elsewhere=handleSignEvent(relay('wss://one.test/'),other); void elsewhere.catch(()=>{});
+  const items=await pendingCount(relays.length+1); assert.equal(items.length,relays.length+1);
+  const first=items.find(item=>item.origin===site)!;
+  await resolveRequest(first.id,{allow:true,authenticationScope:'site-all-relays'});
+  for (const signed of await Promise.all(flood)) assert.equal(signed.kind,22242);
+  const left=await getPending();
+  assert.deepEqual(left.map(item=>item.origin),[other],'another site still asks for its own approval');
+  assert.equal((await handleSignEvent(relay('wss://new.test/'),site)).kind,22242,'a relay connected later needs no prompt');
+  await resolveRequest(left[0].id,{allow:false}); await assert.rejects(elsewhere,/denied/i);
+});
+it('relay scopes match exactly the relays and sites they name and never HTTP auth',async()=>{
+  const {getAuthenticationDecision,saveAuthenticationGrant,listAuthenticationGrants}=await import('../src/services/permissions/authentication.ts');
+  const {parseAuthentication,validAuthenticationScope}=await import('../src/domain/signing/authentication.ts');
+  const other='https://other.test';
+  const a=parseAuthentication(relay('wss://a.test/'),site)!; const b=parseAuthentication(relay('wss://b.test/'),site)!;
+  const httpAuth=parseAuthentication(http(),site)!;
+  for (const scope of ['site-all-relays','connected-sites','connected-sites-all-relays']) {
+    assert.equal(validAuthenticationScope(a,scope),true); assert.equal(validAuthenticationScope(httpAuth,scope),false,scope);
+    await assert.rejects(saveAuthenticationGrant('acct1',site,httpAuth,scope as 'site',()=>{}),/scope/);
+    await assert.rejects(saveAuthenticationGrant('acct1',site,a,scope as 'site',()=>{},'deny'),/denial scope/);
+  }
+  await saveAuthenticationGrant('acct1',site,a,'site-all-relays',()=>{});
+  assert.equal(await getAuthenticationDecision('acct1',site,b),'allow');
+  assert.equal(await getAuthenticationDecision('acct1',other,b),undefined);
+  assert.equal(await getAuthenticationDecision('acct2',site,b),undefined);
+  assert.equal(await getAuthenticationDecision('acct1',site,httpAuth),undefined,'a relay wildcard never authorizes HTTP auth');
+  await saveAuthenticationGrant('acct1',site,a,'connected-sites',()=>{});
+  assert.equal(await getAuthenticationDecision('acct1',other,a),'allow');
+  assert.equal(await getAuthenticationDecision('acct1',other,b),undefined);
+  await saveAuthenticationGrant('acct1',site,a,'connected-sites-all-relays',()=>{});
+  assert.equal(await getAuthenticationDecision('acct1',other,b),'allow');
+  assert.equal(await getAuthenticationDecision('acct2',other,b),undefined,'grants stay account-specific');
+  assert.equal(await getAuthenticationDecision('acct1',site,httpAuth),undefined);
+  // Forged HTTP wildcards in storage never match.
+  await browser.storage.local.set({authenticationGrants:[...await listAuthenticationGrants(),{id:'forged',accountId:'acct1',origin:'*',protocol:'nip98',destination:'*',version:2,resource:'*',method:'POST'}]});
+  assert.equal(await getAuthenticationDecision('acct1',site,httpAuth),undefined);
+  // A per-site, per-relay denial still wins over every broad allow.
+  await saveAuthenticationGrant('acct1',other,b,'site',()=>{},'deny');
+  assert.equal(await getAuthenticationDecision('acct1',other,b),'deny');
+  assert.equal(await getAuthenticationDecision('acct1',other,a),'allow');
+  const ids=(await listAuthenticationGrants()).map(grant=>grant.id);
+  assert.equal(new Set(ids).size,ids.length,'every scope has its own grant ID');
+});
+it('all relays on all sites settles prompts from every connected site but not denied ones',async()=>{
+  const {saveAuthenticationGrant}=await import('../src/services/permissions/authentication.ts');
+  const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+  const other='https://other.test'; const blocked='https://blocked.test';
+  await addAllowedDomain(other); await addAllowedDomain(blocked);
+  const signing=[handleSignEvent(relay('wss://one.test/'),site),handleSignEvent(relay('wss://two.test/'),other)];
+  signing.forEach(p=>void p.catch(()=>{}));
+  const items=await pendingCount(2);
+  await saveAuthenticationGrant('acct1',blocked,parseAuthentication(relay('wss://three.test/'),blocked)!,'site',()=>{},'deny');
+  await resolveRequest(items.find(item=>item.origin===other)!.id,{allow:true,authenticationScope:'connected-sites-all-relays'});
+  for (const signed of await Promise.all(signing)) assert.equal(signed.kind,22242);
+  assert.equal((await getPending()).length,0);
+  assert.equal((await handleSignEvent(relay('wss://three.test/'),other)).kind,22242);
+  await assert.rejects(handleSignEvent(relay('wss://three.test/'),blocked),/denied/i);
+  await assert.rejects(handleSignEvent(relay('wss://one.test/'),'https://unconnected.test'),/not connected/i);
+});
+it('a request marked as covered still fails when no grant covers it',async()=>{
+  const signing=handleSignEvent(relay(),site); void signing.catch(()=>{});
+  const [item]=await pending();
+  await resolveRequest(item.id,{allow:true,authenticationGranted:true});
+  await assert.rejects(signing,/revoked/i);
+});
+it('revoking a broad relay grant from settings makes every covered relay ask again',async()=>{
+  const {handlers}=await import('../src/services/background/nip07-handlers');
+  const {listAuthenticationGrants,getAuthenticationDecision}=await import('../src/services/permissions/authentication.ts');
+  const {groupRelayPermissions,relayPermissionRevision}=await import('../src/domain/signing/relayPermissions');
+  const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+  const signing=handleSignEvent(relay('wss://one.test/'),site); void signing.catch(()=>{});
+  const [item]=await pending(); await resolveRequest(item.id,{allow:true,authenticationScope:'site-all-relays'}); await signing;
+  const grants=await listAuthenticationGrants();
+  const [group]=groupRelayPermissions(grants,'acct1');
+  assert.equal(group.destination,'*'); assert.deepEqual(group.allowedOrigins,[site]);
+  await handlers.get('signer_setRelayAuthenticationSites')!({accountId:'acct1',destination:'*',origins:[],allSites:false,revision:relayPermissionRevision(grants,'acct1','*')});
+  assert.deepEqual(await listAuthenticationGrants(),[]);
+  assert.equal(await getAuthenticationDecision('acct1',site,parseAuthentication(relay('wss://two.test/'),site)!),undefined);
+  const again=handleSignEvent(relay('wss://two.test/'),site); void again.catch(()=>{});
+  const [next]=await pending(); assert.ok(next,'the relay must prompt again'); await resolveRequest(next.id,{allow:false}); await assert.rejects(again);
+});
+it('disconnecting a site removes its all-relays grant',async()=>{
+  const {removeAllowedDomain}=await import('../src/services/background/domain-handlers.ts');
+  const {listAuthenticationGrants,saveAuthenticationGrant}=await import('../src/services/permissions/authentication.ts');
+  const {parseAuthentication}=await import('../src/domain/signing/authentication.ts');
+  await saveAuthenticationGrant('acct1',site,parseAuthentication(relay(),site)!,'site-all-relays',()=>{});
+  assert.equal((await listAuthenticationGrants()).length,1);
+  await removeAllowedDomain(site); assert.deepEqual(await listAuthenticationGrants(),[]);
+});
+it('a broad relay grant leaves pending HTTP authentication prompts untouched',async()=>{
+  const backend=handleSignEvent(http(),site); void backend.catch(()=>{});
+  const relaySigning=handleSignEvent(relay(),site); void relaySigning.catch(()=>{});
+  const items=await pendingCount(2);
+  await resolveRequest(items.find(item=>item.authentication?.protocol==='nip42')!.id,{allow:true,authenticationScope:'connected-sites-all-relays'});
+  assert.equal((await relaySigning).kind,22242);
+  const left=await getPending(); assert.deepEqual(left.map(item=>item.authentication?.protocol),['nip98']);
+  await resolveRequest(left[0].id,{allow:false}); await assert.rejects(backend,/denied/i);
+});
