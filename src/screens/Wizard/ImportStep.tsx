@@ -1,3 +1,7 @@
+import { detectRecoveryBackup } from '@domain/vault/recoveryBackup.ts';
+import PasskeyImportStep from './PasskeyImportStep';
+import type { SafeAccount } from '@domain/accounts/types.ts';
+import { PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
 import { detectImportType } from '@domain/accounts/importInput.ts';
 import { countWords } from '@utils/text.ts';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
@@ -17,13 +21,15 @@ import Text from '@components/Text';
 interface ImportStepProps {
   onNext: (account: any, upgradeId: string | null) => void;
   hasGeneratedAccount?: boolean;
-  onRestorePasskey?: () => void;
+  onRecovered?: (account: SafeAccount) => void;
+  onPasskeyAccount?: (account: SafeAccount, upgradeId: string | null, host: string) => void;
   onImportPasskey?: () => void;
 }
 
-export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePasskey, onImportPasskey }: ImportStepProps) {
+export default function ImportStep({ onNext, hasGeneratedAccount, onRecovered, onPasskeyAccount, onImportPasskey }: ImportStepProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const scope = useAsyncScope();
+  const [recoveryFile, setRecoveryFile] = useState('');
   const [input, setInput] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [name, setName] = useState<string>('');
@@ -73,8 +79,12 @@ export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePassk
     const current = scope.start();
     setLoading(true);
     try {
+      if (file.size > PASSKEY_MAX_BACKUP_BYTES) throw new Error('File too large');
       const contents = await file.text();
-      if (current()) updateInput(contents);
+      if (current()) {
+        if (onPasskeyAccount && detectRecoveryBackup(contents)) setRecoveryFile(contents);
+        else updateInput(contents);
+      }
     } catch {
       if (current()) setError(t('pqc.importFileUnreadable'));
     } finally {
@@ -115,6 +125,8 @@ export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePassk
     }
   };
 
+  if (recoveryFile && onPasskeyAccount) return <PasskeyImportStep initialBackup={recoveryFile} onNext={onPasskeyAccount} onRestore={onRecovered} />;
+
   return (
     <Container className="flex-1">
       <Heading className="mb-3">{t('wizard.importTitle')}</Heading>
@@ -122,7 +134,6 @@ export default function ImportStep({ onNext, hasGeneratedAccount, onRestorePassk
         {t('wizard.importDesc')}
       </Text>
 
-      {onRestorePasskey && <ButtonSecondary onClick={onRestorePasskey} disabled={loading} className="mb-6">{t('passkey.restore')}</ButtonSecondary>}
       {onImportPasskey && <ButtonSecondary onClick={onImportPasskey} disabled={loading} className="mb-6">{t('passkeyImport.entry')}</ButtonSecondary>}
 
       <div className="mb-6">

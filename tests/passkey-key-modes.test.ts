@@ -46,8 +46,8 @@ describe('derived import decision', () => {
 
   it('derives an untagged handle as derived only on a host configured for the set', () => {
     assert.deepEqual(decideDerivedImport(uuid, 2, true), { action: 'derive', confidence: 'derived' });
-    assert.deepEqual(decideDerivedImport(uuid, 2, false), { action: 'derive', confidence: 'ambiguous' });
-    assert.deepEqual(decideDerivedImport({ mode: 'unknown' }, 1, false), { action: 'derive', confidence: 'ambiguous' });
+    assert.deepEqual(decideDerivedImport(uuid, 2, false), { action: 'refuse', reason: 'unsupported' });
+    assert.deepEqual(decideDerivedImport({ mode: 'unknown' }, 1, false), { action: 'refuse', reason: 'unsupported' });
   });
 
   it('refuses stored, legacy stored, unsupported and other-set handles', () => {

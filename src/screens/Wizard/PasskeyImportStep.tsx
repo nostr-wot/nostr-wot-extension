@@ -1,10 +1,12 @@
+import { detectRecoveryBackup } from '@domain/vault/recoveryBackup.ts';
+import { PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
 import { useEffect, useRef, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
-import { DERIVED_PARAMETER_SETS, DERIVED_PASSKEY_APPS, type DerivedParameterSet } from '@constants/passkey.ts';
+import { DERIVED_PASSKEY_APPS } from '@constants/passkey.ts';
 import type { SafeAccount } from '@domain/accounts/types.ts';
 import { readNosskeyPasskey, readDerivedPasskey, clearDerivedPasskey, derivedPasskeySecretHex, type DerivedPasskeyCandidate } from '@services/vault/derivedPasskeyImport.ts';
-import IconWarning from '@assets/IconWarning.tsx';
+import PasskeyStep from './PasskeyStep';
 import Button from '@components/Button';
 import LinkButton from '@components/LinkButton';
 import Dropdown from '@components/Dropdown';
@@ -12,7 +14,6 @@ import Input from '@components/Input';
 import Checkbox from '@components/Checkbox';
 import Container from '@components/Container';
 import Text from '@components/Text';
-import StatusNotice from '@components/StatusNotice';
 import FormError from '@components/FormError';
 import { SectionLabel } from '@components/SectionLabel';
 
@@ -20,6 +21,8 @@ const CUSTOM = 'custom';
 const NOSSKEY = 'nosskey';
 
 interface PasskeyImportStepProps {
+  initialBackup?: string;
+  onRestore?: (account: SafeAccount) => void;
   onNext: (account: SafeAccount, upgradeId: string | null, host: string) => void;
 }
 
@@ -28,14 +31,16 @@ interface PasskeyImportStepProps {
  * request starts only from the Continue click; the key is imported only after the user
  * has seen its npub and confirmed it. Secret bytes are zeroed on cancel, import or unmount.
  */
-export default function PasskeyImportStep({ onNext }: PasskeyImportStepProps) {
+export default function PasskeyImportStep({ onNext, onRestore, initialBackup = '' }: PasskeyImportStepProps) {
   const [app, setApp] = useState<string>(DERIVED_PASSKEY_APPS[0]?.id ?? CUSTOM);
   const [host, setHost] = useState('');
   const [backup, setBackup] = useState('');
-  const [parameterSet, setParameterSet] = useState<DerivedParameterSet>(1);
+  const [vaultBackup, setVaultBackup] = useState('');
+  const [source, setSource] = useState<'choice' | 'own' | 'other'>(onRestore ? 'choice' : 'other');
   const [candidate, setCandidate] = useState<DerivedPasskeyCandidate | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
   const fileVersion = useRef(0);
@@ -47,9 +52,8 @@ export default function PasskeyImportStep({ onNext }: PasskeyImportStepProps) {
   }, []);
 
   const preset = DERIVED_PASSKEY_APPS.find(item => item.id === app);
-  const target = preset ? { host: preset.rpId, parameterSet: preset.parameterSet } : { host, parameterSet };
-  const appOptions = [...DERIVED_PASSKEY_APPS.map(item => ({ value: item.id, label: `${item.name} · ${item.rpId}` })), { value: NOSSKEY, label: 'Nosskey' }, { value: CUSTOM, label: t('passkeyImport.custom') }];
-  const setOptions = (Object.keys(DERIVED_PARAMETER_SETS).map(Number) as DerivedParameterSet[]).map(id => ({ value: String(id), label: `0x${id.toString(16).padStart(2, '0')} · ${DERIVED_PARAMETER_SETS[id].saltLabel}` }));
+  const target = preset?.rpId ?? host;
+  const appOptions = [...DERIVED_PASSKEY_APPS.map(item => ({ value: item.id, label: `${item.name} · ${item.rpId}` })), { value: CUSTOM, label: t('passkeyImport.custom') }];
 
   const discard = () => {
     clearDerivedPasskey(held.current);
@@ -64,7 +68,7 @@ export default function PasskeyImportStep({ onNext }: PasskeyImportStepProps) {
     setBusy(true);
     setError('');
     try {
-      const found = app === NOSSKEY ? await readNosskeyPasskey(host || 'nosskey.app', backup) : await readDerivedPasskey(target.host, target.parameterSet);
+      const found = app === NOSSKEY ? await readNosskeyPasskey(host || 'nosskey.app', backup) : await readDerivedPasskey(target);
       if (!live.current) { clearDerivedPasskey(found); return; }
       held.current = found;
       setCandidate(found);
@@ -97,13 +101,44 @@ export default function PasskeyImportStep({ onNext }: PasskeyImportStepProps) {
     }
   };
 
+  const detectBackup = (text: string) => {
+    const kind = detectRecoveryBackup(text);
+    if (!kind) throw new Error(t('passkeyImport.backupInvalid'));
+    if (kind === 'vault') {
+      if (!onRestore) throw new Error(t('recoveryFlow.existingVault'));
+      setVaultBackup(text); setSource('own'); return;
+    }
+    setBackup(text); setApp(NOSSKEY); setSource('other');
+  };
+  useEffect(() => { if (initialBackup) { try { detectBackup(initialBackup); } catch (e) { setError((e as Error).message); } } }, [initialBackup]);
+  const backupPicker = <Input label={t('passkeyImport.backupFile')} type="file" accept="application/json,.json" disabled={busy} onChange={async event => {
+    const file = event.target.files?.[0]; const version = ++fileVersion.current;
+    if (!file) return;
+    setError('');
+    try {
+      if (file.size > PASSKEY_MAX_BACKUP_BYTES) throw new Error(t('passkeyImport.backupInvalid'));
+      const text = await file.text();
+      if (live.current && version === fileVersion.current) detectBackup(text);
+    } catch (e) { if (live.current && version === fileVersion.current) setError((e as Error).message || t('passkeyImport.backupInvalid')); }
+  }} />;
+  if (source === 'choice') return <Container gap={6} className="flex-1">
+    <Text variant="secondary">{t('recoveryFlow.intro')}</Text>
+    <Button onClick={() => setSource('own')}>{t('passkey.usePasskey')}</Button>
+    {backupPicker}
+    <FormError>{error}</FormError>
+    <LinkButton onClick={() => setSource('other')}>{t('recoveryFlow.otherApp')}</LinkButton>
+  </Container>;
+  if (source === 'own' && onRestore) return <Container gap={4} className="flex-1">
+    <PasskeyStep restore initialBackup={vaultBackup} onBusyChange={setRestoring} onNext={onRestore} />
+    <LinkButton disabled={restoring} onClick={() => setSource('choice')}>{t('common.back')}</LinkButton>
+  </Container>;
+
   if (candidate) return <Container gap={6} className="flex-1">
     <Text variant="secondary">{t(candidate.confidence === 'backup' ? 'passkeyImport.backupConfirm' : 'passkeyImport.confirmDesc', { host: candidate.rpId })}</Text>
     <Container gap={2}>
       <SectionLabel>{t('passkeyImport.npub')}</SectionLabel>
       <Text mono className="break-all text-brand">{candidate.npub}</Text>
     </Container>
-    {candidate.confidence === 'ambiguous' && <StatusNotice variant="callout" tone="warn" icon={<IconWarning />}>{t('passkeyImport.ambiguous')}</StatusNotice>}
     <label className="flex items-start gap-3 text-secondary"><Checkbox checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} />{t('passkeyImport.confirmCheck')}</label>
     <FormError>{error}</FormError>
     <Container stickyFooter gap={3}>
@@ -114,17 +149,15 @@ export default function PasskeyImportStep({ onNext }: PasskeyImportStepProps) {
 
   return <Container gap={6} className="flex-1">
     <Text variant="secondary">{t('passkeyImport.intro')}</Text>
-    <Container gap={2}>
+    {app !== NOSSKEY && <Container gap={2}>
       <SectionLabel htmlFor="passkey-import-app">{t('passkeyImport.app')}</SectionLabel>
       <Dropdown id="passkey-import-app" options={appOptions} value={app} disabled={busy} onChange={value => { setApp(value); fileVersion.current++; setBackup(''); setError(''); }} />
-    </Container>
-    {app === NOSSKEY && <Container gap={2}><Text>{t('passkeyImport.backupNotice')}</Text><input aria-label={t('passkeyImport.backupFile')} type="file" accept="application/json,.json" disabled={busy} onChange={async event => { const file = event.target.files?.[0]; const version = ++fileVersion.current; setBackup(''); if (!file) return; if (file.size > 8192) { setError(t('passkeyImport.backupInvalid')); return; } try { const text = await file.text(); if (live.current && version === fileVersion.current) setBackup(text); } catch { if (live.current) setError(t('passkeyImport.backupInvalid')); } }} /><Input label={t('passkeyImport.host')} placeholder="nosskey.app" value={host} disabled={busy} onChange={e => setHost(e.target.value)} /></Container>}
+    </Container>}
+    {app === NOSSKEY && <Input label={t('passkeyImport.host')} hint={t('passkeyImport.hostDesc')} placeholder="nosskey.app" value={host} disabled={busy} onChange={e => setHost(e.target.value)} />}
+    {backupPicker}
     {!preset && app !== NOSSKEY && <>
       <Input id="passkey-import-host" label={t('passkeyImport.host')} hint={t('passkeyImport.hostDesc')} placeholder="example.com" value={host} disabled={busy} autoComplete="off" onChange={e => { setHost(e.target.value); setError(''); }} />
-      <Container gap={2}>
-        <SectionLabel htmlFor="passkey-import-set">{t('passkeyImport.parameterSet')}</SectionLabel>
-        <Dropdown id="passkey-import-set" options={setOptions} value={String(parameterSet)} disabled={busy} onChange={value => { setParameterSet(Number(value) as DerivedParameterSet); setError(''); }} />
-      </Container>
+
     </>}
     <Text variant="muted">{t('passkeyImport.permissionNote')}</Text>
     <FormError>{error}</FormError>

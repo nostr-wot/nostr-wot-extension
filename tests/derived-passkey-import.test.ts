@@ -1,3 +1,4 @@
+import { detectRecoveryBackup } from '../src/domain/vault/recoveryBackup.ts';
 /**
  * Importing a derived-mode passkey created by another app, with WebAuthn mocked.
  *
@@ -82,7 +83,7 @@ describe('reading a derived passkey from another app', () => {
     assert.throws(() => derivedPasskeySecretHex(candidate), /wizard.importFailed/);
   });
 
-  it('derives a tagged 0x02 handle, and a custom host with the default set is ambiguous', async context => {
+  it('derives a tagged 0x02 handle and refuses an unidentified custom passkey', async context => {
     grants(context);
     install({ handle: hexToBytes('4e504b010102ffeeddccbbaa99887766554433221100'), prf: sevens() });
     const tagged = await readDerivedPasskey('https://wallet.example.org/', 2);
@@ -90,10 +91,7 @@ describe('reading a derived passkey from another app', () => {
     assert.equal(tagged.pubkey, LAWALLET.public_key);
     clearDerivedPasskey(tagged);
     install({ handle: null, prf: sevens() });
-    const custom = await readDerivedPasskey('wallet.example.org', 1);
-    assert.equal(custom.confidence, 'ambiguous');
-    assert.equal(custom.pubkey, DEFAULT_SET.public_key);
-    clearDerivedPasskey(custom);
+    await assert.rejects(readDerivedPasskey('wallet.example.org', 1));
   });
 
   it('refuses stored, legacy, unsupported and other-set passkeys without deriving', async context => {
@@ -187,6 +185,7 @@ describe('Nosskey backup import', () => {
     const { getPublicKey } = await import('nostr-tools');
     const backup = JSON.stringify({credentialId:'070707',pubkey:getPublicKey(sevens()),salt:'6e6f7374722d70776b'});
     const {requests,outputs} = install({prf:sevens()});
+    assert.equal(detectRecoveryBackup(backup), 'account');
     const result = await readNosskeyPasskey('nosskey.app',backup);
     assert.equal(result.pubkey,getPublicKey(sevens()));
     assert.equal(bytesToHex(result.secret),'07'.repeat(32));
@@ -204,4 +203,21 @@ describe('Nosskey backup import', () => {
     assert.equal(requests.length,1);
     assert.ok(outputs[0].every(byte=>byte===0));
   });
+});
+
+
+it('automatically selects the tagged format and pins the second assertion', async context => {
+  grants(context);
+  const handle = hexToBytes('4e504b010102ffeeddccbbaa99887766554433221100');
+  const { requests } = install({ handle, prf: sevens() }, { handle, prf: sevens() });
+  const candidate = await readDerivedPasskey('wallet.example.org');
+  assert.equal(candidate.pubkey, LAWALLET.public_key);
+  assert.equal(candidate.parameterSet, 2);
+  assert.deepEqual(new Uint8Array(requests[1].allowCredentials[0].id), RAW_ID);
+  clearDerivedPasskey(candidate);
+});
+it('automatically uses the known app format for old untagged passkeys', async context => {
+  grants(context); const {requests}=install({prf:sevens()});
+  const candidate=await readDerivedPasskey('beta.lawallet.io');
+  assert.equal(candidate.pubkey, LAWALLET.public_key); assert.equal(requests.length,1);clearDerivedPasskey(candidate);
 });

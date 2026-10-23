@@ -87,6 +87,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
 
   [WizardStep.PasskeyAdvanced]: {
+    RESTORED: (_ctx, { account }, { hasAccounts }) => hasAccounts ? null : ({ step: WizardStep.Password, ctx: { method: 'passkeyRestore', account } }),
     CREATED: (_ctx, { account, blobSupported }) => ({ step: WizardStep.PasskeyBackup, ctx: { account, passkeyBlobSupported: blobSupported === true, passkeyRecoverySaved: false } }),
     BACK: () => ({ step: WizardStep.MoreOptions }),
   },
@@ -118,16 +119,18 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
   },
 
   [WizardStep.Import]: {
+    RESTORED: (_ctx, { account }, { hasAccounts }) => hasAccounts ? null : ({ step: WizardStep.Password, ctx: { method: 'passkeyRestore', account } }),
     IMPORT_PASSKEY: () => ({ step: WizardStep.PasskeyImport, ctx: { method: 'passkeyImport' } }),
     RESTORE_PASSKEY: (_ctx, _payload, { hasAccounts }) => hasAccounts ? null : ({ step: WizardStep.PasskeyRestore, ctx: { method: 'passkeyRestore' } }),
-    IMPORTED: (_ctx, { account, upgradeId }) => ({
+    IMPORTED: (_ctx, { account, upgradeId, host }) => ({
       step: WizardStep.Password,
-      ctx: { account: account as unknown, upgradeId: upgradeId as string },
+      ctx: { account: account as unknown, upgradeId: upgradeId as string, ...(typeof host === 'string' ? { method: 'passkeyImport', passkeyImportHost: host } : {}) },
     }),
     BACK: () => ({ step: WizardStep.MoreOptions }),
   },
 
   [WizardStep.PasskeyImport]: {
+    RESTORED: (_ctx, { account }, { hasAccounts }) => hasAccounts ? null : ({ step: WizardStep.Password, ctx: { method: 'passkeyRestore', account } }),
     IMPORTED: (_ctx, { account, upgradeId, host }) => ({
       step: WizardStep.Password,
       ctx: { account: account as unknown, upgradeId: (upgradeId as string) || null, passkeyImportHost: typeof host === 'string' ? host : undefined },

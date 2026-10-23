@@ -152,3 +152,51 @@ test('after import the original passkey is explained and protection is only offe
     assert.deepEqual(events, ['done', 'protect', 'done']);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
+
+test('recovery offers a passkey or backup without format selectors or automatic prompts', async () => {
+  const { dom, root } = mount(); const prompts = passkey(null);
+  try {
+    await act(async () => root.render(createElement(PasskeyImportStep, { onNext: () => {}, onRestore: () => {} })));
+    assert.ok(button('passkey.usePasskey'));
+    assert.ok(document.querySelector('input[type="file"]'));
+    assert.equal(document.querySelector('#passkey-import-set'), null);
+    assert.equal(prompts(), 0);
+    await act(async () => button('recoveryFlow.otherApp').click());
+    assert.equal(document.querySelector('#passkey-import-set'), null);
+    assert.equal(prompts(), 0);
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});
+
+test('a saved vault is previewed first; cancel saves nothing and confirm restores once', async context => {
+  const { dom, root } = mount(); const methods: string[] = []; let completed = 0;
+  let finishRestore!: (value: unknown) => void;
+  const backup = JSON.stringify({ format: 'nostr-wot-passkey-vault', vault: {
+    version: 2, protection: 'passkey', rpId: 'passkeys.nostr-wot.com',
+    passkeys: [{ credentialId: 'AQ==', prfSalt: Buffer.alloc(32).toString('base64'), iv: Buffer.alloc(12).toString('base64'), ciphertext: Buffer.alloc(48).toString('base64') }],
+    iv: Buffer.alloc(12).toString('base64'), ciphertext: Buffer.alloc(16).toString('base64'),
+  } });
+  const account = { id: 'restored', name: 'Recovered', type: 'nsec', pubkey: LAWALLET.public_key };
+  context.mock.method(browser.permissions, 'request', async () => true);
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    methods.push(message.method);
+    if (message.method === 'vault_restorePasskeyBackup') return new Promise(resolve => { finishRestore = resolve; });
+    if (message.method === 'vault_recordBlobUnavailable') return { error: 'Status storage unavailable' };
+    return { result: { accounts: [account] } };
+  });
+  passkey(null);
+  try {
+    await act(async () => root.render(createElement(PasskeyImportStep, { initialBackup: backup, onNext: () => assert.fail('not an external import'), onRestore: () => completed++ })));
+    await act(async () => button('passkey.restore').click());
+    assert.deepEqual(methods, ['vault_previewPasskeyBackup']);
+    assert.match(document.body.textContent!, new RegExp(npubEncode(account.pubkey)));
+    await act(async () => button('common.cancel').click());
+    assert.equal(completed, 0);
+    assert.equal(methods.includes('vault_restorePasskeyBackup'), false);
+    await act(async () => button('passkey.restore').click());
+    await act(async () => button('passkey.restore').click());
+    assert.equal(methods.filter(method => method === 'vault_restorePasskeyBackup').length, 1);
+    assert.equal(button('common.back').disabled, true, 'cannot navigate away during a committed restore');
+    await act(async () => finishRestore({ result: { account } }));
+    assert.equal(completed, 1, 'bookkeeping failure cannot strand a restored vault');
+  } finally { await act(async () => root.unmount()); dom.window.close(); }
+});

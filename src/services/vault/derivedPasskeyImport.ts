@@ -1,6 +1,6 @@
 import { parseNosskeyAccount, nosskeyPrfInput, recoverNosskeyAccount, hexToBytes } from '@nostr-wot/identity/vault';
 import { t } from '@services/i18n/i18n.ts';
-import type { DerivedParameterSet } from '@constants/passkey.ts';
+import { DERIVED_PASSKEY_APPS, type DerivedParameterSet } from '@constants/passkey.ts';
 import { assertPasskeyPrf, authorizePasskeyDomain, PRF_UNAVAILABLE_MESSAGE, type PrfAssertion } from '@services/vault/passkeyClient.ts';
 import { classifyPasskeyHandle, decideDerivedImport, isKnownDerivedHost, normalizeExternalPasskeyHost } from '@domain/vault/passkeyKeyModes.ts';
 import { deriveDerivedPasskeyKey, derivedPasskeyPubkey, derivedPrfInput, isDerivedParameterSet } from '@lib/crypto/passkeyDerived.ts';
@@ -11,7 +11,7 @@ import { bytesToHex } from '@lib/crypto/utils.ts';
 export interface DerivedPasskeyCandidate {
   rpId: string;
   parameterSet?: DerivedParameterSet;
-  confidence: 'derived' | 'ambiguous' | 'backup';
+  confidence: 'derived' | 'backup';
   pubkey: string;
   npub: string;
   secret: Uint8Array;
@@ -45,9 +45,11 @@ function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
  * extensions when no credential is named; without output after that it fails with the
  * existing PRF-unavailable error. Nothing is imported here.
  */
-export async function readDerivedPasskey(hostInput: string, parameterSet: DerivedParameterSet): Promise<DerivedPasskeyCandidate> {
+export async function readDerivedPasskey(hostInput: string, parameterSet?: DerivedParameterSet): Promise<DerivedPasskeyCandidate> {
   const rpId = normalizeExternalPasskeyHost(hostInput);
   if (!rpId) throw new Error(t('passkeyImport.invalidHost'));
+  const automatic = parameterSet === undefined;
+  parameterSet ??= DERIVED_PASSKEY_APPS.find(app => app.rpId === rpId)?.parameterSet ?? 1;
   if (!isDerivedParameterSet(parameterSet)) throw new Error(t('passkeyImport.refusedUnsupported'));
   await authorizePasskeyDomain(rpId);
   const input = derivedPrfInput(parameterSet);
@@ -55,11 +57,16 @@ export async function readDerivedPasskey(hostInput: string, parameterSet: Derive
   try {
     const first = await assertPasskeyPrf(rpId, input);
     assertions.push(first);
-    const decision = decideDerivedImport(classifyPasskeyHandle(first.userHandle), parameterSet, isKnownDerivedHost(rpId, parameterSet));
+    const handle = classifyPasskeyHandle(first.userHandle);
+    const detectedSet = automatic && handle.mode === 'derived' ? handle.parameterSet : parameterSet;
+    if (!isDerivedParameterSet(detectedSet)) throw new DerivedPasskeyRefusedError('unsupported', refusalMessage('unsupported'));
+    const changedInput = detectedSet !== parameterSet;
+    parameterSet = detectedSet;
+    const decision = decideDerivedImport(handle, parameterSet, isKnownDerivedHost(rpId, parameterSet));
     if (decision.action === 'refuse') throw new DerivedPasskeyRefusedError(decision.reason, refusalMessage(decision.reason, decision.parameterSet));
     let prf = first.prf;
-    if (!prf) {
-      const retry = await assertPasskeyPrf(rpId, input, first.credentialId);
+    if (!prf || changedInput) {
+      const retry = await assertPasskeyPrf(rpId, derivedPrfInput(parameterSet), first.credentialId);
       assertions.push(retry);
       if (!sameBytes(retry.credentialId, first.credentialId)) throw new Error(t('passkey.cancelled'));
       prf = retry.prf;

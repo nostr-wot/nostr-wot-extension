@@ -282,3 +282,13 @@ test('ordinary imports still finish without the passkey import explanation', () 
   ], { hasAccounts: true });
   assert.equal(s.step, WizardStep.Done);
 });
+
+test('unified recovery configures a restored vault without creating one and refuses replacement', () => {
+  const options = { hasGeneratedAccount: false, hasAccounts: false };
+  const start = run(fresh(), [{ type: 'SELECT', payload: { method: 'import' } }, { type: 'IMPORT_PASSKEY' }], options);
+  const restored = reducer(start, { type: 'RESTORED', payload: { account: { id: 'recovered' } } }, options);
+  assert.equal(restored.step, WizardStep.Password);
+  assert.equal(restored.ctx.method, 'passkeyRestore');
+  assert.equal(reducer(restored, { type: 'SET', payload: {} }, options).step, WizardStep.Done);
+  assert.equal(reducer(start, { type: 'RESTORED', payload: { account: { id: 'recovered' } } }, { ...options, hasAccounts: true }), start);
+});

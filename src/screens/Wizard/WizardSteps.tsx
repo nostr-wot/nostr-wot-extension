@@ -72,12 +72,12 @@ function buildSteps(
       content: <MethodStep otherMethods onSelect={(method) => flow.send('SELECT', { method })} hasAccounts={hasAccounts} />,
     },
     [WizardStep.Import]: {
-      title: t('wizard.importKey'),
-      content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} onRestorePasskey={hasAccounts ? undefined : () => flow.send('RESTORE_PASSKEY')} onImportPasskey={() => flow.send('IMPORT_PASSKEY')} />,
+      title: t('recoveryFlow.title'),
+      content: <ImportStep onNext={(acct: any, upId: string | null) => flow.send('IMPORTED', { account: acct, upgradeId: upId })} hasGeneratedAccount={hasGeneratedAccount} onRecovered={hasAccounts ? undefined : account => flow.send('RESTORED', { account })} onPasskeyAccount={(account, upgradeId, host) => flow.send('IMPORTED', { account, upgradeId, host })} onImportPasskey={() => flow.send('IMPORT_PASSKEY')} />,
     },
     [WizardStep.PasskeyImport]: {
-      title: t('passkeyImport.title'),
-      content: <PasskeyImportStep onNext={(account, upgradeId, host) => flow.send('IMPORTED', { account, upgradeId, host })} />,
+      title: t('recoveryFlow.title'),
+      content: <PasskeyImportStep onRestore={hasAccounts ? undefined : account => flow.send('RESTORED', { account })} onNext={(account, upgradeId, host) => flow.send('IMPORTED', { account, upgradeId, host })} />,
     },
     [WizardStep.PasskeyImported]: {
       title: t('passkeyImport.doneTitle'),
@@ -96,12 +96,12 @@ function buildSteps(
       content: <PasskeyStep autoStart onNext={(account, blobSupported) => flow.send('CREATED', { account, blobSupported })} />,
     },
     [WizardStep.PasskeyAdvanced]: {
-      title: t('passkey.advancedCreate'),
-      content: <PasskeyStep advanced onNext={(account, blobSupported) => flow.send('CREATED', { account, blobSupported })} />,
+      title: t('recoveryFlow.title'),
+      content: <PasskeyStep restore onNext={account => flow.send('RESTORED', { account })} />,
     },
     [WizardStep.PasskeyRestore]: {
       title: t('passkey.restore'),
-      content: <PasskeyStep restore autoStart onNext={(account) => flow.send('DONE', { account })} />,
+      content: <PasskeyStep restore onNext={(account) => flow.send('DONE', { account })} />,
     },
     [WizardStep.PasskeyBackup]: {
       title: t('passkey.recoveryTitle'),

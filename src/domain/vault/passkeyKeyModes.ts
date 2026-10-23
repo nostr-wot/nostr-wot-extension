@@ -29,8 +29,6 @@ export function classifyPasskeyHandle(handle: Uint8Array | null | undefined): Pa
 export type DerivedImportDecision =
   /** Tagged with the expected set, or untagged on a host known to use that set. */
   | { action: 'derive'; confidence: 'derived' }
-  /** Untagged on a host nobody configured: show the npub, the user decides. */
-  | { action: 'derive'; confidence: 'ambiguous' }
   | { action: 'refuse'; reason: 'stored' | 'unsupported' | 'parameter-set'; parameterSet?: number };
 
 /**
@@ -49,7 +47,7 @@ export function decideDerivedImport(handle: PasskeyHandleClass, expected: Derive
       ? { action: 'derive', confidence: 'derived' }
       : { action: 'refuse', reason: 'parameter-set', parameterSet: handle.parameterSet };
   }
-  return { action: 'derive', confidence: knownHost ? 'derived' : 'ambiguous' };
+  return knownHost ? { action: 'derive', confidence: 'derived' } : { action: 'refuse', reason: 'unsupported' };
 }
 
 /** True when the registry lists this host as deploying this parameter set. */
