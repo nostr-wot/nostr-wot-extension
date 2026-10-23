@@ -110,7 +110,7 @@ export interface PrfAssertion { credentialId: Uint8Array; userHandle: Uint8Array
  */
 export async function assertPasskeyPrf(rpId: string, prfInput: Uint8Array, credentialId?: Uint8Array): Promise<PrfAssertion> {
   requireSupport();
-  if (!validRpId(rpId) || prfInput.length !== 32) throw new Error('Invalid passkey domain');
+  if (!validRpId(rpId) || prfInput.length === 0 || prfInput.length > 1024) throw new Error('Invalid passkey domain');
   const credential = await requestPasskey(() => navigator.credentials.get({ publicKey: {
     rpId,
     challenge: crypto.getRandomValues(new Uint8Array(32)),

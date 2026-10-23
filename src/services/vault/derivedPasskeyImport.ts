@@ -1,3 +1,4 @@
+import { parseNosskeyAccount, nosskeyPrfInput, recoverNosskeyAccount, hexToBytes } from '@nostr-wot/identity/vault';
 import { t } from '@services/i18n/i18n.ts';
 import type { DerivedParameterSet } from '@constants/passkey.ts';
 import { assertPasskeyPrf, authorizePasskeyDomain, PRF_UNAVAILABLE_MESSAGE, type PrfAssertion } from '@services/vault/passkeyClient.ts';
@@ -9,8 +10,8 @@ import { bytesToHex } from '@lib/crypto/utils.ts';
 /** A derived key awaiting the user's confirmation. `secret` is zeroed by clearDerivedPasskey. */
 export interface DerivedPasskeyCandidate {
   rpId: string;
-  parameterSet: DerivedParameterSet;
-  confidence: 'derived' | 'ambiguous';
+  parameterSet?: DerivedParameterSet;
+  confidence: 'derived' | 'ambiguous' | 'backup';
   pubkey: string;
   npub: string;
   secret: Uint8Array;
@@ -85,4 +86,20 @@ export function derivedPasskeySecretHex(candidate: DerivedPasskeyCandidate): str
 
 export function clearDerivedPasskey(candidate: DerivedPasskeyCandidate | null | undefined): void {
   candidate?.secret.fill(0);
+}
+
+/** Restore only the account explicitly named by a Nosskey backup; never guess its mode. */
+export async function readNosskeyPasskey(hostInput: string, backup: string): Promise<DerivedPasskeyCandidate> {
+  const rpId = normalizeExternalPasskeyHost(hostInput);
+  if (!rpId) throw new Error(t('passkeyImport.invalidHost'));
+  const account = parseNosskeyAccount(backup);
+  await authorizePasskeyDomain(rpId);
+  const credentialId = hexToBytes(account.credentialId);
+  const assertion = await assertPasskeyPrf(rpId, nosskeyPrfInput(account), credentialId);
+  try {
+    if (!sameBytes(assertion.credentialId, credentialId)) throw new Error(t('passkey.cancelled'));
+    if (!assertion.prf) throw new Error(PRF_UNAVAILABLE_MESSAGE);
+    const secret = recoverNosskeyAccount(account, assertion.prf);
+    return {rpId,confidence:'backup',pubkey:account.pubkey,npub:npubEncode(account.pubkey),secret};
+  } finally { assertion.prf?.fill(0); }
 }

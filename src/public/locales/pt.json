@@ -1500,9 +1500,13 @@
   "passkeyImport.confirmCheck": "Esta é a conta que uso nesse app.",
   "passkeyImport.import": "Importar esta conta",
   "passkeyImport.doneTitle": "Conta importada",
-  "passkeyImport.stillValid": "Sua chave de acesso para {host} continua gerando esta chave e continua funcionando nesse app. A única forma de aposentá-la é removê-la do seu provedor de chaves de acesso.",
+  "passkeyImport.stillValid": "Sua passkey original de {host} continua funcionando nesse app. Guarde-a e mantenha a cópia de recuperação até testar outra forma de recuperar esta conta.",
   "passkeyImport.otherApp": "o outro app",
   "passkeyImport.protectOffer": "Agora proteja esta conta com uma chave de acesso do Nostr WoT. Assim esta extensão desbloqueia com a própria chave de acesso, e a recuperação não depende mais da chave de acesso do outro app.",
   "passkeyImport.protect": "Proteger com uma chave de acesso do Nostr WoT",
-  "passkeyImport.protectLater": "Você pode fazer isso depois em Configurações, Segurança, Configurações de passkey."
+  "passkeyImport.protectLater": "Você pode fazer isso depois em Configurações, Segurança, Configurações de passkey.",
+  "passkeyImport.backupNotice": "Escolha um backup da conta Nosskey. Ele contém os dados necessários para recuperar sua conta. Use o domínio original da chave de acesso.",
+  "passkeyImport.backupFile": "Backup da conta Nosskey",
+  "passkeyImport.backupInvalid": "Escolha um backup válido (até 8 KB).",
+  "passkeyImport.backupConfirm": "Sua chave de acesso de {host} desbloqueou esta conta. Confira se é a conta que usa lá."
 }

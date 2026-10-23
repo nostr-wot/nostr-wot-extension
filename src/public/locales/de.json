@@ -1500,9 +1500,13 @@
   "passkeyImport.confirmCheck": "Das ist das Konto, das ich in dieser App verwende.",
   "passkeyImport.import": "Dieses Konto importieren",
   "passkeyImport.doneTitle": "Konto importiert",
-  "passkeyImport.stillValid": "Dein Passkey für {host} erzeugt weiterhin diesen Schlüssel und funktioniert in dieser App weiter. Nur das Entfernen beim Passkey-Anbieter legt ihn still.",
+  "passkeyImport.stillValid": "Dein ursprünglicher Passkey für {host} funktioniert weiterhin in dieser App. Bewahre ihn und seine Wiederherstellungskopie auf, bis du einen anderen Weg zur Wiederherstellung dieses Kontos getestet hast.",
   "passkeyImport.otherApp": "die andere App",
   "passkeyImport.protectOffer": "Schütze dieses Konto als Nächstes mit einem Nostr-WoT-Passkey. Dann entsperrt sich diese Erweiterung mit ihrem eigenen Passkey, und die Wiederherstellung hängt nicht mehr vom Passkey der anderen App ab.",
   "passkeyImport.protect": "Mit einem Nostr-WoT-Passkey schützen",
-  "passkeyImport.protectLater": "Du kannst das später unter Einstellungen, Sicherheit, Passkey-Einstellungen erledigen."
+  "passkeyImport.protectLater": "Du kannst das später unter Einstellungen, Sicherheit, Passkey-Einstellungen erledigen.",
+  "passkeyImport.backupNotice": "Wähle eine Nosskey-Kontosicherung. Sie enthält die Daten zur Wiederherstellung. Verwende die ursprüngliche Passkey-Domain.",
+  "passkeyImport.backupFile": "Nosskey-Kontosicherung",
+  "passkeyImport.backupInvalid": "Wähle eine gültige Sicherung (bis 8 KB).",
+  "passkeyImport.backupConfirm": "Dein Passkey für {host} hat dieses Konto entsperrt. Prüfe, ob es dein dortiges Konto ist."
 }

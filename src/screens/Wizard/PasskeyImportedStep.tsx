@@ -13,8 +13,8 @@ interface PasskeyImportedStepProps {
 }
 
 /**
- * After importing a key another app derives from its passkey: say plainly that the
- * original passkey keeps producing it, and offer (never force) Nostr WoT passkey
+ * After importing an account from another app: say plainly that the
+ * original passkey still works, and offer (never force) Nostr WoT passkey
  * protection through the existing enrollment.
  */
 export default function PasskeyImportedStep({ host, onDone, onProtect }: PasskeyImportedStepProps) {

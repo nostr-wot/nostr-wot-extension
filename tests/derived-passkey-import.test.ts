@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bytesToHex, hexToBytes } from '../src/lib/crypto/utils.ts';
 import { npubEncode } from '../src/lib/crypto/bech32.ts';
-import { readDerivedPasskey, clearDerivedPasskey, derivedPasskeySecretHex, DerivedPasskeyRefusedError } from '../src/services/vault/derivedPasskeyImport.ts';
+import { readNosskeyPasskey, readDerivedPasskey, clearDerivedPasskey, derivedPasskeySecretHex, DerivedPasskeyRefusedError } from '../src/services/vault/derivedPasskeyImport.ts';
 import { assertPasskeyPrf, PRF_UNAVAILABLE_MESSAGE } from '../src/services/vault/passkeyClient.ts';
 
 const VECTORS = JSON.parse(readFileSync(new URL('./fixtures/passkey-key-mode-vectors.json', import.meta.url), 'utf8'));
@@ -176,6 +176,32 @@ describe('assertPasskeyPrf', () => {
     assert.equal(second.prf, null);
     assert.ok(outputs[1].every(byte => byte === 0));
     await assert.rejects(assertPasskeyPrf('example', input), /Invalid passkey domain/);
-    await assert.rejects(assertPasskeyPrf('example.com', new Uint8Array(8)), /Invalid passkey domain/);
+    await assert.rejects(assertPasskeyPrf('example.com', new Uint8Array(0)), /Invalid passkey domain/);
+  });
+});
+
+
+describe('Nosskey backup import', () => {
+  it('pins the backup credential, preserves the raw-PRF key and clears outputs', async context => {
+    grants(context);
+    const { getPublicKey } = await import('nostr-tools');
+    const backup = JSON.stringify({credentialId:'070707',pubkey:getPublicKey(sevens()),salt:'6e6f7374722d70776b'});
+    const {requests,outputs} = install({prf:sevens()});
+    const result = await readNosskeyPasskey('nosskey.app',backup);
+    assert.equal(result.pubkey,getPublicKey(sevens()));
+    assert.equal(bytesToHex(result.secret),'07'.repeat(32));
+    assert.deepEqual(new Uint8Array(requests[0].allowCredentials[0].id),RAW_ID);
+    assert.equal(new TextDecoder().decode(requests[0].extensions.prf.eval.first),'nostr-pwk');
+    assert.ok(outputs[0].every(byte=>byte===0));
+    clearDerivedPasskey(result);
+  });
+  it('refuses a different credential and never retries as derived', async context => {
+    grants(context);
+    const { getPublicKey } = await import('nostr-tools');
+    const backup=JSON.stringify({credentialId:'070707',pubkey:getPublicKey(sevens()),salt:'6e6f7374722d70776b'});
+    const {requests,outputs}=install({prf:sevens(),rawId:new Uint8Array([8])});
+    await assert.rejects(readNosskeyPasskey('nosskey.app',backup));
+    assert.equal(requests.length,1);
+    assert.ok(outputs[0].every(byte=>byte===0));
   });
 });

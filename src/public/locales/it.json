@@ -1500,9 +1500,13 @@
   "passkeyImport.confirmCheck": "Questo è l’account che uso in quell’app.",
   "passkeyImport.import": "Importa questo account",
   "passkeyImport.doneTitle": "Account importato",
-  "passkeyImport.stillValid": "La tua passkey per {host} genera ancora questa chiave e continua a funzionare in quell’app. L’unico modo per ritirarla è rimuoverla dal tuo provider di passkey.",
+  "passkeyImport.stillValid": "La passkey originale di {host} continua a funzionare in quell’app. Conservala insieme alla copia di recupero finché non avrai provato un altro modo per recuperare questo account.",
   "passkeyImport.otherApp": "l’altra app",
   "passkeyImport.protectOffer": "Ora proteggi questo account con una passkey di Nostr WoT. Così questa estensione si sblocca con la propria passkey e il recupero non dipende più dalla passkey dell’altra app.",
   "passkeyImport.protect": "Proteggi con una passkey di Nostr WoT",
-  "passkeyImport.protectLater": "Puoi farlo più tardi in Impostazioni, Sicurezza, Impostazioni passkey."
+  "passkeyImport.protectLater": "Puoi farlo più tardi in Impostazioni, Sicurezza, Impostazioni passkey.",
+  "passkeyImport.backupNotice": "Scegli un backup dell’account Nosskey. Contiene i dati necessari al recupero. Usa il dominio originale della passkey.",
+  "passkeyImport.backupFile": "Backup account Nosskey",
+  "passkeyImport.backupInvalid": "Scegli un backup valido (fino a 8 KB).",
+  "passkeyImport.backupConfirm": "La passkey per {host} ha sbloccato questo account. Verifica che sia quello che usi lì."
 }

@@ -1500,9 +1500,13 @@
   "passkeyImport.confirmCheck": "This is the account I use in that app.",
   "passkeyImport.import": "Import this account",
   "passkeyImport.doneTitle": "Account imported",
-  "passkeyImport.stillValid": "Your passkey for {host} still produces this key and keeps working in that app. Removing it from your passkey provider is the only way to retire it.",
+  "passkeyImport.stillValid": "Your original passkey for {host} still works in that app. Keep it and its recovery backup until you have tested another way to recover this account.",
   "passkeyImport.otherApp": "the other app",
   "passkeyImport.protectOffer": "Next, protect this account with a Nostr WoT passkey. Then this extension unlocks with its own passkey, and recovery no longer depends on the other app's passkey.",
   "passkeyImport.protect": "Protect with a Nostr WoT passkey",
-  "passkeyImport.protectLater": "You can do this later in Settings, Security, Passkey settings."
+  "passkeyImport.protectLater": "You can do this later in Settings, Security, Passkey settings.",
+  "passkeyImport.backupNotice": "Choose a Nosskey account backup. It contains the information needed to recover your existing account. Use its original passkey domain.",
+  "passkeyImport.backupFile": "Nosskey account backup",
+  "passkeyImport.backupInvalid": "Choose a valid account backup (up to 8 KB).",
+  "passkeyImport.backupConfirm": "Your passkey for {host} unlocked this account. Check it against the account you use there."
 }
