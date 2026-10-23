@@ -5,6 +5,16 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+## 0.8.18 — 2026-10-23
+
+### Store release notes
+
+- Import or recover accounts through one flow. Supported passkeys and backups are detected automatically, and recovered accounts are shown before saving.
+- Recover compatible accounts from other apps, including Nosskey backups, while preserving the original identity.
+- Fix Wi-Fi pairing by sound on computers using 44.1 kHz audio devices.
+
+### Changed
+
 - Unify account import and recovery, detect supported passkey and backup formats automatically, and preview recovered accounts before saving. Keep technical troubleshooting collapsed and account creation separate.
 - Import compatible accounts from other apps through the shared identity SDK, including Nosskey backups, without changing their original keys.
 - Refuse adding an account the vault already signs for when the vault was locked during import.
