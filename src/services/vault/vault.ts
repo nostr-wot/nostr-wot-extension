@@ -657,6 +657,26 @@ export async function addPasskey(existing: PasskeyProof, passkey: PasskeyInput):
   });
 }
 
+/** Decrypt and validate once for both preview and restore; never writes storage. */
+async function readPasskeyBackup(record: PasskeyVaultRecord, proof: PasskeyProof) {
+  const wrapper = record.passkeys.find(p => p.credentialId === proof.credentialId);
+  if (!wrapper) throw new Error('Passkey does not belong to this backup');
+  const bytes = await unwrapVaultKey(wrapper, proof);
+  try {
+    const key = await importVaultKey(bytes);
+    const payload = JSON.parse(await decrypt(key, base64ToArray(record.iv), base64ToArray(record.ciphertext))) as VaultPayload;
+    if (!Array.isArray(payload.accounts) || !payload.accounts.length || !payload.accounts.some(a => a.id === payload.activeAccountId) || !payload.cacheKey) throw new Error('Invalid vault payload');
+    const memory = { cacheKeyBytes: base64ToArray(payload.cacheKey), accounts: payload.accounts.map(toMemoryAccount), activeAccountId: payload.activeAccountId };
+    return { key, payload, memory };
+  } finally { bytes.fill(0); }
+}
+
+export async function previewPasskeyBackup(text: string, proof: PasskeyProof) {
+  const { payload, memory } = await readPasskeyBackup(parsePasskeyBackup(text), proof);
+  try { return payload.accounts.map(toSafeAccount); }
+  finally { zeroPayload(memory); }
+}
+
 /** Authenticate the file before writing; only an authenticated empty vault may be replaced. */
 export async function restorePasskeyBackup(text: string, proof: PasskeyProof): Promise<void> {
   const record = parsePasskeyBackup(text);
@@ -683,16 +703,8 @@ export async function restorePasskeyBackup(text: string, proof: PasskeyProof): P
       }
     }
     if (Array.isArray(local.accounts) && local.accounts.length) throw new Error('Accounts already exist on this device');
-    const wrapper = record.passkeys.find(p => p.credentialId === proof.credentialId);
-    if (!wrapper) throw new Error('Passkey does not belong to this backup');
-    const bytes = await unwrapVaultKey(wrapper, proof);
-    let memory: MemoryVaultPayload | undefined;
+    const { key, payload, memory } = await readPasskeyBackup(record, proof);
     try {
-      const key = await importVaultKey(bytes);
-      const payload = JSON.parse(await decrypt(key, base64ToArray(record.iv), base64ToArray(record.ciphertext))) as VaultPayload;
-      if (!Array.isArray(payload.accounts) || !payload.accounts.length || !payload.accounts.some(a => a.id === payload.activeAccountId) || !payload.cacheKey) throw new Error('Invalid vault payload');
-      // Parsing memory accounts before persistence also checks key encodings.
-      memory = { cacheKeyBytes: base64ToArray(payload.cacheKey), accounts: payload.accounts.map(toMemoryAccount), activeAccountId: payload.activeAccountId };
       assertRevision(revision);
       const latest = await browser.storage.local.get('accounts');
       assertRevision(revision);
@@ -711,8 +723,7 @@ export async function restorePasskeyBackup(text: string, proof: PasskeyProof): P
       noteLockStateChanged();
       authorizeOnboardingProtection();
     } finally {
-      bytes.fill(0);
-      if (memory && memory !== _decrypted) zeroPayload(memory);
+      if (memory !== _decrypted) zeroPayload(memory);
     }
   });
 }

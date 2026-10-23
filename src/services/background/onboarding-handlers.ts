@@ -805,6 +805,12 @@ export const handlers = new Map<string, HandlerFn>([
         if (!fullAccountAdd.privkey && fullAccountAdd.type !== 'npub' && fullAccountAdd.type !== 'nip46') {
             throw new Error('Cannot add account: private key was lost. Please re-import.');
         }
+        // The validate step can only check duplicates while the vault is unlocked; an
+        // import that unlocks the vault afterwards gets the same check here, before
+        // anything is written.
+        if (fullAccountAdd.pubkey && vault.listAccounts().some(a => a.pubkey === fullAccountAdd.pubkey && !a.readOnly)) {
+            throw new Error('This account is already added with full signing access.');
+        }
         await setPendingOnboardingAccount(null);
 
         await vault.addAccount(fullAccountAdd);

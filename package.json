@@ -30,6 +30,7 @@
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@noble/post-quantum": "^0.6.1",
+    "@nostr-wot/identity": "1.1.0-next.2",
     "@scure/base": "^2.0.0",
     "@scure/bip32": "^2.0.1",
     "@scure/bip39": "^2.0.1",
@@ -56,6 +57,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "fake-indexeddb": "^6.2.5",
+    "ggwave": "0.4.0",
     "globals": "^15.15.0",
     "jsdom": "30.0.1",
     "playwright": "1.63.0",
@@ -64,8 +66,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.69.0",
     "vite": "^7.3.1",
-    "ws": "^8.19.0",
-    "ggwave": "0.4.0"
+    "ws": "^8.19.0"
   },
   "license": "GPL-3.0-only"
 }

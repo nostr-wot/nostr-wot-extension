@@ -61,6 +61,8 @@ For accounts without private keys (`npub`, some `external`), the `vault_getActiv
 
 `src/domain/accounts/importInput.ts` owns `ImportType` and `detectImportType`, shared format detection for import routing and hints. Detection accepts encrypted/private-key prefixes, 64-character hex and 12/24-word candidates; it does not validate checksums or the BIP-39 wordlist. Account creation and decryption retain those checks. `src/utils/text.ts` provides generic whitespace-aware `countWords`, reused by the import UI, vault seed export and post-quantum seed-length checks. Format constants live in `src/constants/accounts.ts`.
 
+`onboarding_validateNsec` and the other validate handlers refuse a key the vault already signs for, but can only check while it is unlocked. `onboarding_addToVault` repeats the check after unlock, so a key validated against a locked vault is never added twice.
+
 ## Account setup and public previews
 
 Nostr Connect offers QR Code and Bunker URL tabs with shared spacing before their content. The NIP-46 identity's signing key remains with the remote signer; returned signed events are checked against the approved request.

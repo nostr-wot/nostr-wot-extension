@@ -1098,7 +1098,8 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
         id: 'acct3',
         name: 'New',
         type: 'nsec',
-        pubkey: SECOND_PUBKEY_HEX,
+        // A third identity: addToVault refuses a pubkey the vault already signs for.
+        pubkey: '3434343434343434343434343434343434343434343434343434343434343434',
         privkey: '0000000000000000000000000000000000000000000000000000000000000003',
         mnemonic: null,
         nip46Config: null,

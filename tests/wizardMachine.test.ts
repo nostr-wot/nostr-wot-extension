@@ -247,3 +247,48 @@ test('a skipped follow step leaves passkey flows without a Back into created vau
   assert.equal(skipped.step, WizardStep.PermissionCopy);
   assert.equal(reducer(skipped, { type: 'BACK' }, { hasAccounts: true }).step, WizardStep.PermissionCopy);
 });
+
+test('passkey import from another app ends on its explanation after protection is set', () => {
+  const steps = (options: WizardOptions, upgraded = false) => {
+    const start = run(fresh(), [{ type: 'SELECT', payload: { method: 'moreOptions' } }, { type: 'SELECT', payload: { method: 'import' } }, { type: 'IMPORT_PASSKEY' }], options);
+    assert.equal(start.step, WizardStep.PasskeyImport);
+    assert.equal(start.ctx.method, 'passkeyImport');
+    const imported = reducer(start, { type: 'IMPORTED', payload: { account: { id: 'a', pubkey: 'b'.repeat(64) }, upgradeId: upgraded ? 'ro' : null, host: 'beta.lawallet.io' } }, options);
+    assert.equal(imported.step, WizardStep.Password);
+    assert.equal(imported.ctx.passkeyImportHost, 'beta.lawallet.io');
+    assert.equal(imported.ctx.upgradeId, upgraded ? 'ro' : null);
+    assert.equal(reducer(imported, { type: 'BACK' }, options).step, WizardStep.PasskeyImport);
+    return reducer(imported, { type: 'SET', payload: { upgraded } }, options);
+  };
+  const first = steps({ hasAccounts: false });
+  assert.equal(first.step, WizardStep.PasskeyImported);
+  assert.equal(reducer(first, { type: 'BACK' }, {}).step, WizardStep.PasskeyImported, 'no way back into a finished import');
+  assert.equal(reducer(first, { type: 'DONE' }, {}).step, WizardStep.Done);
+  const added = steps({ hasAccounts: true });
+  assert.equal(added.step, WizardStep.PermissionCopy);
+  assert.equal(reducer(added, { type: 'DONE' }, { hasAccounts: true }).step, WizardStep.PasskeyImported);
+  assert.equal(steps({ hasAccounts: true }, true).step, WizardStep.PasskeyImported);
+  const back = reducer(run(fresh(), [{ type: 'SELECT', payload: { method: 'import' } }, { type: 'IMPORT_PASSKEY' }], {}), { type: 'BACK' }, {});
+  assert.equal(back.step, WizardStep.Import);
+  assert.equal(back.ctx.method, 'import');
+});
+
+test('ordinary imports still finish without the passkey import explanation', () => {
+  const s = run(fresh(), [
+    { type: 'SELECT', payload: { method: 'import' } },
+    { type: 'IMPORTED', payload: { account: { id: 'a' }, upgradeId: null } },
+    { type: 'SET', payload: { upgraded: false } },
+    { type: 'DONE' },
+  ], { hasAccounts: true });
+  assert.equal(s.step, WizardStep.Done);
+});
+
+test('unified recovery configures a restored vault without creating one and refuses replacement', () => {
+  const options = { hasGeneratedAccount: false, hasAccounts: false };
+  const start = run(fresh(), [{ type: 'SELECT', payload: { method: 'import' } }, { type: 'IMPORT_PASSKEY' }], options);
+  const restored = reducer(start, { type: 'RESTORED', payload: { account: { id: 'recovered' } } }, options);
+  assert.equal(restored.step, WizardStep.Password);
+  assert.equal(restored.ctx.method, 'passkeyRestore');
+  assert.equal(reducer(restored, { type: 'SET', payload: {} }, options).step, WizardStep.Done);
+  assert.equal(reducer(start, { type: 'RESTORED', payload: { account: { id: 'recovered' } } }, { ...options, hasAccounts: true }), start);
+});

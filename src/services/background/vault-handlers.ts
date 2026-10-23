@@ -117,6 +117,12 @@ export const handlers = new Map<string, HandlerFn>([
     ['vault_addRecoveryRelay', async params => addRecoveryRelay(params.credentialId as string, params.relay as string)],
     ['vault_checkRelayRecovery', async params => relayRecovery.checkRelayRecovery(params.credentialId as string)],
     ['vault_fetchRelayRecovery', async params => relayRecovery.fetchRelayRecovery(params as unknown as import('../vault/recoveryCodec.ts').RecoveryContext)],
+    ['vault_previewRelayRecovery', async params => {
+        const proof = params.proof as PasskeyProof;
+        const backup = await relayRecovery.prepareRelayRecoveryBackup(params.event as import('@domain/nostr/types.ts').SignedEvent, proof, params.context as import('../vault/recoveryCodec.ts').RecoveryContext);
+        return { accounts: await vault.previewPasskeyBackup(backup, proof) };
+    }],
+    ['vault_previewPasskeyBackup', async params => ({ accounts: await vault.previewPasskeyBackup(params.backup as string, params as unknown as PasskeyProof) })],
     ['vault_restoreRelayRecovery', async params => {
         await relayRecovery.restoreRelayRecovery(params.event as import('@domain/nostr/types.ts').SignedEvent, params.proof as PasskeyProof, params.context as import('../vault/recoveryCodec.ts').RecoveryContext);
         await syncActivePubkey();

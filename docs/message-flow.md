@@ -460,6 +460,10 @@ After confirmed last-account removal, `vault_removeAccount` invokes the vault’
 
 Internal extension pages use `archive_explore` for bounded encrypted-record scans, `archive_event` for full stored event details, `archive_reveal` for explicit local message decryption, and `archive_deleteEvents` for confirmed local removal. Every handler validates the account; page scripts cannot call these methods. Event IDs are resolved only within that account. Deletion pauses archive jobs and serializes with other archive mutations; it does not publish anything.
 
+### Importing another app's passkey
+
+No new RPC. The trusted extension UI requests the host grant, runs the WebAuthn assertion and derives the key; PRF output never leaves the page. After the user confirms the npub, the key goes to the existing `onboarding_validateNsec`, and the Password step finishes with `onboarding_createVault` or `onboarding_addToVault`. Only the public RP host enters persisted wizard context.
+
 ### Passkey recovery events
 
 `vault_prepareRelayRecovery` authenticates an enrolled PRF wrapper and prepares only signed ciphertext in the background. `vault_publishRelayRecovery` validates its signature, exact enrollment and scope before explicit pooled publication. `vault_fetchRelayRecovery` is a bounded read available before vault restore; it discovers only matching kind-31777 events and never writes a vault. `vault_restoreRelayRecovery` authenticates/decrypts the selected format, validates recovered identities and delegates persistence to the existing guarded passkey restore path. All four remain privileged extension-page RPCs. Ordinary unlock does not query relays. See [Passkey recovery](passkey-recovery.md) for data shapes, disclosure, fallback and legacy RP behavior.

@@ -35,6 +35,8 @@ export enum WizardStep {
   PasskeyAdvanced = 'passkeyAdvanced',
   PasskeyRestore = 'passkeyRestore',
   PasskeyBackup = 'passkeyBackup',
+  PasskeyImport = 'passkeyImport',
+  PasskeyImported = 'passkeyImported',
   Subaccount = 'subaccount',
   Import = 'import',
   WatchOnly = 'npub',

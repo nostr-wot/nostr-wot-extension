@@ -93,7 +93,7 @@ test('closing the unlock screen while passkey verification runs never unlocks th
   }
 });
 
-test('setup opens five other-method choices and uses hover-only accent borders', async () => {
+test('setup opens three other-method choices and uses hover-only accent borders', async () => {
  const { dom, root } = mount(); const selected: string[] = [];
  try {
   await act(async () => root.render(createElement(MethodStep, { hasAccounts: false, onSelect: id => selected.push(id) })));
@@ -106,8 +106,8 @@ test('setup opens five other-method choices and uses hover-only accent borders',
   }
   await act(async () => button('wizard.otherMethods').click()); assert.equal(selected.at(-1), 'moreOptions');
   await act(async () => root.render(createElement(MethodStep, { otherMethods: true, hasAccounts: false, onSelect: id => selected.push(id) })));
-  assert.equal(document.querySelectorAll('button').length, 5);
-  for (const [label, method] of [['wizard.importKey', 'import'], ['wizard.watchOnly', 'npub'], ['wizard.nostrConnect', 'nip46'], ['passkey.advancedCreate', 'passkeyAdvanced'], ['passkey.restore', 'passkeyRestore']]) {
+  assert.equal(document.querySelectorAll('button').length, 3);
+  for (const [label, method] of [['recoveryFlow.title', 'import'], ['wizard.watchOnly', 'npub'], ['wizard.nostrConnect', 'nip46']]) {
     await act(async () => button(label).click()); assert.equal(selected.at(-1), method);
   }
  } finally { await act(async () => root.unmount()); dom.window.close(); }
@@ -196,7 +196,7 @@ test('restoration offers passkey discovery first and a selectable file fallback'
     await act(async () => root.render(createElement(PasskeyStep, { restore: true, onNext: () => {} })));
     assert.equal(document.querySelector('input[type="file"]'), null);
     assert.equal(button('passkey.restore').disabled, false);
-    assert.equal(button('passkey.useFile'), undefined);
+    assert.ok(button('passkey.useFile'));
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
 
@@ -282,22 +282,22 @@ test('raised action cards preserve native disabled behavior', async () => {
 });
 
 
-test('simple passkey setup hides advanced controls while other methods exposes them', async () => {
+test('import is the single recovery entry and troubleshooting stays collapsed', async () => {
   const { dom, root } = mount(); const selected: string[] = [];
   try {
     await act(async () => root.render(createElement(PasskeyStep, { onNext: () => {} })));
     assert.equal(document.querySelector('details'), null);
     await act(async () => root.render(createElement(MethodStep, { otherMethods: true, onSelect: id => selected.push(id) })));
-    await act(async () => button('passkey.advancedCreate').click());
-    assert.equal(selected.at(-1), 'passkeyAdvanced');
-    await act(async () => button('passkey.restore').click());
-    assert.equal(selected.at(-1), 'passkeyRestore');
+    assert.equal(button('passkey.advancedCreate'), undefined);
+    assert.equal(button('passkey.restore'), undefined);
+    await act(async () => button('recoveryFlow.title').click());
+    assert.equal(selected.at(-1), 'import');
     await act(async () => root.render(createElement(PasskeyStep, { advanced: true, onNext: () => {} })));
-    assert.equal(document.querySelector('details'), null);
+    assert.equal(document.querySelector('details')?.open, false);
     assert.equal(document.querySelector('#recovery-scope'), null);
     assert.equal((document.querySelector('#recovery-domain') as HTMLInputElement).value, 'passkeys.nostrwot.com');
     await act(async () => root.render(createElement(PasskeyStep, { restore: true, onNext: () => {} })));
-    assert.equal(document.querySelector('details'), null);
+    assert.equal(document.querySelector('details')?.open, false);
     assert.equal(document.querySelector('#recovery-scope'), null);
     assert.ok(document.querySelector('#recovery-domain'));
   } finally { await act(async () => root.unmount()); dom.window.close(); }
@@ -415,7 +415,7 @@ test('advanced setup confirms a discovered credential before relay recovery and 
     assert.equal(document.querySelector('input[type="file"]'), null);
     Object.defineProperty(navigator, 'credentials', { configurable: true, value: { get: async () => { throw new DOMException('Cancelled', 'NotAllowedError'); } } });
     await act(async () => button('passkey.checkExisting').click());
-    assert.ok(button('passkey.create'));
+    assert.equal(button('passkey.create'), undefined);
     assert.deepEqual(calls, ['vault_fetchRelayRecovery'], 'cancellation does not generate an account');
   } finally {
     await act(async () => root.unmount()); dom.window.close();
@@ -601,7 +601,7 @@ test('empty passkey settings require password confirmation and hide setup for lo
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
 
-test('unusable provider recovery exposes file fallback only after attempting discovery', async () => {
+test('file recovery is available before and after a failed passkey lookup', async () => {
   const { dom, root } = mount();
   const oldCredentials = Object.getOwnPropertyDescriptor(navigator, 'credentials');
   const oldPublicKey = Object.getOwnPropertyDescriptor(globalThis, 'PublicKeyCredential');
@@ -612,7 +612,7 @@ test('unusable provider recovery exposes file fallback only after attempting dis
   } });
   try {
     await act(async () => root.render(createElement(PasskeyStep, { restore: true, onNext: () => assert.fail('invalid recovery must not complete') })));
-    assert.equal(button('passkey.useFile'), undefined);
+    assert.ok(button('passkey.useFile'));
     await act(async () => button('passkey.restore').click());
     assert.ok(button('passkey.useFile'));
     await act(async () => button('passkey.useFile').click());

@@ -5,6 +5,9 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Unify account import and recovery, detect supported passkey and backup formats automatically, and preview recovered accounts before saving. Keep technical troubleshooting collapsed and account creation separate.
+- Import compatible accounts from other apps through the shared identity SDK, including Nosskey backups, without changing their original keys.
+- Refuse adding an account the vault already signs for when the vault was locked during import.
 - Fix sound pairing timing out on computers using a 44.1 kHz audio device by decoding through a 48 kHz audio graph.
 
 - Restore optional Wi-Fi pairing by sound. Listening starts only on request, stops after one attempt or 30 seconds, and still requires phone confirmation. The decoder now works with the extension’s existing security policy.

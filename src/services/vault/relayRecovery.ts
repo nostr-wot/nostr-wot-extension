@@ -102,7 +102,7 @@ export async function fetchRelayRecovery(ctx: Omit<RecoveryContext, 'scope'> & {
   throw new Error('No recovery found on the recovery relays. Check the passkey domain and scope, or use your recovery file.');
 }
 
-export async function restoreRelayRecovery(event: SignedEvent, proof: PasskeyProof, ctx: RecoveryContext): Promise<void> {
+export async function prepareRelayRecoveryBackup(event: SignedEvent, proof: PasskeyProof, ctx: RecoveryContext): Promise<string> {
   if (proof.credentialId !== ctx.credentialId) throw new Error('Recovery credential mismatch');
   await validateRecoveryEvent(event, ctx);
   const bytes = await decryptRecovery(event.content, proof.prf, ctx);
@@ -112,7 +112,7 @@ export async function restoreRelayRecovery(event: SignedEvent, proof: PasskeyPro
       const record = parsePasskeyBackup(backup);
       const wrapper = record.passkeys.find(p => p.credentialId === ctx.credentialId);
       if (!wrapper || wrapper.rpId !== ctx.rpId || wrapper.prfSalt !== PASSKEY_RECOVERY_PRF || wrapper.recoveryPubkey !== ctx.pubkey) throw new Error('Recovery vault context mismatch');
-      await vault.restorePasskeyBackup(backup, proof); return;
+      return backup;
     }
     const payload: VaultPayload = { accounts: [], activeAccountId: null, cacheKey: arrayToBase64(crypto.getRandomValues(new Uint8Array(32))) };
     if (ctx.scope === 'private-key') {
@@ -136,7 +136,11 @@ export async function restoreRelayRecovery(event: SignedEvent, proof: PasskeyPro
       const wrapper = await wrapVaultKey(rawKey, { ...metadata, prf: proof.prf });
       const encrypted = await encrypt(await importVaultKey(rawKey), JSON.stringify(payload));
       const backup = JSON.stringify({ format: PASSKEY_BACKUP_FORMAT, vault: { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: ctx.rpId, passkeys: [wrapper], iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext) } });
-      await vault.restorePasskeyBackup(backup, proof);
+      return backup;
     } finally { rawKey.fill(0); }
   } finally { bytes.fill(0); }
+}
+
+export async function restoreRelayRecovery(event: SignedEvent, proof: PasskeyProof, ctx: RecoveryContext): Promise<void> {
+  await vault.restorePasskeyBackup(await prepareRelayRecoveryBackup(event, proof, ctx), proof);
 }

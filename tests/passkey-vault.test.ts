@@ -1,3 +1,4 @@
+import { detectRecoveryBackup } from '../src/domain/vault/recoveryBackup.ts';
 import { passkeyDisplayName, passkeyRecoveryAccount } from '../src/domain/vault/passkey.ts';
 import type { SafeAccount } from '../src/domain/accounts/types.ts';
 import { beforeEach, afterEach, describe, it } from 'node:test';
@@ -27,6 +28,20 @@ describe('passkey vault encryption and lifecycle', () => {
   async function createOnboarding() {
     await onboarding.get('onboarding_createVault')!({ account: payload().accounts[0], passkey: input(), autoLockMinutes: 15 });
   }
+  it('previews verified recovery accounts without replacing the vault', async () => {
+    await createOnboarding();
+    const backup = await vault.exportPasskeyBackup();
+    assert.equal(detectRecoveryBackup(backup), 'vault');
+    assert.equal(detectRecoveryBackup('{"format":"unknown"}'), null);
+    vault.lock();
+    const before = await browser.storage.local.get(null);
+    const result = await handlers.get('vault_previewPasskeyBackup')!({backup, ...input()});
+    assert.equal((result as any).accounts[0].pubkey, payload().accounts[0].pubkey);
+    assert.equal('privkey' in (result as any).accounts[0], false);
+    assert.equal(vault.isLocked(), true);
+    assert.deepEqual(await browser.storage.local.get(null), before);
+    await assert.rejects(handlers.get('vault_previewPasskeyBackup')!({backup, ...input(2)}));
+  });
   const configureOnboarding = (options: Record<string, unknown>) => onboarding.get('onboarding_configurePasskeyProtection')!(options);
   for (const mode of ['passkey', 'password', 'none']) it(`authorizes the fresh onboarding ${mode} choice only once without retaining PRF`, async () => {
     await createOnboarding();

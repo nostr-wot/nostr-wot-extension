@@ -38,6 +38,7 @@ the last group running for about two minutes even after most tests finish.
 | `tests/firefox-publishing.test.ts` | Shared release gate, source checks, Mozilla JWT, upload validation, reviewer/release notes, safe reruns and credential boundaries |
 | `tests/chrome-publishing.test.ts` | Verified upload bytes, OAuth refresh, asynchronous processing, failure/timeout gates, and no mutation retries |
 | `tests/crypto/secp256k1.test.ts` | Elliptic curve math, scalar multiplication, public key derivation |
+| `tests/crypto/passkey-derived.test.ts` | Derived-mode passkey keys against both parameter-set vectors in `tests/fixtures/passkey-key-mode-vectors.json`, unknown sets and out-of-range scalars |
 | `tests/crypto/schnorr.test.ts` | BIP-340 Schnorr signature create/verify |
 | `tests/crypto/nip01.test.ts` | Event ID computation, event signing |
 | `tests/crypto/nip04.test.ts` | NIP-04 encrypt/decrypt, error normalization |
@@ -66,13 +67,16 @@ the last group running for about two minutes even after most tests finish.
 | `tests/physical-entropy.test.ts` | Coin flips and dice rolls map to the 256-bit BIP-39 entropy offline tools derive (coin bits verbatim, dice SHA-256 of the digit string); short or tampered lists are refused |
 | `tests/entropy-game-ui.test.ts` | Mounted dice/coin game: each recorded result replays the roll or flip, keys 1 to 6 or 0/1 record and Backspace undoes, kinds cannot mix, exactly the required results are handed over and a failed build keeps them; the tab's phrase handoff through the real background handlers with no word reaching session storage, `onboarding_getPendingPhrase` answering only for the marked account, an expired dice phrase reported as lost, wizard renewal; reduced-motion scrolling; the follow step skips itself when no relay returns a profile, and its check keeps a success but re-checks after a failure, reading fresh cached profiles first |
 | `tests/follow-suggestions.test.ts` | Follow-suggestion selection, and the relay check that skips the step when no suggested profile answers before the deadline |
+| `tests/passkey-key-modes.test.ts` | Passkey handle classification for every vector handle, the derived-import decision (derive, ambiguous or refuse) and external host input; no browser mock required |
+| `tests/derived-passkey-import.test.ts` | Importing another app's derived passkey with WebAuthn mocked: exact origin permission, PRF input, refusals before derivation, targeted PRF retry and buffer zeroing; browser mock required |
+| `tests/passkey-import-ui.test.ts` | Import-a-passkey screens: no prompt on mount, npub shown and confirmation required before `onboarding_validateNsec`, cancel and refusal import nothing, the post-import offer; browser mock required |
 | `tests/openPopupForActiveTab.test.ts` | Popup-opening gating (opens only for the active tab) |
 | `tests/inject-webln.test.ts` | Injected `window.webln` provider surface |
 | `tests/domain-handlers.test.ts` | Domain allowlist / identity-disable handlers |
 | `tests/relay.test.ts` | Relay utilities, liveQuery streaming, inbound event signature verification (forged events rejected), exhaustion when relays close without EOSE |
 | `tests/rpc.test.ts` | Popup `rpc()` transport: envelope unwrapping, Chrome wakeup-rejection retry, Safari undefined-response retry (throws `RpcError` instead of resolving `undefined`), per-attempt timeout for `rpcRead` (re-sends a stalled read, fails instead of hanging, never re-sends a plain `rpc()`) |
 | `tests/i18n-init.test.ts` | `initI18n()` on the popup's startup path: English is not fetched, a stalled `storage.sync` cannot delay a language `storage.local` already has, synced changes are copied into local |
-| `tests/delete-recreate.test.ts` | Delete last account / destroy vault → re-run onboarding (`onboarding_generateAccount` + `onboarding_createVault`), incl. simulated service-worker restart |
+| `tests/delete-recreate.test.ts` | Delete last account / destroy vault → re-run onboarding (`onboarding_generateAccount` + `onboarding_createVault`), incl. simulated service-worker restart, and no duplicate account when a key was validated against a locked vault |
 | `tests/publish-handlers.test.ts` | `checkRelayHealth` SSRF hardening (scheme allowlist, private-host rejection) |
 | `tests/safeUrl.test.ts` | `safeImageUrl` sanitizer for untrusted profile image URLs |
 | `tests/site-state.test.ts` | Per-site state helpers |

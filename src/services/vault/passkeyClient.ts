@@ -39,8 +39,11 @@ export function clearPasskeyPrf(credential: PublicKeyCredential): void {
   if (output) new Uint8Array(output).fill(0);
 }
 
+/** The one message for a provider that returns no usable PRF output, whatever the flow. */
+export const PRF_UNAVAILABLE_MESSAGE = 'This passkey provider cannot encrypt a vault (PRF is unavailable). Retry and choose another provider in the browser, or use seed phrase setup.';
+
 function encodePrf(output: ArrayBuffer | undefined): string {
-  if (!output || output.byteLength !== 32) throw new Error('This passkey provider cannot encrypt a vault (PRF is unavailable). Retry and choose another provider in the browser, or use seed phrase setup.');
+  if (!output || output.byteLength !== 32) throw new Error(PRF_UNAVAILABLE_MESSAGE);
   const bytes = new Uint8Array(output);
   try { return arrayToBase64(bytes); }
   finally { bytes.fill(0); }
@@ -93,4 +96,36 @@ export async function authorizePasskeyDomain(rpId: string): Promise<void> {
   if (rpId === PASSKEY_RP_ID || rpId === LEGACY_PASSKEY_RP_ID) return;
   const { default: browser } = await import('@lib/browser.ts');
   if (!browser.permissions || !await browser.permissions.request({ origins: [`https://${rpId}/*`] })) throw new Error('Access to this passkey domain was not granted');
+}
+
+/** A verified assertion's public handle and a private copy of its PRF output. */
+export interface PrfAssertion { credentialId: Uint8Array; userHandle: Uint8Array | null; prf: Uint8Array | null; }
+
+/**
+ * Assert a passkey under another site's RP ID with one PRF input. Discoverable when no
+ * credential ID is given; otherwise targeted at that credential. The browser's own PRF
+ * buffer is zeroed before returning; the caller zeroes `prf` once it is done with it.
+ * A missing or malformed PRF result is reported as `prf: null`, never as an error, so the
+ * caller can classify the handle first.
+ */
+export async function assertPasskeyPrf(rpId: string, prfInput: Uint8Array, credentialId?: Uint8Array): Promise<PrfAssertion> {
+  requireSupport();
+  if (!validRpId(rpId) || prfInput.length === 0 || prfInput.length > 1024) throw new Error('Invalid passkey domain');
+  const credential = await requestPasskey(() => navigator.credentials.get({ publicKey: {
+    rpId,
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    ...(credentialId ? { allowCredentials: [{ type: 'public-key' as const, id: credentialId as BufferSource }] } : {}),
+    userVerification: 'required', timeout: PASSKEY_TIMEOUT_MS,
+    extensions: { prf: { eval: { first: prfInput as BufferSource } } } as PrfExtensions,
+  } })) as PublicKeyCredential | null;
+  if (!credential) throw new Error(t('passkey.cancelled'));
+  const output = (credential.getClientExtensionResults?.() as PrfResult | undefined)?.prf?.results?.first;
+  let prf: Uint8Array | null = null;
+  if (output) {
+    const view = new Uint8Array(output);
+    if (view.length === 32) prf = view.slice();
+    view.fill(0);
+  }
+  const handle = (credential.response as AuthenticatorAssertionResponse | undefined)?.userHandle;
+  return { credentialId: new Uint8Array(credential.rawId).slice(), userHandle: handle && handle.byteLength ? new Uint8Array(handle).slice() : null, prf };
 }
