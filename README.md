@@ -65,6 +65,10 @@ for the trust boundaries and destinations.
 Report vulnerabilities through [private security reporting](https://github.com/nostr-wot/nostr-wot-extension/security/advisories/new),
 not public issues. Never include real keys, seed phrases or wallet credentials.
 
+## Passkey interoperability requests
+
+Building a client that should work with existing passkeys? Read the [integration guide](docs/passkey-integrations.md) and [request a compatibility review](https://github.com/nostr-wot/nostr-wot-extension/issues/new?template=passkey_integration.yml). Requests are reviewed before any origin access is enabled.
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for supported Node versions, development
