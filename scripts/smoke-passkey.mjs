@@ -67,9 +67,9 @@ try {
   await page.getByRole('button', { name: 'Try other methods', exact: false }).waitFor();
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/onboarding.png` });
   await page.getByRole('button', { name: 'Try other methods', exact: false }).click();
-  await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).waitFor();
+  await page.getByRole('button', { name: 'Import or recover account', exact: false }).waitFor();
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/existing.png` });
-  assert.equal(await page.locator('button strong').count(), 5);
+  assert.equal(await page.locator('button strong').count(), 3);
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.evaluate(() => {
     globalThis.passkeyRequestCount = 0; globalThis.passkeyRequestsPending = 0; globalThis.blobWritten = false;
@@ -131,12 +131,17 @@ try {
   await page.waitForFunction(() => globalThis.document.body.innerText.includes('Create with passkey') || globalThis.document.body.innerText.includes('English'));
   if (!await page.getByRole('button', { name: 'Try other methods', exact: false }).count()) await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.getByRole('button', { name: 'Try other methods', exact: false }).click();
-  await page.getByRole('button', { name: 'Restore passkey vault', exact: false }).click();
+  await page.getByRole('button', { name: 'Import or recover account', exact: false }).click();
+  await page.getByRole('button', { name: 'Use a passkey', exact: true }).click();
+  await page.getByRole('button', { name: 'Use passkey', exact: true }).click();
   if (!blobRecovery && !relayRecovery) {
-    await page.locator('#passkey-file').waitFor();
+    await page.getByRole('button', { name: 'Use a recovery file', exact: true }).click();
     await page.locator('#passkey-file').setInputFiles({ name: 'vault.json', mimeType: 'application/json', buffer: Buffer.from(backup) });
   }
-  if (!blobRecovery && !relayRecovery) await page.getByRole('button', { name: /Restore passkey vault|Retry/, exact: true }).click();
+  await page.getByRole('button', { name: 'Restore passkey vault', exact: true }).click();
+  await page.getByText('Check these accounts before restoring them.', { exact: true }).waitFor();
+  assert.equal((await rpc('vault_listAccounts')).length, 0, 'Preview must not restore the account');
+  await page.getByRole('button', { name: 'Restore passkey vault', exact: true }).click();
   await waitForRpc('vault_getActivePubkey', pubkey => pubkey === publicKey);
   await page.getByRole('button', { name: 'Confirm', exact: true }).waitFor();
   assert.equal(await page.getByRole('checkbox', { name: 'Use passkey', exact: true }).isChecked(), true);
