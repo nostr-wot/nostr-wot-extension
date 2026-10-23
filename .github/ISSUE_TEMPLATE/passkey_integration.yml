@@ -1,0 +1,88 @@
+name: Passkey interoperability request
+description: Request compatibility review or cross-origin passkey integration for your client.
+title: "[Passkey integration]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the [integration guide](https://nostr-wot.com/passkey-integrations). This public issue starts a review; it does not authorize an origin or guarantee compatibility. GitHub sign-in is required to submit.
+        Never include seeds, private keys, PRF outputs, tokens, real credential IDs, personal vaults or confidential infrastructure details. Report vulnerabilities through [private security reporting](https://github.com/nostr-wot/nostr-wot-extension/security/advisories/new).
+  - type: input
+    id: project
+    attributes:
+      label: Project and public source code
+      description: Project name, public website and repository or technical documentation.
+    validations:
+      required: true
+  - type: input
+    id: contact
+    attributes:
+      label: Maintainer contact
+      description: GitHub handle or another contact you are comfortable making public. State your role in the project.
+    validations:
+      required: true
+  - type: dropdown
+    id: access
+    attributes:
+      label: Requested integration
+      options:
+        - Protocol compatibility review only
+        - Signer connection (no private-key import)
+        - Direct passkey recovery (client receives key material)
+        - Unsure; help choosing an approach
+    validations:
+      required: true
+  - type: textarea
+    id: origins
+    attributes:
+      label: Receiving origins and source RP ID
+      description: List exact public HTTPS production and staging origins separately, the source RP ID, and which direction access is requested. No URL paths or wildcard origins. For compatibility-only requests, say not applicable. Do not post private staging addresses.
+      placeholder: "Production: https://wallet.example.org
+Staging: not requested
+Source RP: passkeys.nostrwot.com"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: User journey and secret scope
+      description: Explain sign-in, returning visits, account selection and optional migration. Does your client receive one key, a seed or a whole vault? How is consent obtained before recovery? If undecided, say so.
+    validations:
+      required: true
+  - type: textarea
+    id: storage
+    attributes:
+      label: Storage, sessions and removal
+      description: What is persisted, where, for how long, and what happens on logout, reload or removal? Include token authority and how existing users retain recovery access.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Implementation and compatibility
+      description: Package/draft versions, credential modes, legacy formats, vault support and recovery storage/relay configuration. Link public documentation; mark unknown items explicitly.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Test evidence and supported platforms
+      description: Browser/OS versions, shared-vector results, fresh-device recovery and failure tests using disposable identities. Mark planned or untested cases honestly. For native apps, identify platforms and link public association documentation; submit no signing secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Pilot and support plan
+      description: Proposed pilot scope, security contact channel, rollback approach and who will maintain the integration. There is no guaranteed review or release date.
+    validations:
+      required: true
+  - type: checkboxes
+    id: acknowledgement
+    attributes:
+      label: Before submitting
+      options:
+        - label: I understand this issue is public and have included no secrets or personal recovery data.
+          required: true
+        - label: I understand a request is not authorization; source-owner review and successful compatibility testing are required before enablement.
+          required: true
