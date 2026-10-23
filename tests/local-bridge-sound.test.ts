@@ -73,6 +73,7 @@ test('microphone float frames decode a real pairing waveform and release capture
   let capture:any;let stops=0;let closes=0;let ready=false;let notified=false;const codes:string[]=[];const errors:string[]=[];
   Object.defineProperty(globalThis,'navigator',{configurable:true,value:{mediaDevices:{getUserMedia:async()=>({getTracks:()=>[{stop:()=>stops++}]})}}});
   Object.defineProperty(globalThis,'AudioContext',{configurable:true,value:class {
+    constructor(options: AudioContextOptions) { assert.equal(options?.sampleRate, 48000, 'Browser must resample microphone input to the modem rate'); }
     sampleRate=48000;destination={};audioWorklet={addModule:async()=>{}};
     createMediaStreamSource(){return {connect(){},disconnect(){}};}
     resume(){ready=true;return Promise.resolve();} close(){closes++;return Promise.resolve();}
