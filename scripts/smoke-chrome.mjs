@@ -66,6 +66,12 @@ export async function smokeChrome(archive, version) {
     // Exercise the shipped decoder under the real MV3 CSP, not a Node mock.
     const bridge = await context.newPage();
     await bridge.addInitScript(() => {
+      // Reproduce a computer whose default output graph uses 44.1 kHz.
+      // The browser still supplies the real fake-microphone media stream.
+      const NativeAudioContext = globalThis.AudioContext;
+      globalThis.AudioContext = class extends NativeAudioContext {
+        constructor(options) { super({ sampleRate: 44100, ...options }); }
+      };
       globalThis.soundStreams = [];
       globalThis.soundSockets = [];
       globalThis.soundViolations = [];

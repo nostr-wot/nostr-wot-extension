@@ -1,6 +1,6 @@
 import { detectRecoveryBackup } from '@domain/vault/recoveryBackup.ts';
 import { PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import { DERIVED_PASSKEY_APPS } from '@constants/passkey.ts';
@@ -48,7 +48,8 @@ export default function PasskeyImportStep({ onNext, onRestore, initialBackup = '
   const held = useRef<DerivedPasskeyCandidate | null>(null);
   useEffect(() => {
     live.current = true;
-    return () => { live.current = false; fileVersion.current++; clearDerivedPasskey(held.current); held.current = null; };
+    const version = fileVersion;
+    return () => { live.current = false; version.current++; clearDerivedPasskey(held.current); held.current = null; };
   }, []);
 
   const preset = DERIVED_PASSKEY_APPS.find(item => item.id === app);
@@ -101,16 +102,17 @@ export default function PasskeyImportStep({ onNext, onRestore, initialBackup = '
     }
   };
 
-  const detectBackup = (text: string) => {
+  const canRestore = !!onRestore;
+  const detectBackup = useCallback((text: string) => {
     const kind = detectRecoveryBackup(text);
     if (!kind) throw new Error(t('passkeyImport.backupInvalid'));
     if (kind === 'vault') {
-      if (!onRestore) throw new Error(t('recoveryFlow.existingVault'));
+      if (!canRestore) throw new Error(t('recoveryFlow.existingVault'));
       setVaultBackup(text); setSource('own'); return;
     }
     setBackup(text); setApp(NOSSKEY); setSource('other');
-  };
-  useEffect(() => { if (initialBackup) { try { detectBackup(initialBackup); } catch (e) { setError((e as Error).message); } } }, [initialBackup]);
+  }, [canRestore]);
+  useEffect(() => { if (initialBackup) { try { detectBackup(initialBackup); } catch (e) { setError((e as Error).message); } } }, [initialBackup, detectBackup]);
   const backupPicker = <Input label={t('passkeyImport.backupFile')} type="file" accept="application/json,.json" disabled={busy} onChange={async event => {
     const file = event.target.files?.[0]; const version = ++fileVersion.current;
     if (!file) return;

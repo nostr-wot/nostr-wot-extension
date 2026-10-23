@@ -24,7 +24,10 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
 
   const timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
   void (async () => {
-    context = new AudioContext();
+    // Let Web Audio resample the microphone to the modem's native rate.
+    // ggwave's input resampler loses short frame tails at 44.1 kHz, so feeding
+    // 1024-sample worklet chunks at the device default can silently miss codes.
+    context = new AudioContext({ sampleRate: 48000 });
     // Start both requests while handling the user's click. No remote scripts or services.
     const requested = navigator.mediaDevices.getUserMedia({ video: false, audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
     const acquired = await requested;

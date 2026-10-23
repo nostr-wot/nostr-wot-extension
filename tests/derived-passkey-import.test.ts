@@ -16,7 +16,6 @@ import { assertPasskeyPrf, PRF_UNAVAILABLE_MESSAGE } from '../src/services/vault
 
 const VECTORS = JSON.parse(readFileSync(new URL('./fixtures/passkey-key-mode-vectors.json', import.meta.url), 'utf8'));
 const LAWALLET = VECTORS.derived_parameter_sets.find((item: any) => item.parameter_set === 2);
-const DEFAULT_SET = VECTORS.derived_parameter_sets.find((item: any) => item.parameter_set === 1);
 const UUID_HANDLE = new TextEncoder().encode('3f2b8c1e-9d4a-4e7b-b5c2-1a6f0e8d7c94');
 const RAW_ID = new Uint8Array([7, 7, 7]);
 
