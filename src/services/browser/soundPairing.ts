@@ -5,7 +5,6 @@ import { decodeSoundOffer } from '@services/signing/localBridge/sound';
 /** Explicit, short-lived microphone capture. Samples never leave this document. */
 export function startSoundPairing(onCode: (uri: string) => void, onError: (key: string) => void, onReady: () => void = () => {}): () => void {
   let stopped = false;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let stream: MediaStream | undefined;
   let context: AudioContext | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
@@ -23,7 +22,7 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
   };
   const fail = (key: string) => { if (!stopped) { stop(); onError(key); } };
 
-  timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
+  const timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
   void (async () => {
     context = new AudioContext();
     // Start both requests while handling the user's click. No remote scripts or services.

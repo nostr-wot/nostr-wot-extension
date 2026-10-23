@@ -69,7 +69,7 @@ export async function smokeChrome(archive, version) {
       globalThis.soundStreams = [];
       globalThis.soundSockets = [];
       globalThis.soundViolations = [];
-      document.addEventListener('securitypolicyviolation', event => globalThis.soundViolations.push(event.violatedDirective));
+      globalThis.document.addEventListener('securitypolicyviolation', event => globalThis.soundViolations.push(event.violatedDirective));
       const capture = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
       navigator.mediaDevices.getUserMedia = async options => {
         const stream = await capture(options); globalThis.soundStreams.push(stream); return stream;
