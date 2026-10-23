@@ -1433,7 +1433,7 @@
   "localBridge.soundPreparing": "Mikrofon wird vorbereitet… Warte auf „Hört zu“, bevor du den Ton auf dem Telefon abspielst.",
   "localBridge.soundStart": "Zuhören starten",
   "localBridge.soundListening": "Wird gehört… Spiele den Kopplungston auf deinem Telefon ab.",
-  "localBridge.soundHint": "Höre mit dem Computermikrofon zu und spiele den Ton auf dem Telefon ab. Die Verarbeitung erfolgt lokal; nach 30 Sekunden endet das Zuhören.",
+  "localBridge.soundHint": "Höre nur für diesen Kopplungsversuch zu und spiele den Ton auf deinem Handy ab. Das Audio bleibt auf diesem Computer. Das Zuhören endet beim Empfang des Codes oder nach 30 Sekunden.",
   "localBridge.soundUnavailable": "Die Kopplung per Ton ist in dieser Version nicht verfügbar. Scanne den QR-Code oder füge den Kopplungscode ein.",
   "localBridge.soundTimeout": "Kein Ton empfangen. Halte das Telefon näher, erhöhe die Medienlautstärke und versuche es erneut.",
   "localBridge.microphoneDenied": "Erlaube den Mikrofonzugriff oder nutze den QR-Code oder füge den Code ein.",

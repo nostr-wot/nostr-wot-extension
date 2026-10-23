@@ -14,6 +14,7 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**',
+      'src/vendor/ggwave/ggwave.mjs',
       '.package-*/**',
       'node_modules/**',
       'safari-build/**',

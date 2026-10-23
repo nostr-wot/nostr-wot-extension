@@ -1,4 +1,4 @@
-import factory from 'ggwave';
+import factory from '../../vendor/ggwave/ggwave.mjs';
 import browser from '@lib/browser';
 import { decodeSoundOffer } from '@services/signing/localBridge/sound';
 
@@ -23,6 +23,7 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
   };
   const fail = (key: string) => { if (!stopped) { stop(); onError(key); } };
 
+  timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
   void (async () => {
     context = new AudioContext();
     // Start both requests while handling the user's click. No remote scripts or services.
@@ -56,7 +57,6 @@ export function startSoundPairing(onCode: (uri: string) => void, onError: (key: 
     source.connect(node); node.connect(context.destination);
     await context.resume();
     if (stopped) return;
-    timer = setTimeout(() => fail('localBridge.soundTimeout'), 30_000);
     onReady();
   })().catch(error => fail(error instanceof Error && error.name === 'NotAllowedError' ? 'localBridge.microphoneDenied' : 'localBridge.soundFailed'));
   return stop;

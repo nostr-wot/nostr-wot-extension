@@ -1433,7 +1433,7 @@
   "localBridge.soundPreparing": "Preparando o microfone… Aguarde «Ouvindo» antes de reproduzir o som do telefone.",
   "localBridge.soundStart": "Começar a ouvir",
   "localBridge.soundListening": "Ouvindo… Reproduza o som de pareamento no celular.",
-  "localBridge.soundHint": "Ouça com o microfone do computador e reproduza o som no celular. O áudio é decodificado localmente e a escuta termina após 30 segundos.",
+  "localBridge.soundHint": "Ouça apenas nesta tentativa de pareamento e reproduza o som no telefone. O áudio fica neste computador. A escuta termina ao receber o código ou após 30 segundos.",
   "localBridge.soundUnavailable": "O pareamento por som não está disponível nesta versão. Leia o código QR ou cole o código de pareamento.",
   "localBridge.soundTimeout": "Nenhum som recebido. Aproxime o celular, aumente o volume de mídia e tente novamente.",
   "localBridge.microphoneDenied": "Permita o microfone ou use o QR ou cole o código.",

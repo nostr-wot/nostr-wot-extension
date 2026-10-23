@@ -1433,7 +1433,7 @@
   "localBridge.soundPreparing": "Preparing microphone… Wait for “Listening” before playing the phone’s sound.",
   "localBridge.soundStart": "Start listening",
   "localBridge.soundListening": "Listening… Play the pairing sound on your phone.",
-  "localBridge.soundHint": "Listen with this computer’s microphone, then play the pairing sound on your phone. Audio is decoded locally and listening stops after 30 seconds.",
+  "localBridge.soundHint": "Listen for this pairing attempt only, then play the sound on your phone. Audio stays on this computer. Listening stops when the code arrives or after 30 seconds.",
   "localBridge.soundUnavailable": "Sound pairing is unavailable in this version. Scan the QR code or paste the pairing code.",
   "localBridge.soundTimeout": "No pairing sound received. Move the phone closer, raise its media volume and try again.",
   "localBridge.microphoneDenied": "Allow microphone access, or use the QR code or paste instead.",

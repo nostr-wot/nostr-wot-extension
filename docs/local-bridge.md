@@ -23,7 +23,9 @@ The bridge tab uses the shared animated topographic background, a raised card fo
 
 ## Sound pairing availability
 
-Sound pairing is unavailable in 0.8.14. The existing decoder requires dynamic JavaScript evaluation that extension CSP correctly blocks. The microphone control is disabled with a localized explanation, and the decoder is not included in the shipped bundle. Use camera QR or paste for Wi-Fi, or direct Bluetooth discovery. Re-enabling sound requires a CSP-compatible decoder build and a packaged-browser test; do not weaken CSP.
+Sound is an optional, one-attempt Wi-Fi bootstrap. Click the microphone icon, then **Start listening**, and play the pairing sound on the phone. Opening the page or dialog never activates capture. Audio stays on the computer; the microphone stops after a valid code, error, cancellation, hiding/closing the tab or 30 seconds (including setup). A decoded code advances directly to the existing Wi-Fi handshake and mandatory phone number comparison. The microphone is not needed during the connected session and never restarts automatically, even if the browser remembers permission.
+
+The decoder is built with Emscripten `DYNAMIC_EXECUTION=0` and binary-safe Embind strings. The checked-in module includes its WASM; no scripts or decoder assets are downloaded at runtime and CSP is unchanged. See `third_party/ggwave/PROVENANCE.md` and `scripts/build-sound-decoder.sh` for source and reproducible build instructions. The Chrome package smoke test feeds an independently encoded waveform into the actual microphone/audio worklet path, checks decoded high-bit bytes, automatic Wi-Fi dispatch, CSP, capture shutdown and no restart on reload. Physical speaker/microphone testing is still required for room noise and device volume.
 
 ### Mandatory phone comparison for new pairings
 
@@ -33,7 +35,7 @@ The phone offers that number among three shuffled choices and “None match.” 
 
 QR, pasted links and sound only transfer bootstrap information. Anyone nearby may copy it, but possession alone does not authorize pairing. Users must reject an unsolicited prompt or a number that is absent from their intended computer.
 
-Valid pasted or scanned pairing codes immediately advance to connection. Wi-Fi connects automatically; Bluetooth advances to the native device-selection step, opened by an explicit click to preserve browser user activation. The camera action and disabled sound indicator are embedded in the code field. Back sits inside the setup card as a neutral gray control and cancels any pending connection.
+Valid pasted or scanned pairing codes immediately advance to connection. Wi-Fi connects automatically; Bluetooth advances to the native device-selection step, opened by an explicit click to preserve browser user activation. The camera and optional microphone actions are embedded in the code field. Back sits inside the setup card as a neutral gray control and cancels any pending connection.
 
 Bluetooth uses direct discovery: choose the phone in the browser chooser, then choose the displayed six-digit code on the phone. The phone must have Local network → Bluetooth → Pair a computer open. QR and paste are Wi-Fi setup options. Direct discovery commits the peer key and hidden nonce before the phone reveals its challenge; the signed hello reveals the commitment and the signed confirmation must use that exact challenge. No signing session is established without phone confirmation. Older phone builds need updating.
 

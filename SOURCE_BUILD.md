@@ -19,3 +19,5 @@ Compare extracted files rather than ZIP checksums, since ZIP entry timestamps va
 See docs/deployment.md for the consent declarations and network destinations. See [the security model](docs/security.md) and [testing guide](docs/testing.md) for current protections and verification commands.
 
 Release verification compares the complete file list and bytes of both rebuilt archives, including manifests, HTML, JavaScript, CSS, icons and locales. ZIP timestamps are excluded from the comparison. SHA256SUMS is supplied separately from the source ZIP to avoid a self-referential archive checksum.
+
+The optional sound decoder is checked in at `src/vendor/ggwave/ggwave.mjs`, including its WASM. Its MIT-licensed C++ source and binding are in `third_party/ggwave/`. To regenerate it, activate Emscripten 3.1.64 and run `scripts/build-sound-decoder.sh`; ordinary builds need no Emscripten installation. The Chrome package smoke test also checks sound decoding through a fake microphone under the real extension CSP.

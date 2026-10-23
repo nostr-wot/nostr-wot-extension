@@ -1433,7 +1433,7 @@
   "localBridge.soundPreparing": "Préparation du microphone… Attendez « Écoute en cours » avant de lancer le son du téléphone.",
   "localBridge.soundStart": "Lancer l’écoute",
   "localBridge.soundListening": "Écoute… Jouez le son de jumelage sur votre téléphone.",
-  "localBridge.soundHint": "Écoutez avec le microphone de l’ordinateur, puis jouez le son sur le téléphone. Le décodage est local et l’écoute s’arrête après 30 secondes.",
+  "localBridge.soundHint": "Écoutez uniquement pour cette tentative d’association, puis lancez le son sur votre téléphone. L’audio reste sur cet ordinateur. L’écoute s’arrête à la réception du code ou après 30 secondes.",
   "localBridge.soundUnavailable": "L’association par son est indisponible dans cette version. Scannez le code QR ou collez le code d’association.",
   "localBridge.soundTimeout": "Aucun son reçu. Rapprochez le téléphone, augmentez son volume multimédia et réessayez.",
   "localBridge.microphoneDenied": "Autorisez le microphone ou utilisez le QR ou collez le code.",

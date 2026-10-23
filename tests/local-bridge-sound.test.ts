@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { execFileSync } from 'node:child_process';
 import { decodeSoundOffer } from '../src/services/signing/localBridge/sound.ts';
 import { parsePairingUri } from '../src/services/signing/localBridge/protocol.ts';
 const packet = Buffer.from('4e570100' + '11'.repeat(32) + '22'.repeat(32) + 'c0a80118d3c3', 'hex');
@@ -90,5 +91,40 @@ test('microphone float frames decode a real pairing waveform and release capture
     assert.deepEqual(errors,[]);assert.deepEqual(codes,[decodeSoundOffer(packet)]);assert.equal(stops,1);assert.equal(closes,1);
   } finally {
     stop?.();names.forEach((name,i)=>{if(originals[i])Object.defineProperty(globalThis,name,originals[i]!);else Reflect.deleteProperty(globalThis,name);});
+  }
+});
+
+// This is the extension CSP restriction that the previous npm build violated.
+test('sound decoder initializes without dynamic JavaScript execution', () => {
+  execFileSync(process.execPath, ['--disallow-code-generation-from-strings', '--input-type=module', '-e', `
+    import factory from './src/vendor/ggwave/ggwave.mjs';
+    const modem = await factory({ print() {}, printErr() {} });
+    const instance = modem.init(modem.getDefaultParameters());
+    if (instance < 0) throw new Error('Decoder failed to initialize');
+    modem.free(instance);
+  `], { cwd: process.cwd(), stdio: 'pipe' });
+});
+
+test('the one-attempt deadline also stops a delayed microphone grant', async t => {
+  const { startSoundPairing } = await import('../src/services/browser/soundPairing.ts');
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const originalContext = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
+  let grant!: (stream: MediaStream) => void;
+  let stops = 0, closes = 0;
+  const errors: string[] = [];
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { mediaDevices: { getUserMedia: () => new Promise(resolve => { grant = resolve; }) } } });
+  Object.defineProperty(globalThis, 'AudioContext', { configurable: true, value: class { close() { closes++; return Promise.resolve(); } } });
+  try {
+    startSoundPairing(assert.fail, key => errors.push(key));
+    t.mock.timers.tick(29_999); assert.deepEqual(errors, []);
+    t.mock.timers.tick(1); assert.deepEqual(errors, ['localBridge.soundTimeout']);
+    grant({ getTracks: () => [{ stop: () => stops++ }] } as unknown as MediaStream);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(stops, 1); assert.equal(closes, 1);
+  } finally {
+    t.mock.timers.reset();
+    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator); else Reflect.deleteProperty(globalThis, 'navigator');
+    if (originalContext) Object.defineProperty(globalThis, 'AudioContext', originalContext); else Reflect.deleteProperty(globalThis, 'AudioContext');
   }
 });

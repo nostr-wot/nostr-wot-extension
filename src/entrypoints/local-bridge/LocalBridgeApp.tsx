@@ -24,12 +24,16 @@ import IconMicrophone from '@assets/IconMicrophone';
 import IconChevronLeft from '@assets/IconChevronLeft';
 import IconButton from '@components/IconButton';
 
+const SoundPairingDialog = lazy(() => import('./SoundPairingDialog'));
 const QrCameraDialog = lazy(() => import('./QrCameraDialog'));
 
 type Mode = 'wifi' | 'ble';
 export default function LocalBridgeApp() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [uri, setUri] = useState('');
+  const [listening, setListening] = useState(false);
+  const closeSound = useCallback(() => setListening(false), []);
+  const soundError = useCallback((key: string) => { setListening(false); setError(t(key)); }, []);
   const [scanning, setScanning] = useState(false);
   const closeScanner = useCallback(() => setScanning(false), []);
   const scanError = useCallback((key: string) => { setScanning(false); setError(t(key)); }, []);
@@ -95,7 +99,7 @@ export default function LocalBridgeApp() {
     } finally { key?.fill(0); }
   }, [mode]);
   const scanned = useCallback((value: string) => {
-    setScanning(false);
+    setScanning(false); setListening(false);
     try {
       const offer = parsePairingUri(value);
       if (offer.transport !== mode) throw new Error(t('localBridge.wrongTransport'));
@@ -110,7 +114,7 @@ export default function LocalBridgeApp() {
     catch (e) { setError(e instanceof Error ? e.message : t('localBridge.failed')); }
   };
   const bluetoothAvailable = 'bluetooth' in navigator;
-  return <ExtensionPage cardTestId="bridge-card" after={scanning && <Suspense fallback={null}><QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} /></Suspense>}>
+  return <ExtensionPage cardTestId="bridge-card" after={<Suspense fallback={null}>{scanning && <QrCameraDialog onCode={scanned} onError={scanError} onClose={closeScanner} />}{listening && <SoundPairingDialog onCode={scanned} onError={soundError} onClose={closeSound} />}</Suspense>}>
     <Container gap={6}>
       {mode && <Button variant="neutral" small className="self-start" onClick={() => { disconnect(); setMode(null); setUri(''); setError(''); }}><IconChevronLeft />{t('common.back')}</Button>}
       <Heading>{t('localBridge.title')}</Heading>
@@ -124,9 +128,8 @@ export default function LocalBridgeApp() {
         <Text variant="hint">{t('localBridge.accountHint')}</Text>
         {state === 'idle' && mode === 'wifi' && <Input type="password" label={t('localBridge.code')} value={uri} onChange={(event) => setUri(event.target.value)} onPaste={(event) => { event.preventDefault(); scanned(event.clipboardData.getData('text')); }} onKeyDown={(event) => { if (event.key === 'Enter' && uri.trim()) { event.preventDefault(); scanned(uri); } }} autoComplete="off" spellCheck={false} actions={[
           <IconButton key="camera" size="large" title={t('localBridge.scan')} aria-label={t('localBridge.scan')} onClick={() => { setError(''); setScanning(true); }}><IconCamera /></IconButton>,
-          <IconButton key="sound" size="large" title={t('localBridge.soundUnavailable')} aria-label={t('localBridge.sound')} aria-describedby="sound-unavailable" disabled><IconMicrophone /></IconButton>,
+          <IconButton key="sound" size="large" title={t('localBridge.sound')} aria-label={t('localBridge.sound')} onClick={() => { setError(''); setListening(true); }}><IconMicrophone /></IconButton>,
         ]} />}
-        {state === 'idle' && mode === 'wifi' && <Text id="sound-unavailable" variant="hint">{t('localBridge.soundUnavailable')}</Text>}
         {state === 'connected' ? <>
           <Text className="text-success" role="status">{t('localBridge.connected')}</Text>
           <Text mono className="break-all">{pubkey}</Text>
