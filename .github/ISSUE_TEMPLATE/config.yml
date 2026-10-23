@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Passkey integration guide
+    url: https://nostr-wot.com/passkey-integrations
+    about: Understand compatibility, access scope and the integration review process before requesting support.
   - name: Private vulnerability report
     url: https://github.com/nostr-wot/nostr-wot-extension/security/advisories/new
     about: Report security vulnerabilities privately. Never publish credentials or exploit details in a public issue.
