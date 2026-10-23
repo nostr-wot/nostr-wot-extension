@@ -1,4 +1,6 @@
-import { DERIVED_PASSKEY_APPS, NPK_HANDLE_MAGIC, NPK_HANDLE_VERSION, PASSKEY_RP_ID, LEGACY_PASSKEY_RP_ID, type DerivedParameterSet } from '@constants/passkey.ts';
+import { classifyPasskeyHandle as sdkClassifyPasskeyHandle } from '@nostr-wot/identity/vault';
+import { hexToBytes } from '@lib/crypto/utils.ts';
+import { DERIVED_PASSKEY_APPS, PASSKEY_RP_ID, LEGACY_PASSKEY_RP_ID, type DerivedParameterSet } from '@constants/passkey.ts';
 import { validRpId } from '@domain/vault/passkey.ts';
 
 /**
@@ -12,24 +14,15 @@ export type PasskeyHandleClass =
   | { mode: 'unsupported' }
   | { mode: 'unknown' };
 
-const DERIVED_HANDLE_BYTES = 22;
-const STORED_HANDLE_BYTES = 37;
-
-function npkPrefix(handle: Uint8Array): boolean {
-  return handle.length >= 3 && NPK_HANDLE_MAGIC.every((byte, index) => handle[index] === byte);
-}
-
-/** Classify a returned userHandle in the order the specification requires. */
+/** Use the shared protocol classifier, adapting its hex author to the host's byte API. */
 export function classifyPasskeyHandle(handle: Uint8Array | null | undefined): PasskeyHandleClass {
-  if (!handle || handle.length === 0) return { mode: 'unknown' };
-  const tagged = npkPrefix(handle) && handle[3] === NPK_HANDLE_VERSION;
-  if (tagged && handle[4] === 0x01 && handle.length === DERIVED_HANDLE_BYTES) return { mode: 'derived', parameterSet: handle[5] };
-  if (tagged && handle[4] === 0x02 && handle.length === STORED_HANDLE_BYTES) return { mode: 'stored', author: handle.slice(5) };
-  // Before the NPK rule: a raw public key may happen to start with "NPK".
-  if (handle.length === 32) return { mode: 'stored', legacy: 'raw-pubkey', author: handle.slice() };
-  if (handle.length === 33 && handle[0] === 0x03) return { mode: 'stored', legacy: 'key-in-handle' };
-  if (npkPrefix(handle)) return { mode: 'unsupported' };
-  return { mode: 'unknown' };
+  const result = sdkClassifyPasskeyHandle(handle);
+  if (result.mode !== 'stored') return result;
+  return {
+    mode: 'stored',
+    ...('author' in result ? { author: hexToBytes(result.author) } : {}),
+    ...('legacy' in result ? { legacy: result.legacy } : {}),
+  };
 }
 
 /** What an import of a derived key from another app may do with a classified handle. */

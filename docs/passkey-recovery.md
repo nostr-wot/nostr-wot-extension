@@ -104,3 +104,7 @@ Accounts created with a passkey retain their generated seed and support derived 
 ## Initial auto-lock confirmation
 
 After creating or restoring the first account with a verified passkey, the onboarding auto-lock screen reuses that fresh verification once to confirm passkey, password or None protection. Confirming this screen does not request another WebAuthn operation. The authorization is held only in background memory, expires after five minutes, and is invalidated by locking, switching accounts, reauthentication, or changing protection in Security. If it expires or the background restarts, setup reports that protection must be completed in Security after unlocking. Ordinary Security changes continue to verify the current protection.
+
+## Shared protocol candidate
+
+The external derived-passkey import uses the published `@nostr-wot/identity@1.1.0-next.0` package for handle classification, PRF inputs and key derivation. Extension code retains browser permissions, user confirmation and buffer ownership. This candidate does not enable stored-key or vault imports from other apps; those still require the separate recovery integration and device checks.
