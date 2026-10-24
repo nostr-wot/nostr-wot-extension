@@ -76,6 +76,16 @@ jobs:
         run: node --import tsx --import ./tests/helpers/register-mocks.ts --test tests/relay.test.ts
         timeout-minutes: 2
 
+      - name: Retain verified release archives
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-extension-archives
+          path: |
+            nostr-wot-chrome.zip
+            nostr-wot-firefox.zip
+          if-no-files-found: error
+          retention-days: 14
+
   # The job above runs `npm ci`, so it only ever exercises the versions the lockfile
   # pins. The lockfile is the pin and it works: a plain `npm install` on a fresh clone
   # installs the pinned versions too, so this is not about protecting ordinary builds.
