@@ -38,6 +38,8 @@ export default function PasswordStep({ account, upgradeId, onNext, configurePass
   const [loading, setLoading] = useState<boolean>(false);
   const [vaultExists, setVaultExists] = useState<boolean | null>(null); // null = checking
   const [needsUnlock, setNeedsUnlock] = useState(false);
+  const [checkError, setCheckError] = useState('');
+  const [checkAttempt, setCheckAttempt] = useState(0);
 
   /**
    * The unlock form for the "vault exists, add this account to it" branch.
@@ -71,11 +73,13 @@ export default function PasswordStep({ account, upgradeId, onNext, configurePass
     if (configurePasskey) { setVaultExists(false); return; }
     let current = true;
     setVaultExists(null);
+    setCheckError('');
     setNeedsUnlock(false);
     void (async () => {
       try {
         const exists = await rpcRead<boolean>('vault_exists');
         if (!current) return;
+        if (typeof exists !== 'boolean') throw new Error(t('common.error'));
         if (!exists) { setVaultExists(false); return; }
         // Vault blob exists but may have no accounts (user removed all)
         // In that case, treat as new vault so user can set auto-lock
@@ -95,12 +99,14 @@ export default function PasswordStep({ account, upgradeId, onNext, configurePass
           upgradeFromReadOnly: upgradeId || null,
         });
         if (current) onNextRef.current(!!upgradeId);
-      } catch {
-        if (current) setVaultExists(false);
+      } catch (error) {
+        // A failed read or duplicate-account rejection is not an empty vault.
+        // Never offer first-time protection settings on an unsuccessful check.
+        if (current) setCheckError((error as Error).message || t('common.error'));
       }
     })();
     return () => { current = false; };
-  }, [account, upgradeId, configurePasskey]);
+  }, [account, upgradeId, configurePasskey, checkAttempt]);
 
   const isNever = autoLockMs === 0;
 
@@ -141,6 +147,13 @@ export default function PasswordStep({ account, upgradeId, onNext, configurePass
     }
     setLoading(false);
   };
+
+  if (checkError) return (
+    <Container className="flex-1">
+      <FormError>{checkError}</FormError>
+      <Button onClick={() => setCheckAttempt(value => value + 1)}>{t('common.retry')}</Button>
+    </Container>
+  );
 
   // Still checking vault state
   if (vaultExists === null) return null;

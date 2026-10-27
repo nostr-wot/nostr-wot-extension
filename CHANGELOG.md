@@ -5,6 +5,10 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+### Fixed
+
+- Adding an existing account through Nostr Connect or key import now shows the actual error instead of reopening first-time auto-lock setup. Failed vault checks also preserve existing protection settings.
+
 ## 0.8.18 — 2026-10-23
 
 ### Store release notes

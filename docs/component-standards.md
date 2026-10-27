@@ -871,3 +871,7 @@ Wizard step titles live only in the wizard header; step bodies do not repeat the
 `Input.actions` accepts trailing icon buttons (up to 36px each) inside the field, reserving text padding and preserving optional password visibility controls. Each action must have an accessible label.
 
 Phone-bridge account labels show the localized Network badge (Red in Spanish) while that account has phone signing selected, including when disconnected. Both the active account header and account picker observe the existing per-account bridge selection in storage. This badge takes precedence over Remote and Read-only; ordinary watch-only accounts retain Read-only. The label does not change account key material or signing permissions.
+
+### Adding accounts to an existing vault
+
+The account wizard preserves existing vault protection. `PasswordStep` checks the vault and adds the incoming account without showing auto-lock setup when the vault already contains accounts. Failed reads and duplicate-account rejections display the original error with Retry; they never imply that the vault is absent. The add-account flow retains its Add Account heading. Only a confirmed absent or empty vault enters first-time protection setup.

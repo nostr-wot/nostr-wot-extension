@@ -124,7 +124,7 @@ function buildSteps(
       content: <VerifyStep mnemonic={flow.mnemonic} onVerified={() => flow.send('VERIFIED')} />,
     },
     [WizardStep.Password]: {
-      title: t('wizard.protectYourAccount'),
+      title: t(hasAccounts ? 'wizard.addAccount' : 'wizard.protectYourAccount'),
       content: (
         <PasswordStep
           configurePasskey={['passkey', 'passkeyAdvanced', 'passkeyRestore'].includes(flow.context?.method || '')}
