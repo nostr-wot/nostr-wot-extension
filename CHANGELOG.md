@@ -5,6 +5,16 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+## 0.8.19 — 2026-10-28
+
+### Store release notes
+
+- Fix auto-lock setup appearing after a duplicate account or failed vault check when adding an account. Existing protection settings are preserved and the actual error is shown.
+
+### Fixed
+
+- Adding an existing account through Nostr Connect or key import now shows the actual error instead of reopening first-time auto-lock setup. Failed vault checks also preserve existing protection settings.
+
 ## 0.8.18 — 2026-10-23
 
 ### Store release notes

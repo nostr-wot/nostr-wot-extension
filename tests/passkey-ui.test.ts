@@ -710,3 +710,28 @@ test('confirming None after passkey creation completes without another credentia
     if (oldPublicKey) Object.defineProperty(globalThis, 'PublicKeyCredential', oldPublicKey); else Reflect.deleteProperty(globalThis, 'PublicKeyCredential');
   }
 });
+
+for (const failure of ['duplicate', 'read']) test(`existing-vault ${failure} failure never exposes first-time auto-lock setup`, async context => {
+  const { dom, root } = mount(); const calls: string[] = []; let completed = 0; let reject = true;
+  await browser.storage.local.set({ accounts: [{ id: 'one' }, { id: 'two' }] });
+  context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+    calls.push(message.method);
+    if (message.method === 'vault_exists') return failure === 'read' && reject ? { error: 'Could not read vault' } : { result: true };
+    if (message.method === 'vault_isLocked') return { result: false };
+    if (message.method === 'onboarding_addToVault') return reject ? { error: 'This account is already added with full signing access.' } : { result: true };
+    return { result: false };
+  });
+  try {
+    await act(async () => root.render(createElement(PasswordStep, { account: { id: 'incoming', type: 'nip46' }, upgradeId: null, onNext: () => completed++ })));
+    assert.match(document.body.textContent!, failure === 'read' ? /Could not read vault/ : /already added/);
+    assert.doesNotMatch(document.body.textContent!, /wizard.protectYourAccountDesc|security.autoLock|wizard.minEightChars/);
+    assert.equal(document.querySelector('input[type="password"]'), null);
+    assert.equal(completed, 0);
+    assert.ok(!calls.includes('onboarding_createVault'));
+    reject = false;
+    await act(async () => button('common.retry').click());
+    assert.equal(completed, 1);
+    assert.ok(!calls.some(method => ['onboarding_createVault', 'vault_setAutoLock', 'onboarding_configurePasskeyProtection'].includes(method)));
+    assert.doesNotMatch(document.body.textContent!, /wizard.protectYourAccountDesc/);
+  } finally { await act(async () => root.unmount()); dom.window.close(); await browser.storage.local.remove('accounts'); }
+});
