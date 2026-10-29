@@ -13,7 +13,7 @@ import { makeLnurlInvoice } from '../helpers/lnurl-invoice.ts';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { bech32 } from '@scure/base';
-import { parseLnurl, parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl, assertPublicHttpsUrl, type LnurlPayParams } from '../../src/domain/wallet/lnurl.ts';
+import { hostedLightningAddress, parseLnurl, parseLightningAddress, isLightningAddress, lightningAddressToLnurlpUrl, assertPublicHttpsUrl, type LnurlPayParams } from '../../src/domain/wallet/lnurl.ts';
 import { fetchPayParams, requestInvoice } from '../../src/services/wallet/lnurl.ts';
 
 // Valid bolt11 with no amount in the HRP
@@ -452,5 +452,19 @@ describe('pasted LNURL-pay', () => {
       await assert.rejects(fetchPayParams(encoded, fetchFn), /not a pay request/);
       assert.equal(urls.length, 1);
     }
+  });
+});
+
+
+describe('hosted receive address alias', () => {
+  it('maps only the exact legacy hosted domain and keeps the public alias', () => {
+    assert.equal(hostedLightningAddress('Alice@ZAPS.NOSTR-WOT.COM'), 'alice@nostrwot.com');
+    assert.equal(hostedLightningAddress('alice@nostrwot.com'), 'alice@nostrwot.com');
+    for (const address of ['Alice@example.com', 'alice@zaps.nostr-wot.com.example.com', 'alice@other.zaps.nostr-wot.com', 'invalid', null, undefined, '']) {
+      assert.equal(hostedLightningAddress(address), address);
+    }
+  });
+  it('does not rewrite a payment destination supplied by the user', () => {
+    assert.equal(lightningAddressToLnurlpUrl('alice@zaps.nostr-wot.com'), 'https://zaps.nostr-wot.com/.well-known/lnurlp/alice');
   });
 });

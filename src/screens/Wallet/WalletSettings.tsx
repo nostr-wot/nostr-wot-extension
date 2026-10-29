@@ -235,7 +235,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected, 
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setUsernameDraft(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ''))}
                   small
                 />
-                <span className="text-md text-muted whitespace-nowrap">@zaps.nostr-wot.com</span>
+                <span className="text-md text-muted whitespace-nowrap">@nostrwot.com</span>
                 <Button small onClick={handleClaimUsername} disabled={claimLoading || !usernameDraft.trim()}>
                   {claimLoading ? t('common.loading') : t('wallet.claimUsername')}
                 </Button>

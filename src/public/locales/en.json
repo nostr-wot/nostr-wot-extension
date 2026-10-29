@@ -765,7 +765,7 @@
   "wallet.setupBannerHint": "Connect a Lightning wallet to send and receive zaps.",
   "wallet.homeSats": "{n} sats",
   "wallet.lightningAddress": "Lightning Address",
-  "wallet.lightningAddressHint": "Claim a username to receive payments at username@zaps.nostr-wot.com",
+  "wallet.lightningAddressHint": "Claim a username to receive payments at username@nostrwot.com",
   "wallet.usernamePlaceholder": "username",
   "wallet.claimUsername": "Claim",
   "wallet.addToProfile": "Add to Profile",

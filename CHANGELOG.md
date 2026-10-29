@@ -5,6 +5,16 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+## 0.8.20 — 2026-10-29
+
+### Store release notes
+
+- Receive payments with shorter `@nostrwot.com` Lightning addresses. Existing hosted addresses show the new alias in wallet settings, copy actions, receive QR codes and optional profile updates; old addresses keep working.
+
+### Changed
+
+- Use `@nostrwot.com` for hosted receive addresses and the username claim hint. Custom-provider addresses and the wallet API server remain unchanged. Profile updates still require confirmation.
+
 ## 0.8.19 — 2026-10-28
 
 ### Store release notes

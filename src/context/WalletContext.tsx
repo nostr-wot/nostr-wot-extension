@@ -1,3 +1,4 @@
+import { hostedLightningAddress } from '@domain/wallet/lnurl.ts';
 import { LOCK_STATE_KEY } from '@constants/vault.ts';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { walletDisplayKey, type WalletDisplayCache } from '@domain/wallet/display-cache.ts';
@@ -157,7 +158,7 @@ function WalletAccountState({ enabled, accountId, publish }: {
   const ensureSettings = useCallback(() => setSettingsRequested(true), []);
   const patchSettings = useCallback((next: Partial<WalletSettingsData>) => {
     settingsRevision.current++;
-    patchSettingsData(next);
+    patchSettingsData('address' in next ? {...next, address:hostedLightningAddress(next.address)} : next);
   }, [patchSettingsData]);
 
   const markDisconnected = useCallback(() => {
@@ -243,7 +244,7 @@ export async function loadWalletSettings(
   const reads: Array<[string, (value: any) => Partial<WalletSettingsData>]> = [
     ['wallet_getInfo', value => ({alias:value.alias || ''})],
     ['wallet_getAutoApproveThreshold', value => ({threshold:value})],
-    ['wallet_getLightningAddress', value => ({address:value.address})],
+    ['wallet_getLightningAddress', value => ({address:hostedLightningAddress(value.address)})],
   ];
   if (providerType === 'lnbits') reads.push(
     ['wallet_getNwcUri', value => ({nwcUri:value})],

@@ -170,7 +170,7 @@ User clicks "Create Wallet"
 
 ### 5.2 Lightning Address Claiming
 
-After provisioning, users can claim a Lightning Address (`username@zaps.nostr-wot.com`) that creates an lnurlp pay link for receiving payments.
+After provisioning, users can claim a Lightning Address (`username@nostrwot.com`) that creates an lnurlp pay link for receiving payments.
 
 ```
 User enters desired username
@@ -187,6 +187,8 @@ Server endpoints:
 | `/api/v2/claim-username` | POST | NIP-98 | Claim a username, creates lnurlp pay link |
 | `/api/lightning-address` | GET | None | Look up address by pubkey |
 | `/api/v2/release-username` | POST | NIP-98 | Delete pay link, release username |
+
+Hosted receive addresses from the legacy `zaps.nostr-wot.com` domain are displayed as `nostrwot.com` throughout shared wallet settings, including copy, receive QR codes and optional profile updates. The old address remains valid. Other provider addresses and user-entered payment destinations are preserved; the API remains at `https://zaps.nostr-wot.com`.
 
 Username validation: `^[a-z0-9][a-z0-9._-]{1,28}[a-z0-9]$` (3-30 chars). Reserved names blocked.
 
