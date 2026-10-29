@@ -56,6 +56,13 @@ export function parseLightningAddress(input: string): { name: string; domain: st
   return { name, domain };
 }
 
+/** Present hosted receive addresses under the public alias; never rewrite payment input. */
+export function hostedLightningAddress(address: string | null | undefined): string | null | undefined {
+  if (!address) return address;
+  const parsed = parseLightningAddress(address);
+  return parsed?.domain === 'zaps.nostr-wot.com' ? `${parsed.name}@nostrwot.com` : address;
+}
+
 /** True when the input looks like a Lightning Address rather than an invoice. */
 export function isLightningAddress(input: string): boolean {
   return parseLightningAddress(input) !== null;

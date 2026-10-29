@@ -1158,3 +1158,21 @@ it('external verification notices explain the failure instead of suggesting an a
   assert.match(html,/approval.invalidExternalEvent/);
   assert.doesNotMatch(html,/approval.accountMismatchReason/);
 });
+
+
+it('wallet settings expose the hosted alias consistently to receive and profile surfaces', async () => {
+  const {loadWalletSettings}=await import('../src/context/WalletContext');
+  const {default:Deposit}=await import('../src/screens/Wallet/DepositDialog');
+  for (const [stored, expected] of [['alice@zaps.nostr-wot.com','alice@nostrwot.com'], ['alice@example.com','alice@example.com']]) {
+    const settings: {address?:string|null} = {};
+    await loadWalletSettings('lnbits', next => Object.assign(settings,next), () => true, async method => {
+      if (method === 'wallet_getLightningAddress') return {address:stored};
+      if (method === 'wallet_getInfo') return {};
+      return null;
+    });
+    assert.equal(settings.address,expected);
+    const render=(address:string)=>renderToStaticMarkup(createElement(Deposit,{onClose(){},onPaid(){},address}));
+    assert.equal(render(settings.address!),render(expected), 'text, copy value and QR use the same alias');
+    assert.ok(render(settings.address!).includes(expected));
+  }
+});
