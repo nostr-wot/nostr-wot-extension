@@ -14,6 +14,9 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ### Fixed
 
+- Serialize site consent changes so connecting with a permission template cannot undo a concurrent disconnect.
+- Recheck graph permissions after approval and before returning data, so a newer Deny overrides an older pending approval.
+
 - Group authentication requests by site, account and protocol, show destinations in a compact list, and include them in Approve all with an explicit one-time destination review. The pending overview uses plain Approve all/Deny all actions without remembered-permission menus. Later requests remain pending; wallet, zap and legacy sign-in requests stay separate.
 - Keep the connection permissions dialog visible when opened from the main popup’s site connection card.
 - Keep passkey provider recovery within the 2 KB write limit by storing only the associated seed/path or private key, instead of the entire growing vault. Existing recovery files and legacy provider backups remain readable; independent imported post-quantum keys retain the file fallback.

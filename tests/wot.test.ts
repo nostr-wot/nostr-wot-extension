@@ -887,3 +887,20 @@ test('an explicit Ask graph rule waits for approval before returning data', asyn
         assert.match(result.error.message, /Permission denied/);
     } finally { for (const item of await queue.getPending()) await queue.resolveRequest(item.id, {allow:false}); }
 });
+test('a revoked graph permission cannot be bypassed by an older approval', async () => {
+    await setup();
+    await permissions.migrateToGlobalRules();
+    await permissions.saveDirect('https://site.test', 'wot_getFollows', 'ask', 'a');
+    const queue = await import('../src/services/signing/approvalQueue');
+    const outcome = handleWotRequest('wot_getFollows', {origin:'https://site.test', pubkey:a}).then(value => ({value}), error => ({error}));
+    let pending = await queue.getPending();
+    for (let i=0; i<50 && !pending.length; i++) { await new Promise(resolve => setTimeout(resolve,10)); pending = await queue.getPending(); }
+    try {
+        assert.ok(pending[0]);
+        await permissions.saveDirect('https://site.test', 'wot_getFollows', 'deny', 'a');
+        await queue.resolveRequest(pending[0].id, {allow:true,remember:false});
+        const result = await outcome;
+        assert.ok('error' in result, 'a newer denial must win over the open approval');
+        assert.match(result.error.message, /Permission denied/);
+    } finally { for (const item of await queue.getPending()) await queue.resolveRequest(item.id, {allow:false}); }
+});

@@ -1,3 +1,4 @@
+import { siteConsentMutations } from './siteConsent';
 import { validateTemplateRules } from '@domain/permissions/templates';
 import { revokeAuthenticationGrants } from './authentication.ts';
 import { siteScopes, sitePermissionBucket, effectiveSitePermissions } from '@domain/site/siteScope.ts';
@@ -689,7 +690,7 @@ export async function connectWithTemplate(domain: string, accountId: string, inp
   if (!['https:', 'http:'].includes(url.protocol) || url.origin !== domain) throw new Error('Invalid site origin');
   const rules = validateTemplateRules(input);
   await migrateToGlobalRules();
-  await _lock.run(async () => {
+  await siteConsentMutations.run(() => _lock.run(async () => {
     const state = await browser.storage.local.get(['activeAccountId', 'accounts', 'allowedDomains', 'identityDisabledSites']);
     if (!accountId || state.activeAccountId !== accountId) throw new Error('Account changed. Reopen the connection.');
     const account = (state.accounts as Array<{ id: string; readOnly?: boolean; type?: string }> | undefined)?.find(a => a.id === accountId);
@@ -709,5 +710,5 @@ export async function connectWithTemplate(domain: string, accountId: string, inp
       identityDisabledSites: (state.identityDisabledSites as string[] || []).filter(site => !siteScopes(domain).includes(site)),
     });
     invalidateCache();
-  });
+  }));
 }

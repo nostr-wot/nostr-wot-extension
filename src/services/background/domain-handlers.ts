@@ -1,3 +1,4 @@
+import { siteConsentMutations } from '../permissions/siteConsent';
 import { listTemplates, saveTemplate, deleteTemplate } from '../permissions/templates';
 import { tabOrigins, getTabOrigin } from '../browser/tabOrigins.ts';
 import { siteScopes, hasSiteScope } from '@domain/site/siteScope.ts';
@@ -54,29 +55,33 @@ export async function isDomainAllowed(domain: string): Promise<boolean> {
 }
 
 export async function addAllowedDomain(domain: string): Promise<boolean> {
-    const domains = await getAllowedDomains();
-    if (!domains.includes(domain)) {
-        domains.push(domain);
-        await browser.storage.local.set({ allowedDomains: domains });
-        invalidateDomainCache();
-    }
-    // Clear dismissal so manual adds via GlobeButton reset the state
-    await removeDismissedDomain(domain);
-    return true;
+    return siteConsentMutations.run(async () => {
+        const domains = await getAllowedDomains();
+        if (!domains.includes(domain)) {
+            domains.push(domain);
+            await browser.storage.local.set({ allowedDomains: domains });
+            invalidateDomainCache();
+        }
+        // Clear dismissal so manual adds via GlobeButton reset the state
+        await removeDismissedDomain(domain);
+        return true;
+    });
 }
 
 export async function removeAllowedDomain(domain: string): Promise<boolean> {
-    const domains = await getAllowedDomains();
-    const filtered = domains.filter(d => !siteScopes(domain).includes(d));
-    await browser.storage.local.set({ allowedDomains: filtered });
-    invalidateDomainCache();
-    // Disconnecting a site revokes its WebLN consent too — a re-connected
-    // site must call enable() again before it can touch the wallet.
-    await removeWeblnAllowedDomain(domain);
-    // And its signing rules. Leaving them behind made Disconnect a suggestion: the popup
-    // treated a site with any stored permission as connected and silently re-added it.
-    await signerPermissions.clearAllForDomain(domain);
-    return true;
+    return siteConsentMutations.run(async () => {
+        const domains = await getAllowedDomains();
+        const filtered = domains.filter(d => !siteScopes(domain).includes(d));
+        await browser.storage.local.set({ allowedDomains: filtered });
+        invalidateDomainCache();
+        // Disconnecting a site revokes its WebLN consent too — a re-connected
+        // site must call enable() again before it can touch the wallet.
+        await removeWeblnAllowedDomain(domain);
+        // And its signing rules. Leaving them behind made Disconnect a suggestion: the popup
+        // treated a site with any stored permission as connected and silently re-added it.
+        await signerPermissions.clearAllForDomain(domain);
+        return true;
+    });
 }
 
 // ── WebLN-allowed domains (separate consent from the NIP-07 connect) ──
@@ -274,7 +279,7 @@ export async function removeDismissedDomain(domain: string): Promise<void> {
 // ── Connecting a site ──
 
 /**
- * Connect a site: the one and only writer of `allowedDomains`.
+ * Connect a site through serialized consent mutations.
  *
  * Clicking "Connect this site" IS the consent, and it is the whole ceremony. There used to
  * be a second step — the popup asked the browser for `*://<domain>/*` host access — but
@@ -287,7 +292,7 @@ export async function removeDismissedDomain(domain: string): Promise<void> {
  * once the click was made durable it released the identity while the dialog was still
  * unanswered.
  *
- * Keeping this as the single writer is what makes the allowlist trustworthy — the popup's
+ * Serializing this with template connections and disconnects keeps the allowlist consistent — the popup's
  * site state, the NIP-07 gate, the signer shortcut and the account broadcast all read it.
  *
  * @param domain hostname the user chose to connect
@@ -457,12 +462,14 @@ export async function isIdentityDisabled(domain: string): Promise<boolean> {
 }
 
 async function setIdentityDisabled(domain: string, disabled: boolean): Promise<boolean> {
-    const data = await browser.storage.local.get('identityDisabledSites') as Record<string, string[]>;
-    const sites = new Set(data.identityDisabledSites || []);
-    if (disabled) sites.add(domain);
-    else for (const scope of siteScopes(domain)) sites.delete(scope);
-    await browser.storage.local.set({ identityDisabledSites: [...sites] });
-    return true;
+    return siteConsentMutations.run(async () => {
+        const data = await browser.storage.local.get('identityDisabledSites') as Record<string, string[]>;
+        const sites = new Set(data.identityDisabledSites || []);
+        if (disabled) sites.add(domain);
+        else for (const scope of siteScopes(domain)) sites.delete(scope);
+        await browser.storage.local.set({ identityDisabledSites: [...sites] });
+        return true;
+    });
 }
 
 // ── Enable for current domain ──

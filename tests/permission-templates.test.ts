@@ -77,3 +77,23 @@ it('combining templates keeps the most restrictive decision regardless of order'
   assert.equal(combineTemplateRules(templates).readMessages, 'deny');
   assert.equal(combineTemplateRules(templates.reverse()).readMessages, 'deny');
 });
+it('applying a template cannot restore another site disconnected concurrently', async context => {
+  await browser.storage.local.set({ allowedDomains: ['https://revoked.test'] });
+  const read = browser.storage.local.get.bind(browser.storage.local);
+  let release!: () => void;
+  let reached!: () => void;
+  const paused = new Promise<void>(resolve => { reached = resolve; });
+  const resume = new Promise<void>(resolve => { release = resolve; });
+  context.mock.method(browser.storage.local, 'get', async (key: any) => {
+    if (key === 'activeAccountId') { reached(); await resume; }
+    return read(key);
+  });
+  const connecting = permissions.connectWithTemplate('https://new.test', 'a', {});
+  await paused;
+  const disconnecting = removeAllowedDomain('https://revoked.test');
+  await new Promise<void>(resolve => setImmediate(resolve));
+  release();
+  await Promise.all([connecting, disconnecting]);
+  assert.equal(await isDomainAllowed('https://revoked.test'), false);
+  assert.equal(await isDomainAllowed('https://new.test'), true);
+});

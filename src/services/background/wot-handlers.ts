@@ -70,9 +70,13 @@ export async function handleWotRequest(method: string, params: Record<string, un
     }
     ctx.signal.throwIfAborted();
     if (!await isDomainAllowed(origin) || await isIdentityDisabled(origin)) throw new Error('Site access revoked');
+    if (permissionKey && await permissions.check(origin, permissionKey, undefined, ctx.account.id) === 'deny') throw new Error('Permission denied');
+    ctx.signal.throwIfAborted();
     const result = await queryWot(method.slice(4), params);
     ctx.signal.throwIfAborted();
     if (!await isDomainAllowed(origin) || await isIdentityDisabled(origin))
         throw new Error('Site access revoked');
+    if (permissionKey && await permissions.check(origin, permissionKey, undefined, ctx.account.id) === 'deny') throw new Error('Permission denied');
+    ctx.signal.throwIfAborted();
     return result;
 }
