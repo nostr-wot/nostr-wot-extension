@@ -1,3 +1,5 @@
+import * as permissions from '@services/permissions/permissions';
+import { queueRequest } from '@services/signing/approvalQueue';
 import { clearPublicLists } from '@services/wot/public-lists.ts';
 import { snapshotSummary } from '@services/wot/snapshots.ts';
 import { getWotDatabases } from '@services/wot/databases.ts';
@@ -50,9 +52,31 @@ export async function handleWotRequest(method: string, params: Record<string, un
     if (await handleGetPublicKey(origin) !== ctx.account.pubkey)
         throw new Error('Account changed');
     ctx.signal.throwIfAborted();
+    // Older connections use their original connection consent. Explicit graph rules
+    // from templates or Site rules add a per-action decision without changing that default.
+    const permissionKey = ['wot_getStatus', 'wot_getConfig', 'wot_getStats'].includes(method) ? 'wot_getStatus'
+        : ['wot_getFollows', 'wot_getCommonFollows'].includes(method) ? 'wot_getFollows'
+        : ['wot_getDistance', 'wot_getDistanceBatch', 'wot_getDetails', 'wot_getPath', 'wot_getTrustScore', 'wot_getTrustScoreBatch', 'wot_isInMyWoT', 'wot_filterByWoT'].includes(method) ? 'wot_getDistanceBatch' : null;
+    if (permissionKey) {
+        const rules = await permissions.getForDomain(origin, ctx.account.id);
+        if (permissionKey in rules || '*' in rules) {
+            const decision = await permissions.check(origin, permissionKey, undefined, ctx.account.id);
+            if (decision === 'deny') throw new Error('Permission denied');
+            if (decision === 'ask') {
+                const approval = await queueRequest({ type: permissionKey, permKey: permissionKey, origin, accountId: ctx.account.id, pubkey: ctx.account.pubkey, needsPermission: true });
+                if (!approval.allow) throw new Error('Permission denied');
+            }
+        }
+    }
+    ctx.signal.throwIfAborted();
+    if (!await isDomainAllowed(origin) || await isIdentityDisabled(origin)) throw new Error('Site access revoked');
+    if (permissionKey && await permissions.check(origin, permissionKey, undefined, ctx.account.id) === 'deny') throw new Error('Permission denied');
+    ctx.signal.throwIfAborted();
     const result = await queryWot(method.slice(4), params);
     ctx.signal.throwIfAborted();
     if (!await isDomainAllowed(origin) || await isIdentityDisabled(origin))
         throw new Error('Site access revoked');
+    if (permissionKey && await permissions.check(origin, permissionKey, undefined, ctx.account.id) === 'deny') throw new Error('Permission denied');
+    ctx.signal.throwIfAborted();
     return result;
 }

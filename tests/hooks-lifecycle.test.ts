@@ -552,7 +552,7 @@ it('Security offers None for a passkey vault and verifies the credential before 
  }
 });
 
-it('every enrolled passkey has a recovery icon, including other-account and legacy credentials', async context => {
+it('account backup details show recovery icons for its passkeys and legacy credentials, excluding other accounts', async context => {
  const view = await mount();
  const { default: PasskeySection } = await import('../src/screens/Settings/PasskeySection');
  const pubkey = 'a'.repeat(64);
@@ -568,9 +568,9 @@ it('every enrolled passkey has a recovery icon, including other-account and lega
  try {
   await view.render(createElement(PasskeySection, { locked: false, account: { pubkey, type: 'generated', readOnly: false } }));
   const icons = document.querySelectorAll<HTMLButtonElement>('button[aria-label="passkey.relayRecovery"]');
-  assert.equal(icons.length, 3);
+  assert.equal(icons.length, 2);
   await act(async () => icons[1].click());
-  assert.match(document.body.textContent!, /passkey.selectRecoveryAccount/);
+  assert.match(document.body.textContent!, /passkey.newEnrollmentRequired/);
   assert.equal([...document.querySelectorAll('button')].find(b => b.textContent === 'passkey.saveToRelays')!.disabled, true);
  } finally { await view.close(); }
 });
@@ -630,5 +630,70 @@ it('account switcher refreshes from the shared profile cache and ignores a late 
   await act(async () => { pending.resolve({ result: old }); });
   assert.ok(document.body.textContent?.includes(updated.name));
   assert.equal(document.querySelector('img')?.getAttribute('src'), updated.picture);
+ } finally { await view.close(); }
+});
+
+it('connection template review makes no grants until apply; skip sends no optional rules', async context => {
+ resetMockStorage();
+ const { default: ConnectionTemplateDialog } = await import('../src/components/PermissionTemplates/ConnectionTemplateDialog');
+ await browser.storage.local.set({ accounts: [{ id: 'template-account', pubkey: 'a'.repeat(64), name: 'Alice', type: 'nsec' }], activeAccountId: 'template-account' });
+ const calls: any[] = [];
+ context.mock.method(browser.runtime, 'sendMessage', async (message: any) => { calls.push(message); return { result: message.method === 'templates_list' ? [] : null }; });
+ const view = await mount();
+ let done = 0;
+ try {
+  await view.render(createElement(AccountProvider, null, createElement(ConnectionTemplateDialog, { domain:'https://primal.net', accountId:'template-account', onClose() {}, onConnected() { done++; } })));
+  assert.equal(calls.some(c => c.method === 'templates_connect'), false);
+  assert.equal(document.body.textContent!.includes('perm.readProfile'), false);
+  await act(async () => [...document.querySelectorAll('button')].find(button => button.textContent === 'templates.skip')!.click());
+  assert.deepEqual(calls.find(c => c.method === 'templates_connect').params, { domain:'https://primal.net', accountId:'template-account', rules:{} });
+  assert.equal(done, 1);
+ } finally { await view.close(); }
+});
+
+it('connection template apply sends reviewed social rules and keeps payment access absent', async context => {
+ resetMockStorage();
+ const { default: ConnectionTemplateDialog } = await import('../src/components/PermissionTemplates/ConnectionTemplateDialog');
+ await browser.storage.local.set({ accounts: [{ id:'a', pubkey:'b'.repeat(64), name:'Alice', type:'nsec' }], activeAccountId:'a' });
+ const calls: any[] = [];
+ context.mock.method(browser.runtime, 'sendMessage', async (message: any) => { calls.push(message); return { result:null }; });
+ const view = await mount();
+ try {
+  await view.render(createElement(AccountProvider, null, createElement(ConnectionTemplateDialog, { domain:'https://primal.net', accountId:'a', onClose() {}, onConnected() {} })));
+  await act(async () => [...document.querySelectorAll('button')].find(button => button.textContent === 'templates.apply')!.click());
+  const rules = calls.find(c => c.method === 'templates_connect').params.rules;
+  assert.equal(rules['signEvent:7'], 'allow');
+  assert.equal(rules['signEvent:0'], 'ask');
+  assert.equal('webln_sendPayment' in rules, false);
+ } finally { await view.close(); }
+});
+it('connection review immediately lists templates and suggests Playground on our site', async context => {
+ resetMockStorage();
+ const { default: ConnectionTemplateDialog } = await import('../src/components/PermissionTemplates/ConnectionTemplateDialog');
+ await browser.storage.local.set({ accounts:[{id:'a', pubkey:'c'.repeat(64), name:'Main',type:'nsec'}], activeAccountId:'a' });
+ const calls: any[]=[];
+ context.mock.method(browser.runtime,'sendMessage',async (message:any)=>{calls.push(message);return {result:message.method==='templates_list' ? [] : null};});
+ const view=await mount();
+ try {
+  await view.render(createElement(AccountProvider,null,createElement(ConnectionTemplateDialog,{domain:'https://nostrwot.com',accountId:'a',onClose(){},onConnected(){}})));
+  const choices=document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
+  assert.equal(choices.length,6);
+  assert.equal(choices[0].checked,true);
+  assert.ok(choices[0].closest('tr')!.classList.contains('bg-brand'));
+  assert.ok(document.querySelector('table'));
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='templates.playground')!.click());
+  assert.equal(document.querySelectorAll('[role="dialog"]').length,2);
+  await act(async()=>document.querySelectorAll('[role="dialog"]')[1].querySelector<HTMLButtonElement>('button[aria-label="common.close"]')!.click());
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='templates.viewPermissions')!.click());
+  assert.equal(document.querySelectorAll('[role="dialog"]').length,2);
+  await act(async()=>document.querySelectorAll('[role="dialog"]')[1].querySelector<HTMLButtonElement>('button[aria-label="common.close"]')!.click());
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='templates.create')!.click());
+  assert.equal(document.querySelectorAll('[role="dialog"]').length,2);
+  await act(async()=>document.querySelectorAll('[role="dialog"]')[1].querySelector<HTMLButtonElement>('button[aria-label="common.close"]')!.click());
+  assert.equal(document.querySelectorAll('[role="dialog"]').length,1);
+  assert.ok(document.body.textContent!.includes('templates.social'));
+  assert.ok(!document.body.textContent!.includes('templates.noExtra'));
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent==='templates.apply')!.click());
+  assert.deepEqual(calls.find(c=>c.method==='templates_connect').params.rules,{wot_getStatus:'allow',wot_getFollows:'allow',wot_getDistanceBatch:'allow'});
  } finally { await view.close(); }
 });

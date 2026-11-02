@@ -8,7 +8,8 @@ export const PASSKEY_MAX_CREDENTIALS = 8;
 export const PASSKEY_KDF_CONTEXT = 'nostr-wot/vault/passkey-wrap/v1';
 
 /** Bound provider recovery independently from file import; smaller provider quotas fall back to a file. */
-export const PASSKEY_MAX_BLOB_BYTES = 64 * 1024;
+export const PASSKEY_MAX_BLOB_BYTES = 64 * 1024; // Legacy reads remain supported.
+export const PASSKEY_MAX_BLOB_WRITE_BYTES = 2048;
 
 /** Existing registrations retain this RP; credentials cannot move between domains. */
 export const LEGACY_PASSKEY_RP_ID = 'passkeys.nostr-wot.com';

@@ -1,3 +1,4 @@
+import { downloadFile } from '@utils/downloadFile';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
 import IconWarning from '@assets/IconWarning.tsx';
@@ -47,6 +48,7 @@ export default function NsecExportPanel({ onClose }: { onClose: () => void }) {
           <Text variant="muted" as="div" className="text-center">{`${t(nsec.blurred ? 'key.clickToReveal' : 'key.clickToBlur')} \u00b7 ${t('key.autoHideHint')}`}</Text>
           <Container variant="row" gap={4} className="justify-end mt-2">
             <ButtonSecondary small onClick={handleClose}>{t('common.close')}</ButtonSecondary>
+            <ButtonSecondary small onClick={() => downloadFile(nsec.value, 'nostr-private-key.nsec')}>{t('key.downloadPlain')}</ButtonSecondary>
             <CopyButton value={nsec.value} label={t('common.copy')} />
           </Container>
         </>

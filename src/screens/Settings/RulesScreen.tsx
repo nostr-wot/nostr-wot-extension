@@ -59,7 +59,7 @@ function SiteRulesEditor({domain,onOpenGlobalRules}:{domain:string;onOpenGlobalR
   const own = permissions.getForBucket(domain, activeId);
   const rules = permissions.getEffective(domain, activeId);
   const inheritedKeys = Object.keys(rules).filter(key => !(key in own));
-  const keys = filterKeysForAccountKind(Object.keys(rules), {readOnly:account?.readOnly === true || account?.type === 'npub', nip46:account?.type === 'nip46'}, false);
+  const keys = filterKeysForAccountKind(Object.keys(rules).filter(key => key !== 'getPublicKey'), {readOnly:account?.readOnly === true || account?.type === 'npub', nip46:account?.type === 'nip46'}, false);
   const [addOpen, setAddOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -88,7 +88,7 @@ function SiteRulesEditor({domain,onOpenGlobalRules}:{domain:string;onOpenGlobalR
         : <EmptyState icon={<IconGlobe size={24} />} text={t('perms.noRules')} />}
       <FormError>{error}</FormError>
     </PermissionsDetailLayout>
-    {addOpen && <AddRuleModal availableKeys={availablePermKeys(COMMON_PERM_KEYS,rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
+    {addOpen && <AddRuleModal availableKeys={availablePermKeys(COMMON_PERM_KEYS.filter(key => key !== 'getPublicKey'),rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
     {resetOpen && createPortal(<ConfirmDialog title={t('perms.resetSiteRules')} message={t('perms.resetSiteRulesConfirm',{site:domain})}
       danger busy={busy} error={error} onConfirm={() => void reset()} onCancel={() => setResetOpen(false)} />,document.body)}
   </>;

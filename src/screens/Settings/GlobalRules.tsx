@@ -20,7 +20,7 @@ import PermissionRulesList from './PermissionRulesList';
 /** Shared defaults have no selected website or website-list navigation. */
 export default function GlobalRules({ onBack, onOpenSiteRules }: { onBack: () => void; onOpenSiteRules?: () => void }) {
   const permissions = usePermissions();
-  const rules = permissions.getForBucket(GLOBAL_RULES_SCOPE);
+  const rules = Object.fromEntries(Object.entries(permissions.getForBucket(GLOBAL_RULES_SCOPE)).filter(([key]) => key !== 'getPublicKey'));
   const [addOpen, setAddOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -47,7 +47,7 @@ export default function GlobalRules({ onBack, onOpenSiteRules }: { onBack: () =>
       <FormError>{error}</FormError>
       {onOpenSiteRules && <Button small onClick={onOpenSiteRules}>{t('perms.goToCurrentSite')}</Button>}
     </Container>
-    {addOpen && <AddRuleModal availableKeys={availablePermKeys(COMMON_PERM_KEYS.filter(key => !['signEvent:22242', 'signEvent:24242', 'signEvent:27235'].includes(key)), rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
+    {addOpen && <AddRuleModal availableKeys={availablePermKeys(COMMON_PERM_KEYS.filter(key => !['getPublicKey', 'signEvent:22242', 'signEvent:24242', 'signEvent:27235'].includes(key)), rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
     {resetOpen && createPortal(<ConfirmDialog title={t('perms.resetAccountRules')} message={t('perms.resetAccountRulesHint')}
       busy={busy} error={error} danger onConfirm={() => void reset()} onCancel={() => setResetOpen(false)} />, document.body)}
   </OverlayPanel>;

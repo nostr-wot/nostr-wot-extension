@@ -1,3 +1,4 @@
+import useConnectionTemplate from '@hooks/useConnectionTemplate';
 import { useAnimatedVisible } from '@hooks/useAnimatedVisible';
 import { useState, type ReactNode } from 'react';
 import browser from '@lib/browser.ts';
@@ -66,25 +67,8 @@ export default function Home({ menuOpen }: HomeProps) {
     }
   };
 
-  // Connecting is one step: the click. The extension used to also ask the browser for
-  // per-site host access, but that dialog gated nothing (identity release is decided by
-  // the allowlist this RPC writes), it dismissed the popup and lost the click, and the
-  // fix for that released the identity while the dialog was still unanswered.
-  const handleConnect = async () => {
-    if (!domain) return;
-    setConnectFailed(false);
-    try {
-      await rpc('connectDomain', { domain });
-    } catch {
-      // try/finally with no catch made a failed connect an unhandled rejection:
-      // the card re-read state, found the site still not connected, and offered
-      // Connect again with nothing said. The globe's twin was given this in
-      // d18d127; this one was missed.
-      setConnectFailed(true);
-    } finally {
-      void loadHomeState();
-    }
-  };
+  const connection = useConnectionTemplate(domain, () => { void loadHomeState(); });
+  const handleConnect = connection.open;
 
   // "Not now": record the dismissal so the site's next request is rejected
   // silently instead of re-opening the popup, then show the normal home with a
@@ -215,7 +199,7 @@ export default function Home({ menuOpen }: HomeProps) {
   }
 
   return (
-    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice} >
+    <HomeWalletLayout wallet={walletOverview} siteNotice={siteNotice} dialog={connection.dialog}>
       {pendingCount > 0 && (
         <Card className="flex items-center py-5 px-7 bg-[rgba(245,158,11,0.08)] border border-[rgba(245,158,11,0.2)] cursor-default">
           <Container variant="row" gap={4}>
@@ -280,6 +264,6 @@ export default function Home({ menuOpen }: HomeProps) {
 }
 
 /** Site notices can be dismissed without hiding account-level tools or closing the popup. */
-export function HomeWalletLayout({wallet,siteNotice,children}: {wallet:ReactNode;siteNotice:ReactNode;children?:ReactNode}) {
-  return <>{siteNotice ?? <Container className="animate-section-slide-in">{wallet}{children}</Container>}</>;
+export function HomeWalletLayout({wallet,siteNotice,dialog,children}: {wallet:ReactNode;siteNotice:ReactNode;dialog?:ReactNode;children?:ReactNode}) {
+  return <>{siteNotice ?? <Container className="animate-section-slide-in">{wallet}{children}</Container>}{dialog}</>;
 }

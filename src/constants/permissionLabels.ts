@@ -3,6 +3,17 @@
  * These are the keys stored in permissions (not wire method names).
  */
 export const PERM_LABELS: Record<string, string> = {
+  'wot_getStatus': 'templates.graphStatus',
+  'wot_getFollows': 'templates.graphFollows',
+  'wot_getDistanceBatch': 'templates.graphPaths',
+  'signEvent:9': 'templates.chat',
+  'signEvent:11': 'templates.thread',
+  'signEvent:16': 'templates.repost',
+  'signEvent:30024': 'templates.draft',
+  'signEvent:30078': 'templates.appData',
+  'signEvent:9021': 'templates.join',
+  'signEvent:9022': 'templates.leave',
+  'signEvent:9005': 'templates.deleteGroupEvent',
   'signEvent:0': 'perm.editProfile',
   'signEvent:1': 'perm.post',
   'signEvent:3': 'perm.updateContacts',

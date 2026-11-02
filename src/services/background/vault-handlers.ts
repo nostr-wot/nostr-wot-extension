@@ -108,7 +108,22 @@ export const handlers = new Map<string, HandlerFn>([
     }],
     ['vault_getPasskey', async () => vault.getPasskey()],
     ['vault_listPasskeys', async params => params.forUnlock && !await vault.getPasskey() ? [] : vault.listPasskeys()],
-    ['vault_exportPasskeyBackup', async () => vault.exportPasskeyBackup()],
+    ['vault_listBackupKeys', async () => {
+        await vault.requireUnlocked();
+        const payload = vault.getDecryptedPayload();
+        const seeds = new Map<string, { accountId: string; pubkey: string; name: string; type: 'seed' | 'private-key'; accountCount: number; accountIds: string[] }>();
+        const keys: Array<{ accountId: string; pubkey: string; name: string; type: 'seed' | 'private-key'; accountCount: number; accountIds: string[] }> = [];
+        for (const account of payload.accounts) {
+            if (!account.privkey || account.readOnly) continue;
+            if (account.mnemonic && seeds.has(account.mnemonic)) { seeds.get(account.mnemonic)!.accountCount++; seeds.get(account.mnemonic)!.accountIds.push(account.id); continue; }
+            const entry = { accountId: account.id, pubkey: account.pubkey, name: account.name, type: account.mnemonic ? 'seed' as const : 'private-key' as const, accountCount: 1, accountIds: [account.id] };
+            keys.push(entry);
+            if (account.mnemonic) seeds.set(account.mnemonic, entry);
+        }
+        return keys;
+    }],
+    ['vault_exportPasskeyBlob', async params => vault.exportPasskeyBlob(params.credentialId as string | undefined, params.proof as PasskeyProof | undefined)],
+    ['vault_exportPasskeyBackup', async params => vault.exportPasskeyBackup(params.proof as PasskeyProof | undefined)],
     ['vault_prepareRelayRecovery', async params => relayRecovery.prepareRelayRecovery(params as unknown as PasskeyProof)],
     ['vault_publishRelayRecovery', async params => relayRecovery.publishRelayRecovery(params.event as import('@domain/nostr/types.ts').SignedEvent, params.context as import('../vault/recoveryCodec.ts').RecoveryContext)],
     ['vault_getRecoveryStatus', async params => getRecoveryStatus(params.credentialId as string)],

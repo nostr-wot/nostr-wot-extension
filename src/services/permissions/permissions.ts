@@ -1,3 +1,5 @@
+import { siteConsentMutations } from './siteConsent';
+import { validateTemplateRules } from '@domain/permissions/templates';
 import { revokeAuthenticationGrants } from './authentication.ts';
 import { siteScopes, sitePermissionBucket, effectiveSitePermissions } from '@domain/site/siteScope.ts';
 import { PERMISSIONS_STORAGE_KEY as STORAGE_KEY, GLOBAL_DEFAULTS_KEY, DEFAULT_BUCKET, GLOBAL_RULES_SCOPE, DM_SIGN_KINDS } from '@constants/permissions.ts';
@@ -680,4 +682,33 @@ export async function migrateToGlobalRules(): Promise<void> {
     await browser.storage.local.set({[STORAGE_KEY]:perms,[GLOBAL_RULES_VERSION_KEY]:1});
     invalidateCache();
   });
+}
+
+/** Commit reviewed rules and connection together, before waiting page requests wake. */
+export async function connectWithTemplate(domain: string, accountId: string, input: unknown): Promise<void> {
+  const url = new URL(domain);
+  if (!['https:', 'http:'].includes(url.protocol) || url.origin !== domain) throw new Error('Invalid site origin');
+  const rules = validateTemplateRules(input);
+  await migrateToGlobalRules();
+  await siteConsentMutations.run(() => _lock.run(async () => {
+    const state = await browser.storage.local.get(['activeAccountId', 'accounts', 'allowedDomains', 'identityDisabledSites']);
+    if (!accountId || state.activeAccountId !== accountId) throw new Error('Account changed. Reopen the connection.');
+    const account = (state.accounts as Array<{ id: string; readOnly?: boolean; type?: string }> | undefined)?.find(a => a.id === accountId);
+    if (!account) throw new Error('Account unavailable');
+    if ((account.readOnly || account.type === 'npub') && Object.keys(rules).some(key => !key.startsWith('wot_'))) throw new Error('Read-only accounts cannot grant signing permissions');
+    const perms = structuredClone(await load());
+    const effective = effectiveSitePermissions(perms, domain, accountId);
+    for (const [key, decision] of Object.entries(rules)) {
+      if (decision !== 'deny' && (effective[key] === 'deny' || effective['*'] === 'deny' || (key.startsWith('signEvent:') && effective.signEvent === 'deny'))) throw new Error('An existing Deny rule conflicts with this template. Keep it denied or change it in Site rules first.');
+    }
+    const bucket = { ...(perms[domain]?.[accountId] || {}), ...rules, getPublicKey: 'allow' as const };
+    perms[domain] = { ...(perms[domain] || {}), [accountId]: bucket };
+    if ((await browser.storage.local.get('activeAccountId')).activeAccountId !== accountId) throw new Error('Account changed. Reopen the connection.');
+    await browser.storage.local.set({
+      [STORAGE_KEY]: perms,
+      allowedDomains: [...new Set([...(state.allowedDomains as string[] || []), domain])],
+      identityDisabledSites: (state.identityDisabledSites as string[] || []).filter(site => !siteScopes(domain).includes(site)),
+    });
+    invalidateCache();
+  }));
 }

@@ -135,7 +135,8 @@ it('Home shows wallet and account tools once a site notice is dismissed',async()
  const {HomeWalletLayout}=await import('../src/screens/Home/Home');
  for(const state of [null,'empty','notConnected','error','connected','dismissed']) {
   const notice=state==='connected'||state==='dismissed'?null:'Site unavailable';
-  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice},createElement('div',null,'Site controls')));
+  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice,dialog:createElement('div',{role:'dialog'},'Connection permissions')},createElement('div',null,'Site controls')));
+  assert.match(html,/Connection permissions/, 'connection dialog remains mounted while the site notice is visible');
   if(notice===null) {
    assert.match(html,/Private wallet balance/);assert.match(html,/Site controls/);
   } else {
@@ -552,19 +553,15 @@ it('approval sheet separates current-request approval from remembered permission
       }
     }
 
-    for (const always of [false, true]) {
+    {
       await act(async()=>root.render(null));
       calls.length=0;
       pending=[{id:'danger',accountId:account.id,origin:'https://site.test',type:'signEvent',permKey:'signEvent:3',needsPermission:true,event:{kind:3,pubkey:account.pubkey,content:'',tags:[]},followReplacementCount:500,followReplacementNewCount:0}];
       pending=[pending[0],{...pending[0],id:'danger2'},{...pending[0],id:'danger3'}];
       await act(async()=>root.render(render()));
       assert.match(dom.window.document.body.textContent!,/approval.followReplacementWarning/,'warning is visible without opening details');
-      const approve = async () => {
-        if (always) {
-          await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="approval.approveOptions"]')!.click());
-          await act(async()=>button('approval.detail.alwaysAllow')!.click());
-        } else await act(async()=>button('approval.approveShown')!.click());
-      };
+      assert.equal(dom.window.document.querySelector('[aria-label="approval.approveOptions"]'),null);
+      const approve = async () => { await act(async()=>button('approval.approveShown')!.click()); };
       await approve();
       assert.ok(button('approval.followReplacementConfirm'),'a separate confirmation is required');
       const confirmation=button('approval.followReplacementConfirm')!.closest('[role="dialog"]')!;
@@ -576,7 +573,7 @@ it('approval sheet separates current-request approval from remembered permission
       await approve();
       await act(async()=>button('approval.followReplacementConfirm')!.click());
       assert.deepEqual(calls.find(c=>c.method==='signer_resolve')?.params,{id:'danger',decision:{allow:true,remember:false,confirmFollowReplacement:true}});
-      assert.equal(calls.some(c=>c.method==='signer_savePermission'),always);
+      assert.equal(calls.some(c=>c.method==='signer_savePermission'),false);
       assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params.id),['danger','danger2','danger3'],'all displayed requests still receive explicit confirmation');
     }
 
@@ -585,15 +582,12 @@ it('approval sheet separates current-request approval from remembered permission
       calls.length = 0;
       pending=[1, 4].map(kind=>({id:`kind-${kind}`,accountId:account.id,origin:'https://site.test',type:'signEvent',permKey:`signEvent:${kind}`,needsPermission:true,event:{kind,pubkey:account.pubkey,content:'test',tags:[]}}));
       await act(async()=>root.render(render()));
-      await act(async()=>dom.window.document.querySelector<HTMLButtonElement>(`[aria-label="approval.${allow ? 'approveOptions' : 'rejectOptions'}"]`)!.click());
-      const menu = dom.window.document.querySelector('[role="menu"]')!;
-      const items = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
-      assert.equal(items.length, 2, 'each pending type has its own remembered action');
-      assert.equal(menu.getAttribute('popover'), 'manual', 'menu escapes clipped approval panels');
-      assert.equal((menu as HTMLElement).style.minWidth, '176px', 'options stay compact without being squeezed to the button width');
-      await act(async()=>items[1].click());
-      assert.deepEqual(calls.find(c=>c.method==='signer_savePermission')?.params,{domain:'https://site.test',methodName:'signEvent:4',decision:allow?'allow':'deny',accountId:account.id});
-      assert.equal(calls.filter(c=>c.method==='signer_savePermission').length, 1, 'other types are not granted or denied');
+      assert.equal(dom.window.document.querySelector('[aria-label="approval.approveOptions"]'),null);
+      assert.equal(dom.window.document.querySelector('[aria-label="approval.rejectOptions"]'),null);
+      await act(async()=>button(allow?'approval.approveShown':'approval.rejectAll')!.click());
+      assert.equal(calls.some(c=>c.method==='signer_savePermission'),false);
+      assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[1,4].map(kind=>({id:`kind-${kind}`,decision:{allow,remember:false}})));
+
     }
 
   } finally {

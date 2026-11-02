@@ -3,7 +3,33 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
+## 0.8.21 — 2026-11-02
+
+### Store release notes
+
+- Choose permission templates when connecting apps, including a Nostr WoT Playground preset, or create your own.
+- Manage seed phrases, private keys and passkey recovery from Security → Keys & Backups.
+- Fix passkey recovery exceeding the provider’s 2 KB storage limit while preserving existing backups.
+- Review relay authentication in compact groups, select requests together, and make one-time bulk decisions with clearer controls.
+
+### Fixed
+
+- Serialize site consent changes so connecting with a permission template cannot undo a concurrent disconnect.
+- Recheck graph permissions after approval and before returning data, so a newer Deny overrides an older pending approval.
+
+- Group authentication requests by site, account and protocol, show destinations in a compact list, and include them in Approve all with an explicit one-time destination review. The pending overview uses plain Approve all/Deny all actions without remembered-permission menus. Later requests remain pending; wallet, zap and legacy sign-in requests stay separate.
+- Keep the connection permissions dialog visible when opened from the main popup’s site connection card.
+- Keep passkey provider recovery within the 2 KB write limit by storing only the associated seed/path or private key, instead of the entire growing vault. Existing recovery files and legacy provider backups remain readable; independent imported post-quantum keys retain the file fallback.
+- Allow registered passkey recovery exports and additional credential enrollment while password or None protects the local vault.
+
+### Changed
+
+- Use larger, consistently styled checkboxes across permission templates, archive selection, approval selection, relay authentication and backup confirmations.
+- Show selectable permission templates immediately in a compact connection picker, with purple selected table rows, separate permission/custom-template popups, and long explanations behind info buttons. Recommend a dedicated Nostr WoT Playground template for graph status, follows, and trust paths/scores on nostrwot.com.
+- Offer optional permission templates when connecting sites, with ten exact-origin recommendations, editable social/message/group/publishing presets and reusable custom templates. Connect includes identity sharing; Skip leaves existing global rules intact. Template changes never retroactively alter connected sites.
+
+- Separate Security’s Auto-lock controls from Keys & Backups, with grouped seed phrases, private keys and passkeys, reusable export dialogs, and existing relay recovery controls.
+- Add unencrypted nsec file download alongside copy and password-encrypted ncryptsec exports.
 
 ## 0.8.20 — 2026-10-29
 

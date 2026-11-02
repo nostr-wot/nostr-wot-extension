@@ -212,3 +212,12 @@ it('legacy logins from the same site remain separate reviews', () => {
   const groups=groupApprovals([req({id:'a',origin:authentication.url,authentication,permKey:'legacy'}),req({id:'b',origin:authentication.url,authentication,permKey:'legacy'})]);
   assert.equal(groups.length,2);assert.ok(groups.every(g=>g.requests.length===1));
 });
+
+it('authentication groups span destinations but isolate protocol, account and site',()=>{
+ const authentication={protocol:'nip42' as const,url:'wss://one.test',destination:'wss://one.test',crossOrigin:true};
+ const one=req({id:'one',origin:'https://site.test',accountId:'a',authentication,permKey:'relay-one'});
+ const two={...one,id:'two',permKey:'relay-two',authentication:{...authentication,url:'wss://two.test',destination:'wss://two.test'}};
+ const groups=groupApprovals([one,two,{...one,id:'other-account',accountId:'b'},{...one,id:'other-site',origin:'https://other.test'},{...one,id:'http',authentication:{...authentication,protocol:'nip98',url:'https://api.test',destination:'https://api.test'}}]);
+ assert.equal(groups.length,4);
+ assert.deepEqual(groups[0].requests.map(request=>request.id),['one','two']);
+});

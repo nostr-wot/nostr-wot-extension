@@ -49,3 +49,6 @@ keys.json
 
 # Isolated package staging directories
 .package-*/
+
+# Local planning artifacts; keep implementation plans out of the repository.
+docs/superpowers/

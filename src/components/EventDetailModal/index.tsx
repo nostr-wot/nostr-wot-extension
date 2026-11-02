@@ -8,7 +8,8 @@ import IconWarning from '@assets/IconWarning';
 import { signingIntentParts, intentParts } from '@services/i18n/eventIntent.ts';
 import StatusNotice from '@components/StatusNotice';
 import MessageRequestDetail, { isMessageRequest } from './MessageRequestDetail';
-import AuthenticationNotice from '@components/AuthenticationNotice';
+import AuthenticationNotice, { relayLabel } from '@components/AuthenticationNotice';
+import RawEventButton from '@components/RawEventButton';
 import AuthenticationActions from '@components/AuthenticationActions';
 import type { AuthenticationRequest, AuthenticationScope } from '@domain/signing/authentication.ts';
 import { KIND_LABELS } from '@constants/nostr.ts';
@@ -124,6 +125,7 @@ export default function EventDetailModal({
   const [selectedIds,setSelectedIds]=useState<string[]>([]);
   const selectable=!!(requests && requests.length>1 && !nip46InFlight && onApproveSelected);
   const selected=(requests || []).filter(item=>item.id && selectedIds.includes(item.id)).map(item=>item.id!);
+  const relayGroup = !!(requests && requests.length > 1 && requests.every(item => item.authentication?.protocol === 'nip42'));
   const isApproval = !!request && !nip46InFlight;
 
   // Resolve display data from either group or request
@@ -184,7 +186,24 @@ export default function EventDetailModal({
   };
 
   let eventContent: ReactNode;
-  if (request && requests && requests.length > 1) {
+  if (relayGroup && requests) {
+    eventContent = <div className="flex flex-col gap-4">
+      <p className="m-0 text-secondary">{t('auth.relaysSummary')}</p>
+      {selectable && <label className="flex items-center gap-3 text-sm cursor-pointer">
+        <Checkbox aria-label={t('approval.selectAll')} disabled={busy} checked={selected.length === requests.length} onChange={event => setSelectedIds(event.target.checked ? requests.flatMap(item => item.id ? [item.id] : []) : [])}/>
+        {t('approval.selectAll')}
+      </label>}
+      <div className="rounded-panel border border-card-border overflow-hidden">
+        {requests.map((item, index) => <div key={item.id ?? index} data-approval-request={item.id ?? index} className={`flex items-center gap-3 px-4 py-3 border-b border-card-border last:border-b-0 ${item.id && selected.includes(item.id) ? 'bg-brand-light' : ''}`}>
+          <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+            {selectable && item.id && <Checkbox disabled={busy} checked={selected.includes(item.id)} aria-label={relayLabel(item.authentication!.url)} onChange={event => setSelectedIds(previous => event.target.checked ? [...previous, item.id!] : previous.filter(id => id !== item.id))}/>}
+            <span className="text-brand font-mono text-sm [overflow-wrap:anywhere]">{relayLabel(item.authentication!.url)}</span>
+          </label>
+          <RawEventButton event={item.event} zIndex={zIndex + 10}/>
+        </div>)}
+      </div>
+    </div>;
+  } else if (request && requests && requests.length > 1) {
     eventContent = <div className="flex flex-col gap-4">
       <span className="text-sm text-menu-subtitle">{t('approval.requests', { count: requests.length })}</span>
       {requests.every(item => isMessageRequest(item.type))
@@ -231,7 +250,7 @@ export default function EventDetailModal({
             </div>
           )}
 
-          {request?.authentication && <AuthenticationNotice request={request}/>}
+          {request?.authentication && !relayGroup && <AuthenticationNotice request={request}/>}
           {request?.type === 'signEvent' && !request.authentication && (requests || [request]).some(item => item.event?.kind === undefined || !KIND_LABELS[item.event.kind]) && <StatusNotice tone="warn" variant="callout" icon={<IconWarning/>}>{t('event.unknownKind')}</StatusNotice>}
           <FollowReplacementNotice requests={requests || (request ? [request] : [])}/>
 

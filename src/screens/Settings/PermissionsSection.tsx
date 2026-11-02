@@ -1,3 +1,6 @@
+import TemplateEditor from '@components/PermissionTemplates';
+import type { PermissionBucket } from '@domain/permissions/types';
+import Button from '@components/Button';
 import { Fragment, forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { t } from '@services/i18n/i18n';
 import { useAccount } from '@context/AccountContext';
@@ -19,7 +22,8 @@ export interface PermissionsSectionHandle { goBack: () => boolean }
 export default forwardRef<PermissionsSectionHandle>(function PermissionsSection(_props, ref) {
   const { accounts, activeId } = useAccount();
   const account = accounts?.find(account => account.id === activeId) || accounts?.[0];
-  const [screen, setScreen] = useState<'rules' | 'global' | 'backend' | 'relay' | null>(null);
+  const [screen, setScreen] = useState<'rules' | 'global' | 'backend' | 'relay' | 'templates' | null>(null);
+  const [templateRules, setTemplateRules] = useState<PermissionBucket>({});
   const relayRef = useRef<RelayAuthenticationHandle>(null);
   const back = () => setScreen(null);
   useImperativeHandle(ref, () => ({ goBack: () => {
@@ -27,11 +31,13 @@ export default forwardRef<PermissionsSectionHandle>(function PermissionsSection(
     if (screen === 'relay' && relayRef.current?.goBack()) return true;
     back(); return true;
   } }));
+  if (screen === 'templates') return <Container gap={4}><Button small variant="secondary" onClick={back}>{t('common.back')}</Button><TemplateEditor rules={templateRules} onChange={setTemplateRules} /></Container>;
   if (screen === 'rules') return <RulesScreen key={activeId} onBack={back} onOpenGlobalRules={() => setScreen('global')} />;
   if (screen === 'global') return <GlobalRules onBack={back} onOpenSiteRules={() => setScreen('rules')} />;
   if (screen === 'backend' && account) return <BackendAuthentication key={account.id} accounts={accounts || []} activeId={activeId} onBack={back} />;
   if (screen === 'relay' && account) return <RelayAuthentication key={account.id} ref={relayRef} accountId={account.id} onBack={back} />;
   const rows = [
+    { screen:'templates' as const, title:'templates.title', hint:'templates.snapshot', icon:IconTuner },
     { screen:'global' as const, title:'perms.globalRules', hint:'perms.globalRulesHint', icon:IconGlobe },
     { screen:'rules' as const, title:'perms.rules', hint:'perms.rulesHint', icon:IconTuner },
     { screen:'backend' as const, title:'auth.permissions', hint:'auth.manageBackends', icon:IconKey },

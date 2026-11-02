@@ -1,9 +1,8 @@
+import AuthenticationNotice from '@components/AuthenticationNotice';
 import type { AuthenticationScope } from '@domain/signing/authentication.ts';
-import { ButtonDanger } from '@components/Button';
+import Button, { ButtonDanger } from '@components/Button';
 import FollowReplacementNotice from '@components/FollowReplacementNotice';
 import ConfirmDialog from '@components/ConfirmDialog';
-import ApprovalActions from '@components/ApprovalActions';
-import { formatPermissionLabel } from '@services/i18n/permissionLabels.ts';
 import { useState } from 'react';
 import { rpc } from '@services/rpc.ts';
 import { t } from '@services/i18n/i18n.ts';
@@ -39,6 +38,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   } = useApprovalQueue({ onRequestUnlock, onUnlockWaitersChange });
 
   const ordinaryGroups = groups.filter(group => !group.requests.some(requiresIndividualReview));
+  const approvableGroups = groups.filter(group => group.requests.every(request => !requiresIndividualReview(request) || (request.authentication && request.authentication.protocol !== 'legacy-login')));
   const totalCount = [...groups, ...nip46Groups].reduce((n, group) => n + group.requests.length, 0);
   const singleRequest = totalCount === 1;
   const selectedGroup = singleRequest ? groups[0] ?? null : currentApprovalGroup(groupSelection, groups);
@@ -61,14 +61,15 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   // --- Group actions ---
 
   const confirmApproval = async (requests: PendingRequest[], action: () => Promise<void>) => {
-    const risky = requests.filter(request => request.followReplacementCount);
+    const risky = requests.filter(request => request.followReplacementCount || request.authentication);
     if (risky.length) setConfirmation({ requests: risky, action });
     else await runAction(action);
   };
 
-  const approveRequests = (requests: PendingRequest[]) => resolveDisplayedRequests(requests.filter(request => !request.authentication), id => {
+  const approveRequests = (requests: PendingRequest[]) => resolveDisplayedRequests(requests, id => {
     const request = requests.find(request => request.id === id);
     return rpc('signer_resolve', { id, decision: { allow: true, remember: false,
+      ...(request?.authentication ? { authenticationScope: 'once' } : {}),
       ...(request?.followReplacementCount ? { confirmFollowReplacement: true } : {}),
     } });
   });
@@ -78,7 +79,7 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
   });
 
   const handleApproveShown = async () => {
-    const shown = ordinaryGroups.flatMap(group => group.requests);
+    const shown = approvableGroups.flatMap(group => group.requests);
     await confirmApproval(shown, async () => { await approveRequests(shown); });
   };
 
@@ -140,15 +141,11 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
           <span className="text-md font-bold bg-brand text-on-brand py-1.5 px-5 rounded-lg min-w-12 text-center">{totalCount}</span>
         </Container>
         <div data-approval-scroll className="min-h-0 overflow-y-auto overscroll-contain">
-        <div className="mb-6">{ordinaryGroups.length ? <ApprovalActions requestCount={ordinaryGroups.reduce((n, group) => n + group.requests.length, 0)} busy={busy}
-          rejectCount={groups.reduce((n, group) => n + group.requests.length, 0)}
-          onApprove={handleApproveShown} onReject={handleRejectAll}
-          choices={ordinaryGroups.map(group => ({
-            value: JSON.stringify([group.requests[0]?.accountId, group.origin, group.permKey]),
-            label: formatPermissionLabel(group.permKey, group.requests[0]?.event),
-            onAlwaysAllow: () => handleAlwaysAllow(group), onAlwaysDeny: () => handleAlwaysDeny(group),
-          }))}/> : groups.length > 0 ? <ButtonDanger disabled={busy} onClick={handleRejectAll}>{t('approval.rejectAll')}</ButtonDanger> : null}</div>
-        {groups.some(group => group.requests.some(requiresIndividualReview)) && <Text variant="hint">{t('approval.sensitiveReviewHint')}</Text>}
+        <Container variant="row" gap={4} className="mb-6 justify-end">
+          {approvableGroups.length > 0 && <Button small disabled={busy} onClick={handleApproveShown}>{t('approval.approveShown')}</Button>}
+          {groups.length > 0 && <ButtonDanger small outline disabled={busy} onClick={handleRejectAll}>{t('approval.rejectAll')}</ButtonDanger>}
+        </Container>
+        {groups.some(group => !approvableGroups.includes(group)) && <Text variant="hint">{t('approval.sensitiveReviewHint')}</Text>}
         <FormError className="py-3 px-6 text-center">{actionError}</FormError>
         {ordinaryGroups.length > 0 && permissions.useGlobalDefaults && accounts && accounts.length > 1 && (
           <Text variant="muted" as="div" className="pt-2 px-6 pb-4 text-center">
@@ -190,14 +187,15 @@ export default function ApprovalOverlay({ onRequestUnlock, onUnlockWaitersChange
 
       {confirmation && (
         <ConfirmDialog
-          title={t('approval.followReplacementTitle')}
-          danger
+          title={t(confirmation.requests.some(request => request.followReplacementCount) ? 'approval.followReplacementTitle' : 'auth.review')}
+          danger={confirmation.requests.some(request => !!request.followReplacementCount)}
           busy={busy}
           zIndex={600}
-          confirmLabel={t('approval.followReplacementConfirm')}
+          confirmLabel={t(confirmation.requests.some(request => request.followReplacementCount) ? 'approval.followReplacementConfirm' : 'common.confirm')}
           message={<>
             <FollowReplacementNotice requests={confirmation.requests} showTitle={false}/>
-            <Text variant="secondary">{t('approval.followReplacementQuestion')}</Text>
+            {confirmation.requests.some(request => request.authentication) && <AuthenticationNotice request={confirmation.requests.find(request => request.authentication)!} requests={confirmation.requests.filter(request => request.authentication)}/>}
+            {confirmation.requests.some(request => request.followReplacementCount) && <Text variant="secondary">{t('approval.followReplacementQuestion')}</Text>}
           </>}
           onCancel={() => setConfirmation(null)}
           onConfirm={() => { const action = confirmation.action; setConfirmation(null); void runAction(action); }}

@@ -162,7 +162,8 @@ try {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByText('Security', { exact: true }).click();
   assert.equal(await page.getByRole('button', { name: 'Save recovery to passkey', exact: true }).count(), 0);
-  await page.getByRole('button', { name: 'Passkey settings', exact: false }).click();
+  await page.getByRole('button', { name: 'Keys & Backups', exact: false }).click();
+  await page.getByRole('button', { name: /^Main · Seed phrase/ }).click();
   await page.getByRole('button', { name: 'Download recovery file', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Add another passkey', exact: false }).waitFor();
   if (process.env.PASSKEY_SMOKE_SCREENSHOTS) { await page.waitForTimeout(700); await page.screenshot({ path: `${process.env.PASSKEY_SMOKE_SCREENSHOTS}/passkey-settings.png` });
@@ -172,6 +173,7 @@ try {
     await page.getByRole('dialog', { name: 'Relay recovery', exact: true }).getByRole('button', { name: 'Close', exact: true }).click(); }
   assert.equal(await page.locator('details').count(), 0);
   assert.equal(await page.getByRole('button', { name: 'Migrate to Nostr WoT passkey', exact: true }).count(), 0);
+  await page.getByRole('button', { name: 'Back', exact: true }).last().click();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   const usePasskey = page.getByRole('checkbox', { name: 'Use passkey', exact: true });
   await usePasskey.waitFor({ state: 'attached' });

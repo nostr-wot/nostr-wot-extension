@@ -77,7 +77,7 @@ it('authentication detail labels do not expose the internal JSON grouping key',a
  assert.ok(html.includes('auth.httpSummary')); assert.ok(!html.includes('auth.account'));
  assert.ok(html.includes('https://client.test')); assert.ok(!html.includes('auth.requester'));
 });
-it('mounted sheet excludes authentication from bulk approval and resolves only reviewed IDs',async t=>{
+it('mounted sheet reviews grouped authentication before bulk approval and resolves only reviewed IDs',async t=>{
  const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
  const {AccountProvider}=await import('../src/context/AccountContext');const {VaultProvider}=await import('../src/context/VaultContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
  const {default:Overlay}=await import('../src/screens/Approval/ApprovalOverlay');const {default:browser}=await import('./helpers/browser-mock');
@@ -99,18 +99,17 @@ it('mounted sheet excludes authentication from bulk approval and resolves only r
  try{
   await act(async()=>root.render(render()));
   assert.ok(document.body.textContent!.includes('approval.pendingRequests'));
-  assert.ok(document.body.textContent!.includes('approval.sensitiveReviewHint'));
   assert.ok(button('approval.rejectAll'));
-  await act(async()=>button('approval.approveOnce')!.click());
-  assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params.id),['ordinary']);
-  assert.equal(button('approval.rejectAll'),undefined);
-  assert.ok(button('approval.approve'));
-  assert.ok(!document.body.textContent!.includes('approval.pendingRequests'));
-  assert.ok(!document.body.textContent!.includes('approval.sensitiveReviewHint'));
+  assert.equal(document.querySelector('[aria-label="approval.approveOptions"]'),null);
+  await act(async()=>button('approval.approveShown')!.click());
+  assert.equal(calls.filter(c=>c.method==='signer_resolve').length,0,'authentication destinations must be reviewed first');
   pending.push({...auth,id:'late'});
-  await act(async()=>{(document.querySelector('[aria-label="approval.approveOptions"]') as HTMLButtonElement).click();});
-  await act(async()=>button('auth.approveAlways')!.click());
-  assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[{id:'ordinary',decision:{allow:true,remember:false}},{id:'auth',decision:{allow:true,remember:false,authenticationScope:'site'}}]);
+  await act(async()=>[...document.querySelectorAll('button')].filter(b=>b.textContent==='common.confirm').at(-1)!.click());
+  assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[
+   {id:'auth',decision:{allow:true,remember:false,authenticationScope:'once'}},
+   {id:'ordinary',decision:{allow:true,remember:false}},
+  ]);
+  assert.deepEqual(pending.map(request=>request.id),['late']);
   assert.ok(!calls.some(c=>c.method==='signer_savePermission'||c.method==='signer_resolveBatch'));
   await act(async()=>button('auth.reject')!.click());assert.equal(pending.length,0);
  }finally{await act(async()=>root.unmount());dom.window.close();}
@@ -166,7 +165,9 @@ for (const mode of ['auth', 'ordinary', 'nip46'] as const) {
    for(const key of ['approval.pendingRequests','approval.rejectAll','approval.sensitiveReviewHint'])assert.ok(!document.body.textContent!.includes(key),key);
    assert.equal(document.querySelector('[aria-label="common.close"]'),null);
    const label=mode==='nip46'?'approval.cancelNip46':mode==='auth'?'auth.reject':'approval.deny';assert.ok(button(label));
-   await act(async()=>button(label)!.click());assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(button(label));
+   await act(async()=>button(label)!.click());
+
+assert.ok(document.body.textContent!.includes('approval.actionFailed'));assert.ok(button(label));
    fail=false;await act(async()=>button(label)!.click());assert.deepEqual(decisions,['single']);assert.equal(document.body.textContent,'');
   }finally{await act(async()=>root.unmount());dom.window.close();}
  });
@@ -528,7 +529,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
  const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  dom.window.HTMLElement.prototype.showPopover=function(){};dom.window.HTMLElement.prototype.hidePopover=function(){};
  t.mock.method(browser.tabs,'query',async()=>[{id:1,url:'https://site.test/chat'}]);
- let raw:any={'_global':{_default:{readMessages:'allow',getPublicKey:'allow','signEvent:7':'deny'}},'https://site.test':{a:{getPublicKey:'deny'}}};
+ let raw:any={'_global':{_default:{readMessages:'allow',getPublicKey:'allow','signEvent:7':'deny'}},'https://site.test':{a:{getPublicKey:'deny','signEvent:1':'deny'}}};
  let resets=0;let siteResets=0;const saves:any[]=[];
  t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
   if(message.method==='signer_getPermissionsRaw')return {result:raw};
@@ -554,6 +555,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   assert.ok(document.body.textContent!.includes('https://site.test'));
   assert.ok(document.body.textContent!.includes(label('perms.inheritedRule')));
   assert.ok(document.body.textContent!.includes(label('perms.accountRule')));
+  assert.ok(!document.body.textContent!.includes(label('perm.readProfile')), 'connection consent is not an editable template rule');
   const inherited=button(label('perms.allow'));assert.ok(inherited.classList.contains('text-secondary'));
   await act(async()=>inherited.click());
   await act(async()=>document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')[1].click());
@@ -569,7 +571,7 @@ it('Rules distinguishes inherited rules and overrides, and global reset requires
   assert.equal(siteResets,1);assert.equal(document.querySelector('[role="dialog"]'),null);
   assert.ok(document.body.textContent!.includes('https://site.test'));
   assert.ok(button(label('perms.resetSiteRules')),'reset keeps the site editor open');
-  assert.equal([...document.querySelectorAll('p')].filter(element=>element.textContent===label('perms.inheritedRule')).length,Object.keys(raw._global._default).length);
+  assert.equal([...document.querySelectorAll('p')].filter(element=>element.textContent===label('perms.inheritedRule')).length,Object.keys(raw._global._default).filter(key => key !== 'getPublicKey').length);
   assert.ok(!document.body.textContent!.includes(label('perms.accountRule')));
   assert.equal(document.querySelector('input[type="search"]'),null);
   assert.ok(button(label('perms.addRule')).parentElement!.parentElement!.textContent!.includes('https://site.test'),'add rule shares site header');
@@ -769,4 +771,75 @@ it('legacy login card does not mislabel the website request as relay authenticat
  const html=renderToStaticMarkup(createElement(Card,{group:{origin:authentication.url,method:'signEvent',permKey:'legacy',requests:[{id:'legacy',type:'signEvent',origin:authentication.url,eventKind:22242,authentication,timestamp:0}]},onClick(){}}));
  assert.ok(!html.includes('(22242)'));assert.ok(!html.includes('Relay Auth'));
  const {t}=await import('../src/services/i18n/i18n');assert.ok(html.includes(t('auth.legacyTitle')));
+});
+
+it('grouped authentication card lists every relay destination',async()=>{
+ const {default:Card}=await import('../src/screens/Approval/ApprovalCard');
+ const requests=['one.test','two.test'].map((host,index)=>({id:String(index),origin:'https://client.test',type:'signEvent',timestamp:0,authentication:{protocol:'nip42' as const,url:`wss://${host}`,destination:`wss://${host}`,crossOrigin:true}}));
+ const html=renderToStaticMarkup(createElement(Card,{group:{origin:'https://client.test',method:'signEvent',permKey:'authentication:nip42',requests},onClick(){}}));
+ assert.ok(html.includes('one.test'));assert.ok(html.includes('two.test'));
+ const {t}=await import('../src/services/i18n/i18n');
+ assert.equal(html.split(t('auth.relaysSummary')).length-1,1);assert.ok(!html.includes(t('auth.relaySummary')+' '));
+ assert.equal(html.split('<li>').length-1,2);
+});
+
+it('relay-only overview offers only one-time approve and deny all',async t=>{
+ const {t:translate}=await import('../src/services/i18n/i18n');
+ const {JSDOM}=await import('jsdom'); const {createRoot}=await import('react-dom/client');
+ const {AccountProvider}=await import('../src/context/AccountContext');const {VaultProvider}=await import('../src/context/VaultContext');const {PermissionsProvider}=await import('../src/context/PermissionsContext');
+ const {default:Overlay}=await import('../src/screens/Approval/ApprovalOverlay');const {default:browser}=await import('./helpers/browser-mock');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const originalMessages=browser.runtime.onMessage;
+ Object.defineProperty(browser.runtime,'onMessage',{configurable:true,value:{addListener(){},removeListener(){}}});
+ t.after(()=>Object.defineProperty(browser.runtime,'onMessage',{configurable:true,value:originalMessages}));
+ const account={id:'auth-test',type:'imported',pubkey:'11'.repeat(32),name:'Test'};
+ await browser.storage.local.set({accounts:[account],activeAccountId:account.id,profileCache:{}});
+ const auth={id:'auth',accountId:account.id,pubkey:account.pubkey,origin:'https://client.test',type:'signEvent',permKey:JSON.stringify(['nip98',authentication.url,'POST']),needsPermission:true,authentication:{...authentication,protocol:'nip42',url:'wss://one.test',destination:'wss://one.test'}};
+ let pending:any[]=[auth,{...auth,id:'ordinary',authentication:{...auth.authentication,url:'wss://two.test',destination:'wss://two.test'},permKey:'relay-two'}]; const calls:any[]=[];
+ t.mock.method(browser.runtime,'sendMessage',async(message:any)=>{
+  calls.push(message);if(message.method==='signer_getPending')return {result:pending};if(message.method==='vault_getState')return {result:{exists:true,locked:false}};
+  if(message.method==='signer_getPermissionsRaw')return {result:{}};if(message.method==='signer_getUseGlobalDefaults')return {result:true};
+  if(message.method==='signer_resolve')pending=pending.filter(item=>item.id!==message.params.id);return {result:null};
+ });
+ const root=createRoot(document.getElementById('root')!);const render=()=>createElement(AccountProvider,null,createElement(VaultProvider,null,createElement(PermissionsProvider,null,createElement(Overlay))));
+ const button=(text:string)=>[...document.querySelectorAll('button')].find(b=>b.textContent===translate(text));
+ try{
+  await act(async()=>root.render(render()));
+  assert.ok(document.body.textContent!.includes(translate('approval.pendingRequests')));
+  assert.ok(button('approval.rejectAll'));
+  assert.equal(document.querySelectorAll('[aria-haspopup="menu"]').length,0);
+  assert.ok(![...document.querySelectorAll('button')].some(button=>button.getAttribute('aria-label')===translate('approval.approveOptions')));
+  await act(async()=>button('approval.approveShown')!.click());
+  assert.equal(calls.filter(c=>c.method==='signer_resolve').length,0,'authentication destinations must be reviewed first');
+  pending.push({...auth,id:'late'});
+  await act(async()=>[...document.querySelectorAll('button')].filter(b=>b.textContent===translate('common.confirm')).at(-1)!.click());
+  assert.deepEqual(calls.filter(c=>c.method==='signer_resolve').map(c=>c.params),[
+   {id:'auth',decision:{allow:true,remember:false,authenticationScope:'once'}},
+   {id:'ordinary',decision:{allow:true,remember:false,authenticationScope:'once'}},
+  ]);
+  assert.deepEqual(pending.map(request=>request.id),['late']);
+  assert.ok(!calls.some(c=>c.method==='signer_savePermission'||c.method==='signer_resolveBatch'));
+  await act(async()=>button('auth.reject')!.click());assert.equal(pending.length,0);
+ }finally{await act(async()=>root.unmount());dom.window.close();}
+});
+it('relay detail selects all shown requests without selecting new arrivals',async()=>{
+ const {default:Detail}=await import('../src/components/EventDetailModal');const {JSDOM}=await import('jsdom');const {createRoot}=await import('react-dom/client');const {t}=await import('../src/services/i18n/i18n');
+ const dom=new JSDOM('<div id="root"></div>');Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
+ const requests=['one','two'].map(id=>({id,type:'signEvent',origin:'https://site.test',authentication:{protocol:'nip42' as const,url:`wss://${id}.test`,destination:`wss://${id}.test`,crossOrigin:true},event:{kind:22242,content:'',tags:[]}}));
+ const chosen:string[][]=[];const root=createRoot(document.getElementById('root')!);
+ const render=()=>createElement(Detail,{request:requests[0],requests:[...requests],onApproveSelected:ids=>chosen.push(ids),onDeny(){}});
+ try{
+  await act(async()=>root.render(render()));
+  assert.equal(document.body.textContent!.split(t('auth.relaysSummary')).length-1,1);
+  const all=()=>document.querySelector<HTMLInputElement>(`input[aria-label="${t('approval.selectAll')}"]`)!;
+  await act(async()=>all().click());
+  assert.ok([...document.querySelectorAll<HTMLInputElement>('input')].every(input=>input.checked));
+  requests.push({...requests[0],id:'late'});await act(async()=>root.render(render()));
+  assert.equal(all().checked,false);
+  assert.equal(document.querySelectorAll<HTMLInputElement>('[data-approval-request] input')[2].checked,false);
+  await act(async()=>[...document.querySelectorAll('button')].find(button=>button.textContent===t('approval.approveSelected'))!.click());
+  assert.deepEqual(chosen,[['one','two']]);
+  await act(async()=>all().click());await act(async()=>all().click());
+  assert.ok([...document.querySelectorAll<HTMLInputElement>('input')].every(input=>!input.checked));
+ }finally{await act(async()=>root.unmount());dom.window.close();}
 });

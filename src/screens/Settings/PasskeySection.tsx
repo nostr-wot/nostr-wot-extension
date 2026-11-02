@@ -25,9 +25,9 @@ import { SectionLabel } from '@components/SectionLabel';
 import PasskeyRecoverySetup from '@components/PasskeyRecoverySetup';
 import PasskeyBackupDownload from '@components/PasskeyBackupDownload';
 
-export default function PasskeySection({ locked, account }: { locked: boolean; account?: Pick<Account, 'pubkey' | 'type' | 'readOnly'> | null }) {
+export default function PasskeySection({ locked, account, initialCredentialId }: { initialCredentialId?: string; locked: boolean; account?: Pick<Account, 'pubkey' | 'type' | 'readOnly'> | null }) {
   const [credentials, setCredentials] = useState<PasskeyMetadata[]>([]);
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(initialCredentialId || '');
   const [credentialsLoaded, setCredentialsLoaded] = useState(false);
   const [autoLockMs, setAutoLockMs] = useState<number | null>(null);
   const refresh = () => rpcRead<PasskeyMetadata[]>('vault_listPasskeys').then(value => { setCredentials(value); setCredentialsLoaded(true); });
@@ -80,7 +80,8 @@ export default function PasskeySection({ locked, account }: { locked: boolean; a
     } catch (error) { setError((error as Error).message); }
     finally { setBusy(false); }
   };
-  const selectedId = selected || credentials[0]?.credentialId;
+  const visibleCredentials = credentials.filter(p => !p.recoveryPubkey || p.recoveryPubkey === account?.pubkey);
+  const selectedId = selected || visibleCredentials[0]?.credentialId;
   const metadata = credentials.find(p => p.credentialId === selectedId);
   const localAccount = !!account && !account.readOnly && (account.type === 'generated' || account.type === 'nsec');
 
@@ -89,7 +90,7 @@ export default function PasskeySection({ locked, account }: { locked: boolean; a
     <Card className="mb-0"><Container gap={5}>
       <SectionLabel>{t('passkey.registered')}</SectionLabel>
       <Container gap={3} role="group" aria-label={t('passkey.registered')}>
-        {credentials.map((credential, index) => <Card key={credential.credentialId} variant="flat" className="group flex items-center gap-3 mb-0 p-4"><LinkButton className="flex-1" tone={credential.credentialId === selectedId ? 'brand' : 'muted'} aria-pressed={credential.credentialId === selectedId} disabled={busy || added} onClick={() => { setSelected(credential.credentialId); setDraftName(null); setError(''); }}>
+        {visibleCredentials.map((credential, index) => <Card key={credential.credentialId} variant="flat" className="group flex items-center gap-3 mb-0 p-4"><LinkButton className="flex-1" tone={credential.credentialId === selectedId ? 'brand' : 'muted'} aria-pressed={credential.credentialId === selectedId} disabled={busy || added} onClick={() => { setSelected(credential.credentialId); setDraftName(null); setError(''); }}>
           <Container gap={1} className="flex-1 min-w-0 text-left">
             <span className="break-words">{passkeyDisplayName(credential, index, t('passkey.title'))}</span>
             <Text as="span" variant="muted" className="break-all">{credential.rpId ?? LEGACY_PASSKEY_RP_ID}</Text>
@@ -103,12 +104,12 @@ export default function PasskeySection({ locked, account }: { locked: boolean; a
       </Container>
       {!metadata && <Text variant="secondary">{t('security.noRegisteredPasskey')}</Text>}
       {credentialsLoaded && !credentials.length && localAccount && !locked && autoLockMs !== null && <UnlockMethodSection setupOnly passkey={false} locked={locked} neverLock={autoLockMs === 0} onChanged={() => { void refresh().catch(error => setError((error as Error).message)); }} />}
-      {metadata && localAccount && !locked && !added && <Button onClick={() => { setNewName(defaultPasskeyName(credentials.length)); setError(''); }} disabled={busy} small><IconPlus size={16} />{t(busy ? 'common.loading' : 'passkey.add')}</Button>}
+      {credentials.length > 0 && localAccount && !locked && !added && <Button onClick={() => { setNewName(defaultPasskeyName(credentials.length)); setError(''); }} disabled={busy} small><IconPlus size={16} />{t(busy ? 'common.loading' : 'passkey.add')}</Button>}
     </Container></Card>
     {added ? <PasskeyRecoverySetup key={selectedId} credentialId={selectedId} blobSupported={saveNewCredential} onNext={() => { setAdded(false); setSaveNewCredential(false); }} /> : metadata && !locked && <Card className="mb-0"><Container gap={5}>
       <SectionLabel>{t('security.recovery')}<InfoTooltip text={t('passkey.recoverySnapshot')} /></SectionLabel>
       <Text variant="secondary">{t('passkey.accountRecovery')}</Text>
-      <PasskeyBackupDownload compact />
+      <PasskeyBackupDownload compact credentialId={selectedId} />
     </Container></Card>}
     {newName !== null && createPortal(<Modal title={t('passkey.add')} onClose={() => { if (!busy) setNewName(null); }} footer={<Button disabled={busy} onClick={add}>{t(busy ? 'common.loading' : 'common.continue')}</Button>}>
       <Input small label={t('passkey.name')} placeholder={defaultPasskeyName(credentials.length)} value={newName} maxLength={PASSKEY_MAX_NAME_LENGTH} disabled={busy} onChange={event => setNewName(event.target.value)} />
