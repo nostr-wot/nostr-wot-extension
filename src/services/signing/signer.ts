@@ -38,9 +38,8 @@ import { pqEncrypt, isPqEnvelope } from '@lib/crypto/pq.ts';
  *   8. user opens popup, sees pending requests, approves/denies
  *   9. vault.withPrivkey() -> sign inside the scope -> the copy is zeroed on every path
  *
- * Permissions are account-type-agnostic (allow/deny/ask). After permission
- * is granted, routing is based on account type: NIP-46 forwards to remote
- * signer, local accounts sign with the vault.
+ * NIP-46 delegates approval to the remote signer before local permission checks.
+ * Local accounts use extension permissions and sign with the vault.
  *
  * @see https://github.com/nostr-protocol/nips/blob/master/07.md
  * @module services/signing/signer
@@ -75,7 +74,8 @@ async function withActiveKey<T>(accountId: string, fn: (privkey: Uint8Array) => 
  * Handle getPublicKey request with permission check
  */
 export async function handleGetPublicKey(origin: string): Promise<string | null> {
-  const { accountId } = await getActiveAccountInfo();
+  const { accountId, accountType } = await getActiveAccountInfo();
+  if (accountType === 'nip46' && await isDomainAllowed(origin)) return getActivePublicKey();
   const decision = await permissions.check(origin, 'getPublicKey', undefined, accountId ?? undefined);
   if (decision === 'deny') throw new Error('Permission denied');
 
@@ -161,17 +161,36 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     return result;
   }
 
-
   assertPageAuthenticationPolicy(authentication);
 
-  // For non-bridge accounts, an explicit per-origin 'deny'
-  // must block even for NIP-46 accounts, BEFORE anything is routed to the
-  // remote signer.
+  // Route by account type
+  if (accountType === 'nip46') {
+    // NIP-46 needs vault unlocked to read nip46Config
+    if (vault.isLocked()) {
+      await waitForVaultUnlock(origin, 'signEvent', accountId);
+    }
+    if (vault.isLocked()) throw new Error('Vault is locked');
+    if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
+    assertAccountSession(session);
+    const acct = vault.getAccountById(session.accountId);
+    if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
+    parseAuthentication(event, origin); // Revalidate timestamps after any unlock.
+    if (authentication && !await isDomainAllowed(origin)) throw new Error('Site not connected');
+    if (await isIdentityDisabled(origin)) throw new Error('Identity access disabled for this site');
+    assertAccountSession(session);
+    const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
+    assertAccountSession(session);
+    await rememberSignedFollowList(result);
+    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
+    assertAccountSession(session);
+    return result;
+  }
+
+  // Local signing honors the extension's per-origin permissions.
   const decision = await permissions.check(origin, 'signEvent', event.kind, accountId ?? undefined);
   if (decision === 'deny') throw new Error('Permission denied');
 
-  // NIP-46 normally delegates approval to the remote signer. Dangerous
-  // follow-list replacements require local confirmation for every account type.
+  // Local signers require destination and follow-list replacement consent.
   if (authentication && !(await isDomainAllowed(origin))) throw new Error('Site not connected');
   const destinationDecision = authentication && await getAuthenticationDecision(session.accountId, origin, authentication);
   if (destinationDecision === 'deny') throw new Error('Authentication permission denied');
@@ -179,7 +198,7 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
   const needsAuthApproval = !!authentication && !destinationGranted;
   let authenticationScope: AuthenticationScope | undefined;
   const replacementCount = requestedPubkey ? await followReplacementCount(event, requestedPubkey) : undefined;
-  if (replacementCount || needsAuthApproval || (!authentication && (accountType !== 'nip46' && !phoneSelected) && decision === 'ask')) {
+  if (replacementCount || needsAuthApproval || (!authentication && decision === 'ask')) {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: 'signEvent',
@@ -245,26 +264,6 @@ export async function handleSignEvent(event: UnsignedEvent, origin: string): Pro
     return result;
   }
 
-  // Route by account type
-  if (accountType === 'nip46') {
-    // NIP-46 needs vault unlocked to read nip46Config
-    if (vault.isLocked()) {
-      await waitForVaultUnlock(origin, 'signEvent', accountId);
-    }
-    if (vault.isLocked()) throw new Error('Vault is locked');
-    if (vault.getActiveAccountId() !== requestedAccountId || vault.getActivePubkey() !== requestedPubkey) throw new Error('Account switched');
-    assertAccountSession(session);
-    const acct = vault.getAccountById(session.accountId);
-    if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
-    await assertAuthentication();
-    const result = await runNip46Request(acct, 'signEvent', event, origin, session) as SignedEvent;
-    assertAccountSession(session);
-    await rememberSignedFollowList(result);
-    await rememberSignedZapNote(session.accountId, result, () => assertAccountSession(session)).catch(() => {});
-    assertAccountSession(session);
-    return result;
-  }
-
   // Local signing -- wait for vault unlock if needed
   if (vault.isLocked()) {
     await waitForVaultUnlock(origin, 'signEvent', accountId);
@@ -311,8 +310,8 @@ async function handleCryptoRequest(
    * the `schemes` marker exist to prevent, and it cannot be caught in `cryptoFn`, which
    * a remote-signer account never reaches. See `nips/pqc/04-nip07-encryption-capability.md`.
    *
-   * Checked after the permission gate, so an origin cannot probe the active account's
-   * type without first being allowed to make the call at all.
+   * Page callers must already have connection consent at the background boundary.
+   * NIP-46 capability refusal precedes local signing permissions.
    */
   remoteSignerUnsupported?: string,
   previewOptions?: PqEncryptOptions,
@@ -328,14 +327,27 @@ async function handleCryptoRequest(
     return cryptoWithLocalBridge(method, theirPubkey, payload, session, origin);
   }
 
+  if (accountType === 'nip46') {
+    if (remoteSignerUnsupported) throw new Error(remoteSignerUnsupported);
+    if (vault.isLocked()) {
+      await waitForVaultUnlock(origin, method, accountId);
+    }
+    if (vault.isLocked()) throw new Error('Vault is locked');
+    assertAccountSession(session);
+    const acct = vault.getAccountById(session.accountId);
+    if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
+    if (await isIdentityDisabled(origin)) throw new Error('Identity access disabled for this site');
+    assertAccountSession(session);
+    const result = await runNip46Request(acct, method, nip46Data, origin, session) as string;
+    assertAccountSession(session);
+    return result;
+  }
 
-  // For non-bridge accounts, an explicit per-origin 'deny'
-  // blocks even NIP-46 accounts before anything reaches the remote signer.
+  // Local encryption/decryption honors extension permissions.
   const decision = await permissions.check(origin, method, undefined, accountId ?? undefined);
   if (decision === 'deny') throw new Error('Permission denied');
 
-  // NIP-46 delegates ordinary approval after its extension permission checks.
-  if ((accountType !== 'nip46' && !phoneSelected) && decision === 'ask') {
+  if (decision === 'ask') {
     const pubkey = await getActivePublicKey();
     const approved = await queueRequest({
       type: method,
@@ -364,20 +376,6 @@ async function handleCryptoRequest(
   if (phoneSelected || await isLocalBridgeSelected(session.accountId)) {
     if (remoteSignerUnsupported) throw new Error(remoteSignerUnsupported);
     return cryptoWithLocalBridge(method, theirPubkey, payload, session, origin);
-  }
-
-  if (accountType === 'nip46') {
-    if (remoteSignerUnsupported) throw new Error(remoteSignerUnsupported);
-    if (vault.isLocked()) {
-      await waitForVaultUnlock(origin, method, accountId);
-    }
-    if (vault.isLocked()) throw new Error('Vault is locked');
-    assertAccountSession(session);
-    const acct = vault.getAccountById(session.accountId);
-    if (!acct || acct.type !== 'nip46') throw new Error('No NIP-46 account active');
-    const result = await runNip46Request(acct, method, nip46Data, origin, session) as string;
-    assertAccountSession(session);
-    return result;
   }
 
   if (vault.isLocked()) {

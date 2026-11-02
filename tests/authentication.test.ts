@@ -131,13 +131,6 @@ it('revoking a saved grant makes the next request ask again',async()=>{
   const again=handleSignEvent(relay(),site); void again.catch(()=>{});
   const [next]=await pending(); assert.ok(next); await resolveRequest(next.id,{allow:false}); await assert.rejects(again);
 });
-it('a remote signer cannot bypass local destination consent',async()=>{
-  const payload=vault.getAccountById('acct1')!;
-  await browser.storage.local.set({accounts:[{...payload,type:'nip46'}]});
-  const signing=handleSignEvent(relay(),site); void signing.catch(()=>{});
-  const [item]=await pending(); assert.equal(item.authentication?.protocol,'nip42');
-  await resolveRequest(item.id,{allow:false}); await assert.rejects(signing,/denied/i);
-});
 it('disconnect while approval is open prevents signing and remembered permission',async()=>{
   const {removeAllowedDomain}=await import('../src/services/background/domain-handlers.ts');
   const {listAuthenticationGrants}=await import('../src/services/permissions/authentication.ts');

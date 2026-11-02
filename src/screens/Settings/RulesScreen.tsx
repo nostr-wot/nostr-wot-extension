@@ -84,11 +84,12 @@ function SiteRulesEditor({domain,onOpenGlobalRules}:{domain:string;onOpenGlobalR
       <Button small onClick={onOpenGlobalRules}><IconGlobe size={15} /> {t('perms.globalRules')}</Button>
       <ButtonDanger small disabled={!activeId || !permissions.loaded} onClick={() => setResetOpen(true)}>{t('perms.resetSiteRules')}</ButtonDanger>
     </Container>}>
+      {account?.type === 'nip46' && <Text variant="hint">{t('templates.remote')}</Text>}
       {keys.length ? <PermissionRulesList keys={keys} permissions={rules} inheritedKeys={inheritedKeys} accountMode onChange={save} />
         : <EmptyState icon={<IconGlobe size={24} />} text={t('perms.noRules')} />}
       <FormError>{error}</FormError>
     </PermissionsDetailLayout>
-    {addOpen && <AddRuleModal availableKeys={availablePermKeys(COMMON_PERM_KEYS.filter(key => key !== 'getPublicKey'),rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
+    {addOpen && <AddRuleModal allowCustomKind={account?.type !== 'nip46'} availableKeys={availablePermKeys(filterKeysForAccountKind(COMMON_PERM_KEYS.filter(key => key !== 'getPublicKey'), {readOnly:account?.readOnly, nip46:account?.type === 'nip46'}),rules)} onAdd={save} onClose={() => setAddOpen(false)} />}
     {resetOpen && createPortal(<ConfirmDialog title={t('perms.resetSiteRules')} message={t('perms.resetSiteRulesConfirm',{site:domain})}
       danger busy={busy} error={error} onConfirm={() => void reset()} onCancel={() => setResetOpen(false)} />,document.body)}
   </>;

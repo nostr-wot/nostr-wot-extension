@@ -697,3 +697,21 @@ it('connection review immediately lists templates and suggests Playground on our
   assert.deepEqual(calls.find(c=>c.method==='templates_connect').params.rules,{wot_getStatus:'allow',wot_getFollows:'allow',wot_getDistanceBatch:'allow'});
  } finally { await view.close(); }
 });
+
+it('Nostr Connect connects directly without opening or loading permission templates', async context => {
+ resetMockStorage();
+ const {default:useConnectionTemplate}=await import('../src/hooks/useConnectionTemplate');
+ await browser.storage.local.set({accounts:[{id:'remote',pubkey:'a'.repeat(64),name:'Remote',type:'nip46'}],activeAccountId:'remote'});
+ const calls:any[]=[]; let connected=0;
+ context.mock.method(browser.runtime,'sendMessage',async(message:any)=>{calls.push(message);return {result:true};});
+ function Probe(){const connection=useConnectionTemplate('https://primal.net',()=>{connected++;});return createElement('div',null,createElement('button',{onClick:connection.open},'Connect'),connection.dialog);}
+ const view=await mount();
+ try {
+  await view.render(createElement(AccountProvider,null,createElement(Probe)));
+  await act(async()=>document.querySelector('button')!.click());
+  assert.equal(connected,1);
+  assert.equal(document.querySelector('[role="dialog"]'),null);
+  assert.equal(calls.some(call=>call.method==='templates_list'),false);
+  assert.deepEqual(calls.find(call=>call.method==='templates_connect').params,{domain:'https://primal.net',accountId:'remote',rules:{}});
+ } finally {await view.close();}
+});

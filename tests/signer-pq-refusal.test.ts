@@ -111,13 +111,12 @@ describe('post-quantum on a NIP-46 account', () => {
     );
   });
 
-  it('applies a per-origin deny before disclosing the account type', async () => {
-    // An origin that is not allowed to encrypt at all must not learn that this account
-    // is a remote signer. The permission gate comes first.
+  it('refuses unsupported remote PQ even when a local rule is denied', async () => {
+    // Connected-site consent is enforced at the page boundary; local signing rules do not govern NIP-46.
     await permissions.save('evil.com', 'nip44Encrypt', null, 'deny');
     await assert.rejects(
       signer.handleNip44Encrypt(THEIR_PUBKEY_HEX, 'hello', 'evil.com', PQ_OPTS),
-      /Permission denied/,
+      /Remote signers do not support post-quantum encryption/,
     );
   });
 });

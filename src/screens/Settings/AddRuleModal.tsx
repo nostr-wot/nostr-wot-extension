@@ -14,6 +14,7 @@ import Container from '@components/Container';
 
 interface AddRuleModalProps {
   availableKeys: string[];
+  allowCustomKind?: boolean;
   onAdd: (key: string, decision: string) => void | Promise<void>;
   onClose: () => void;
 }
@@ -25,7 +26,7 @@ interface AddRuleModalProps {
  * the detail view — so the parent hand-reset them on every open. Mounting it
  * only while open does that for free.
  */
-export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleModalProps) {
+export default function AddRuleModal({ availableKeys, allowCustomKind = true, onAdd, onClose }: AddRuleModalProps) {
   const [presetKey, setPresetKey] = useState<string>(availableKeys[0] ?? 'signEvent:1');
   const [customKind, setCustomKind] = useState<string>('');
   const [decision, setDecision] = useState<string>('allow');
@@ -78,9 +79,9 @@ export default function AddRuleModal({ availableKeys, onAdd, onClose }: AddRuleM
                 />
               </Container>
             )}
-            <LinkButton tone="brand" onClick={() => setUseCustom(!useCustom)}>
+            {allowCustomKind && <LinkButton tone="brand" onClick={() => setUseCustom(!useCustom)}>
               {useCustom ? t('perms.usePreset') : t('perms.customKind')}
-            </LinkButton>
+            </LinkButton>}
           </Container>
 
           <Container gap={3}>

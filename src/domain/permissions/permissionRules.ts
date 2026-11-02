@@ -19,9 +19,8 @@ export function countDecisions(perms: Record<string, string>): { allow: number; 
 /**
  * Narrow the offerable permission keys to what the selected account could use.
  *
- * A read-only (npub) account holds no private key and a NIP-46 account delegates
- * signing to a remote signer, so every key except `getPublicKey` would be a rule
- * that can never fire. In global mode the rules apply across all accounts, so
+ * A read-only account cannot sign. NIP-46 delegates identity operations,
+ * but extension-owned wallet and graph features still use local permissions. In global mode the rules apply across all accounts, so
  * nothing is narrowed.
  */
 export function filterKeysForAccountKind(
@@ -29,7 +28,9 @@ export function filterKeysForAccountKind(
   kind: { readOnly?: boolean; nip46?: boolean },
   globalMode = false,
 ): string[] {
-  if (globalMode || (!kind.readOnly && !kind.nip46)) return keys;
+  if (globalMode) return keys;
+  if (kind.nip46) return keys.filter(key => key.startsWith('wot_') || key.startsWith('webln_'));
+  if (!kind.readOnly) return keys;
   return keys.filter((k) => READ_ONLY_KEYS.includes(k));
 }
 
