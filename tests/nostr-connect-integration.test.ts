@@ -107,7 +107,7 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
     id:'remote',name:'Integration',type:'nip46',pubkey,privkey:null,mnemonic:null,readOnly:false,createdAt:1,
     nip46Config:{bunkerUrl:`bunker://${pubkey}?relay=${encodeURIComponent(relay.url)}`,relay:relay.url,secret:null,localPrivkey:Buffer.from(clientKey).toString('hex')}
   }]});
-  await browser.storage.local.set({activeAccountId:'remote',accounts:[{id:'remote',type:'nip46',pubkey}]});
+  await browser.storage.local.set({activeAccountId:'remote',accounts:[{id:'remote',type:'nip46',pubkey}],allowedDomains:[origin]});
   await browser.storage.sync.set({myPubkey:pubkey});
 
   await t.test('connects and waits for remote approval before returning a verified event',async()=>{
@@ -138,6 +138,8 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
     const encrypt=scheme==='04'?signer.handleNip04Encrypt:signer.handleNip44Encrypt;
     const decrypt=scheme==='04'?signer.handleNip04Decrypt:signer.handleNip44Decrypt;
     let start=relay.requests.length;
+    await permissions.save(origin,`nip${scheme}Encrypt`,null,'deny','remote');
+    await permissions.save(origin,`nip${scheme}Decrypt`,null,'deny','remote');
     const encrypted=encrypt(peer,'private integration text',origin);
     await until(()=>relay.requests.length>start); await relay.approve(relay.requests[start]);
     const ciphertext=await encrypted;
@@ -147,13 +149,38 @@ test('Nostr Connect integration: real relay and remote approvals', {timeout:2000
     await until(()=>relay.requests.length>start); await relay.approve(relay.requests[start]);
     assert.equal(await plaintext,'private integration text');
   });
-  await t.test('local deny and foreign author never reach the remote signer',async()=>{
-    const count=relay.requests.length;
+  await t.test('local deny does not replace remote approval; foreign authors remain blocked',async()=>{
+    let count=relay.requests.length;
     await permissions.save(origin,'signEvent',1,'deny','remote');
-    await assert.rejects(signer.handleSignEvent({...event},origin),/Permission denied/);
+    const signing=signer.handleSignEvent({...event},origin);
+    await until(()=>relay.requests.length>count);
+    await relay.approve(relay.requests[count]);
+    assert.ok(verifyEvent(await signing));
+    count=relay.requests.length;
     await assert.rejects(signer.handleSignEvent({...event,pubkey:peer},origin),/author/);
     assert.equal(relay.requests.length,count);
-    await permissions.save(origin,'signEvent',1,'ask','remote');
+  });
+  await t.test('relay authentication is approved only by the remote signer',async()=>{
+    const count=relay.requests.length;
+    await permissions.save(origin,'signEvent',22242,'deny','remote');
+    const authOrigin='https://integration.example';
+    await browser.storage.local.set({allowedDomains:[origin,authOrigin]});
+    await permissions.save(authOrigin,'signEvent',22242,'deny','remote');
+    const signing=signer.handleSignEvent({kind:22242,content:'',created_at:Math.floor(Date.now()/1000),tags:[['relay','wss://relay.example'],['challenge','test']]},authOrigin);
+    await until(()=>relay.requests.length>count);
+    assert.ok((await signerApprovalQueue.getPending()).every(item=>item.nip46InFlight));
+    relay.response(relay.requests[count].author,{id:relay.requests[count].id,error:'User rejected'});
+    await assert.rejects(signing,/User rejected/);
+  });
+  await t.test('follow-list replacement delegates confirmation to the signer',async()=>{
+    const {rememberSignedFollowList}=await import('../src/services/signing/followListGuard.ts');
+    await rememberSignedFollowList(finalizeEvent({kind:3,content:'',tags:[['p',peer],['p',pubkey]],created_at:1},remoteKey));
+    const count=relay.requests.length;
+    const signing=signer.handleSignEvent({kind:3,content:'',tags:[],created_at:2},origin);
+    await until(()=>relay.requests.length>count);
+    assert.ok((await signerApprovalQueue.getPending()).every(item=>item.nip46InFlight));
+    await relay.approve(relay.requests[count]);
+    assert.ok(verifyEvent(await signing));
   });
   await t.test('cancelling remote approval rejects locally and clears the pending marker',async()=>{
     const count=relay.requests.length;

@@ -1160,49 +1160,6 @@ describe('signer -- account switch invalidates pending getPublicKey', () => {
   });
 });
 
-// -- NIP-46 local deny (permission check before remote routing) --
-
-describe('signer -- NIP-46 accounts honor local deny', () => {
-  beforeEach(async () => {
-    resetMockStorage();
-    vault.lock();
-    await signerApprovalQueue.cleanupStale();
-    await browserMock.storage.local.set({
-      accounts: [{ id: 'n1', type: 'nip46', pubkey: TEST_PUBKEY_HEX }],
-      activeAccountId: 'n1',
-    });
-  });
-
-  it('signEvent with a local per-origin deny throws before routing to the bunker', async () => {
-    await permissions.save('evil.com', 'signEvent', 1, 'deny');
-    await assert.rejects(
-      signer.handleSignEvent(
-        { kind: 1, content: 'hi', tags: [], created_at: Math.floor(Date.now() / 1000) },
-        'evil.com'
-      ),
-      /Permission denied/
-    );
-    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0, 'Nothing queued or forwarded');
-  });
-
-  it('nip04Encrypt with a local deny throws before routing to the bunker', async () => {
-    await permissions.save('evil.com', 'nip04Encrypt', null, 'deny');
-    await assert.rejects(
-      signer.handleNip04Encrypt(THEIR_PUBKEY_HEX, 'secret', 'evil.com'),
-      /Permission denied/
-    );
-    assert.strictEqual((await signerApprovalQueue.getPending()).length, 0);
-  });
-
-  it('nip44Decrypt with a local deny throws before routing to the bunker', async () => {
-    await permissions.save('evil.com', 'nip44Decrypt', null, 'deny');
-    await assert.rejects(
-      signer.handleNip44Decrypt(THEIR_PUBKEY_HEX, 'ciphertext', 'evil.com'),
-      /Permission denied/
-    );
-  });
-});
-
 // -- Full event snapshot in the approval prompt --
 
 describe('signer -- pending entry carries full content and tags', () => {
@@ -1907,13 +1864,12 @@ it('follow replacement guard counts unique people, verifies evidence and queries
   } finally { disconnectRelaySockets(); globalThis.WebSocket=socket; }
 });
 
-it('dangerous follow replacements can be rejected for local and remote accounts before signing', async () => {
+it('dangerous follow replacements can be rejected for local accounts before signing', async () => {
   const { rememberSignedFollowList } = await import('../src/services/signing/followListGuard.ts');
   const { signEvent } = await import('../src/lib/crypto/nip01.ts');
   const { hexToBytes } = await import('../src/lib/crypto/utils.ts');
-  for (const remote of [false,true]) for (const empty of [false,true]) {
+  for (const empty of [false,true]) {
     resetMockStorage(); vault.lock(); await signerApprovalQueue.cleanupStale(); await setupVault();
-    if (remote) await browserMock.storage.local.set({accounts:[{id:'acct1',pubkey:TEST_PUBKEY_HEX,type:'nip46'}]});
     const input={kind:3,content:'',created_at:1,tags:[['p',THEIR_PUBKEY_HEX]]};
     await rememberSignedFollowList(await signEvent({...input,tags:[...input.tags,['p',TEST_PUBKEY_HEX]]},hexToBytes(TEST_PRIVKEY_HEX)));
     await permissions.save('https://primal.net','signEvent',3,'allow');

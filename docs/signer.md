@@ -2,7 +2,7 @@
 
 ## 1. Signing Flow
 
-The signer checks **permissions FIRST**, then vault lock state. This means a denied permission is enforced even when the vault is unlocked and the key is available.
+Local signing checks permissions before vault lock state. Nostr Connect routes validated requests to the external signer before local signing permissions; the external signer owns approval.
 
 ```
 Web page calls window.nostr.signEvent(event)
@@ -16,15 +16,11 @@ background.ts  -->  signer.handleSignEvent(event, origin)
     v
 [1] Get active account info from storage (accountId, accountType)
 [2] Check vault.exists() -- throw if no vault (and not nip46)
-[3] permissions.check(origin, 'signEvent', event.kind, accountId)
-    - 'deny' --> throw "Permission denied" (STOPS HERE — for ALL account
-      types, including nip46: an explicit local deny blocks BEFORE anything
-      is routed to the remote signer)
-    - 'ask' --> queue for popup approval (badge shown); ordinary events may
-      delegate to nip46, but authentication destination consent stays local
+[3] If type === 'nip46' --> unlock transport credentials if needed, then delegate approval to the remote signer
+[4] Otherwise check local permissions and authentication/follow-list consent
+    - 'deny' --> reject
+    - 'ask' --> queue for popup approval
     - 'allow' --> proceed
-[3b] For authentication, validate and authorize the destination (see Authentication below)
-[4] If type === 'nip46' --> route to remote signer (NIP-46)
 [5] If vault.isLocked() --> await any in-flight startup auto-unlock
     (vault.whenStartupUnlockSettled()); if STILL locked, queue as
     waitingForUnlock and open the popup
@@ -135,7 +131,7 @@ The one-time `signerRulesInheritance` migration preserves the previously active 
 
 For accounts of type `nip46`, signing requests are routed to a `BunkerSigner` instance (from `nostr-tools/nip46`, wrapped by `getNip46Client()` in `src/services/signing/signer.ts`) instead of the local vault:
 
-- **Local `deny` still applies**: `permissions.check()` runs for every account type. An explicit per-origin `deny` throws `Permission denied` BEFORE the request is forwarded to the remote signer. Only the local `ask` prompt is skipped for NIP-46 accounts (the bunker runs its own approval for `ask`/`allow`).
+- **The remote signer owns approval**: local signing and encryption rules, destination grants and follow-list confirmations do not intercept NIP-46 requests. Site connection and identity-disable controls still apply. Connecting a remote account skips the template picker and writes no local permission grants. Wallet and trust-graph permissions remain local because those operations are performed by the extension.
 - Signer instances are cached per account ID in `_nip46Clients: Map<accountId, BunkerSigner>`.
 - An ephemeral keypair is generated for relay communication on first use and persisted to the account's `nip46Config` (`vault.updateAccountNip46Keys`) so reconnecting after a service-worker restart reuses the same identity rather than minting a new one.
 - Supports `signEvent`, `nip04Encrypt/Decrypt`, `nip44Encrypt/Decrypt` via the remote signer protocol. **Post-quantum is the exception**: NIP-46 defines no post-quantum operations, and a `nip44Encrypt` sent to a bunker comes back as classic ciphertext. A post-quantum request is therefore refused before delegation rather than answered classically — see §8.
@@ -219,8 +215,8 @@ Four reasons, each with its own message, so a client can say what to change:
 The NIP-46 case is the one that must not be missed. `handleCryptoRequest` routes remote
 accounts to the bunker and never reaches `cryptoFn`, so a guard placed with the other three
 would never run and the caller would receive classic ciphertext for a post-quantum request.
-It is refused via the `remoteSignerUnsupported` parameter instead, after the permission gate
-so that an origin cannot use it to probe the account type. `tests/signer-pq-refusal.test.ts`
+It is refused via the `remoteSignerUnsupported` parameter instead, before local permission checks
+after the page connection gate. `tests/signer-pq-refusal.test.ts`
 covers all four, plus the requirement that classic NIP-44 still reaches the bunker.
 
 None of these refusals ever downgrades. A caller that asked for post-quantum either gets
@@ -244,7 +240,7 @@ payment checks remain independent. See wallet.md for matching and recovery limit
 
 ## Authentication destinations (NIP-98 and NIP-42)
 
-Authentication adds a destination-specific gate before local signing or NIP-46 delegation. `src/domain/signing/authentication.ts` validates the exact event snapshot before any asynchronous work. NIP-98 requires one `u` and one `method`; NIP-42 requires one `relay` and one nonempty `challenge`. Duplicate/ambiguous required tags, invalid payload hashes, credential-bearing or fragment URLs, insecure non-loopback transports, nonempty content and stale/future timestamps are rejected. HTTP auth has a 60-second window; relay auth has a 10-minute window, checked again after approval/unlock. The exact URL and event remain unchanged when signed.
+Authentication adds a destination-specific consent gate for local signing. NIP-46 delegates that consent to the remote signer while retaining event validation and the privileged wallet-endpoint restriction. `src/domain/signing/authentication.ts` validates the exact event snapshot before any asynchronous work. NIP-98 requires one `u` and one `method`; NIP-42 requires one `relay` and one nonempty `challenge`. Duplicate/ambiguous required tags, invalid payload hashes, credential-bearing or fragment URLs, insecure non-loopback transports, nonempty content and stale/future timestamps are rejected. HTTP auth has a 60-second window; relay auth has a 10-minute window, checked again after approval/unlock. The exact URL and event remain unchanged when signed.
 
 - Every NIP-98 request, including same-origin HTTP, requires explicit endpoint consent or a matching saved grant. Ordinary signing allows never substitute for this gate. Remembered consent binds **account + exact requesting origin + exact signed URL (including query bytes) + HTTP method**. Paths and queries are not normalized or sorted; a different resource asks again. NIP-98 may authorize operations beyond login.
 - HTTP grants use `version: 2` and an exact `resource`, preserving the destination origin for display. Legacy origin-wide HTTP allows (including records without a decision) are deliberately ignored and require new consent. They remain visible/revocable in storage; their original broad scope is never silently converted to endpoint consent. Legacy HTTP denies remain broad until explicitly revoked. Relay grants retain their existing behavior.

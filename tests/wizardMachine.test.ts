@@ -292,3 +292,28 @@ test('unified recovery configures a restored vault without creating one and refu
   assert.equal(reducer(restored, { type: 'SET', payload: {} }, options).step, WizardStep.Done);
   assert.equal(reducer(start, { type: 'RESTORED', payload: { account: { id: 'recovered' } } }, { ...options, hasAccounts: true }), start);
 });
+
+for (const hasAccounts of [false, true]) {
+  test(`Nostr Connect skips permission copying with hasAccounts=${hasAccounts}`, () => {
+    const connected = run(fresh(), [
+      { type: 'SELECT', payload: { method: 'nip46' } },
+      { type: 'DONE', payload: { account: { id: 'remote', type: 'nip46' } } },
+    ], { hasAccounts });
+    assert.equal(connected.step, WizardStep.Password, 'retain transport credential protection');
+    const done = reducer(connected, { type: 'SET' }, { hasAccounts });
+    assert.equal(done.step, WizardStep.Done);
+    assert.equal(reducer(done, { type: 'BACK' }, { hasAccounts }).step, WizardStep.Done);
+  });
+}
+test('remote account imported through another entrypoint also skips permission copying', () => {
+  const state = { ...fresh(), step: WizardStep.Password, ctx: { ...fresh().ctx, method: 'import', account: { id: 'remote', type: 'nip46' } } };
+  assert.equal(reducer(state, { type: 'SET' }, { hasAccounts: true }).step, WizardStep.Done);
+});
+test('restoring a saved remote permission-copy step advances directly to completion', () => {
+  for (const method of ['nip46', 'import']) {
+    const ctx = { ...fresh().ctx, method, account: { id: 'remote', type: 'nip46' } };
+    assert.equal(reducer(fresh(), { type: 'RESTORE', payload: { step: WizardStep.PermissionCopy, ctx } }).step, WizardStep.Done);
+  }
+  const ctx = { ...fresh().ctx, method: 'import', account: { id: 'local', type: 'nsec' } };
+  assert.equal(reducer(fresh(), { type: 'RESTORE', payload: { step: WizardStep.PermissionCopy, ctx } }).step, WizardStep.PermissionCopy);
+});

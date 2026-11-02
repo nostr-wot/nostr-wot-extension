@@ -695,6 +695,7 @@ export async function connectWithTemplate(domain: string, accountId: string, inp
     if (!accountId || state.activeAccountId !== accountId) throw new Error('Account changed. Reopen the connection.');
     const account = (state.accounts as Array<{ id: string; readOnly?: boolean; type?: string }> | undefined)?.find(a => a.id === accountId);
     if (!account) throw new Error('Account unavailable');
+    if (account.type === 'nip46' && Object.keys(rules).length) throw new Error('Nostr Connect permissions are managed by the remote signer');
     if ((account.readOnly || account.type === 'npub') && Object.keys(rules).some(key => !key.startsWith('wot_'))) throw new Error('Read-only accounts cannot grant signing permissions');
     const perms = structuredClone(await load());
     const effective = effectiveSitePermissions(perms, domain, accountId);
@@ -705,7 +706,7 @@ export async function connectWithTemplate(domain: string, accountId: string, inp
     perms[domain] = { ...(perms[domain] || {}), [accountId]: bucket };
     if ((await browser.storage.local.get('activeAccountId')).activeAccountId !== accountId) throw new Error('Account changed. Reopen the connection.');
     await browser.storage.local.set({
-      [STORAGE_KEY]: perms,
+      ...(account.type === 'nip46' ? {} : { [STORAGE_KEY]: perms }),
       allowedDomains: [...new Set([...(state.allowedDomains as string[] || []), domain])],
       identityDisabledSites: (state.identityDisabledSites as string[] || []).filter(site => !siteScopes(domain).includes(site)),
     });

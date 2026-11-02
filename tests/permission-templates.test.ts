@@ -97,3 +97,13 @@ it('applying a template cannot restore another site disconnected concurrently', 
   assert.equal(await isDomainAllowed('https://revoked.test'), false);
   assert.equal(await isDomainAllowed('https://new.test'), true);
 });
+
+it('Nostr Connect connects without writing permissions and refuses local templates', async () => {
+  await browser.storage.local.set({ accounts: [{ id: 'a', type: 'nip46' }] });
+  await assert.rejects(permissions.connectWithTemplate('https://example.com', 'a', { 'signEvent:1': 'allow' }), /remote signer/);
+  assert.equal(await isDomainAllowed('https://example.com'), false);
+  await permissions.connectWithTemplate('https://example.com', 'a', {});
+  assert.equal(await isDomainAllowed('https://example.com'), true);
+  assert.equal(await permissions.check('https://example.com', 'getPublicKey', undefined, 'a'), 'ask');
+  assert.equal(await permissions.check('https://example.com', 'signEvent', 1, 'a'), 'ask');
+});

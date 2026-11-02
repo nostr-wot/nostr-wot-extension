@@ -44,9 +44,9 @@ describe('filterKeysForAccountKind', () => {
     assert.deepEqual(filterKeysForAccountKind(keys, { readOnly: true }), READ_ONLY_KEYS);
   });
 
-  it('narrows a NIP-46 account the same way', () => {
+  it('keeps only extension-owned permissions for NIP-46', () => {
     // Signing is delegated to the remote signer, which holds its own policy.
-    assert.deepEqual(filterKeysForAccountKind(keys, { nip46: true }), READ_ONLY_KEYS);
+    assert.deepEqual(filterKeysForAccountKind([...keys, 'wot_getStatus', 'webln_sendPayment'], { nip46: true }), ['wot_getStatus', 'webln_sendPayment']);
   });
 
   it('does not narrow in global mode, where rules span all accounts', () => {

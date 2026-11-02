@@ -3,6 +3,19 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## 0.8.22 — 2026-11-02
+
+### Store release notes
+
+- Nostr Connect now delegates signing and message approvals to your external signer, without duplicate extension permission prompts.
+- Skip permission templates and the “Set up permissions” account step for remote-signer accounts.
+
+### Fixed
+
+- Skip “Set up permissions” when adding a Nostr Connect account, including saved onboarding flows already at that step.
+
+- Treat Nostr Connect as a signing bridge: connect without local permission templates and let the external signer approve signing, authentication, follow-list changes and message encryption/decryption. Site connection, identity access, validation and extension-owned wallet/graph permissions remain enforced.
+
 ## 0.8.21 — 2026-11-02
 
 ### Store release notes
