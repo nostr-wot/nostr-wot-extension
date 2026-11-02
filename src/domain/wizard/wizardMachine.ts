@@ -49,6 +49,11 @@ type TransitionHandler = (
   options: WizardOptions
 ) => TransitionResult | null;
 
+/** Remote accounts delegate approval; they never copy local signing rules. */
+function usesRemoteSigner(ctx: WizardContext): boolean {
+  return ctx.method === 'nip46' || (ctx.account !== null && typeof ctx.account === 'object' && 'type' in ctx.account && ctx.account.type === 'nip46');
+}
+
 /** Leaving the follow suggestions backwards, or the step after them when they were skipped. */
 const backFromFollowSuggestions: TransitionHandler = (ctx, _payload, { hasGeneratedAccount }) => {
   if (ctx.method === 'passkey' || ctx.method === 'passkeyAdvanced') return null;
@@ -167,6 +172,7 @@ const TRANSITIONS: Record<WizardStep, Record<string, TransitionHandler>> = {
 
   [WizardStep.Password]: {
     SET: (ctx, { upgraded }, { hasAccounts }) => {
+      if (usesRemoteSigner(ctx)) return { step: WizardStep.Done };
       // An imported derived passkey always ends on its explanation and protection offer.
       if (ctx.method === 'passkeyImport') return { step: hasAccounts && !upgraded ? WizardStep.PermissionCopy : WizardStep.PasskeyImported };
       if (upgraded) return { step: WizardStep.Done };
@@ -227,7 +233,7 @@ export function reducer(state: WizardState, action: WizardAction, options: Wizar
     const restoredStep = action.payload.step === 'archive' ? WizardStep.Done : action.payload.step === WizardStep.MoreOptions ? WizardStep.Method : action.payload.step;
     if (!Object.values(WizardStep).includes(restoredStep as WizardStep)) return state;
     return {
-      step: restoredStep as WizardStep,
+      step: restoredStep === WizardStep.PermissionCopy && usesRemoteSigner(action.payload.ctx as unknown as WizardContext) ? WizardStep.Done : restoredStep as WizardStep,
       ctx: action.payload.ctx as unknown as WizardContext,
     };
   }
