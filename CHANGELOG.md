@@ -3,7 +3,12 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
+## 0.8.22 — 2026-11-02
+
+### Store release notes
+
+- Nostr Connect now delegates signing and message approvals to your external signer, without duplicate extension permission prompts.
+- Skip permission templates and the “Set up permissions” account step for remote-signer accounts.
 
 ### Fixed
 
