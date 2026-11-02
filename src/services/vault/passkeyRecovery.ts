@@ -1,7 +1,7 @@
 import { recoveryContextFromEvent } from './recoveryCodec.ts';
 import { rpc } from '@services/rpc.ts';
 import type { SignedEvent } from '@domain/nostr/types.ts';
-import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS, PASSKEY_MAX_BLOB_BYTES, PASSKEY_RECOVERY_PRF } from '@constants/passkey.ts';
+import { PASSKEY_RP_ID, PASSKEY_TIMEOUT_MS, PASSKEY_MAX_BLOB_BYTES, PASSKEY_MAX_BLOB_WRITE_BYTES, PASSKEY_RECOVERY_PRF } from '@constants/passkey.ts';
 import { parsePasskeyBackup, validRpId, type RecoveryScope, type PasskeyProof } from '@domain/vault/passkey.ts';
 import { arrayToBase64, base64ToArray, bytesToHex } from '@lib/crypto/utils.ts';
 import { authenticatePasskey, passkeysAvailable, requestPasskey, readPasskeyProof, clearPasskeyPrf } from './passkeyClient.ts';
@@ -37,7 +37,10 @@ export async function savePasskeyRecovery(backup: string, credentialId: string, 
   const record = parsePasskeyBackup(backup);
   if (!record.passkeys.some(key => key.credentialId === credentialId)) throw new Error('Passkey does not belong to this backup');
   const bytes = new TextEncoder().encode(backup);
-  if (bytes.byteLength > PASSKEY_MAX_BLOB_BYTES) throw new Error('Recovery data exceeds the passkey storage limit. Download a recovery file instead.');
+  if (bytes.byteLength > PASSKEY_MAX_BLOB_WRITE_BYTES) {
+    await rpc('vault_recordBlobUnavailable', { credentialId });
+    throw new Error('Recovery data exceeds the passkey storage limit. Download a recovery file instead.');
+  }
   const written = await requestBlob({ write: bytes }, credentialId, signal, record.passkeys.find(p => p.credentialId === credentialId)?.rpId ?? record.rpId);
   if ((written.getClientExtensionResults() as BlobOutput).largeBlob?.written !== true) {
     await rpc('vault_recordBlobUnavailable', { credentialId });

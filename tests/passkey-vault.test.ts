@@ -1,7 +1,7 @@
 import { detectRecoveryBackup } from '../src/domain/vault/recoveryBackup.ts';
 import { passkeyDisplayName, passkeyRecoveryAccount } from '../src/domain/vault/passkey.ts';
 import type { SafeAccount } from '../src/domain/accounts/types.ts';
-import { beforeEach, afterEach, describe, it } from 'node:test';
+import { beforeEach, afterEach, describe, it, test } from 'node:test';
 import assert from 'node:assert/strict';
 import browser, { resetMockStorage } from './helpers/browser-mock.ts';
 import * as vault from '../src/services/vault/vault.ts';
@@ -15,7 +15,7 @@ import type { VaultPayload } from '../src/domain/vault/types.ts';
 import { importNsec } from '../src/domain/accounts/creation.ts';
 import { derivePqKeys } from '../src/lib/crypto/pq.ts';
 import { PQ_PROFILE } from '../src/constants/crypto/pq.ts';
-import { PASSKEY_MAX_BLOB_BYTES } from '../src/constants/passkey.ts';
+import { PASSKEY_MAX_BACKUP_BYTES } from '../src/constants/passkey.ts';
 
 const input = (n = 1): PasskeyInput => ({ credentialId: arrayToBase64(new Uint8Array(32).fill(n)), prfSalt: arrayToBase64(new Uint8Array(32).fill(n + 1)), prf: arrayToBase64(new Uint8Array(32).fill(n + 2)) });
 const payload = (): VaultPayload => ({ accounts: [{ id: 'test', name: 'Test', type: 'nsec', pubkey: 'a'.repeat(64), privkey: 'b'.repeat(64), mnemonic: null, nip46Config: null, readOnly: false, createdAt: 1 }], activeAccountId: 'test' });
@@ -138,7 +138,7 @@ describe('passkey vault encryption and lifecycle', () => {
     assert.ok(await vault.getPasskey());
   });
 
-  for (const password of ['', 'original-password']) it(`preserves imported nsec and PQC keys in provider/file recovery after ${password ? 'password' : 'no-lock'} migration and adding a passkey`, async () => {
+  for (const password of ['', 'original-password']) it(`preserves imported nsec and PQC keys in file recovery after ${password ? 'password' : 'no-lock'} migration and adding a passkey`, async () => {
     const account = await importNsec('09'.repeat(32), 'Imported signing identity');
     const seed = new Uint8Array(64).fill(7);
     const keys = derivePqKeys(seed, 0);
@@ -152,9 +152,10 @@ describe('passkey vault encryption and lifecycle', () => {
       assert.equal(await vault.changeProtection({ usePasskey: true, currentPassword: password, currentPasskey: input(), newPasskey: input() }), true);
       await vault.addPasskey(input(), input(5));
       const backup = await vault.exportPasskeyBackup();
-      // The provider blob and file carry this same complete encrypted snapshot.
+      // Imported PQ secrets remain in the file; provider storage must not silently omit them.
+      await assert.rejects(vault.exportPasskeyBlob(input().credentialId), /post-quantum keys/);
       const blob = new TextEncoder().encode(backup);
-      assert.ok(blob.byteLength < PASSKEY_MAX_BLOB_BYTES, 'a real imported ML-KEM/ML-DSA pair fits the supported blob size');
+      assert.ok(blob.byteLength < PASSKEY_MAX_BACKUP_BYTES, 'imported keys fit the recovery file limit');
       for (const secret of [account.privkey!, originalPq!.kem.secret, originalPq!.dsa.secret, input().prf, input(5).prf]) {
         assert.equal(backup.includes(secret), false, 'snapshot must not expose secret material');
       }
@@ -529,4 +530,80 @@ describe('passkey display names', () => {
     vault.lock();
     assert.equal(await vault.unlock('test-password'), true);
   });
+});
+
+describe('compact provider recovery', () => {
+  beforeEach(() => { vault.lock(); resetMockStorage(); });
+  afterEach(() => vault.lock());
+  it('stores only the selected seed, stays under 2 KB, and restores through a later unlock', async () => {
+    const { createFromMnemonicAtIndex } = await import('../src/domain/accounts/creation.ts');
+    const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+    const main = await createFromMnemonicAtIndex(mnemonic, 0);
+    const sibling = await createFromMnemonicAtIndex(mnemonic, 1);
+    const credential = { ...input(), recoveryPubkey: main.pubkey, recoveryScope: 'seed' as const };
+    await vault.create('', { accounts: [main, sibling], activeAccountId: main.id }, credential);
+    const backup = await vault.exportPasskeyBlob(credential.credentialId);
+    assert.ok(new TextEncoder().encode(backup).length <= 2048);
+    assert.equal(backup.includes(mnemonic), false);
+    assert.equal(backup.includes(main.privkey!), false);
+    await vault.destroy();
+    await vault.restorePasskeyBackup(backup, credential);
+    const recovered = vault.getDecryptedPayload().accounts;
+    assert.equal(recovered.length, 1);
+    assert.equal(recovered[0].mnemonic, mnemonic);
+    assert.equal(recovered[0].pubkey, main.pubkey);
+    vault.lock();
+    assert.equal(await vault.unlockPasskey(credential), true);
+    assert.equal(vault.getDecryptedPayload().accounts.length, 1);
+  });
+  it('binds recovery to the credential account rather than the active account', async () => {
+    const first = await importNsec('1'.repeat(64));
+    const second = await importNsec('2'.repeat(64));
+    const credential = { ...input(), recoveryPubkey: first.pubkey, recoveryScope: 'private-key' as const };
+    await vault.create('', { accounts: [first, second], activeAccountId: second.id }, credential);
+    const backup = await vault.exportPasskeyBlob(credential.credentialId);
+    await vault.destroy();
+    await vault.restorePasskeyBackup(backup, credential);
+    assert.equal(vault.getDecryptedPayload().accounts[0].pubkey, first.pubkey);
+  });
+});
+
+test('dormant passkeys can export recovery and enroll another key without changing password unlock', async () => {
+  vault.lock(); resetMockStorage();
+  const account = await importNsec('3'.repeat(64));
+  const credential = { ...input(), recoveryPubkey: account.pubkey, recoveryScope: 'private-key' as const };
+  try {
+    await vault.create('', { accounts: [account], activeAccountId: account.id }, credential);
+    assert.equal(await vault.changeProtection({ currentPasskey: credential, usePasskey: false, password: 'test-password' }), true);
+    await assert.rejects(vault.exportPasskeyBlob(credential.credentialId), /Verify a registered passkey/);
+    const backup = await vault.exportPasskeyBlob(credential.credentialId, credential);
+    const second = { ...input(3), recoveryPubkey: account.pubkey, recoveryScope: 'private-key' as const };
+    await vault.addPasskey(credential, second);
+    assert.equal(await vault.getPasskey(), null);
+    assert.equal((await vault.listPasskeys()).length, 2);
+    vault.lock(); assert.equal(await vault.unlock('test-password'), true);
+    await vault.destroy();
+    await vault.restorePasskeyBackup(backup, credential);
+    assert.equal(vault.getDecryptedPayload().accounts[0].pubkey, account.pubkey);
+  } finally { vault.lock(); }
+});
+
+test('backup inventory groups shared seeds and never returns secrets', async () => {
+  vault.lock(); resetMockStorage();
+  const { createFromMnemonicAtIndex } = await import('../src/domain/accounts/creation.ts');
+  const mnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+  const first = await createFromMnemonicAtIndex(mnemonic, 0);
+  const second = await createFromMnemonicAtIndex(mnemonic, 1);
+  const imported = await importNsec('4'.repeat(64));
+  try {
+    await vault.create('', { accounts: [first, second, imported], activeAccountId: first.id }, input());
+    const keys = await handlers.get('vault_listBackupKeys')!({}) as any[];
+    assert.equal(keys.length, 2);
+    assert.deepEqual(keys[0].accountIds, [first.id, second.id]);
+    assert.equal(keys[0].accountCount, 2);
+    const text = JSON.stringify(keys);
+    for (const secret of [mnemonic, first.privkey!, second.privkey!, imported.privkey!]) assert.equal(text.includes(secret), false);
+    vault.lock();
+    await assert.rejects(handlers.get('vault_listBackupKeys')!({}), /locked/i);
+  } finally { vault.lock(); }
 });

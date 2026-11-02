@@ -23,7 +23,7 @@ import MenuSection from './MenuSection';
 import PqcSection, { type PqcSectionHandle } from '@screens/Settings/PqcSection';
 import PermissionsSection, { type PermissionsSectionHandle } from '@screens/Settings/PermissionsSection';
 import SecuritySection from '@screens/Settings/SecuritySection';
-import PasskeySection from '@screens/Settings/PasskeySection';
+import KeysBackupsSection from '@screens/Settings/KeysBackupsSection';
 import NetworkSection from '@screens/Settings/NetworkSection';
 import WotSection from '@screens/Settings/WotSection';
 import WalletSection from '@screens/Wallet/WalletSection';
@@ -115,7 +115,8 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
     archive: t('archive.title'),
     appearance: t('appearance.title'),
     security: t('settings.security'),
-    passkeys: t('passkey.settings'),
+    passkeys: t('security.keysBackups'),
+    'keys-backups': t('security.keysBackups'),
     network: t('network.relays'),
     wallet: t('wallet.title'),
     'site-permissions': t('security.permissions'),
@@ -174,41 +175,12 @@ export default function MenuOverlay({ visible, onClose, initialSection }: MenuOv
             <SecuritySection
               onChangePassword={() => setKeyAction('changePassword')}
             />
-            {!isReadOnly && active?.type !== 'nip46' && (
-              <>
-                <ListRow
-                  variant="standalone"
-                  leadingChip={false}
-                  leading={<IconKey />}
-                  title={t('key.exportNsec')}
-                  subtitle={t('key.exportNsecDesc')}
-                  onClick={() => setKeyAction('nsec')}
-                />
-                <ListRow
-                  variant="standalone"
-                  leadingChip={false}
-                  leading={<IconLock />}
-                  title={t('key.exportNcryptsec')}
-                  subtitle={t('key.exportNcryptsecDesc')}
-                  onClick={() => setKeyAction('ncryptsec')}
-                />
-                {vault.isGenerated && (
-                  <ListRow
-                    variant="standalone"
-                    leadingChip={false}
-                    leading={<IconDownload />}
-                    title={t('key.exportSeed')}
-                    subtitle={t('key.exportSeedDesc')}
-                    onClick={() => setKeyAction('seed')}
-                  />
-                )}
-              </>
-            )}
-            {vault.exists && <ListRow variant="standalone" leadingChip={false} leading={<IconKey />} title={t('passkey.settings')} subtitle={t('passkey.settingsDesc')} onClick={() => pushSection('passkeys')} />}
+            {vault.exists && <ListRow variant="standalone" leadingChip={false} leading={<IconKey />} title={t('security.keysBackups')} subtitle={t('security.keysBackupsDesc')} onClick={() => pushSection('keys-backups')} />}
           </MenuSection>
         );
       case 'passkeys':
-        return <MenuSection><PasskeySection key={active?.id} locked={vault.locked} account={active} /></MenuSection>;
+      case 'keys-backups':
+        return <MenuSection><KeysBackupsSection /></MenuSection>;
       case 'pqc':
         return (
           <MenuSection>

@@ -30,7 +30,7 @@ export default function PasskeyRecoverySetup({ credentialId, onNext, blobSupport
     {providerUnavailable && <>
     <FormError>{recoveryError}</FormError>
     <Text variant="secondary">{t('passkey.backupDesc')}</Text>
-    <PasskeyBackupDownload onDownloaded={() => setDownloaded(true)} />
+    <PasskeyBackupDownload credentialId={credentialId} onDownloaded={() => setDownloaded(true)} />
     {downloaded && !providerSaved && <label className="flex items-start gap-3 text-secondary"><Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />{t('passkey.confirmBackup')}</label>}
     {!providerSaved && providerUnavailable && <RelayRecoverySave credentialId={credentialId} usePrepared />}
     <Container stickyFooter><Button disabled={!downloaded || !confirmed} onClick={() => onNext(false)}>{t('common.continue')}</Button></Container>

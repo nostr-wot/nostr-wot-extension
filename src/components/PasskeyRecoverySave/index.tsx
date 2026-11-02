@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { rpc } from '@services/rpc.ts';
+import { exportPasskeyRecovery } from '@services/vault/recoveryExportClient';
 import { t } from '@services/i18n/i18n.ts';
 import { parsePasskeyBackup } from '@domain/vault/passkey.ts';
 import { savePasskeyRecovery } from '@services/vault/passkeyRecovery.ts';
@@ -22,7 +22,7 @@ export default function PasskeyRecoverySave({ credentialId, autoStart = false, d
     const controller = new AbortController(); active.current = controller;
     setStatus('saving'); setError('');
     try {
-      const backup = await rpc<string>('vault_exportPasskeyBackup');
+      const backup = await exportPasskeyRecovery('vault_exportPasskeyBlob', credentialId);
       if (controller.signal.aborted) return;
       const selected = credentialId || parsePasskeyBackup(backup).passkeys[0].credentialId;
       await savePasskeyRecovery(backup, selected, controller.signal);

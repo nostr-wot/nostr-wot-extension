@@ -33,7 +33,7 @@ test('passkey recovery download alone does not skip acknowledgement and never re
     assert.equal(button('common.continue').disabled, false);
     await act(async () => button('common.continue').click());
     assert.equal(completed, 1);
-    assert.deepEqual(calls, ['vault_exportPasskeyBackup']);
+    assert.deepEqual(calls, ['vault_getPasskey', 'vault_exportPasskeyBackup']);
   } finally { await act(async () => root.unmount()); dom.window.close(); }
 });
 
@@ -177,7 +177,7 @@ test('confirmed provider storage makes the recovery file optional but failed sto
     assert.ok(button('passkey.saveToRelays'));
     assert.ok(button('passkey.download'));
     assert.equal(button('common.continue').disabled, true);
-    assert.deepEqual(calls, ['vault_exportPasskeyBackup', 'vault_recordBlobSaved', 'vault_exportPasskeyBackup', 'vault_recordBlobUnavailable']);
+    assert.deepEqual(calls, ['vault_getPasskey', 'vault_exportPasskeyBlob', 'vault_recordBlobSaved', 'vault_getPasskey', 'vault_exportPasskeyBlob', 'vault_recordBlobUnavailable']);
     await act(async () => root.render(createElement(PasskeyBackupStep, { key: 'saved', saved: true, onNext: saved => completed.push(!!saved) })));
     assert.equal(button('passkey.saveToRelays'), undefined);
     assert.equal(button('passkey.download'), undefined);

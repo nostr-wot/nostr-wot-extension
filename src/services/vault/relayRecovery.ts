@@ -17,7 +17,7 @@ import type { VaultPayload } from '@domain/vault/types.ts';
 /** Pure ciphertext leaves this background-only module. No private keys go to the popup. */
 export async function prepareRelayRecovery(proof: PasskeyProof): Promise<SignedEvent> {
   await vault.requireUnlocked(); const revision = vault.getSessionRevision();
-  const record = parsePasskeyBackup(await vault.exportPasskeyBackup());
+  const record = parsePasskeyBackup(await vault.exportPasskeyBackup(proof));
   const metadata = record.passkeys.find(p => p.credentialId === proof.credentialId);
   if (!metadata?.recoveryPubkey || !metadata.recoveryScope || metadata.prfSalt !== PASSKEY_RECOVERY_PRF) throw new Error('Register a new passkey to enable relay recovery');
   const verified = await unwrapVaultKey(metadata, proof); verified.fill(0);

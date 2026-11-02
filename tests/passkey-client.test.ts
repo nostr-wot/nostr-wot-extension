@@ -122,6 +122,16 @@ describe('passkey-attached recovery', () => {
     assert.equal(calls.length, 1);
     assert.equal(new TextDecoder().decode(calls[0].extensions.largeBlob.write), backup);
   });
+  it('rejects writes over 2 KB before opening a provider prompt', async context => {
+    const { savePasskeyRecovery } = await import('../src/services/vault/passkeyRecovery.ts');
+    const large = JSON.parse(backup);
+    large.vault.ciphertext = arrayToBase64(new Uint8Array(2048));
+    install(async () => assert.fail('oversized data must not reach WebAuthn'));
+    context.mock.method(browser.runtime, 'sendMessage', async (message: any) => {
+      assert.equal(message.method, 'vault_recordBlobUnavailable'); return { result: true };
+    });
+    await assert.rejects(savePasskeyRecovery(JSON.stringify(large), metadata.credentialId), /storage limit/);
+  });
   it('fails closed on refused or unconfirmed writes and wrong credentials', async () => {
     const { savePasskeyRecovery } = await import('../src/services/vault/passkeyRecovery.ts');
     for (const result of [{}, { largeBlob: { written: false } }]) {

@@ -51,7 +51,7 @@ export default function UnlockMethodSection({ passkey, locked, neverLock, onChan
       }
       if (!live.current) return;
       const proof = enrolling
-        ? await createPasskey('', { rpId: PASSKEY_RP_ID, ...(account ? { scope: 'vault' as const, pubkey: account.pubkey } : {}) })
+        ? await createPasskey('', { rpId: PASSKEY_RP_ID, ...(account ? { scope: account.type === 'generated' ? 'seed' as const : 'private-key' as const, pubkey: account.pubkey } : {}) })
         : await authenticatePasskey(credentials.find(c => c.credentialId === selected)!);
       try {
         if (!live.current) return;

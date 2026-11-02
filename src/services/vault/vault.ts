@@ -1,3 +1,4 @@
+import { createFromMnemonicAtPath, createFromMnemonicAtIndex, importNsec } from '@domain/accounts/creation.ts';
 import { toSafeAccount } from '@domain/accounts/account.ts';
 import { PASSKEY_VAULT_VERSION, LEGACY_PASSKEY_RP_ID, PASSKEY_BACKUP_FORMAT, PASSKEY_MAX_CREDENTIALS, PASSKEY_MAX_BACKUP_BYTES } from '@constants/passkey.ts';
 import { parsePasskeyBackup, validPasskeyName, validatePasskeyRecord, type PasskeyInput, type PasskeyProof, type PasskeyMetadata, type PasskeyVaultRecord } from '@domain/vault/passkey.ts';
@@ -621,17 +622,63 @@ export async function getPasskey(): Promise<PasskeyMetadata | null> {
   return stored?.protection === 'passkey' ? (await listPasskeys())[0] ?? null : null;
 }
 
-export async function exportPasskeyBackup(): Promise<string> {
+/** Dormant enrollment still manages recovery while password/None protects the local vault. */
+async function recoveryRecord(proof?: PasskeyProof): Promise<{ record: PasskeyVaultRecord; key: CryptoKey }> {
+  const stored = (await browser.storage.local.get(STORAGE_KEY))[STORAGE_KEY] as Record<string, any>;
+  if (stored?.protection === 'passkey') { validatePasskeyRecord(stored); return { record: stored, key: _cryptoKey! }; }
+  const enrollment = stored?.registeredPasskeys;
+  if (!enrollment || !proof) throw new Error('Verify a registered passkey to manage its recovery');
+  const record = { ...stored, ...enrollment, version: PASSKEY_VAULT_VERSION, protection: 'passkey' };
+  validatePasskeyRecord(record);
+  const wrapper = record.passkeys.find(p => p.credentialId === proof.credentialId);
+  if (!wrapper) throw new Error('Passkey does not belong to this vault');
+  const bytes = await unwrapVaultKey(wrapper, proof);
+  try {
+    const key = await importVaultKey(bytes);
+    const encrypted = await encrypt(key, JSON.stringify(getDecryptedPayload()));
+    return { record: { version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: record.rpId, passkeys: record.passkeys, iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext) }, key };
+  } finally { bytes.fill(0); }
+}
+
+export async function exportPasskeyBackup(proof?: PasskeyProof): Promise<string> {
   await requireUnlocked();
   const revision = sessionRevision;
   return mutations.run(async () => {
     assertRevision(revision);
-    const data = await browser.storage.local.get(STORAGE_KEY);
-    validatePasskeyRecord(data[STORAGE_KEY]);
+    const { record } = await recoveryRecord(proof);
     assertRevision(revision);
-    const text = JSON.stringify({ format: PASSKEY_BACKUP_FORMAT, vault: data[STORAGE_KEY] });
+    const text = JSON.stringify({ format: PASSKEY_BACKUP_FORMAT, vault: record });
     if (text.length > PASSKEY_MAX_BACKUP_BYTES) throw new Error('Vault exceeds the recovery file size limit');
     return text;
+  });
+}
+
+/** Provider storage contains one secret, never the growing vault or sibling accounts. */
+export async function exportPasskeyBlob(credentialId?: string, proof?: PasskeyProof): Promise<string> {
+  await requireUnlocked();
+  const revision = sessionRevision;
+  return mutations.run(async () => {
+    assertRevision(revision);
+    const { record: stored, key } = await recoveryRecord(proof);
+    assertRevision(revision);
+    const wrapper = credentialId ? stored.passkeys.find(p => p.credentialId === credentialId) : stored.passkeys[0];
+    if (!wrapper) throw new Error('Passkey does not belong to this vault');
+    const payload = getDecryptedPayload();
+    const account = wrapper.recoveryPubkey
+      ? payload.accounts.find(a => a.pubkey === wrapper.recoveryPubkey)
+      : payload.accounts.find(a => a.id === payload.activeAccountId);
+    if (!account?.privkey || account.readOnly) throw new Error('This passkey has no local account to recover');
+    // Imported PQ keys cannot be recreated from the seed; never silently lose them.
+    if (account.pqKeys) throw new Error('This account has separate post-quantum keys. Keep a recovery file to preserve them.');
+    const compact = account.mnemonic
+      ? { format: 'nostr-wot-key-v1', mnemonic: account.mnemonic, path: account.derivationPath, index: account.derivationIndex }
+      : { format: 'nostr-wot-key-v1', privateKey: account.privkey };
+    const encrypted = await encrypt(key, JSON.stringify(compact));
+    assertRevision(revision);
+    return JSON.stringify({ format: PASSKEY_BACKUP_FORMAT, vault: {
+      version: PASSKEY_VAULT_VERSION, protection: 'passkey', rpId: wrapper.rpId ?? stored.rpId,
+      passkeys: [wrapper], iv: arrayToBase64(encrypted.iv), ciphertext: arrayToBase64(encrypted.ciphertext),
+    } });
   });
 }
 
@@ -641,8 +688,9 @@ export async function addPasskey(existing: PasskeyProof, passkey: PasskeyInput):
     assertRevision(revision);
     if (!_cryptoKey || !_decrypted) throw new Error('Vault is locked');
     const data = await browser.storage.local.get(STORAGE_KEY);
-    const record = data[STORAGE_KEY] as Record<string, unknown> | undefined;
-    validatePasskeyRecord(record);
+    const stored = data[STORAGE_KEY] as Record<string, any>;
+    const { record } = await recoveryRecord(existing);
+    assertRevision(revision);
     if (record.passkeys.length >= PASSKEY_MAX_CREDENTIALS) throw new Error('Passkey limit reached');
     if (record.passkeys.some(p => p.credentialId === passkey.credentialId)) throw new Error('Passkey already added');
     const wrapper = record.passkeys.find(p => p.credentialId === existing.credentialId);
@@ -651,7 +699,8 @@ export async function addPasskey(existing: PasskeyProof, passkey: PasskeyInput):
     try {
       const next = await wrapVaultKey(bytes, passkey);
       assertRevision(revision);
-      await browser.storage.local.set({ [STORAGE_KEY]: { ...record, passkeys: [...record.passkeys, next] } });
+      const passkeys = [...record.passkeys, next];
+      await browser.storage.local.set({ [STORAGE_KEY]: stored.protection === 'passkey' ? { ...record, passkeys } : { ...stored, registeredPasskeys: { rpId: record.rpId, passkeys } } });
       assertRevision(revision);
     } finally { bytes.fill(0); }
   });
@@ -664,7 +713,16 @@ async function readPasskeyBackup(record: PasskeyVaultRecord, proof: PasskeyProof
   const bytes = await unwrapVaultKey(wrapper, proof);
   try {
     const key = await importVaultKey(bytes);
-    const payload = JSON.parse(await decrypt(key, base64ToArray(record.iv), base64ToArray(record.ciphertext))) as VaultPayload;
+    let payload = JSON.parse(await decrypt(key, base64ToArray(record.iv), base64ToArray(record.ciphertext))) as VaultPayload;
+    const compact = payload as unknown as { format?: string; mnemonic?: string; path?: string; index?: number; privateKey?: string };
+    if (compact.format === 'nostr-wot-key-v1') {
+      if (!!compact.mnemonic === !!compact.privateKey) throw new Error('Invalid compact recovery secret');
+      const account = compact.mnemonic
+        ? compact.path !== undefined ? await createFromMnemonicAtPath(compact.mnemonic, compact.path) : await createFromMnemonicAtIndex(compact.mnemonic, compact.index ?? 0)
+        : await importNsec(compact.privateKey!);
+      if (wrapper.recoveryPubkey && account.pubkey !== wrapper.recoveryPubkey) throw new Error('Recovery identity does not match this passkey');
+      payload = { accounts: [account], activeAccountId: account.id, cacheKey: arrayToBase64(crypto.getRandomValues(new Uint8Array(32))) };
+    }
     if (!Array.isArray(payload.accounts) || !payload.accounts.length || !payload.accounts.some(a => a.id === payload.activeAccountId) || !payload.cacheKey) throw new Error('Invalid vault payload');
     const memory = { cacheKeyBytes: base64ToArray(payload.cacheKey), accounts: payload.accounts.map(toMemoryAccount), activeAccountId: payload.activeAccountId };
     return { key, payload, memory };
@@ -709,7 +767,10 @@ export async function restorePasskeyBackup(text: string, proof: PasskeyProof): P
       const latest = await browser.storage.local.get('accounts');
       assertRevision(revision);
       if (_decrypted?.accounts.length || (Array.isArray(latest.accounts) && latest.accounts.length)) throw new Error('Accounts already exist on this device');
-      await browser.storage.local.set({ [STORAGE_KEY]: record, autoLockMs: AUTO_LOCK_DEFAULT_MS, accounts: payload.accounts.map(toSafeAccount), activeAccountId: payload.activeAccountId });
+      // Normalize compact/legacy imports to the ordinary local vault shape before saving.
+      const normalized = await encrypt(key, JSON.stringify(payload));
+      assertRevision(revision);
+      await browser.storage.local.set({ [STORAGE_KEY]: { ...record, iv: arrayToBase64(normalized.iv), ciphertext: arrayToBase64(normalized.ciphertext) }, autoLockMs: AUTO_LOCK_DEFAULT_MS, accounts: payload.accounts.map(toSafeAccount), activeAccountId: payload.activeAccountId });
       assertRevision(revision);
       zeroDecryptedKeys();
       _decrypted = memory;
