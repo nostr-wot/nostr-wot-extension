@@ -14,11 +14,12 @@ interface Props {
   permissions: Record<string, string>;
   inheritedKeys?: string[];
   accountMode?: boolean;
+  allowRemove?: boolean;
   onChange: (key: string, decision: string) => Promise<void>;
 }
 
 /** Shared global/account editor; inheritance is identified by text and neutral tone. */
-export default function PermissionRulesList({ keys, permissions, inheritedKeys = [], accountMode = false, onChange }: Props) {
+export default function PermissionRulesList({ keys, permissions, inheritedKeys = [], accountMode = false, allowRemove = false, onChange }: Props) {
   const [error, setError] = useState('');
   return <Card>
     {keys.map(key => {
@@ -26,8 +27,9 @@ export default function PermissionRulesList({ keys, permissions, inheritedKeys =
       const inherited = inheritedKeys.includes(key);
       const label = formatPermissionLabel(key);
       const options: Array<{value:string;label:string}> = DECISIONS.map(value => ({ value, label:t(`perms.${value}`) }));
+      if (allowRemove) options.push({ value: 'remove', label: t('common.remove') });
       if (accountMode && !inherited) options.push({value:'inherit',label:t('perms.useGlobalRule')});
-      return <Container key={key} variant="row" className="justify-between py-5 border-b border-card-border last:border-b-0">
+      return <Container key={key} variant="row" className="justify-between py-3 border-b border-card-border last:border-b-0">
         <div className="min-w-0">
           <span className={inherited ? 'text-md font-medium text-muted' : 'text-md font-medium text-brand'}>{label}</span>
           {accountMode && <Text variant="muted">{t(inherited ? 'perms.inheritedRule' : 'perms.accountRule')}</Text>}

@@ -1,3 +1,4 @@
+import useConnectionTemplate from '@hooks/useConnectionTemplate';
 import { hasSiteScope } from '@domain/site/siteScope.ts';
 import { useState, useEffect, useRef } from 'react';
 import { rpc, rpcNotify } from '@services/rpc.ts';
@@ -15,8 +16,6 @@ export default function GlobeButton() {
   const [domain, setDomain] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean>(false);
   const [disconnecting, setDisconnecting] = useState<boolean>(false);
-  const [connecting, setConnecting] = useState<boolean>(false);
-  const [connectError, setConnectError] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
 
   // Which site is this? Not `tab.url` — the browser withholds it from an
@@ -50,28 +49,8 @@ export default function GlobeButton() {
 
   useOutsideClick(ref, () => setOpen(false), open);
 
-  // One step, same as the home card. See services/background/domain-handlers.ts connectDomain.
-  //
-  // Guarded like handleDisconnect three lines below, which it was not: a failed
-  // connectDomain — the worker asleep past rpc()'s three wake retries — was an
-  // unhandled rejection, so the dot stayed as it was and the user got no
-  // indication that the click had done nothing.
-  const handleConnect = async () => {
-    if (!domain) return;
-    setConnecting(true);
-    try {
-      await rpc('connectDomain', { domain });
-      // `allowedDomains` already reflects this write by the time `rpc()`
-      // resolves — `connectDomain` awaits the storage.local.set before
-      // returning — so `connected` above updates on its own; nothing to set here.
-      setOpen(false);
-      rpcNotify('configUpdated');
-    } catch {
-      setConnectError(true);
-    } finally {
-      setConnecting(false);
-    }
-  };
+  const connection = useConnectionTemplate(domain, () => { setOpen(false); rpcNotify('configUpdated'); });
+  const handleConnect = connection.open;
 
   const handleDisconnect = async () => {
     if (!domain) return;
@@ -89,6 +68,7 @@ export default function GlobeButton() {
 
   return (
     <div ref={ref} className="relative">
+      {connection.dialog}
       <IconButton
         tone="brand"
         className="relative"
@@ -129,11 +109,8 @@ export default function GlobeButton() {
           )}
           {connected === false && domain && (
             <>
-              {connectError && (
-                <div className="text-xs text-error mb-4">{t('globe.connectFailed')}</div>
-              )}
-              <Button small onClick={handleConnect} disabled={connecting} className="w-full">
-                {connecting ? t('common.loading') : t('common.connect')}
+              <Button small onClick={handleConnect} className="w-full">
+                {t('common.connect')}
               </Button>
             </>
           )}

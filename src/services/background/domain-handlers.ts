@@ -1,3 +1,4 @@
+import { listTemplates, saveTemplate, deleteTemplate } from '../permissions/templates';
 import { tabOrigins, getTabOrigin } from '../browser/tabOrigins.ts';
 import { siteScopes, hasSiteScope } from '@domain/site/siteScope.ts';
 import { scheduleAccountSwitchPopupRecovery } from '../browser/accountSwitchPopupRecovery.ts';
@@ -491,6 +492,15 @@ export const handlers = new Map<string, HandlerFn>([
 
     // The single consent point. See connectDomain.
     ['connectDomain', async (params) => connectDomain(params.domain as string)],
+    ['templates_list', async () => listTemplates()],
+    ['templates_save', async params => saveTemplate(params.template)],
+    ['templates_delete', async params => deleteTemplate(params.id as string)],
+    ['templates_connect', async params => {
+        await signerPermissions.connectWithTemplate(params.domain as string, params.accountId as string, params.rules);
+        // Consent is already committed; dismissal cleanup must not report it as failed.
+        await removeDismissedDomain(params.domain as string).catch(() => {});
+        return { connected: true };
+    }],
 
     // Lets the popup name the current site without reading tab.url, which the browser
     // withholds from an extension holding no host permissions.

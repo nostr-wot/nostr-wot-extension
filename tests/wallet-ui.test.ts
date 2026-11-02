@@ -135,7 +135,8 @@ it('Home shows wallet and account tools once a site notice is dismissed',async()
  const {HomeWalletLayout}=await import('../src/screens/Home/Home');
  for(const state of [null,'empty','notConnected','error','connected','dismissed']) {
   const notice=state==='connected'||state==='dismissed'?null:'Site unavailable';
-  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice},createElement('div',null,'Site controls')));
+  const html=renderToStaticMarkup(createElement(HomeWalletLayout,{wallet:createElement('div',null,'Private wallet balance'),siteNotice:notice,dialog:createElement('div',{role:'dialog'},'Connection permissions')},createElement('div',null,'Site controls')));
+  assert.match(html,/Connection permissions/, 'connection dialog remains mounted while the site notice is visible');
   if(notice===null) {
    assert.match(html,/Private wallet balance/);assert.match(html,/Site controls/);
   } else {

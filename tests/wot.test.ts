@@ -860,3 +860,30 @@ test('database table targets row actions, confirms deletion and separates shared
         for(const [key,descriptor] of globals){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete (globalThis as any)[key];}
     }
 });
+test('playground permissions allow graph reads and a deny also covers equivalent query forms', async () => {
+    await setup();
+    await permissions.migrateToGlobalRules();
+    await permissions.saveDirect('https://site.test', 'wot_getFollows', 'allow', 'a');
+    assert.deepEqual(await handleWotRequest('wot_getFollows', {origin:'https://site.test', pubkey:a}), [b,c]);
+    await permissions.saveDirect('https://site.test', 'wot_getFollows', 'deny', 'a');
+    await assert.rejects(handleWotRequest('wot_getFollows', {origin:'https://site.test', pubkey:a}), /Permission denied/);
+    await permissions.saveDirect('https://site.test', 'wot_getDistanceBatch', 'deny', 'a');
+    await assert.rejects(handleWotRequest('wot_getDistance', {origin:'https://site.test', target:d}), /Permission denied/);
+});
+test('an explicit Ask graph rule waits for approval before returning data', async () => {
+    await setup();
+    await permissions.migrateToGlobalRules();
+    await permissions.saveDirect('https://site.test', 'wot_getFollows', 'ask', 'a');
+    const queue = await import('../src/services/signing/approvalQueue');
+    const request = handleWotRequest('wot_getFollows', {origin:'https://site.test', pubkey:a});
+    const outcome = request.then(value => ({value}), error => ({error}));
+    let pending = await queue.getPending();
+    for (let i=0; i<50 && !pending.length; i++) { await new Promise(resolve => setTimeout(resolve,10)); pending = await queue.getPending(); }
+    try {
+        assert.equal(pending[0]?.permKey, 'wot_getFollows');
+        await queue.resolveRequest(pending[0].id, {allow:false, remember:false});
+        const result = await outcome;
+        assert.ok('error' in result);
+        assert.match(result.error.message, /Permission denied/);
+    } finally { for (const item of await queue.getPending()) await queue.resolveRequest(item.id, {allow:false}); }
+});
