@@ -57,7 +57,7 @@ export default function ApprovalCard({ group, onClick, onCancel, hideSite = fals
           <IconClose size={16} aria-hidden="true" />
         </IconButton>}
       </Container>
-      {firstReq?.authentication && <Container className="px-6 pb-5"><AuthenticationNotice request={firstReq}/></Container>}
+      {firstReq?.authentication && <Container className="px-6 pb-5"><AuthenticationNotice request={firstReq} requests={group.requests}/></Container>}
       {!isNip46 && <FollowReplacementNotice requests={group.requests}/>}
     </Card>
   );

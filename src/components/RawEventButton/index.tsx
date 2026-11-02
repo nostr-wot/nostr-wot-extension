@@ -7,8 +7,9 @@ import TextBlock from '@components/TextBlock';
 import { t } from '@services/i18n/i18n';
 
 /** Explicit raw-data dialog; children exist in the DOM only while open. */
-export default function RawEventButton({ event, children, onOpenChange }: {
+export default function RawEventButton({ event, children, onOpenChange, zIndex }: {
   event?: unknown;
+  zIndex?: number;
   children?: ReactNode;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -17,7 +18,7 @@ export default function RawEventButton({ event, children, onOpenChange }: {
   const label = t('event.showRaw');
   return <div className="flex justify-end">
     <IconButton title={label} aria-label={label} aria-haspopup="dialog" onClick={() => changeOpen(true)}><IconCode aria-hidden="true" /></IconButton>
-    {open && createPortal(<Modal title={label} onClose={() => changeOpen(false)}>
+    {open && createPortal(<Modal zIndex={zIndex} title={label} onClose={() => changeOpen(false)}>
       {event !== undefined ? <TextBlock mono>{JSON.stringify(event, null, 2)}</TextBlock> : children}
     </Modal>, document.body)}
   </div>;
