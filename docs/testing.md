@@ -56,6 +56,7 @@ the last group running for about two minutes even after most tests finish.
 | `tests/crypto/pqc-keygen.test.ts` | The offline `pqc:keygen` CLI |
 | `tests/pqc-handlers.test.ts` | `pqc_getStatus` / `pqc_importKeys` / `pqc_removeImportedKeys`, attestation provenance tags, `SafeAccount` leak check, end-to-end decrypt with imported keys |
 | `tests/vault.test.ts` | Vault create/unlock/lock, encryption integrity, account management, private key security |
+| `tests/permission-templates.test.ts` | Exact-site recommendations, template validation and lifecycle, atomic connection, stale accounts, denial conflicts, disconnect revocation |
 | `tests/permissions.test.ts` | Permission cascade, isolation, save/clear, NIP-07 methods |
 | `tests/accounts.test.ts` | Account creation (mnemonic, nsec, npub, nip46), type coverage |
 | `tests/remote-signer-integrity.test.ts` | Remote response signature, expected author and exact approved-event equality, ordered tags, malformed replies and mutation isolation; no browser mock required |
