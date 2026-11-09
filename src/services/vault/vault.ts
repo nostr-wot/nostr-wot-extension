@@ -285,6 +285,7 @@ async function unlockWithCredential(password: string, proof?: PasskeyProof): Pro
     const storedIterations = typeof vault.iterations === 'number'
       ? vault.iterations
       : PBKDF2_ITERATIONS_LEGACY;
+    let credentialVerified = false;
     try {
       let key: CryptoKey;
       if (proof) {
@@ -297,6 +298,7 @@ async function unlockWithCredential(password: string, proof?: PasskeyProof): Pro
         key = await deriveKey(password, salt, storedIterations);
       }
       const json = await decrypt(key, iv, ciphertext);
+      credentialVerified = true;
       assertRevision(revision);
       const parsed = JSON.parse(json) as VaultPayload;
       // Password re-verification while already unlocked (e.g. change-password
@@ -344,7 +346,10 @@ async function unlockWithCredential(password: string, proof?: PasskeyProof): Pro
       assertRevision(revision);
       noteLockStateChanged();
       return true;
-    } catch {
+    } catch (error) {
+      if (credentialVerified && revision === sessionRevision) {
+        throw new Error('Password verified, but the vault could not finish opening. Close and reopen the extension, then try again.', { cause: error });
+      }
       return false;
     }
   });

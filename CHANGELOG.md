@@ -3,6 +3,13 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## 0.8.23 — 2026-11-09
+
+### Store release notes
+
+- Stop an unanswered unlock request from leaving the button loading forever, without automatically resubmitting credentials.
+- Report failures after successful vault decryption separately from incorrect passwords so they do not count toward password lockout.
+
 ## 0.8.22 — 2026-11-02
 
 ### Store release notes

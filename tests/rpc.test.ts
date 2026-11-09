@@ -25,6 +25,15 @@ let sendImpl: (payload: { method: string; params: unknown }) => Promise<unknown>
 
 const { rpc, onVaultLockedResponse } = await import('../src/services/rpc.ts');
 
+it('ends a stalled unlock without replaying the password or passkey submission', async () => {
+  for (const method of ['vault_unlock', 'vault_unlockPasskey']) {
+    let calls = 0;
+    sendImpl = () => { calls++; return new Promise(() => {}); };
+    await assert.rejects(rpc(method, {}, { responseTimeoutMs: 20, attemptTimeoutMs: 1 }), /Unlock did not finish in time/);
+    assert.equal(calls, 1);
+  }
+});
+
 describe('rpc: response envelope handling', () => {
   beforeEach(() => {
     sendImpl = () => Promise.resolve({ result: null });

@@ -53,6 +53,16 @@ function makePayload(privkey: string = TEST_PRIVKEY_HEX, pubkey: string = TEST_P
 }
 
 describe('vault -- create and unlock', () => {
+  it('does not report an unreadable decrypted payload as a wrong password', async () => {
+    resetMockStorage();
+    await vault.create(TEST_PASSWORD, makePayload());
+    vault.lock();
+    const original = crypto.subtle.decrypt;
+    crypto.subtle.decrypt = async () => new TextEncoder().encode('{"accounts":null}').buffer;
+    try {
+      await assert.rejects(vault.unlock(TEST_PASSWORD), /verified.*could not finish opening/);
+    } finally { crypto.subtle.decrypt = original; vault.lock(); }
+  });
   beforeEach(() => {
     resetMockStorage();
     vault.lock();

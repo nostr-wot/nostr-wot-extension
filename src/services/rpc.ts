@@ -37,6 +37,8 @@ function withinAttempt<T>(promise: Promise<T>, ms: number | undefined): Promise<
 }
 
 export interface RpcOptions {
+  /** Deadline without replaying a potentially successful write. */
+  responseTimeoutMs?: number;
   /**
    * Give up on an attempt that has not answered within this many ms and send
    * it again. Chrome holds a message sent to a worker that is still starting,
@@ -84,7 +86,15 @@ async function sendWithWakeupRetry(
 
 // Sends { method, params } to background, unwraps { result } / { error }
 export async function rpc<T = unknown>(method: string, params: unknown = {}, options: RpcOptions = {}): Promise<T> {
-  const resp = (await sendWithWakeupRetry({ method, params }, options)) as { result?: unknown; error?: string } | undefined;
+  const unlocking = method === 'vault_unlock' || method === 'vault_unlockPasskey';
+  const response = await withinAttempt(
+    sendWithWakeupRetry({ method, params }, unlocking ? {} : options),
+    options.responseTimeoutMs ?? (unlocking ? 30_000 : undefined),
+  );
+  if (response === ATTEMPT_TIMED_OUT) {
+    throw new RpcError('Unlock did not finish in time. Close and reopen the extension to check its status, then try again.', method);
+  }
+  const resp = response as { result?: unknown; error?: string } | undefined;
   if (resp?.error) {
     if (resp.error === 'Vault is locked' || resp.error === 'Vault is locked or no private key') {
       for (const listener of vaultLockListeners) {

@@ -1,5 +1,9 @@
 # Security
 
+### Unlock failure handling
+
+Password and passkey unlock submissions have a 30-second response deadline so an unanswered background request cannot leave the unlock button busy indefinitely. The deadline does not replay the submission or cancel a potentially successful unlock; the user can reopen the popup to read the actual vault state. Errors after successful decryption are reported as an opening failure rather than an incorrect password and do not increment the password failure counter.
+
 ## 1. Vault -- `src/services/vault/vault.ts`
 
 The vault encrypts sensitive account data (private keys, mnemonics) at rest using Web Crypto APIs.
