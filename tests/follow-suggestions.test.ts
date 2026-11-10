@@ -7,9 +7,14 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { anyProfileReachable, selectFollowSuggestions } from '../src/domain/wizard/followSuggestions.ts';
-import { TIER_1 } from '../src/constants/followSuggestions.ts';
+import { TIER_1, TIER_2 } from '../src/constants/followSuggestions.ts';
 
 describe('selectFollowSuggestions', () => {
+  it('includes the additional curated account in the eligible pool', () => {
+    const account = 'npub1rujdpkd8mwezrvpqd2rx2zphfaztqrtsfg6w3vdnljdghs2q8qrqtt9u68';
+    assert.equal(TIER_2.filter(npub => npub === account).length, 1);
+    assert.ok(selectFollowSuggestions(() => 0.999).includes(account));
+  });
   it('picks twelve distinct accounts, one TIER_1 in each half', () => {
     const picked = selectFollowSuggestions();
     assert.equal(picked.length, 12);
