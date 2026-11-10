@@ -10,6 +10,18 @@ import { anyProfileReachable, selectFollowSuggestions } from '../src/domain/wiza
 import { TIER_1, TIER_2 } from '../src/constants/followSuggestions.ts';
 
 describe('selectFollowSuggestions', () => {
+  it('uses the updated community identities without the retired recommendations', () => {
+    for (const npub of [
+      'npub1rujdpkd8mwezrvpqd2rx2zphfaztqrtsfg6w3vdnljdghs2q8qrqtt9u68',
+      'npub19tv378w29hx4ljy7wgydreg9nu96czrs6clu8wkzr3af8z86rr7sujx4xe',
+      'npub1579rjxygc6n69cg544ndcrj88w04v9e5clcf3j249vh9hwzq6fkqes5jjs',
+    ]) assert.equal(TIER_2.filter(value => value === npub).length, 1);
+    for (const npub of [
+      'npub1spdnfacgsd7lk0nlqkq443tkq4jx9z6c6ksvaquuewmw7d3qltpslcq6j7',
+      'npub16c0nh3dnadzqpm76uctf5hqhe2lny344zsmpm6feee9p5rdxaa9q586nvr',
+      'npub1g53mukxnjkcmr94fhryzkqutdz2ukq4ks0gvy5af25rgmwsl4ngq43drvk',
+    ]) assert.ok(!TIER_2.includes(npub));
+  });
   it('includes the additional curated account in the eligible pool', () => {
     const account = 'npub1rujdpkd8mwezrvpqd2rx2zphfaztqrtsfg6w3vdnljdghs2q8qrqtt9u68';
     assert.equal(TIER_2.filter(npub => npub === account).length, 1);
