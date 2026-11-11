@@ -9,7 +9,7 @@ import type { WalletProvider, WalletProviderInfo, Transaction, PayInvoiceOptions
 import { PAYMENT_FEE_TOO_HIGH, PAYMENT_FEE_UNKNOWN } from '@constants/wallet.ts';
 
 import type { FetchFn } from '@services/http/types.ts';
-import { secureWalletUrl, walletHttp } from '@services/http/wallet.ts';
+import { secureWalletUrl, walletHttp, WalletHttpError } from '@services/http/wallet.ts';
 
 export interface LnbitsConfig {
   instanceUrl: string;
@@ -117,10 +117,15 @@ export class LnbitsProvider implements WalletProvider {
       if (feeMsat === null) throw new Error(PAYMENT_FEE_UNKNOWN);
       if (feeMsat > opts.maxFeeMsat) throw new Error(PAYMENT_FEE_TOO_HIGH);
     }
+    this.assertAvailable();
     const data = await this.request<{ preimage?: string; status?: string; pending?: boolean }>('POST', '/api/v1/payments', {
       out: true,
       bolt11,
+    }).catch(error => {
+      if (error instanceof WalletHttpError && [400, 401, 403, 404, 422, 429].includes(error.status)) throw error;
+      throw new PaymentOutcomeUnknownError(error instanceof WalletHttpError ? error.message : 'No definitive response to the outgoing LNbits payment');
     });
+    if (!data || typeof data !== 'object') throw new PaymentOutcomeUnknownError();
     if (data.status === 'failed') throw new Error('LNbits payment failed');
     // LNbits returns HTTP 200 for deferred/hold payments too. A successful
     // HTTP request is not settlement; never turn a pending row into a receipt.

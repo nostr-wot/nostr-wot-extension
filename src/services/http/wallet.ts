@@ -1,6 +1,10 @@
 import type { FetchFn } from './types.ts';
 import { WALLET_HTTP_TIMEOUT_MS, WALLET_HTTP_MAX_RESPONSE_BYTES } from '@constants/wallet-http.ts';
 
+export class WalletHttpError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 /** Only explicit loopback development endpoints may use plaintext HTTP. */
 export function secureWalletUrl(value: string): string {
   let url: URL;
@@ -42,7 +46,7 @@ export async function walletHttp<T>(
     }
     if (!response.ok && !options.serverError) {
       void response.body?.cancel().catch(() => {});
-      throw new Error(`${errorPrefix}: ${response.status}`);
+      throw new WalletHttpError(`${errorPrefix}: ${response.status}`, response.status);
     }
     const maxBytes = options.maxBytes ?? WALLET_HTTP_MAX_RESPONSE_BYTES;
     if (Number(response.headers.get('content-length')) > maxBytes) {

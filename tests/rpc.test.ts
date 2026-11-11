@@ -34,6 +34,17 @@ it('ends a stalled unlock without replaying the password or passkey submission',
   }
 });
 
+it('dispatches a payment exactly once if the worker reply disappears or times out', async () => {
+  for (const method of ['wallet_payInvoice', 'wallet_payToLightningAddress', 'webln_sendPayment']) {
+    for (const lost of [async () => undefined, async () => { throw new Error('The message port closed before a response was received'); }, () => new Promise(() => {})]) {
+      let calls = 0;
+      sendImpl = () => { calls++; return lost(); };
+      await assert.rejects(rpc(method, {}, {attemptTimeoutMs: 10}), /PAYMENT_OUTCOME_UNKNOWN/);
+      assert.equal(calls, 1);
+    }
+  }
+});
+
 describe('rpc: response envelope handling', () => {
   beforeEach(() => {
     sendImpl = () => Promise.resolve({ result: null });

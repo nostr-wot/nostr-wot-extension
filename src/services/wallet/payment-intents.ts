@@ -7,24 +7,10 @@ import {
 /**
  * At-most-once execution for payments that cannot be safely repeated.
  *
- * `rpc()` retries up to three times when the message port closes without a
- * reply (see src/shared/rpc.ts) — necessary, because an MV3 service worker is
- * torn down after ~30s idle and the first message after wake-up can reject
- * before the listener is re-registered. From the popup, "the worker was asleep"
- * and "the worker did the work and then died before replying" are the same
- * event, so the retry is blind.
- *
- * For most handlers that is harmless. It is not harmless for
- * `wallet_payToLightningAddress`, which resolves the address and asks the
- * endpoint for a *fresh invoice* on every call: two invoices have two payment
- * hashes, so the Lightning node has no way to recognise the second as a
- * duplicate and pays it. (`wallet_payInvoice` does not need this — the same
- * bolt11 carries the same payment hash, and the node itself refuses to pay it
- * twice.)
- *
- * So the deduplication has to live here: the popup stamps one intent id per
- * click, and a replay of that id returns the first result instead of sending
- * money again.
+ * The popup sends each payment RPC once. A Lightning Address resolves to a fresh
+ * invoice on each invocation, so we also protect against duplicate delivery of
+ * the same intent across handler calls and worker restarts. The popup stamps
+ * one intent ID per click and a completed intent returns its saved result.
  *
  * Records live in `storage.session`, not in a module variable, because the
  * point is to survive exactly the service-worker teardown that causes the

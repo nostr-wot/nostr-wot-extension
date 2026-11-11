@@ -46,6 +46,14 @@ async function authenticatedRequest<T>(
   }, fetchFn, errorPrefix, options);
 }
 
+export async function recoverHostedWallet(instanceUrl: string, oldKey: string, sign: WalletAuthSigner, fetchFn = globalThis.fetch.bind(globalThis)) {
+  const previousKeyHash = bytesToHex(await sha256(new TextEncoder().encode(oldKey)));
+  const data = await authenticatedRequest<unknown>(instanceUrl, 'provision', {previousKeyHash}, sign, fetchFn, 'Wallet recovery failed');
+  if (!isRecord(data) || typeof data.id !== 'string' || !/^[a-f0-9]{32}$/.test(data.id)
+      || typeof data.adminkey !== 'string' || !/^[a-f0-9]{32}$/.test(data.adminkey)) throw new Error('Invalid wallet recovery response');
+  return {adminKey: data.adminkey, walletId: data.id};
+}
+
 function parseAddress(data: unknown): string | null {
   if (!isRecord(data) || !(data.address === null || (nonemptyString(data.address) && /^[^@\s]+@[^@\s]+$/.test(data.address)))) {
     throw new Error('Invalid Lightning Address response');

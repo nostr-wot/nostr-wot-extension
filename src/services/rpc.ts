@@ -1,3 +1,4 @@
+import { PAYMENT_OUTCOME_UNKNOWN } from '@constants/wallet.ts';
 import { READ_ATTEMPT_TIMEOUT_MS, WAKEUP_ERROR_PATTERNS } from '@constants/rpc.ts';
 import browser from '@lib/browser.ts';
 
@@ -24,6 +25,7 @@ function isWakeupError(err: unknown): boolean {
   return WAKEUP_ERROR_PATTERNS.some(p => msg.includes(p));
 }
 
+const PAYMENT_METHODS = new Set(['wallet_payInvoice', 'wallet_payToLightningAddress', 'webln_sendPayment']);
 const ATTEMPT_TIMED_OUT = Symbol('attemptTimedOut');
 
 /** Resolve to ATTEMPT_TIMED_OUT when `promise` has not settled within `ms`. */
@@ -53,6 +55,14 @@ async function sendWithWakeupRetry(
   payload: { method: string; params: unknown },
   { attemptTimeoutMs }: RpcOptions = {},
 ): Promise<unknown> {
+  if (PAYMENT_METHODS.has(payload.method)) {
+    // A missing reply cannot establish whether the worker dispatched the payment.
+    try {
+      const response = await withinAttempt(browser.runtime.sendMessage(payload), attemptTimeoutMs);
+      if (response && typeof response === 'object' && ('result' in response || 'error' in response)) return response;
+    } catch { /* Delivery outcome is unknown. */ }
+    throw new RpcError(PAYMENT_OUTCOME_UNKNOWN, payload.method);
+  }
   const MAX_ATTEMPTS = 3;
   let attempt = 0;
   while (true) {
@@ -92,6 +102,8 @@ export async function rpc<T = unknown>(method: string, params: unknown = {}, opt
     options.responseTimeoutMs ?? (unlocking ? 30_000 : undefined),
   );
   if (response === ATTEMPT_TIMED_OUT) {
+    if (PAYMENT_METHODS.has(method)) throw new RpcError(PAYMENT_OUTCOME_UNKNOWN, method);
+    if (!unlocking) throw new RpcError('The background service did not answer in time', method);
     throw new RpcError('Unlock did not finish in time. Close and reopen the extension to check its status, then try again.', method);
   }
   const resp = response as { result?: unknown; error?: string } | undefined;
