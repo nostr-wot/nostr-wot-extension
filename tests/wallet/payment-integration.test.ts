@@ -376,3 +376,36 @@ test('wallet payment metadata stays private, account scoped and is erased on dis
     assert.deepEqual(await call('wallet_getLightningAddress'),{address:null});
   }
 });
+
+test('dashboard refreshes an existing hosted wallet once across simultaneous reads', async t => {
+  const instanceUrl = 'https://zaps.nostr-wot.com', oldKey = '1'.repeat(32), newKey = '2'.repeat(32), walletId = '3'.repeat(32);
+  const config = {type:'lnbits' as const, instanceUrl, adminKey:oldKey};
+  resetMockStorage(); vault.lock(); clearWalletProviders();
+  await vault.create('test-password',{activeAccountId:'hosted',accounts:[{id:'hosted',name:'Hosted',type:'nsec',pubkey,privkey:Buffer.from(key).toString('hex'),mnemonic:null,nip46Config:null,readOnly:false,createdAt:1,walletConfig:config}]});
+  let recoveries = 0;
+  const previous = globalThis.fetch;
+  t.after(() => { globalThis.fetch = previous; clearWalletProviders(); vault.lock(); });
+  globalThis.fetch = async (url, init) => {
+    const path = new URL(String(url)).pathname;
+    if (path === '/api/v2/provision/challenge') return Response.json({version:2, challenge:'a'.repeat(64), transactionToken:'b'.repeat(64), expiresAt:Math.floor(Date.now()/1000)+60});
+    if (path === '/api/v2/provision') {
+      recoveries++;
+      const proof = JSON.parse(Buffer.from(new Headers(init?.headers).get('authorization')!.slice(6),'base64').toString());
+      assert.equal(proof.pubkey,pubkey);
+      assert.ok(verifyEvent(proof));
+      const fingerprint = Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(oldKey))).toString('hex');
+      assert.deepEqual(JSON.parse(String(init?.body)),{previousKeyHash:fingerprint});
+      return Response.json({id:walletId,adminkey:newKey});
+    }
+    assert.equal(init?.method,'GET');
+    if (new Headers(init.headers).get('x-api-key') !== newKey) return new Response(null,{status:404});
+    if (path === '/api/v1/payments') return Response.json([]);
+    assert.equal(path,'/api/v1/wallet');
+    return Response.json({balance:42000,name:'Hosted'});
+  };
+  const [balance, history] = await Promise.all([call('wallet_getBalance'),call('wallet_getTransactions')]);
+  assert.deepEqual(balance,{balance:42});
+  assert.deepEqual(history,[]);
+  assert.equal(recoveries,1);
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig,{...config,adminKey:newKey,walletId});
+});

@@ -21,8 +21,8 @@ import { createWalletProvider, getWalletProvider, removeWalletProvider, isWallet
 import { captureAccountSession, assertAccountSession } from '../signing/accountSession.ts';
 import { type WalletConfig } from '@domain/wallet/types.ts';
 import { decodeBolt11 } from '../../domain/wallet/bolt11.ts';
-import { provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress, type WalletAuthSigner } from '../wallet/lnbits-provision.ts';
-import { secureWalletUrl } from '../http/wallet.ts';
+import { recoverHostedWallet, provisionLnbitsWallet, claimLightningAddress, getLightningAddress, releaseLightningAddress, type WalletAuthSigner } from '../wallet/lnbits-provision.ts';
+import { WalletHttpError, secureWalletUrl } from '../http/wallet.ts';
 import { DEFAULT_LNBITS_URL } from '@constants/wallet.ts';
 import { fetchPayParams, requestInvoice } from '../wallet/lnurl.ts';
 import { reserveAutomaticPayment } from '../wallet/automatic-payment-budget.ts';
@@ -69,6 +69,60 @@ export function createNip98SignFn(acctId: string, endpointUrl: string): WalletAu
         }, privkey));
         assertAccountSession(session);
         return signed;
+    };
+}
+
+// Only private dashboard reads participate. Signed recovery cannot create a wallet.
+type DashboardSession = ReturnType<typeof captureAccountSession>;
+interface DashboardReads { readers: number; recovery?: Promise<DashboardSession> }
+const dashboardReads = new Map<string, DashboardReads>();
+let lastRejected: {session: string; until: number} | undefined;
+function hostedWalletRead(read: (params: Record<string, unknown>, wallet: Awaited<ReturnType<typeof getConnectedProvider>>) => Promise<unknown>): HandlerFn {
+    return async params => {
+        await vault.requireUnlocked();
+        const acct = vault.getActiveAccountWithWallet();
+        if (!acct?.walletConfig) throw new Error('No wallet configured');
+        const config = acct.walletConfig;
+        const initial = captureAccountSession(acct.id);
+        const attempt = async (session: typeof initial) => {
+            const wallet = await getConnectedProvider();
+            assertAccountSession(session);
+            return read(params, wallet);
+        };
+        if (initial.network || config.type !== 'lnbits' || secureWalletUrl(config.instanceUrl) !== DEFAULT_LNBITS_URL) return attempt(initial);
+        const id = JSON.stringify([acct.id, initial.revision, initial.transportRevision]);
+        const reads = dashboardReads.get(id) ?? {readers: 0};
+        reads.readers++;
+        dashboardReads.set(id, reads);
+        try {
+            try { return await attempt(initial); }
+            catch (error) {
+                if (!reads.recovery) {
+                    if (!(error instanceof WalletHttpError) || ![401, 404].includes(error.status)) throw error;
+                    assertAccountSession(initial);
+                    if (lastRejected?.session === id && Date.now() < lastRejected.until) throw error;
+                    reads.recovery = (async () => {
+                        const sign = createNip98SignFn(acct.id, DEFAULT_LNBITS_URL + '/api/v2/provision');
+                        const recovered = await recoverHostedWallet(DEFAULT_LNBITS_URL, config.adminKey, sign);
+                        assertAccountSession(initial);
+                        if ((config.walletId && recovered.walletId !== config.walletId) || recovered.adminKey === config.adminKey) throw error;
+                        removeWalletProvider(acct.id);
+                        const save = vault.updateAccountWalletConfig(acct.id, {...config, ...recovered});
+                        const updated = captureAccountSession(acct.id);
+                        await save;
+                        return updated;
+                    })().catch(cause => {
+                        if (cause instanceof WalletHttpError && cause.status === 409) lastRejected = {session: id, until: Date.now() + 60_000};
+                        throw cause;
+                    });
+                }
+                const updated = await reads.recovery;
+                assertAccountSession(updated);
+                return await attempt(updated);
+            }
+        } finally {
+            if (--reads.readers === 0) dashboardReads.delete(id);
+        }
     };
 }
 
@@ -271,24 +325,22 @@ export const handlers = new Map<string, HandlerFn>([
         return acct.walletConfig?.type ?? false;
     }],
 
-    ['wallet_getInfo', async () => {
-        const { provider, assertCurrent } = await getConnectedProvider();
+    ['wallet_getInfo', hostedWalletRead(async (_params, { provider, assertCurrent }) => {
         assertCurrent();
         const result = await provider.getInfo();
         assertCurrent();
         return result;
-    }],
+    })],
 
-    ['wallet_getBalance', async () => {
+    ['wallet_getBalance', hostedWalletRead(async (_params, { provider, acct, assertCurrent }) => {
         const revision = walletDisplayRevision();
-        const { provider, acct, assertCurrent } = await getConnectedProvider();
         assertCurrent();
         const result = await provider.getBalance();
         assertCurrent();
         await updateWalletDisplayCache(acct.id, {providerType:provider.type,balance:result.balance}, revision).catch(() => {});
         assertCurrent();
         return result;
-    }],
+    })],
 
     ['wallet_connect', async (params) => {
         const { walletConfig } = params as { walletConfig: WalletConfig };
@@ -366,10 +418,9 @@ export const handlers = new Map<string, HandlerFn>([
         return result;
     }],
 
-    ['wallet_getTransactions', async (params) => {
+    ['wallet_getTransactions', hostedWalletRead(async (params, { provider, acct, assertCurrent }) => {
         const { limit, offset } = params as { limit?: number; offset?: number };
         const revision = walletDisplayRevision();
-        const { provider, acct, assertCurrent } = await getConnectedProvider();
         assertCurrent();
         const rows = await provider.listTransactions(limit ?? 10, offset ?? 0);
         assertCurrent();
@@ -378,7 +429,7 @@ export const handlers = new Map<string, HandlerFn>([
         if (!offset) await updateWalletDisplayCache(acct.id, {providerType:provider.type,transactions}, revision).catch(() => {});
         assertCurrent();
         return transactions;
-    }],
+    })],
 
     ['wallet_payInvoice', async (params) => {
         const { bolt11 } = params as { bolt11: string };
@@ -453,10 +504,10 @@ export const handlers = new Map<string, HandlerFn>([
         const walletName = `WoT:${npub.slice(0, 16)}`;
 
         const signFn = createNip98SignFn(acctId, `${url.replace(/\/+$/, '')}/api/v2/provision`);
-        const { adminKey, nwcUri } = await provisionLnbitsWallet(url, walletName, signFn);
+        const { adminKey, walletId, nwcUri } = await provisionLnbitsWallet(url, walletName, signFn);
 
         assertAccountSession(session);
-        const walletConfig: WalletConfig = { type: 'lnbits', instanceUrl: url, adminKey, nwcUri };
+        const walletConfig: WalletConfig = { type: 'lnbits', instanceUrl: url, adminKey, walletId, nwcUri };
         removeWalletProvider(acctId);
         await vault.updateAccountWalletConfig(acctId, walletConfig);
         await resetWalletDisplayCache(acctId, walletConfig.type);

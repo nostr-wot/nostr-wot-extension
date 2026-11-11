@@ -3,6 +3,10 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## 0.8.24 — 2026-11-11
+
+- Reconnect an existing hosted Lightning wallet automatically after a wallet key rotation when its owner opens the unlocked wallet.
+
 ## 0.8.23 — 2026-11-09
 
 ### Store release notes
