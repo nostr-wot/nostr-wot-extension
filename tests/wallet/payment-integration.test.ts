@@ -382,7 +382,10 @@ test('dashboard refreshes an existing hosted wallet once across simultaneous rea
   const config = {type:'lnbits' as const, instanceUrl, adminKey:oldKey};
   resetMockStorage(); vault.lock(); clearWalletProviders();
   await vault.create('test-password',{activeAccountId:'hosted',accounts:[{id:'hosted',name:'Hosted',type:'nsec',pubkey,privkey:Buffer.from(key).toString('hex'),mnemonic:null,nip46Config:null,readOnly:false,createdAt:1,walletConfig:config}]});
-  let recoveries = 0;
+  let recoveries = 0, paymentPosts = 0, expired = false, lockOnRecovery = false;
+  let notifyPayment!: () => void, finishPayment!: () => void;
+  const paymentStarted = new Promise<void>(resolve => { notifyPayment = resolve; });
+  const paymentDone = new Promise<void>(resolve => { finishPayment = resolve; });
   const previous = globalThis.fetch;
   t.after(() => { globalThis.fetch = previous; clearWalletProviders(); vault.lock(); });
   globalThis.fetch = async (url, init) => {
@@ -395,9 +398,17 @@ test('dashboard refreshes an existing hosted wallet once across simultaneous rea
       assert.ok(verifyEvent(proof));
       const fingerprint = Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(oldKey))).toString('hex');
       assert.deepEqual(JSON.parse(String(init?.body)),{previousKeyHash:fingerprint});
+      if (lockOnRecovery) vault.lock();
       return Response.json({id:walletId,adminkey:newKey});
     }
+    if (init?.method === 'POST' && path === '/api/v1/payments') {
+      paymentPosts++;
+      notifyPayment();
+      await paymentDone;
+      return Response.json({preimage:'test-preimage'});
+    }
     assert.equal(init?.method,'GET');
+    if (expired) return new Response(null,{status:404});
     if (new Headers(init.headers).get('x-api-key') !== newKey) return new Response(null,{status:404});
     if (path === '/api/v1/payments') return Response.json([]);
     assert.equal(path,'/api/v1/wallet');
@@ -408,4 +419,20 @@ test('dashboard refreshes an existing hosted wallet once across simultaneous rea
   assert.deepEqual(history,[]);
   assert.equal(recoveries,1);
   assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig,{...config,adminKey:newKey,walletId});
+  const sending = call('wallet_payInvoice',{bolt11:invoice});
+  await paymentStarted;
+  expired = true;
+  try {
+    await assert.rejects(call('wallet_getBalance'),/404/);
+    assert.equal(recoveries,1);
+  } finally { finishPayment(); }
+  assert.deepEqual(await sending,{preimage:'test-preimage'});
+  assert.equal(paymentPosts,1);
+
+  // A signed response arriving after lock must never update the encrypted vault.
+  await vault.updateAccountWalletConfig('hosted',config);
+  lockOnRecovery = true;
+  await assert.rejects(call('wallet_getBalance'),/locked|session/i);
+  await vault.unlock('test-password');
+  assert.deepEqual(vault.getActiveAccountWithWallet()?.walletConfig,config);
 });

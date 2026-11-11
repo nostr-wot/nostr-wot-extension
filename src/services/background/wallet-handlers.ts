@@ -77,6 +77,15 @@ type DashboardSession = ReturnType<typeof captureAccountSession>;
 interface DashboardReads { readers: number; recovery?: Promise<DashboardSession> }
 const dashboardReads = new Map<string, DashboardReads>();
 let lastRejected: {session: string; until: number} | undefined;
+let pendingPaymentHandlers = 0;
+function paymentHandler(send: HandlerFn): HandlerFn {
+    return async params => {
+        pendingPaymentHandlers++;
+        try { return await send(params); }
+        finally { pendingPaymentHandlers--; }
+    };
+}
+
 function hostedWalletRead(read: (params: Record<string, unknown>, wallet: Awaited<ReturnType<typeof getConnectedProvider>>) => Promise<unknown>): HandlerFn {
     return async params => {
         await vault.requireUnlocked();
@@ -100,12 +109,14 @@ function hostedWalletRead(read: (params: Record<string, unknown>, wallet: Awaite
                 if (!reads.recovery) {
                     if (!(error instanceof WalletHttpError) || ![401, 404].includes(error.status)) throw error;
                     assertAccountSession(initial);
+                    if (pendingPaymentHandlers) throw error;
                     if (lastRejected?.session === id && Date.now() < lastRejected.until) throw error;
                     reads.recovery = (async () => {
                         const sign = createNip98SignFn(acct.id, DEFAULT_LNBITS_URL + '/api/v2/provision');
                         const recovered = await recoverHostedWallet(DEFAULT_LNBITS_URL, config.adminKey, sign);
                         assertAccountSession(initial);
                         if ((config.walletId && recovered.walletId !== config.walletId) || recovered.adminKey === config.adminKey) throw error;
+                        if (pendingPaymentHandlers) throw error;
                         removeWalletProvider(acct.id);
                         const save = vault.updateAccountWalletConfig(acct.id, {...config, ...recovered});
                         const updated = captureAccountSession(acct.id);
@@ -191,7 +202,7 @@ export const handlers = new Map<string, HandlerFn>([
         return result;
     }],
 
-    ['webln_sendPayment', async (params) => {
+    ['webln_sendPayment', paymentHandler(async (params) => {
         const { paymentRequest, origin } = params as { paymentRequest: string; origin: string };
         if (!paymentRequest) throw new Error('Missing paymentRequest');
 
@@ -276,7 +287,7 @@ export const handlers = new Map<string, HandlerFn>([
         // must never turn a successful payment into an error inviting a retry.
         await recordPaymentSuccess(acct.id, origin, invoiceAmountSats, assertCurrent).catch(() => {});
         return result;
-    }],
+    })],
 
     ['webln_makeInvoice', async (params) => {
         const { amount, defaultMemo } = params as { amount: number; defaultMemo?: string; origin: string };
@@ -431,14 +442,14 @@ export const handlers = new Map<string, HandlerFn>([
         return transactions;
     })],
 
-    ['wallet_payInvoice', async (params) => {
+    ['wallet_payInvoice', paymentHandler(async (params) => {
         const { bolt11 } = params as { bolt11: string };
         const { provider, acct, assertCurrent } = await getConnectedProvider();
         assertCurrent();
         await linkInvoiceNote(acct.id, bolt11, assertCurrent);
         assertCurrent();
         return await provider.payInvoice(bolt11);
-    }],
+    })],
 
     ['wallet_resolveLightningAddress', async (params) => {
         await vault.requireUnlocked();
@@ -466,7 +477,7 @@ export const handlers = new Map<string, HandlerFn>([
         };
     }],
 
-    ['wallet_payToLightningAddress', async (params) => {
+    ['wallet_payToLightningAddress', paymentHandler(async (params) => {
         const { address, amountSats, comment, intentId } = params as {
             address: string; amountSats: number; comment?: string; intentId?: string;
         };
@@ -489,7 +500,7 @@ export const handlers = new Map<string, HandlerFn>([
             const { preimage } = await provider.payInvoice(bolt11);
             return { preimage, bolt11, amountSats, address: payParams.address };
         });
-    }],
+    })],
 
     ['wallet_provision', async (params) => {
         await vault.requireUnlocked();

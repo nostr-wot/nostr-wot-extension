@@ -124,10 +124,11 @@ describe('LnbitsProvider', () => {
       });
     });
 
-    it('throws on HTTP 500 error', async () => {
+    it('treats HTTP 500 after payment dispatch as unknown and retains its status', async () => {
       const provider = new LnbitsProvider(config, mockFetch({ detail: 'Internal' }, 500));
       await assert.rejects(() => provider.payInvoice('lnbc1...'), (err: Error) => {
-        assert.match(err.message, /500/);
+        assert.match(err.message, /PAYMENT_OUTCOME_UNKNOWN/);
+        assert.match(String(err.cause), /500/);
         return true;
       });
     });
@@ -564,4 +565,13 @@ describe('LnbitsProvider fee quoting and the send ceiling', () => {
       assert.deepEqual(seen.map(r => r.path), [FEE_RESERVE]);
     });
   });
+});
+
+it('preserves an unknown outcome for a lost payment response or upstream failure', async () => {
+  for (const fetchFn of [async () => { throw new TypeError('Connection lost'); }, async () => new Response(null, {status:502}), async () => Response.json(null)]) {
+    let sends = 0;
+    const provider = new LnbitsProvider({instanceUrl:'https://wallet.test',adminKey:'fixture'}, async () => { sends++; return fetchFn(); });
+    await assert.rejects(provider.payInvoice('test invoice'), /PAYMENT_OUTCOME_UNKNOWN/);
+    assert.equal(sends, 1);
+  }
 });

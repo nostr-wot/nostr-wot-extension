@@ -690,3 +690,5 @@ The wallet balance card shows sats without a redundant Balance heading or provid
 The wallet shows the Lightning address above the amount, or a Set up an alias link that opens the address settings. Receive, Send, Settings and Disconnect use four compact icon-and-label buttons in one row. Both disconnect entry points share the same pending/error handling.
 
 Opening the unlocked hosted wallet refreshes a rotated admin key when a balance, info or transaction-history read returns 401 or 404. The extension signs a recovery request for the active Nostr account and sends a SHA-256 fingerprint of the saved key. The proxy must match both to its record for the same wallet. The extension saves the returned credential in the vault and repeats the read once. Payments and external NWC connections are outside this recovery flow.
+
+The popup dispatches a payment RPC once. If the reply is lost, the wallet reports an unknown outcome and the user should check history before initiating another payment. A pending payment also defers dashboard key replacement until a subsequent read.
