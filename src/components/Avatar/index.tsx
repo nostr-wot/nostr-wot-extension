@@ -16,17 +16,18 @@ interface AvatarProps {
  * rendered markup and styling stay identical to the previous hand-rolled
  * versions — this is the correct pattern that was already in TopBar/AccountBar.
  */
-export default function Avatar({ src, fallback, imgClassName, fallbackClassName }: AvatarProps) {
-  const [imgError, setImgError] = useState<boolean>(false);
-  // `src` is usually relay-supplied profile metadata — only render http(s) URLs.
-  const safeSrc = safeImageUrl(src);
-  const showImg = safeSrc && !imgError;
+export default function Avatar(props: AvatarProps) {
+  const src = safeImageUrl(props.src);
+  return <AvatarImage key={src ?? ''} {...props} src={src} />;
+}
 
-  if (showImg) {
+function AvatarImage({ src, fallback, imgClassName, fallbackClassName }: AvatarProps) {
+  const [imgError, setImgError] = useState<boolean>(false);
+  if (src && !imgError) {
     return (
       <img
         className={imgClassName}
-        src={safeSrc}
+        src={src}
         alt=""
         onError={() => setImgError(true)}
       />

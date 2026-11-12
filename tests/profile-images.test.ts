@@ -570,3 +570,31 @@ it('the tag button edits a label inline: Enter saves once, Escape saves nothing'
     for(const [key,descriptor] of previous){ if(descriptor) Object.defineProperty(globalThis,key,descriptor); else delete (globalThis as any)[key]; }
   }
 });
+
+it('retries a profile picture when the displayed URL changes after an image error', async () => {
+  const { JSDOM } = await import('jsdom');
+  const { createRoot } = await import('react-dom/client');
+  const { flushSync } = await import('react-dom');
+  const { default: Avatar } = await import('../src/components/Avatar');
+  const dom = new JSDOM('<main></main>');
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: dom.window });
+  const container = dom.window.document.querySelector('main')!;
+  const root = createRoot(container);
+  const render = (src: string) => flushSync(() => root.render(createElement(Avatar, { src, fallback: 'L' })));
+  const original = 'https://example.org/leon.jpg';
+  try {
+    render(original);
+    flushSync(() => container.querySelector('img')!.dispatchEvent(new dom.window.Event('error')));
+    assert.equal(container.textContent, 'L');
+    render('https://example.org/releases.gif');
+    assert.equal(container.querySelector('img')?.src, 'https://example.org/releases.gif');
+    render(original);
+    assert.equal(container.querySelector('img')?.src, original);
+  } finally {
+    flushSync(() => root.unmount());
+    if (previous) Object.defineProperty(globalThis, 'window', previous);
+    else Reflect.deleteProperty(globalThis, 'window');
+    dom.window.close();
+  }
+});

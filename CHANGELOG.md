@@ -5,6 +5,8 @@ See [deployment](docs/deployment.md) for packaging and submission requirements.
 
 ## Unreleased
 
+- Retry the profile picture when switching accounts or receiving a new picture URL after an image failed to load.
+
 - Support signed NIP-46 events over local Wi-Fi and Bluetooth when the paired signer advertises the event profile.
 
 - Fix Wallet Settings failing to open for an existing Lightning address when the cached profile is incomplete.
