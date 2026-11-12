@@ -15,7 +15,7 @@ try {
   await page.locator('.panel').evaluate(el => {el.style.transform='none';});
   assert.equal(await shell.evaluate(el => el.scrollLeft), 0);
   assert.ok(await page.locator('.body').evaluate(el => el.scrollTop > 0));
-  assert.equal(await page.locator('input').evaluate(el => el === document.activeElement), true);
+  assert.equal(await page.locator('input').evaluate(el => el === el.ownerDocument.activeElement), true);
   assert.equal((await page.locator('header').boundingBox()).x, 0);
   console.log('Wallet alias focus: old shell shift reproduced; fixed panel stays aligned at 380×600.');
 } finally { await browser.close(); }
