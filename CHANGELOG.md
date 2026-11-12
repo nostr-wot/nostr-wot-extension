@@ -3,10 +3,9 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
-## Unreleased
+## 0.8.25 — 2026-11-11
 
 - Show the popup logo while the extension loads on a cold open after installation or update.
-
 - Keep Wallet Settings aligned when opening the Lightning address alias form.
 
 ## 0.8.24 — 2026-11-11
