@@ -1,4 +1,5 @@
 import useWalletDisconnect from '@hooks/useWalletDisconnect';
+import { focusAddressSection } from './focusAddressSection';
 import AppConnections from './AppConnections';
 import { PROVIDER_LABELS } from '@constants/wallet.ts';
 import { useState, useEffect, useRef, ChangeEvent } from 'react';
@@ -38,12 +39,16 @@ export default function WalletSettings({ providerType, onClose, onDisconnected, 
   const {settings,settingsLoading,settingsError,ensureSettings,refreshSettings,patchSettings} = useWallet();
   const {threshold,nwcUri,address:lnAddress} = settings;
   const addressSection = useRef<HTMLDivElement>(null);
+  const settingsBody = useRef<HTMLDivElement>(null);
   const positioned = useRef(false);
   useEffect(() => {
     if (initialSection !== 'address' || lnAddress === undefined || positioned.current) return;
+    const section = addressSection.current;
+    const body = settingsBody.current;
+    if (!body || !section) return;
     positioned.current = true;
-    addressSection.current?.scrollIntoView({ block: 'start' });
-    addressSection.current?.querySelector('input')?.focus({ preventScroll: true });
+    // scrollIntoView also scrolls the popup shell sideways during the panel's entrance animation.
+    focusAddressSection(body, section);
   }, [initialSection, lnAddress]);
   const [thresholdDraft, setThresholdDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -166,7 +171,7 @@ export default function WalletSettings({ providerType, onClose, onDisconnected, 
         </IconButton>
         </>
       }>
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div ref={settingsBody} className="flex-1 min-h-0 overflow-y-auto">
         <Container gap={7} className="py-2">
         {settingsError && <FormError>{t('wallet.checkFailed')}</FormError>}
         <FormError>{settingsSaveError || disconnectError}</FormError>

@@ -170,6 +170,8 @@ User clicks "Create Wallet"
 
 ### 5.2 Lightning Address Claiming
 
+Opening “Set up an alias” scrolls the Wallet Settings body to the username field and focuses it. The settings header and popup remain in place.
+
 After provisioning, users can claim a Lightning Address (`username@nostrwot.com`) that creates an lnurlp pay link for receiving payments.
 
 ```
