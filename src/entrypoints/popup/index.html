@@ -43,10 +43,18 @@
       display: flex;
       flex-direction: column;
     }
+    #popup-boot {
+      flex: 1;
+      display: grid;
+      place-items: center;
+    }
+    @media (prefers-color-scheme: dark) {
+      body:has(#popup-boot) { background: #090e1b; }
+    }
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="main.tsx"></script>
+  <div id="root"><div id="popup-boot"><img src="/icons/icon-base.svg" width="96" height="96" alt="Nostr WoT"></div></div>
+  <script type="module" src="boot.ts"></script>
 </body>
 </html>
