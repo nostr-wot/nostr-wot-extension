@@ -4,7 +4,8 @@ import { randomBytes } from '@noble/hashes/utils.js';
 import { hexToBytes } from '@noble/hashes/utils.js';
 import { getPublicKey } from 'nostr-tools/pure';
 import { v2 as nip44 } from 'nostr-tools/nip44';
-import { decode64, deriveKeys, encode64, equalMac, mac, MAX_FRAME_BYTES, transcript, utf8, type PairingOffer } from './protocol';
+import { LocalNip46Events } from './nip46Event';
+import { NIP46_PROFILE, readProfile, decode64, deriveKeys, encode64, equalMac, mac, MAX_FRAME_BYTES, transcript, utf8, type PairingOffer } from './protocol';
 export interface BridgeTransport {
   open(): Promise<void>;
   send(frame: string): Promise<void>;
@@ -15,6 +16,7 @@ export interface BridgeTransport {
 type Pending = { id: string; resolve: (value: string) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> };
 export class LocalBridgeClient {
   private keys?: ReturnType<typeof deriveKeys>;
+  private events?: LocalNip46Events;
   private pending = new Map<number, Pending>();
   private seq = 0;
   private closed = false;
@@ -39,7 +41,7 @@ export class LocalBridgeClient {
     const commitment = Array.from(sha256(utf8.encode(transcript('discover', peer, nonce))), b => b.toString(16).padStart(2, '0')).join('');
     let removeMessage = () => {}, removeClose = () => {};
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const discovery = new Promise<{ host: string; challenge: string }>((resolve, reject) => {
+    const discovery = new Promise<{ host: string; challenge: string; profile?: typeof NIP46_PROFILE }>((resolve, reject) => {
       timer = setTimeout(() => reject(new Error('Bluetooth pairing timed out')), options.timeoutMs ?? 60000);
       removeMessage = transport.onMessage(text => {
         try {
@@ -54,17 +56,17 @@ export class LocalBridgeClient {
           if (frame.t !== 'offer' || typeof frame.host !== 'string' || !/^[0-9a-f]{64}$/.test(frame.host)) throw new Error('Invalid Bluetooth offer');
           decode64(frame.challenge, 16);
           removeMessage(); removeClose(); clearTimeout(timer);
-          resolve(frame);
+          resolve({ host: frame.host, challenge: frame.challenge, profile: readProfile(frame.profile) });
         } catch (error) { reject(error); }
       });
       removeClose = transport.onClose(error => reject(error ?? new Error('Bluetooth disconnected')));
       // Call open synchronously here to retain the browser's click activation.
-      void transport.open().then(() => transport.send(JSON.stringify({ v: 2, t: 'discover', commitment }))).catch(reject);
+      void transport.open().then(() => transport.send(JSON.stringify({ v: 2, t: 'discover', commitment, profiles: [NIP46_PROFILE] }))).catch(reject);
     });
     try {
       const offer = await discovery;
       return await LocalBridgeClient.connect({ ...options, transport: { open: async () => {}, send: frame => transport.send(frame), close: () => transport.close(), onMessage: handler => transport.onMessage(handler), onClose: handler => transport.onClose(handler) },
-        offer: { hostPubkey: offer.host, addresses: [], transport: 'ble' },
+        offer: { hostPubkey: offer.host, addresses: [], transport: 'ble', profile: offer.profile },
         discovery: { nonce, challenge: offer.challenge },
       });
     } catch (error) { transport.close(); throw error; }
@@ -83,6 +85,7 @@ export class LocalBridgeClient {
     const peer = getPublicKey(secretKey),
       nonce = options.discovery?.nonce ?? encode64(randomBytes(16));
     const ids = [offer.hostPubkey, peer, nonce];
+    if (offer.profile) ids.push(offer.profile);
     client.cleanup.push(
       transport.onMessage((text) => client.receive(text)),
       transport.onClose((error) => client.fail(error ?? new Error('Local signer disconnected'))),
@@ -103,6 +106,7 @@ export class LocalBridgeClient {
       };
       client.welcome = (frame) => {
         if ((offer.psk || options.discovery) && !confirmed) throw new Error('Update the phone app: pairing code confirmation is required');
+        if (frame.profile !== offer.profile) throw new Error('Local signer profile mismatch');
         if (frame.host !== offer.hostPubkey || typeof frame.session !== 'string') throw new Error('Wrong local signer host');
         decode64(frame.session, 16);
         if (
@@ -116,6 +120,7 @@ export class LocalBridgeClient {
         const conv = nip44.utils.getConversationKey(secretKey, offer.hostPubkey);
         client.keys = deriveKeys(conv, transcript('session', ...ids, frame.session));
         conv.fill(0);
+        if (offer.profile) client.events = new LocalNip46Events(secretKey, offer.hostPubkey);
         client.welcome = undefined;
         client.confirmation = undefined;
         client.handshakeReject = undefined;
@@ -135,6 +140,7 @@ export class LocalBridgeClient {
         JSON.stringify({
           v: 2,
           t: 'hello',
+          profile: offer.profile,
           confirmation: 1,
           peer,
           nonce,
@@ -169,7 +175,8 @@ export class LocalBridgeClient {
     }
     let frame: string;
     try {
-      const payload = nip44.encrypt(JSON.stringify({ id, method, params, ...(site ? { site } : {}) }), this.keys.payload);
+      const request = JSON.stringify({ id, method, params, ...(site ? { site } : {}) });
+      const payload = this.events ? this.events.encode(request) : nip44.encrypt(request, this.keys.payload);
       frame = JSON.stringify({ v: 2, t: 'req', seq, payload, mac: mac(this.keys.mac, transcript('req', seq, payload)) });
       if (utf8.encode(frame).length > MAX_FRAME_BYTES) throw new Error('Local signer request too large');
     } catch (error) {
@@ -201,7 +208,7 @@ export class LocalBridgeClient {
         throw new Error('Invalid local signer response MAC');
       const pending = this.pending.get(frame.seq);
       if (!pending) throw new Error('Uncorrelated local signer response');
-      const response = JSON.parse(nip44.decrypt(frame.payload, this.keys.payload));
+      const response = JSON.parse(this.events ? this.events.decode(frame.payload) : nip44.decrypt(frame.payload, this.keys.payload));
       if (!response || response.id !== pending.id || (typeof response.result !== 'string' && typeof response.error !== 'string'))
         throw new Error('Invalid local signer response payload');
       this.pending.delete(frame.seq);
@@ -237,6 +244,8 @@ export class LocalBridgeClient {
     this.pending.clear();
     for (const remove of this.cleanup) remove();
     this.cleanup = [];
+    this.events?.close();
+    this.events = undefined;
     this.keys?.mac.fill(0);
     this.keys?.payload.fill(0);
     this.keys = undefined;

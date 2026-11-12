@@ -50,3 +50,5 @@ Worker startup also cleans up abandoned pairing-owned temporary accounts from ea
 The encrypted RPC may include a `site` containing the exact browser-derived HTTP(S) origin. Updated wallets scope remembered decisions by wallet account and site, independently of Wi-Fi/Bluetooth. A fresh bridge connection must confirm whether to reuse existing choices on the phone before any saved rules apply; Start fresh clears that site's saved rules and authentication grants. This site label is asserted by the paired computer, not independently attested by the phone. One-time approvals are not converted into remembered grants.
 
 Microphone decoding uses a 48 kHz Web Audio graph. The browser resamples other device rates before the worklet; this avoids the ggwave input resampler losing short chunk tails at 44.1 kHz. The packaged Chrome regression simulates a 44.1 kHz default audio context and must still decode the phone-format waveform.
+
+Phones can opt into standard signed NIP-46 events on either local transport. See the [signer implementation guide](local-nip46-signer.md) for pairing, request and response formats, and compatibility.

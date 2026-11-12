@@ -8,6 +8,8 @@ Status: experimental, unnumbered proposal. This is the `nwlan/2` protocol implem
 
 A client can ask a nearby signer to sign Nostr events or perform encryption operations without transferring the user's identity secret or using a public relay for the signing connection. This proposal specifies authenticated pairing, encrypted sessions and two transports: local WebSocket and Bluetooth Low Energy GATT.
 
+The base profile described below uses this encoding. The optional [NIP-46 event profile](../../docs/local-nip46-signer.md) carries complete kind 24133 events using the same local transports.
+
 The application request and response objects reuse [NIP-46](https://github.com/nostr-protocol/nips/blob/master/46.md). They are carried directly inside an encrypted session, rather than inside kind 24133 relay events. This is a separate transport profile, not wire compatibility with a `bunker://` connection. An extension may expose the resulting signer through [NIP-07](https://github.com/nostr-protocol/nips/blob/master/07.md). Local transport does not bypass approval or grant additional methods.
 
 [NIP-BE](https://github.com/nostr-protocol/nips/blob/master/BE.md) describes NIP-01 client/relay traffic over BLE, with different discovery, compression and framing. This proposal is for a client/signer relationship, does not use that framing or its UUIDs, and makes no claim of compatibility with it.

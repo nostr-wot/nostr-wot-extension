@@ -43,6 +43,7 @@ test('BLE decoder reassembles split headers and coalesced frames, bounds lengths
 
 import { LocalBridgeClient, type BridgeTransport } from '../src/services/signing/localBridge/client.ts';
 import { createBleTransport, type BleDevice, type BleCharacteristic } from '../src/services/signing/localBridge/transports.ts';
+import { finalizeEvent, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import { schnorr } from '@noble/curves/secp256k1.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { hmac } from '@noble/hashes/hmac.js';
@@ -57,6 +58,8 @@ class Device implements BridgeTransport {
   received: number[] = [];
   closed = false;
   mode = 'normal';
+  profile?: 'nip46-event';
+  connectionKey?: Uint8Array;
   commitment?: string;
   challenge?: string;
   held: Record<string, unknown>[] = [];
@@ -85,18 +88,23 @@ class Device implements BridgeTransport {
       assert.equal(this.commitment, undefined);
       this.commitment = f.commitment;
       this.challenge = encode64(new Uint8Array(16).fill(9));
-      this.emit({v:2, t:'offer', host, challenge:this.challenge});
+      if (this.profile) assert(f.profiles.includes(this.profile));
+      this.emit({v:2, t:'offer', host, challenge:this.challenge, profile: this.profile});
       return;
     }
     if (f.t === 'hello') {
-      const t = ['nwlan/2/hello', host, f.peer, f.nonce, f.ts].join('\x1f');
+      assert.equal(f.profile, this.profile);
+      const ids = [host, f.peer, f.nonce];
+      if (this.profile) ids.push(this.profile);
+      this.connectionKey = nip44.utils.getConversationKey(new Uint8Array(32).fill(0x11), f.peer);
+      const t = ['nwlan/2/hello', ...ids, f.ts].join('\x1f');
       assert(schnorr.verify(base64urlnopad.decode(f.sig), sha256(enc.encode(t)), Buffer.from(f.peer, 'hex')));
       if (this.commitment) {
         assert.equal(this.commitment, Buffer.from(sha256(enc.encode(['nwlan/2/discover',f.peer,f.nonce].join('\x1f')))).toString('hex'));
         assert.equal(f.mac, undefined);
       } else assert.equal(f.mac, base64urlnopad.encode(hmac(sha256, new Uint8Array(32).fill(7), enc.encode(t))));
       const session = base64urlnopad.encode(crypto.getRandomValues(new Uint8Array(16)));
-      const salt = enc.encode(['nwlan/2/session', host, f.peer, f.nonce, session].join('\x1f'));
+      const salt = enc.encode(['nwlan/2/session', ...ids, session].join('\x1f'));
       const prk = extract(sha256, nip44.utils.getConversationKey(new Uint8Array(32).fill(0x11), f.peer), salt);
       this.keys = {
         mac: expand(sha256, prk, enc.encode('nwlan/2/mac'), 32),
@@ -104,20 +112,42 @@ class Device implements BridgeTransport {
       };
       const sig = base64urlnopad.encode(
         schnorr.sign(
-          sha256(enc.encode(['nwlan/2/welcome', host, f.peer, f.nonce, session].join('\x1f'))),
+          sha256(enc.encode(['nwlan/2/welcome', ...ids, session].join('\x1f'))),
           new Uint8Array(32).fill(this.mode === 'bad-host' ? 0x33 : 0x11),
         ),
       );
       if (this.mode !== 'no-confirmation') {
         const challenge = this.challenge && this.mode !== 'changed-challenge' ? this.challenge : base64urlnopad.encode(crypto.getRandomValues(new Uint8Array(16)));
-        const digest = sha256(enc.encode(['nwlan/2/confirm', host, f.peer, f.nonce, challenge].join('\x1f')));
+        const digest = sha256(enc.encode(['nwlan/2/confirm', ...ids, challenge].join('\x1f')));
         this.emit({ v: 2, t: 'confirm', host, challenge, sig: base64urlnopad.encode(schnorr.sign(digest, new Uint8Array(32).fill(this.mode === 'bad-confirmation' ? 0x33 : 0x11))) });
       }
-      this.emit({ v: 2, t: 'welcome', host, session, sig });
+      this.emit({ v: 2, t: 'welcome', host, session, sig, profile: this.mode === 'strip-profile' ? undefined : this.profile });
       return;
     }
     this.received.push(f.seq);
     assert.equal(f.mac, base64urlnopad.encode(hmac(sha256, this.keys!.mac, enc.encode(['nwlan/2/req', f.seq, f.payload].join('\x1f')))));
+    if (this.profile) {
+      const event = JSON.parse(f.payload);
+      assert(verifyEvent(event));
+      assert.equal(event.pubkey, peer);
+      assert.equal(event.kind, 24133);
+      assert.deepEqual(event.tags, [['p', host]]);
+      const request = JSON.parse(nip44.decrypt(event.content, this.connectionKey!));
+      assert.equal(request.site, 'https://site.test');
+      const accountKey = new Uint8Array(32).fill(0x44);
+      const result = request.method === 'sign_event'
+        ? JSON.stringify(finalizeEvent(JSON.parse(request.params[0]), accountKey))
+        : getPublicKey(accountKey);
+      const reply = finalizeEvent({ kind: 24133, created_at: 1,
+        tags: [['p', this.mode === 'wrong-recipient' ? host : peer]],
+        content: nip44.encrypt(JSON.stringify({ id: request.id, result }), this.connectionKey!),
+      }, new Uint8Array(32).fill(0x11));
+      if (this.mode === 'bad-event') reply.sig = '00'.repeat(64);
+      const payload = JSON.stringify(reply);
+      const mac = base64urlnopad.encode(hmac(sha256, this.keys!.mac, enc.encode(['nwlan/2/res', f.seq, payload].join('\x1f'))));
+      this.emit({ v: 2, t: 'res', seq: f.seq, payload, mac });
+      return;
+    }
     const request = JSON.parse(nip44.decrypt(f.payload, this.keys!.payload));
     const payload = nip44.encrypt(
       JSON.stringify({ id: this.mode === 'bad-id' ? 'wrong' : request.id, result: request.method === 'get_public_key' ? host : 'ok' }),
@@ -487,4 +517,36 @@ test('BLE failed write closes stream and never retries or sends queued frames', 
   await Promise.all([first, second]);
   assert.equal(f.writes.length, 1);
   assert.equal(f.disconnected(), true);
+});
+
+test('signed NIP-46 event round trip through both pairing paths, binding keys and profile', async () => {
+  for (const path of ['wifi', 'ble']) {
+    for (const mode of ['normal', 'bad-event', 'wrong-recipient', 'strip-profile']) {
+      const transport = new Device();
+      transport.profile = 'nip46-event';
+      transport.mode = mode;
+      const secretKey = new Uint8Array(32).fill(0x22);
+      const options = { secretKey, transport, timeoutMs: 1000 };
+      const pairing = path === 'ble' ? LocalBridgeClient.connectBluetooth(options) : LocalBridgeClient.connect({
+        ...options, offer: parsePairingUri(`nwlan://${host}?v=2&addr=192.168.1.2:1234&psk=${psk}&profile=nip46-event`),
+      });
+      if (mode === 'strip-profile') {
+        await assert.rejects(pairing, /profile mismatch/);
+        continue;
+      }
+      const client = await pairing;
+      secretKey.fill(0);
+      const result = client.request('get_public_key', [], 'https://site.test');
+      if (mode === 'normal') {
+        const identity = await result;
+        assert.notEqual(identity, host);
+        const template = { kind: 1, content: 'Local event', tags: [], created_at: 123 };
+        const signed = JSON.parse(await client.request('sign_event', [JSON.stringify(template)], 'https://site.test'));
+        assert(verifyEvent(signed));
+        assert.equal(signed.pubkey, identity);
+        assert.equal(signed.content, template.content);
+      } else await assert.rejects(result, /response event|recipient/);
+      client.close();
+    }
+  }
 });

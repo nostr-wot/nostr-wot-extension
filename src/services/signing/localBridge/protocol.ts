@@ -28,7 +28,15 @@ export function equalMac(a: string, b: string): boolean {
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
 }
+export const NIP46_PROFILE = 'nip46-event' as const;
+export function readProfile(value: unknown): typeof NIP46_PROFILE | undefined {
+  if (value === undefined) return undefined;
+  if (value !== NIP46_PROFILE) throw new Error('Unsupported local signer profile');
+  return NIP46_PROFILE;
+}
+
 export interface PairingOffer {
+  profile?: typeof NIP46_PROFILE;
   hostPubkey: string;
   transport: 'wifi' | 'ble';
   addresses: string[];
@@ -72,7 +80,7 @@ export function parsePairingUri(uri: string): PairingOffer {
     !/^[a-f0-9]{64}$/.test(u.hostname)
   )
     throw new Error('Invalid pairing code');
-  for (const field of ['v', 'transport', 'psk', 'name']) if (q.getAll(field).length > 1) throw new Error('Duplicate pairing field');
+  for (const field of ['v', 'transport', 'psk', 'name', 'profile']) if (q.getAll(field).length > 1) throw new Error('Duplicate pairing field');
   if (q.get('v') !== '2') throw new Error('Unsupported local signer protocol version');
   const transport = q.get('transport') ?? 'wifi';
   if (transport !== 'wifi' && transport !== 'ble') throw new Error('Unsupported local signer transport');
@@ -84,5 +92,5 @@ export function parsePairingUri(uri: string): PairingOffer {
   decode64(psk, 32);
   const name = q.get('name') ?? undefined;
   if (name && name.length > 64) throw new Error('Pairing name too long');
-  return { hostPubkey: u.hostname, transport, addresses, psk: psk!, name };
+  return { profile: readProfile(q.get('profile') ?? undefined), hostPubkey: u.hostname, transport, addresses, psk: psk!, name };
 }

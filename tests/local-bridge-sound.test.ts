@@ -6,6 +6,9 @@ import { parsePairingUri } from '../src/services/signing/localBridge/protocol.ts
 const packet = Buffer.from('4e570100' + '11'.repeat(32) + '22'.repeat(32) + 'c0a80118d3c3', 'hex');
 test('compact sound bootstrap reconstructs a normal Wi-Fi pairing code', () => {
   const offer = parsePairingUri(decodeSoundOffer(packet));
+  const eventOffer = Buffer.from(packet);
+  eventOffer[2] = 2;
+  assert.equal(parsePairingUri(decodeSoundOffer(eventOffer)).profile, 'nip46-event');
   assert.equal(offer.hostPubkey, '11'.repeat(32));
   assert.equal(offer.psk, Buffer.alloc(32, 0x22).toString('base64url'));
   assert.deepEqual(offer.addresses, ['192.168.1.24:54211']);
