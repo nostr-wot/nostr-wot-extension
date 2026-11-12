@@ -3,6 +3,10 @@
 Notable changes per release. Store-facing copy appears under **Store release notes**.
 See [deployment](docs/deployment.md) for packaging and submission requirements.
 
+## Unreleased
+
+- Fix Wallet Settings failing to open for an existing Lightning address when the cached profile is incomplete.
+
 ## 0.8.25 — 2026-11-11
 
 - Show the popup logo while the extension loads on a cold open after installation or update.

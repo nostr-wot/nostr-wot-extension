@@ -476,6 +476,10 @@ it('wallet profile address status follows cached publication, reopening and acco
     assert.equal(button().disabled, false, 'another account does not inherit the published status');
     await act(async () => browser.storage.local.set({ profile_b: { metadata: {}, fetchedAt: 3 } }));
     assert.equal(button().disabled, false, 'a profile without lud16 offers publication');
+    for (const legacy of [{ metadata: null }, { name: 'Bob' }, { metadata: { lud16: 42 } }]) {
+      await act(async () => browser.storage.local.set({ profile_b: legacy }));
+      assert.equal(button().disabled, false, 'an unusable cached address does not break settings');
+    }
   } finally {
     await act(async () => root.unmount());
     for (const [key, descriptor] of previous) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); }
